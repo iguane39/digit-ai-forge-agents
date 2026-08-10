@@ -1,0 +1,13 @@
+# Corpus propre — conformité RGPD / AI Act des traitements IA (checklist)
+
+Constitué le 23/07/2026 pour la fiche `expert-conformite-rgpd-ia` (inventaire P2 §5 E3). Ancré dans le RGPD, la doctrine CNIL et le règlement (UE) 2024/1689 (AI Act) — niveau : points de vigilance et questions à instruire, jamais un avis juridique.
+
+1. **Base légale par traitement** — chaque finalité (classification de mails, extraction de pièces, profilage client) exige sa base légale identifiée (intérêt légitime documenté par mise en balance, exécution contractuelle, consentement) ; un traitement de boîtes mail mélange données clients, prospects et tiers — la base légale n'est pas uniforme.
+2. **DPA et chaîne de sous-traitance LLM** — le fournisseur du LLM est un sous-traitant (art. 28) : DPA signé, sous-traitants ultérieurs listés, engagement de non-réutilisation des données pour l'entraînement à vérifier explicitement dans les conditions du service (offre entreprise vs grand public).
+3. **Localisation et transferts** — hébergement et inférence : région UE disponible ? Transferts hors UE encadrés (clauses contractuelles types, DPF) ? La souveraineté exigée par certains donneurs d'ordre (secteur public, PSSI) peut exclure des fournisseurs — à instruire AVANT l'architecture, pas après.
+4. **Minimisation et conservation** — n'envoyer au LLM que le nécessaire (troncature, pseudonymisation des identifiants directs quand la finalité le permet) ; durées de conservation par catégorie (mail source, sortie du modèle, journaux) définies et outillées (purge).
+5. **AI Act — qualification du système** — classer le système par risque : la plupart des assistants documentaires = risque limité (obligations de transparence) ; vigilance sur les usages à haut risque de l'annexe III (RH/recrutement, scoring, éducation) et sur l'obligation de maîtrise IA (art. 4) côté utilisateurs.
+6. **Droits des personnes et information** — les personnes dont les mails sont traités (clients, tiers) doivent être informées (mention dans les CGV/notice) ; prévoir la capacité d'exercer les droits (accès, opposition) sur les données indexées par le système.
+7. **Points RSSI/PSSI** — journalisation des accès, chiffrement en transit et au repos, cloisonnement des tenants, revue des habilitations sur l'espace documentaire cible ; si un cadre PSSI client impose « aucun LLM externe » (cas rencontré), l'architecture doit le traiter comme contrainte dure d'entrée.
+
+Frontière du corpus : l'architecture data/plateforme → fiche `data-platform-cloud` (V2) et fiche `data` ; l'écosystème d'agents Microsoft → fiche `copilot-m365` (V2) ; la présente checklist porte la conformité des traitements.

@@ -1,0 +1,138 @@
+{
+  "cible": "contre-expertise",
+  "date_iso": "2026-07-23T10:28:45.685Z",
+  "registre_version": "2.5.0",
+  "profil": "digit-ai",
+  "niveau": "diffuse",
+  "verdict": "PASS",
+  "resume": {
+    "pass": 5,
+    "fail": 0,
+    "skip": 13,
+    "cache": 0
+  },
+  "bilan_fichiers": {
+    "jugé": [
+      "contre-expertise/SKILL.md",
+      "contre-expertise/references/angle-contradiction.md",
+      "contre-expertise/references/regime-de-preuve.md",
+      "contre-expertise/references/restitution.md"
+    ],
+    "exempté": [],
+    "délégué": [],
+    "signalé": []
+  },
+  "bilan_complet": true,
+  "exemptions_actives": [],
+  "resultats": [
+    {
+      "domaine": "Format / livraison / versioning",
+      "file": "contre-expertise/SKILL.md",
+      "verdict": "PASS",
+      "detail": ""
+    },
+    {
+      "domaine": "Format / livraison / versioning",
+      "file": "contre-expertise/references/angle-contradiction.md",
+      "verdict": "PASS",
+      "detail": ""
+    },
+    {
+      "domaine": "Format / livraison / versioning",
+      "file": "contre-expertise/references/regime-de-preuve.md",
+      "verdict": "PASS",
+      "detail": ""
+    },
+    {
+      "domaine": "Format / livraison / versioning",
+      "file": "contre-expertise/references/restitution.md",
+      "verdict": "PASS",
+      "detail": ""
+    },
+    {
+      "domaine": "Sécurité / secrets",
+      "file": "contre-expertise",
+      "verdict": "PASS",
+      "detail": "aucun secret détecté"
+    },
+    {
+      "domaine": "Calculs / chiffres",
+      "file": "contre-expertise/SKILL.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Calculs / chiffres",
+      "file": "contre-expertise/references/angle-contradiction.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Calculs / chiffres",
+      "file": "contre-expertise/references/regime-de-preuve.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Calculs / chiffres",
+      "file": "contre-expertise/references/restitution.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Traçabilité des affirmations chiffrées",
+      "file": "contre-expertise/SKILL.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Traçabilité des affirmations chiffrées",
+      "file": "contre-expertise/references/angle-contradiction.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Traçabilité des affirmations chiffrées",
+      "file": "contre-expertise/references/regime-de-preuve.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Traçabilité des affirmations chiffrées",
+      "file": "contre-expertise/references/restitution.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Nommage / convention de livraison",
+      "file": "contre-expertise/SKILL.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Nommage / convention de livraison",
+      "file": "contre-expertise/references/angle-contradiction.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Nommage / convention de livraison",
+      "file": "contre-expertise/references/regime-de-preuve.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Nommage / convention de livraison",
+      "file": "contre-expertise/references/restitution.md",
+      "verdict": "SKIP",
+      "detail": ""
+    },
+    {
+      "domaine": "Cohérence inter-documents",
+      "file": "contre-expertise",
+      "verdict": "SKIP",
+      "detail": ""
+    }
+  ],
+  "actions_couverture": []
+}

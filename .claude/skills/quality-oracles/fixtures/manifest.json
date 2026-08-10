@@ -1,0 +1,551 @@
+{
+  "commentaire": "Oracle de l'oracle (P1) : chaque oracle prouve qu'il sait ÉCHOUER (rouge) et RÉUSSIR (verte). Rejoué par self-test.mjs. attendu_* = verdicts admis ; SKIP n'est toléré que pour les oracles dépendant d'un outil externe (raison exigée dans la sortie).",
+  "fixtures": [
+    {
+      "nom": "format",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-format.mjs",
+        "{fixture}"
+      ],
+      "red": "format-red.txt",
+      "green": "format-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "code",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-code.mjs",
+        "{fixture}"
+      ],
+      "red": "code-red.py",
+      "green": "code-green.py",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "secrets",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-secrets.mjs",
+        "{fixture}"
+      ],
+      "red": "secrets-red.txt",
+      "green": "secrets-green.txt",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "sast",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-sast.mjs",
+        "{fixture}"
+      ],
+      "red": "sast-red.py",
+      "green": "sast-green.py",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "perf",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-perf.mjs",
+        "{fixture}"
+      ],
+      "red": "perf-red.html",
+      "green": "perf-green.html",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "calculs",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-calculs.mjs",
+        "{fixture}"
+      ],
+      "red": "calculs-red.md",
+      "green": "calculs-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "pptx",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-pptx.mjs",
+        "{fixture}"
+      ],
+      "red": "pptx-red.pptx",
+      "green": "pptx-green.pptx",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "llm",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-llm.mjs",
+        "{fixture}",
+        "--schema",
+        "{skilldir}/fixtures/llm-schema.json"
+      ],
+      "red": "llm-red.json",
+      "green": "llm-green.json",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "sca",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-sca.mjs",
+        "{fixture}"
+      ],
+      "red": "sca-red/requirements.txt",
+      "green": "sca-green/requirements.txt",
+      "attendu_red": [
+        "FAIL",
+        "SKIP"
+      ],
+      "attendu_green": [
+        "PASS",
+        "SKIP"
+      ],
+      "dependant_outil": "pip-audit / npm audit / OSV (réseau)"
+    },
+    {
+      "nom": "a11y",
+      "cmd": [
+        "python3",
+        "{skilldir}/scripts/oracle-a11y.py",
+        "{fixture}"
+      ],
+      "red": "a11y-red.html",
+      "green": "a11y-green.html",
+      "attendu_red": [
+        "FAIL",
+        "SKIP"
+      ],
+      "attendu_green": [
+        "PASS",
+        "SKIP"
+      ],
+      "dependant_outil": "Playwright/Chromium"
+    },
+    {
+      "nom": "claims",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-claims.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "claims-red.md",
+      "green": "claims-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "nommage",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-nommage.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "Digit-AI - Note_Client - 2026.md",
+      "green": "Digit-AI - Note Client - Cadrage - 20260720a.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "nommage-q3bis",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-nommage.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "Produit-02 - Audit SEO.md",
+      "green": "Forge Organization - Décisions Conventions d'organisation - 20260809a.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "campagne 09/08/2026 — la convention Q3-bis (le nom du projet prime sur l'émetteur) échappait à son propre oracle : déclencheur sur le préfixe littéral « Digit-AI », donc SKIP au lieu de PASS/FAIL sur tout livrable d'un autre projet."
+    },
+    {
+      "nom": "judge",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-judge.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "claims-red.md",
+      "green": "claims-green.md",
+      "attendu_red": [
+        "FAIL",
+        "SKIP"
+      ],
+      "attendu_green": [
+        "PASS",
+        "SKIP"
+      ],
+      "dependant_outil": "CLI claude (juge externe)"
+    },
+    {
+      "nom": "calculs-grandtotal",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-calculs.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "calculs-grandtotal-red.md",
+      "green": "calculs-grandtotal-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "calculs-pct",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-calculs.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "calculs-pct-red.md",
+      "green": "calculs-pct-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "claims-tjm",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-claims.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "claims-tjm-red.md",
+      "green": "claims-tjm-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "coherence",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-coherence.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "coherence-red",
+      "green": "coherence-green",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
+      "nom": "visual",
+      "cmd": [
+        "python3",
+        "{skilldir}/scripts/oracle-visual-diff.py",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "visual-red.html",
+      "green": "visual-green.html",
+      "attendu_red": [
+        "FAIL",
+        "SKIP"
+      ],
+      "attendu_green": [
+        "PASS",
+        "SKIP"
+      ],
+      "dependant_outil": "playwright + chromium + pillow"
+    },
+    {
+      "nom": "visual-nogolden",
+      "cmd": [
+        "python3",
+        "{skilldir}/scripts/oracle-visual-diff.py",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "visual-nogolden.html",
+      "green": "visual-nogolden.html",
+      "attendu_red": [
+        "SKIP"
+      ],
+      "attendu_green": [
+        "SKIP"
+      ],
+      "dependant_outil": "golden absent par construction (initialisation hors boucle)"
+    },
+    {
+      "nom": "programme-formation",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-programme-formation.mjs",
+        "{fixture}"
+      ],
+      "red": "programme-formation-red.md",
+      "green": "programme-formation-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "Mission formation — blocs annoncés ≠ sommes de séquences, contrôle rejoué 2× en scripts Python jetables dans le même fil, 23/07/2026 (note P1 §0, inventaire P2 §3 O1)"
+    },
+    {
+      "nom": "charte-pptx-semantique",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+        "{fixture}"
+      ],
+      "red": "charte-pptx-semantique-red.pptx",
+      "green": "charte-pptx-semantique-green.pptx",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "Propales PPTX tous clients — règles kicker/logo/bijection nées de renders fautifs (charte v2, legacy renders to discard) ; overrides slideMaster fantômes découverts après livraison le 08/06/2026 (inventaire P2 §2-§3 O2) ; comble le non_juge charte sémantique déclaré par oracle-pptx"
+    },
+    {
+      "nom": "etat-forge",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-etat-forge.mjs",
+        "{fixture}"
+      ],
+      "red": "etat-forge-red.json",
+      "green": "etat-forge-green.json",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "La forge elle-même — experts-forge v1.3.0 livrée le 21/07/2026 non installée (registre monté v0.3.0, fixture accessibilite absente), constat prouvé note P1 §3 / inventaire P2 §3 O3, 23/07/2026 — cas rejoué tel quel par la fixture rouge"
+    },
+    {
+      "nom": "exigences-ao",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-exigences-ao.mjs",
+        "{fixture}",
+        "--exigences",
+        "{skilldir}/fixtures/exigences-ao-referentiel.md"
+      ],
+      "red": "exigences-ao-red.md",
+      "green": "exigences-ao-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "Consultation OPCO 07/07/2026 — exigence Art. 3 (≥ 2 ans GRH) absente de la réponse, repêchée en analyse ; rubriques p. 22 à l identique vérifiées à la main (inventaire P2 §2, §3 O4)"
+    },
+    {
+      "nom": "simulateur-js",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-simulateur-js.mjs",
+        "{fixture}",
+        "--attendus",
+        "{skilldir}/fixtures/simulateur-js-attendus.json"
+      ],
+      "red": "simulateur-js-red.html",
+      "green": "simulateur-js-green.html",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "Incident Chart.js CDN (rendu cassé → règle lib inline) ; validation manuelle KPI JS vs modèle ±1 % rejouée 3× (BEEF ROI, APDLB fiscal a→c, solaire Vessey) — inventaire P2 §2, §3 O5"
+    },
+    {
+      "nom": "parite-migration",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-parite-migration.mjs",
+        "{fixture}"
+      ],
+      "red": "parite-migration-red.txt",
+      "green": "parite-migration-green.txt",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "SCC Vendôme — og:url et canonical en dur vers la prod des deux côtés, détecté au fetch du 21/07/2026 ; checklist = prompt d acceptation réécrit du 21/07 (inventaire P2 §2, §3 O6)"
+    },
+    {
+      "nom": "inventaire-interop",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-inventaire-interop.mjs",
+        "{fixture}"
+      ],
+      "red": "inventaire-interop-red.md",
+      "green": "inventaire-interop-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "X14 — index 16 connecteurs, critères C1-C5 tenus à la main (itérations a/b) ; divergence datée guide 2018 vs Orisha 2026 attrapée par la discipline, pas par un outil (inventaire P2 §2, §3 O7)"
+    },
+    {
+      "nom": "plan-de-mission",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-plan-de-mission.mjs",
+        "{fixture}"
+      ],
+      "red": "plan-de-mission-red.md",
+      "green": "plan-de-mission-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "pilote-de-mission — 2 instanciations réelles (APDLB v1.1, un AO public), plans non outillés (inventaire P2 §1, §3 O8)"
+    },
+    {
+      "nom": "post-linkedin",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-post-linkedin.mjs",
+        "{fixture}"
+      ],
+      "red": "post-linkedin-red.txt",
+      "green": "post-linkedin-green.txt",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "linkedin-post-generator — scripts de génération sans aucun contrôle (inventaire P2 §1, §3 O9) ; règles liens/hashtags du SKILL.md du skill producteur"
+    },
+    {
+      "nom": "fiche-prospection-ice",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-fiche-prospection-ice.mjs",
+        "{fixture}"
+      ],
+      "red": "fiche-prospection-ice-red.html",
+      "green": "fiche-prospection-ice-green.html",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ],
+      "provenance": "digit-ai-prospection — pipeline systématique 10-15 cas d usage, 9 champs et grille ICE du skill (inventaire P2 §3 O10) ; défauts de sources déjà couverts par oracle-claims + exemptions du 21/07/2026"
+    },
+    {
+      "nom": "cdc-cadrage",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-cdc-cadrage.mjs",
+        "{fixture}"
+      ],
+      "red": "cdc-cadrage-red.md",
+      "green": "cdc-cadrage-green.md",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    }
+  ]
+}

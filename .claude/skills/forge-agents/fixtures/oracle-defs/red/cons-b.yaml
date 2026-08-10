@@ -1,0 +1,9 @@
+id: cons-b
+mandat: "Dit consommer z.md de prod-a, mais prod-a produit x.md — fixture rouge"
+outils: [Read, Write]
+arbitre:
+  - "y.md existe"
+entrees:
+  - { artefact: "z.md", de: "prod-a" }
+sorties:
+  - { artefact: "y.md", vers: "livrable-final" }

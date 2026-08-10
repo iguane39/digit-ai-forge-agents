@@ -1,0 +1,9 @@
+id: prod-a
+mandat: "Produit x.md pour cons-b — fixture verte du graphe"
+outils: [Read, Write]
+arbitre:
+  - "x.md existe et est non vide"
+entrees:
+  - { artefact: "source-brute", de: "entrant humain" }
+sorties:
+  - { artefact: "x.md", vers: "cons-b" }

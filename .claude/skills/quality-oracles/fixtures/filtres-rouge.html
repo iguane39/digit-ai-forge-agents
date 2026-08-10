@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fixture rouge — tableau en périmètre sans filtres</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; }
+  body { font-family: system-ui, sans-serif; padding:24px; }
+  table { border-collapse:collapse; }
+  th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+</style>
+</head>
+<body>
+<h1>Résultats d'exécution — run 412</h1>
+
+<!-- FIXTURE ROUGE : 10 lignes, colonnes Suite et Statut catégorielles.
+     Le tableau est en périmètre mais ne porte ni data-filterable ni exemption motivée.
+     Ni asset, ni initialisation, ni compteur, ni règle @media print.
+     Attendu : FAIL sur G1 (+ G2/G6 non déclenchés car aucun tableau filtrable déclaré). -->
+<table>
+  <thead>
+    <tr><th>Suite</th><th>Statut</th><th>Durée</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>auth</td><td>Réussi</td><td>0,41 s</td></tr>
+    <tr><td>auth</td><td>Échec</td><td>1,23 s</td></tr>
+    <tr><td>auth</td><td>Réussi</td><td>0,38 s</td></tr>
+    <tr><td>api</td><td>Réussi</td><td>2,04 s</td></tr>
+    <tr><td>api</td><td>Échec</td><td>3,17 s</td></tr>
+    <tr><td>api</td><td>Ignoré</td><td>0,00 s</td></tr>
+    <tr><td>api</td><td>Réussi</td><td>1,88 s</td></tr>
+    <tr><td>ui</td><td>Réussi</td><td>4,52 s</td></tr>
+    <tr><td>ui</td><td>Échec</td><td>5,90 s</td></tr>
+    <tr><td>ui</td><td>Ignoré</td><td>0,01 s</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

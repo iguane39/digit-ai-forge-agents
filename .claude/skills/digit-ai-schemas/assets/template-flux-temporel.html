@@ -1,0 +1,186 @@
+<!--
+  TEMPLATE FLUX TEMPOREL · canevas Digit-AI
+  
+  Utilisation : insérer ce <svg>...</svg> dans une page HTML qui utilise
+  le squelette de template-multi-bandes.html.
+  
+  Conventions clés :
+  - viewBox 1320 × 820
+  - Axe temporel vertical (haut = source, bas = destination)
+  - Swimlanes : org Squad à gauche, org DSI au centre, artefacts ACR à droite, intégrations à l'extrême droite
+-->
+
+<div class="diagram-wrap">
+  <svg viewBox="0 0 1320 820" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diag3-title diag3-desc">
+    <title id="diag3-title">{{TITRE_FLUX}} | {{SOUSTITRE_FLUX}}</title>
+    <desc id="diag3-desc">{{DESCRIPTION_ACCESSIBILITE}}</desc>
+
+    <defs>
+      <marker id="arrPipe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
+      </marker>
+      <marker id="arrGate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+      </marker>
+      <marker id="arrArt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+      </marker>
+    </defs>
+
+    <!-- ===== AXE TEMPOREL EN HAUT (y=50) ===== -->
+    <text x="40" y="32" class="svg-tband" style="fill:#475569">{{TITRE_AXE_TEMPS}}</text>
+    <line x1="40" y1="50" x2="1280" y2="50" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- ===== SWIMLANE 1 · ORG SQUAD (x: 32 → 412) ===== -->
+    <rect x="32" y="76" width="380" height="690" rx="14" class="svg-frame" stroke="#94a3b8"/>
+    <text x="48" y="98" class="svg-tband" style="fill:#475569">{{ORG_SQUAD}}</text>
+
+    <!-- Étape 1 : tag git -->
+    <g class="svg-c-gray">
+      <title>{{NOM_TAG}} | Trigger : {{TRIGGER_TAG}} | Ownership : {{OWNER_TAG}}</title>
+      <rect x="50" y="116" width="340" height="48" rx="8"/>
+      <text x="220" y="135" text-anchor="middle" class="svg-th" style="font-size:11.5px">{{TITRE_TAG}}</text>
+      <text x="220" y="152" text-anchor="middle" class="svg-ts">{{SOUSTITRE_TAG}}</text>
+    </g>
+
+    <!-- Pipeline M1 -->
+    <g class="svg-agent-mission">
+      <title>{{NOM_M1}} | Trigger : {{TRIGGER_M1}} | Agent pool : `{{POOL_M1}}` | Artefact : `{{ARTEFACT_M1}}`</title>
+      <rect x="50" y="184" width="340" height="68" rx="8"/>
+      <text x="220" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">{{TITRE_M1}}</text>
+      <text x="220" y="223" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">{{CHEMIN_M1}} · {{AGENT_M1}}</text>
+      <text x="220" y="240" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ Artefact : {{ARTEFACT_M1}}</text>
+    </g>
+
+    <!-- Pipeline M2 -->
+    <g class="svg-agent-mission">
+      <title>{{NOM_M2}} | Trigger : {{TRIGGER_M2}} | Artefacts : {{ARTEFACTS_M2}}</title>
+      <rect x="50" y="272" width="340" height="68" rx="8"/>
+      <text x="220" y="294" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">{{TITRE_M2}}</text>
+      <text x="220" y="311" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">{{CHEMIN_M2}}</text>
+      <text x="220" y="328" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ {{ARTEFACTS_M2_VISUEL}}</text>
+    </g>
+
+    <!-- Gate humain DA Light -->
+    <g class="svg-c-amber">
+      <title>{{NOM_GATE_LIGHT}} | Environment : `{{ENV_GATE_LIGHT}}` | Approvers : `{{APPROVERS_LIGHT}}` | Délai cible : {{DELAI_LIGHT}}</title>
+      <rect x="50" y="360" width="340" height="56" rx="8"/>
+      <text x="220" y="382" text-anchor="middle" class="svg-th" style="font-size:11.5px">{{TITRE_GATE_LIGHT}}</text>
+      <text x="220" y="400" text-anchor="middle" class="svg-ts">{{SOUSTITRE_GATE_LIGHT}}</text>
+    </g>
+
+    <!-- ===== SWIMLANE 2 · ORG DSI (x: 438 → 1288) ===== -->
+    <rect x="438" y="76" width="850" height="690" rx="14" class="svg-frame" stroke="#5b21b6"/>
+    <text x="454" y="98" class="svg-tband" style="fill:#5b21b6">{{ORG_DSI}}</text>
+
+    <!-- Pipeline M3 -->
+    <g class="svg-agent-mission">
+      <title>{{NOM_M3}} | Trigger : {{TRIGGER_M3}} | Service Connections : `{{SC_M3}}` | Artefacts : {{ARTEFACTS_M3}}</title>
+      <rect x="456" y="184" width="350" height="80" rx="8"/>
+      <text x="631" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">{{TITRE_M3}}</text>
+      <text x="631" y="223" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">{{CHEMIN_M3}} · {{AGENT_M3}}</text>
+      <text x="631" y="240" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ {{ARTEFACT_M3_1}}</text>
+      <text x="631" y="256" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ {{ARTEFACT_M3_2}}</text>
+    </g>
+
+    <!-- Pipelines M4, M5 selon le même format -->
+    <!-- Gate DA Finale, M6, Triple Approbation, M7 selon les patterns ci-dessus -->
+
+    <!-- ===== COLONNE ARTEFACTS ACR (x ≈ 830) ===== -->
+    <text x="830" y="170" class="svg-tband" style="fill:#475569">{{TITRE_COL_ARTEFACTS}}</text>
+
+    <!-- Artefact vX.Y.Z-mvp (blue) -->
+    <g class="svg-c-blue">
+      <title>{{TAG_MVP}} | {{DESC_TAG_MVP}}</title>
+      <rect x="830" y="184" width="220" height="60" rx="8"/>
+      <text x="940" y="206" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_TAG_MVP}}</text>
+      <text x="940" y="222" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE1_MVP}}</text>
+      <text x="940" y="236" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE2_MVP}}</text>
+    </g>
+
+    <!-- Artefact vX.Y.Z-rc (teal) plus bas, à la hauteur de M6 -->
+    <g class="svg-c-teal">
+      <title>{{TAG_RC}} | {{DESC_TAG_RC}}</title>
+      <rect x="830" y="544" width="220" height="60" rx="8"/>
+      <text x="940" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_TAG_RC}}</text>
+      <text x="940" y="582" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE1_RC}}</text>
+      <text x="940" y="596" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE2_RC}}</text>
+    </g>
+
+    <!-- Artefact vX.Y.Z (coral) en bas, à la hauteur de M7 -->
+    <g class="svg-c-coral">
+      <title>{{TAG_PROD}} | {{DESC_TAG_PROD}}</title>
+      <rect x="830" y="724" width="220" height="32" rx="8"/>
+      <text x="940" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_TAG_PROD}}</text>
+    </g>
+
+    <!-- ===== COLONNE INTÉGRATIONS (x ≈ 1080) ===== -->
+    <text x="1080" y="170" class="svg-tband" style="fill:#475569">{{TITRE_COL_INTEGRATIONS}}</text>
+
+    <!-- Storage da-dossiers (amber) à la hauteur de M5 -->
+    <g class="svg-c-amber">
+      <title>{{NOM_STORAGE}} | {{DESC_STORAGE}}</title>
+      <rect x="1080" y="384" width="200" height="72" rx="8"/>
+      <text x="1180" y="406" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_STORAGE}}</text>
+      <text x="1180" y="424" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE1_STORAGE}}</text>
+      <text x="1180" y="440" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE2_STORAGE}}</text>
+    </g>
+
+    <!-- API EasyVista (amber) à la hauteur de M6 -->
+    <g class="svg-c-amber">
+      <title>{{NOM_EV}} | {{DESC_EV}}</title>
+      <rect x="1080" y="544" width="200" height="84" rx="8"/>
+      <text x="1180" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_EV}}</text>
+      <text x="1180" y="584" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE1_EV}}</text>
+      <text x="1180" y="600" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE2_EV}}</text>
+      <text x="1180" y="616" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{LIGNE3_EV}}</text>
+    </g>
+
+    <!-- API CMDB (amber) à la hauteur de M7 -->
+    <g class="svg-c-amber">
+      <title>{{NOM_CMDB}} | {{DESC_CMDB}}</title>
+      <rect x="1080" y="724" width="200" height="32" rx="8"/>
+      <text x="1180" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_CMDB}}</text>
+    </g>
+
+    <!-- ===== FLÈCHES VERTICALES PRINCIPALES ===== -->
+    <!-- Chaîne automatique entre étapes consécutives -->
+    <line x1="220" y1="164" x2="220" y2="184" class="svg-arr-auto" marker-end="url(#arrPipe)">
+      <title>{{TOOLTIP_FLECHE_TAG_M1}}</title>
+    </line>
+    <line x1="220" y1="252" x2="220" y2="272" class="svg-arr-auto" marker-end="url(#arrPipe)">
+      <title>{{TOOLTIP_FLECHE_M1_M2}}</title>
+    </line>
+
+    <!-- Transition cross-swimlane (M2 → gate → M3) -->
+    <line x1="220" y1="340" x2="220" y2="360" class="svg-arr-auto" marker-end="url(#arrPipe)">
+      <title>{{TOOLTIP_M2_GATE}}</title>
+    </line>
+    <path d="M220,416 L220,440 L455,440 L455,184" class="svg-arr-manual" marker-end="url(#arrGate)" fill="none">
+      <title>{{TOOLTIP_GATE_M3}}</title>
+    </path>
+
+    <!-- Flèches horizontales vers artefacts ACR -->
+    <path d="M806,224 L830,214" class="svg-arr-deliv" marker-end="url(#arrArt)">
+      <title>{{TOOLTIP_M3_TAG_MVP}}</title>
+    </path>
+
+    <!-- ===== LÉGENDE (y: 790) ===== -->
+    <text x="40" y="790" class="svg-tband" style="fill:#475569">Légende</text>
+    <g transform="translate(40, 800)">
+      <line x1="0" y1="7" x2="40" y2="7" class="svg-arr-auto" marker-end="url(#arrPipe)"/>
+      <text x="48" y="11" class="svg-ts" style="font-size:11px">Chaîne auto pipelines</text>
+
+      <line x1="220" y1="7" x2="260" y2="7" class="svg-arr-manual" marker-end="url(#arrGate)"/>
+      <text x="268" y="11" class="svg-ts" style="font-size:11px">Gate humain · approbation</text>
+
+      <line x1="460" y1="7" x2="500" y2="7" class="svg-arr-deliv" marker-end="url(#arrArt)"/>
+      <text x="508" y="11" class="svg-ts" style="font-size:11px">Artefact · intégration</text>
+
+      <rect x="700" y="0" width="14" height="14" rx="3" fill="#fff" stroke="#cbd5e1" stroke-dasharray="4 4"/>
+      <text x="722" y="11" class="svg-ts" style="font-size:11px">Cadre organisation Azure DevOps</text>
+    </g>
+
+  </svg>
+</div>
+<p class="caption">Figure {{N}} — {{LEGENDE_FLUX}}</p>

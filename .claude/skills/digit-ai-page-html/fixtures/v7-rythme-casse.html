@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V7 au rendu : rythme casse (rouge)</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ --w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* Meme colonne que v7-prose-en-flux.html, a une chose pres : un paragraphe sort
+   de l'echelle d'espacement (30px au lieu de 16px). C'est un vrai defaut de
+   rythme vertical — il ne depend pas de la longueur du texte, et V7 doit le voir. */
+.col p{margin:0 0 16px 0}
+.col p.decale{margin-bottom:30px}
+mark.find-hit{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>V7 au rendu — un paragraphe sorti de l'echelle d'espacement</h1>
+<div class="col">
+<p>Court.</p>
+<p class="decale">Un paragraphe de longueur moyenne, qui tient sur deux ou trois lignes
+selon la largeur de la fenetre, et qui porte ici un blanc inferieur different de tous les
+autres : le rythme vertical est rompu a cet endroit precis.</p>
+<p>Un paragraphe nettement plus long, destine a occuper plusieurs lignes a toutes les
+largeurs mesurees par l'oracle. Le site expose sept offres distinctes derriere une page
+d'accueil unique, ce qui concentre l'audience sur une seule adresse et prive les six
+autres de tout trafic propre ; la refonte de la navigation est donc prioritaire sur
+l'enrichissement du contenu, et la mesure de frequentation par offre reste a instrumenter
+avant toute decision d'arbitrage entre les six pages orphelines.</p>
+<p>Deux lignes a peine, avec le blanc nominal de l'echelle : la rupture reste isolee au
+paragraphe precedent.</p>
+<p>Fin.</p>
+</div>
+</main></body></html>

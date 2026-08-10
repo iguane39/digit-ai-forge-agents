@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 gouttiere d'etiquettes</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* Le conteneur remplit, chaque colonne remplit sa case : L2-largeur passe au vert.
+   Et pourtant 22 % de la largeur utile est une gouttiere vide, le contenu tasse
+   dans les deux tiers de droite. C'est la grille qu'il faut mesurer. */
+.kv{display:grid;grid-template-columns:minmax(60px,22%) minmax(0,1fr);gap:8px}
+.kv dt{color:var(--faint);font-family:var(--head);font-size:.7rem;text-transform:uppercase}
+.kv dd{margin:0}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L2 — une colonne d'etiquettes qui mange le quart de la largeur</h1>
+<dl><div class="kv"><dt>Question d'audit</dt>
+<dd>Les pages cibles repondent-elles au format d'intention dominant de leur requete ?
+Le critere de la grille demande une page par requete commerciale, a deux clics au plus
+de l'accueil, et il n'est rempli sur aucune des deux dimensions mesurees.</dd></div></dl>
+</main></body></html>

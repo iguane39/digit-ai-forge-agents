@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 au rendu : texte a 50 % de son conteneur</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ --w:min(92vw,1680px);--prose:55ch}
+body{margin:0;font-family:var(--sans);font-size:15px}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* Le conteneur occupe bien la largeur : le controle STATIQUE de L2 passe. C'est
+   le paragraphe qui est bride, et il laisse une marge droite vide de sa propre
+   taille. Seule une mesure AU RENDU voit la difference. */
+p{max-width:var(--prose)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L2 au rendu — le conteneur est large, le texte ne l'est pas</h1>
+<p>Le site expose sept offres distinctes derriere une page d'accueil unique, ce qui
+concentre l'audience sur une seule adresse et prive les six autres de tout trafic
+propre. Le conteneur de cette page occupe pourtant 92 % de la fenetre : c'est le
+paragraphe lui-meme qui est bride a 55 caracteres, et la moitie droite de la surface
+reste vide. Le controle statique de L2 ne le voit pas, parce qu'il lit le CSS du
+conteneur et non la boite reellement rendue.</p>
+</main></body></html>

@@ -1,0 +1,12 @@
+# Corpus propre — exploitation de meublés de tourisme (checklist)
+
+Constitué le 23/07/2026 pour la fiche `expert-hebergement-touristique` (inventaire P2 §5 E6). Ancré dans le chantier APDLB (arbitrage fiscal, Beds24, politique de remises, transfert des comptes OTA) et le cadre public (BOFiP, service-public.fr).
+
+1. **Régime fiscal d'exploitation : l'arbitrage structurant** — LMNP au réel (amortissements) vs para-hôtellerie (services para-hôteliers → TVA, récupération sur travaux mais TVA sur les nuitées) : l'arbitrage dépend des services rendus (accueil, ménage, linge, petit-déjeuner) et doit précéder les choix d'outillage ; le seuil de bascule est un faisceau de critères, pas une option cochée.
+2. **Classement et taxe de séjour** — le classement en meublé (1-5 étoiles) ouvre l'abattement micro-BIC majoré et modifie la taxe de séjour ; la taxe est collectée par les OTA sur certaines communes seulement — vérifier qui collecte quoi par canal pour éviter la double collecte ou l'oubli.
+3. **Channel manager : au-delà du prix** — commissions et frais par canal, profondeur de synchronisation (tarifs et restrictions, pas seulement calendriers), verrouillage (export des données possible ?), compatibilité paiements (caution, acomptes) ; le critère décisif d'une reprise : la capacité à REPRENDRE les comptes existants.
+4. **Transfert des comptes et des avis : l'actif caché d'une reprise** — les avis et le classement d'annonce ne se transfèrent pas automatiquement (politiques différentes selon OTA, cas par cas) ; perdre l'historique d'avis = repartir de zéro en visibilité — à instruire AVANT la signature, avec les identifiants des comptes dans le périmètre de cession.
+5. **Obligations d'accueil et d'exploitation** — déclaration en mairie / numéro d'enregistrement selon commune, registre éventuel, affichage des prix, assurance exploitation, règlement intérieur ; en reprise : vérifier ce qui est au nom du cédant et doit être re-déclaré.
+6. **Politique tarifaire et remises** — grille par saison + règles de remise bornées (durée, dernière minute) documentées dans l'outil ; une remise gérée à la main par canal diverge toujours.
+
+Frontière du corpus : les vigilances d'ACQUISITION (promesses, ventilation du prix, conditions suspensives) → fiche `acquisition-fonds-immobilier` (V3) ; les simulateurs chiffrés → oracle `simulateur-js` ; jamais de conseil fiscal ou juridique individualisé — points de vigilance et questions à l'expert-comptable/notaire.

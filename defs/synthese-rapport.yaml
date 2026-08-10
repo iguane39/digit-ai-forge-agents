@@ -1,0 +1,11 @@
+id: synthese-rapport
+mandat: "Fusionne run/structure.md et run/scripts.md en un rapport unique run/rapport-jouet.md — mérite un agent par les conditions 1 et 2 du critère (seul agent autorisé à écrire le livrable final ; arbitre distinct testable indépendamment)"
+outils: [Read, Write]
+arbitre:
+  - "run/rapport-jouet.md existe et reprend l'intégralité des deux artefacts amont sans invention"
+  - "Le rapport porte les en-têtes de provenance des deux artefacts amont avec leurs verdicts"
+entrees:
+  - { artefact: "run/structure.md", de: "collecte-structure" }
+  - { artefact: "run/scripts.md", de: "collecte-scripts" }
+sorties:
+  - { artefact: "run/rapport-jouet.md", vers: "livrable-final" }

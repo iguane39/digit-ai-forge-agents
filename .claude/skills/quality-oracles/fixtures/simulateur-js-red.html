@@ -1,0 +1,12 @@
+<!doctype html><html><head><title>Simulateur ROI — cas rouge</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body>
+<input id="invest" value="10000"><input id="taux" value="20">
+<span id="van"></span><span id="tri"></span>
+<script>
+const invest = parseFloat(document.getElementById('invest').value);
+const taux = parseFloat(document.getElementById('taux').value) / 100;
+const gainAnnuel = invest * taux * 1.5; /* formule modifiée : s'écarte du modèle de référence */
+const van = gainAnnuel * 5 - invest;
+document.getElementById('van').textContent = van.toFixed(0) + ' EUR';
+document.getElementById('tri').textContent = (taux * 100).toFixed(1) + ' %';
+</script></body></html>

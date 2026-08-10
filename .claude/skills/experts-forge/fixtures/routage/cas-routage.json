@@ -1,0 +1,7 @@
+[
+  {"id":"R1","demande":"Analyser les capacités d'export de l'outil Gescom vers un tableau de bord, avec cadrage de l'interfaçage et des flux de données","routees_attendues":["data","interop-archi"]},
+  {"id":"R2","demande":"Cadrer la reprise de données depuis l'ancien CRM : mapping des champs et qualité de la migration","routees_attendues":["data"]},
+  {"id":"R3","demande":"Évaluer la dépendance à l'éditeur d'une solution SaaS : API disponibles, webhooks, connecteurs et passerelles","routees_attendues":["interop-archi"]},
+  {"id":"R4","demande":"Préparer un support de formation à l'IA générative pour deux cabinets notariaux, avec exercices pratiques","routees_attendues":[]},
+  {"id":"R5","registre_modifie":true,"demande":"Choisir un connecteur et une API pour la passerelle entre nos deux systèmes","routees_attendues":[]}
+]
