@@ -1,0 +1,79 @@
+#!/usr/bin/env node
+// oracle-calculs — Domaine « Calculs / chiffres » (v2, déterministe).
+// Vérifie par EXÉCUTION les totaux affichés dans les tables markdown et HTML :
+//   · ligne « Total / Somme / Sous-total » : colonnes re-sommées sur le segment de données
+//     au-dessus (depuis le dernier total) — comportement v1 inchangé ;
+//   · ligne « Total général / Grand total » (v2) : colonnes re-sommées sur TOUTES les lignes
+//     de données de la table (hors lignes de total) ; deux totaux généraux = structure ambiguë ;
+//   · colonnes de répartition % totalisées : couvertes par la même re-somme (le total affiché,
+//     typiquement 100 %, est jugé contre la somme des parts).
+// Parsing délégué à lib/num.mjs, extraction des tables à lib/tables.mjs (source unique).
+// Verdicts : FAIL = écart au-delà de la tolérance d'arrondi · PASS = ≥1 total vérifié,
+// 0 écart · SKIP = aucune structure vérifiable. Contrat JSON commun · exit 0/1/2.
+import fs from 'node:fs';
+import path from 'node:path';
+import { parseNum, isTotalLabel, isGrandTotalLabel } from './lib/num.mjs';
+import { extractTables } from './lib/tables.mjs';
+
+const file = process.argv[2];
+const out = (verdict, findings, non_juge, code) => {
+  process.stdout.write(JSON.stringify({ oracle: 'oracle-calculs', domaine: 'Calculs / chiffres', artefact: file || null, verdict, findings, non_juge }));
+  process.exit(code);
+};
+const NON_JUGE_BASE = [
+  'calculs hors tables (prose, formules métier)',
+  'pourcentages croisés (part d\'une table rapportée au total d\'une autre)',
+  'colonnes % sans ligne de total (répartition non totalisée)',
+  'chiffres sans ligne de total de contrôle (à vérifier à la source)',
+  'justesse métier des valeurs unitaires (seule la cohérence arithmétique est jugée)',
+  'ambiguïté séparateur unique + 3 décimales (traité comme milliers)'
+];
+if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
+const ext = path.extname(file).toLowerCase();
+if (!['.md', '.html', '.htm', '.txt'].includes(ext)) out('SKIP', [], ['extension non gérée : ' + ext], 2);
+const text = fs.readFileSync(file, 'utf8');
+
+const tables = extractTables(text, ext);
+if (!tables.length) out('SKIP', [], [...NON_JUGE_BASE, 'aucune table détectée'], 2);
+
+// ---- vérification d'une ligne de total contre un jeu de lignes de données -------------------
+const findings = []; let verified = 0, totalsSeen = 0;
+function verifyRow(t, header, totalRow, data, kind) {
+  const width = Math.max(...t.rows.map(x => x.cells.length));
+  for (let c = 1; c < width; c++) {
+    const shown = parseNum(totalRow.cells[c]);
+    if (shown == null) continue;
+    const vals = data.map(row => parseNum(row.cells[c])).filter(v => v != null);
+    if (vals.length < 2) continue;                      // pas assez de données pour juger la colonne
+    const sum = vals.reduce((a, b) => a + b, 0);
+    const tol = 0.005 * vals.length + 0.011;            // arrondi d'affichage cumulé (2 déc.) + epsilon
+    if (Math.abs(sum - shown) > tol) {
+      findings.push({ sev: 'bloquant', msg: `${kind} incohérent « ${header[c] || 'col.' + (c + 1)} » : affiché ${totalRow.cells[c]} ≠ somme recalculée ${Math.round(sum * 100) / 100} (${vals.length} lignes)`, where: path.basename(file) + ':' + totalRow.line + ' (' + t.origin + ')' });
+    } else verified++;
+  }
+}
+
+for (const t of tables) {
+  const header = t.rows[0].cells;
+  const grandTotals = t.rows.map((r, i) => ({ r, i })).filter(x => x.i > 0 && isGrandTotalLabel(x.r.cells[0]));
+  if (grandTotals.length > 1) {
+    findings.push({ sev: 'bloquant', msg: `structure ambiguë : ${grandTotals.length} lignes « Total général » dans la même table`, where: path.basename(file) + ':' + grandTotals[1].r.line + ' (' + t.origin + ')' });
+  }
+  let segStart = 1;                                     // début du segment de données courant
+  for (let r = 1; r < t.rows.length; r++) {
+    if (isGrandTotalLabel(t.rows[r].cells[0])) {        // v2 : total général = toutes les données de la table
+      totalsSeen++;
+      const data = t.rows.slice(1, r).filter(row => !isTotalLabel(row.cells[0]) && !isGrandTotalLabel(row.cells[0]));
+      verifyRow(t, header, t.rows[r], data, 'total général');
+      segStart = r + 1;
+      continue;
+    }
+    if (!isTotalLabel(t.rows[r].cells[0])) continue;
+    totalsSeen++;
+    verifyRow(t, header, t.rows[r], t.rows.slice(segStart, r), 'total');
+    segStart = r + 1;                                   // sous-totaux : le segment suivant repart après ce total
+  }
+}
+if (findings.length) out('FAIL', findings, NON_JUGE_BASE, 1);
+if (!totalsSeen || !verified) out('SKIP', [], [...NON_JUGE_BASE, totalsSeen ? 'totaux présents mais colonnes non sommables (données < 2 lignes)' : 'tables sans ligne de total de contrôle'], 2);
+out('PASS', [{ sev: 'info', msg: verified + ' total(aux) de colonne vérifié(s) par re-somme, 0 écart', where: path.basename(file) }], NON_JUGE_BASE, 0);

@@ -1,0 +1,33 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# Artefacts d'exécution des oracles — recalculés à chaque passe, jamais versionnés
+# (TF-0022). Le journal `*.oracles.json` reste versionné : c'est une preuve de verdict,
+# pas un cache ; idem `_oracles-journal*`, dont l'oracle etat-forge dérive `dernier_usage`.
+__pycache__/
+*.oracles-cache.json
+*.oracles-historique.jsonl
+# Le hook qualité écrit un journal à côté de chaque fichier qu'il juge : dans l'arbre
+# des skills, c'est du bruit qui s'est invité deux fois dans un commit. Hors de cet
+# arbre (output/, p4/), le journal reste une preuve de verdict et reste versionné.
+.claude/skills/**/*.oracles.json
+# Captures de render_page.py (atelier de l'oracle visuel, jamais un livrable).
+.oracles/
+
+# Espace d'engagement (local uniquement — jamais dans le dépôt public)
+input/
+p4/
+defs-p4/
+output/
+.queue/
+ledger*.jsonl
+file-candidats.md
+*.bak
+# Agents compilés d'engagement (les 3 agents d'exemple restent trackés)
+.claude/agents/chiffrage-propale.md
+.claude/agents/contenu-propale.md
+.claude/agents/recette-c2.md
+.claude/agents/rendu-pptx.md
+.claude/agents/review-propale.md

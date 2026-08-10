@@ -1,0 +1,11 @@
+id: propale-review
+mandat: "Audite la propale finale et rend un verdict Envoyer/Retravailler/Refondre argumenté"
+outils: [Read]
+arbitre:
+  - "Chaque dimension de la grille /5 est notée avec citation à l'appui"
+  - "Le verdict cite au moins un red flag vérifié ou son absence prouvée"
+entrees:
+  - { artefact: "propale.pptx", de: "propale-pptx" }
+sorties:
+  - { artefact: "review.md", vers: "livrable-final" }
+skill: digit-ai-propale-review

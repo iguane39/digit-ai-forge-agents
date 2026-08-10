@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fixture verte — tableau filtrable conforme G1–G6</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; --accent:#2563eb; --surface:#fff; --danger:#c0392b; --r-sm:6px; }
+  body { font-family: system-ui, sans-serif; padding:24px; }
+  table { border-collapse:collapse; }
+  th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .tf-btn { border:0; background:none; cursor:pointer; font:inherit; color:var(--muted); }
+  .tf-btn[aria-expanded="true"], .tf-btn.tf-on { color:var(--accent); }
+  .tf-panel { position:absolute; z-index:10; background:var(--surface);
+              border:1px solid var(--line); border-radius:var(--r-sm); padding:8px; }
+  .tf-panel[hidden] { display:none; }
+  .tf-opts { max-height:220px; overflow-y:auto; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  .tf-count.zero { color:var(--danger); }
+  @media print {
+    .tf-btn, .tf-panel { display:none !important; }
+    tr[data-tf-hidden] { display:table-row !important; }
+  }
+</style>
+</head>
+<body>
+<h1>Résultats d'exécution — run 412</h1>
+
+<!-- FIXTURE VERTE : même tableau, câblage complet.
+     G1 data-filterable · G4 id + thead/th · G2 asset référencé · G3 init() ciblant l'id
+     G5 compteur data-tf-count-for + aria-live · G6 règle @media print réaffichant les lignes.
+     Attendu : PASS. -->
+<table id="runs" data-filterable>
+  <thead>
+    <tr><th>Suite</th><th>Statut</th><th data-filter-col="off">Durée</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>auth</td><td>Réussi</td><td>0,41 s</td></tr>
+    <tr><td>auth</td><td>Échec</td><td>1,23 s</td></tr>
+    <tr><td>auth</td><td>Réussi</td><td>0,38 s</td></tr>
+    <tr><td>api</td><td>Réussi</td><td>2,04 s</td></tr>
+    <tr><td>api</td><td>Échec</td><td>3,17 s</td></tr>
+    <tr><td>api</td><td>Ignoré</td><td>0,00 s</td></tr>
+    <tr><td>api</td><td>Réussi</td><td>1,88 s</td></tr>
+    <tr><td>ui</td><td>Réussi</td><td>4,52 s</td></tr>
+    <tr><td>ui</td><td>Échec</td><td>5,90 s</td></tr>
+    <tr><td>ui</td><td>Ignoré</td><td>0,01 s</td></tr>
+  </tbody>
+</table>
+<div class="tf-count" data-tf-count-for="runs" aria-live="polite"></div>
+
+<script src="../assets/table-filters.js"></script>
+<script>DigitAITableFilters.init(document.getElementById('runs'));</script>
+</body>
+</html>

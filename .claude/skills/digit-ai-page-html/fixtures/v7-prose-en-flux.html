@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V7 au rendu : prose en flux (verte)</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;line-height:1.5;color:var(--ink)}
+.wrap{max-width:640px;margin:0 auto;padding:20px}
+/* Echelle d'espacement UNIFORME : chaque paragraphe est suivi du meme blanc.
+   Les paragraphes alternent une et deux lignes, donc leurs hauteurs different
+   d'environ une interligne (~22px). Mesure le pas d'un haut de boite au suivant
+   et l'ecart varie de ~22px : dans la fenetre (4px, 40px) du controle, donc
+   signale — c'est le faux positif qui produisait 288 avertissements sur un
+   document dense. Mesure le blanc ENTRE boites et il est constant. */
+.col p{margin:0 0 16px 0}
+mark.find-hit{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>V7 — une colonne de prose n'est pas un rythme casse</h1>
+<div class="col">
+<p>Sept offres vivent derriere une page d'accueil unique.</p>
+<p>La refonte de la navigation passe donc avant l'enrichissement du contenu, et la mesure
+de frequentation par offre reste a instrumenter avant tout arbitrage.</p>
+<p>Six pages sur sept ne recoivent aucun trafic propre.</p>
+<p>Le catalogue est complet mais illisible : aucune entree ne porte de resume, et le
+lecteur doit ouvrir chaque fiche pour savoir si elle le concerne.</p>
+<p>Le correctif tient en une ligne d'annonce par entree.</p>
+<p>Rien de tout cela ne se voit dans le code : il faut ouvrir la page a plusieurs
+largeurs et regarder ce que le lecteur recoit reellement a l'ecran.</p>
+</div>
+</main></body></html>

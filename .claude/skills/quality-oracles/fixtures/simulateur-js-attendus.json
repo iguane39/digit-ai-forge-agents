@@ -1,0 +1,7 @@
+{
+  "note": "modèle de référence de la fixture : invest 10000, taux 20 % → gain 2000/an, VAN 5 ans = 0 ; TRI affiché = 20 %",
+  "kpis": {
+    "#van": { "attendu": 0, "tolerance_pct": 1 },
+    "#tri": { "attendu": 20, "tolerance_pct": 1 }
+  }
+}

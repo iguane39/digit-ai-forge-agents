@@ -1,0 +1,161 @@
+<!--
+  TEMPLATE TOPOLOGIE · canevas Digit-AI
+  
+  Utilisation : insérer ce <svg>...</svg> dans une page HTML qui utilise
+  le squelette de template-multi-bandes.html (head + style + footer + script).
+  
+  Conventions clés :
+  - viewBox 1400 × 720
+  - 3 bandes : zones isolées (haut) + hub central + spokes peerés (bas)
+  - Couloirs verticaux dédiés pour chaque flèche de peering, points d'arrivée distincts sous le hub
+-->
+
+<div class="diagram-wrap">
+  <svg viewBox="0 0 1400 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diag2-title diag2-desc">
+    <title id="diag2-title">{{TITRE_TOPOLOGIE}} | {{SOUSTITRE}}</title>
+    <desc id="diag2-desc">{{DESCRIPTION_ACCESSIBILITE}}</desc>
+
+    <defs>
+      <marker id="arrNet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+      </marker>
+      <marker id="arrNetStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M10,0 L0,5 L10,10 z" fill="#475569"/>
+      </marker>
+    </defs>
+
+    <!-- ===== BANDE 1 · ZONES ISOLÉES (y: 8 → 220) ===== -->
+    <rect x="20" y="8" width="430" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+    <text x="32" y="24" class="svg-tband" style="fill:#475569;font-size:9.5px">1 · {{NOM_BANDE_ISOLEE}}</text>
+
+    <!-- Cadre englobant des zones isolées -->
+    <rect x="40" y="50" width="470" height="160" rx="14" class="svg-frame" stroke="#94a3b8"/>
+
+    <!-- Zone isolée 1 (gray) -->
+    <g class="svg-c-gray">
+      <title>{{NOM_ZONE_1}} | {{DETAIL_1}} | Peering : aucun | Subscription : `{{SUB_1}}`</title>
+      <rect x="60" y="76" width="200" height="114" rx="8"/>
+      <text x="160" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">{{TITRE_ZONE_1}}</text>
+      <text x="160" y="120" text-anchor="middle" class="svg-ts">{{SOUSTITRE_1}}</text>
+      <text x="160" y="140" text-anchor="middle" class="svg-tlabel">{{LIGNE1_1}}</text>
+      <text x="160" y="158" text-anchor="middle" class="svg-tlabel">{{LIGNE2_1}}</text>
+    </g>
+
+    <!-- Zone isolée 2 (blue) -->
+    <g class="svg-c-blue">
+      <title>{{NOM_ZONE_2}} | {{DETAIL_2}} | Subscription : `{{SUB_2}}`</title>
+      <rect x="290" y="76" width="200" height="114" rx="8"/>
+      <text x="390" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">{{TITRE_ZONE_2}}</text>
+      <text x="390" y="120" text-anchor="middle" class="svg-ts">{{SOUSTITRE_2}}</text>
+      <text x="390" y="140" text-anchor="middle" class="svg-tlabel">{{LIGNE1_2}}</text>
+      <text x="390" y="158" text-anchor="middle" class="svg-tlabel">{{LIGNE2_2}}</text>
+    </g>
+
+    <!-- ===== BANDE 2 · HUB CENTRAL (y: 240 → 360) ===== -->
+    <rect x="20" y="240" width="320" height="22" rx="6" fill="#ffffff" stroke="#5b21b6" stroke-width="0.6"/>
+    <text x="32" y="256" class="svg-tband" style="fill:#5b21b6;font-size:9.5px">2 · {{NOM_BANDE_HUB}}</text>
+
+    <!-- Hub central (purple) -->
+    <g class="svg-c-purple">
+      <title>{{NOM_HUB}} | {{COMPOSANTS_HUB}} | Topologie : tous les spokes DSI s'y peerent | {{NOTE_HUB}}</title>
+      <rect x="350" y="278" width="700" height="74" rx="10"/>
+      <text x="700" y="304" text-anchor="middle" class="svg-th" style="font-size:13px">{{TITRE_HUB}}</text>
+      <text x="700" y="324" text-anchor="middle" class="svg-ts">{{COMPOSANTS_LISTE}}</text>
+      <text x="700" y="342" text-anchor="middle" class="svg-tlabel">{{NOTE_HUB_VISUEL}}</text>
+    </g>
+
+    <!-- Connexion externe (amber) à droite du hub -->
+    <g class="svg-c-amber">
+      <title>{{NOM_CONNEXION}} | {{USAGE_CONNEXION}} | {{NOTE_CONNEXION}}</title>
+      <rect x="1080" y="278" width="200" height="74" rx="8"/>
+      <text x="1180" y="304" text-anchor="middle" class="svg-th" style="font-size:12px">{{TITRE_CONNEXION}}</text>
+      <text x="1180" y="324" text-anchor="middle" class="svg-ts">{{SOUSTITRE_CONNEXION}}</text>
+      <text x="1180" y="342" text-anchor="middle" class="svg-tlabel">{{DETAIL_CONNEXION}}</text>
+    </g>
+
+    <!-- Flèche bidirectionnelle hub ↔ connexion externe -->
+    <line x1="1050" y1="315" x2="1080" y2="315" class="svg-arr-strong"
+          marker-end="url(#arrNet)" marker-start="url(#arrNetStart)">
+      <title>{{TOOLTIP_LIEN_EXTERNE}}</title>
+    </line>
+
+    <!-- ===== BANDE 3 · SPOKES PEERÉS (y: 380 → 660) ===== -->
+    <rect x="20" y="380" width="380" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+    <text x="32" y="396" class="svg-tband" style="fill:#475569;font-size:9.5px">3 · {{NOM_BANDE_SPOKES}}</text>
+
+    <!--
+      Quatre spokes alignés, centres aux x : 192, 515, 838, 1161
+      Pour 3 spokes : centres x = 250, 700, 1150 (largeur 400 chacun)
+      Chaque spoke fait 305 × 240
+    -->
+
+    <!-- SPOKE 1 (blue) — exemple DEV MVP -->
+    <g class="svg-c-blue">
+      <title>{{NOM_SPOKE_1}} | VNet : `{{VNET_1}}` peeré au hub | Subnets : Container Apps délégué, Private Endpoints, Management | {{NOTE_SPOKE_1}}</title>
+      <rect x="40" y="418" width="305" height="240" rx="10"/>
+      <text x="192" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">{{TITRE_SPOKE_1}}</text>
+      <text x="192" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">{{VNET_INFO_1}}</text>
+
+      <!-- Subnet Container Apps -->
+      <rect x="60" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+      <text x="192" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
+      <text x="192" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{SUBNET_CA_1}}</text>
+
+      <!-- Subnet Private Endpoints -->
+      <rect x="60" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+      <text x="192" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
+      <text x="192" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{SUBNET_PE_1}}</text>
+
+      <!-- Subnet Management -->
+      <rect x="60" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+      <text x="192" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
+      <text x="192" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{SUBNET_MGMT_1}}</text>
+
+      <text x="192" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{NOTE_BAS_1}}</text>
+    </g>
+
+    <!-- DUPLIQUER LE BLOC SPOKE POUR LES 3 AUTRES SPOKES -->
+    <!-- Spoke 2 (teal) à x=363, centre 515 — exemple STAGING -->
+    <!-- Spoke 3 (coral) à x=686, centre 838 — exemple PROD -->
+    <!-- Spoke 4 (purple) à x=1009, centre 1161 — exemple Platform -->
+
+    <!--
+      ===== FLÈCHES DE PEERING · COULOIRS VERTICAUX DÉDIÉS =====
+      
+      Règle critique : chaque flèche monte verticalement depuis le centre du spoke (x_centre),
+      puis dévie horizontalement vers un point d'arrivée distinct sous le hub (y=352).
+      Points d'arrivée espacés latéralement pour éviter les croisements.
+      
+      Spoke 1 (centre 192) → arrivée hub à x=580
+      Spoke 2 (centre 515) → arrivée hub à x=660
+      Spoke 3 (centre 838) → arrivée hub à x=740
+      Spoke 4 (centre 1161) → arrivée hub à x=820
+    -->
+
+    <path d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+      <title>Peering VNet bidirectionnel {{SPOKE_1}} ↔ hub | {{DETAIL_PEERING_1}}</title>
+    </path>
+    <path d="M515,418 L515,378 L660,378 L660,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+      <title>Peering VNet bidirectionnel {{SPOKE_2}} ↔ hub | {{DETAIL_PEERING_2}}</title>
+    </path>
+    <path d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+      <title>Peering VNet bidirectionnel {{SPOKE_3}} ↔ hub | {{DETAIL_PEERING_3}}</title>
+    </path>
+    <path d="M1161,418 L1161,370 L820,370 L820,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+      <title>Peering VNet bidirectionnel {{SPOKE_4}} ↔ hub | {{DETAIL_PEERING_4}}</title>
+    </path>
+
+    <!-- ===== LÉGENDE (y: 680) ===== -->
+    <g transform="translate(40, 690)">
+      <line x1="0" y1="7" x2="40" y2="7" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)"/>
+      <text x="48" y="11" class="svg-ts" style="font-size:11px">Peering VNet bidirectionnel</text>
+
+      <rect x="240" y="0" width="14" height="14" rx="3" fill="#fff" stroke="#94a3b8" stroke-dasharray="4 4"/>
+      <text x="262" y="11" class="svg-ts" style="font-size:11px">Spoke isolé (sans peering hub)</text>
+
+      <text x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage) sont exposés via Private Endpoint dans le subnet PE dédié de chaque spoke</text>
+    </g>
+
+  </svg>
+</div>
+<p class="caption">Figure {{N}} — {{LEGENDE_TOPOLOGIE}}</p>

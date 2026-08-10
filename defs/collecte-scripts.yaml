@@ -1,0 +1,11 @@
+id: collecte-scripts
+mandat: "Inventorie les scripts du skill forge-agents (nom, usage, rôle) et produit run/scripts.md pour l'agent de synthèse — mérite un agent par la condition 3 du critère (parallélisable sans dépendance d'entrée avec collecte-structure)"
+outils: [Read, Glob, Write]
+arbitre:
+  - "run/scripts.md existe et couvre les 3 scripts (self-test, compile-agent-def, ledger)"
+  - "Chaque rôle décrit est appuyé par une citation de l'en-tête du script"
+entrees:
+  - { artefact: ".claude/skills/forge-agents/scripts/", de: "entrant humain" }
+sorties:
+  - { artefact: "run/scripts.md", vers: "synthese-rapport" }
+parallel: { min_agents: 2 }

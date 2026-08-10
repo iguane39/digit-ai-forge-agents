@@ -1,0 +1,6 @@
+{
+  "manifeste": "versions-livrees",
+  "note": "fixture rouge — cas réel du 23/07/2026 : experts-forge livrée v1.3.0, montage resté en v1.2.0 (note P1 §3)",
+  "skills_root": "etat-forge-tree-red/skills",
+  "skills": { "experts-forge": { "version": "1.3.0" } }
+}

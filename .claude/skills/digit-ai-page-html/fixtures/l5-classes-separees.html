@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L5 classes separees (verte)</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* Meme page que l5-collision-de-classe.html, a une chose pres : le conteneur du champ
+   et le surlignage ne partagent plus de classe. Le conteneur garde sa mise en page
+   flex ; le <mark> produit par find-in-page.js porte `find-hit` et reste inline. */
+.find{display:flex;flex-direction:column;gap:2px}
+mark.find-hit{background:var(--mark);color:inherit;display:inline;padding:0;margin:0}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L5 — le conteneur et le surlignage ne partagent plus de classe</h1>
+<div class="find"><input id="q" type="search" placeholder="Rechercher…"></div>
+<p>Le site capte 82 % de ses <mark class="find-hit">clic</mark>s sur une seule page.</p>
+</main></body></html>

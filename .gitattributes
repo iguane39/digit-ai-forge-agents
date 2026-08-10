@@ -1,0 +1,25 @@
+# Fins de ligne — protection contre la récidive CRLF (TF-0021).
+#
+# Le poste de travail est sous Windows avec `core.autocrlf=true` : à chaque `git clone`
+# ou `git checkout`, git réécrit les fichiers texte en CRLF dans la copie de travail.
+# Or le frontmatter YAML d'un SKILL.md lu ligne à ligne se casse sur un `\r` résiduel
+# (champs `name` / `description` déclarés absents alors qu'ils sont là) : le skill perd
+# son déclencheur. Les scripts et assets embarqués (.mjs, .py, .js, .html, .css) sont
+# soumis au même risque de bascule silencieuse.
+#
+# On force donc LF des deux côtés (dépôt ET copie de travail) pour ces extensions,
+# ce qui neutralise `core.autocrlf` sans dépendre d'un réglage local.
+# Les .json/.jsonl ne sont pas listés à dessein : plusieurs (file d'attente, ledgers,
+# versions livrées) sont écrits en CRLF par des outils tiers, et les normaliser ici
+# créerait une réécriture massive sans rapport avec le défaut corrigé.
+
+*.md    text eol=lf
+*.mjs   text eol=lf
+*.js    text eol=lf
+*.py    text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.sh    text eol=lf
+
+.gitattributes text eol=lf
+.gitignore     text eol=lf

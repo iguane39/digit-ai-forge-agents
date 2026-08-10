@@ -1,0 +1,7 @@
+id: agent-sans-juge
+mandat: "Produit un document sans aucun critère de sortie"
+outils: [Read, Write]
+entrees:
+  - { artefact: "notes.md", de: "humain" }
+sorties:
+  - { artefact: "doc.md", vers: "livrable-final" }

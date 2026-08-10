@@ -1,0 +1,12 @@
+# Corpus propre — ingénierie pédagogique (checklist sourcée)
+
+Constitué le 23/07/2026 pour la fiche `expert-ingenierie-pedagogique` (inventaire P2 §5 E1 : « sources académiques à matérialiser en checklist propre, comme le §3bis d'expert-data »).
+
+1. **Espacement et consolidation** — l'apprentissage massé en une session unique se retient moins bien que le même volume distribué dans le temps ; un dispositif sans rappel espacé (session de consolidation, quiz différé, activité inter-sessions) laisse la courbe d'oubli faire son œuvre. *Source : Cepeda et al. 2006 (méta-analyse de la pratique distribuée).*
+2. **Conditions de transfert** — la formation ne produit d'effet en poste que si trois conditions sont réunies : occasion d'appliquer rapidement, soutien du management, environnement outillé identique à celui de la formation. Un programme sans dispositif post-formation (cas réels du participant, suivi) a un transfert faible. *Source : Blume et al. 2010 (méta-analyse du transfert de formation).*
+3. **Exigences Qualiopi (RNQ)** — objectifs formulés en compétences **évaluables** (pas des intitulés de contenu), positionnement à l'entrée, évaluation des acquis rapportée aux objectifs, traçabilité (émargement, supports remis, appréciation à chaud). Un programme sans objectifs évaluables ni positionnement d'entrée est non conforme au référentiel.
+4. **Charge cognitive des segments** — un segment expositif long sature la mémoire de travail ; alterner les modalités (exposé / démo / pratique) et borner les segments mono-modalité (≤ 50 min, règle déjà outillée par oracle-programme-formation C4) ; une pratique immédiatement après l'exposé consolide mieux qu'une pratique différée en fin de journée.
+5. **Équilibre exposé/pratique par profil** — le ratio de pratique pertinent dépend du public (découverte vs perfectionnement) : un ratio unique affiché sans justification par profil est un signal d'industrialisation, pas d'ingénierie ; la part de pratique doit être **déclarée et justifiée** par public cible.
+6. **Évaluation alignée** — une évaluation par bloc (outillé C5) ne suffit pas : l'évaluation doit mesurer l'objectif annoncé du bloc (alignement objectif ↔ activité ↔ évaluation, modèle de l'alignement pédagogique) ; un quiz de restitution ne mesure pas une compétence de production.
+
+Frontière du corpus : structure quantitative (sommes, seuils, segments, présence d'évaluation) → oracle `programme-formation` ; la présente checklist porte le **jugement qualitatif** que l'oracle déclare `non_juge`.

@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [{ "type": "command", "command": "bash .queue/gates/g1-count-task.sh" }]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [{ "type": "command", "command": "bash .queue/gates/g1-block-direct.sh" }]
+      }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "bash .queue/gates/g2-require-receipt.sh" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "bash .queue/gates/g3-outcome.sh" }] }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 au rendu : texte pleine largeur</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ --w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* La mesure de lecture est donnee par le CONTENEUR, pas par le paragraphe : si
+   les lignes doivent etre courtes, on retrecit la colonne, on ne laisse pas un
+   paragraphe flotter dans une boite vide. */
+.col{max-width:70ch}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L2 au rendu — la colonne fixe la mesure, le texte la remplit</h1>
+<div class="col">
+<p>Le site expose sept offres distinctes derriere une page d'accueil unique, ce qui
+concentre l'audience sur une seule adresse et prive les six autres de tout trafic
+propre. Ici la mesure de lecture est portee par la colonne : le paragraphe remplit
+entierement la boite qu'on lui donne, et il ne reste aucune surface vide a sa droite.</p>
+</div>
+</main></body></html>

@@ -1,0 +1,68 @@
+{
+  "nom": "test-niveaux",
+  "version": "1.1.0",
+  "perf": {
+    "poids_warn": 2097152,
+    "poids_fail": 5242880,
+    "dom_warn": 6000,
+    "dom_fail": 12000,
+    "js_warn": 1258291,
+    "js_fail": 3145728
+  },
+  "pptx": {
+    "jpeg_interdit": true,
+    "transitions_interdites": true
+  },
+  "nommage": {
+    "prefixe": "Digit-AI",
+    "regex": "^Digit-AI - [A-Za-zÀ-ÿ0-9' ]+ [A-Za-zÀ-ÿ0-9'& ]* ?- .+ - \\d{8}[a-z](?: .*)?\\.[A-Za-z0-9]+$"
+  },
+  "claims": {
+    "actif": true,
+    "marqueurs_source": [
+      "source",
+      "sources?\\s*:",
+      "à vérifier",
+      "cf\\.",
+      "réf",
+      "\\[\\^?\\d+\\]",
+      "calculé",
+      "recalculé",
+      "https?://",
+      "CDC",
+      "devis"
+    ]
+  },
+  "juge": {
+    "rubrique": "references/rubrique-juge.md"
+  },
+  "ignore_patterns": [
+    "-w\\d{3,4}\\.png$"
+  ],
+  "niveaux": {
+    "note": {
+      "exclus": [
+        "Performance / poids",
+        "Accessibilité (WCAG structurel)"
+      ],
+      "warn_toleres": true
+    },
+    "diffuse": {
+      "exclus": [],
+      "warn_toleres": true
+    },
+    "production": {
+      "exclus": [],
+      "warn_toleres": false
+    }
+  },
+  "visual_diff": {
+    "seuil_ratio": 0.001,
+    "breakpoints": [
+      1280,
+      380
+    ],
+    "tolerance_pixel": 24,
+    "_calibration": "bruit de re-rendu mesuré à 0.0000% sur fixtures (chromium sandbox, 2026-07-21) — seuil 0.1% au-dessus du bruit"
+  }
+}

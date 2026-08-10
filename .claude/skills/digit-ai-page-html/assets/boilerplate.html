@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digit-AI — {Objet} · {Client}</title>
+  <meta name="description" content="{Résumé clair du livrable en une phrase.}">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="color-scheme" content="light">
+
+  <!-- Polices : preconnect puis requête groupée -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      /* Couleurs — marque & surfaces */
+      --blue: #2563EB;
+      --bg: #FAFBFF;
+      --surface: #FFFFFF;
+      --card: #FFFFFF;
+      /* Couleurs — encres */
+      --ink: #0F172A;
+      --muted: #64748B;
+      --faint: #94A3B8;
+      --line: #E6EAF2;
+      /* Accents sémantiques */
+      --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;
+      --teal:  #0E9488; --teal-fill:  #EFFDFB; --teal-line:  #C7F0EA;
+      --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
+      /* Rayons */
+      --r: 12px; --r-sm: 8px;
+      /* Largeur du conteneur et largeur de lecture — cf. regle L2 */
+      --w: min(92vw, 1680px); --prose: 75ch;
+      /* Familles (repli système obligatoire) */
+      --head: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+      /* Année de référence (token isolé) */
+      --annee-ref: "2026";
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+    /* Deux largeurs, pas une (regle L2). Le conteneur suit l'ecran : brider a
+       960px abandonne la moitie de la surface d'un 1920 et replie les tableaux.
+       La PROSE, elle, reste bornee en ch — une ligne de texte sur 1680px est
+       illisible. Elargir uniformement remplacerait un defaut par un autre. */
+    .wrap { max-width: var(--w); margin: 0 auto; padding: 32px 24px 64px; }
+
+    h1, h2, h3 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+    h1 { font-size: 2rem; margin: 0 0 .25em; }
+    h2 { font-size: 1.4rem; font-weight: 700; margin: 2em 0 .5em; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 1.5em 0 .4em; }
+    p, li { margin: 0 0 1em; max-width: var(--prose); }
+    a { color: var(--blue); }
+    code, pre { font-family: var(--mono); }
+
+    header.doc {
+      border-bottom: 2px solid var(--blue);
+      padding-bottom: 16px; margin-bottom: 24px;
+    }
+    .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 20px 24px;
+      margin: 16px 0;
+    }
+
+    footer.doc {
+      margin-top: 48px; padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted); font-size: .85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .wrap { padding: 24px 16px 48px; }
+      h1 { font-size: 1.6rem; }
+    }
+
+    /* Respect du mouvement réduit (a11y) */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+
+    /* Export PDF / impression */
+    @page { size: A4; margin: 18mm 16mm; }
+    @page :first { margin-top: 22mm; }
+    @media print {
+      body { background: #FFFFFF; }
+      .wrap { max-width: none; padding: 0; }
+      .card { break-inside: avoid; page-break-inside: avoid; }
+      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em; color: var(--muted); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc">
+      <p class="eyebrow">Digit-AI · {TypeDoc}</p>
+      <h1>{Titre du livrable}</h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>{Section}</h2>
+        <p>{Contenu en balises sémantiques. Décliner les couleurs via les tokens
+           <code>:root</code> uniquement, jamais en dur.}</p>
+
+        <div class="card">
+          <h3>{Sous-élément}</h3>
+          <p>{Carte de contenu — solidaire en PDF grâce à <code>break-inside: avoid</code>.}</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="doc">
+      Digit-AI — {Client} · {Scope} · 2026
+    </footer>
+  </div>
+</body>
+</html>

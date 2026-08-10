@@ -1,0 +1,10 @@
+id: agent-budget
+mandat: "Agent avec un septième champ non prévu au schéma"
+outils: [Read]
+arbitre:
+  - "Critère binaire quelconque"
+entrees:
+  - { artefact: "in.md", de: "humain" }
+sorties:
+  - { artefact: "out.md", vers: "livrable-final" }
+budget: "1000"

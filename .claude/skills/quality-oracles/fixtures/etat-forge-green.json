@@ -1,0 +1,6 @@
+{
+  "manifeste": "versions-livrees",
+  "note": "fixture verte — montage aligné sur les versions livrées",
+  "skills_root": "etat-forge-tree-green/skills",
+  "skills": { "experts-forge": { "version": "1.3.0" } }
+}

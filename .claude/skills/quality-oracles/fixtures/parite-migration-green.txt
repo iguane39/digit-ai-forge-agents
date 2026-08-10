@@ -1,0 +1,5 @@
+# Recette de migration — cas vert
+source: parite-src-green
+migre: parite-mig-green
+domaine-cible: app-recette.azurewebsites.net
+index.html

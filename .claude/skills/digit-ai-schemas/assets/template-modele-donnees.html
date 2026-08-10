@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI · Schéma de base de données — Template canevas modèle de données</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================================
+   TEMPLATE CANEVAS MODÈLE DE DONNÉES (ERD) — standards Digit-AI
+   Instancier : remplacer DB_SCHEMA_DATA, le bloc méta, la caption, le footer.
+   ============================================================================ */
+:root {
+  --bg: #ffffff; --bg-soft: #f7f8fa;
+  --ink: #1a1a1a; --ink-soft: #404040; --ink-muted: #6b7280;
+  --line: #d8dbe2; --line-soft: #eceef2;
+  --accent: #2563eb;
+  --c-purple-bg:#ede9fe; --c-purple-fg:#5b21b6; --c-purple-stroke:#c4b5fd;
+  --c-blue-bg:#dbeafe;   --c-blue-fg:#1d4ed8;   --c-blue-stroke:#93c5fd;
+  --c-teal-bg:#ccfbf1;   --c-teal-fg:#0f766e;   --c-teal-stroke:#5eead4;
+  --c-coral-bg:#fee2e2;  --c-coral-fg:#b91c1c;  --c-coral-stroke:#fca5a5;
+  --c-amber-bg:#fef3c7;  --c-amber-fg:#92400e;  --c-amber-stroke:#fcd34d;
+  --c-gray-bg:#f1f3f7;   --c-gray-fg:#374151;   --c-gray-stroke:#cbd2dd;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:'DM Sans',sans-serif; font-size:16px; line-height:1.55; }
+.page { max-width:1100px; margin:0 auto; padding:48px 32px; }
+.eyebrow { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-muted); font-weight:700; }
+h1 { font-family:'Roboto',sans-serif; font-weight:800; font-size:42px; letter-spacing:-.02em; margin:.3em 0 .25em; }
+.subtitle { font-size:18px; color:var(--ink-soft); max-width:720px; margin:0 0 20px; }
+.meta { display:flex; flex-wrap:wrap; gap:8px 28px; font-size:13px; color:var(--ink-muted); }
+.meta b { color:var(--ink-soft); }
+header.doc { border-bottom:1px solid var(--line); padding-bottom:32px; margin-bottom:48px; }
+h2 { font-family:'Roboto',sans-serif; font-weight:800; font-size:26px; margin:0 0 18px; }
+h2 .num { color:var(--accent); font-size:13px; letter-spacing:.1em; margin-right:10px; vertical-align:2px; }
+section { margin-bottom:56px; }
+
+/* --- Diagramme : conteneur --- */
+.diagram-wrap { background:var(--bg-soft); border:1px solid var(--line); border-radius:12px; padding:28px 20px; overflow:hidden; }
+#dbSchemaMount { overflow:hidden; }
+#dbScaler { transform-origin:top left; }
+.db-schema { position:relative; }
+.db-edges { position:absolute; left:0; top:0; pointer-events:none; }
+.db-edges path[data-tip] { pointer-events:stroke; cursor:help; }
+.diagram-caption { font-style:italic; color:var(--ink-muted); font-size:13px; margin:10px 4px 0; }
+
+/* --- Titres de bande : pastilles encadrées (convention Digit-AI) --- */
+.db-bandtitle { position:absolute; top:6px; display:flex; justify-content:center; }
+.db-bandtitle span { background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px 14px;
+  font-family:'Roboto',sans-serif; font-weight:700; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); white-space:nowrap; }
+
+/* --- Cartes-entités --- */
+.db-card { position:absolute; background:#fff; border:1px solid var(--line); border-radius:8px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06); font-size:12px; overflow:hidden; cursor:help; }
+.db-card.s-gray  { border-top:3px solid var(--c-gray-fg); }
+.db-card.s-blue  { border-top:3px solid var(--c-blue-fg); }
+.db-card.s-coral { border-top:3px solid var(--c-coral-fg); }
+.db-card.s-teal  { border-top:3px solid var(--c-teal-fg); }
+.db-card.s-dashed { border:1px dashed var(--c-gray-stroke); background:var(--bg-soft); }
+.db-card-head { font-family:'JetBrains Mono',monospace; font-weight:600; font-size:12px; padding:6px 10px;
+  border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.db-role { font-family:'DM Sans',sans-serif; font-weight:400; color:var(--ink-muted); font-size:10px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:48%; flex:0 1 auto; }
+.dbf-row { display:flex; align-items:center; gap:6px; padding:0 10px; height:19px; border-bottom:1px solid var(--line-soft); }
+.dbf-row:last-child { border-bottom:none; }
+.dbf-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace; font-size:11px; }
+.dbf-name.pii { color:var(--c-coral-fg); font-weight:700; }
+.dbf-type { color:var(--ink-muted); margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10px; white-space:nowrap; }
+.dbf-badge { font-size:9px; padding:0 4px; border-radius:3px; font-weight:700; line-height:1.6; font-family:'JetBrains Mono',monospace; }
+.b-pk { background:var(--ink); color:#fff; }
+.b-uk { background:var(--c-purple-fg); color:#fff; }
+.b-fk { background:var(--c-blue-fg); color:#fff; }
+.b-nn { background:var(--line-soft); color:var(--ink-soft); }
+.db-card-rel { font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; paint-order:stroke; stroke:var(--bg-soft); stroke-width:3px; }
+
+/* --- Légende (couleur + style de trait + libellé : jamais couleur seule) --- */
+.db-legend { display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:16px; font-size:13px; color:var(--ink-soft); }
+.db-legend .lg { display:flex; align-items:center; gap:7px; }
+.db-legend .sw { width:14px; height:14px; border-radius:3px; display:inline-block; }
+.db-legend svg { display:inline-block; vertical-align:middle; }
+
+/* --- Dictionnaire de données --- */
+.dd-list { display:flex; flex-direction:column; gap:14px; }
+.dd-card { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff; }
+.dd-card.s-gray{border-left:4px solid var(--c-gray-fg);} .dd-card.s-blue{border-left:4px solid var(--c-blue-fg);}
+.dd-card.s-coral{border-left:4px solid var(--c-coral-fg);} .dd-card.s-teal{border-left:4px solid var(--c-teal-fg);}
+.dd-card.s-dashed{border-left:4px dashed var(--c-gray-stroke);}
+.dd-head { display:flex; align-items:baseline; gap:12px; padding:10px 14px; background:var(--bg-soft); border-bottom:1px solid var(--line-soft); flex-wrap:wrap; }
+.dd-name { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; }
+.dd-role { color:var(--ink-muted); font-size:13px; }
+.dd-class { margin-left:auto; font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;
+  background:var(--c-amber-bg); color:var(--c-amber-fg); padding:2px 9px; border-radius:999px; }
+table.dd-table { width:100%; border-collapse:collapse; font-size:13px; }
+.dd-table th { text-align:left; font-family:'Roboto',sans-serif; font-weight:700; font-size:11px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-muted); padding:8px 14px; border-bottom:1px solid var(--line-soft); }
+.dd-table td { padding:6px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+.dd-col { font-family:'JetBrains Mono',monospace; white-space:nowrap; font-weight:500; }
+.dd-col.pii { color:var(--c-coral-fg); font-weight:700; }
+.dd-type { font-family:'JetBrains Mono',monospace; color:var(--ink-muted); font-size:12px; white-space:nowrap; }
+.dd-note { color:var(--ink-soft); }
+
+/* --- Tooltip HTML carré (standard Digit-AI : Titre | puces) --- */
+#diagTooltip { position:fixed; z-index:50; max-width:340px; background:var(--ink); color:#fff; border-radius:8px;
+  padding:10px 13px; font-size:12.5px; line-height:1.45; display:none; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25); }
+#diagTooltip .tt-title { font-family:'Roboto',sans-serif; font-weight:700; margin-bottom:4px; }
+#diagTooltip ul { margin:0; padding-left:16px; }
+#diagTooltip code { font-family:'JetBrains Mono',monospace; background:rgba(255,255,255,.14); padding:0 4px; border-radius:3px; font-size:11.5px; }
+
+footer.doc { border-top:1px solid var(--line); padding-top:24px; margin-top:80px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--ink-muted); }
+footer.doc .brand { font-family:'Roboto',sans-serif; font-weight:700; letter-spacing:.08em; }
+
+@media (max-width:720px) { .page{padding:32px 20px;} h1{font-size:30px;} h2{font-size:22px;} .subtitle{font-size:16px;} }
+@media print {
+  .diagram-wrap, .dd-card { break-inside:avoid; }
+  .diagram-wrap { overflow:visible; background:#fff; }
+  body { font-size:11pt; }
+  #diagTooltip { display:none !important; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="doc">
+  <div class="eyebrow">Schéma de base de données · Canevas modèle de données</div>
+  <h1>{Titre du livrable}</h1>
+  <p class="subtitle">{Sous-titre : application, moteur de base de données, périmètre du modèle.}</p>
+  <div class="meta">
+    <span><b>Version</b> · V{n}{indice} · {date longue}</span>
+    <span><b>Type de livrable</b> · Schéma de base de données</span>
+    <span><b>Périmètre</b> · {périmètre}</span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="num">01</span> Modèle de données</h2>
+  <div class="diagram-wrap"><div id="dbSchemaMount"></div></div>
+  <p class="diagram-caption">Figure 1 — {Description courte : N tables, moteur, schémas couverts.}</p>
+  <div id="dbLegendMount"></div>
+</section>
+
+<section>
+  <h2><span class="num">02</span> Dictionnaire des tables</h2>
+  <div id="dbDicoMount"></div>
+</section>
+
+<footer class="doc">
+  <span class="brand">DIGIT-AI · CONSEIL ET STRATÉGIE IA</span>
+  <span>Schéma de base de données · {audience} · {année courante}</span>
+</footer>
+
+</div>
+<div id="diagTooltip"><div class="tt-title"></div><ul></ul></div>
+
+<script>
+/* ============================================================================
+   MODÈLE DÉCLARATIF — remplacer intégralement par les données du projet.
+   Exemple d'instanciation : audit Gate 1b d'un produit réel.
+   bandes  : colonnes verticales = domaines fonctionnels (3 à 5 max).
+   tables  : style = gray (référentiel) | blue (transactionnel) | coral (PII)
+             | teal (pilotage) | dashed (externe / autre schéma, non contraint).
+   columns : k = 'PK'|'UK'|'FK' ; nn = NOT NULL ; pii = donnée personnelle.
+   relations : enforced = FK contrainte (trait plein bleu) ;
+               false = référence logique sans FK (pointillé ambré).
+   tip (tables & relations) : format "Titre | Puce 1 | Puce 2" — OBLIGATOIRE.
+   ============================================================================ */
+const DB_SCHEMA_DATA = {
+  engine: "PostgreSQL + PostGIS · schéma public (+ schéma a12n plateforme)",
+  bandes: [
+    { id:'ref',      title:'Référentiel géo' },
+    { id:'metier',   title:'Cœur métier' },
+    { id:'notif',    title:'Alertes & abonnements' },
+    { id:'platform', title:'Plateforme (a12n)' }
+  ],
+  tables: [
+    { id:'cities', bande:'ref', name:'public.cities', role:'Référentiel communes', style:'gray',
+      tip:"public.cities — Référentiel communes | Cible de la FK des annonces via insee_code | Géométries PostGIS centroid + zoom_level hors ORM",
+      columns:[
+        { n:'city_id', t:'integer', k:'PK' },
+        { n:'insee_code', t:'char(5)', k:'UK', nn:true },
+        { n:'postal_code', t:'char(5)', nn:true },
+        { n:'name', t:'varchar', nn:true },
+        { n:'territory_id', t:'varchar(10)', k:'FK' },
+        { n:'centroid', t:'geometry' },
+        { n:'zoom_level', t:'integer' }
+      ]},
+    { id:'territories', bande:'ref', name:'public.territories', role:'Référentiel territoires', style:'gray',
+      tip:"public.territories — Référentiel territoires | Regroupement géographique des communes | Structure à confirmer (pas de modèle ORM)",
+      columns:[
+        { n:'territory_id', t:'varchar', k:'PK' },
+        { n:'centroid', t:'geometry' },
+        { n:'zoom_level', t:'integer' }
+      ]},
+    { id:'adverts', bande:'metier', name:'public.adverts', role:'Annonces (cœur métier)', style:'coral',
+      tip:"public.adverts — Cœur métier | Annonces de vacants avec contacts et géolocalisation | Contient des données personnelles (contacts annonceurs)",
+      columns:[
+        { n:'advert_id', t:'integer', k:'PK' },
+        { n:'business_key', t:'varchar(64)', k:'UK' },
+        { n:'advert_type', t:'varchar' },
+        { n:'advert_owner', t:'varchar' },
+        { n:'city_insee_code', t:'char(5)', k:'FK' },
+        { n:'source_contact_name', t:'varchar', pii:true },
+        { n:'source_contact_mail', t:'varchar', pii:true },
+        { n:'source_contact_phone_number', t:'varchar', pii:true },
+        { n:'latitude / longitude', t:'float' },
+        { n:'pictures_path', t:'varchar[]' },
+        { n:'is_active', t:'boolean' },
+        { n:'creation_timestamp', t:'timestamptz', nn:true }
+      ]},
+    { id:'alerts', bande:'notif', name:'public.alerts', role:'Alertes de recherche', style:'blue',
+      tip:"public.alerts — Alertes de recherche | Critères jsonb libres, fréquence real_time / daily / weekly | user_id non contraint et non indexé",
+      columns:[
+        { n:'alert_id', t:'integer', k:'PK' },
+        { n:'user_id', t:'varchar(255)', nn:true },
+        { n:'name', t:'varchar(255)', nn:true },
+        { n:'criteria', t:'jsonb', nn:true },
+        { n:'frequency', t:'varchar(20)', nn:true },
+        { n:'is_active', t:'boolean', nn:true },
+        { n:'created_at', t:'timestamptz', nn:true }
+      ]},
+    { id:'push', bande:'notif', name:'public.push_subscriptions', role:'Abonnements Web Push', style:'coral',
+      tip:"public.push_subscriptions — Abonnements Web Push | Clés de chiffrement p256dh / auth et user_agent | Données sensibles stockées en clair",
+      columns:[
+        { n:'subscription_id', t:'integer', k:'PK' },
+        { n:'user_id', t:'varchar(255)', nn:true },
+        { n:'endpoint', t:'text', nn:true },
+        { n:'p256dh', t:'varchar(255)', nn:true, pii:true },
+        { n:'auth', t:'varchar(255)', nn:true, pii:true },
+        { n:'user_agent', t:'text', pii:true },
+        { n:'is_active', t:'boolean', nn:true }
+      ]},
+    { id:'users', bande:'platform', name:'a12n.users', role:'Identités (plateforme)', style:'dashed',
+      tip:"a12n.users — Identités plateforme | Schéma externe référencé sans clé étrangère | Source de l'e-mail des notifications",
+      columns:[
+        { n:'id / email / …', t:'—' }
+      ]}
+  ],
+  relations: [
+    { from:'adverts', fromCol:'city_insee_code', to:'cities', toCol:'insee_code', card:'N–1', enforced:true,
+      tip:"FK déclarée | adverts.city_insee_code → cities.insee_code | Jointure principale de la recherche géographique" },
+    { from:'cities', fromCol:'territory_id', to:'territories', toCol:'territory_id', card:'N–1', enforced:false,
+      tip:"Référence | cities.territory_id → territories.territory_id | À confirmer comme FK contrainte" },
+    { from:'adverts', fromCol:'advert_owner', to:'users', toCol:'id / email / …', card:'N–1', enforced:false,
+      tip:"Référence logique cross-schéma | advert_owner → a12n.users.id | Pas de FK, risque d'orphelins" },
+    { from:'alerts', fromCol:'user_id', to:'users', toCol:'id / email / …', card:'N–1', enforced:false,
+      tip:"Référence logique | alerts.user_id → a12n.users.id | Pas de FK et colonne non indexée" },
+    { from:'push', fromCol:'user_id', to:'users', toCol:'id / email / …', card:'N–1', enforced:false,
+      tip:"Référence logique | push_subscriptions.user_id → a12n.users.id | Pas de FK" }
+  ]
+};
+
+/* ============================================================================
+   MOTEUR DE RENDU — ne pas modifier lors de l'instanciation (sauf constantes).
+   Améliorations vs socle : arêtes ancrées sur la LIGNE DE COLONNE source/cible
+   (fromCol / toCol), palette via variables CSS, pastilles de bande, légende
+   doublée couleur + style de trait.
+   ============================================================================ */
+const CSSV = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const DB_CLASS = { gray:'Référentiel', blue:'Interne', coral:'Confidentiel · PII', teal:'Pilotage', dashed:'Externe (non contraint)' };
+
+function renderDbSchema(data) {
+  const COLW=252, ROW=19, HEAD=34, GAPY=26, GAPX=58, PADX=30, TOP=46;
+  const bi={}; data.bandes.forEach((b,i)=>bi[b.id]=i);
+  const colY={}; data.bandes.forEach(b=>colY[b.id]=TOP);
+  const pos={};
+  data.tables.forEach(t=>{
+    const h=HEAD+t.columns.length*ROW;
+    pos[t.id]={x:PADX+bi[t.bande]*(COLW+GAPX), y:colY[t.bande], w:COLW, h, cols:t.columns, band:bi[t.bande]};
+    colY[t.bande]+=h+GAPY;
+  });
+  const bandBottom=i=>{ const b=data.bandes[i]; return colY[b.id]-GAPY; };
+  const W=PADX*2+data.bandes.length*COLW+(data.bandes.length-1)*GAPX;
+  let H=Math.max(...Object.values(colY))+PADX;
+
+  // Ancrage : y de la ligne de la colonne nommée (fallback : milieu de l'en-tête)
+  const rowY=(p,colName)=>{
+    const i=p.cols.findIndex(c=>c.n===colName);
+    return i>=0 ? p.y+HEAD+i*ROW+ROW/2 : p.y+HEAD/2;
+  };
+  // Centre du couloir vertical situé APRÈS la bande i
+  const corridor=i=>PADX+(i+1)*COLW+i*GAPX+GAPX/2;
+
+  const bandTitles=data.bandes.map((b,i)=>
+    `<div class="db-bandtitle" style="left:${PADX+i*(COLW+GAPX)}px;width:${COLW}px"><span>${esc(b.title)}</span></div>`).join('');
+
+  const cards=data.tables.map(t=>{
+    const p=pos[t.id];
+    const rows=t.columns.map(c=>{
+      const badges=(c.k?`<span class="dbf-badge b-${c.k.toLowerCase()}">${c.k}</span>`:'')+(c.nn?`<span class="dbf-badge b-nn">NN</span>`:'');
+      return `<div class="dbf-row"><span class="dbf-name${c.pii?' pii':''}">${c.pii?'🔒 ':''}${esc(c.n)}</span><span class="dbf-type">${esc(c.t)}</span>${badges}</div>`;
+    }).join('');
+    const tip=t.tip||`${t.name} — ${t.role} | ${t.columns.length} colonnes | ${DB_CLASS[t.style]||'Interne'}`;
+    return `<div class="db-card s-${t.style}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px" data-tip="${esc(tip)}"><div class="db-card-head">${esc(t.name)}<span class="db-role">${esc(t.role)}</span></div>${rows}</div>`;
+  }).join('');
+
+  const cFk=CSSV('--c-blue-fg')||'#1d4ed8', cLog=CSSV('--c-amber-fg')||'#92400e';
+  const edges=data.relations.map(r=>{
+    const s=pos[r.from], t=pos[r.to]; if(!s||!t) return '';
+    const sy=rowY(s,r.fromCol), ty=rowY(t,r.toCol);
+    const col=r.enforced?cFk:cLog, dash=r.enforced?'':'stroke-dasharray="6 4"';
+    const marker=r.enforced?'dbarrowFk':'dbarrowLog';
+    const db=t.band-s.band;
+    let d,lx,ly;
+    if(db===0){ // même bande : détour par la marge gauche
+      const x0=Math.max(s.x-20,8);
+      d=`M ${s.x} ${sy} H ${x0} V ${ty} H ${t.x}`; lx=x0+4; ly=(sy+ty)/2;
+    } else if(Math.abs(db)===1){ // bandes adjacentes : L via le couloir intermédiaire
+      const sx=db>0?s.x+s.w:s.x, ex=db>0?t.x:t.x+t.w, mx=corridor(Math.min(s.band,t.band));
+      d=`M ${sx} ${sy} H ${mx} V ${ty} H ${ex}`; lx=mx; ly=(sy+ty)/2-5;
+    } else { // saut de bande : couloirs + voie horizontale SOUS les cartes intermédiaires
+      const lo=Math.min(s.band,t.band), hi=Math.max(s.band,t.band);
+      let laneY=0; for(let i=lo;i<=hi;i++) laneY=Math.max(laneY,bandBottom(i));
+      laneY+=18; H=Math.max(H,laneY+PADX);
+      const c1=corridor(db>0?s.band:s.band-1), c2=corridor(db>0?t.band-1:t.band);
+      const sx=db>0?s.x+s.w:s.x, ex=db>0?t.x:t.x+t.w;
+      d=`M ${sx} ${sy} H ${c1} V ${laneY} H ${c2} V ${ty} H ${ex}`;
+      lx=(c1+c2)/2; ly=laneY-5;
+    }
+    const tip=esc(r.tip||`${r.from}.${r.fromCol} → ${r.to}.${r.toCol}`);
+    return `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" ${dash} marker-end="url(#${marker})" data-tip="${tip}"></path>`
+         + `<text x="${lx}" y="${ly}" class="db-card-rel" fill="${col}" text-anchor="${db===0?'start':'middle'}">${esc(r.card||'')}</text>`;
+  }).join('');
+
+  const mk=(id,c)=>`<marker id="${id}" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="${c}"></path></marker>`;
+  return `<div class="db-schema" style="width:${W}px;height:${H}px">`
+    + `<svg class="db-edges" width="${W}" height="${H}" role="img" aria-label="Schéma relationnel : ${esc(data.engine)}">`
+    + `<defs>${mk('dbarrowFk',cFk)}${mk('dbarrowLog',cLog)}</defs>${edges}</svg>`
+    + `${bandTitles}${cards}</div>`;
+}
+
+function renderDbLegend() {
+  const sw=c=>`<span class="sw" style="background:${CSSV(c)}"></span>`;
+  const line=(dash,c)=>`<svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="${CSSV(c)}" stroke-width="2" ${dash?'stroke-dasharray="6 4"':''}/></svg>`;
+  return `<div class="db-legend">`
+    + `<span class="lg">${sw('--c-gray-fg')}Référentiel</span>`
+    + `<span class="lg">${sw('--c-blue-fg')}Transactionnel</span>`
+    + `<span class="lg">${sw('--c-coral-fg')}🔒 Contient des données personnelles</span>`
+    + `<span class="lg"><span class="sw" style="border:1px dashed var(--c-gray-stroke);background:#fff"></span>Table externe / autre schéma</span>`
+    + `<span class="lg">${line(false,'--c-blue-fg')}FK contrainte</span>`
+    + `<span class="lg">${line(true,'--c-amber-fg')}Référence logique (pas de FK)</span>`
+    + `</div>`;
+}
+
+function renderDbDictionary(data) {
+  const cards=data.tables.map(t=>{
+    const rows=t.columns.map(c=>
+      `<tr><td class="dd-col${c.pii?' pii':''}">${c.pii?'🔒 ':''}${esc(c.n)}</td><td class="dd-type">${esc(c.t)}</td><td>${c.k?esc(c.k):''}${c.nn?(c.k?' · ':'')+'NN':''}</td><td class="dd-note">${esc(c.note||'')}</td></tr>`).join('');
+    return `<div class="dd-card s-${t.style}"><div class="dd-head"><span class="dd-name">${esc(t.name)}</span><span class="dd-role">${esc(t.role)}</span><span class="dd-class">${esc(DB_CLASS[t.style]||'Interne')}</span></div><table class="dd-table"><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join('');
+  return `<div class="dd-list">${cards}</div>`;
+}
+
+/* Ajustement : le schéma tient toujours dans la largeur disponible (aucune barre de défilement) */
+function fitSchema(forceWidth){
+  const mount=document.getElementById('dbSchemaMount'), scaler=document.getElementById('dbScaler');
+  if(!mount||!scaler) return;
+  const inner=scaler.querySelector('.db-schema');
+  const W=parseFloat(inner.style.width), H=parseFloat(inner.style.height);
+  const avail=forceWidth||mount.clientWidth||W;
+  const sc=Math.min(1, avail/W);
+  scaler.style.width=W+'px';
+  scaler.style.transform=`scale(${sc})`;
+  scaler.style.marginLeft=Math.max(0,(avail-W*sc)/2)+'px';
+  mount.style.height=(H*sc)+'px';
+}
+
+/* Tooltip HTML carré — format "Titre | puce | puce" */
+(function initTooltip(){
+  document.getElementById('dbSchemaMount').innerHTML=`<div id="dbScaler">${renderDbSchema(DB_SCHEMA_DATA)}</div>`;
+  fitSchema(); window.addEventListener('resize',()=>fitSchema());
+  window.addEventListener('beforeprint',()=>fitSchema(700)); window.addEventListener('afterprint',()=>fitSchema());
+  document.getElementById('dbLegendMount').innerHTML=renderDbLegend();
+  document.getElementById('dbDicoMount').innerHTML=renderDbDictionary(DB_SCHEMA_DATA);
+  const tip=document.getElementById('diagTooltip'), tt=tip.querySelector('.tt-title'), ul=tip.querySelector('ul');
+  document.querySelectorAll('[data-tip]').forEach(el=>{
+    el.addEventListener('mousemove',e=>{
+      const parts=el.getAttribute('data-tip').split('|').map(s=>s.trim()).filter(Boolean);
+      tt.textContent=parts[0]||''; ul.innerHTML=parts.slice(1).map(p=>`<li>${esc(p)}</li>`).join('');
+      ul.style.display=parts.length>1?'':'none';
+      tip.style.display='block';
+      const x=Math.min(e.clientX+14,window.innerWidth-tip.offsetWidth-10), y=Math.min(e.clientY+14,window.innerHeight-tip.offsetHeight-10);
+      tip.style.left=x+'px'; tip.style.top=y+'px';
+    });
+    el.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
+  });
+})();
+</script>
+</body>
+</html>
