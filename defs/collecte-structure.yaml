@@ -1,0 +1,11 @@
+id: collecte-structure
+mandat: "Inventorie l'arborescence racine du projet et produit run/structure.md pour l'agent de synthèse — mérite un agent par la condition 3 du critère (parallélisable sans dépendance d'entrée avec collecte-scripts)"
+outils: [Read, Glob, Write]
+arbitre:
+  - "run/structure.md existe et liste au moins .claude/, .queue/, defs/ et input/"
+  - "Aucun chemin inventé — chaque entrée listée existe réellement sur disque"
+entrees:
+  - { artefact: "dossier du projet en lecture seule", de: "entrant humain" }
+sorties:
+  - { artefact: "run/structure.md", vers: "synthese-rapport" }
+parallel: { min_agents: 2 }

@@ -1,0 +1,5 @@
+# Recette de migration — cas rouge (provenance : constat SCC Vendôme du 21/07/2026)
+source: parite-src-red
+migre: parite-mig-red
+domaine-cible: app-recette.azurewebsites.net
+index.html

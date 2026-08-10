@@ -1,0 +1,230 @@
+<!--
+  TEMPLATE TABLEAU DE BORD · canevas Digit-AI
+  
+  Utilisation : insérer ces blocs HTML dans une page qui utilise le squelette
+  template-multi-bandes.html (head + style + footer + script).
+  
+  Conventions clés :
+  - HTML/CSS pur (pas de SVG monolithique)
+  - 4 tuiles KPI principales en haut
+  - Grille de cards par élément (POC, environnement, etc.)
+  - Trajectoire Crawl/Walk/Run en 3 colonnes
+-->
+
+<!-- ============ STYLES ADDITIONNELS À AJOUTER DANS <style> ============ -->
+<style>
+  /* Tuiles KPI */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin: 24px 0 8px;
+  }
+  .kpi {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--c-purple-fg);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .kpi.kpi-teal { border-left-color: var(--c-teal-fg); }
+  .kpi.kpi-teal .kpi-value { color: var(--c-teal-fg); }
+  .kpi.kpi-coral { border-left-color: var(--c-coral-fg); }
+  .kpi.kpi-coral .kpi-value { color: var(--c-coral-fg); }
+  .kpi.kpi-amber { border-left-color: var(--c-amber-fg); }
+  .kpi.kpi-amber .kpi-value { color: var(--c-amber-fg); }
+  .kpi-value {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--c-purple-fg);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .kpi-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.35;
+  }
+
+  /* Trajectoire Crawl/Walk/Run */
+  .trajectory {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 20px 0;
+  }
+  .palier {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 22px;
+    position: relative;
+  }
+  .palier-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--ink-muted); margin-bottom: 6px; }
+  .palier-title { font-family: 'Roboto', sans-serif; font-weight: 800; font-size: 18px; margin-bottom: 10px; }
+  .palier-1 .palier-title { color: var(--c-gray-fg); }
+  .palier-2 .palier-title { color: var(--c-amber-fg); }
+  .palier-3 .palier-title { color: var(--c-purple-fg); }
+  .palier-horizon { font-size: 12px; color: var(--ink-muted); margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+  .palier ul { padding-left: 18px; }
+  .palier ul li { font-size: 13px; margin-bottom: 5px; }
+
+  /* Cards POC */
+  .poc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .poc-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .poc-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .poc-name { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 16px; color: var(--ink); }
+  .poc-score { font-family: 'Roboto', sans-serif; font-weight: 800; font-size: 24px; }
+  .poc-score.score-good { color: var(--c-teal-fg); }
+  .poc-score.score-warn { color: var(--c-amber-fg); }
+  .poc-score.score-bad { color: var(--c-coral-fg); }
+  .poc-meta { font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+
+  /* Pilule de palier dans une card */
+  .palier-pill {
+    display: inline-block;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+  .palier-pill.p1 { background: var(--c-gray-bg); color: var(--c-gray-fg); }
+  .palier-pill.p2 { background: var(--c-amber-bg); color: var(--c-amber-fg); }
+  .palier-pill.p3 { background: var(--c-purple-bg); color: var(--c-purple-fg); }
+</style>
+
+<!-- ============ SECTION DASHBOARD ============ -->
+<section>
+  <h2><span class="num">01</span> {{TITRE_DASHBOARD}}</h2>
+  <p class="section-intro">{{INTRO_DASHBOARD}}</p>
+
+  <!-- 4 TUILES KPI PRINCIPALES -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-value">{{KPI1_VALEUR}}</div>
+      <div class="kpi-label">{{KPI1_LABEL}}</div>
+    </div>
+    <div class="kpi kpi-teal">
+      <div class="kpi-value">{{KPI2_VALEUR}}</div>
+      <div class="kpi-label">{{KPI2_LABEL}}</div>
+    </div>
+    <div class="kpi kpi-coral">
+      <div class="kpi-value">{{KPI3_VALEUR}}</div>
+      <div class="kpi-label">{{KPI3_LABEL}}</div>
+    </div>
+    <div class="kpi kpi-amber">
+      <div class="kpi-value">{{KPI4_VALEUR}}</div>
+      <div class="kpi-label">{{KPI4_LABEL}}</div>
+    </div>
+  </div>
+
+  <h3>Trajectoire Crawl / Walk / Run</h3>
+
+  <div class="trajectory">
+    <div class="palier palier-1">
+      <div class="palier-num">PALIER 1</div>
+      <div class="palier-title">Crawl</div>
+      <div class="palier-horizon">{{HORIZON_P1}}</div>
+      <ul>
+        <li>{{P1_ITEM_1}}</li>
+        <li>{{P1_ITEM_2}}</li>
+        <li>{{P1_ITEM_3}}</li>
+      </ul>
+    </div>
+    <div class="palier palier-2">
+      <div class="palier-num">PALIER 2</div>
+      <div class="palier-title">Walk</div>
+      <div class="palier-horizon">{{HORIZON_P2}}</div>
+      <ul>
+        <li>{{P2_ITEM_1}}</li>
+        <li>{{P2_ITEM_2}}</li>
+        <li>{{P2_ITEM_3}}</li>
+      </ul>
+    </div>
+    <div class="palier palier-3">
+      <div class="palier-num">PALIER 3</div>
+      <div class="palier-title">Run</div>
+      <div class="palier-horizon">{{HORIZON_P3}}</div>
+      <ul>
+        <li>{{P3_ITEM_1}}</li>
+        <li>{{P3_ITEM_2}}</li>
+        <li>{{P3_ITEM_3}}</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Vue par POC</h3>
+
+  <div class="poc-grid">
+
+    <!-- CARD POC à dupliquer pour chaque POC du portfolio -->
+    <div class="poc-card">
+      <div class="poc-card-head">
+        <div class="poc-name">{{POC_NAME_1}}</div>
+        <div class="poc-score score-good">{{POC_SCORE_1}}</div>
+      </div>
+      <span class="palier-pill p2">{{POC_PALIER_1}}</span>
+      <div class="poc-meta" style="margin-top: 10px;">
+        <div>Squad : {{POC_SQUAD_1}}</div>
+        <div>Dernière MEP : {{POC_LAST_MEP_1}}</div>
+        <div>Baseline SLI : {{POC_SLI_1}}</div>
+      </div>
+    </div>
+
+    <!-- Card POC 2 -->
+    <div class="poc-card">
+      <div class="poc-card-head">
+        <div class="poc-name">{{POC_NAME_2}}</div>
+        <div class="poc-score score-warn">{{POC_SCORE_2}}</div>
+      </div>
+      <span class="palier-pill p1">{{POC_PALIER_2}}</span>
+      <div class="poc-meta" style="margin-top: 10px;">
+        <div>Squad : {{POC_SQUAD_2}}</div>
+        <div>Dernière MEP : {{POC_LAST_MEP_2}}</div>
+        <div>Baseline SLI : {{POC_SLI_2}}</div>
+      </div>
+    </div>
+
+    <!-- Card POC 3 -->
+    <div class="poc-card">
+      <div class="poc-card-head">
+        <div class="poc-name">{{POC_NAME_3}}</div>
+        <div class="poc-score score-bad">{{POC_SCORE_3}}</div>
+      </div>
+      <span class="palier-pill p3">{{POC_PALIER_3}}</span>
+      <div class="poc-meta" style="margin-top: 10px;">
+        <div>Squad : {{POC_SQUAD_3}}</div>
+        <div>Dernière MEP : {{POC_LAST_MEP_3}}</div>
+        <div>Baseline SLI : {{POC_SLI_3}}</div>
+      </div>
+    </div>
+
+  </div>
+
+  <h3>Synthèse comparative</h3>
+  <table>
+    <thead>
+      <tr><th>{{COL_1}}</th><th>{{COL_2}}</th><th>{{COL_3}}</th><th>{{COL_4}}</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>{{LIGNE_1_1}}</td><td>{{LIGNE_1_2}}</td><td>{{LIGNE_1_3}}</td><td>{{LIGNE_1_4}}</td></tr>
+      <tr><td>{{LIGNE_2_1}}</td><td>{{LIGNE_2_2}}</td><td>{{LIGNE_2_3}}</td><td>{{LIGNE_2_4}}</td></tr>
+    </tbody>
+  </table>
+
+</section>

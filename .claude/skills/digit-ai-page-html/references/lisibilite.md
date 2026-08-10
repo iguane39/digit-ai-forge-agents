@@ -1,0 +1,409 @@
+# Lisibilité — règles L1 à L12
+
+Une page peut être **exacte, chartée, accessible et illisible**. La charte règle la forme,
+`zero-defaut-visuel.md` règle le rendu ; ce document règle ce que le lecteur peut
+effectivement *lire, comprendre et utiliser*.
+
+Origine : dix défauts relevés par un lecteur humain sur un livrable réel le 09/08/2026 —
+textes coupés en plein milieu, scores sans barème, tableaux non filtrables, sommaire muet,
+liens sans destination annoncée, chapitres de données sans mode d'emploi. Aucun de ces
+défauts n'était détecté par les oracles en place : tous étaient au vert.
+
+Second apport, même jour : une **revue de lecture naïve** sur le livrable corrigé, qui a
+rendu « oui, mais ». Elle a produit L11 (`null` affiché 22 fois), L3(c) (la colonne qui
+classe les actions n'exposait pas sa formule — « je dois vous croire sur parole ») et L3(d)
+(empreinte de grille et jetons de régime affichés nus). Enseignement à retenir : **le
+premier tour de règles ne trouve que ce qu'il sait chercher.** Ce sont des lecteurs, pas des
+règles, qui trouvent les règles suivantes.
+
+## Deux régimes, jamais confondus
+
+| Régime | Qui juge | Ce qu'il couvre |
+|---|---|---|
+| **Contrôle mécanique** | `scripts/check_html.py` | Ce qui se décide sans lire : présence, longueur, résolution d'ancre, seuil de lignes, valeur d'attribut. |
+| **Revue de lecture** | un humain, ou l'orchestrateur d'un run | Ce qui suppose de comprendre : clarté du propos, pertinence, justesse du chapeau, qualité de l'exemple. |
+
+**Règle absolue** : ce qui relève de la revue n'est jamais maquillé en contrôle. Un contrôle
+qui prétendrait juger « la synthèse est-elle claire ? » rendrait un vert sans valeur et
+éteindrait la vigilance. Chaque règle ci-dessous déclare explicitement ce qui est mécanisé
+et ce qui ne l'est pas.
+
+---
+
+## L1 — Zéro texte tronqué
+
+**Règle.** Aucun texte de la page ne se termine par une coupure. Un `…` en fin de segment
+précédé d'un mot est une amputation : le lecteur voit qu'on lui cache la suite et n'a aucun
+moyen de l'obtenir.
+
+**Ce qui est autorisé.** Une ellipse *volontaire* — abréviation d'une énumération, citation
+tronquée en connaissance de cause — portée par un élément marqué `data-ellipse-ok`. Le
+marquage est la déclaration d'intention : sans lui, c'est un défaut.
+
+**Le bon dispositif** n'est pas de couper mais de **stratifier** : une ligne courte visible,
+le texte **intégral** dans le détail déplié (cf. L9). Couper le niveau 1 ET le niveau 2 est
+le pire des cas — la page paraît courte et ne contient plus rien.
+
+**Deuxième forme, plus sournoise : la ponctuation orpheline.** Un producteur insère un
+élément **au milieu d'une phrase** — le nom d'un nœud, un badge, une valeur — cet élément est
+stylé en bloc, et la ponctuation qui suivait se retrouve **seule en tête de ligne** :
+
+```
+Le blocage principal —
+Optimisation / Pages À Fusionner (nœud 74)
+. La fusion à opérer n'est pas un nettoyage marginal…
+```
+
+Le point est orphelin, la phrase est coupée en deux, et aucun contrôle de troncature ne le
+voit : rien n'est tronqué, tout est là — mal assemblé. Le remède n'est pas typographique : il
+faut **rendre la phrase entière** et articuler l'élément proprement (une phrase pour le
+titre, une phrase pour le propos), pas déplacer un point.
+
+**Contrôle mécanique.** `L1` — (a) tout `…` ou `...` terminant un nœud de texte, précédé d'un
+caractère de mot, hors élément `data-ellipse-ok`, hors valeur d'attribut (les `placeholder`
+de champ ne sont pas du contenu) ; (b) tout nœud de texte commençant par `. , ; : ! ?` quand
+l'élément qui le précède est **de niveau bloc** selon le CSS de la page. Un élément inline
+suivi d'une virgule est légitime, un élément en bloc ne l'est jamais.
+
+**Revue de lecture.** Qu'un texte non tronqué soit pour autant compréhensible.
+
+## L2 — Largeur de lecture pleine
+
+**Règle.** La page occupe la largeur qu'on lui donne — et le **texte** occupe la largeur que
+la page lui donne. Un livrable dense affiché dans 1 080 px sur un écran 1 920 abandonne 44 %
+de la surface ; ses tableaux se replient, ses synthèses s'étranglent.
+
+**La mesure de lecture est portée par le CONTENEUR, jamais par le paragraphe.** C'est la
+correction d'une doctrine antérieure qui disait l'inverse (« deux largeurs : le conteneur
+relatif, la prose bornée en `ch` ») et qui a produit exactement le défaut qu'elle prétendait
+éviter : conteneur à 1 245 px, paragraphes bridés à 75 `ch` soit 606 px, **une moitié droite
+vide** sur toute la synthèse et toutes les fiches de constat. Le contrôle statique passait au
+vert, puisqu'il lisait le CSS du conteneur.
+
+Si les lignes doivent être courtes, **rétrécir la colonne** — une grille, un `<div>` de
+mesure — et laisser le texte la remplir. Ne jamais laisser un paragraphe flotter dans une
+boîte deux fois plus large que lui.
+
+**Troisième forme : la gouttière d'étiquettes.** Une grille `étiquette | contenu` dont la
+colonne d'étiquettes prend 22 % de la largeur utile. Chaque colonne remplit sa case — la
+mesure de largeur ci-dessus rend 1,00 — et pourtant le lecteur voit un tiers de page vide et
+un contenu tassé à droite. **L'angle mort est la grille elle-même** : on mesurait le bloc de
+texte, pas la répartition qui le contraint.
+
+Doctrine : **une étiquette de champ s'écrit en tête de ligne**, pas dans une colonne —
+« **Question d'audit** — … ». Si une colonne d'étiquettes est vraiment voulue, elle ne
+dépasse jamais **15 à 20 %** de la largeur utile.
+
+**Contrôle mécanique — trois niveaux.**
+- `L2` **statique** (`check_html.py`) : aucun `max-width` en pixels durs inférieur à 1 100 px
+  sur `body`, `main`, `.wrap`, `.container` ou `.page`.
+- `L2` **au rendu** (`render_page.py`, bloquant) : pour tout bloc de texte d'au moins
+  120 caractères, hors tableau et hors navigation, la largeur rendue rapportée à la largeur
+  **réellement disponible** doit être ≥ **0,85** aux viewports de bureau (≥ 1 100 px). La
+  mesure est exacte, pas heuristique : on retire `max-width` le temps d'une mesure et on
+  compare. Une colonne légitimement étroite ne bouge pas ; un paragraphe bridé se révèle.
+- `L2` **gouttière** (`render_page.py`, bloquant) : dans une grille CSS à **deux pistes**
+  dont la seconde porte ≥ 120 caractères et la première une étiquette de ≤ 60 caractères, la
+  première piste ne dépasse pas **20 %** de la largeur. Le seuil est à 20 % et non 25 %
+  parce que le défaut constaté mesurait **22 %** : un seuil posé au-dessus du défaut qui l'a
+  motivé ne prouve rien. Deux colonnes de contenu (cartes, barèmes) portent deux textes
+  longs et sortent du périmètre ; un vrai tableau de données n'est pas une grille CSS et n'y
+  entre jamais.
+
+**Revue de lecture.** Que les blocs qui doivent occuper la pleine largeur (synthèse, verdict,
+blocage principal) l'occupent réellement — et que la mesure de lecture retenue serve le
+propos plutôt que l'habitude.
+
+## L3 — Toute valeur porte sa légende
+
+**Règle.** Aucun score, badge, pastille ou valeur mise en avant n'apparaît sans que le
+lecteur puisse savoir **ce qu'il signifie**. « Maturité 1/5 » sans barème n'informe pas : il
+faut dire ce que valent 1, 2, 3, 4 et 5.
+
+**Deux catégories, deux exigences.**
+
+**(a) Les scores** — classe `sc` / `score` / `note` / `jauge`, ou texte de la forme `N/M`.
+Exigence : **`aria-describedby` résolvant vers un élément de la page d'au moins
+20 caractères** — le barème. Un `title` ne suffit pas pour un score, et ce n'est pas une
+formalité : un tooltip ne survit pas à l'export WeasyPrint, ne s'atteint pas au doigt sur
+mobile, et n'a jamais la place d'énoncer cinq crans. Le barème doit **exister dans le
+document**. C'est la mécanisation de « 1/5 sans barème = défaut ».
+
+**(b) Les autres valeurs mises en avant** — `kpi`, `badge`, `pastille`, `pv`, `stat`.
+Exigence : `title` non vide, **ou** `aria-label` non vide, **ou** `aria-describedby` résolu,
+**ou** une légende visible (`<small>`, `.legende`, `.kpi-d`) d'au moins 12 caractères.
+
+Un `title=""` vide est **pire** que pas de tooltip : il annonce une explication et n'en
+donne aucune. C'est un échec, pas un avertissement.
+
+**(c) Les colonnes calculées.** Un en-tête de tableau nommé `Score`, `Note`, `Indice`,
+`Priorité`, `Pondération`, `Classement`, `Criticité` ou `Sévérité` annonce une valeur
+**calculée** — et c'est en général celle qui **ordonne le tableau**. Sans sa formule, on
+demande au lecteur de croire sur parole la seule colonne qui décide de tout l'ordre.
+Exigence : `aria-describedby` sur le `<th>`, vers un élément qui **publie le calcul** —
+formule, amplitude, et seuil de décision s'il y en a un. Le barème d'un score calculé, c'est
+son mode de calcul, pas la description de ses crans.
+
+Corollaire de nommage : si une colonne s'appelle `Note` mais contient une remarque en prose,
+c'est le **libellé** qu'il faut corriger, pas le contrôle. Un lecteur commet exactement la
+même erreur que la règle.
+
+**(d) Les valeurs opaques.** Une empreinte (`3d0af44aae9a`) et un jeton codé
+(`ia-assistee-validation-humaine`, `manuel-strict`) sont écrits pour une machine. Affichés
+nus, ils demandent au lecteur de deviner ce qu'ils désignent — et il ne devine pas.
+Exigence : `title` / `aria-label` d'au moins 12 caractères, `aria-describedby` résolu, ou
+légende visible. Échappatoire pour un identifiant volontairement brut : `data-opaque-ok`. Le
+contenu d'un `<code>` est hors périmètre — il annonce déjà qu'il s'adresse à la machine.
+
+**Contrôle mécanique.** `L3` — les quatre exigences ci-dessus, plus l'échec explicite sur
+légende vide et sur `aria-describedby` pointant dans le vide.
+
+**Revue de lecture.** Que le barème soit juste, que ses crans soient discriminants, et que
+la formule publiée soit bien celle qui a servi.
+
+## L4 — Une liste longue se filtre, se trie, se cherche
+
+**Règle.** Dès **8 lignes**, une table ou une liste de données n'est plus lue : elle est
+parcourue. Elle doit offrir au minimum **filtre**, **tri** et **recherche**.
+
+Le seuil et le périmètre exact (colonne catégorielle, exemption motivée) sont ceux du
+composant : voir [composant-filtres-tableau.md](composant-filtres-tableau.md).
+
+**Exemption.** `data-filterable="off"` **et** `data-filterable-reason="…"`. Sans motif, échec.
+
+**Contrôle mécanique.** `L4` — toute `<table>` de ≥ 8 lignes de `<tbody>` sans
+`data-filterable`, ou exemptée sans motif.
+
+**Revue de lecture.** Que les colonnes filtrables soient celles qu'on veut réellement
+filtrer, et que le tri par défaut serve la question posée.
+
+## L5 — Le surlignage de recherche ne casse ni les mots ni le flux
+
+**Règle.** Le surlignage d'une occurrence est **inline et transparent au flux**. Chercher
+`clic` dans « clics » doit surligner `clic` **sans détacher** le `s` : pas de `padding`
+horizontal, pas de `margin`, pas de passage en `inline-block`, pas de changement de police.
+
+**Cause typique — et elle n'est pas où on la cherche.** Le surligneur découpe un nœud de
+texte en `texte + <mark> + texte`. C'est correct. Ce qui casse le mot, c'est le CSS :
+
+1. **Un padding horizontal** sur le `<mark>` — 1 px suffit à créer une césure visible.
+2. **Une collision de nom de classe**, bien plus grave et invisible à la relecture du CSS.
+   Constaté en production : le conteneur du champ de recherche portait `class="find"` et
+   était stylé `display:flex; flex-direction:column`. Le surligneur produisait
+   `<mark class="find">`. La règle `.find { display:flex }` s'appliquait donc **aussi au
+   surlignage**, qui devenait une boîte de bloc : « clics » se rendait « clic », puis « s »
+   à la ligne suivante — la partie non surlignée éjectée 600 px plus loin. La règle
+   `mark.find` existait bien, avec une spécificité supérieure, mais **ne déclarait pas
+   `display`** : elle ne pouvait donc pas gagner sur une propriété qu'elle n'écrivait pas.
+   Depuis, l'asset du socle ne peut plus produire cette collision : il surligne en
+   `<mark class="find-hit">`, classe disjointe de tout nom que prendra le conteneur
+   (cf. [composant-recherche.md](composant-recherche.md)). Le contrôle L5 reste inchangé —
+   un livrable qui recode son surligneur peut toujours retomber dans le piège.
+
+Le troisième piège est la **réécriture d'`innerHTML`** pour nettoyer les surlignages : elle
+détruit les écouteurs des filtres et du tri. Nettoyer en remplaçant chaque `<mark>` par son
+texte, puis `normalize()`.
+
+**Contrôle mécanique.** `L5` — aucune règle CSS **visant un `<mark>` de la page**, que ce
+soit par son élément (`mark`, `mark.find`) **ou par une classe que ce `<mark>` porte**
+(`.find`), ne déclare de `padding` horizontal non nul, de `margin` non nul, ni de `display`
+autre que `inline`. C'est le second volet qui attrape la collision : un contrôle limité aux
+sélecteurs contenant `mark` serait passé au vert sur le défaut réel.
+
+**Revue de lecture.** Que le contraste du surlignage reste conforme (couvert par V2) et que
+le compteur d'occurrences soit juste.
+
+## L6 — Un sommaire qui annonce, avec des ancres qui résolvent
+
+**Règle.** Chaque entrée du sommaire : un numéro, un titre, **une ligne d'annonce** qui dit
+ce que le chapitre apporte, et une ancre qui **existe réellement** dans le document.
+
+Un sommaire réduit à des titres nus oblige à ouvrir chaque chapitre pour savoir s'il
+intéresse : il coûte plus qu'il ne rapporte.
+
+**Convention de marquage.** Le sommaire est un `<nav>` portant `class="toc"` ou
+`aria-label="Sommaire"`. Chaque entrée est un `<a href="#id">` contenant un élément de
+classe `toc-d` (l'annonce), de **12 caractères au moins**.
+
+**Contrôle mécanique.** `L6` — (a) toute ancre `#id` du sommaire dont l'`id` n'existe pas ;
+(b) toute entrée sans élément `.toc-d` d'au moins 12 caractères.
+
+**Revue de lecture.** Que l'annonce dise le contenu et non le titre reformulé.
+
+## L7 — Chaque chapitre ouvre par ce qu'il apprend
+
+**Règle.** Un chapitre commence par une phrase qui répond à « **ce que ce chapitre vous
+apprend** » — pas par un tableau, pas par une liste, pas par un titre de niveau 3.
+
+**Périmètre mécanique.** Les sections **cibles du sommaire** : ce sont les chapitres, par
+définition. Une page sans sommaire n'est pas concernée par le contrôle.
+
+**Convention de marquage.** Un élément de classe `ch-apprend` (ou `ch-st`) en tête de
+section, d'au moins 40 caractères.
+
+**Contrôle mécanique.** `L7` — toute section cible du sommaire sans chapeau d'ouverture
+d'au moins 40 caractères.
+
+**Revue de lecture.** Que le chapeau annonce le bon apport — un chapeau générique
+(« ce chapitre présente les données ») passe le contrôle et rate la règle.
+
+## L8 — Tout lien interne annonce sa destination
+
+**Règle.** Un lien interne (`href="#…"`) dit **où il mène**. « ici », « voir », « détail »,
+« → » ne sont pas des destinations. Le lecteur doit pouvoir décider de cliquer sans cliquer.
+
+**Deux formes acceptées.** Un libellé visible d'au moins **8 caractères** nommant la cible ;
+ou un libellé court accompagné d'un `title` / `aria-label` d'au moins 12 caractères qui la
+nomme.
+
+**Contrôle mécanique.** `L8` — tout `<a href="#…">` hors sommaire dont le texte visible fait
+moins de 8 caractères et qui ne porte ni `title` ni `aria-label` d'au moins 12 caractères.
+Les ancres vides (`href="#"`) sont un échec inconditionnel.
+
+**Revue de lecture.** Que le libellé corresponde au titre réel de la cible.
+
+## L9 — Listes d'actions : ligne lisible, détail complet
+
+**Règle.** Une action se présente sur **une ligne lisible** (l'énoncé, pas son début) et son
+détail se déplie **intégralement**. Jamais de libellé coupé au niveau 1 sans le texte entier
+au niveau 2 (c'est L1 appliqué aux listes).
+
+**Le dispositif.** `<details>` en place, sans insérer de `<tr>` supplémentaire — une ligne
+de tableau injectée casse l'itération des composants de filtre et de tri.
+
+**Un dépliant annonce ce qu'il ouvre ET à quoi ça sert.** « Détails », « plus d'infos »,
+« voir plus » ne disent ni l'un ni l'autre. Pire : un libellé qui décrit son *contenu* sans
+dire son *usage* — « question d'audit, critère et preuves » — se lit comme une table des
+matières, et le lecteur qui l'ouvre juge inutile ce qu'il y trouve. Le libellé porte le
+**verbe du lecteur** : « vérifier ce constat — question d'audit, critère, preuves ».
+
+Corollaire : ce qui identifie l'élément (numéro, référence) **remonte dans le `<summary>`**
+plutôt que d'occuper une ligne à lui seul.
+
+**Un dépliant coûte un clic et une décision.** Sous ~200 caractères cachés, le contenu tient
+à l'écran : le replier fabrique un obstacle, et le lecteur qui l'ouvre se sent trompé —
+« à qui sert ce bouton ? ». Le `<details>` ne se justifie que pour du contenu long ; en
+dessous, on affiche en place, en pied de bloc et en style discret. Échappatoire motivée :
+`data-repli-ok`.
+
+**Contrôle mécanique.** `L9` — tout `<details>` au corps vide (rien hors le `<summary>`) ;
+tout `<details>` cachant moins de 200 caractères utiles hors `data-repli-ok` ;
+tout `<summary>` de moins de 3 caractères ; et tout `<summary>` d'au plus trois mots pleins
+dont **aucun ne désigne** (mots-outils ignorés, liste de mots creux dans le script). « Voir
+plus » échoue, « Afficher la dette » passe — « dette » désigne. Ce qui n'est pas mécanisable,
+c'est qu'un libellé qui désigne dise aussi un **usage** : cela reste à la revue de lecture.
+Le complément de L9 (« le niveau 2 contient le texte intégral ») est couvert par L1.
+
+**Revue de lecture.** Que la ligne de niveau 1 soit une phrase autonome et non un fragment
+grammatical.
+
+## L10 — Les chapitres de données ont un mode d'emploi
+
+**Règle.** Un chapitre dont le corps est une table de données porte, avant la table, un
+**chapeau d'usage** (à quoi sert cette table, comment s'en servir) et **un exemple de
+lecture** (« la ligne X se lit : … »).
+
+Sans cela le lecteur reçoit un vidage de données filtrable — exact, inutilisable.
+
+**Convention de marquage.** L'exemple de lecture est un élément de classe `exemple-lecture`
+(ou `data-exemple-lecture`), d'au moins 30 caractères, situé dans la section.
+
+**Contrôle mécanique.** `L10` — toute section cible du sommaire contenant une table de
+≥ 8 lignes et dépourvue d'élément `.exemple-lecture` d'au moins 30 caractères.
+
+**Revue de lecture.** Que l'exemple porte sur une ligne réellement présente et qu'il
+apprenne à lire une colonne non évidente.
+
+## L11 — Aucun littéral de langage dans le texte visible
+
+**Règle.** `null`, `None`, `undefined`, `NaN`, `nil`, `[object Object]`, `{{variable}}`,
+`${expr}` : aucun de ces jetons n'appartient à la langue du lecteur. Quand l'un apparaît,
+une valeur non renseignée a traversé le producteur **sans être traitée**. Le lecteur reçoit
+l'aveu d'un trou, formulé dans un langage qui n'est pas le sien — et il ne peut pas savoir si
+la donnée est absente, nulle, ou perdue en route.
+
+**Le bon dispositif.** Le producteur normalise à la source : une valeur absente fait
+disparaître son champ, ou devient une **absence déclarée** en français (« non renseigné »,
+« hors périmètre — motif : … »). Jamais le littéral du langage. C'est ce que L11 sépare : ce
+n'est pas un défaut de mise en forme, c'est un défaut de traitement.
+
+**Piège fréquent.** Un front-matter ou un JSON portant `champ: null`, lu comme du texte,
+produit la **chaîne** `"null"` — non vide, donc vraie, donc rendue. Un test `if valeur:` ne
+l'attrape pas ; il faut normaliser explicitement.
+
+**Exemptions.** Le contenu de `<code>`, `<pre>`, `<kbd>`, `<samp>` — on y documente du code —
+et tout élément marqué `data-litteral-ok` : une page qui parle *de* `null` a le droit de
+l'écrire.
+
+**Contrôle mécanique.** `L11` — occurrence de l'un de ces littéraux, délimitée par des
+frontières de mot, dans un nœud de texte visible hors exemptions.
+
+**Revue de lecture.** Qu'une absence déclarée en français dise aussi **pourquoi** la valeur
+manque et **ce qu'il faudrait fournir** pour la lever.
+
+
+## L12 — Une énumération de données n'est pas une phrase
+
+**Règle.** Au-delà de trois éléments, une énumération `clé — valeur` enchaînée par des
+points-virgules cesse d'être de la prose : c'est un tableau qu'on refuse d'assumer.
+
+```
+Informations — pages 7, étendue en mots 386–567 ; Inclus — pages 7, étendue en mots
+341–354 ; Options — pages 7, étendue en mots 259–283 ; Tarifs — pages 7, étendue en
+mots 328–340 ; Réservation — pages 7, étendue en mots 475–478 ; Gîtes — pages 2…
+```
+
+Le lecteur ne peut ni comparer, ni trier, ni repérer la valeur aberrante. Et il ne sait pas
+ce qu'il devrait en conclure — verdict du lecteur qui l'a signalé : « on ne sait ni à quoi ça
+correspond, ni ce qui est bien ou pas bien, ni pourquoi ».
+
+**Le bon dispositif.** Un tableau ou une liste, **surmontés d'une ligne qui dit ce qu'il faut
+y voir**. Le tableau donne les faits ; la ligne donne la lecture. Sans elle, on a déplacé le
+problème sans le résoudre.
+
+**Contrôle mécanique.** `L12` — trois segments ou plus de forme `clé — valeur`, séparés par
+des points-virgules, dans un même nœud de texte.
+
+**Revue de lecture.** Que la ligne de lecture dise quelque chose qui ne se déduit pas de la
+simple observation du tableau.
+
+---
+
+## Ce qui n'est PAS mécanisable — revue de lecture
+
+À traiter par l'orchestrateur du run, jamais par un contrôle automatique :
+
+| Objet | Question posée à la revue |
+|---|---|
+| Clarté du propos | La synthèse permet-elle de décider sans lire le reste ? |
+| Pertinence du blocage principal | Le blocage affiché est-il le plus grave, ou le premier dans l'ordre de la grille ? |
+| Justesse des chapeaux | Le chapeau apprend-il quelque chose, ou paraphrase-t-il le titre ? |
+| Qualité des exemples de lecture | L'exemple lève-t-il l'ambiguïté d'une colonne, ou décrit-il l'évidence ? |
+| Fil narratif | Une lecture linéaire des chapitres tient-elle debout ? |
+| Usage d'un dépliant | Le libellé dit-il ce que le lecteur y GAGNE, ou seulement ce qu'il contient ? |
+| Ligne de lecture d'un tableau | Dit-elle ce qu'il faut y voir, ou paraphrase-t-elle les colonnes ? |
+| Langue du lecteur | Le constat est-il écrit comme le lecteur le reformulerait, ou comme l'auteur l'a mesuré ? |
+| Fidélité des libellés de lien | Le libellé nomme-t-il la cible ou un synonyme approximatif ? |
+| Barème | Les crans sont-ils discriminants et vérifiables ? |
+
+**Trace attendue** : la revue de lecture se consigne (défaut par défaut, preuve à l'appui).
+Un run qui déclare « lisibilité OK » sans énumérer ce qui a été relu n'a pas fait de revue.
+
+## Lancer le contrôle
+
+```bash
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L12
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L12)
+python scripts/check_html.py page.html --output json
+python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu
+python scripts/self_test.py                            # fixtures rouges et vertes du skill
+```
+
+Les fixtures de `fixtures/` prouvent que chaque règle **peut échouer** : une par défaut —
+texte coupé, largeur bridée, tooltip vide, barème absent, colonne calculée sans formule,
+valeur opaque, table non filtrable, surlignage à padding, collision de nom de classe,
+ancre morte, entrée de sommaire muette, chapitre sans chapeau, lien muet, détail vide,
+table sans mode d'emploi, littéral `null` — plus une fixture verte qui les passe toutes.
+Une règle sans fixture rouge n'est pas un contrôle. **26 cas, 22 rouges** — dont quatre
+mesurés au rendu (`l2r-*`, `l2g-*`), rejoués par `self_test.py` quand playwright est
+disponible.

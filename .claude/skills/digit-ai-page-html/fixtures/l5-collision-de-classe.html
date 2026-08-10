@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L5 collision de nom de classe</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0}
+/* Le conteneur du champ de recherche porte la MEME classe que le surlignage.
+   Specificite plus faible, mais `display` n'etant pas declare sur `mark.find`,
+   c'est cette regle qui s'applique au <mark> : le surlignage devient une boite
+   de bloc et « clics » se rend « clic » puis « s » a la ligne suivante. */
+.find{display:flex;flex-direction:column;gap:2px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L5 — collision de nom de classe entre le conteneur et le surlignage</h1>
+<div class="find"><input id="q" type="search" placeholder="Rechercher…"></div>
+<p>Le site capte 82 % de ses <mark class="find">clic</mark>s sur une seule page.</p>
+</main></body></html>

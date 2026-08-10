@@ -1,0 +1,11 @@
+<!doctype html><html><head><title>Simulateur ROI — cas vert</title></head><body>
+<input id="invest" value="10000"><input id="taux" value="20">
+<span id="van"></span><span id="tri"></span>
+<script>
+const invest = parseFloat(document.getElementById('invest').value);
+const taux = parseFloat(document.getElementById('taux').value) / 100;
+const gainAnnuel = invest * taux;
+const van = gainAnnuel * 5 - invest;
+document.getElementById('van').textContent = van.toFixed(0) + ' EUR';
+document.getElementById('tri').textContent = (taux * 100).toFixed(1) + ' %';
+</script></body></html>

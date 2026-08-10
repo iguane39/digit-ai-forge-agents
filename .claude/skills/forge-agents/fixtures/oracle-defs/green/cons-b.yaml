@@ -1,0 +1,9 @@
+id: cons-b
+mandat: "Consomme x.md et produit y.md — fixture verte du graphe"
+outils: [Read, Write]
+arbitre:
+  - "y.md reprend x.md sans invention"
+entrees:
+  - { artefact: "x.md", de: "prod-a" }
+sorties:
+  - { artefact: "y.md", vers: "livrable-final" }

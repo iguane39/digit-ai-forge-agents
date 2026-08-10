@@ -1,0 +1,1 @@
+{"type":"object","required":["nom","score"],"properties":{"nom":{"type":"string"},"score":{"type":"number"}}}
