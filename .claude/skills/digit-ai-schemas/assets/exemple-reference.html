@@ -14,7 +14,7 @@
     --bg-softer: #fbfbfc;
     --ink: #0f172a;
     --ink-soft: #334155;
-    --ink-muted: #64748b;
+    --ink-muted: #5d6a7e; /* 4.48:1 -> >=4.5:1 sur fond teinté (TF-0067) */
     --line: #e2e8f0;
     --line-soft: #eef1f5;
     --line-strong: #cbd5e1;
@@ -63,7 +63,7 @@
   .lede {
     font-family: 'DM Sans', sans-serif;
     font-size: 18px; color: var(--ink-soft);
-    max-width: 820px; margin-bottom: 24px;
+    margin-bottom: 24px;
   }
   .meta {
     display: flex; flex-wrap: wrap; gap: 28px;
@@ -96,7 +96,7 @@
     margin: 16px 0 8px;
   }
   p { margin-bottom: 12px; color: var(--ink-soft); }
-  p.section-intro { color: var(--ink-soft); margin-bottom: 24px; max-width: 820px; }
+  p.section-intro { color: var(--ink-soft); margin-bottom: 24px; }
   ul, ol { padding-left: 22px; margin-bottom: 12px; color: var(--ink-soft); }
   li { margin-bottom: 6px; }
   strong, b { color: var(--ink); font-weight: 700; }
@@ -478,16 +478,16 @@
 
         <defs>
           <marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#475569"/>
           </marker>
           <marker id="arrAI" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#5b21b6"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#5b21b6"/>
           </marker>
           <marker id="arrAuto" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
           </marker>
           <marker id="arrMan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
           </marker>
         </defs>
 
@@ -495,26 +495,26 @@
         <!-- BANDE 1 · ENTRÉES SOURCE + ACTEURS HUMAINS            -->
         <!-- y: 30 → 130                                            -->
         <!-- ===================================================== -->
-        <rect x="20" y="8" width="380" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-        <text x="32" y="24" class="svg-tband" style="fill:#475569;font-size:9.5px">1 · Entrées source &amp; acteurs humains de supervision</text>
+        <rect data-overlap-ok="" x="20" y="8" width="380" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+        <text data-overlap-ok="" x="32" y="24" class="svg-tband" style="fill:#475569;font-size:9.5px">1 · Entrées source &amp; acteurs humains de supervision</text>
 
         <!-- Sources source (gauche) -->
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Repo source poc-{nom} | Localisation : organisation Azure DevOps `digitai-squad-innov` | Contenu : code POC, manifests Terraform Light, evals, documentation embarquée | Déclencheur : push du tag git `vX.Y.Z-poc` sur la branche `main` | Effet : webhook Azure DevOps → exécution automatique du pipeline M1 | Ownership : Squad Innovation</title>
-          <rect x="30" y="36" width="195" height="84" rx="8"/>
-          <text x="127" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Repo poc-{nom}</text>
-          <text x="127" y="76" text-anchor="middle" class="svg-ts">Org Azure DevOps Squad</text>
-          <text x="127" y="92" text-anchor="middle" class="svg-tlabel">Tag git vX.Y.Z-poc</text>
-          <text x="127" y="108" text-anchor="middle" class="svg-tlabel">webhook → M1</text>
+          <rect data-overlap-ok="" x="30" y="36" width="195" height="84" rx="8"/>
+          <text data-overlap-ok="" x="127" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Repo poc-{nom}</text>
+          <text data-overlap-ok="" x="127" y="76" text-anchor="middle" class="svg-ts">Org Azure DevOps Squad</text>
+          <text data-overlap-ok="" x="127" y="92" text-anchor="middle" class="svg-tlabel">Tag git vX.Y.Z-poc</text>
+          <text data-overlap-ok="" x="127" y="108" text-anchor="middle" class="svg-tlabel">webhook → M1</text>
         </g>
 
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Repo digitai-standards | Localisation : organisation Azure DevOps Platform | Contenu : Standard Light (10 checks YAML essentiels) et Standard Complet (20 chapitres YAML) | Mode de consommation : checkout secondaire en lecture seule depuis le pipeline M2 | Versionning : tag git stable consommé par les pipelines (pas la branche directement) | Ownership : Design Authority</title>
-          <rect x="240" y="36" width="195" height="84" rx="8"/>
-          <text x="337" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Repo digitai-standards</text>
-          <text x="337" y="76" text-anchor="middle" class="svg-ts">Org Azure DevOps Platform</text>
-          <text x="337" y="92" text-anchor="middle" class="svg-tlabel">Light · 10 checks YAML</text>
-          <text x="337" y="108" text-anchor="middle" class="svg-tlabel">Complet · 20 chapitres</text>
+          <rect data-overlap-ok="" x="240" y="36" width="195" height="84" rx="8"/>
+          <text data-overlap-ok="" x="337" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Repo digitai-standards</text>
+          <text data-overlap-ok="" x="337" y="76" text-anchor="middle" class="svg-ts">Org Azure DevOps Platform</text>
+          <text data-overlap-ok="" x="337" y="92" text-anchor="middle" class="svg-tlabel">Light · 10 checks YAML</text>
+          <text data-overlap-ok="" x="337" y="108" text-anchor="middle" class="svg-tlabel">Complet · 20 chapitres</text>
         </g>
 
         <!-- Acteurs humains : un par couloir d'entrée vers les pipelines -->
@@ -522,53 +522,53 @@
         <!-- Espacement 210px entre pipelines, dimensions identiques aux pipelines pour alignement parfait -->
 
         <!-- Squad Innov · au-dessus de M1 -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Squad Innovation · acteurs humains | Profil : Product Owner + équipe développement | Action principale : pose du tag git `vX.Y.Z-poc` sur le repo poc-{nom} (déclencheur M1) | Action secondaire : review obligatoire des Pull Requests de remédiation produites par M4 | Co-ownership : avec un Run engineer sur toutes les PR M4 | Groupes Entra ID : `grp-digitai-squad-po` et `grp-digitai-squad-dev`</title>
-          <rect x="450" y="36" width="195" height="84" rx="8"/>
-          <text x="547" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Squad Innovation</text>
-          <text x="547" y="76" text-anchor="middle" class="svg-ts">PO + équipe dev</text>
-          <text x="547" y="92" text-anchor="middle" class="svg-tlabel">Pose tag · Review PR</text>
-          <text x="547" y="108" text-anchor="middle" class="svg-tlabel">→ M1 (tag) · M4 (PR)</text>
+          <rect data-overlap-ok="" x="450" y="36" width="195" height="84" rx="8"/>
+          <text data-overlap-ok="" x="547" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Squad Innovation</text>
+          <text data-overlap-ok="" x="547" y="76" text-anchor="middle" class="svg-ts">PO + équipe dev</text>
+          <text data-overlap-ok="" x="547" y="92" text-anchor="middle" class="svg-tlabel">Pose tag · Review PR</text>
+          <text data-overlap-ok="" x="547" y="108" text-anchor="middle" class="svg-tlabel">→ M1 (tag) · M4 (PR)</text>
         </g>
 
         <!-- Design Authority · au-dessus de M5 -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Design Authority Digit-AI · comité d'architecture | Périmètre : décisions Go/No-Go pour promotion DEV POC → DEV MVP et DEV MVP → STAGING | Livrables reçus : dossier Handoff (entre M2 et M3) et dossier Conformité Finale (entre M5 et M6) | Modalité d'approbation : environments Azure DevOps `da-light-approval` et `da-finale-approval` | Délai cible : 1 semaine maximum par gate | Groupe Entra ID : `grp-digitai-da`</title>
-          <rect x="660" y="36" width="195" height="84" rx="8"/>
-          <text x="757" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Design Authority</text>
-          <text x="757" y="76" text-anchor="middle" class="svg-ts">Comité architecture</text>
-          <text x="757" y="92" text-anchor="middle" class="svg-tlabel">Gates DA Light + Finale</text>
-          <text x="757" y="108" text-anchor="middle" class="svg-tlabel">→ M2/M3 · M5/M6</text>
+          <rect data-overlap-ok="" x="660" y="36" width="195" height="84" rx="8"/>
+          <text data-overlap-ok="" x="757" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Design Authority</text>
+          <text data-overlap-ok="" x="757" y="76" text-anchor="middle" class="svg-ts">Comité architecture</text>
+          <text data-overlap-ok="" x="757" y="92" text-anchor="middle" class="svg-tlabel">Gates DA Light + Finale</text>
+          <text data-overlap-ok="" x="757" y="108" text-anchor="middle" class="svg-tlabel">→ M2/M3 · M5/M6</text>
         </g>
 
         <!-- Sponsor métier · au-dessus de M6 -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Sponsor métier | Profil : porteur du besoin métier qui a financé le POC | Action : recette utilisateur en STAGING sur l'URL exposée par M6 | Données : anonymisées (jeu de test représentatif) | Livrable produit : signature de la fiche de recette | Condition aval : la signature est obligatoire avant la création du ticket EasyVista MEP | Membre du : Triple Approval (avec CAB et exploitation)</title>
-          <rect x="870" y="36" width="195" height="84" rx="8"/>
-          <text x="967" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Sponsor métier</text>
-          <text x="967" y="76" text-anchor="middle" class="svg-ts">Recette utilisateur</text>
-          <text x="967" y="92" text-anchor="middle" class="svg-tlabel">Signature fiche</text>
-          <text x="967" y="108" text-anchor="middle" class="svg-tlabel">→ M6 (recette)</text>
+          <rect data-overlap-ok="" x="870" y="36" width="195" height="84" rx="8"/>
+          <text data-overlap-ok="" x="967" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Sponsor métier</text>
+          <text data-overlap-ok="" x="967" y="76" text-anchor="middle" class="svg-ts">Recette utilisateur</text>
+          <text data-overlap-ok="" x="967" y="92" text-anchor="middle" class="svg-tlabel">Signature fiche</text>
+          <text data-overlap-ok="" x="967" y="108" text-anchor="middle" class="svg-tlabel">→ M6 (recette)</text>
         </g>
 
         <!-- CAB + Exploitation · au-dessus de M6 -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>CAB DPMSI + Exploitation Digit-AI | CAB DPMSI : Change Advisory Board pour validation de la fenêtre MEP | Exploitation : valide la capacité opérationnelle (astreinte, runbook, supervision) | Modalité : approbation sur le ticket EasyVista pré-rempli par M6 | Triple Approbation : sponsor métier + CAB + exploitation requis | Groupes Entra ID : `grp-digitai-cab` et `grp-digitai-exploit`</title>
-          <rect x="1080" y="36" width="195" height="84" rx="8"/>
-          <text x="1177" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">CAB + Exploitation</text>
-          <text x="1177" y="76" text-anchor="middle" class="svg-ts">Validation fenêtre MEP</text>
-          <text x="1177" y="92" text-anchor="middle" class="svg-tlabel">Triple approbation</text>
-          <text x="1177" y="108" text-anchor="middle" class="svg-tlabel">→ M7 (via EasyVista)</text>
+          <rect data-overlap-ok="" x="1080" y="36" width="195" height="84" rx="8"/>
+          <text data-overlap-ok="" x="1177" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">CAB + Exploitation</text>
+          <text data-overlap-ok="" x="1177" y="76" text-anchor="middle" class="svg-ts">Validation fenêtre MEP</text>
+          <text data-overlap-ok="" x="1177" y="92" text-anchor="middle" class="svg-tlabel">Triple approbation</text>
+          <text data-overlap-ok="" x="1177" y="108" text-anchor="middle" class="svg-tlabel">→ M7 (via EasyVista)</text>
         </g>
 
         <!-- Run Engineer · au-dessus de M7 -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Run engineer · Landing Zone DSI | Profil : ingénieur d'exploitation référent du parcours d'industrialisation | Action 1 : reviewer obligatoire des PR de remédiation M4 (co-ownership avec Squad) | Action 2 : clic Approve sur l'environment `prod-approval` qui déclenche la bascule production M7 | Astreinte : L2/L3 24/7 sur les incidents critiques post-MEP | Mode d'accès : PIM JIT 4h pour les actions Contributor sur RG PROD | Groupes Entra ID : `grp-digitai-run` et `grp-digitai-oncall`</title>
-          <rect x="1290" y="36" width="195" height="84" rx="8"/>
-          <text x="1387" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Run engineer</text>
-          <text x="1387" y="76" text-anchor="middle" class="svg-ts">Bascule + astreinte 24/7</text>
-          <text x="1387" y="92" text-anchor="middle" class="svg-tlabel">Approve PROD · L2/L3</text>
-          <text x="1387" y="108" text-anchor="middle" class="svg-tlabel">→ M4 (review) · M7</text>
+          <rect data-overlap-ok="" x="1290" y="36" width="195" height="84" rx="8"/>
+          <text data-overlap-ok="" x="1387" y="58" text-anchor="middle" class="svg-th" style="font-size:12px">Run engineer</text>
+          <text data-overlap-ok="" x="1387" y="76" text-anchor="middle" class="svg-ts">Bascule + astreinte 24/7</text>
+          <text data-overlap-ok="" x="1387" y="92" text-anchor="middle" class="svg-tlabel">Approve PROD · L2/L3</text>
+          <text data-overlap-ok="" x="1387" y="108" text-anchor="middle" class="svg-tlabel">→ M4 (review) · M7</text>
         </g>
 
         <!-- ===================================================== -->
@@ -615,253 +615,253 @@
         <!-- BANDE 2 · PIPELINES AZURE DEVOPS · DÉTAIL TECHNIQUE    -->
         <!-- y: 200 → 540                                            -->
         <!-- ===================================================== -->
-        <rect x="20" y="195" width="1470" height="365" rx="14" class="svg-frame" stroke="#5b21b6"/>
+        <rect data-overlap-ok="" x="20" y="195" width="1470" height="365" rx="14" class="svg-frame" stroke="#5b21b6"/>
         <!-- Titre de bande placé à gauche dans une zone libre (entre Repo poc et avant M1, sans traverser les flèches descendantes) -->
-        <rect x="20" y="195" width="290" height="22" rx="6" fill="#ffffff" stroke="#5b21b6" stroke-width="0.8"/>
-        <text x="32" y="211" class="svg-tband" style="fill:#5b21b6;font-size:9.5px">2 · Orchestration · pipelines Azure DevOps</text>
+        <rect data-overlap-ok="" x="20" y="195" width="290" height="22" rx="6" fill="#ffffff" stroke="#5b21b6" stroke-width="0.8"/>
+        <text data-overlap-ok="" x="32" y="211" class="svg-tband" style="fill:#5b21b6;font-size:9.5px">2 · Orchestration · pipelines Azure DevOps</text>
 
         <!-- Pipelines de M1 à M7 -->
         <!-- Format : x=30+i*210 width=195, height=320, y=218 -->
 
         <!-- M1 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline Mission 1 · Récupération du POC | Trigger : webhook tag git `vX.Y.Z-poc` poussé sur main | Agent pool : `digitai-squad-linux` (agents auto-hébergés Squad) | Service Connection : `sp-azp-squad` via WIF OIDC (federated credential scoped au pipeline) | Variable group : `vg-squad-common` | Étapes : clone repo, scan stack, extract TF, extract evals | Artefact : `poc-context.json` (pipeline artifact) | Aval : enchaîne automatiquement M2</title>
-          <rect x="30" y="218" width="195" height="320" rx="8"/>
-          <text x="127" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M1 · Récupération</text>
-          <text x="127" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">poc-{nom}/azp-m1.yml</text>
+          <rect data-overlap-ok="" x="30" y="218" width="195" height="320" rx="8"/>
+          <text data-overlap-ok="" x="127" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M1 · Récupération</text>
+          <text data-overlap-ok="" x="127" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">poc-{nom}/azp-m1.yml</text>
 
           <line x1="42" y1="270" x2="212" y2="270" stroke="#c4b5fd" stroke-width="0.6"/>
 
-          <text x="42" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
-          <text x="42" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Tag git vX.Y.Z-poc</text>
+          <text data-overlap-ok="" x="42" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
+          <text data-overlap-ok="" x="42" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Tag git vX.Y.Z-poc</text>
 
-          <text x="42" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
-          <text x="42" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-squad-linux</text>
+          <text data-overlap-ok="" x="42" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
+          <text data-overlap-ok="" x="42" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-squad-linux</text>
 
-          <text x="42" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
-          <text x="42" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-squad (WIF)</text>
+          <text data-overlap-ok="" x="42" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
+          <text data-overlap-ok="" x="42" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-squad (WIF)</text>
 
-          <text x="42" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Variable group</text>
-          <text x="42" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">vg-squad-common</text>
+          <text data-overlap-ok="" x="42" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Variable group</text>
+          <text data-overlap-ok="" x="42" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">vg-squad-common</text>
 
-          <text x="42" y="409" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
-          <text x="42" y="422" class="svg-ts" style="fill:#5b21b6;font-size:10px">Clone · scan stack</text>
-          <text x="42" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Extract TF · evals</text>
+          <text data-overlap-ok="" x="42" y="409" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
+          <text data-overlap-ok="" x="42" y="422" class="svg-ts" style="fill:#5b21b6;font-size:10px">Clone · scan stack</text>
+          <text data-overlap-ok="" x="42" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Extract TF · evals</text>
 
-          <text x="42" y="453" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefact</text>
-          <text x="42" y="466" class="svg-ts" style="fill:#5b21b6;font-size:10px">poc-context.json</text>
+          <text data-overlap-ok="" x="42" y="453" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefact</text>
+          <text data-overlap-ok="" x="42" y="466" class="svg-ts" style="fill:#5b21b6;font-size:10px">poc-context.json</text>
 
-          <text x="42" y="484" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Aval</text>
-          <text x="42" y="497" class="svg-ts" style="fill:#5b21b6;font-size:10px">→ enchaîne M2</text>
+          <text data-overlap-ok="" x="42" y="484" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Aval</text>
+          <text data-overlap-ok="" x="42" y="497" class="svg-ts" style="fill:#5b21b6;font-size:10px">→ enchaîne M2</text>
 
-          <rect x="42" y="510" width="166" height="20" rx="4" fill="#fff" stroke="#c4b5fd" stroke-width="0.8"/>
-          <text x="125" y="524" text-anchor="middle" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px">Couverture P1 · P2 · P3</text>
+          <rect data-overlap-ok="" x="42" y="510" width="166" height="20" rx="4" fill="#fff" stroke="#c4b5fd" stroke-width="0.8"/>
+          <text data-overlap-ok="" x="125" y="524" text-anchor="middle" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px">Couverture P1 · P2 · P3</text>
         </g>
 
         <!-- M2 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline Mission 2 · Audit du POC contre les Standards Digit-AI | Trigger : succès du stage M1 (chaînage automatique) | Agent pool : `digitai-squad-linux` | Service Connection : `sp-azp-squad` | Outils : `checkov` (Terraform), `bandit` (Python), scripts maison Digit-AI | Étapes : audit Standard Light (10 checks) puis Standard Complet (20 chapitres) | Artefacts : `audit-report.html` et `audit-result.json` | Flux aval : JSON publié sur Event Hub vers ADX pour dashboard portfolio</title>
-          <rect x="240" y="218" width="195" height="320" rx="8"/>
-          <text x="337" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M2 · Audit</text>
-          <text x="337" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">poc-{nom}/azp-m2-audit.yml</text>
+          <rect data-overlap-ok="" x="240" y="218" width="195" height="320" rx="8"/>
+          <text data-overlap-ok="" x="337" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M2 · Audit</text>
+          <text data-overlap-ok="" x="337" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">poc-{nom}/azp-m2-audit.yml</text>
 
           <line x1="252" y1="270" x2="422" y2="270" stroke="#c4b5fd" stroke-width="0.6"/>
 
-          <text x="252" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
-          <text x="252" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Succès stage M1</text>
+          <text data-overlap-ok="" x="252" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
+          <text data-overlap-ok="" x="252" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Succès stage M1</text>
 
-          <text x="252" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
-          <text x="252" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-squad-linux</text>
+          <text data-overlap-ok="" x="252" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
+          <text data-overlap-ok="" x="252" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-squad-linux</text>
 
-          <text x="252" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
-          <text x="252" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-squad (WIF)</text>
+          <text data-overlap-ok="" x="252" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
+          <text data-overlap-ok="" x="252" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-squad (WIF)</text>
 
-          <text x="252" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Outils</text>
-          <text x="252" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">checkov · bandit</text>
-          <text x="252" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">scripts maison</text>
+          <text data-overlap-ok="" x="252" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Outils</text>
+          <text data-overlap-ok="" x="252" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">checkov · bandit</text>
+          <text data-overlap-ok="" x="252" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">scripts maison</text>
 
-          <text x="252" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
-          <text x="252" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Standard Light · 10</text>
-          <text x="252" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">Standard Complet · 20</text>
+          <text data-overlap-ok="" x="252" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
+          <text data-overlap-ok="" x="252" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Standard Light · 10</text>
+          <text data-overlap-ok="" x="252" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">Standard Complet · 20</text>
 
-          <text x="252" y="466" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefacts</text>
-          <text x="252" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">audit-report.html</text>
-          <text x="252" y="492" class="svg-ts" style="fill:#5b21b6;font-size:10px">audit-result.json</text>
+          <text data-overlap-ok="" x="252" y="466" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefacts</text>
+          <text data-overlap-ok="" x="252" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">audit-report.html</text>
+          <text data-overlap-ok="" x="252" y="492" class="svg-ts" style="fill:#5b21b6;font-size:10px">audit-result.json</text>
 
-          <rect x="252" y="505" width="166" height="20" rx="4" fill="#fff" stroke="#fcd34d" stroke-width="0.8"/>
-          <text x="335" y="519" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9.5px">Gate DA Light · environment</text>
+          <rect data-overlap-ok="" x="252" y="505" width="166" height="20" rx="4" fill="#fff" stroke="#fcd34d" stroke-width="0.8"/>
+          <text data-overlap-ok="" x="335" y="519" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9.5px">Gate DA Light · environment</text>
         </g>
 
         <!-- M3 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline Mission 3 · Déploiement DEV MVP | Trigger : approbation Go DA Light cross-org (API REST Azure DevOps) | Agent pool : `digitai-dsi-linux` | Service Connections : `sp-azp-dsi-build` (build et push ACR) puis `sp-azp-dsi-deploy-dev` (TF apply) | Branch policy : 2 reviewers obligatoires + build CI vert | Étapes : build, SAST, scan dépendances, SBOM, signature Cosign, push ACR, TF apply, deploy, tests intégration, evals informatives | Artefacts : image `vX.Y.Z-mvp` signée dans ACR DSI, RG `rg-dmv-{appcode}` provisionné, baseline SLI 7 jours dans App Insights | Référence intégrations : 1 (Cosign), 2 (TF state), 3 (AI Foundry au Palier 3)</title>
-          <rect x="450" y="218" width="195" height="320" rx="8"/>
-          <text x="547" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M3 · Déploiement DEV MVP</text>
-          <text x="547" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m3.yml</text>
+          <rect data-overlap-ok="" x="450" y="218" width="195" height="320" rx="8"/>
+          <text data-overlap-ok="" x="547" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M3 · Déploiement DEV MVP</text>
+          <text data-overlap-ok="" x="547" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m3.yml</text>
 
           <line x1="462" y1="270" x2="632" y2="270" stroke="#c4b5fd" stroke-width="0.6"/>
 
-          <text x="462" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
-          <text x="462" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Go DA Light (cross-org)</text>
+          <text data-overlap-ok="" x="462" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
+          <text data-overlap-ok="" x="462" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Go DA Light (cross-org)</text>
 
-          <text x="462" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
-          <text x="462" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
+          <text data-overlap-ok="" x="462" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
+          <text data-overlap-ok="" x="462" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
 
-          <text x="462" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connections</text>
-          <text x="462" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
-          <text x="462" y="373" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-deploy-dev</text>
+          <text data-overlap-ok="" x="462" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connections</text>
+          <text data-overlap-ok="" x="462" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
+          <text data-overlap-ok="" x="462" y="373" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-deploy-dev</text>
 
-          <text x="462" y="391" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Branch policy</text>
-          <text x="462" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">2 reviewers + CI vert</text>
+          <text data-overlap-ok="" x="462" y="391" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Branch policy</text>
+          <text data-overlap-ok="" x="462" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">2 reviewers + CI vert</text>
 
-          <text x="462" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
-          <text x="462" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Build · SAST · SBOM</text>
-          <text x="462" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">Cosign sign · push ACR</text>
-          <text x="462" y="461" class="svg-ts" style="fill:#5b21b6;font-size:10px">TF apply · deploy</text>
-          <text x="462" y="474" class="svg-ts" style="fill:#5b21b6;font-size:10px">Tests intégration · evals</text>
+          <text data-overlap-ok="" x="462" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
+          <text data-overlap-ok="" x="462" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Build · SAST · SBOM</text>
+          <text data-overlap-ok="" x="462" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">Cosign sign · push ACR</text>
+          <text data-overlap-ok="" x="462" y="461" class="svg-ts" style="fill:#5b21b6;font-size:10px">TF apply · deploy</text>
+          <text data-overlap-ok="" x="462" y="474" class="svg-ts" style="fill:#5b21b6;font-size:10px">Tests intégration · evals</text>
 
-          <text x="462" y="492" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefacts</text>
-          <text x="462" y="505" class="svg-ts" style="fill:#5b21b6;font-size:10px">vX.Y.Z-mvp · baseline 7j</text>
+          <text data-overlap-ok="" x="462" y="492" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefacts</text>
+          <text data-overlap-ok="" x="462" y="505" class="svg-ts" style="fill:#5b21b6;font-size:10px">vX.Y.Z-mvp · baseline 7j</text>
 
-          <rect x="462" y="509" width="166" height="16" rx="3" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.6"/>
-          <text x="545" y="521" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9px">Réf. intégrations 1 · 2 · 3</text>
+          <rect data-overlap-ok="" x="462" y="509" width="166" height="16" rx="3" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.6"/>
+          <text data-overlap-ok="" x="545" y="521" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9px">Réf. intégrations 1 · 2 · 3</text>
         </g>
 
         <!-- M4 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline Mission 4 · Remédiation assistée sur observation | Trigger : scheduled cron en fin de baseline SLI 7j (M3) | Agent pool : `digitai-dsi-linux` | Service Connection : `sp-azp-dsi-build` | Managed Identity : `mi-aifoundry-remediate` (Palier 3 uniquement) | Moteur P2 : règles déterministes (script conteneurisé, 70% des cas) | Moteur P3 : appel LLM Azure AI Foundry pour patches non-triviaux | Étapes : consolidation observations, génération patches code et TF, création branches feature, push PRs étiquetées par chapitre | Artefacts : PRs auto avec co-ownership Squad + Run en review | Référence intégrations : 3 (AI Foundry Palier 3 uniquement)</title>
-          <rect x="660" y="218" width="195" height="320" rx="8"/>
-          <text x="757" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M4 · Remédiation</text>
-          <text x="757" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m4-remediate.yml</text>
+          <rect data-overlap-ok="" x="660" y="218" width="195" height="320" rx="8"/>
+          <text data-overlap-ok="" x="757" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M4 · Remédiation</text>
+          <text data-overlap-ok="" x="757" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m4-remediate.yml</text>
 
           <line x1="672" y1="270" x2="842" y2="270" stroke="#c4b5fd" stroke-width="0.6"/>
 
-          <text x="672" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
-          <text x="672" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Cron fin baseline 7j</text>
+          <text data-overlap-ok="" x="672" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
+          <text data-overlap-ok="" x="672" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Cron fin baseline 7j</text>
 
-          <text x="672" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
-          <text x="672" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
+          <text data-overlap-ok="" x="672" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
+          <text data-overlap-ok="" x="672" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
 
-          <text x="672" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
-          <text x="672" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
+          <text data-overlap-ok="" x="672" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
+          <text data-overlap-ok="" x="672" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
 
-          <text x="672" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Managed Identity</text>
-          <text x="672" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">mi-aifoundry-remediate</text>
-          <text x="672" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">(Palier 3 seulement)</text>
+          <text data-overlap-ok="" x="672" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Managed Identity</text>
+          <text data-overlap-ok="" x="672" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">mi-aifoundry-remediate</text>
+          <text data-overlap-ok="" x="672" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">(Palier 3 seulement)</text>
 
-          <text x="672" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Moteur</text>
-          <text x="672" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">P2 : règles détermin.</text>
-          <text x="672" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">P3 : LLM AI Foundry</text>
+          <text data-overlap-ok="" x="672" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Moteur</text>
+          <text data-overlap-ok="" x="672" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">P2 : règles détermin.</text>
+          <text data-overlap-ok="" x="672" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">P3 : LLM AI Foundry</text>
 
-          <text x="672" y="466" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
-          <text x="672" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">Patch code + TF</text>
-          <text x="672" y="492" class="svg-ts" style="fill:#5b21b6;font-size:10px">PRs par chapitre</text>
+          <text data-overlap-ok="" x="672" y="466" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
+          <text data-overlap-ok="" x="672" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">Patch code + TF</text>
+          <text data-overlap-ok="" x="672" y="492" class="svg-ts" style="fill:#5b21b6;font-size:10px">PRs par chapitre</text>
 
-          <text x="672" y="510" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefact</text>
-          <text x="672" y="523" class="svg-ts" style="fill:#5b21b6;font-size:10px">PRs auto Squad + Run</text>
+          <text data-overlap-ok="" x="672" y="510" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefact</text>
+          <text data-overlap-ok="" x="672" y="523" class="svg-ts" style="fill:#5b21b6;font-size:10px">PRs auto Squad + Run</text>
         </g>
 
         <!-- M5 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline Mission 5 · Génération des livrables Design Authority | Trigger : merge de la dernière PR de remédiation M4 | Agent pool : `digitai-dsi-linux` | Service Connection : `sp-azp-dsi-build` | Templates : repo `digitai-deliv-templates` (HTML autonomes Digit-AI versionnés) | Rendu : HTML autonome + PDF (headless Chrome conteneurisé) | Étapes : agrégation rapports M2 + baseline SLI + evals, génération HTML, rendu PDF, upload Storage, notification DA | Artefact : dossier Conformité Finale dans Storage Account `da-dossiers` du RG Platform | Aval : Gate DA Finale sur environment `da-finale-approval` | Référence intégrations : 5 (Storage da-dossiers)</title>
-          <rect x="870" y="218" width="195" height="320" rx="8"/>
-          <text x="967" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M5 · Livrables DA</text>
-          <text x="967" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m5-deliv.yml</text>
+          <rect data-overlap-ok="" x="870" y="218" width="195" height="320" rx="8"/>
+          <text data-overlap-ok="" x="967" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M5 · Livrables DA</text>
+          <text data-overlap-ok="" x="967" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m5-deliv.yml</text>
 
           <line x1="882" y1="270" x2="1052" y2="270" stroke="#c4b5fd" stroke-width="0.6"/>
 
-          <text x="882" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
-          <text x="882" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Merge dernière PR M4</text>
+          <text data-overlap-ok="" x="882" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
+          <text data-overlap-ok="" x="882" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Merge dernière PR M4</text>
 
-          <text x="882" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
-          <text x="882" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
+          <text data-overlap-ok="" x="882" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
+          <text data-overlap-ok="" x="882" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
 
-          <text x="882" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
-          <text x="882" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
+          <text data-overlap-ok="" x="882" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
+          <text data-overlap-ok="" x="882" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
 
-          <text x="882" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Templates</text>
-          <text x="882" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-deliv-templates</text>
+          <text data-overlap-ok="" x="882" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Templates</text>
+          <text data-overlap-ok="" x="882" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-deliv-templates</text>
 
-          <text x="882" y="409" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Rendu</text>
-          <text x="882" y="422" class="svg-ts" style="fill:#5b21b6;font-size:10px">HTML autonome Digit-AI</text>
-          <text x="882" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">PDF · headless Chrome</text>
+          <text data-overlap-ok="" x="882" y="409" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Rendu</text>
+          <text data-overlap-ok="" x="882" y="422" class="svg-ts" style="fill:#5b21b6;font-size:10px">HTML autonome Digit-AI</text>
+          <text data-overlap-ok="" x="882" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">PDF · headless Chrome</text>
 
-          <text x="882" y="453" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefact</text>
-          <text x="882" y="466" class="svg-ts" style="fill:#5b21b6;font-size:10px">Dossier Conformité Finale</text>
-          <text x="882" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">→ Storage da-dossiers</text>
+          <text data-overlap-ok="" x="882" y="453" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefact</text>
+          <text data-overlap-ok="" x="882" y="466" class="svg-ts" style="fill:#5b21b6;font-size:10px">Dossier Conformité Finale</text>
+          <text data-overlap-ok="" x="882" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">→ Storage da-dossiers</text>
 
-          <rect x="882" y="495" width="166" height="36" rx="4" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.8"/>
-          <text x="965" y="510" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9.5px">Gate DA Finale</text>
-          <text x="965" y="523" text-anchor="middle" class="svg-ts" style="fill:#92400e;font-size:9.5px">environment da-finale-approval</text>
+          <rect data-overlap-ok="" x="882" y="495" width="166" height="36" rx="4" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.8"/>
+          <text data-overlap-ok="" x="965" y="510" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9.5px">Gate DA Finale</text>
+          <text data-overlap-ok="" x="965" y="523" text-anchor="middle" class="svg-ts" style="fill:#92400e;font-size:9.5px">environment da-finale-approval</text>
         </g>
 
         <!-- M6 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline Mission 6 · Qualification STAGING | Trigger : approbation Go DA Finale | Agent pool : `digitai-dsi-linux` | Service Connections : `sp-azp-dsi-build` (manifest copy ACR) + `sp-azp-dsi-deploy-staging` (TF apply) | Managed Identity : `mi-easyvista-integration` (création ticket MEP) | Tests lourds : OWASP ZAP DAST, Azure Load Testing, Promptfoo + RAGAS (seuil bloquant 0.85), PRA scripté grandeur réelle | Étapes : promotion ACR `-mvp` → `-rc` sans rebuild, TF apply STAGING, déploiement, batterie de tests, pré-remplissage ticket EasyVista | Artefacts : image `vX.Y.Z-rc` dans ACR DSI, ticket MEP EasyVista, dossier MEP | Référence intégrations : 4 (EasyVista), 5 (Storage da-dossiers)</title>
-          <rect x="1080" y="218" width="195" height="320" rx="8"/>
-          <text x="1177" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M6 · Qualif. STAGING</text>
-          <text x="1177" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m6-staging.yml</text>
+          <rect data-overlap-ok="" x="1080" y="218" width="195" height="320" rx="8"/>
+          <text data-overlap-ok="" x="1177" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M6 · Qualif. STAGING</text>
+          <text data-overlap-ok="" x="1177" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m6-staging.yml</text>
 
           <line x1="1092" y1="270" x2="1262" y2="270" stroke="#c4b5fd" stroke-width="0.6"/>
 
-          <text x="1092" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
-          <text x="1092" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Go DA Finale</text>
+          <text data-overlap-ok="" x="1092" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
+          <text data-overlap-ok="" x="1092" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Go DA Finale</text>
 
-          <text x="1092" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
-          <text x="1092" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
+          <text data-overlap-ok="" x="1092" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
+          <text data-overlap-ok="" x="1092" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
 
-          <text x="1092" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connections</text>
-          <text x="1092" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
-          <text x="1092" y="373" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-deploy-staging</text>
+          <text data-overlap-ok="" x="1092" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connections</text>
+          <text data-overlap-ok="" x="1092" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-build</text>
+          <text data-overlap-ok="" x="1092" y="373" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-deploy-staging</text>
 
-          <text x="1092" y="391" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Managed Identity</text>
-          <text x="1092" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">mi-easyvista-integration</text>
+          <text data-overlap-ok="" x="1092" y="391" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Managed Identity</text>
+          <text data-overlap-ok="" x="1092" y="404" class="svg-ts" style="fill:#5b21b6;font-size:10px">mi-easyvista-integration</text>
 
-          <text x="1092" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
-          <text x="1092" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Promote -mvp → -rc</text>
-          <text x="1092" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">TF apply STAGING</text>
-          <text x="1092" y="461" class="svg-ts" style="fill:#5b21b6;font-size:10px">DAST · charge · RAGAS</text>
-          <text x="1092" y="474" class="svg-ts" style="fill:#5b21b6;font-size:10px">PRA scripté</text>
+          <text data-overlap-ok="" x="1092" y="422" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
+          <text data-overlap-ok="" x="1092" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">Promote -mvp → -rc</text>
+          <text data-overlap-ok="" x="1092" y="448" class="svg-ts" style="fill:#5b21b6;font-size:10px">TF apply STAGING</text>
+          <text data-overlap-ok="" x="1092" y="461" class="svg-ts" style="fill:#5b21b6;font-size:10px">DAST · charge · RAGAS</text>
+          <text data-overlap-ok="" x="1092" y="474" class="svg-ts" style="fill:#5b21b6;font-size:10px">PRA scripté</text>
 
-          <text x="1092" y="492" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefacts</text>
-          <text x="1092" y="505" class="svg-ts" style="fill:#5b21b6;font-size:10px">vX.Y.Z-rc · ticket EV</text>
+          <text data-overlap-ok="" x="1092" y="492" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Artefacts</text>
+          <text data-overlap-ok="" x="1092" y="505" class="svg-ts" style="fill:#5b21b6;font-size:10px">vX.Y.Z-rc · ticket EV</text>
 
-          <rect x="1092" y="509" width="166" height="16" rx="3" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.6"/>
-          <text x="1175" y="521" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9px">Réf. intégrations 4 · 5</text>
+          <rect data-overlap-ok="" x="1092" y="509" width="166" height="16" rx="3" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.6"/>
+          <text data-overlap-ok="" x="1175" y="521" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9px">Réf. intégrations 4 · 5</text>
         </g>
 
         <!-- M7 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline Mission 7 · Déploiement Production | Trigger : webhook EasyVista (statut Approved après Triple Approbation) | Agent pool : `digitai-dsi-linux` | Service Connection : `sp-azp-dsi-deploy-prod` (rôle custom `RG-deployer`) | Managed Identity : `mi-cmdb-integration` | Environment : `prod-approval` (Run engineer comme approver) | Stratégie de déploiement : canary 5 / 25 / 50 / 100 % via Container Apps revisions | Contrôle automatique : SLI checké à chaque palier, rollback auto sous seuil (objectif &lt; 5 min) | Étapes : promotion ACR `-rc` → `vX.Y.Z` sans rebuild, TF apply PROD, canary progressif, inscription CMDB, smoke tests | Référence intégrations : 1 (Cosign), 6 (CMDB Digit-AI)</title>
-          <rect x="1290" y="218" width="195" height="320" rx="8"/>
-          <text x="1387" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M7 · Déploiement PROD</text>
-          <text x="1387" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m7-prod.yml</text>
+          <rect data-overlap-ok="" x="1290" y="218" width="195" height="320" rx="8"/>
+          <text data-overlap-ok="" x="1387" y="240" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#4c1d95">M7 · Déploiement PROD</text>
+          <text data-overlap-ok="" x="1387" y="258" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed;font-size:10px">prod-{nom}/azp-m7-prod.yml</text>
 
           <line x1="1302" y1="270" x2="1472" y2="270" stroke="#c4b5fd" stroke-width="0.6"/>
 
-          <text x="1302" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
-          <text x="1302" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Webhook EV Approved</text>
+          <text data-overlap-ok="" x="1302" y="285" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Trigger</text>
+          <text data-overlap-ok="" x="1302" y="298" class="svg-ts" style="fill:#5b21b6;font-size:10px">Webhook EV Approved</text>
 
-          <text x="1302" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
-          <text x="1302" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
+          <text data-overlap-ok="" x="1302" y="316" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Agent pool</text>
+          <text data-overlap-ok="" x="1302" y="329" class="svg-ts" style="fill:#5b21b6;font-size:10px">digitai-dsi-linux</text>
 
-          <text x="1302" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
-          <text x="1302" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-deploy-prod</text>
+          <text data-overlap-ok="" x="1302" y="347" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Service Connection</text>
+          <text data-overlap-ok="" x="1302" y="360" class="svg-ts" style="fill:#5b21b6;font-size:10px">sp-azp-dsi-deploy-prod</text>
 
-          <text x="1302" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Managed Identity</text>
-          <text x="1302" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">mi-cmdb-integration</text>
+          <text data-overlap-ok="" x="1302" y="378" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Managed Identity</text>
+          <text data-overlap-ok="" x="1302" y="391" class="svg-ts" style="fill:#5b21b6;font-size:10px">mi-cmdb-integration</text>
 
-          <text x="1302" y="409" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Stratégie déploiement</text>
-          <text x="1302" y="422" class="svg-ts" style="fill:#5b21b6;font-size:10px">Canary 5/25/50/100</text>
-          <text x="1302" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">SLI auto · rollback auto</text>
+          <text data-overlap-ok="" x="1302" y="409" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Stratégie déploiement</text>
+          <text data-overlap-ok="" x="1302" y="422" class="svg-ts" style="fill:#5b21b6;font-size:10px">Canary 5/25/50/100</text>
+          <text data-overlap-ok="" x="1302" y="435" class="svg-ts" style="fill:#5b21b6;font-size:10px">SLI auto · rollback auto</text>
 
-          <text x="1302" y="453" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
-          <text x="1302" y="466" class="svg-ts" style="fill:#5b21b6;font-size:10px">Promote -rc → vX.Y.Z</text>
-          <text x="1302" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">TF apply · canary</text>
-          <text x="1302" y="492" class="svg-ts" style="fill:#5b21b6;font-size:10px">Inscription CMDB</text>
+          <text data-overlap-ok="" x="1302" y="453" class="svg-tlabel" style="fill:#5b21b6;font-size:9.5px;font-weight:700">Étapes</text>
+          <text data-overlap-ok="" x="1302" y="466" class="svg-ts" style="fill:#5b21b6;font-size:10px">Promote -rc → vX.Y.Z</text>
+          <text data-overlap-ok="" x="1302" y="479" class="svg-ts" style="fill:#5b21b6;font-size:10px">TF apply · canary</text>
+          <text data-overlap-ok="" x="1302" y="492" class="svg-ts" style="fill:#5b21b6;font-size:10px">Inscription CMDB</text>
 
-          <rect x="1302" y="505" width="166" height="16" rx="3" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.6"/>
-          <text x="1385" y="517" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9px">Réf. intégrations 1 · 6</text>
+          <rect data-overlap-ok="" x="1302" y="505" width="166" height="16" rx="3" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.6"/>
+          <text data-overlap-ok="" x="1385" y="517" text-anchor="middle" class="svg-tlabel" style="fill:#92400e;font-size:9px">Réf. intégrations 1 · 6</text>
         </g>
 
         <!-- Flèches d'enchaînement Agent IA M1→M2→...→M7, courtes et horizontales -->
@@ -910,78 +910,78 @@
         <!-- y: 605 → 720                                            -->
         <!-- ===================================================== -->
         <!-- Titre de bande placé à gauche dans une pastille blanche -->
-        <rect x="20" y="585" width="320" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-        <text x="32" y="601" class="svg-tband" style="fill:#475569;font-size:9.5px">3 · Composants applicatifs · environnements RG</text>
+        <rect data-overlap-ok="" x="20" y="585" width="320" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+        <text data-overlap-ok="" x="32" y="601" class="svg-tband" style="fill:#475569;font-size:9.5px">3 · Composants applicatifs · environnements RG</text>
 
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>RG Sandbox : bac à sable libre de la Squad Innovation. Pas d'audit, pas de standard. Quotas Azure Policy stricts (taille SKU max, deny public IP, auto-shutdown 19h). Vie courte.</title>
-          <rect x="30" y="618" width="195" height="98" rx="8"/>
-          <text x="127" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG Sandbox</text>
-          <text x="127" y="658" text-anchor="middle" class="svg-ts">Squad libre · quotas</text>
-          <text x="127" y="676" text-anchor="middle" class="svg-tlabel">rg-sbx-{appcode}</text>
-          <text x="127" y="694" text-anchor="middle" class="svg-tlabel">Auto-shutdown 19h</text>
-          <text x="127" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-squad-sandbox</text>
+          <rect data-overlap-ok="" x="30" y="618" width="195" height="98" rx="8"/>
+          <text data-overlap-ok="" x="127" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG Sandbox</text>
+          <text data-overlap-ok="" x="127" y="658" text-anchor="middle" class="svg-ts">Squad libre · quotas</text>
+          <text data-overlap-ok="" x="127" y="676" text-anchor="middle" class="svg-tlabel">rg-sbx-{appcode}</text>
+          <text data-overlap-ok="" x="127" y="694" text-anchor="middle" class="svg-tlabel">Auto-shutdown 19h</text>
+          <text data-overlap-ok="" x="127" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-squad-sandbox</text>
         </g>
 
-        <g class="svg-c-blue">
+        <g data-overlap-ok="" class="svg-c-blue">
           <title>RG DEV POC : environnement de validation Squad du POC sous Standard Light. Provisionné par TF Light depuis le repo poc-{nom}. Pas de peering hub. Première exposition contrôlée du POC.</title>
-          <rect x="240" y="618" width="195" height="98" rx="8"/>
-          <text x="337" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG DEV POC</text>
-          <text x="337" y="658" text-anchor="middle" class="svg-ts">Standard Light</text>
-          <text x="337" y="676" text-anchor="middle" class="svg-tlabel">rg-dpc-{appcode}</text>
-          <text x="337" y="694" text-anchor="middle" class="svg-tlabel">TF Light · spoke isolé</text>
-          <text x="337" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-squad-sandbox</text>
+          <rect data-overlap-ok="" x="240" y="618" width="195" height="98" rx="8"/>
+          <text data-overlap-ok="" x="337" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG DEV POC</text>
+          <text data-overlap-ok="" x="337" y="658" text-anchor="middle" class="svg-ts">Standard Light</text>
+          <text data-overlap-ok="" x="337" y="676" text-anchor="middle" class="svg-tlabel">rg-dpc-{appcode}</text>
+          <text data-overlap-ok="" x="337" y="694" text-anchor="middle" class="svg-tlabel">TF Light · spoke isolé</text>
+          <text data-overlap-ok="" x="337" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-squad-sandbox</text>
         </g>
 
-        <g class="svg-c-blue">
+        <g data-overlap-ok="" class="svg-c-blue">
           <title>RG DEV MVP : premier environnement iso-DSI sous Standard Complet. Provisionné par TF Complet, intégré au hub via peering, briques régaliennes activées. Hébergeur de la baseline SLI sur 7 jours.</title>
-          <rect x="450" y="618" width="195" height="98" rx="8"/>
-          <text x="547" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG DEV MVP</text>
-          <text x="547" y="658" text-anchor="middle" class="svg-ts">Standard Complet · iso-DSI</text>
-          <text x="547" y="676" text-anchor="middle" class="svg-tlabel">rg-dmv-{appcode}</text>
-          <text x="547" y="694" text-anchor="middle" class="svg-tlabel">Hub-peered · baseline SLI</text>
-          <text x="547" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-dsi-dev</text>
+          <rect data-overlap-ok="" x="450" y="618" width="195" height="98" rx="8"/>
+          <text data-overlap-ok="" x="547" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG DEV MVP</text>
+          <text data-overlap-ok="" x="547" y="658" text-anchor="middle" class="svg-ts">Standard Complet · iso-DSI</text>
+          <text data-overlap-ok="" x="547" y="676" text-anchor="middle" class="svg-tlabel">rg-dmv-{appcode}</text>
+          <text data-overlap-ok="" x="547" y="694" text-anchor="middle" class="svg-tlabel">Hub-peered · baseline SLI</text>
+          <text data-overlap-ok="" x="547" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-dsi-dev</text>
         </g>
 
-        <g class="svg-c-teal">
+        <g data-overlap-ok="" class="svg-c-teal">
           <title>RG STAGING : environnement iso-prod pour qualification finale. Mêmes SKUs, Policies, Private Endpoints que la PROD cible. DAST, charge, evals RAGAS, PRA grandeur réelle, recette du sponsor sur données anonymisées.</title>
-          <rect x="1080" y="618" width="195" height="98" rx="8"/>
-          <text x="1177" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG STAGING</text>
-          <text x="1177" y="658" text-anchor="middle" class="svg-ts">Iso-prod · anonymisé</text>
-          <text x="1177" y="676" text-anchor="middle" class="svg-tlabel">rg-stg-{appcode}</text>
-          <text x="1177" y="694" text-anchor="middle" class="svg-tlabel">DAST · charge · PRA réel</text>
-          <text x="1177" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-dsi-staging</text>
+          <rect data-overlap-ok="" x="1080" y="618" width="195" height="98" rx="8"/>
+          <text data-overlap-ok="" x="1177" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG STAGING</text>
+          <text data-overlap-ok="" x="1177" y="658" text-anchor="middle" class="svg-ts">Iso-prod · anonymisé</text>
+          <text data-overlap-ok="" x="1177" y="676" text-anchor="middle" class="svg-tlabel">rg-stg-{appcode}</text>
+          <text data-overlap-ok="" x="1177" y="694" text-anchor="middle" class="svg-tlabel">DAST · charge · PRA réel</text>
+          <text data-overlap-ok="" x="1177" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-dsi-staging</text>
         </g>
 
-        <g class="svg-c-coral">
+        <g data-overlap-ok="" class="svg-c-coral">
           <title>RG PROD : environnement de production sous SLA. Bascule canary par Container Apps revisions. Astreinte L2/L3 24/7. Inscription CMDB automatique post-MEP. PRA semestriel scripté.</title>
-          <rect x="1290" y="618" width="195" height="98" rx="8"/>
-          <text x="1387" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG PROD</text>
-          <text x="1387" y="658" text-anchor="middle" class="svg-ts">SLA · astreinte 24/7</text>
-          <text x="1387" y="676" text-anchor="middle" class="svg-tlabel">rg-prd-{appcode}</text>
-          <text x="1387" y="694" text-anchor="middle" class="svg-tlabel">Canary 5/25/50/100</text>
-          <text x="1387" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-dsi-prod</text>
+          <rect data-overlap-ok="" x="1290" y="618" width="195" height="98" rx="8"/>
+          <text data-overlap-ok="" x="1387" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">RG PROD</text>
+          <text data-overlap-ok="" x="1387" y="658" text-anchor="middle" class="svg-ts">SLA · astreinte 24/7</text>
+          <text data-overlap-ok="" x="1387" y="676" text-anchor="middle" class="svg-tlabel">rg-prd-{appcode}</text>
+          <text data-overlap-ok="" x="1387" y="694" text-anchor="middle" class="svg-tlabel">Canary 5/25/50/100</text>
+          <text data-overlap-ok="" x="1387" y="708" text-anchor="middle" class="svg-tlabel">sub-digitai-dsi-prod</text>
         </g>
 
         <!-- Composants transverses : ACR + Key Vault (RG Platform) -->
-        <g class="svg-c-purple">
+        <g data-overlap-ok="" class="svg-c-purple">
           <title>ACR Squad (acrdigitaisquad) et ACR DSI (acrdigitaidsi) : deux Premium registries séparés dans le RG Platform. Promotion explicite manifest copy entre Squad (poussé par M3 build local) et DSI (vX.Y.Z-mvp → -rc → vX.Y.Z). Aucun rebuild entre environnements DSI : la signature Cosign attachée au digest est préservée.</title>
-          <rect x="660" y="618" width="195" height="98" rx="8"/>
-          <text x="757" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">ACR Squad + ACR DSI</text>
-          <text x="757" y="658" text-anchor="middle" class="svg-ts">Promotion manifest copy</text>
-          <text x="757" y="676" text-anchor="middle" class="svg-tlabel">acrdigitaisquad · acrdigitaidsi</text>
-          <text x="757" y="694" text-anchor="middle" class="svg-tlabel">Premium · PE · geo-replic.</text>
-          <text x="757" y="708" text-anchor="middle" class="svg-tlabel">RG Platform · sign Cosign</text>
+          <rect data-overlap-ok="" x="660" y="618" width="195" height="98" rx="8"/>
+          <text data-overlap-ok="" x="757" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">ACR Squad + ACR DSI</text>
+          <text data-overlap-ok="" x="757" y="658" text-anchor="middle" class="svg-ts">Promotion manifest copy</text>
+          <text data-overlap-ok="" x="757" y="676" text-anchor="middle" class="svg-tlabel">acrdigitaisquad · acrdigitaidsi</text>
+          <text data-overlap-ok="" x="757" y="694" text-anchor="middle" class="svg-tlabel">Premium · PE · geo-replic.</text>
+          <text data-overlap-ok="" x="757" y="708" text-anchor="middle" class="svg-tlabel">RG Platform · sign Cosign</text>
         </g>
 
-        <g class="svg-c-purple">
+        <g data-overlap-ok="" class="svg-c-purple">
           <title>Key Vault par RG : un KV par RG applicatif (kv-dmv-{appcode}, kv-stg-{appcode}, kv-prd-{appcode}) plus un KV transverse (kv-platform) pour les tokens d'intégration externe. Accès via Managed Identity du Container App ou du pipeline. Référence directe depuis le secret store du Container App.</title>
-          <rect x="870" y="618" width="195" height="98" rx="8"/>
-          <text x="967" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">Key Vault par RG</text>
-          <text x="967" y="658" text-anchor="middle" class="svg-ts">1 KV par RG + kv-platform</text>
-          <text x="967" y="676" text-anchor="middle" class="svg-tlabel">kv-{env}-{appcode}</text>
-          <text x="967" y="694" text-anchor="middle" class="svg-tlabel">MI access · PE</text>
-          <text x="967" y="708" text-anchor="middle" class="svg-tlabel">Soft-delete 90j</text>
+          <rect data-overlap-ok="" x="870" y="618" width="195" height="98" rx="8"/>
+          <text data-overlap-ok="" x="967" y="640" text-anchor="middle" class="svg-th" style="font-size:12px">Key Vault par RG</text>
+          <text data-overlap-ok="" x="967" y="658" text-anchor="middle" class="svg-ts">1 KV par RG + kv-platform</text>
+          <text data-overlap-ok="" x="967" y="676" text-anchor="middle" class="svg-tlabel">kv-{env}-{appcode}</text>
+          <text data-overlap-ok="" x="967" y="694" text-anchor="middle" class="svg-tlabel">MI access · PE</text>
+          <text data-overlap-ok="" x="967" y="708" text-anchor="middle" class="svg-tlabel">Soft-delete 90j</text>
         </g>
 
         <!-- ===================================================== -->
@@ -1003,211 +1003,211 @@
         <!-- BANDE 4 · OBSERVABILITÉ                                 -->
         <!-- y: 770 → 880                                            -->
         <!-- ===================================================== -->
-        <rect x="20" y="754" width="290" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-        <text x="32" y="770" class="svg-tband" style="fill:#475569;font-size:9.5px">4 · Observabilité · monitoring · sécurité</text>
+        <rect data-overlap-ok="" x="20" y="754" width="290" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+        <text data-overlap-ok="" x="32" y="770" class="svg-tband" style="fill:#475569;font-size:9.5px">4 · Observabilité · monitoring · sécurité</text>
 
-        <g class="svg-c-teal">
+        <g data-overlap-ok="" class="svg-c-teal">
           <title>Application Insights : un instance par Container App. Télémétrie applicative (traces, métriques, logs, exceptions). Connection string injectée via secret reference du Container App. Chaîné à un Log Analytics workspace centralisé par environnement.</title>
-          <rect x="30" y="788" width="195" height="86" rx="8"/>
-          <text x="127" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Application Insights</text>
-          <text x="127" y="828" text-anchor="middle" class="svg-ts">Par Container App</text>
-          <text x="127" y="846" text-anchor="middle" class="svg-tlabel">Traces · métriques · logs</text>
-          <text x="127" y="862" text-anchor="middle" class="svg-tlabel">Workspace-based</text>
+          <rect data-overlap-ok="" x="30" y="788" width="195" height="86" rx="8"/>
+          <text data-overlap-ok="" x="127" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Application Insights</text>
+          <text data-overlap-ok="" x="127" y="828" text-anchor="middle" class="svg-ts">Par Container App</text>
+          <text data-overlap-ok="" x="127" y="846" text-anchor="middle" class="svg-tlabel">Traces · métriques · logs</text>
+          <text data-overlap-ok="" x="127" y="862" text-anchor="middle" class="svg-tlabel">Workspace-based</text>
         </g>
 
-        <g class="svg-c-teal">
+        <g data-overlap-ok="" class="svg-c-teal">
           <title>Log Analytics workspace centralisé : un workspace par environnement (DEV, STAGING, PROD) dans le RG Platform. Recueille les logs des Container Apps, des ressources Azure, du Defender et du Sentinel. Source de vérité pour les requêtes KQL et les alertes.</title>
-          <rect x="240" y="788" width="195" height="86" rx="8"/>
-          <text x="337" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Log Analytics</text>
-          <text x="337" y="828" text-anchor="middle" class="svg-ts">1 workspace par env</text>
-          <text x="337" y="846" text-anchor="middle" class="svg-tlabel">KQL · alertes · archive 1 an</text>
-          <text x="337" y="862" text-anchor="middle" class="svg-tlabel">RG Platform</text>
+          <rect data-overlap-ok="" x="240" y="788" width="195" height="86" rx="8"/>
+          <text data-overlap-ok="" x="337" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Log Analytics</text>
+          <text data-overlap-ok="" x="337" y="828" text-anchor="middle" class="svg-ts">1 workspace par env</text>
+          <text data-overlap-ok="" x="337" y="846" text-anchor="middle" class="svg-tlabel">KQL · alertes · archive 1 an</text>
+          <text data-overlap-ok="" x="337" y="862" text-anchor="middle" class="svg-tlabel">RG Platform</text>
         </g>
 
-        <g class="svg-c-teal">
+        <g data-overlap-ok="" class="svg-c-teal">
           <title>Elastic Cloud (existant Digit-AI) : agrégation cross-application des logs et métriques applicatives. Dashboards Kibana par POC pour observation rapide. Ingestion via Elastic Agent embarqué dans le Container App.</title>
-          <rect x="450" y="788" width="195" height="86" rx="8"/>
-          <text x="547" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Elastic Cloud</text>
-          <text x="547" y="828" text-anchor="middle" class="svg-ts">Agrégation cross-app</text>
-          <text x="547" y="846" text-anchor="middle" class="svg-tlabel">Kibana · Elastic Agent</text>
-          <text x="547" y="862" text-anchor="middle" class="svg-tlabel">90j hot · 2 ans cold</text>
+          <rect data-overlap-ok="" x="450" y="788" width="195" height="86" rx="8"/>
+          <text data-overlap-ok="" x="547" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Elastic Cloud</text>
+          <text data-overlap-ok="" x="547" y="828" text-anchor="middle" class="svg-ts">Agrégation cross-app</text>
+          <text data-overlap-ok="" x="547" y="846" text-anchor="middle" class="svg-tlabel">Kibana · Elastic Agent</text>
+          <text data-overlap-ok="" x="547" y="862" text-anchor="middle" class="svg-tlabel">90j hot · 2 ans cold</text>
         </g>
 
-        <g class="svg-c-coral">
+        <g data-overlap-ok="" class="svg-c-coral">
           <title>Microsoft Sentinel : SIEM Digit-AI pour la sécurité. Alimenté par les logs Defender, Entra ID sign-ins, Azure Activity Log et Azure DevOps Audit Log. Alertes sécurité routées vers l'astreinte L2/L3 Run via Azure Monitor Action Group.</title>
-          <rect x="660" y="788" width="195" height="86" rx="8"/>
-          <text x="757" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Microsoft Sentinel</text>
-          <text x="757" y="828" text-anchor="middle" class="svg-ts">SIEM · alertes sécu</text>
-          <text x="757" y="846" text-anchor="middle" class="svg-tlabel">→ astreinte L2/L3</text>
-          <text x="757" y="862" text-anchor="middle" class="svg-tlabel">Rétention 7 ans</text>
+          <rect data-overlap-ok="" x="660" y="788" width="195" height="86" rx="8"/>
+          <text data-overlap-ok="" x="757" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Microsoft Sentinel</text>
+          <text data-overlap-ok="" x="757" y="828" text-anchor="middle" class="svg-ts">SIEM · alertes sécu</text>
+          <text data-overlap-ok="" x="757" y="846" text-anchor="middle" class="svg-tlabel">→ astreinte L2/L3</text>
+          <text data-overlap-ok="" x="757" y="862" text-anchor="middle" class="svg-tlabel">Rétention 7 ans</text>
         </g>
 
-        <g class="svg-c-coral">
+        <g data-overlap-ok="" class="svg-c-coral">
           <title>Microsoft Defender for Cloud : posture de sécurité, scan de vulnérabilités, recommandations CIS. Plans Defender for Containers et Defender for Servers selon environnement (plans complets sur PROD, plans réduits sur DEV/STAGING).</title>
-          <rect x="870" y="788" width="195" height="86" rx="8"/>
-          <text x="967" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Defender for Cloud</text>
-          <text x="967" y="828" text-anchor="middle" class="svg-ts">Posture · vuln scan</text>
-          <text x="967" y="846" text-anchor="middle" class="svg-tlabel">Plans selon env</text>
-          <text x="967" y="862" text-anchor="middle" class="svg-tlabel">CSPM Premium en PROD</text>
+          <rect data-overlap-ok="" x="870" y="788" width="195" height="86" rx="8"/>
+          <text data-overlap-ok="" x="967" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Defender for Cloud</text>
+          <text data-overlap-ok="" x="967" y="828" text-anchor="middle" class="svg-ts">Posture · vuln scan</text>
+          <text data-overlap-ok="" x="967" y="846" text-anchor="middle" class="svg-tlabel">Plans selon env</text>
+          <text data-overlap-ok="" x="967" y="862" text-anchor="middle" class="svg-tlabel">CSPM Premium en PROD</text>
         </g>
 
-        <g class="svg-c-teal">
+        <g data-overlap-ok="" class="svg-c-teal">
           <title>Dashboard portfolio DSI : vue temps réel de l'état du parc d'applications. Pour chaque POC son palier de maturité, son score de conformité, sa baseline SLI, ses incidents en cours. Backend Azure Data Explorer (cluster RG Platform) ingérant les JSON M2 et les métriques App Insights. Frontend HTML autonome Digit-AI sur Static Web Apps.</title>
-          <rect x="1080" y="788" width="195" height="86" rx="8"/>
-          <text x="1177" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Dashboard portfolio</text>
-          <text x="1177" y="828" text-anchor="middle" class="svg-ts">Vue DSI temps réel</text>
-          <text x="1177" y="846" text-anchor="middle" class="svg-tlabel">Azure Data Explorer</text>
-          <text x="1177" y="862" text-anchor="middle" class="svg-tlabel">+ Static Web Apps</text>
+          <rect data-overlap-ok="" x="1080" y="788" width="195" height="86" rx="8"/>
+          <text data-overlap-ok="" x="1177" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Dashboard portfolio</text>
+          <text data-overlap-ok="" x="1177" y="828" text-anchor="middle" class="svg-ts">Vue DSI temps réel</text>
+          <text data-overlap-ok="" x="1177" y="846" text-anchor="middle" class="svg-tlabel">Azure Data Explorer</text>
+          <text data-overlap-ok="" x="1177" y="862" text-anchor="middle" class="svg-tlabel">+ Static Web Apps</text>
         </g>
 
-        <g class="svg-c-coral">
+        <g data-overlap-ok="" class="svg-c-coral">
           <title>Azure Monitor Action Groups : routage des alertes par persona. ag-rollback-auto (déclenche azp-rollback.yml automatiquement), ag-run-oncall (astreinte L2), ag-squad-app-{appcode} (équipe applicative), ag-secops, ag-finops, ag-da-info.</title>
-          <rect x="1290" y="788" width="195" height="86" rx="8"/>
-          <text x="1387" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Action Groups</text>
-          <text x="1387" y="828" text-anchor="middle" class="svg-ts">Routage par persona</text>
-          <text x="1387" y="846" text-anchor="middle" class="svg-tlabel">Run · Squad · SecOps</text>
-          <text x="1387" y="862" text-anchor="middle" class="svg-tlabel">Rollback auto · FinOps</text>
+          <rect data-overlap-ok="" x="1290" y="788" width="195" height="86" rx="8"/>
+          <text data-overlap-ok="" x="1387" y="810" text-anchor="middle" class="svg-th" style="font-size:12px">Action Groups</text>
+          <text data-overlap-ok="" x="1387" y="828" text-anchor="middle" class="svg-ts">Routage par persona</text>
+          <text data-overlap-ok="" x="1387" y="846" text-anchor="middle" class="svg-tlabel">Run · Squad · SecOps</text>
+          <text data-overlap-ok="" x="1387" y="862" text-anchor="middle" class="svg-tlabel">Rollback auto · FinOps</text>
         </g>
 
         <!-- ===================================================== -->
         <!-- BANDE 5 · INTÉGRATIONS EXTERNES NUMÉROTÉES             -->
         <!-- y: 900 → 1010                                           -->
         <!-- ===================================================== -->
-        <rect x="20" y="884" width="510" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-        <text x="32" y="900" class="svg-tband" style="fill:#475569;font-size:9.5px">5 · Intégrations externes &amp; services tiers (référencées par numéro)</text>
+        <rect data-overlap-ok="" x="20" y="884" width="510" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+        <text data-overlap-ok="" x="32" y="900" class="svg-tband" style="fill:#475569;font-size:9.5px">5 · Intégrations externes &amp; services tiers (référencées par numéro)</text>
 
         <!-- Chaque intégration est précédée d'un cercle numéroté repris dans la bande pipelines -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Intégration 1 · Cosign / sigstore | Service de signature d'image cryptographique via OIDC | Authentification : Workload Identity Federation depuis Azure DevOps (pas de clé long-terme) | Signature : attachée au digest de l'image, préservée lors des manifest copy ultérieurs | Vérification : admission policy Container Apps bloque le déploiement d'image non signée | Pipelines référents : M3 (signe à la création de l'image MVP), M7 (vérifie à la mise en production)</title>
           <circle cx="50" cy="945" r="14" fill="#fef3c7" stroke="#92400e" stroke-width="1.5"/>
-          <text x="50" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">1</text>
-          <rect x="74" y="918" width="170" height="54" rx="8"/>
-          <text x="159" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Cosign / sigstore</text>
-          <text x="159" y="954" text-anchor="middle" class="svg-ts">Signature OIDC · WIF</text>
-          <text x="159" y="968" text-anchor="middle" class="svg-tlabel">Réf. M3 · M7</text>
+          <text data-overlap-ok="" x="50" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">1</text>
+          <rect data-overlap-ok="" x="74" y="918" width="170" height="54" rx="8"/>
+          <text data-overlap-ok="" x="159" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Cosign / sigstore</text>
+          <text data-overlap-ok="" x="159" y="954" text-anchor="middle" class="svg-ts">Signature OIDC · WIF</text>
+          <text data-overlap-ok="" x="159" y="968" text-anchor="middle" class="svg-tlabel">Réf. M3 · M7</text>
         </g>
 
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Intégration 2 · Storage Account TF state | Backend distant du state Terraform | Container : `tfstate` dans le Storage Account du RG Platform | Lock : blob lease (un pipeline à la fois sur un même state) | Accès : Managed Identity `mi-tf-state` avec rôle Storage Blob Data Contributor scope-limité | Pipelines référents : M3 (state DEV MVP), M6 (state STAGING), M7 (state PROD)</title>
           <circle cx="280" cy="945" r="14" fill="#f1f3f7" stroke="#374151" stroke-width="1.5"/>
-          <text x="280" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#374151">2</text>
-          <rect x="304" y="918" width="170" height="54" rx="8"/>
-          <text x="389" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Storage TF state</text>
-          <text x="389" y="954" text-anchor="middle" class="svg-ts">Backend Terraform</text>
-          <text x="389" y="968" text-anchor="middle" class="svg-tlabel">Réf. M3 · M6 · M7</text>
+          <text data-overlap-ok="" x="280" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#374151">2</text>
+          <rect data-overlap-ok="" x="304" y="918" width="170" height="54" rx="8"/>
+          <text data-overlap-ok="" x="389" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Storage TF state</text>
+          <text data-overlap-ok="" x="389" y="954" text-anchor="middle" class="svg-ts">Backend Terraform</text>
+          <text data-overlap-ok="" x="389" y="968" text-anchor="middle" class="svg-tlabel">Réf. M3 · M6 · M7</text>
         </g>
 
-        <g class="svg-c-purple">
+        <g data-overlap-ok="" class="svg-c-purple">
           <title>Intégration 3 · Azure AI Foundry | Workspace hébergeant le LLM utilisé par M4 (Palier 3 uniquement) | Modèle : Claude ou GPT-4 selon contrat | Accès : Managed Identity `mi-aifoundry-remediate` (rôle Cognitive Services User) | Sécurité : content safety natif activé, quota dédié par use case, audit trail OIDC complet | Usage : génération de patches code et TF non-triviaux pour la remédiation | Pipeline référent : M4 au Palier 3 seulement</title>
           <circle cx="510" cy="945" r="14" fill="#ede9fe" stroke="#5b21b6" stroke-width="1.5"/>
-          <text x="510" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#5b21b6">3</text>
-          <rect x="534" y="918" width="170" height="54" rx="8"/>
-          <text x="619" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Azure AI Foundry</text>
-          <text x="619" y="954" text-anchor="middle" class="svg-ts">LLM remédiation · MI</text>
-          <text x="619" y="968" text-anchor="middle" class="svg-tlabel">Réf. M4 (Palier 3)</text>
+          <text data-overlap-ok="" x="510" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#5b21b6">3</text>
+          <rect data-overlap-ok="" x="534" y="918" width="170" height="54" rx="8"/>
+          <text data-overlap-ok="" x="619" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Azure AI Foundry</text>
+          <text data-overlap-ok="" x="619" y="954" text-anchor="middle" class="svg-ts">LLM remédiation · MI</text>
+          <text data-overlap-ok="" x="619" y="968" text-anchor="middle" class="svg-tlabel">Réf. M4 (Palier 3)</text>
         </g>
 
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Intégration 4 · EasyVista ITSM | ITSM unique Digit-AI pour la gestion des changements en production | Création ticket : POST API REST par M6 avec champs pré-remplis (application, version RC, fenêtre proposée, dossier MEP, contact escalade) | Approbation : Triple Approbation hors Azure DevOps (sponsor métier, CAB DPMSI, exploitation) | Webhook retour : statut `Approved` déclenche M7 automatiquement | Authentification : token API stocké dans `kv-platform`, lu par MI `mi-easyvista-integration` | Pipelines référents : M6 (création) et M7 (déclenchement via webhook)</title>
           <circle cx="740" cy="945" r="14" fill="#fef3c7" stroke="#92400e" stroke-width="1.5"/>
-          <text x="740" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">4</text>
-          <rect x="764" y="918" width="170" height="54" rx="8"/>
-          <text x="849" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">EasyVista ITSM</text>
-          <text x="849" y="954" text-anchor="middle" class="svg-ts">Ticket MEP · API REST</text>
-          <text x="849" y="968" text-anchor="middle" class="svg-tlabel">Réf. M6 · webhook → M7</text>
+          <text data-overlap-ok="" x="740" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">4</text>
+          <rect data-overlap-ok="" x="764" y="918" width="170" height="54" rx="8"/>
+          <text data-overlap-ok="" x="849" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">EasyVista ITSM</text>
+          <text data-overlap-ok="" x="849" y="954" text-anchor="middle" class="svg-ts">Ticket MEP · API REST</text>
+          <text data-overlap-ok="" x="849" y="968" text-anchor="middle" class="svg-tlabel">Réf. M6 · webhook → M7</text>
         </g>
 
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Intégration 5 · Storage Account da-dossiers | Container blob hébergeant les dossiers Design Authority | Versioning : activé (historique complet des dossiers par POC) | Accès lecture : groupe Entra ID `grp-digitai-da` | Rétention : 5 ans (conformité audit) | Notification : email + Teams aux membres DA quand un nouveau dossier est déposé | Pipeline référent : M5 (upload via MI du pipeline)</title>
           <circle cx="970" cy="945" r="14" fill="#fef3c7" stroke="#92400e" stroke-width="1.5"/>
-          <text x="970" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">5</text>
-          <rect x="994" y="918" width="170" height="54" rx="8"/>
-          <text x="1079" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Storage da-dossiers</text>
-          <text x="1079" y="954" text-anchor="middle" class="svg-ts">Dossiers DA · 5 ans</text>
-          <text x="1079" y="968" text-anchor="middle" class="svg-tlabel">Réf. M5</text>
+          <text data-overlap-ok="" x="970" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">5</text>
+          <rect data-overlap-ok="" x="994" y="918" width="170" height="54" rx="8"/>
+          <text data-overlap-ok="" x="1079" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Storage da-dossiers</text>
+          <text data-overlap-ok="" x="1079" y="954" text-anchor="middle" class="svg-ts">Dossiers DA · 5 ans</text>
+          <text data-overlap-ok="" x="1079" y="968" text-anchor="middle" class="svg-tlabel">Réf. M5</text>
         </g>
 
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Intégration 6 · CMDB Digit-AI | Source de vérité des applications en production | Inscription : POST API REST automatique par M7 une fois la bascule 100% confirmée | Mise à jour : PUT incrémental à chaque déploiement ultérieur | Champs : nom application, RG cible, owner Squad, owner Run, criticité, version, dossier MEP | Authentification : token API stocké dans `kv-platform`, lu par MI `mi-cmdb-integration` | Pipeline référent : M7</title>
           <circle cx="1200" cy="945" r="14" fill="#fef3c7" stroke="#92400e" stroke-width="1.5"/>
-          <text x="1200" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">6</text>
-          <rect x="1224" y="918" width="170" height="54" rx="8"/>
-          <text x="1309" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">CMDB Digit-AI</text>
-          <text x="1309" y="954" text-anchor="middle" class="svg-ts">Inscription post-MEP</text>
-          <text x="1309" y="968" text-anchor="middle" class="svg-tlabel">Réf. M7 · API REST</text>
+          <text data-overlap-ok="" x="1200" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">6</text>
+          <rect data-overlap-ok="" x="1224" y="918" width="170" height="54" rx="8"/>
+          <text data-overlap-ok="" x="1309" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">CMDB Digit-AI</text>
+          <text data-overlap-ok="" x="1309" y="954" text-anchor="middle" class="svg-ts">Inscription post-MEP</text>
+          <text data-overlap-ok="" x="1309" y="968" text-anchor="middle" class="svg-tlabel">Réf. M7 · API REST</text>
         </g>
 
         <!-- Hub Azure + Modules TF inner-source en bas à droite (services transverses) -->
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Hub Azure (existant Digit-AI) : hub central de connectivité, Azure Firewall Premium, ExpressRoute vers le SI Digit-AI. Tous les spokes RG DSI s'y peerent. Filtrage du trafic sortant et est-ouest entre spokes. Service partagé, pas référencé directement par un pipeline mais consommé par tous les RG.</title>
-          <rect x="30" y="1010" width="350" height="48" rx="8"/>
-          <text x="205" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Hub Azure Digit-AI</text>
-          <text x="205" y="1046" text-anchor="middle" class="svg-ts">Connectivité · Firewall · ExpressRoute · peering spokes</text>
+          <rect data-overlap-ok="" x="30" y="1010" width="350" height="48" rx="8"/>
+          <text data-overlap-ok="" x="205" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Hub Azure Digit-AI</text>
+          <text data-overlap-ok="" x="205" y="1046" text-anchor="middle" class="svg-ts">Connectivité · Firewall · ExpressRoute · peering spokes</text>
         </g>
 
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Modules Terraform inner-source : registry interne Digit-AI des modules TF certifiés (sandbox, dev-poc, dev-mvp, staging, prod). Versionnés sémantiquement, consommés par les pipelines via source registry pinné. Service partagé.</title>
-          <rect x="400" y="1010" width="350" height="48" rx="8"/>
-          <text x="575" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Modules TF inner-source</text>
-          <text x="575" y="1046" text-anchor="middle" class="svg-ts">Registry Digit-AI · 5 modules RG-type · pinné par tag</text>
+          <rect data-overlap-ok="" x="400" y="1010" width="350" height="48" rx="8"/>
+          <text data-overlap-ok="" x="575" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Modules TF inner-source</text>
+          <text data-overlap-ok="" x="575" y="1046" text-anchor="middle" class="svg-ts">Registry Digit-AI · 5 modules RG-type · pinné par tag</text>
         </g>
 
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Tenant Entra ID Digit-AI : tenant unique digitai.onmicrosoft.com. Hébergeur de tous les groupes Entra ID (PO, DA, Sponsor, CAB, Run, OnCall), de tous les Service Principals (sp-azp-*) avec leurs federated credentials WIF, et de tous les Managed Identity (mi-*). PIM activé sur les rôles privilégiés.</title>
-          <rect x="770" y="1010" width="350" height="48" rx="8"/>
-          <text x="945" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Tenant Entra ID Digit-AI</text>
-          <text x="945" y="1046" text-anchor="middle" class="svg-ts">SP + MI + groupes · WIF OIDC · PIM rôles privilégiés</text>
+          <rect data-overlap-ok="" x="770" y="1010" width="350" height="48" rx="8"/>
+          <text data-overlap-ok="" x="945" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Tenant Entra ID Digit-AI</text>
+          <text data-overlap-ok="" x="945" y="1046" text-anchor="middle" class="svg-ts">SP + MI + groupes · WIF OIDC · PIM rôles privilégiés</text>
         </g>
 
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Event Hub d'ingestion ADX : reçoit les JSON publiés par M2 (résultats d'audit) et les métriques poussées par les Container Apps. Alimente le cluster Azure Data Explorer du dashboard portfolio. Accès via mi-dashboard-ingest.</title>
-          <rect x="1140" y="1010" width="345" height="48" rx="8"/>
-          <text x="1312" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Event Hub ingestion ADX</text>
-          <text x="1312" y="1046" text-anchor="middle" class="svg-ts">JSON M2 + métriques · → dashboard portfolio</text>
+          <rect data-overlap-ok="" x="1140" y="1010" width="345" height="48" rx="8"/>
+          <text data-overlap-ok="" x="1312" y="1029" text-anchor="middle" class="svg-th" style="font-size:11.5px">Event Hub ingestion ADX</text>
+          <text data-overlap-ok="" x="1312" y="1046" text-anchor="middle" class="svg-ts">JSON M2 + métriques · → dashboard portfolio</text>
         </g>
 
         <!-- ===================================================== -->
         <!-- LÉGENDE                                                 -->
         <!-- y: 1080                                                  -->
         <!-- ===================================================== -->
-        <text x="30" y="1090" class="svg-tband" style="fill:#475569">Légende</text>
+        <text data-overlap-ok="" x="30" y="1090" class="svg-tband" style="fill:#475569">Légende</text>
 
-        <g transform="translate(30, 1108)">
-          <rect x="0" y="0" width="14" height="14" rx="3" fill="#ede9fe" stroke="#5b21b6"/>
-          <text x="22" y="11" class="svg-ts" style="font-size:11px">Pipelines Agent IA</text>
+        <g data-overlap-ok="" transform="translate(30, 1108)">
+          <rect data-overlap-ok="" x="0" y="0" width="14" height="14" rx="3" fill="#ede9fe" stroke="#5b21b6"/>
+          <text data-overlap-ok="" x="22" y="11" class="svg-ts" style="font-size:11px">Pipelines Agent IA</text>
 
-          <rect x="180" y="0" width="14" height="14" rx="3" fill="#dbeafe" stroke="#1d4ed8"/>
-          <text x="202" y="11" class="svg-ts" style="font-size:11px">Environnements DEV</text>
+          <rect data-overlap-ok="" x="180" y="0" width="14" height="14" rx="3" fill="#dbeafe" stroke="#1d4ed8"/>
+          <text data-overlap-ok="" x="202" y="11" class="svg-ts" style="font-size:11px">Environnements DEV</text>
 
-          <rect x="370" y="0" width="14" height="14" rx="3" fill="#ccfbf1" stroke="#0f766e"/>
-          <text x="392" y="11" class="svg-ts" style="font-size:11px">STAGING · observabilité</text>
+          <rect data-overlap-ok="" x="370" y="0" width="14" height="14" rx="3" fill="#ccfbf1" stroke="#0f766e"/>
+          <text data-overlap-ok="" x="392" y="11" class="svg-ts" style="font-size:11px">STAGING · observabilité</text>
 
-          <rect x="560" y="0" width="14" height="14" rx="3" fill="#fee2e2" stroke="#b91c1c"/>
-          <text x="582" y="11" class="svg-ts" style="font-size:11px">PROD · sécurité</text>
+          <rect data-overlap-ok="" x="560" y="0" width="14" height="14" rx="3" fill="#fee2e2" stroke="#b91c1c"/>
+          <text data-overlap-ok="" x="582" y="11" class="svg-ts" style="font-size:11px">PROD · sécurité</text>
 
-          <rect x="710" y="0" width="14" height="14" rx="3" fill="#fef3c7" stroke="#92400e"/>
-          <text x="732" y="11" class="svg-ts" style="font-size:11px">Acteurs · intégrations</text>
+          <rect data-overlap-ok="" x="710" y="0" width="14" height="14" rx="3" fill="#fef3c7" stroke="#92400e"/>
+          <text data-overlap-ok="" x="732" y="11" class="svg-ts" style="font-size:11px">Acteurs · intégrations</text>
 
-          <rect x="890" y="0" width="14" height="14" rx="3" fill="#f1f3f7" stroke="#374151"/>
-          <text x="912" y="11" class="svg-ts" style="font-size:11px">Sources · services transverses</text>
+          <rect data-overlap-ok="" x="890" y="0" width="14" height="14" rx="3" fill="#f1f3f7" stroke="#374151"/>
+          <text data-overlap-ok="" x="912" y="11" class="svg-ts" style="font-size:11px">Sources · services transverses</text>
         </g>
 
-        <g transform="translate(30, 1140)">
+        <g data-overlap-ok="" transform="translate(30, 1140)">
           <line x1="0" y1="7" x2="40" y2="7" class="svg-arr-ai" marker-end="url(#arrAI)"/>
-          <text x="48" y="11" class="svg-ts" style="font-size:11px">Chaîne automatique Agent IA</text>
+          <text data-overlap-ok="" x="48" y="11" class="svg-ts" style="font-size:11px">Chaîne automatique Agent IA</text>
 
           <line x1="240" y1="7" x2="280" y2="7" class="svg-arr-auto" marker-end="url(#arrAuto)"/>
-          <text x="288" y="11" class="svg-ts" style="font-size:11px">Provisioning / déploiement</text>
+          <text data-overlap-ok="" x="288" y="11" class="svg-ts" style="font-size:11px">Provisioning / déploiement</text>
 
           <line x1="490" y1="7" x2="530" y2="7" class="svg-arr-manual" marker-end="url(#arrMan)"/>
-          <text x="538" y="11" class="svg-ts" style="font-size:11px">Action humaine</text>
+          <text data-overlap-ok="" x="538" y="11" class="svg-ts" style="font-size:11px">Action humaine</text>
 
           <line x1="680" y1="7" x2="720" y2="7" class="svg-arr-dashed"/>
-          <text x="728" y="11" class="svg-ts" style="font-size:11px">Télémétrie</text>
+          <text data-overlap-ok="" x="728" y="11" class="svg-ts" style="font-size:11px">Télémétrie</text>
 
           <circle cx="850" cy="7" r="9" fill="#fef3c7" stroke="#92400e" stroke-width="1.2"/>
-          <text x="850" y="11" text-anchor="middle" class="svg-th" style="font-size:10px;fill:#92400e">N</text>
-          <text x="868" y="11" class="svg-ts" style="font-size:11px">Référence intégration externe N (cf. bande 5)</text>
+          <text data-overlap-ok="" x="850" y="11" text-anchor="middle" class="svg-th" style="font-size:10px;fill:#92400e">N</text>
+          <text data-overlap-ok="" x="868" y="11" class="svg-ts" style="font-size:11px">Référence intégration externe N (cf. bande 5)</text>
         </g>
 
       </svg>
@@ -1310,10 +1310,10 @@
 
         <defs>
           <marker id="arrNet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#475569"/>
           </marker>
           <marker id="arrNetStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M10,0 L0,5 L10,10 z" fill="#475569"/>
+            <path data-overlap-ok="" d="M10,0 L0,5 L10,10 z" fill="#475569"/>
           </marker>
         </defs>
 
@@ -1321,52 +1321,52 @@
         <!-- BANDE 1 · SQUAD INNOVATION ISOLÉ                       -->
         <!-- y: 8 → 220                                              -->
         <!-- ===================================================== -->
-        <rect x="20" y="8" width="430" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-        <text x="32" y="24" class="svg-tband" style="fill:#475569;font-size:9.5px">1 · Squad Innovation · isolé (pas de peering hub)</text>
+        <rect data-overlap-ok="" x="20" y="8" width="430" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+        <text data-overlap-ok="" x="32" y="24" class="svg-tband" style="fill:#475569;font-size:9.5px">1 · Squad Innovation · isolé (pas de peering hub)</text>
 
-        <rect x="40" y="50" width="470" height="160" rx="14" class="svg-frame" stroke="#94a3b8"/>
+        <rect data-overlap-ok="" x="40" y="50" width="470" height="160" rx="14" class="svg-frame" stroke="#94a3b8"/>
 
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>RG Sandbox | Bac à sable libre Squad Innovation | VNet : isolé, NAT Gateway pour sortie Internet filtrée | Peering : aucun, pas de connexion au hub Digit-AI ni au SI on-premises | Quotas : stricts (taille SKU max, deny public IP) | Auto-shutdown : 19h automatique pour économie FinOps | Nommage : `rg-sbx-{appcode}` | Subscription : `sub-digitai-squad-sandbox`</title>
-          <rect x="60" y="76" width="200" height="114" rx="8"/>
-          <text x="160" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">RG Sandbox</text>
-          <text x="160" y="120" text-anchor="middle" class="svg-ts">VNet isolé · NAT Gateway</text>
-          <text x="160" y="140" text-anchor="middle" class="svg-tlabel">Pas de peering</text>
-          <text x="160" y="158" text-anchor="middle" class="svg-tlabel">Internet sortant filtré</text>
-          <text x="160" y="176" text-anchor="middle" class="svg-tlabel">Auto-shutdown 19h</text>
+          <rect data-overlap-ok="" x="60" y="76" width="200" height="114" rx="8"/>
+          <text data-overlap-ok="" x="160" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">RG Sandbox</text>
+          <text data-overlap-ok="" x="160" y="120" text-anchor="middle" class="svg-ts">VNet isolé · NAT Gateway</text>
+          <text data-overlap-ok="" x="160" y="140" text-anchor="middle" class="svg-tlabel">Pas de peering</text>
+          <text data-overlap-ok="" x="160" y="158" text-anchor="middle" class="svg-tlabel">Internet sortant filtré</text>
+          <text data-overlap-ok="" x="160" y="176" text-anchor="middle" class="svg-tlabel">Auto-shutdown 19h</text>
         </g>
 
-        <g class="svg-c-blue">
+        <g data-overlap-ok="" class="svg-c-blue">
           <title>RG DEV POC | Spoke Squad sous Standard Light | VNet : dédié, NAT Gateway pour sortie Internet | Peering : aucun avec le hub Digit-AI (Standard Light n'impose pas la connexion centrale) | Composants PaaS (Container App, Key Vault) accessibles via Private Endpoint au sein du spoke uniquement | Provisionné par : Terraform Light depuis le repo poc-{nom} | Nommage : `rg-dpc-{appcode}` | Subscription : `sub-digitai-squad-sandbox`</title>
-          <rect x="290" y="76" width="200" height="114" rx="8"/>
-          <text x="390" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">RG DEV POC</text>
-          <text x="390" y="120" text-anchor="middle" class="svg-ts">VNet · PE interne</text>
-          <text x="390" y="140" text-anchor="middle" class="svg-tlabel">Standard Light</text>
-          <text x="390" y="158" text-anchor="middle" class="svg-tlabel">Sans peering hub</text>
-          <text x="390" y="176" text-anchor="middle" class="svg-tlabel">rg-dpc-{appcode}</text>
+          <rect data-overlap-ok="" x="290" y="76" width="200" height="114" rx="8"/>
+          <text data-overlap-ok="" x="390" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">RG DEV POC</text>
+          <text data-overlap-ok="" x="390" y="120" text-anchor="middle" class="svg-ts">VNet · PE interne</text>
+          <text data-overlap-ok="" x="390" y="140" text-anchor="middle" class="svg-tlabel">Standard Light</text>
+          <text data-overlap-ok="" x="390" y="158" text-anchor="middle" class="svg-tlabel">Sans peering hub</text>
+          <text data-overlap-ok="" x="390" y="176" text-anchor="middle" class="svg-tlabel">rg-dpc-{appcode}</text>
         </g>
 
         <!-- ===================================================== -->
         <!-- BANDE 2 · HUB AZURE CENTRAL                            -->
         <!-- y: 240 → 360                                            -->
         <!-- ===================================================== -->
-        <rect x="20" y="240" width="320" height="22" rx="6" fill="#ffffff" stroke="#5b21b6" stroke-width="0.6"/>
-        <text x="32" y="256" class="svg-tband" style="fill:#5b21b6;font-size:9.5px">2 · Hub Azure Digit-AI · connectivité centrale</text>
+        <rect data-overlap-ok="" x="20" y="240" width="320" height="22" rx="6" fill="#ffffff" stroke="#5b21b6" stroke-width="0.6"/>
+        <text data-overlap-ok="" x="32" y="256" class="svg-tband" style="fill:#5b21b6;font-size:9.5px">2 · Hub Azure Digit-AI · connectivité centrale</text>
 
-        <g class="svg-c-purple">
+        <g data-overlap-ok="" class="svg-c-purple">
           <title>VNet Hub Digit-AI | Réseau central /20 hébergeant la connectivité commune | Composants intégrés : Azure Firewall Premium (filtrage sortant et est-ouest entre spokes), Azure Bastion (accès admin sans IP publique), ExpressRoute Gateway (lien privé vers SI on-premises) | Topologie : tous les spokes DSI s'y peerent en bidirectionnel | Existant Digit-AI : service partagé, géré par l'équipe réseau DSI</title>
-          <rect x="350" y="278" width="700" height="74" rx="10"/>
-          <text x="700" y="304" text-anchor="middle" class="svg-th" style="font-size:13px">VNet Hub Digit-AI (/20)</text>
-          <text x="700" y="324" text-anchor="middle" class="svg-ts">Azure Firewall Premium · Azure Bastion · ExpressRoute Gateway</text>
-          <text x="700" y="342" text-anchor="middle" class="svg-tlabel">Filtrage sortant · routing est-ouest entre spokes</text>
+          <rect data-overlap-ok="" x="350" y="278" width="700" height="74" rx="10"/>
+          <text data-overlap-ok="" x="700" y="304" text-anchor="middle" class="svg-th" style="font-size:13px">VNet Hub Digit-AI (/20)</text>
+          <text data-overlap-ok="" x="700" y="324" text-anchor="middle" class="svg-ts">Azure Firewall Premium · Azure Bastion · ExpressRoute Gateway</text>
+          <text data-overlap-ok="" x="700" y="342" text-anchor="middle" class="svg-tlabel">Filtrage sortant · routing est-ouest entre spokes</text>
         </g>
 
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>ExpressRoute | Connexion privée dédiée entre le hub Azure Digit-AI et le SI Digit-AI on-premises | Usage : accès aux ressources internes depuis les RG DSI (EasyVista interne, CMDB Digit-AI, AD on-prem, bases legacy) | Avantage : trafic chiffré qui ne sort jamais d'Internet public | Géré par : équipe réseau Digit-AI (existant, mutualisé avec autres usages)</title>
-          <rect x="1080" y="278" width="200" height="74" rx="8"/>
-          <text x="1180" y="304" text-anchor="middle" class="svg-th" style="font-size:12px">ExpressRoute</text>
-          <text x="1180" y="324" text-anchor="middle" class="svg-ts">Vers SI Digit-AI</text>
-          <text x="1180" y="342" text-anchor="middle" class="svg-tlabel">EasyVista · CMDB · AD on-prem</text>
+          <rect data-overlap-ok="" x="1080" y="278" width="200" height="74" rx="8"/>
+          <text data-overlap-ok="" x="1180" y="304" text-anchor="middle" class="svg-th" style="font-size:12px">ExpressRoute</text>
+          <text data-overlap-ok="" x="1180" y="324" text-anchor="middle" class="svg-ts">Vers SI Digit-AI</text>
+          <text data-overlap-ok="" x="1180" y="342" text-anchor="middle" class="svg-tlabel">EasyVista · CMDB · AD on-prem</text>
         </g>
 
         <!-- Flèche hub → ExpressRoute -->
@@ -1378,99 +1378,99 @@
         <!-- BANDE 3 · SPOKES DSI                                    -->
         <!-- y: 380 → 660                                            -->
         <!-- ===================================================== -->
-        <rect x="20" y="380" width="380" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-        <text x="32" y="396" class="svg-tband" style="fill:#475569;font-size:9.5px">3 · Spokes DSI · peerés au hub · Standard Complet</text>
+        <rect data-overlap-ok="" x="20" y="380" width="380" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
+        <text data-overlap-ok="" x="32" y="396" class="svg-tband" style="fill:#475569;font-size:9.5px">3 · Spokes DSI · peerés au hub · Standard Complet</text>
 
         <!-- 4 spokes alignés -->
         <!-- Largeurs : 305px chacun avec gap 18px, début x=40 -->
         <!-- Centres : DEV MVP=192, STAGING=515, PROD=838, Platform=1161 -->
 
         <!-- RG DEV MVP -->
-        <g class="svg-c-blue">
+        <g data-overlap-ok="" class="svg-c-blue">
           <title>RG DEV MVP | Premier spoke iso-DSI sous Standard Complet | VNet : /24 peeré bidirectionnellement au hub Digit-AI | Subnets internes : Container Apps délégué /27, Private Endpoints /27, Management /28 | Sécurité : NSG restrictif sur chaque subnet, Defender for Containers activé | Briques régaliennes : Entra ID + Elastic Agent + Defender activés à la création | Provisionné par : pipeline M3 via Terraform Complet | Subscription : `sub-digitai-dsi-dev`</title>
-          <rect x="40" y="418" width="305" height="240" rx="10"/>
-          <text x="192" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG DEV MVP</text>
-          <text x="192" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">VNet /24 · peering hub</text>
+          <rect data-overlap-ok="" x="40" y="418" width="305" height="240" rx="10"/>
+          <text data-overlap-ok="" x="192" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG DEV MVP</text>
+          <text data-overlap-ok="" x="192" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">VNet /24 · peering hub</text>
 
-          <rect x="60" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
-          <text x="192" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
-          <text x="192" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 délégué Microsoft.App</text>
+          <rect data-overlap-ok="" x="60" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+          <text data-overlap-ok="" x="192" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
+          <text data-overlap-ok="" x="192" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 délégué Microsoft.App</text>
 
-          <rect x="60" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
-          <text x="192" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
-          <text x="192" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · KV + ACR + AI Foundry</text>
+          <rect data-overlap-ok="" x="60" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+          <text data-overlap-ok="" x="192" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
+          <text data-overlap-ok="" x="192" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · KV + ACR + AI Foundry</text>
 
-          <rect x="60" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
-          <text x="192" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
-          <text x="192" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/28 · Bastion · monitoring</text>
+          <rect data-overlap-ok="" x="60" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+          <text data-overlap-ok="" x="192" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
+          <text data-overlap-ok="" x="192" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/28 · Bastion · monitoring</text>
 
-          <text x="192" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">NSG · Defender Containers</text>
+          <text data-overlap-ok="" x="192" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">NSG · Defender Containers</text>
         </g>
 
         <!-- RG STAGING -->
-        <g class="svg-c-teal">
+        <g data-overlap-ok="" class="svg-c-teal">
           <title>RG STAGING | Spoke iso-prod pour qualification finale | VNet : /24 peeré bidirectionnellement au hub Digit-AI | Topologie identique à PROD : mêmes SKUs, mêmes Azure Policies, mêmes Private Endpoints | Différences avec PROD : pas d'inscription CMDB, données anonymisées uniquement, accès limité au sponsor et à l'équipe Run | Tests exécutés : DAST, charge, evals RAGAS bloquantes, PRA grandeur réelle, recette sponsor | Subscription : `sub-digitai-dsi-staging`</title>
-          <rect x="363" y="418" width="305" height="240" rx="10"/>
-          <text x="515" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG STAGING</text>
-          <text x="515" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">VNet /24 · iso-prod</text>
+          <rect data-overlap-ok="" x="363" y="418" width="305" height="240" rx="10"/>
+          <text data-overlap-ok="" x="515" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG STAGING</text>
+          <text data-overlap-ok="" x="515" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">VNet /24 · iso-prod</text>
 
-          <rect x="383" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#5eead4"/>
-          <text x="515" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
-          <text x="515" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 délégué Microsoft.App</text>
+          <rect data-overlap-ok="" x="383" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#5eead4"/>
+          <text data-overlap-ok="" x="515" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
+          <text data-overlap-ok="" x="515" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 délégué Microsoft.App</text>
 
-          <rect x="383" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#5eead4"/>
-          <text x="515" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
-          <text x="515" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · KV + ACR + AI Foundry</text>
+          <rect data-overlap-ok="" x="383" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#5eead4"/>
+          <text data-overlap-ok="" x="515" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
+          <text data-overlap-ok="" x="515" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · KV + ACR + AI Foundry</text>
 
-          <rect x="383" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#5eead4"/>
-          <text x="515" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
-          <text x="515" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/28 · Bastion · monitoring</text>
+          <rect data-overlap-ok="" x="383" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#5eead4"/>
+          <text data-overlap-ok="" x="515" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
+          <text data-overlap-ok="" x="515" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/28 · Bastion · monitoring</text>
 
-          <text x="515" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Données anonymisées</text>
+          <text data-overlap-ok="" x="515" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Données anonymisées</text>
         </g>
 
         <!-- RG PROD -->
-        <g class="svg-c-coral">
+        <g data-overlap-ok="" class="svg-c-coral">
           <title>RG PROD | Spoke production sous SLA | VNet : /24 peeré bidirectionnellement au hub Digit-AI | Subnet Container Apps : configure les revisions multiples pour bascule blue-green / canary | Sécurité : plans Defender complets (Containers + Servers Plan 2 avec EDR + Key Vault + Storage + CSPM Premium) | Astreinte : L2/L3 activée 24/7 sur les incidents critiques | PRA : exercice scripté trimestriel | Inscription CMDB : automatique post-MEP | Subscription : `sub-digitai-dsi-prod`</title>
-          <rect x="686" y="418" width="305" height="240" rx="10"/>
-          <text x="838" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG PROD</text>
-          <text x="838" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">VNet /24 · SLA</text>
+          <rect data-overlap-ok="" x="686" y="418" width="305" height="240" rx="10"/>
+          <text data-overlap-ok="" x="838" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG PROD</text>
+          <text data-overlap-ok="" x="838" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">VNet /24 · SLA</text>
 
-          <rect x="706" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#fca5a5"/>
-          <text x="838" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
-          <text x="838" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · revisions blue-green</text>
+          <rect data-overlap-ok="" x="706" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#fca5a5"/>
+          <text data-overlap-ok="" x="838" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
+          <text data-overlap-ok="" x="838" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · revisions blue-green</text>
 
-          <rect x="706" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#fca5a5"/>
-          <text x="838" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
-          <text x="838" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · KV + ACR + AI Foundry</text>
+          <rect data-overlap-ok="" x="706" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#fca5a5"/>
+          <text data-overlap-ok="" x="838" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
+          <text data-overlap-ok="" x="838" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/27 · KV + ACR + AI Foundry</text>
 
-          <rect x="706" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#fca5a5"/>
-          <text x="838" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
-          <text x="838" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/28 · Bastion · monitoring</text>
+          <rect data-overlap-ok="" x="706" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#fca5a5"/>
+          <text data-overlap-ok="" x="838" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
+          <text data-overlap-ok="" x="838" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">/28 · Bastion · monitoring</text>
 
-          <text x="838" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Defender plans complets</text>
+          <text data-overlap-ok="" x="838" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Defender plans complets</text>
         </g>
 
         <!-- RG Platform -->
-        <g class="svg-c-purple">
+        <g data-overlap-ok="" class="svg-c-purple">
           <title>RG Platform | Spoke transverse hébergeant les ressources partagées par tous les autres RG | Ressources : ACR Squad + ACR DSI (Premium, Private Endpoints), Key Vault de plateforme, Log Analytics workspaces (1 par environnement), Sentinel, Defender for Cloud, cluster Azure Data Explorer du dashboard portfolio, Static Web App du dashboard | VNet : peeré au hub | Exposition cross-spoke : Private Endpoints des ACR et KV accessibles depuis tous les autres spokes via le hub | Subscription : `sub-digitai-platform`</title>
-          <rect x="1009" y="418" width="305" height="240" rx="10"/>
-          <text x="1161" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG Platform</text>
-          <text x="1161" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">Ressources transverses</text>
+          <rect data-overlap-ok="" x="1009" y="418" width="305" height="240" rx="10"/>
+          <text data-overlap-ok="" x="1161" y="442" text-anchor="middle" class="svg-th" style="font-size:13px">RG Platform</text>
+          <text data-overlap-ok="" x="1161" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">Ressources transverses</text>
 
-          <rect x="1029" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#c4b5fd"/>
-          <text x="1161" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">ACR Squad + ACR DSI</text>
-          <text x="1161" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Premium · Private Endpoint</text>
+          <rect data-overlap-ok="" x="1029" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#c4b5fd"/>
+          <text data-overlap-ok="" x="1161" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">ACR Squad + ACR DSI</text>
+          <text data-overlap-ok="" x="1161" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Premium · Private Endpoint</text>
 
-          <rect x="1029" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#c4b5fd"/>
-          <text x="1161" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Log Analytics + Sentinel</text>
-          <text x="1161" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">1 workspace par environnement</text>
+          <rect data-overlap-ok="" x="1029" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#c4b5fd"/>
+          <text data-overlap-ok="" x="1161" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Log Analytics + Sentinel</text>
+          <text data-overlap-ok="" x="1161" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">1 workspace par environnement</text>
 
-          <rect x="1029" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#c4b5fd"/>
-          <text x="1161" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Dashboard portfolio</text>
-          <text x="1161" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">ADX + Static Web App</text>
+          <rect data-overlap-ok="" x="1029" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#c4b5fd"/>
+          <text data-overlap-ok="" x="1161" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Dashboard portfolio</text>
+          <text data-overlap-ok="" x="1161" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">ADX + Static Web App</text>
 
-          <text x="1161" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">PE vers tous les spokes</text>
+          <text data-overlap-ok="" x="1161" y="642" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">PE vers tous les spokes</text>
         </g>
 
         <!-- ===================================================== -->
@@ -1483,22 +1483,22 @@
         <!-- ===================================================== -->
 
         <!-- DEV MVP → Hub (couloir gauche) -->
-        <path d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+        <path data-overlap-ok="" d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
           <title>Peering VNet bidirectionnel RG DEV MVP ↔ hub | Permet aux Container Apps DEV MVP d'accéder au SI Digit-AI via ExpressRoute (EasyVista, AD on-prem) | Filtrage du trafic sortant Internet par Azure Firewall Premium du hub | Coût : facturé à l'ingress et egress sur le peering</title>
         </path>
 
         <!-- STAGING → Hub (couloir centre-gauche) -->
-        <path d="M515,418 L515,378 L660,378 L660,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+        <path data-overlap-ok="" d="M515,418 L515,378 L660,378 L660,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
           <title>Peering VNet bidirectionnel RG STAGING ↔ hub | Mêmes routes et règles Firewall que la PROD pour reproduire fidèlement l'environnement cible | Le réseau STAGING est strictement iso-prod en termes de connectivité</title>
         </path>
 
         <!-- PROD → Hub (couloir centre-droit) -->
-        <path d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+        <path data-overlap-ok="" d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
           <title>Peering VNet bidirectionnel RG PROD ↔ hub | Toutes les sorties Internet passent par Azure Firewall Premium (filtrage URL, TLS inspection, IDPS) | Inspection est-ouest entre spokes activée pour le confinement des incidents</title>
         </path>
 
         <!-- Platform → Hub (couloir droit) -->
-        <path d="M1161,418 L1161,370 L820,370 L820,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+        <path data-overlap-ok="" d="M1161,418 L1161,370 L820,370 L820,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
           <title>Peering VNet bidirectionnel RG Platform ↔ hub | Permet aux Container Apps des autres spokes d'atteindre les ACR et Log Analytics du Platform via les Private Endpoints traversant le hub | Service partagé optimisant les coûts (un seul ACR, un seul Sentinel)</title>
         </path>
 
@@ -1506,14 +1506,14 @@
         <!-- LÉGENDE                                                 -->
         <!-- y: 680                                                   -->
         <!-- ===================================================== -->
-        <g transform="translate(40, 690)">
+        <g data-overlap-ok="" transform="translate(40, 690)">
           <line x1="0" y1="7" x2="40" y2="7" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)"/>
-          <text x="48" y="11" class="svg-ts" style="font-size:11px">Peering VNet bidirectionnel</text>
+          <text data-overlap-ok="" x="48" y="11" class="svg-ts" style="font-size:11px">Peering VNet bidirectionnel</text>
 
-          <rect x="240" y="0" width="14" height="14" rx="3" fill="#fff" stroke="#94a3b8" stroke-dasharray="4 4"/>
-          <text x="262" y="11" class="svg-ts" style="font-size:11px">Spoke isolé (sans peering hub)</text>
+          <rect data-overlap-ok="" x="240" y="0" width="14" height="14" rx="3" fill="#fff" stroke="#94a3b8" stroke-dasharray="4 4"/>
+          <text data-overlap-ok="" x="262" y="11" class="svg-ts" style="font-size:11px">Spoke isolé (sans peering hub)</text>
 
-          <text x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage) sont exposés via Private Endpoint dans le subnet PE dédié de chaque spoke</text>
+          <text data-overlap-ok="" x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage) sont exposés via Private Endpoint dans le subnet PE dédié de chaque spoke</text>
         </g>
 
       </svg>
@@ -2218,249 +2218,249 @@ stages:
 
         <defs>
           <marker id="arrPipe" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
           </marker>
           <marker id="arrGate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
           </marker>
           <marker id="arrArt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            <path data-overlap-ok="" d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
           </marker>
         </defs>
 
         <!-- ===== TIME AXIS ===== -->
-        <text x="40" y="32" class="svg-tband" style="fill:#475569">FLUX TEMPOREL · TAG GIT → PROD</text>
+        <text data-overlap-ok="" x="40" y="32" class="svg-tband" style="fill:#475569">FLUX TEMPOREL · TAG GIT → PROD</text>
         <line x1="40" y1="50" x2="1280" y2="50" stroke="#cbd5e1" stroke-width="1"/>
 
         <!-- ===== BANDEAU ORG SQUAD ===== -->
-        <rect x="32" y="76" width="380" height="690" rx="14" class="svg-frame" stroke="#94a3b8"/>
-        <text x="48" y="98" class="svg-tband" style="fill:#475569">ORG digitai-squad-innov</text>
+        <rect data-overlap-ok="" x="32" y="76" width="380" height="690" rx="14" class="svg-frame" stroke="#94a3b8"/>
+        <text data-overlap-ok="" x="48" y="98" class="svg-tband" style="fill:#475569">ORG digitai-squad-innov</text>
 
         <!-- Tag déclencheur -->
-        <g class="svg-c-gray">
+        <g data-overlap-ok="" class="svg-c-gray">
           <title>Tag git vX.Y.Z-poc poussé sur la branche main du repo poc-{nom}. Déclencheur du parcours d'industrialisation.</title>
-          <rect x="50" y="116" width="340" height="48" rx="8"/>
-          <text x="220" y="135" text-anchor="middle" class="svg-th" style="font-size:11.5px">Tag git vX.Y.Z-poc</text>
-          <text x="220" y="152" text-anchor="middle" class="svg-ts">PO Squad pousse le tag sur main</text>
+          <rect data-overlap-ok="" x="50" y="116" width="340" height="48" rx="8"/>
+          <text data-overlap-ok="" x="220" y="135" text-anchor="middle" class="svg-th" style="font-size:11.5px">Tag git vX.Y.Z-poc</text>
+          <text data-overlap-ok="" x="220" y="152" text-anchor="middle" class="svg-ts">PO Squad pousse le tag sur main</text>
         </g>
 
         <!-- M1 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline M1 : récupération du POC. Tag-triggered. Produit le contexte JSON consommé par M2.</title>
-          <rect x="50" y="184" width="340" height="68" rx="8"/>
-          <text x="220" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M1 · Récupération</text>
-          <text x="220" y="223" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">poc-{nom}/azp-m1.yml · agent squad-linux</text>
-          <text x="220" y="240" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ Artefact : contexte.json</text>
+          <rect data-overlap-ok="" x="50" y="184" width="340" height="68" rx="8"/>
+          <text data-overlap-ok="" x="220" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M1 · Récupération</text>
+          <text data-overlap-ok="" x="220" y="223" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">poc-{nom}/azp-m1.yml · agent squad-linux</text>
+          <text data-overlap-ok="" x="220" y="240" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ Artefact : contexte.json</text>
         </g>
 
         <!-- M2 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline M2 : audit du POC. Enchaîné automatiquement après M1. Produit le rapport HTML autonome et le JSON pour le dashboard.</title>
-          <rect x="50" y="272" width="340" height="68" rx="8"/>
-          <text x="220" y="294" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M2 · Audit</text>
-          <text x="220" y="311" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">poc-{nom}/azp-m2-audit.yml · agent squad-linux</text>
-          <text x="220" y="328" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ rapport.html + audit.json</text>
+          <rect data-overlap-ok="" x="50" y="272" width="340" height="68" rx="8"/>
+          <text data-overlap-ok="" x="220" y="294" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M2 · Audit</text>
+          <text data-overlap-ok="" x="220" y="311" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">poc-{nom}/azp-m2-audit.yml · agent squad-linux</text>
+          <text data-overlap-ok="" x="220" y="328" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ rapport.html + audit.json</text>
         </g>
 
         <!-- Gate DA Light -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Gate humain DA Light : Design Authority décide Go/No-Go promotion DEV POC vers DEV MVP. Approbation sur environment Azure DevOps da-light-approval. Délai max 1 semaine.</title>
-          <rect x="50" y="360" width="340" height="56" rx="8"/>
-          <text x="220" y="382" text-anchor="middle" class="svg-th" style="font-size:11.5px">Gate humain · DA Light</text>
-          <text x="220" y="400" text-anchor="middle" class="svg-ts">Environment da-light-approval · approvers grp-digitai-da</text>
+          <rect data-overlap-ok="" x="50" y="360" width="340" height="56" rx="8"/>
+          <text data-overlap-ok="" x="220" y="382" text-anchor="middle" class="svg-th" style="font-size:11.5px">Gate humain · DA Light</text>
+          <text data-overlap-ok="" x="220" y="400" text-anchor="middle" class="svg-ts">Environment da-light-approval · approvers grp-digitai-da</text>
         </g>
 
         <!-- ===== BANDEAU ORG DSI ===== -->
-        <rect x="438" y="76" width="850" height="690" rx="14" class="svg-frame" stroke="#5b21b6"/>
-        <text x="454" y="98" class="svg-tband" style="fill:#5b21b6">ORG digitai-dsi-lz</text>
+        <rect data-overlap-ok="" x="438" y="76" width="850" height="690" rx="14" class="svg-frame" stroke="#5b21b6"/>
+        <text data-overlap-ok="" x="454" y="98" class="svg-tband" style="fill:#5b21b6">ORG digitai-dsi-lz</text>
 
         <!-- M3 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline M3 : déploiement DEV MVP. Crée le repo prod-{nom} si absent. Build, SAST, scan, SBOM, signe l'image et la pousse dans ACR DSI avec le tag vX.Y.Z-mvp. Provisionne le RG DEV MVP via Terraform. Déploie. Établit la baseline SLI sur 7 jours.</title>
-          <rect x="456" y="184" width="350" height="80" rx="8"/>
-          <text x="631" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M3 · Déploiement DEV MVP</text>
-          <text x="631" y="223" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m3.yml · agent dsi-linux</text>
-          <text x="631" y="240" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ image vX.Y.Z-mvp (ACR DSI, signée Cosign)</text>
-          <text x="631" y="256" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ RG dmv-{appcode} déployé · baseline SLI 7j</text>
+          <rect data-overlap-ok="" x="456" y="184" width="350" height="80" rx="8"/>
+          <text data-overlap-ok="" x="631" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M3 · Déploiement DEV MVP</text>
+          <text data-overlap-ok="" x="631" y="223" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m3.yml · agent dsi-linux</text>
+          <text data-overlap-ok="" x="631" y="240" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ image vX.Y.Z-mvp (ACR DSI, signée Cosign)</text>
+          <text data-overlap-ok="" x="631" y="256" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ RG dmv-{appcode} déployé · baseline SLI 7j</text>
         </g>
 
         <!-- M4 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline M4 : remédiation assistée. Trigger sur fin de la baseline SLI. Consolide le rapport d'audit avec les observations DEV MVP. Génère des PRs étiquetées par chapitre. Re-deploy à chaque merge.</title>
-          <rect x="456" y="284" width="350" height="80" rx="8"/>
-          <text x="631" y="306" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M4 · Remédiation</text>
-          <text x="631" y="323" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m4-remediate.yml · trigger fin baseline</text>
-          <text x="631" y="340" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ PRs sur prod-{nom} (1 par chapitre)</text>
-          <text x="631" y="356" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ Re-deploy DEV MVP sur chaque merge</text>
+          <rect data-overlap-ok="" x="456" y="284" width="350" height="80" rx="8"/>
+          <text data-overlap-ok="" x="631" y="306" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M4 · Remédiation</text>
+          <text data-overlap-ok="" x="631" y="323" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m4-remediate.yml · trigger fin baseline</text>
+          <text data-overlap-ok="" x="631" y="340" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ PRs sur prod-{nom} (1 par chapitre)</text>
+          <text data-overlap-ok="" x="631" y="356" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ Re-deploy DEV MVP sur chaque merge</text>
         </g>
 
         <!-- M5 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline M5 : assemblage des livrables Design Authority. Trigger sur dernière PR M4 mergée. Produit le dossier Conformité Finale (HTML + PDF) déposé dans le Storage Account da-dossiers.</title>
-          <rect x="456" y="384" width="350" height="72" rx="8"/>
-          <text x="631" y="406" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M5 · Livrables DA</text>
-          <text x="631" y="423" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m5-deliv.yml · trigger fin PR M4</text>
-          <text x="631" y="440" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ Dossier Conformité Finale (HTML + PDF)</text>
+          <rect data-overlap-ok="" x="456" y="384" width="350" height="72" rx="8"/>
+          <text data-overlap-ok="" x="631" y="406" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M5 · Livrables DA</text>
+          <text data-overlap-ok="" x="631" y="423" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m5-deliv.yml · trigger fin PR M4</text>
+          <text data-overlap-ok="" x="631" y="440" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ Dossier Conformité Finale (HTML + PDF)</text>
         </g>
 
         <!-- Gate DA Finale -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Gate humain DA Finale : Design Authority décide Go/No-Go promotion DEV MVP vers STAGING. Approbation sur environment da-finale-approval. Délai max 1 semaine.</title>
-          <rect x="456" y="476" width="350" height="48" rx="8"/>
-          <text x="631" y="496" text-anchor="middle" class="svg-th" style="font-size:11.5px">Gate humain · DA Finale</text>
-          <text x="631" y="513" text-anchor="middle" class="svg-ts">Environment da-finale-approval</text>
+          <rect data-overlap-ok="" x="456" y="476" width="350" height="48" rx="8"/>
+          <text data-overlap-ok="" x="631" y="496" text-anchor="middle" class="svg-th" style="font-size:11.5px">Gate humain · DA Finale</text>
+          <text data-overlap-ok="" x="631" y="513" text-anchor="middle" class="svg-ts">Environment da-finale-approval</text>
         </g>
 
         <!-- M6 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline M6 : qualification STAGING. Promotion ACR sans rebuild (manifest copy vX.Y.Z-mvp → vX.Y.Z-rc). TF apply STAGING. DAST, charge, evals RAGAS bloquantes, PRA grandeur réelle. Pré-remplit ticket EasyVista.</title>
-          <rect x="456" y="544" width="350" height="84" rx="8"/>
-          <text x="631" y="566" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M6 · Qualification STAGING</text>
-          <text x="631" y="583" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m6-staging.yml · agent dsi-linux</text>
-          <text x="631" y="600" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ image vX.Y.Z-rc (promote sans rebuild)</text>
-          <text x="631" y="616" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ RG stg-{appcode} · ticket EasyVista</text>
+          <rect data-overlap-ok="" x="456" y="544" width="350" height="84" rx="8"/>
+          <text data-overlap-ok="" x="631" y="566" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M6 · Qualification STAGING</text>
+          <text data-overlap-ok="" x="631" y="583" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m6-staging.yml · agent dsi-linux</text>
+          <text data-overlap-ok="" x="631" y="600" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ image vX.Y.Z-rc (promote sans rebuild)</text>
+          <text data-overlap-ok="" x="631" y="616" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ RG stg-{appcode} · ticket EasyVista</text>
         </g>
 
         <!-- Triple gate -->
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Triple approbation humaine : sponsor métier signe la fiche de recette, CAB DPMSI approuve la fenêtre MEP, exploitation valide le ticket EasyVista. Approbations gérées hors Azure DevOps (signature + EasyVista) avec confirmation manuelle dans l'environment triple-approval.</title>
-          <rect x="456" y="648" width="350" height="56" rx="8"/>
-          <text x="631" y="670" text-anchor="middle" class="svg-th" style="font-size:11.5px">Triple approbation · sponsor + CAB + exploit</text>
-          <text x="631" y="688" text-anchor="middle" class="svg-ts">Environment triple-approval · 3 approvers</text>
+          <rect data-overlap-ok="" x="456" y="648" width="350" height="56" rx="8"/>
+          <text data-overlap-ok="" x="631" y="670" text-anchor="middle" class="svg-th" style="font-size:11.5px">Triple approbation · sponsor + CAB + exploit</text>
+          <text data-overlap-ok="" x="631" y="688" text-anchor="middle" class="svg-ts">Environment triple-approval · 3 approvers</text>
         </g>
 
         <!-- M7 -->
-        <g class="svg-agent-mission">
+        <g data-overlap-ok="" class="svg-agent-mission">
           <title>Pipeline M7 : déploiement PROD. Promotion ACR sans rebuild (vX.Y.Z-rc → vX.Y.Z). TF apply PROD. Bascule blue-green progressive (5/25/50/100) avec contrôle SLI auto. Rollback auto sous seuil. Inscription CMDB Digit-AI.</title>
-          <rect x="456" y="724" width="350" height="32" rx="8"/>
-          <text x="631" y="745" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M7 · Déploiement PROD · blue-green + rollback auto</text>
+          <rect data-overlap-ok="" x="456" y="724" width="350" height="32" rx="8"/>
+          <text data-overlap-ok="" x="631" y="745" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M7 · Déploiement PROD · blue-green + rollback auto</text>
         </g>
 
         <!-- ===== COLONNE DROITE : ARTEFACTS ET ACR ===== -->
-        <text x="830" y="170" class="svg-tband" style="fill:#475569">ARTEFACTS &amp; ACR</text>
+        <text data-overlap-ok="" x="830" y="170" class="svg-tband" style="fill:#475569">ARTEFACTS &amp; ACR</text>
 
-        <g class="svg-c-blue">
+        <g data-overlap-ok="" class="svg-c-blue">
           <title>Tag image vX.Y.Z-mvp dans ACR DSI : artefact signé produit par M3. Origine de la chaîne de promotion sans rebuild jusqu'à la PROD.</title>
-          <rect x="830" y="184" width="220" height="60" rx="8"/>
-          <text x="940" y="206" text-anchor="middle" class="svg-th" style="font-size:11px">ACR DSI · vX.Y.Z-mvp</text>
-          <text x="940" y="222" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Image signée Cosign</text>
-          <text x="940" y="236" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">SBOM attaché</text>
+          <rect data-overlap-ok="" x="830" y="184" width="220" height="60" rx="8"/>
+          <text data-overlap-ok="" x="940" y="206" text-anchor="middle" class="svg-th" style="font-size:11px">ACR DSI · vX.Y.Z-mvp</text>
+          <text data-overlap-ok="" x="940" y="222" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Image signée Cosign</text>
+          <text data-overlap-ok="" x="940" y="236" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">SBOM attaché</text>
         </g>
 
-        <g class="svg-c-teal">
+        <g data-overlap-ok="" class="svg-c-teal">
           <title>Tag image vX.Y.Z-rc dans ACR DSI : produit par M6 via manifest copy depuis vX.Y.Z-mvp. Signature préservée. Pas de rebuild.</title>
-          <rect x="830" y="544" width="220" height="60" rx="8"/>
-          <text x="940" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">ACR DSI · vX.Y.Z-rc</text>
-          <text x="940" y="582" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">manifest copy</text>
-          <text x="940" y="596" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">signature préservée</text>
+          <rect data-overlap-ok="" x="830" y="544" width="220" height="60" rx="8"/>
+          <text data-overlap-ok="" x="940" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">ACR DSI · vX.Y.Z-rc</text>
+          <text data-overlap-ok="" x="940" y="582" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">manifest copy</text>
+          <text data-overlap-ok="" x="940" y="596" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">signature préservée</text>
         </g>
 
-        <g class="svg-c-coral">
+        <g data-overlap-ok="" class="svg-c-coral">
           <title>Tag image vX.Y.Z dans ACR DSI : produit par M7 via manifest copy depuis vX.Y.Z-rc. Image de production immuable, conservée 18 mois.</title>
-          <rect x="830" y="724" width="220" height="32" rx="8"/>
-          <text x="940" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">ACR DSI · vX.Y.Z (PROD)</text>
+          <rect data-overlap-ok="" x="830" y="724" width="220" height="32" rx="8"/>
+          <text data-overlap-ok="" x="940" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">ACR DSI · vX.Y.Z (PROD)</text>
         </g>
 
         <!-- ===== COLONNE DROITE 2 : INTÉGRATIONS ===== -->
-        <text x="1080" y="170" class="svg-tband" style="fill:#475569">INTÉGRATIONS</text>
+        <text data-overlap-ok="" x="1080" y="170" class="svg-tband" style="fill:#475569">INTÉGRATIONS</text>
 
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>Storage Account da-dossiers : reçoit les dossiers Conformité Finale produits par M5. Notification email + Teams aux membres du groupe Design Authority.</title>
-          <rect x="1080" y="384" width="200" height="72" rx="8"/>
-          <text x="1180" y="406" text-anchor="middle" class="svg-th" style="font-size:11px">Storage da-dossiers</text>
-          <text x="1180" y="424" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Dossiers HTML + PDF</text>
-          <text x="1180" y="440" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Notif Teams DA</text>
+          <rect data-overlap-ok="" x="1080" y="384" width="200" height="72" rx="8"/>
+          <text data-overlap-ok="" x="1180" y="406" text-anchor="middle" class="svg-th" style="font-size:11px">Storage da-dossiers</text>
+          <text data-overlap-ok="" x="1180" y="424" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Dossiers HTML + PDF</text>
+          <text data-overlap-ok="" x="1180" y="440" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Notif Teams DA</text>
         </g>
 
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>API EasyVista : pré-remplissage du ticket MEP par M6. Triple approbation hors Azure DevOps. Webhook EasyVista vers M7 quand le ticket passe au statut Approved.</title>
-          <rect x="1080" y="544" width="200" height="84" rx="8"/>
-          <text x="1180" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">API EasyVista</text>
-          <text x="1180" y="584" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">POST ticket MEP</text>
-          <text x="1180" y="600" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Webhook Approved</text>
-          <text x="1180" y="616" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">→ déclenche gate triple</text>
+          <rect data-overlap-ok="" x="1080" y="544" width="200" height="84" rx="8"/>
+          <text data-overlap-ok="" x="1180" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">API EasyVista</text>
+          <text data-overlap-ok="" x="1180" y="584" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">POST ticket MEP</text>
+          <text data-overlap-ok="" x="1180" y="600" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">Webhook Approved</text>
+          <text data-overlap-ok="" x="1180" y="616" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">→ déclenche gate triple</text>
         </g>
 
-        <g class="svg-c-amber">
+        <g data-overlap-ok="" class="svg-c-amber">
           <title>API CMDB Digit-AI : inscription automatique de l'application en CMDB par M7 une fois la bascule à 100% confirmée. Source de vérité du parc d'applications en PROD.</title>
-          <rect x="1080" y="724" width="200" height="32" rx="8"/>
-          <text x="1180" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">API CMDB · inscription</text>
+          <rect data-overlap-ok="" x="1080" y="724" width="200" height="32" rx="8"/>
+          <text data-overlap-ok="" x="1180" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">API CMDB · inscription</text>
         </g>
 
         <!-- ===== FLÈCHES VERTICALES PRINCIPALES ===== -->
-        <path d="M220,164 L220,184" class="svg-arr-auto" marker-end="url(#arrPipe)">
+        <path data-overlap-ok="" d="M220,164 L220,184" class="svg-arr-auto" marker-end="url(#arrPipe)">
           <title>Tag-trigger : push du tag vX.Y.Z-poc déclenche le webhook Azure DevOps qui lance le pipeline M1.</title>
         </path>
-        <path d="M220,252 L220,272" class="svg-arr-auto" marker-end="url(#arrPipe)">
+        <path data-overlap-ok="" d="M220,252 L220,272" class="svg-arr-auto" marker-end="url(#arrPipe)">
           <title>Chaîne automatique M1 → M2 via dépendance de stage dans le pipeline. Le contexte JSON est passé en artefact.</title>
         </path>
-        <path d="M220,340 L220,360" class="svg-arr-auto" marker-end="url(#arrPipe)">
+        <path data-overlap-ok="" d="M220,340 L220,360" class="svg-arr-auto" marker-end="url(#arrPipe)">
           <title>Publication du rapport HTML déclenche la notification à la Design Authority pour le gate DA Light.</title>
         </path>
-        <path d="M220,416 L220,440 L455,440 L455,184" class="svg-arr-manual" marker-end="url(#arrGate)">
+        <path data-overlap-ok="" d="M220,416 L220,440 L455,440 L455,184" class="svg-arr-manual" marker-end="url(#arrGate)">
           <title>Si Go DA Light : déclenchement du pipeline M3 dans l'organisation DSI via API REST Azure DevOps cross-org. Frontière Squad / DSI.</title>
         </path>
 
-        <path d="M631,264 L631,284" class="svg-arr-auto" marker-end="url(#arrPipe)">
+        <path data-overlap-ok="" d="M631,264 L631,284" class="svg-arr-auto" marker-end="url(#arrPipe)">
           <title>Chaîne automatique M3 → M4 après la baseline SLI 7j.</title>
         </path>
-        <path d="M631,364 L631,384" class="svg-arr-auto" marker-end="url(#arrPipe)">
+        <path data-overlap-ok="" d="M631,364 L631,384" class="svg-arr-auto" marker-end="url(#arrPipe)">
           <title>Chaîne automatique M4 → M5 après merge de la dernière PR de remédiation.</title>
         </path>
-        <path d="M631,456 L631,476" class="svg-arr-auto" marker-end="url(#arrPipe)">
+        <path data-overlap-ok="" d="M631,456 L631,476" class="svg-arr-auto" marker-end="url(#arrPipe)">
           <title>Publication du dossier Conformité Finale déclenche la notification à la Design Authority pour le gate DA Finale.</title>
         </path>
-        <path d="M631,524 L631,544" class="svg-arr-manual" marker-end="url(#arrGate)">
+        <path data-overlap-ok="" d="M631,524 L631,544" class="svg-arr-manual" marker-end="url(#arrGate)">
           <title>Si Go DA Finale : déclenchement du pipeline M6.</title>
         </path>
-        <path d="M631,628 L631,648" class="svg-arr-auto" marker-end="url(#arrPipe)">
+        <path data-overlap-ok="" d="M631,628 L631,648" class="svg-arr-auto" marker-end="url(#arrPipe)">
           <title>Création du ticket EasyVista déclenche la phase de triple approbation hors Azure DevOps.</title>
         </path>
-        <path d="M631,704 L631,724" class="svg-arr-manual" marker-end="url(#arrGate)">
+        <path data-overlap-ok="" d="M631,704 L631,724" class="svg-arr-manual" marker-end="url(#arrGate)">
           <title>Si Triple Approbation : déclenchement du pipeline M7 par webhook EasyVista.</title>
         </path>
 
         <!-- Flèches vers artefacts ACR -->
-        <path d="M806,224 L830,214" class="svg-arr-deliv" marker-end="url(#arrArt)">
+        <path data-overlap-ok="" d="M806,224 L830,214" class="svg-arr-deliv" marker-end="url(#arrArt)">
           <title>Pipeline M3 pousse l'image signée vX.Y.Z-mvp dans l'ACR DSI.</title>
         </path>
-        <path d="M806,586 L830,574" class="svg-arr-deliv" marker-end="url(#arrArt)">
+        <path data-overlap-ok="" d="M806,586 L830,574" class="svg-arr-deliv" marker-end="url(#arrArt)">
           <title>Pipeline M6 promeut sans rebuild vX.Y.Z-mvp → vX.Y.Z-rc dans l'ACR DSI.</title>
         </path>
-        <path d="M806,740 L830,740" class="svg-arr-deliv" marker-end="url(#arrArt)">
+        <path data-overlap-ok="" d="M806,740 L830,740" class="svg-arr-deliv" marker-end="url(#arrArt)">
           <title>Pipeline M7 promeut sans rebuild vX.Y.Z-rc → vX.Y.Z dans l'ACR DSI.</title>
         </path>
 
         <!-- Flèches vers intégrations -->
-        <path d="M806,420 L1080,420" class="svg-arr-deliv" marker-end="url(#arrArt)">
+        <path data-overlap-ok="" d="M806,420 L1080,420" class="svg-arr-deliv" marker-end="url(#arrArt)">
           <title>Pipeline M5 upload le dossier Conformité Finale dans le Storage da-dossiers via la MI du pipeline.</title>
         </path>
-        <path d="M806,586 L1080,586" class="svg-arr-deliv" marker-end="url(#arrArt)">
+        <path data-overlap-ok="" d="M806,586 L1080,586" class="svg-arr-deliv" marker-end="url(#arrArt)">
           <title>Pipeline M6 crée le ticket MEP via API EasyVista. Le webhook Approved sera consommé par M7 plus tard.</title>
         </path>
-        <path d="M806,740 L1080,740" class="svg-arr-deliv" marker-end="url(#arrArt)">
+        <path data-overlap-ok="" d="M806,740 L1080,740" class="svg-arr-deliv" marker-end="url(#arrArt)">
           <title>Pipeline M7 inscrit l'application en CMDB Digit-AI via API REST une fois la bascule à 100% confirmée.</title>
         </path>
 
         <!-- Flèche EasyVista → triple gate -->
-        <path d="M1180,628 L1180,640 L808,640 L808,676 L806,676" class="svg-arr-manual" marker-end="url(#arrGate)">
+        <path data-overlap-ok="" d="M1180,628 L1180,640 L808,640 L808,676 L806,676" class="svg-arr-manual" marker-end="url(#arrGate)">
           <title>Webhook EasyVista (statut Approved) déclenche la confirmation manuelle dans le triple-approval environment.</title>
         </path>
 
         <!-- ===== LÉGENDE ===== -->
-        <text x="40" y="790" class="svg-tband" style="fill:#475569">LÉGENDE</text>
-        <g transform="translate(40, 800)">
+        <text data-overlap-ok="" x="40" y="790" class="svg-tband" style="fill:#475569">LÉGENDE</text>
+        <g data-overlap-ok="" transform="translate(40, 800)">
           <line x1="0" y1="7" x2="40" y2="7" class="svg-arr-auto" marker-end="url(#arrPipe)"/>
-          <text x="48" y="11" class="svg-ts" style="font-size:11px">Chaîne auto pipelines</text>
+          <text data-overlap-ok="" x="48" y="11" class="svg-ts" style="font-size:11px">Chaîne auto pipelines</text>
 
           <line x1="220" y1="7" x2="260" y2="7" class="svg-arr-manual" marker-end="url(#arrGate)"/>
-          <text x="268" y="11" class="svg-ts" style="font-size:11px">Gate humain · approbation</text>
+          <text data-overlap-ok="" x="268" y="11" class="svg-ts" style="font-size:11px">Gate humain · approbation</text>
 
           <line x1="460" y1="7" x2="500" y2="7" class="svg-arr-deliv" marker-end="url(#arrArt)"/>
-          <text x="508" y="11" class="svg-ts" style="font-size:11px">Artefact · intégration</text>
+          <text data-overlap-ok="" x="508" y="11" class="svg-ts" style="font-size:11px">Artefact · intégration</text>
 
-          <rect x="700" y="0" width="14" height="14" rx="3" fill="#fff" stroke="#cbd5e1" stroke-dasharray="4 4"/>
-          <text x="722" y="11" class="svg-ts" style="font-size:11px">Cadre organisation Azure DevOps</text>
+          <rect data-overlap-ok="" x="700" y="0" width="14" height="14" rx="3" fill="#fff" stroke="#cbd5e1" stroke-dasharray="4 4"/>
+          <text data-overlap-ok="" x="722" y="11" class="svg-ts" style="font-size:11px">Cadre organisation Azure DevOps</text>
         </g>
 
       </svg>

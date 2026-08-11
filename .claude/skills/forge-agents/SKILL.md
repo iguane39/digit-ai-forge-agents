@@ -7,6 +7,13 @@ metadata:
 
 # forge-agents — skill méta multi-agents
 
+> **Statut : DORMANCE ASSUMÉE (décision TF-0025, 11/08/2026).** Dernier run réel : T-0100
+> (workflow jouet, 24/07) — aucun chantier n'a réclamé de compilation d'agents depuis :
+> l'orchestration réelle passe par l'Agent tool et les campagnes mandatées, qui suffisent
+> aux besoins constatés. Le skill reste installé, testé par le self-test du poste et
+> réactivable tel quel ; toute reprise commence par rejouer un run jouet (mode `run`,
+> gates G1-G3) avant un chantier réel. Ni maintenance active, ni évolutions planifiées.
+
 Le nombre d'agents n'est jamais fixé a priori : il sort du découpage. Une étape ne devient un
 agent que si elle le mérite (critère à 3 conditions) ; sinon elle reste dans l'orchestrateur.
 
