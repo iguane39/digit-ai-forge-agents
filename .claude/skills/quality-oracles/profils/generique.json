@@ -1,6 +1,6 @@
 {
   "nom": "generique",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "perf": {
     "poids_warn": 2097152,
     "poids_fail": 5242880,
@@ -13,7 +13,13 @@
     "jpeg_interdit": false,
     "transitions_interdites": false
   },
-  "nommage": null,
+  "nommage": {
+    "_decision": "TF-0071 (11/08/2026) : convention générique MINIMALE plutôt que SKIP permanent — le motif Q3-bis est purement structurel (aucun préfixe imposé, aucun nom de marque) : seul un fichier qui ADOPTE la forme « <X> - <Y> - … » est jugé, et il doit alors la finir correctement (date AAAAMMJJ + indice). Un projet aux conventions propres n'est jamais condamné : ses fichiers ordinaires ne déclenchent pas.",
+    "prefixe": null,
+    "libelle": "<Projet> - <Objet> - AAAAMMJJ{a…}.<ext>",
+    "declencheur": "^.+ - .+ - \\d{8}",
+    "regex": "^[^_]+ - [^_]+ - \\d{8}[a-z](?: .*)?\\.[A-Za-z0-9]+$"
+  },
   "claims": {
     "actif": false,
     "marqueurs_source": [

@@ -278,14 +278,41 @@ MEASURE_JS = r"""
       const serie = byTag[tag];
       if (serie.length < 3) continue;
       const lefts = serie.map((k) => k.r.left), tops = serie.map((k) => k.r.top);
-      const sameRow = Math.max(...tops) - Math.min(...tops) <= __ALIGN_TOL__;
-      const sameCol = Math.max(...lefts) - Math.min(...lefts) <= __ALIGN_TOL__;
-      const nearlyRow = !sameRow && (Math.max(...tops) - Math.min(...tops) <= 12);
-      const nearlyCol = !sameCol && (Math.max(...lefts) - Math.min(...lefts) <= 12);
+      // V3 mesure le MEILLEUR alignement plausible (bord, centre, bord opposé) — même
+      // leçon que V7 (TF-0059/TF-0066) : sur une rangée d'éléments de tailles variables,
+      // le seul bord haut (ou gauche) diverge mécaniquement alors que la rangée est
+      // alignée par le centre ou la base. Juger le pire axe fabriquait des faux positifs.
+      const etendue = (vals) => Math.max(...vals) - Math.min(...vals);
+      const vSpread = Math.min(etendue(tops),
+        etendue(serie.map((k) => k.r.bottom)),
+        etendue(serie.map((k) => k.r.top + k.r.height / 2)));
+      const hSpread = Math.min(etendue(lefts),
+        etendue(serie.map((k) => k.r.right)),
+        etendue(serie.map((k) => k.r.left + k.r.width / 2)));
+      const sameRow = vSpread <= __ALIGN_TOL__;
+      const sameCol = hSpread <= __ALIGN_TOL__;
+      // Une « presque-rangée » suppose des membres LATÉRALEMENT SÉQUENTIELS : deux membres
+      // qui se recouvrent sur l'axe de la rangée (titre au-dessus de son sous-titre, badge
+      // + pile de lignes) forment un COMPOSITE assumé, pas une rangée ratée. Même garde en
+      // colonne. Et un groupe déjà aligné sur un axe n'est pas un presque-aligné de l'autre.
+      const seChevauchent = (horizontal) => {
+        const tri = serie.slice().sort((a, b) => horizontal ? a.r.left - b.r.left : a.r.top - b.r.top);
+        for (let i = 1; i < tri.length; i++) {
+          const p = tri[i - 1].r, c = tri[i].r;
+          const rec = horizontal
+            ? Math.min(p.right, c.right) - Math.max(p.left, c.left)
+            : Math.min(p.bottom, c.bottom) - Math.max(p.top, c.top);
+          const petit = horizontal ? Math.min(p.width, c.width) : Math.min(p.height, c.height);
+          if (rec > 0.5 * petit) return true;
+        }
+        return false;
+      };
+      const nearlyRow = !sameRow && !sameCol && vSpread <= 12 && !seChevauchent(true);
+      const nearlyCol = !sameCol && !sameRow && hSpread <= 12 && !seChevauchent(false);
       if (nearlyRow) issues.v3_align.push({ what: `${serie.length}×${tag.toLowerCase()} dans ${label(parent)}`,
-        detail: `tops décalés de ${Math.round(Math.max(...tops) - Math.min(...tops))}px (rangée presque alignée)` });
+        detail: `rangée presque alignée : ${Math.round(vSpread)}px au meilleur axe (haut/centre/base)` });
       if (nearlyCol) issues.v3_align.push({ what: `${serie.length}×${tag.toLowerCase()} dans ${label(parent)}`,
-        detail: `lefts décalés de ${Math.round(Math.max(...lefts) - Math.min(...lefts))}px (colonne presque alignée)` });
+        detail: `colonne presque alignée : ${Math.round(hSpread)}px au meilleur axe (gauche/centre/droite)` });
       // V7 mesure l'ESPACE ENTRE LES BOITES, jamais le pas d'un bord gauche (ou d'un
       // haut) au suivant. Avec le pas, une colonne de <p> de longueurs differentes
       // affiche mecaniquement des ecarts differents : la variation vient de la hauteur

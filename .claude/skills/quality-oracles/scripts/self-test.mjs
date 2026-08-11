@@ -5,6 +5,7 @@
 // registre JSON parse ; (3) chaque oracle CLI (.mjs) du registre existe et compile
 // (`node --check`). exit 0 = PASS, 1 = FAIL.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -133,7 +134,9 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
 }
 // preuve comportementale : perf-red.html non jugé en niveau note (perf exclu), FAIL en production
 {
-  const tmp = fs.mkdtempSync(path.join(SKILLDIR, 'fixtures', '.tmp-niv-'));
+  // tmpdir du POSTE, jamais fixtures/ : un process tué en plein run y fuyait ses dossiers
+  // .tmp-niv-* (24 résidus constatés, TF-0068) — hors dépôt, une fuite est sans victime.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-niv-'));
   try {
     fs.copyFileSync(path.join(SKILLDIR, 'fixtures', 'perf-red.html'), path.join(tmp, 'perf-red.html'));
     const run = niv => spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), tmp, '--niveau', niv, '--no-cache', '--json', '--profil', path.join(SKILLDIR, 'fixtures', 'profil-test-niveaux.json')], { encoding: 'utf8', timeout: 180000 });
