@@ -65,6 +65,15 @@ CAS = {
 
 RE_CODE = re.compile(r"^(L\d+)\b")
 
+# A1 (autonomie réseau, D-10) vit dans la famille « charte » : ses fixtures se
+# jugent avec regles="charte" et on n'extrait que les codes A — les deux pages
+# sont charte-conformes par construction, seul A1 les départage.
+CAS_AUTONOMIE = {
+    "a1-cdn-au-chargement.html": {"A1"},
+    "a1-liens-documentaires.html": set(),  # liens <a>, xmlns, data: URI : silence exigé
+}
+RE_CODE_A = re.compile(r"^(A\d+)\b")
+
 # Cas mesurés AU RENDU : le contrôle statique de L2 lit le CSS du conteneur et ne
 # voit pas un paragraphe bridé à l'intérieur. Ces deux-là ne se jugent qu'en
 # ouvrant la page dans un navigateur.
@@ -81,10 +90,10 @@ CAS_RENDU = {
 }
 
 
-def codes(messages):
+def codes(messages, motif=RE_CODE):
     out = set()
     for m in messages:
-        c = RE_CODE.match(m)
+        c = motif.match(m)
         if c:
             out.add(c.group(1))
     return out
@@ -107,6 +116,25 @@ def run():
             "attendu": sorted(attendu),
             "obtenu": sorted(obtenu),
             "detail": "" if ok else " | ".join(fails)[:400],
+        })
+    for nom, attendu in CAS_AUTONOMIE.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE", "attendu": sorted(attendu),
+                              "obtenu": [], "detail": "fixture manquante"})
+            continue
+        fails, _ = check(chemin.read_text(encoding="utf-8"), regles="charte")
+        obtenu = codes(fails, RE_CODE_A)
+        # une fixture A doit aussi être charte-verte : un échec charte parasite
+        # rendrait le cas trompeur (on croirait tester A1, on testerait la charte).
+        parasites = [f for f in fails if not RE_CODE_A.match(f)]
+        ok = obtenu == attendu and not parasites
+        resultats.append({
+            "fixture": nom,
+            "verdict": "OK" if ok else "ECHEC",
+            "attendu": sorted(attendu),
+            "obtenu": sorted(obtenu),
+            "detail": "" if ok else " | ".join(fails + parasites)[:400],
         })
     return resultats
 

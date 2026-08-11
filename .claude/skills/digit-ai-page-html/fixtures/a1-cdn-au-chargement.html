@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A1 — rouge : ressources chargées par le réseau</title>
+<link rel="stylesheet" href="//fonts.googleapis.com/css2?family=Roboto">
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif; }
+@import url("https://cdn.exemple.invalid/theme.css");
+.banniere { background: url(https://cdn.exemple.invalid/fond.png); }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page qui téléphone au chargement</h1>
+<h2>Quatre fuites, quatre familles</h2>
+<p>Cette page paraît autonome mais émet des requêtes dès l'ouverture : une feuille de
+style protocole-relatif, un @import distant, un fond CSS distant et le script ci-dessous.
+Chacune signale au serveur tiers quand et d'où le document est lu.</p>
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="pixel local licite">
+</main>
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+</body>
+</html>
