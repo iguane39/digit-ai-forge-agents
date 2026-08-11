@@ -36,6 +36,15 @@ if (process.platform === 'win32') {
   ].filter(Boolean);
   const cli = candidats.find(c => fs.existsSync(c));
   if (cli) { jugeCmd = process.execPath; jugePre = [cli]; }
+  else {
+    // Claude Code ≥ 2.x : le paquet npm livre un exécutable natif bin/claude.exe (plus de cli.js).
+    const exes = [
+      process.env.APPDATA && path.join(process.env.APPDATA, 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'),
+      shim && path.join(path.dirname(shim), 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
+    ].filter(Boolean);
+    const exe = exes.find(c => fs.existsSync(c));
+    if (exe) { jugeCmd = exe; jugePre = []; }
+  }
 }
 const prompt = fs.readFileSync(rub, 'utf8') + '\n\n--- LIVRABLE À ÉVALUER ---\n' + fs.readFileSync(file, 'utf8').slice(0, 60000);
 const r = spawnSync(jugeCmd, [...jugePre, '-p', prompt, '--output-format', 'text'], { encoding: 'utf8', timeout: 180000 });
