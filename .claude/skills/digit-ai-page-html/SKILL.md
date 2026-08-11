@@ -27,6 +27,10 @@ si la page vise aussi le PDF.
 - **Light theme** systématique.
 - Toutes les couleurs, polices et rayons en **variables `:root`** — aucun hex en dur.
 - Toujours une **pile de repli système** derrière les web fonts.
+- **Autonomie réseau totale (A1, décision D-10)** : aucune requête au chargement — pas de
+  CDN, pas de police distante, pas d'image externe. CSS/JS inline, images en `data:` URI,
+  polices en repli système. Un lien cliquable `<a href>` reste légitime (rien ne se charge
+  sans geste du lecteur). Contrôlé par `check_html.py` (FAIL bloquant).
 - Nommage fichier : `Digit-AI - {TypeDoc} {Client} - {Scope} - {YYYYMMDD}{a,b,c…}.{ext}`.
 
 Détail complet + tokens (palette, rayons, familles, année de référence) :
@@ -58,7 +62,8 @@ python scripts/check_html.py chemin/vers/page.html
 ```
 
 Le script signale les **échecs bloquants** (Syne présent, `lang` absent, charset non prioritaire,
-`<h1>` absent ou multiple, `:root` absent, `<title>` vide, pas de `@media print`) et des
+`<h1>` absent ou multiple, `:root` absent, `<title>` vide, pas de `@media print`, ressource
+chargée par le réseau — A1) et des
 **avertissements** (repli de font manquant, `alt` manquant, saut de niveau de titre, script
 bloquant en `<head>`, pas de repère sémantique). Corriger tous les échecs, traiter les
 avertissements selon le contexte, relancer jusqu'au PASS.

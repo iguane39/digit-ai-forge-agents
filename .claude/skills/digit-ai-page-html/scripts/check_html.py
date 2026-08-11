@@ -4,7 +4,9 @@ check_html.py — Contrôle de conformité d'une page HTML au socle Digit-AI.
 
 Deux familles de contrôles, déterministes, sans dépendance externe ni appel LLM :
 
-  · CHARTE  — obligatoires de charte, d'accessibilité et d'export print.
+  · CHARTE  — obligatoires de charte, d'accessibilité et d'export print ;
+              inclut A1, l'autonomie réseau (D-10 organization) : un livrable
+              sortant n'émet aucune requête au chargement.
   · L1-L10  — lisibilité (references/lisibilite.md) : texte tronqué, largeur de
               lecture, valeur sans barème, liste longue non filtrable, surlignage
               qui casse les mots, sommaire muet ou à ancre morte, chapitre sans
@@ -710,11 +712,77 @@ def check_lisibilite(html: str, a: Arbre):
 
 
 # ---------------------------------------------------------------------------
+# A1 — autonomie réseau (décision D-10 d'organization, 08/08 ; contrôle exécutable
+# livré le 11/08, TF-0085). Un livrable HTML sortant est entièrement autonome :
+# aucun CDN, aucune police distante, aucune image externe — trois motifs, par ordre
+# d'importance : confidentialité (une requête sortante signale l'ouverture du
+# document), durabilité (un CDN disparu rend la page illisible dans deux ans),
+# contexte de lecture (pièce jointe ouverte hors ligne, proxy d'entreprise).
+# Un lien cliquable <a href> reste légitime : il ne charge rien sans geste du
+# lecteur. xmlns= est un identifiant de vocabulaire, jamais résolu en requête.
+# ---------------------------------------------------------------------------
+RE_RESEAU = re.compile(r"^\s*(?:https?:)?//", re.I)
+RE_CSS_RESEAU = re.compile(
+    r"@import\s+(?:url\(\s*)?[\"']?\s*(?:https?:)?//"
+    r"|url\(\s*[\"']?\s*(?:https?:)?//", re.I)
+BALISES_CHARGEANTES = {"script", "img", "iframe", "video", "audio", "source",
+                       "embed", "object", "track", "input"}
+ATTRS_CHARGEANTS = ("src", "srcset", "poster", "data")
+LINK_RELS_CHARGEANTS = {"stylesheet", "icon", "shortcut", "preload", "prefetch",
+                        "preconnect", "dns-prefetch", "manifest", "modulepreload",
+                        "apple-touch-icon", "mask-icon"}
+RE_BALISE = re.compile(r"<(\w+)\b([^>]*)>", re.S)
+RE_ATTR = re.compile(r"([\w-]+)\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)")
+
+
+def check_autonomie(html: str):
+    """A1 : aucune ressource chargée par le réseau. Retourne (fails, warns)."""
+    constats = []
+
+    for m in RE_BALISE.finditer(html):
+        balise = m.group(1).lower()
+        attrs = {k.lower(): v.strip("\"'") for k, v in RE_ATTR.findall(m.group(2))}
+        if balise in BALISES_CHARGEANTES:
+            for att in ATTRS_CHARGEANTS:
+                val = attrs.get(att, "")
+                # srcset : plusieurs URL séparées par des virgules
+                candidats = val.split(",") if att == "srcset" else [val]
+                if any(RE_RESEAU.match(c.strip()) for c in candidats if c.strip()):
+                    constats.append(f"<{balise} {att}=\"{val[:70]}\">")
+        elif balise == "link":
+            rels = set(attrs.get("rel", "").lower().split())
+            if rels & LINK_RELS_CHARGEANTS and RE_RESEAU.match(attrs.get("href", "")):
+                constats.append(f"<link rel=\"{attrs.get('rel','')}\" "
+                                f"href=\"{attrs.get('href','')[:70]}\">")
+        # CSS inline d'un attribut style : url(https://…)
+        if "style" in attrs and RE_CSS_RESEAU.search(attrs["style"]):
+            constats.append(f"style=\"{attrs['style'][:70]}\" sur <{balise}>")
+
+    for bloc in re.findall(r"<style[^>]*>(.*?)</style>", html, re.S | re.I):
+        for hit in RE_CSS_RESEAU.finditer(bloc):
+            extrait = bloc[hit.start():hit.start() + 70].strip()
+            constats.append(f"CSS : {extrait}")
+
+    fails = []
+    if constats:
+        exemples = " · ".join(constats[:3])
+        suite = f" (+{len(constats) - 3} autre(s))" if len(constats) > 3 else ""
+        fails.append(
+            f"A1 — {len(constats)} requête(s) réseau au chargement : {exemples}{suite} "
+            "— un livrable sortant est autonome (D-10 : confidentialité, durabilité, "
+            "lecture hors ligne) ; inliner le CSS/JS, passer les images en data: URI.")
+    return fails, []
+
+
+# ---------------------------------------------------------------------------
 def check(html: str, regles: str = "tout"):
     """Retourne (fails, warns) — deux listes de messages."""
     fails, warns = [], []
     if regles in ("tout", "charte"):
         f, w = check_charte(html)
+        fails += f
+        warns += w
+        f, w = check_autonomie(html)
         fails += f
         warns += w
     if regles in ("tout", "L"):
