@@ -55,6 +55,14 @@ squelette + fixtures + entrées registre/manifest), **enregistrer**, **appliquer
 **Signalement = écriture (M1, D1, 23/07/2026)** : tout contrôle manuel sur un domaine hors registre produit **dans le tour même** une entrée dans la **file des candidats** (`file-candidats.md` du repo forge ; côté claude.ai : `/areas/forge-file-candidats.md`) — domaine, chantier, contrôle fait, défaut observé, date. Scaffold **obligatoire** (N1) dès : 2e occurrence **du même candidat** dans la file · rejeu d'un contrôle ad hoc dans un même fil · angle A1/A2 vide en contre-expertise d'un livrable client.
 **Règle de famille (M1, D1, 08/08/2026)** — le compteur porte sur le **candidat**, jamais sur le libellé exact du domaine. Deux entrées comptent pour le même candidat si elles partagent **(a)** le **préfixe de domaine** — segment avant le premier tiret : `cadrage-reponse-ao`, `cadrage-acquisition` et `cadrage-programme-formation` forment la famille `cadrage` —, **ou (b)** la **même classe de défaut** consignée, quels que soient les libellés. Motif : trois occurrences d'un même motif sous trois noms différents ne déclenchaient jamais N1, le candidat restait gelé indéfiniment (constaté le 08/08/2026 sur `gabarits de cadrage A0 par famille de livrable`, en attente depuis le 24/07/2026). Le critère (a) est mécanique et s'applique seul ; le critère (b) est un rattrapage, à instruire quand les préfixes divergent.
 
+**Spécification en amont (arbitrage Leviers, TF-0052, 11/08/2026 — « C armé par A »)** : avant tout
+**livrable substantiel** (page, deck, rapport, dashboard, gabarit), produire un **plan de contenu**
+— la liste des blocs et ce que chacun porte — et le confronter au **gabarit A0 de sa famille**
+quand il existe (première famille instanciée : page HTML de restitution, gabarit A0 chez
+forge-organization). Un écart se corrige sur 15 lignes de plan, pas sur 400 lignes de HTML.
+L'injection automatique par hook (option B) est écartée : le type d'un livrable n'est pas
+détectable avant l'écriture.
+
 ## 5. Honnêteté & fiabilité du process
 - Ne **jamais recopier** un résultat d'une itération précédente ; itérer par **copie + éditions chirurgicales**.
 - Toute valeur non vérifiable est **marquée** (« à vérifier »), jamais maquillée ; rapporter fidèlement,
