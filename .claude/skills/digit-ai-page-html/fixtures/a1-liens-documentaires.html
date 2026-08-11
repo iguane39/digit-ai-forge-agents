@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A1 — verte : références documentaires sans requête</title>
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif; --accent: #2a5db0; }
+.sceau { background: url(data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==); }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page autonome qui cite ses sources</h1>
+<h2>Mentionner le réseau n'est pas s'y connecter</h2>
+<p>La méthodologie est publiée sur <a href="https://exemple.org/methode">exemple.org/methode</a>
+et le référentiel sur <a href="//exemple.org/referentiel">son miroir</a> : un lien cliquable
+ne charge rien sans geste du lecteur. L'URL https://exemple.org/api citée en texte non plus.</p>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" role="img" aria-label="pastille décorative">
+  <circle cx="20" cy="20" r="16" fill="#2a5db0"/>
+</svg>
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="image embarquée en data URI">
+</main>
+</body>
+</html>
