@@ -1,0 +1,4 @@
+{"seq":1,"ts":"2026-08-12T08:00:00.000Z","type":"run_open","run":"otlp-fixture-verte","ticket":"T-OTLP-FIX"}
+{"seq":2,"ts":"2026-08-12T08:00:01.000Z","type":"artefact","agent":"agent-a","artefact":"a.md","verdict":"ok"}
+{"seq":3,"ts":"2026-08-12T08:00:02.000Z","type":"gates_verdict","ticket":"T-OTLP-FIX","g1":"1 count_task","g3":"PASS"}
+{"seq":4,"ts":"2026-08-12T08:00:03.000Z","type":"run_close","run":"otlp-fixture-verte","verdict":"PASS"}

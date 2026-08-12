@@ -1,0 +1,2 @@
+{"seq":1,"ts":"2026-08-12T08:00:00.000Z","type":"artefact","agent":"agent-a","artefact":"a.md","verdict":"ok"}
+{"seq":2,"ts":"2026-08-12T08:00:01.000Z","type":"run_close","verdict":"PASS"}
