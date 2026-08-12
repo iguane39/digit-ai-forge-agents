@@ -37,10 +37,16 @@ agent que si elle le mérite (critère à 3 conditions) ; sinon elle reste dans 
 node scripts/compile-agent-def.mjs defs/*.yaml --out .claude/agents/
 node scripts/ledger.mjs verify <dossier-projet>/ledger.jsonl
 node scripts/self-test.mjs   # fixtures verte/rouges — à rejouer après toute modification
+node scripts/otlp-project.mjs <dossier-projet>/ledger.jsonl --out spans.json  # TF-0106 (1)
+bash scripts/self-test-gate-budget.sh   # gate G0 budget, TF-0106 (2) — isolé, QUEUE_DIR temporaire
 ```
 
 4. Invocation par un skill pair (dont l'escalade la-boucle) :
    [references/contrat-invocation.md](references/contrat-invocation.md).
+5. Observabilité et gouvernance de coût (TF-0106, V0) : projection OTLP GenAI du ledger
+   ([references/otlp-genai.md](references/otlp-genai.md)), gate de budget G0
+   ([references/gate-budget.md](references/gate-budget.md)), oracle de régression des sorties
+   d'agents `scripts/oracle-agent-evals.mjs` (fixtures `fixtures/agent-evals/`).
 
 ## Critère « mérite un agent » (porte d'entrée unique)
 

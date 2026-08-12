@@ -1,0 +1,7 @@
+{
+  "agent": "collecte-structure",
+  "artefact": "sortie.md",
+  "criteres": [
+    "EXISTS:sortie.md"
+  ]
+}

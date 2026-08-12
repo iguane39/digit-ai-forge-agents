@@ -3,7 +3,10 @@
     "PreToolUse": [
       {
         "matcher": "Task",
-        "hooks": [{ "type": "command", "command": "bash .queue/gates/g1-count-task.sh" }]
+        "hooks": [
+          { "type": "command", "command": "bash .queue/gates/g0-budget.sh" },
+          { "type": "command", "command": "bash .queue/gates/g1-count-task.sh" }
+        ]
       },
       {
         "matcher": "Edit|Write|MultiEdit|Bash",

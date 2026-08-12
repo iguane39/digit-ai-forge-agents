@@ -4,7 +4,7 @@
  * Exit 0 si tous les contrôles passent, 1 sinon. À rejouer après toute modification du skill.
  */
 import { execFileSync, spawn } from "node:child_process";
-import { readFileSync, writeFileSync, rmSync, mkdtempSync, appendFileSync } from "node:fs";
+import { readFileSync, writeFileSync, rmSync, mkdtempSync, appendFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +14,8 @@ const fixtures = join(here, "..", "fixtures");
 const compile = join(here, "compile-agent-def.mjs");
 const ledger = join(here, "ledger.mjs");
 const oracledefs = join(here, "oracle-defs.mjs");
+const otlpProject = join(here, "otlp-project.mjs");
+const oracleAgentEvals = join(here, "oracle-agent-evals.mjs");
 let pass = 0, failCount = 0;
 
 function check(name, fn) {
@@ -139,6 +141,91 @@ check("oracle-defs : lien de:/vers: brisé (fixture rouge) → FAIL localisant",
     return;
   }
   throw new Error("aurait dû sortir FAIL (exit 1)");
+});
+
+// --- TF-0106 (1) : otlp-project.mjs — projection OTLP GenAI du ledger --------------------
+check("otlp-project : ledger valide → spans OTLP conformes (traceId/spanId hex, gen_ai.* présents, hiérarchie parent/enfant)", () => {
+  const outFile = join(out, "spans-verte.json");
+  const stdout = run(otlpProject, [join(fixtures, "otlp", "run-verte.jsonl"), "--out", outFile]);
+  if (!stdout.includes("[OK]")) throw new Error("sortie [OK] attendue");
+  const doc = JSON.parse(readFileSync(outFile, "utf8"));
+  const spans = doc.resourceSpans[0].scopeSpans[0].spans;
+  if (spans.length !== 4) throw new Error(`4 spans attendus (1 racine + 3 entrées), ${spans.length} trouvés`);
+  if (!/^[0-9a-f]{32}$/.test(spans[0].traceId)) throw new Error("traceId non conforme (32 car. hex attendus)");
+  if (!/^[0-9a-f]{16}$/.test(spans[0].spanId)) throw new Error("spanId non conforme (16 car. hex attendus)");
+  const agentSpan = spans.find((s) => s.name === "invoke_agent agent-a");
+  if (!agentSpan) throw new Error("span d'agent « invoke_agent agent-a » attendu");
+  const attrKeys = agentSpan.attributes.map((a) => a.key);
+  for (const k of ["gen_ai.system", "gen_ai.operation.name", "gen_ai.agent.name"])
+    if (!attrKeys.includes(k)) throw new Error(`attribut GenAI « ${k} » absent du span d'agent`);
+  if (agentSpan.parentSpanId !== spans[0].spanId) throw new Error("le span d'agent doit être enfant du span racine du run");
+  if (agentSpan.status.code !== 1) throw new Error(`status OK (1) attendu pour verdict "ok", trouvé ${agentSpan.status.code}`);
+});
+
+check("otlp-project : ledger non intègre (pas de run_open en tête) → refus [REFUS], aucun fichier de spans écrit", () => {
+  const outFile = join(out, "spans-rouge.json");
+  mustRefuse(otlpProject, [join(fixtures, "otlp", "run-rouge.jsonl"), "--out", outFile]);
+  let ecrit = false;
+  try { readFileSync(outFile); ecrit = true; } catch {}
+  if (ecrit) throw new Error("fichier de spans écrit malgré un ledger refusé par ledger.mjs verify");
+});
+
+// Bonus (pas une preuve exigée par le contrat, cf. fixtures verte/rouge ci-dessus) : le
+// ledger.jsonl racine est un vrai ledger de run passé, mais lui aussi exclu du dépôt public
+// par `.gitignore` (motif `ledger*.jsonl`) — absent par construction sur un clone frais.
+// SKIP motivé plutôt qu'un échec sur un fichier structurellement absent de ce checkout.
+{
+  const repoLedger = join(here, "..", "..", "..", "..", "ledger.jsonl");
+  if (existsSync(repoLedger)) {
+    check("otlp-project : ledger réel du dépôt (ledger.jsonl racine, run P3-jouet) → projection sans erreur (bonus, non exigé par le contrat)", () => {
+      const outFile = join(out, "spans-reel.json");
+      run(otlpProject, [repoLedger, "--out", outFile]);
+      const doc = JSON.parse(readFileSync(outFile, "utf8"));
+      const spans = doc.resourceSpans[0].scopeSpans[0].spans;
+      if (spans.length < 5) throw new Error(`peu de spans projetés depuis un ledger réel non trivial : ${spans.length}`);
+    });
+  } else {
+    console.log("  [SKIP] otlp-project sur ledger réel (bonus) : ledger.jsonl racine absent de ce checkout (exclu du dépôt public par .gitignore)");
+  }
+}
+
+// --- TF-0106 (3) : oracle-agent-evals.mjs — régression des sorties d'agents sur fixtures --
+check("oracle-agent-evals : cas vert (critères mécaniques EXISTS/CONTAINS/REGEX satisfaits) → PASS", () => {
+  const j = JSON.parse(run(oracleAgentEvals, [join(fixtures, "agent-evals", "verte")]));
+  if (j.verdict !== "PASS") throw new Error(`verdict ${j.verdict} attendu PASS — findings: ${JSON.stringify(j.findings)}`);
+});
+
+check("oracle-agent-evals : cas rouge (critère CONTAINS manquant) → FAIL localisant la bonne raison", () => {
+  try { execFileSync("node", [oracleAgentEvals, join(fixtures, "agent-evals", "rouge-contains")], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) {
+    const j = JSON.parse(String(e.stdout || ""));
+    if (j.verdict !== "FAIL") throw new Error(`verdict ${j.verdict} attendu FAIL`);
+    if (!j.findings.some((f) => f.msg.includes("CONTAINS") && f.msg.includes("## Structure")))
+      throw new Error(`finding localisant le critère CONTAINS manquant attendu, trouvé : ${JSON.stringify(j.findings)}`);
+    return;
+  }
+  throw new Error("aurait dû sortir FAIL (exit 1)");
+});
+
+check("oracle-agent-evals : artefact absent → FAIL sur EXISTS (jamais un faux PASS sur une sortie d'agent manquante)", () => {
+  try { execFileSync("node", [oracleAgentEvals, join(fixtures, "agent-evals", "rouge-absent")], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) {
+    const j = JSON.parse(String(e.stdout || ""));
+    if (j.verdict !== "FAIL") throw new Error(`verdict ${j.verdict} attendu FAIL`);
+    if (!j.findings.some((f) => f.msg.includes("EXISTS"))) throw new Error("finding localisant le critère EXISTS attendu");
+    return;
+  }
+  throw new Error("aurait dû sortir FAIL (exit 1)");
+});
+
+check("oracle-agent-evals : cas.json absent ou invalide → SKIP motivé, jamais un PASS de complaisance", () => {
+  try { execFileSync("node", [oracleAgentEvals, join(out, "dossier-inexistant")], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) {
+    const j = JSON.parse(String(e.stdout || ""));
+    if (j.verdict !== "SKIP") throw new Error(`verdict ${j.verdict} attendu SKIP`);
+    return;
+  }
+  throw new Error("aurait dû sortir SKIP (exit 2)");
 });
 
 rmSync(out, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
