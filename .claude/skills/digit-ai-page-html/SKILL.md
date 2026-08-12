@@ -24,7 +24,12 @@ si la page vise aussi le PDF.
 ## Règles non négociables (charte)
 
 - **Roboto** (700/800) pour titres et sections · **DM Sans** pour le corps · **jamais Syne**.
-- **Light theme** systématique.
+- **Light theme** par défaut, **bascule sombre câblée obligatoire** (G1, décision R-30/TF-0131) :
+  bouton `.theme-toggle` en en-tête, `data-theme` sur `:root`, tokens sombres dérivés,
+  persistance `localStorage`, `prefers-color-scheme` à la première visite, impression
+  toujours claire. Le boilerplate l'embarque déjà (snippet S-G1). Un bouton présent sans
+  script qui pose `data-theme` est une bascule morte, FAIL bloquant ; son absence totale
+  (rendu figé print/PDF) n'est qu'un avertissement.
 - Toutes les couleurs, polices et rayons en **variables `:root`** — aucun hex en dur.
 - Toujours une **pile de repli système** derrière les web fonts.
 - **Autonomie réseau totale (A1, décision D-10)** : aucune requête au chargement — pas de
@@ -63,10 +68,11 @@ python scripts/check_html.py chemin/vers/page.html
 
 Le script signale les **échecs bloquants** (Syne présent, `lang` absent, charset non prioritaire,
 `<h1>` absent ou multiple, `:root` absent, `<title>` vide, pas de `@media print`, ressource
-chargée par le réseau — A1) et des
+chargée par le réseau — A1, bouton `.theme-toggle` sans script câblant `data-theme` — G1) et des
 **avertissements** (repli de font manquant, `alt` manquant, saut de niveau de titre, script
-bloquant en `<head>`, pas de repère sémantique). Corriger tous les échecs, traiter les
-avertissements selon le contexte, relancer jusqu'au PASS.
+bloquant en `<head>`, pas de repère sémantique, aucun bouton de bascule — G1, légitime sur un
+rendu figé). Corriger tous les échecs, traiter les avertissements selon le contexte, relancer
+jusqu'au PASS.
 
 Puis lancer l'**oracle zéro défaut visuel** (rendu multi-breakpoints + mesures) :
 
