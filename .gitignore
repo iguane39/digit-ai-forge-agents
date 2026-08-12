@@ -21,7 +21,14 @@ input/
 p4/
 defs-p4/
 output/
-.queue/
+# .queue/ : tickets/state/receipts sont des données d'engagement (chemins et contenus réels),
+# jamais versionnées. .queue/gates/*.sh sont du CODE DE SÉCURITÉ générique (aucune donnée
+# client) : versionnés depuis TF-0119 pour survivre à un clone frais (sinon .claude/settings.json
+# référence des hooks absents, cf. references/gate-budget.md).
+.queue/*
+!.queue/gates/
+.queue/gates/*
+!.queue/gates/*.sh
 ledger*.jsonl
 file-candidats.md
 *.bak
