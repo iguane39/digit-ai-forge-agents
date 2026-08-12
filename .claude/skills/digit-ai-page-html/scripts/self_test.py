@@ -74,6 +74,17 @@ CAS_AUTONOMIE = {
 }
 RE_CODE_A = re.compile(r"^(A\d+)\b")
 
+# G1 (bascule thème sombre câblée, R-30/TF-0134) vit lui aussi dans la famille
+# « charte » : mêmes garanties anti-parasite que A1. Ensemble vide de FAILS
+# n'exclut pas un WARN (cas sans bouton) — seul check() décide, ici on ne juge
+# que les codes G en échec bloquant.
+CAS_G1 = {
+    "g1-bouton-sans-cablage.html": {"G1"},  # bascule morte : bouton présent, jamais câblé
+    "g1-bouton-cable.html": set(),          # bascule câblée : silence exigé
+    "g1-sans-bouton.html": set(),           # aucun bouton : WARN seulement, jamais un FAIL
+}
+RE_CODE_G = re.compile(r"^(G\d+)\b")
+
 # Cas mesurés AU RENDU : le contrôle statique de L2 lit le CSS du conteneur et ne
 # voit pas un paragraphe bridé à l'intérieur. Ces deux-là ne se jugent qu'en
 # ouvrant la page dans un navigateur.
@@ -128,6 +139,25 @@ def run():
         # une fixture A doit aussi être charte-verte : un échec charte parasite
         # rendrait le cas trompeur (on croirait tester A1, on testerait la charte).
         parasites = [f for f in fails if not RE_CODE_A.match(f)]
+        ok = obtenu == attendu and not parasites
+        resultats.append({
+            "fixture": nom,
+            "verdict": "OK" if ok else "ECHEC",
+            "attendu": sorted(attendu),
+            "obtenu": sorted(obtenu),
+            "detail": "" if ok else " | ".join(fails + parasites)[:400],
+        })
+    for nom, attendu in CAS_G1.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE", "attendu": sorted(attendu),
+                              "obtenu": [], "detail": "fixture manquante"})
+            continue
+        fails, _ = check(chemin.read_text(encoding="utf-8"), regles="charte")
+        obtenu = codes(fails, RE_CODE_G)
+        # même garde anti-parasite que A1 : un échec charte étranger rendrait le
+        # cas trompeur (on croirait tester G1, on testerait autre chose).
+        parasites = [f for f in fails if not RE_CODE_G.match(f)]
         ok = obtenu == attendu and not parasites
         resultats.append({
             "fixture": nom,

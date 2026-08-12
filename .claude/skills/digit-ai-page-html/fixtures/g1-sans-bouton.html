@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture G1 — verte : page sans bouton de bascule (rendu figé légitime)</title>
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --line: #E6EAF2; }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page sans aucune bascule de thème</h1>
+<p>Cette page ne porte aucun bouton <code>.theme-toggle</code> ni attribut
+<code>data-theme-toggle</code> : c'est un rendu figé (export print/PDF) où une
+bascule interactive n'a pas de sens. La règle G1 doit se limiter à un
+avertissement, jamais à un échec bloquant.</p>
+</main>
+</body>
+</html>
