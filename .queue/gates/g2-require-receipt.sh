@@ -5,6 +5,7 @@
 # Écart CONSIGNÉ : le validateur de reçus du plan d'implémentation du 12/07 n'existe pas
 # dans ce repo → validation minimale inline contre le schéma reçu ≤ 6 champs
 # (id, ticket, agent, verdict obligatoires ; artefacts, ts optionnels ; champ inconnu = refus).
+# jq indisponible sur un ticket `parallel` → refus fail-closed (TF-0118, cf. require_jq).
 set -u
 cd "$(dirname "$0")/../.." || exit 0
 source .queue/gates/common.sh
@@ -15,6 +16,7 @@ source .queue/gates/common.sh
 # 1. Ticket sans parallel → exit 0
 resolve_ticket || exit 0
 ticket_has_parallel || exit 0
+require_jq "G2" "reçus de $TICKET_ID non vérifiables" || exit 2
 
 lock_acquire "$TICKET_ID" || exit 0
 state_ensure

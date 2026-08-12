@@ -80,3 +80,17 @@ gate_log_append() {
   local entry; entry="$(jq -cn --arg ts "$(now_iso)" --argjson e "$1" '$e + {ts:$ts}')"
   jq --argjson e "$entry" '.gate_log += [$e]' "$sf" > "$sf.tmp" && mv "$sf.tmp" "$sf"
 }
+
+# jq requis par tout le reste d'un gate au-delà de resolve_ticket/ticket_has_parallel (grep/sed
+# purs, insensibles à jq) : sans jq, ni l'état ni la décision ne peuvent être vérifiés (TF-0118).
+# Avant correction, l'absence de jq produisait des erreurs "jq: command not found" en cascade
+# puis un exit 0 silencieux (fail-OPEN constaté sur G1/G2/G3, cf. references/gate-budget.md) —
+# même discipline que G0 (TF-0106) : refus explicite (fail-closed), jamais un passage silencieux.
+# À appeler juste avant le premier usage de jq d'un gate, jamais avant (un ticket sans `parallel`
+# doit rester insensible à l'absence de jq, comme aujourd'hui).
+require_jq() {
+  local gate="$1" detail="$2"
+  command -v jq >/dev/null 2>&1 && return 0
+  echo "GATE $gate — jq indisponible sur ce poste : $detail, refus par prudence (jamais un passage silencieux)." >&2
+  return 1
+}

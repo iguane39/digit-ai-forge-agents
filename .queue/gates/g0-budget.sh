@@ -9,14 +9,14 @@
 # pour G1/G2/G3 — zéro régression, spec §9). `budget` est indépendant de `parallel` : un ticket
 # peut plafonner ses appels sans imposer de minimum de sous-agents.
 #
-# Fail-closed RENFORCÉ (écart assumé et volontaire vis-à-vis de G1/G2/G3) : si `jq` est
-# indisponible, G1/G2/G3 dégradent en fail-OPEN sur ce poste (constaté, consigné en candidature
-# séparée — hors périmètre de ce sous-item, cf. rapport de campagne TF-0106). Un garde-fou de
-# COÛT ne doit jamais se comporter ainsi : tant que le budget ne peut pas être vérifié
-# mécaniquement, l'appel est REFUSÉ par prudence plutôt qu'autorisé par défaut. Un ticket SANS
+# Fail-closed RENFORCÉ : si `jq` est indisponible, l'appel est REFUSÉ par prudence plutôt
+# qu'autorisé par défaut — un garde-fou de COÛT ne doit jamais fail-open. Un ticket SANS
 # `budget` ne touche jamais jq (ticket_has_budget/ticket_budget_max_appels : grep/sed purs) et
 # reste donc totalement insensible à l'absence de jq — seule la présence du plafond active la
 # dépendance, jamais l'absence de plafond.
+# Historique : à l'écriture de ce gate (TF-0106, 12/08), G1/G2/G3 dégradaient en fail-OPEN sur
+# jq absent (constaté, cf. rapport de campagne TF-0106) — corrigé depuis par la même discipline
+# (require_jq dans common.sh, TF-0118) : les quatre gates sont maintenant fail-closed sur jq.
 set -u
 cd "$(dirname "$0")/../.." || exit 0
 source .queue/gates/common.sh
