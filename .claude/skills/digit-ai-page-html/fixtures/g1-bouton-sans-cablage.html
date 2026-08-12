@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture G1 — rouge : bouton de bascule sans câblage (bascule morte)</title>
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --surface: #FFFFFF; --line: #E6EAF2; --blue: #2563EB; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; }
+.theme-toggle { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } .theme-toggle { display: none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page avec un bouton de bascule qui ne fait rien</h1>
+<button id="theme-toggle" class="theme-toggle" type="button"
+        aria-label="Bascule thème sombre" aria-pressed="false">Thème</button>
+<p>Le bouton existe, porte la classe <code>.theme-toggle</code> et les tokens sombres
+sont bien déclarés dans <code>:root[data-theme="dark"]</code> — mais aucun script ne
+pose jamais l'attribut <code>data-theme</code> sur le document : cliquer ce bouton ne
+produit aucun effet observable. C'est la bascule morte que la règle G1 doit détecter.</p>
+</main>
+<!-- Script présent, mais sans rapport avec le thème : ne câble rien. -->
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  b.addEventListener('click', function () { console.log('clic sans effet'); });
+})();
+</script>
+</body>
+</html>

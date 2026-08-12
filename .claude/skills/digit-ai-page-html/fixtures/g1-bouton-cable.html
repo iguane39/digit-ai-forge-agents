@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  var stocke = localStorage.getItem('digitai-theme');
+  var theme = stocke || (window.matchMedia &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture G1 — verte : bouton de bascule câblé (S-G1 conforme)</title>
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --surface: #FFFFFF; --line: #E6EAF2; --blue: #2563EB; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; --surface: #121B2E; --line: #263248; }
+.theme-toggle { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } .theme-toggle { display: none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page avec un bouton de bascule câblé</h1>
+<button id="theme-toggle" class="theme-toggle" type="button"
+        aria-label="Bascule thème sombre" aria-pressed="false">Thème</button>
+<p>Le bouton porte la classe <code>.theme-toggle</code> et un script de câblage pose
+l'attribut <code>data-theme</code> sur le document au clic : l'affordance produit un
+effet observable, la règle G1 doit rester silencieuse.</p>
+</main>
+<script>
+(function () {
+  var bouton = document.getElementById('theme-toggle');
+  var racine = document.documentElement;
+  function appliquer(theme) {
+    racine.setAttribute('data-theme', theme);
+    localStorage.setItem('digitai-theme', theme);
+    bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+  }
+  bouton.addEventListener('click', function () {
+    appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
+</body>
+</html>

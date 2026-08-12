@@ -1,12 +1,26 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<!-- S-G1 (1/4, R-30) — initialisation AVANT le <style> : pose data-theme avant la
+     première peinture (zéro flash). Choix persisté sinon prefers-color-scheme à la
+     première visite. Volontairement SANS defer/async : un script différé peindrait
+     d'abord le thème par défaut du CSS puis re-peindrait en sombre, c'est le flash
+     que ce script évite (déclenche le WARN générique « script bloquant en head » de
+     check_html.py — exception assumée, documentée ici). -->
+<script>
+(function () {
+  var stocke = localStorage.getItem('digitai-theme');
+  var theme = stocke || (window.matchMedia &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Digit-AI — {Objet} · {Client}</title>
   <meta name="description" content="{Résumé clair du livrable en une phrase.}">
   <meta name="theme-color" content="#2563EB">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
 
   <!-- Polices : AUCUN chargement réseau (A1/D-10 — confidentialité, durabilité,
        lecture hors ligne). Roboto/DM Sans s'affichent si installées localement,
@@ -40,6 +54,20 @@
       --annee-ref: "2026";
     }
 
+    /* S-G1 (2/4, R-30) — tokens sombres : une source, deux projections. bg/surface
+       s'assombrissent vers une base marine ; ink/muted/faint s'éclaircissent en
+       dégradé inverse ; line reste un filet proche du fond ; chaque accent
+       sémantique éclaircit sa teinte de base (lisible sur fond sombre) et assombrit
+       son -fill/-line en griffe basse de la même teinte. */
+    :root[data-theme="dark"] {
+      --bg: #0B1220; --surface: #121B2E; --card: #121B2E;
+      --ink: #EEF2F8; --muted: #A9B4C4; --faint: #7C8AA0; --line: #263248;
+      --blue: #7DA2F5;
+      --amber: #FBBF6D; --amber-fill: #2B2210; --amber-line: #4A3A18;
+      --teal:  #5FE6D6; --teal-fill:  #0E2A27; --teal-line:  #164E48;
+      --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
+    }
+
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
     body {
@@ -70,6 +98,15 @@
     }
     .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
 
+    /* S-G1 (3/4, R-30) — bouton de bascule, en-tête, haut à droite */
+    .theme-toggle { appearance: none; border: 1px solid var(--line); background: var(--surface);
+      color: var(--ink); border-radius: 999px; width: 36px; height: 36px; flex: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; }
+    .theme-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+
     .card {
       background: var(--surface);
       border: 1px solid var(--line);
@@ -99,18 +136,42 @@
     @page { size: A4; margin: 18mm 16mm; }
     @page :first { margin-top: 22mm; }
     @media print {
+      /* S-G1 (2/4 suite, R-30.2) — impression toujours claire, quel que soit le
+         thème affiché à l'écran au moment d'imprimer. */
+      :root, :root[data-theme="dark"] {
+        --bg:#FFFFFF; --surface:#FFFFFF; --card:#FFFFFF; --ink:#0F172A;
+        --muted:#64748B; --faint:#94A3B8; --line:#E6EAF2; --blue:#2563EB;
+        --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
+        --teal:#0E9488;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
+        --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
+      }
       body { background: #FFFFFF; }
       .wrap { max-width: none; padding: 0; }
       .card { break-inside: avoid; page-break-inside: avoid; }
       a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em; color: var(--muted); }
+      .theme-toggle { display: none; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="doc">
-      <p class="eyebrow">Digit-AI · {TypeDoc}</p>
-      <h1>{Titre du livrable}</h1>
+    <header class="doc" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+      <div>
+        <p class="eyebrow">Digit-AI · {TypeDoc}</p>
+        <h1>{Titre du livrable}</h1>
+      </div>
+      <!-- S-G1 (3/4, R-30) — bouton de bascule thème sombre -->
+      <button id="theme-toggle" class="theme-toggle" type="button"
+              aria-label="Bascule thème sombre" aria-pressed="false">
+        <svg class="icon-moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+        </svg>
+        <svg class="icon-sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="4.5"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"
+                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
     </header>
 
     <main>
@@ -130,5 +191,22 @@
       Digit-AI — {Client} · {Scope} · 2026
     </footer>
   </div>
+
+  <!-- S-G1 (4/4, R-30) — câblage : persistance + aria-pressed, aucune bascule muette -->
+  <script>
+  (function () {
+    var bouton = document.getElementById('theme-toggle');
+    var racine = document.documentElement;
+    function appliquer(theme) {
+      racine.setAttribute('data-theme', theme);
+      localStorage.setItem('digitai-theme', theme);
+      bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+    bouton.setAttribute('aria-pressed', racine.getAttribute('data-theme') === 'dark' ? 'true' : 'false');
+    bouton.addEventListener('click', function () {
+      appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  })();
+  </script>
 </body>
 </html>

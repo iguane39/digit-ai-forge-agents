@@ -6,7 +6,11 @@ Deux familles de contrôles, déterministes, sans dépendance externe ni appel L
 
   · CHARTE  — obligatoires de charte, d'accessibilité et d'export print ;
               inclut A1, l'autonomie réseau (D-10 organization) : un livrable
-              sortant n'émet aucune requête au chargement.
+              sortant n'émet aucune requête au chargement. Inclut G1, la bascule
+              thème sombre câblée (R-30, TF-0134) : un bouton .theme-toggle qui ne
+              pose jamais data-theme est une affordance sans effet (loi transverse
+              n°1) — FAIL. L'absence totale de bouton n'est qu'un avertissement :
+              un rendu figé (export print/PDF) n'a légitimement aucune bascule.
   · L1-L10  — lisibilité (references/lisibilite.md) : texte tronqué, largeur de
               lecture, valeur sans barème, liste longue non filtrable, surlignage
               qui casse les mots, sommaire muet ou à ancre morte, chapitre sans
@@ -775,6 +779,40 @@ def check_autonomie(html: str):
 
 
 # ---------------------------------------------------------------------------
+# G1 — bascule thème sombre câblée (pattern normatif R-30, TF-0131/TF-0134 ; vit
+# dans la famille « charte », même statut que A1). Une affordance sans effet
+# observable est un défaut (loi transverse n°1 du pilot) : un bouton
+# .theme-toggle / [data-theme-toggle] qui n'est jamais suivi d'un script posant
+# data-theme sur le document est une bascule morte — FAIL bloquant. L'absence
+# totale de bouton n'est qu'un avertissement : le socle sert aussi des rendus
+# figés (export print/PDF) où aucune bascule n'a de sens.
+# ---------------------------------------------------------------------------
+RE_G1_BOUTON = re.compile(
+    r'<[a-z][a-z0-9-]*\b[^>]*(?:class\s*=\s*(["\'])[^"\']*\btheme-toggle\b[^"\']*\1'
+    r'|\bdata-theme-toggle\b)[^>]*>', re.I)
+RE_G1_CABLAGE = re.compile(
+    r'\.setAttribute\s*\(\s*[\'"]data-theme[\'"]|\.dataset\.theme\s*=', re.I)
+
+
+def check_theme_toggle(html: str):
+    """G1 : retourne (fails, warns)."""
+    fails, warns = [], []
+    if not RE_G1_BOUTON.search(html):
+        warns.append(
+            "G1 aucun bouton de bascule thème sombre détecté (.theme-toggle ou "
+            "[data-theme-toggle]) — avertissement R-30, pas un défaut bloquant : "
+            "un rendu figé (export print/PDF) n'a légitimement aucune bascule.")
+        return fails, warns
+    scripts = "".join(re.findall(r"<script[^>]*>(.*?)</script>", html, re.S | re.I))
+    if not RE_G1_CABLAGE.search(scripts):
+        fails.append(
+            "G1 bascule morte : un bouton .theme-toggle/[data-theme-toggle] existe "
+            "mais aucun script ne pose data-theme sur le document — l'affordance "
+            "est visible sans effet observable (loi transverse n°1, R-30).")
+    return fails, warns
+
+
+# ---------------------------------------------------------------------------
 def check(html: str, regles: str = "tout"):
     """Retourne (fails, warns) — deux listes de messages."""
     fails, warns = [], []
@@ -783,6 +821,9 @@ def check(html: str, regles: str = "tout"):
         fails += f
         warns += w
         f, w = check_autonomie(html)
+        fails += f
+        warns += w
+        f, w = check_theme_toggle(html)
         fails += f
         warns += w
     if regles in ("tout", "L"):
