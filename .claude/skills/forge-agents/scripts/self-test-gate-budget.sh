@@ -72,7 +72,7 @@ budget:
 EOF
 
 if ! command -v jq >/dev/null 2>&1; then
-  skip "plafond réel (jq absent sur ce poste) : G0 doit refuser PAR PRUDENCE (fail-closed renforcé, jamais fail-open comme G1/G2/G3 sans jq)"
+  skip "plafond réel (jq absent sur ce poste) : G0 doit refuser PAR PRUDENCE (fail-closed renforcé — même discipline appliquée depuis à G1/G2/G3, TF-0118, cf. self-test-gates-jq.sh)"
   QUEUE_TICKET=T-BUDGET-2 bash "$GATE" </dev/null; rc=$?
   if [ "$rc" -eq 2 ]; then ok "rouge (jq absent) : ticket avec budget → G0 refuse (exit 2), jamais fail-open sur un garde-fou de coût"; else ko "rouge (jq absent) : exit $rc attendu 2"; fi
   skip "vert (budget sous le plafond, jq requis) : non rejouable sur ce poste — jq absent (cf. rapport de campagne TF-0106) ; relire g0-budget.sh §3-4 (idiome identique, ligne à ligne, à g1-count-task.sh déjà en production)"

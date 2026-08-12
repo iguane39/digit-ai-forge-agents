@@ -2,6 +2,7 @@
 # G1 (blocage) — hook PreToolUse, matcher Edit|Write|MultiEdit|Bash (spec §4).
 # Sur un ticket `parallel` : bloque (exit 2) toute exécution directe tant que
 # instantiations < min_agents. Exception : Bash en lecture pure (liste blanche courte).
+# jq indisponible sur un ticket `parallel` → refus fail-closed (TF-0118, cf. require_jq).
 set -u
 cd "$(dirname "$0")/../.." || exit 0
 source .queue/gates/common.sh
@@ -11,6 +12,9 @@ INPUT="$(cat 2>/dev/null || true)"
 # 1. QUEUE_TICKET absent ou ticket sans parallel → laisser passer
 resolve_ticket || exit 0
 ticket_has_parallel || exit 0
+
+# 1 bis. jq requis pour tout le reste (lecture tool_name/instantiations, TF-0118) → fail-closed
+require_jq "G1" "ticket $TICKET_ID non vérifiable (min_agents/instantiations)" || exit 2
 
 # 2. Exception outillage : Bash en lecture pure — liste blanche courte, pas de regex ambitieuse
 TOOL="$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)"

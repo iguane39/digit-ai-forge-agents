@@ -7,6 +7,7 @@
 # repo → seuls les critères vérifiables mécaniquement sont supportés, via la convention
 # documentée « EXISTS:<chemin> » (le fichier existe et est non vide). Tout critère
 # non mécanique = FAIL explicite (fail-closed), jamais un PASS de complaisance.
+# jq indisponible sur un ticket `parallel` non clos → refus fail-closed (TF-0118, cf. require_jq).
 set -u
 cd "$(dirname "$0")/../.." || exit 0
 source .queue/gates/common.sh
@@ -18,6 +19,7 @@ source .queue/gates/common.sh
 resolve_ticket || exit 0
 ticket_has_parallel || exit 0
 case "$(ticket_statut)" in closed|failed) exit 0 ;; esac
+require_jq "G3" "critères de $TICKET_ID non vérifiables" || exit 2
 
 lock_acquire "$TICKET_ID" || exit 0
 state_ensure

@@ -40,14 +40,17 @@ vérifié avant que G1 ne compte l'instanciation, cohérent avec « budget véri
 État étendu (`.queue/state/<ticket>.json`) : nouveau champ `appels` (défaut `0`, lu partout via
 `.appels // 0` — les fichiers d'état antérieurs à TF-0106 restent valides sans migration).
 
-## Écart assumé avec G1/G2/G3 : fail-closed renforcé
+## Écart avec G1/G2/G3 au moment de l'écriture de G0 (corrigé depuis, TF-0118)
 
-Constat fait en écrivant ce sous-item (12/08/2026, machine de développement) : `jq` est absent
-de ce poste. `g1-block-direct.sh` sur un ticket `parallel` réel, dans cet état, se termine en
+Constat fait en écrivant ce sous-item (12/08/2026, machine de développement) : `jq` était absent
+de ce poste. `g1-block-direct.sh` sur un ticket `parallel` réel, dans cet état, se terminait en
 **exit 0** (laisse passer) après avoir imprimé des erreurs `jq: command not found` — c'est-à-dire
-que **G1/G2/G3 dégradent en fail-OPEN, pas fail-closed, quand `jq` manque** sur la machine qui
-les exécute. C'est un défaut réel du mécanisme existant (hors périmètre de ce sous-item — G0
-seul est mandaté ; consigné comme candidature séparée, jamais corrigé ici sans mandat).
+que **G1/G2/G3 dégradaient en fail-OPEN, pas fail-closed, quand `jq` manquait** sur la machine
+qui les exécute. C'était un défaut réel du mécanisme existant, hors périmètre de ce sous-item
+(G0 seul était mandaté) ; consigné comme candidature séparée puis corrigé par TF-0118 : les
+quatre gates partagent maintenant `require_jq()` (`common.sh`) et refusent explicitement
+(exit 2) plutôt que de laisser passer en silence — preuve rejouable dans
+`scripts/self-test-gates-jq.sh`.
 
 G0 est conçu pour **ne pas hériter** de ce défaut : `ticket_has_budget`/`ticket_budget_max_appels`
 n'utilisent que `grep`/`sed` (jamais `jq`), donc un ticket **sans** `budget` reste totalement
@@ -92,6 +95,7 @@ un mécanisme structurellement absent d'un clone frais.
 - Coût/tokens réels (pas seulement un nombre d'appels) : nécessiterait un champ de coût dans le
   reçu, impossible sans dépasser le plafond de 6 champs du schéma reçu existant (cf. `g2-require-
   receipt.sh`) — à traiter par un mandat dédié si le besoin se confirme.
-- Correction du fail-open de G1/G2/G3 sur `jq` absent — candidature séparée, hors mandat TF-0106.
+- ~~Correction du fail-open de G1/G2/G3 sur `jq` absent~~ — fait, TF-0118 (`require_jq()` dans
+  `common.sh`, preuve dans `scripts/self-test-gates-jq.sh`).
 - Façade Codex (le budget, comme G2/G3, est appelable manuellement : `bash .queue/gates/
   g0-budget.sh` avec `QUEUE_TICKET` exporté — non testé côté Codex).
