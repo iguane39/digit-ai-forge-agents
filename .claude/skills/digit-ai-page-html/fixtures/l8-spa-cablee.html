@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture L8 — verte : routage SPA par hash, câblé (data-nav + script)</title>
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+ --w: clamp(75vw, 1680px, 92vw); }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Maquette à routage par hash</h1>
+<h2>Les liens de navigation sont des routes, pas des ancres</h2>
+<nav aria-label="Navigation des vues">
+  <a href="#tableau" data-nav="tableau">Tableau de bord principal</a>
+  <a href="#composants" data-nav="composants">Bibliothèque de composants</a>
+</nav>
+<p>Le conteneur ci-dessous est monté par le routeur selon le hash — TF-0174 : ces liens
+sont exempts de L8 parce qu'un script référence data-nav (routage câblé).</p>
+<div id="vue"></div>
+</main>
+<script>
+var vues = { "tableau": "Tableau", "composants": "Bibliothèque" };
+function router() {
+  var r = location.hash.slice(1) || "tableau";
+  document.getElementById("vue").textContent = vues[r] || "";
+  document.querySelectorAll("[data-nav]").forEach(function (a) {
+    a.toggleAttribute("aria-current", a.getAttribute("data-nav") === r);
+  });
+}
+window.addEventListener("hashchange", router);
+router();
+</script>
+</body>
+</html>

@@ -287,7 +287,12 @@ def check_charte(html: str):
     if not re.search(r'<meta[^>]*name\s*=\s*"viewport"', low):
         fails.append("<meta viewport> absent.")
 
-    h1_count = len(re.findall(r"<h1[ >]", low))
+    # TF-0174 (13/08) : les <h1> des GABARITS JS (template literals dans <script>) ne sont
+    # jamais au DOM — le navigateur lit un script comme du texte brut. Les blocs script
+    # sont retirés avant comptage (lecture navigateur, même technique qu'A1-bis) ; faux
+    # positif constaté : 7 h1 comptés sur une maquette SPA qui n'en affiche qu'un.
+    hors_scripts = re.sub(r"<script\b[^>]*>.*?</script", "", low, flags=re.S)
+    h1_count = len(re.findall(r"<h1[ >]", hors_scripts))
     if h1_count == 0:
         fails.append("Aucun <h1> (un titre principal unique est requis).")
     elif h1_count > 1:
@@ -670,11 +675,21 @@ def check_lisibilite(html: str, a: Arbre):
 
     # --- L8 : liens internes ---------------------------------------------
     dans_toc = set(id(n) for n in toc.descendants()) if toc is not None else set()
+    # TF-0174 (13/08) : un lien de ROUTAGE SPA (data-nav) navigue par hash via JS — il n'a
+    # pas d'ancre statique et n'en aura jamais. Il est exempt de L8 si ET SEULEMENT SI un
+    # script de la page référence data-nav (routage câblé) ; des data-nav sans script sont
+    # des liens morts, jugés comme les autres (fixture double sens l8-spa-*).
+    routage_cable = any(
+        "data-nav" in "".join(t for t in n.enfants if isinstance(t, str))
+        for n in a.racine.descendants() if n.tag == "script"
+    )
     for lien in [n for n in a.racine.descendants() if n.tag == "a"]:
         href = (lien.att("href") or "").strip()
         if not href.startswith("#"):
             continue
         if id(lien) in dans_toc:
+            continue
+        if lien.att("data-nav") is not None and routage_cable:
             continue
         if href == "#":
             fails.append(f"L8 ancre vide href=\"#\" : « {lien.texte_propre()[:40]} » "

@@ -431,7 +431,7 @@ MEASURE_JS = r"""
 
 
 def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: bool,
-        out_dir: Path | None = None) -> int:
+        out_dir: Path | None = None, etats_ouverts: bool = False) -> int:
     ensure_browser_path()
     ensure_local_fonts()
     try:
@@ -466,6 +466,22 @@ def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: 
             page.wait_for_load_state("networkidle")
             page.evaluate("document.fonts && document.fonts.ready")
             page.wait_for_timeout(250)
+
+            # TF-0176 (13/08) : --etats-ouverts — l'oracle ne jugeait que l'état FERMÉ ;
+            # panneaux de filtres et détails repliés échappaient à V1/V2/V4 et aux captures
+            # (un panneau non stylé, illisible, est sorti « tous oracles verts »). Le flag
+            # ouvre tout <details>, le premier panneau de filtre/dropdown, et remplit le
+            # premier champ de recherche — puis mesure et capture CET état.
+            if etats_ouverts:
+                page.evaluate("""() => {
+                  document.querySelectorAll('details').forEach(d => d.open = true);
+                  const btn = document.querySelector('.tf-btn, .dd-btn');
+                  if (btn) btn.click();
+                }""")
+                champ = page.query_selector("input[type='search'], .tf-search")
+                if champ:
+                    champ.fill("a")
+                page.wait_for_timeout(250)
 
             issues = page.evaluate(js)
             png = png_dir / f"{html_path.stem}-w{width}.png"
@@ -520,12 +536,16 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=None, dest="out_dir",
                     help="dossier des PNG (défaut : <dossier du HTML>/.oracles/ — "
                          "jamais le dossier audité lui-même)")
+    ap.add_argument("--etats-ouverts", action="store_true", dest="etats_ouverts",
+                    help="TF-0176 : ouvre details + premier panneau de filtre + remplit la "
+                         "première recherche AVANT mesures et captures — l'état fermé cache "
+                         "les défauts des composants interactifs")
     args = ap.parse_args()
     if not args.html.is_file():
         sys.exit(f"ERREUR : fichier introuvable : {args.html}")
     widths = [int(w) for w in str(args.widths).split(",") if w.strip()]
     raise SystemExit(run(args.html, widths, args.selector, args.scale,
-                         args.output == "json", args.out_dir))
+                         args.output == "json", args.out_dir, args.etats_ouverts))
 
 
 if __name__ == "__main__":

@@ -14,7 +14,11 @@
 
   function corps(table) {
     var tb = table.tBodies && table.tBodies[0];
-    return tb ? Array.prototype.slice.call(tb.rows) : [];
+    /* TF-0175 : une ligne [data-detail] est le DÉPLIANT pleine largeur de la ligne qui la
+       précède — elle ne porte pas de données de colonnes et ne compte ni ne se filtre. */
+    return tb ? Array.prototype.slice.call(tb.rows).filter(function (tr) {
+      return !tr.hasAttribute('data-detail');
+    }) : [];
   }
 
   function valeur(tr, i) {
@@ -111,7 +115,12 @@
           return e.selection[valeur(tr, e.col.index)] === true;
         });
         if (ok) { tr.removeAttribute('data-tf-hidden'); tr.style.display = ''; visibles++; }
-        else { tr.setAttribute('data-tf-hidden', ''); tr.style.display = 'none'; }
+        else {
+          tr.setAttribute('data-tf-hidden', ''); tr.style.display = 'none';
+          /* la ligne de détail suit le sort de sa ligne mère : masquée ET repliée */
+          var det = tr.nextElementSibling;
+          if (det && det.hasAttribute('data-detail')) { det.hidden = true; }
+        }
       });
       etats.forEach(function (e) {
         var actif = Object.keys(e.selection).some(function (k) { return !e.selection[k]; });

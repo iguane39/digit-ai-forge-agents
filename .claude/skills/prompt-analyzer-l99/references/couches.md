@@ -157,6 +157,27 @@ Ce chapitre est le livrable principal. Il contient :
    - Être directement utilisable (pas de placeholder sauf si le prompt original en contenait).
 4. **Contrat de sortie** : critères d'acceptation **vérifiables** que la réponse produite par le prompt réécrit devra satisfaire (ex. « doit contenir X », « ≤ N mots », « cite ses sources », « pas de Y »). L'étalon Ch1 cadre le *prompt* ; le contrat cadre la *sortie*. Embarquer ce contrat dans le prompt réécrit chaque fois que c'est possible, et le rappeler ici en clair.
 5. **Changelog tracé** : chaque modification est rattachée au défaut qu'elle corrige (ex. « +audience → bloquant Ch3 #2 / cause d'échec Ch5 #1 »). Aucune correction ne sort du chapeau : tout se rattache à un défaut nommé.
+5 bis. **Écarts à la lettre (obligatoire, TF-0176 du 13/08)** : quand le prompt d'origine porte une demande humaine, le Ch8 liste EXPLICITEMENT chaque endroit où le prompt réécrit s'écarte du texte littéral de cette demande (seuil ajouté, périmètre restreint, condition introduite, formulation adoucie) — un tableau « vous avez écrit → je propose → pourquoi », soumis à validation poste par poste. Un affaiblissement noyé dans un prompt long que l'humain valide en bloc N'EST PAS un écart validé : le 13/08, « pour chaque liste, des filtres » devenu « dès 8 lignes » a traversé une validation humaine sans être vu, et le livrable a été refusé. Aucun écart = le dire (« aucun écart à la lettre »).
+6. **Protocole de tests du livrable** *(conditionnel — proportionnalité)* : prolonge le contrat de sortie (point 4) en plan de vérification exécutable du **livrable que le prompt réécrit produira à l'exécution** — jamais du prompt lui-même (le prompt est déjà stress-testé par Ch5-Ch6). Le protocole est **prescrit, pas exécuté** : L99 l'embarque dans le prompt réécrit dès que celui-ci s'exécutera en autonomie, et le rappelle en clair dans ce chapitre.
+
+   **Condition d'application** : version complète seulement si le livrable attendu est substantiel (code, document, deck/PPTX, page HTML, template, données). Prompt conversationnel one-shot : une ligne « livrable conversationnel, protocole non déclenché » (ou une passe de revue simple pour les contenus courts).
+
+   Contenu obligatoire du protocole :
+   - **Type de livrable détecté + oracles de vérification** :
+
+   | Type de livrable | Oracles |
+   |---|---|
+   | Code | Exécution réelle + cas de test (nominal + limite) |
+   | Page / fiche HTML | Script de conformité `digit-ai-page-html` (charte, accessibilité, print) si disponible ; sinon rendu + checklist |
+   | Deck / PPTX | Rendu LibreOffice + checklist charte `digit-ai-pptx` si disponible |
+   | Document texte | Contrat chiffré : longueur, structure, présence/absence d'éléments nommés |
+   | Données / tableau | Contrôles de cohérence sur échantillon (totaux, types, bornes, doublons) |
+   | Contenu court (post, email) | Revue par critères binaires du contrat — pas d'oracle automatisable |
+
+   - **Jeu d'essai minimal** : 2-3 cas d'entrée, dont au moins 1 cas limite.
+   - **Boucle bornée** : générer → tester contre le contrat → corriger. **3 itérations maximum**, critères d'arrêt binaires repris du contrat de sortie. Après 3 passes en échec : **livrer avec la liste des écarts résiduels** — jamais boucler au-delà.
+   - **Composition, pas duplication** : si `la-boucle` ou `audite-et-corrige-l-appli` sont présents dans l'environnement d'exécution, le protocole leur délègue l'itération au lieu de la réimplémenter.
+   - **Interdits** : aucun critère subjectif (« satisfaction », « exemplaire », « bonne qualité ») — uniquement des critères vérifiables.
 
 ---
 
@@ -166,3 +187,5 @@ L50 = Chapitres 1, 3, 8. Avec cette architecture, L50 devient une boucle serrée
 **étalon noté (Ch1) → inventaire taggé (Ch3) → prompt réécrit + score + contrat (Ch8)**. C'est le
 minimum viable qui conserve l'ancrage sur l'origine, la mesure chiffrée et la traçabilité des
 corrections. Le Factcheck (Ch4) reste hors L50 : conditionnel et orthogonal au minimum structurel.
+Le **protocole de tests du livrable** (Ch8 §6) voyage avec le Chapitre 8 : L50 en hérite
+automatiquement, avec la même condition de proportionnalité.
