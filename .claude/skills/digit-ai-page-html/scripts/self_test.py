@@ -53,6 +53,10 @@ CAS = {
     "l6-entree-sans-annonce.html": {"L6"},
     "l7-chapitre-sans-chapeau.html": {"L7"},
     "l8-lien-muet.html": {"L8"},
+    # TF-0174 (13/08) : routage SPA par hash — data-nav + script = exempt ; data-nav sans
+    # script = liens morts, L8 se déclenche.
+    "l8-spa-cablee.html": set(),
+    "l8-spa-morte.html": {"L8"},
     "l9-detail-vide.html": {"L9"},
     "l9-depliant-muet.html": {"L9"},
     "l9-depliant-inutile.html": {"L9"},

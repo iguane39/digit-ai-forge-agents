@@ -5,7 +5,11 @@ Chaque colonne catégorielle reçoit dans son en-tête un déclencheur ouvrant u
 cases à cocher** : liste des valeurs distinctes, bascules **Tous** / **Aucun**, et **champ de
 recherche** qui filtre la liste des valeurs proposées.
 
-Asset : [`assets/table-filters.js`](assets/table-filters.js).
+Assets : [`assets/table-filters.js`](assets/table-filters.js) **et son CSS jumeau
+[`assets/table-filters.css`](assets/table-filters.css)** (TF-0176, 13/08) — les DEUX
+s'inlinent ensemble : le composant livré sans son habillage sort en rendu brut navigateur
+(constaté et refusé sur livrable réel). L'état OUVERT du panneau se juge par
+`render_page.py --etats-ouverts` (V2/V4). Après `initAll()`, appeler-le sur toute page hôte.
 Oracle : `oracle-filtres-tableau.mjs` — checklist **G1–G6**.
 
 ## Périmètre — quand la règle s'applique
