@@ -434,20 +434,29 @@ def check_lisibilite(html: str, a: Arbre):
         vus_f.setdefault(jeton, [0, ou])
         vus_f[jeton][0] += 1
     for jeton, (n, ou) in list(vus_f.items())[:6]:
+        # RA-3 (13/08) : un littéral porté par body/html nu est le symptôme classique d'un
+        # <script> fermé prématurément (son code devient du texte) — dire où chercher évite
+        # l'aller-retour de diagnostic constaté sur le livrable Produit-10.
+        indice = (" Porteur « body/html » : symptôme classique d'un <script> fermé "
+                  "prématurément (séquence </script> non échappée — voir A1-bis)."
+                  if ou.replace("html > ", "").startswith("body") else "")
         fails.append(f"L11 littéral de langage dans le texte visible : « {jeton} » "
                      f"× {n} ({ou}) — une valeur non renseignée doit être traitée "
-                     "par le producteur, pas rendue telle quelle.")
+                     f"par le producteur, pas rendue telle quelle.{indice}")
 
     # --- L2 : largeur de lecture ------------------------------------------
     porteurs = ("body", "main", ".wrap", ".container", ".page", "#page")
     for sel, d in css:
         if not any(p in sel for p in porteurs):
             continue
+        # Un plafond px NU est un échec quel que soit sa valeur : il tombe sous 75 %
+        # de la fenêtre sur un écran assez grand (règle 75-100 %, décision 13/08).
         v = _px(d.get("max-width"))
-        if v is not None and v < 1100:
+        if v is not None:
             fails.append(
                 f"L2 largeur de lecture bridée : `{sel} {{ max-width:{int(v)}px }}` — "
-                "utiliser une largeur relative (min(92vw,1680px)) et borner la prose en ch.")
+                "le conteneur occupe 75-100 % de la fenêtre : utiliser "
+                "clamp(75vw,1680px,92vw) et borner la prose en ch.")
 
     # --- L3 : toute valeur porte sa légende -------------------------------
     def legende_visible(n):
@@ -461,6 +470,26 @@ def check_lisibilite(html: str, a: Arbre):
         cible = ids.get((n.att("aria-describedby") or "").split()[0]
                         if n.att("aria-describedby") else "")
         return cible is not None and len(cible.texte_propre()) >= 20
+
+    def bareme_de_colonne(n):
+        """RA-4 (retour Produit-10, 13/08) : quand toute une COLONNE partage le même barème
+        (86 cellules N/M sur un mapping), le déclarer une fois sur le <th> suffit — l'exiger
+        sur chaque cellule alourdit la page sans rien apprendre de plus au lecteur."""
+        td = n if n.tag == "td" else next((a for a in n.ancetres() if a.tag == "td"), None)
+        if td is None or td.parent is None:
+            return False
+        rang = [e for e in td.parent.enfants
+                if isinstance(e, Noeud) and e.tag in ("td", "th")]
+        idx = rang.index(td)
+        table = next((a for a in td.ancetres() if a.tag == "table"), None)
+        if table is None:
+            return False
+        for th in (e for e in table.descendants() if e.tag == "th"):
+            freres = [x for x in th.parent.enfants
+                      if isinstance(x, Noeud) and x.tag in ("th", "td")]
+            if freres.index(th) == idx and decrit_par(th):
+                return True
+        return False
 
     vus = set()
     for n in a.racine.descendants():
@@ -476,8 +505,9 @@ def check_lisibilite(html: str, a: Arbre):
         libelle = (n.texte_propre() or n.tag)[:40]
         if est_score:
             # Un barème n'est pas un tooltip : il doit exister DANS la page, donc
-            # survivre au PDF, et être atteignable par aria-describedby.
-            if not decrit_par(n):
+            # survivre au PDF, et être atteignable par aria-describedby — porté par la
+            # cellule OU, pour une colonne homogène, une fois par le th (RA-4).
+            if not decrit_par(n) and not bareme_de_colonne(n):
                 if n.att("aria-describedby"):
                     fails.append(f'L3 barème introuvable ou trop court pour « {libelle} » '
                                  f'(aria-describedby="{n.att("aria-describedby")}").')
@@ -775,6 +805,22 @@ def check_autonomie(html: str):
             f"A1 — {len(constats)} requête(s) réseau au chargement : {exemples}{suite} "
             "— un livrable sortant est autonome (D-10 : confidentialité, durabilité, "
             "lecture hors ligne) ; inliner le CSS/JS, passer les images en data: URI.")
+
+    # A1-bis (RA-1, retour Produit-10 du 13/08) : une séquence </script> écrite en clair dans le
+    # CONTENU d'un script inliné (typiquement le commentaire d'usage d'un asset) ferme la
+    # balise hôte au milieu du fichier — composant tronqué, son reste devient du texte de
+    # body (symptôme : littéraux L11 portés par html > body), et rien ne le dit. Le comptage
+    # ne suffit PAS (un commentaire peut porter une paire équilibrée) : on lit comme le
+    # navigateur — chaque bloc script s'arrête à la PREMIÈRE fermeture ; tout « </script »
+    # survivant hors bloc est la fermeture réelle devenue orpheline, preuve de la troncature.
+    hors_blocs = re.sub(r"<script\b[^>]*>.*?</script", "", html, flags=re.S | re.I)
+    orphelins = len(re.findall(r"</script", hors_blocs, re.I))
+    if orphelins:
+        fails.append(
+            f"A1-bis — script inline tronqué : {orphelins} fermeture(s) </script> orpheline(s) "
+            "après lecture navigateur (un bloc script s'arrête à la PREMIÈRE fermeture). Une "
+            "séquence « </script » non échappée — souvent dans le commentaire d'usage d'un "
+            "asset inliné — a fermé la balise hôte : échapper en « <\\/script » dans le JS.")
     return fails, []
 
 

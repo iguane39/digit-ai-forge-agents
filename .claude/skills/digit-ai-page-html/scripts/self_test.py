@@ -71,8 +71,11 @@ RE_CODE = re.compile(r"^(L\d+)\b")
 CAS_AUTONOMIE = {
     "a1-cdn-au-chargement.html": {"A1"},
     "a1-liens-documentaires.html": set(),  # liens <a>, xmlns, data: URI : silence exigé
+    # RA-1 (Produit-10, 13/08) : un </script> en clair dans le commentaire d'un asset inliné
+    # tronque le script hôte — le déséquilibre ouvertures/fermetures le trahit.
+    "a1bis-script-tronque.html": {"A1-bis"},
 }
-RE_CODE_A = re.compile(r"^(A\d+)\b")
+RE_CODE_A = re.compile(r"^(A\d+(?:-bis)?)\b")
 
 # G1 (bascule thème sombre câblée, R-30/TF-0134) vit lui aussi dans la famille
 # « charte » : mêmes garanties anti-parasite que A1. Ensemble vide de FAILS

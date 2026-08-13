@@ -110,6 +110,15 @@ conteneur `overflow-x:auto`**). Le repli en cartes empilées via `data-label` es
 robuste. Un `thead` **sticky** ne se justifie que dans un conteneur à hauteur bornée ; hors de
 ce cas il se peint par-dessus la première ligne — le laisser statique.
 
+**Le seuil dépend du CONTENU, pas d'un pixel fixe (RA-2, mesuré sur livrable réel le 13/08)** :
+un tableau de 9 colonnes portant de la prose déborde encore à 1 200 px (V1 mesuré : bord droit
+à 1 173 px pour un viewport de 1 100 px). Règle de calibrage : ~130 px de largeur utile par
+colonne de prose — un tableau de N colonnes textuelles se replie sous `N × 130 px` environ, et
+640 px n'est le bon seuil que jusqu'à 4-5 colonnes. **Palier intermédiaire obligatoire** entre
+le seuil de repli et la largeur où le tableau tient à l'aise : `overflow-wrap: anywhere` sur
+les cellules (mot longs cassés, pas de débordement). La preuve reste `render_page.py` aux
+largeurs cibles — jamais le seuil sur parole.
+
 ```html
 <table>
   <caption>Inventaire</caption>
