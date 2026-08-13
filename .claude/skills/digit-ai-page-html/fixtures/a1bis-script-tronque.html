@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A1-bis — rouge : script inline tronqué par un </script> en commentaire</title>
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif; --accent: #2a5db0; }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page dont le composant inliné est silencieusement cassé</h1>
+<h2>Le commentaire d'usage ferme la balise hôte</h2>
+<p>Le script ci-dessous reproduit le défaut RA-1 (SCC_ALX, 13/08) : l'asset inliné porte la
+séquence fermante en clair dans son commentaire d'usage — le navigateur ferme la balise à cet
+endroit, le reste du composant devient du texte, et rien ne le dit.</p>
+<script>
+/* Câblage minimal :
+ *   <script src="composant.js"></script>
+ */
+var composant = { pret: true };
+</script>
+</main>
+</body>
+</html>

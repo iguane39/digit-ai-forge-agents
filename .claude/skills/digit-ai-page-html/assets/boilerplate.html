@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- S-G1 (1/4, R-30) — initialisation AVANT le <style> : pose data-theme avant la
-     première peinture (zéro flash). Choix persisté sinon prefers-color-scheme à la
-     première visite. Volontairement SANS defer/async : un script différé peindrait
-     d'abord le thème par défaut du CSS puis re-peindrait en sombre, c'est le flash
-     que ce script évite (déclenche le WARN générique « script bloquant en head » de
-     check_html.py — exception assumée, documentée ici). -->
+<!-- S-G1 (1/4, R-30 amendé TF-0158 le 13/08) — initialisation AVANT le <style> : pose
+     data-theme avant la première peinture (zéro flash). CLAIR PAR DÉFAUT, STRICTEMENT :
+     un livrable circule et s'ouvre identique chez tous ses lecteurs — l'auto-sombre
+     hérité de l'OS (prefers-color-scheme) est retiré (il a valu un retour humain réel
+     le 13/08 : « thème sombre par défaut »). Le sombre reste un CHOIX du lecteur,
+     persisté. Volontairement SANS defer/async : un script différé peindrait d'abord le
+     thème par défaut du CSS puis re-peindrait, c'est le flash que ce script évite
+     (déclenche le WARN générique « script bloquant en head » de check_html.py —
+     exception assumée, documentée ici). -->
 <script>
 (function () {
-  var stocke = localStorage.getItem('digitai-theme');
-  var theme = stocke || (window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme', theme);
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  document.documentElement.setAttribute('data-theme',
+    stocke === 'dark' ? 'dark' : 'light');
 })();
 </script>
   <meta charset="UTF-8">
@@ -21,6 +24,9 @@
   <meta name="description" content="{Résumé clair du livrable en une phrase.}">
   <meta name="theme-color" content="#2563EB">
   <meta name="color-scheme" content="light dark">
+  <!-- Favicon-lettre (systématisation du 13/08, loi transverse n°3 : la surface implicite
+       se propose d'office) : remplacer {L} par la PREMIÈRE LETTRE du client ou du projet. -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3E{L}%3C/text%3E%3C/svg%3E">
 
   <!-- Polices : AUCUN chargement réseau (A1/D-10 — confidentialité, durabilité,
        lecture hors ligne). Roboto/DM Sans s'affichent si installées localement,
@@ -44,8 +50,10 @@
       --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
       /* Rayons */
       --r: 12px; --r-sm: 8px;
-      /* Largeur du conteneur et largeur de lecture — cf. regle L2 */
-      --w: min(92vw, 1680px); --prose: 75ch;
+      /* Largeur du conteneur et largeur de lecture — cf. regle L2.
+         Le conteneur occupe 75-100 % de la fenetre A TOUTE TAILLE (decision 13/08) :
+         92vw sous ~1826px, plafond confort 1680px, plancher 75vw au-dela. */
+      --w: clamp(75vw, 1680px, 92vw); --prose: 75ch;
       /* Familles (repli système obligatoire) */
       --head: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
       --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -78,10 +86,10 @@
       line-height: 1.55;
       font-size: 16px;
     }
-    /* Deux largeurs, pas une (regle L2). Le conteneur suit l'ecran : brider a
-       960px abandonne la moitie de la surface d'un 1920 et replie les tableaux.
-       La PROSE, elle, reste bornee en ch — une ligne de texte sur 1680px est
-       illisible. Elargir uniformement remplacerait un defaut par un autre. */
+    /* Deux largeurs, pas une (regle L2). Le conteneur suit l'ecran — jamais de
+       plafond px nu : un max-width fixe tombe sous 75 % de la fenetre sur les
+       grands ecrans. La PROSE, elle, reste bornee en ch — une ligne de texte sur
+       1680px est illisible. Elargir uniformement remplacerait un defaut par un autre. */
     .wrap { max-width: var(--w); margin: 0 auto; padding: 32px 24px 64px; }
 
     h1, h2, h3 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }

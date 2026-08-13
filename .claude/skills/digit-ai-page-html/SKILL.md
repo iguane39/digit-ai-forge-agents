@@ -24,12 +24,18 @@ si la page vise aussi le PDF.
 ## Règles non négociables (charte)
 
 - **Roboto** (700/800) pour titres et sections · **DM Sans** pour le corps · **jamais Syne**.
-- **Light theme** par défaut, **bascule sombre câblée obligatoire** (G1, décision R-30/TF-0131) :
-  bouton `.theme-toggle` en en-tête, `data-theme` sur `:root`, tokens sombres dérivés,
-  persistance `localStorage`, `prefers-color-scheme` à la première visite, impression
-  toujours claire. Le boilerplate l'embarque déjà (snippet S-G1). Un bouton présent sans
-  script qui pose `data-theme` est une bascule morte, FAIL bloquant ; son absence totale
-  (rendu figé print/PDF) n'est qu'un avertissement.
+- **Light theme par défaut, STRICTEMENT** (G1, décision R-30/TF-0131 amendée TF-0158 le
+  13/08) : un livrable circule et s'ouvre identique chez tous ses lecteurs — l'auto-sombre
+  hérité de l'OS (`prefers-color-scheme` à la première visite) est retiré, il a produit un
+  retour humain réel. **Bascule sombre câblée obligatoire** : bouton `.theme-toggle` en
+  en-tête, `data-theme` sur `:root`, tokens sombres dérivés, persistance `localStorage`
+  (le sombre est un CHOIX du lecteur), impression toujours claire. Le boilerplate
+  l'embarque déjà (snippet S-G1). Un bouton présent sans script qui pose `data-theme` est
+  une bascule morte, FAIL bloquant ; son absence totale (rendu figé print/PDF) n'est qu'un
+  avertissement.
+- **Favicon-lettre obligatoire** (systématisation du 13/08, loi transverse n°3) : tout HTML
+  créé porte un favicon SVG en `data:` URI avec la **première lettre du nom du client ou du
+  projet** — le boilerplate l'embarque (remplacer `{L}`).
 - Toutes les couleurs, polices et rayons en **variables `:root`** — aucun hex en dur.
 - Toujours une **pile de repli système** derrière les web fonts.
 - **Autonomie réseau totale (A1, décision D-10)** : aucune requête au chargement — pas de
