@@ -14,18 +14,20 @@
  * ⚠️ Viewer-only : le JS ne s'exécute pas à l'export PDF (WeasyPrint). Si le livrable
  * vise aussi le PDF, prévoir un équivalent statique de l'information.
  *
- * Câblage minimal :
+ * Câblage minimal (RA-1, 13/08 : la séquence « </script » est ÉCHAPPÉE en <\/script> dans
+ * ce commentaire — cet asset s'inline (règle A1), et un </script> nu dans un commentaire
+ * fermerait la balise hôte au milieu du fichier : composant tronqué, silencieusement) :
  *   <input id="find" type="text" placeholder="Rechercher…">
  *   <div id="findCount" class="find-count" aria-live="polite"></div>
  *   <div id="content"> … contenu à fouiller … </div>
- *   <script src="find-in-page.js"></script>
+ *   <script src="find-in-page.js"><\/script>
  *   <script>
  *     DigitAIFindInPage.init(
  *       document.getElementById('find'),
  *       document.getElementById('content'),
  *       document.getElementById('findCount')
  *     );
- *   </script>
+ *   <\/script>
  *
  * CSS attendu (à adapter aux tokens du livrable) :
  *   mark.find-hit { background: #fde9c8; color: inherit; display: inline; padding: 0; margin: 0; }
