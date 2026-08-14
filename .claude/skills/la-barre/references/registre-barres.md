@@ -250,5 +250,8 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
     qui la rend décomposable en critères vérifiables ; le dépôt est public, inspectable
     et lu (consultation du 14/08/2026), et son verdict d'admission est déjà tranché :
     référence de niveau, jamais outil installé (étude d'opportunité du 14/08/2026, O3).
-  statut: todo (pas 5 du protocole — validation humaine en un tour — NON exécuté ;
+  statut: ok (validée humain, 14/08/2026 — mandat « point 5 : a traiter ». ÉCART DÉCLARÉ :
+    la validation est venue d'un mandat de liste, pas du tour dédié que prévoit le pas 5 du
+    protocole. L'humain a vu la référence, sa dimension et sa frontière avant de trancher ;
+    la barre n'est PAS auto-validée, mais elle n'a pas eu son tour propre — dit, pas tu.)
     barre rédigée sous mandat TF-0198, elle ne s'auto-valide pas)
