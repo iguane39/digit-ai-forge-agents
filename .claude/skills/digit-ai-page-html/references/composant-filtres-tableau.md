@@ -10,6 +10,31 @@ Assets : [`assets/table-filters.js`](assets/table-filters.js) **et son CSS jumea
 s'inlinent ensemble : le composant livré sans son habillage sort en rendu brut navigateur
 (constaté et refusé sur livrable réel). L'état OUVERT du panneau se juge par
 `render_page.py --etats-ouverts` (V2/V4). Après `initAll()`, appeler-le sur toute page hôte.
+
+## ⚠ Le `<th>` est POSSÉDÉ par le composant après `init()` (RA-6, Produit-10 14/08)
+
+`init()` **injecte** le bouton de facette et son panneau DANS le `<th>`. Toute extension qui
+réécrit `th.textContent` ou `th.innerHTML` (armer un tri, renommer une colonne…) **détruit
+silencieusement** le filtre de cette colonne — et les oracles statiques rendent PASS sur la
+version défectueuse (constaté sur livrable réel, trouvé par un test d'interactions).
+Règles d'extension :
+- ne modifier que les **nœuds texte** du `th` (`childNodes` de type texte), jamais son contenu
+  global ;
+- ou poser vos ajouts AVANT `initAll()` ;
+- brancher un tri : écouter le clic du `th` en **ignorant** les cibles `.tf-btn`/`.tf-panel`
+  (modèle : le dashboard forge-tests), ou passer par le tri opt-in du composant (RA-5,
+  ci-dessous).
+Preuve attendue de toute extension : un test d'interactions (voir
+[`references/tests-interactions.md`](tests-interactions.md)) — l'oracle statique ne voit pas
+une facette détruite.
+
+## Tri opt-in du composant (RA-5, 14/08)
+
+La règle L4 exige « filtre, tri et recherche » ; le composant fournit désormais le tri en
+option : `DigitAITableFilters.initAll(document, { tri: true })` arme un tri croissant/
+décroissant au clic d'en-tête (numérique quand la colonne se lit en nombre, `aria-sort`,
+clics `.tf-btn`/`.tf-panel` ignorés). Par défaut `tri: false` — aucun changement de
+comportement pour les pages qui ont déjà leur tri (dashboard forge-tests).
 Oracle : `oracle-filtres-tableau.mjs` — checklist **G1–G6**.
 
 ## Périmètre — quand la règle s'applique

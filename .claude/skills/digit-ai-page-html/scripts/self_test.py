@@ -62,6 +62,9 @@ CAS = {
     "l9-depliant-inutile.html": {"L9"},
     "l12-enumeration-en-prose.html": {"L12"},
     "l10-table-sans-mode-emploi.html": {"L10"},
+    # Delta n°6 (14/08) : liste ≥ 8 lignes sans champ de recherche statique — L13 seule
+    # (data-filterable pose L4 muette, exemple de lecture pose L10 muette).
+    "l13-liste-sans-recherche.html": {"L13"},
     "l11-litteral-null.html": {"L11"},
     "l3-score-sans-formule.html": {"L3"},
     "l3-valeur-opaque.html": {"L3"},

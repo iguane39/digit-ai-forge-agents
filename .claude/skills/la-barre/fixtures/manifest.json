@@ -1,0 +1,8 @@
+{
+  "oracle": "test_existence",
+  "domaine": "Existence et inspectabilite d'une reference (barre)",
+  "fixtures": [
+    { "nom": "verte", "entree": "fixtures/verte/candidats.txt", "verdict_attendu": "PASS", "exit_attendu": 0 },
+    { "nom": "rouge", "entree": "fixtures/rouge/candidats.txt", "verdict_attendu": "FAIL", "exit_attendu": 1 }
+  ]
+}

@@ -596,6 +596,36 @@ def check_lisibilite(html: str, a: Arbre):
             fails.append(f"L4 table « {nom} » exemptée sans data-filterable-reason — "
                          "sans motif, ce n'est pas une exemption.")
 
+    # --- L13 : page à listes = recherche + KPI câblés (standard H, delta n°6 — 14/08) -----
+    # Une page qui montre au moins une table de ≥ 8 lignes se PARCOURT : un champ de
+    # recherche statique doit exister dans le balisage (les recherches injectées au runtime
+    # par un composant ne comptent pas — la page doit l'offrir d'elle-même). Et des KPI
+    # (.kpi/.tuile) posés au-dessus d'une telle liste sont des affordances de filtre (H3) :
+    # non cliquables, ils sont signalés — la distinction consultation/livrable interactif
+    # restant à trancher, c'est un AVERTISSEMENT, pas un FAIL (écart déclaré vs delta n°6).
+    tables_longues = [t for t in a.racine.descendants()
+                      if t.tag == "table" and _lignes_tbody(t) >= 8
+                      and t.att("data-filterable") != "off"]
+    if tables_longues:
+        a_recherche = any(
+            n.tag == "input" and (n.att("type") or "").lower() == "search"
+            for n in a.racine.descendants()
+        )
+        if not a_recherche:
+            fails.append(
+                f"L13 {len(tables_longues)} table(s) de ≥ 8 lignes sans AUCUN champ de "
+                "recherche statique (input[type=search]) dans la page — une liste longue se "
+                "cherche (standard H2) ; l'outillage du socle (barre recherche + "
+                "réinitialisation + compteur) est le modèle.")
+        kpis_morts = [n for n in a.racine.descendants()
+                      if (n.classes() & {"kpi", "tuile"}) and n.tag != "button"
+                      and n.att("data-kpi-filtre") is None]
+        if kpis_morts:
+            warns.append(
+                f"L13 {len(kpis_morts)} KPI (.kpi/.tuile) non cliquable(s) au-dessus d'une "
+                "liste de ≥ 8 lignes — un KPI qui compte des éléments affichés les filtre "
+                "(H3, composant kpi-filter.js) ; un KPI d'éléments hors page le dit.")
+
     # --- L5 : surlignage inline -------------------------------------------
     # Le piege n'est pas seulement une regle `mark { … }` fautive : c'est la
     # COLLISION DE NOM. Un conteneur de recherche `.find` et un surlignage

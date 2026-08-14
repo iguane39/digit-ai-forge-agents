@@ -1,0 +1,2 @@
+# Fixture VERTE — toutes les references sont atteignables : attendu PASS (exit 0)
+fixtures/verte/reference-locale.html

@@ -1,0 +1,3 @@
+# Fixture ROUGE — une reference inexistante : attendu FAIL (exit 1)
+fixtures/verte/reference-locale.html
+fixtures/rouge/reference-absente.html
