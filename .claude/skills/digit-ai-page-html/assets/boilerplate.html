@@ -14,8 +14,15 @@
 (function () {
   var stocke = null;
   try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
-  document.documentElement.setAttribute('data-theme',
-    stocke === 'dark' ? 'dark' : 'light');
+  var theme = stocke === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  /* RV-9 (14/08) : `color-scheme` SUIT le thème effectif. Laissé à « light dark », le
+     navigateur peignait ses propres surfaces (ascenseurs, contrôles de formulaire) en
+     sombre dès que le poste l'était — un corps clair bordé de chrome sombre, alors même
+     que la règle dit « clair par défaut ». Le figer à « light » aurait produit l'inverse
+     après bascule. Il suit donc, et reste juste dans les deux états. */
+  var meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) { meta.setAttribute('content', theme); }
 })();
 </script>
   <meta charset="UTF-8">
@@ -23,7 +30,9 @@
   <title>Digit-AI — {Objet} · {Client}</title>
   <meta name="description" content="{Résumé clair du livrable en une phrase.}">
   <meta name="theme-color" content="#2563EB">
-  <meta name="color-scheme" content="light dark">
+  <!-- « light » à l'écriture : le script d'initialisation ci-dessus le passe à « dark » si,
+       et seulement si, le lecteur a explicitement choisi le sombre (RV-9, 14/08). -->
+  <meta name="color-scheme" content="light">
   <!-- Favicon-lettre (systématisation du 13/08, loi transverse n°3 : la surface implicite
        se propose d'office) : remplacer {L} par la PREMIÈRE LETTRE du client ou du projet. -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3E{L}%3C/text%3E%3C/svg%3E">

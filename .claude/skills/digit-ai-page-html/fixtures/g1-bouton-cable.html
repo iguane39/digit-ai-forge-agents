@@ -3,9 +3,11 @@
 <head>
 <script>
 (function () {
+  /* RV-9 (14/08) : cette fixture VERTE suivait `prefers-color-scheme` alors que la règle
+     G1 l'avait retiré le 13/08 — la preuve de conformité de l'oracle démontrait le
+     comportement interdit. Clair TOUJOURS par défaut ; le sombre est un choix du lecteur. */
   var stocke = localStorage.getItem('digitai-theme');
-  var theme = stocke || (window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  var theme = stocke === 'dark' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', theme);
 })();
 </script>
