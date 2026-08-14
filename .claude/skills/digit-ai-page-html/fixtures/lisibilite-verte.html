@@ -46,7 +46,8 @@ mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline
     profondeur de clic, et lesquelles ne reçoivent aucun lien interne.</p>
   <p class="exemple-lecture">Comment lire : la ligne « /bretagne/gites » se lit
     « page de profondeur 1, répondant en 200, citée par 4 liens internes ».</p>
-  <table id="t-pages" data-filterable>
+  <div role="search"><input type="search" aria-label="Rechercher dans la table (insensible aux accents)" placeholder="Rechercher…"></div>
+<table id="t-pages" data-filterable>
     <caption>Inventaire des pages mesurées</caption>
     <thead><tr><th scope="col">URL</th><th scope="col">Profondeur</th>
       <th scope="col">HTTP</th><th scope="col">Liens entrants</th></tr></thead>

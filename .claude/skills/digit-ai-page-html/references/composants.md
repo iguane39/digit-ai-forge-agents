@@ -151,3 +151,16 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
 - Tous les composants ci-dessus supposent le bloc `:root` du boilerplate. Après intégration,
   **relancer les oracles** (`check_html.py` puis `render_page.py`) : ne jamais juger un rendu
   depuis le seul code (cf. `zero-defaut-visuel.md`).
+
+
+## 8 — KPI cliquables filtrant une liste 🔴 (standard H3, dès que des KPI comptent des lignes affichées)
+
+Asset : [`assets/kpi-filter.js`](../assets/kpi-filter.js) (delta n°6, 14/08). Un KPI qui
+compte des éléments affichés les FILTRE au clic (re-clic = tout) ; un KPI d'éléments hors
+page ne se branche pas — il reste un `div` et dit où vivent ses éléments. Contrat de
+marquage : `<button data-kpi-filtre data-kpi-table="id" data-kpi-attr="statut"
+data-kpi-valeur="candidat">` + `data-<attr>` sur chaque ligne. Masquage par
+`data-kpi-cache`, composable avec la recherche et les facettes D-12 (visibilité dérivée).
+La règle **L13** de `check_html` exige la recherche statique dès 8 lignes et signale les
+KPI non cliquables au-dessus d'une liste. Modèles éprouvés : `todo/TODO.html` (pilot,
+oracle 13/13) et le dashboard forge-tests (tuiles).
