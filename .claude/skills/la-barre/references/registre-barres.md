@@ -194,3 +194,61 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
   frontiere: fixe le NIVEAU de structuration et de validabilité ; on n'importe pas Backstage, on mesure notre format à son modèle
   justification: l'état de l'art du catalogue de services déclaratif à vues générées — même discipline source/vue que TODO-FORGE
   statut: ok (validée humain, 12/08/2026 — pré-vol campagne catalogues & prompts pilot)
+
+- cible: page / interface web générée par un agent (landing, portfolio, refonte)
+  dimension: absence de généricité (« anti-slop ») — le niveau de finition qui distingue une page conçue d'une page recrachée
+  reference: taste-skill (Leonxlnx) — variante skills/taste-skill, frontmatter name design-taste-frontend
+  localisateur: https://github.com/Leonxlnx/taste-skill
+    (texte lu : https://raw.githubusercontent.com/Leonxlnx/taste-skill/main/skills/taste-skill/SKILL.md)
+  test_existence: PASS — HTTP 200, text/html, 65 536+ octets (exécuté le 14/08/2026, 1/1 référence atteignable)
+  niveaux:
+    structure: >
+      Le hero tient dans la fenêtre initiale — titre ≤ 2 lignes au bureau, sous-texte
+      ≤ 20 mots ET ≤ 4 lignes, action principale visible sans défilement ; padding haut
+      du hero plafonné. La navigation tient sur UNE ligne au bureau, hauteur ≤ 80 px.
+      Mise en page par grille déclarée, jamais par arithmétique de pourcentages.
+      Une famille de gabarit de section ne se répète pas : le zigzag image/texte est
+      plafonné à 2 sections consécutives, une grille a exactement autant de cellules
+      que d'items (aucune cellule vide de remplissage).
+    tokens: >
+      UNE couleur d'accent, verrouillée sur toute la page (pas d'accent qui change en
+      section 7), saturation bornée sous 80 % ; bases neutres plutôt que le violet-bleu
+      réflexe. Ni noir pur ni blanc pur. UNE seule échelle de rayon par page. Échelle
+      typographique déclarée : titres resserrés, corps borné en longueur de ligne
+      (≈ 65 caractères) ; les familles de polices réflexes sont écartées par défaut et
+      un serif ne s'emploie que sur justification explicite.
+    composants: >
+      La carte n'est employée que quand l'élévation porte une hiérarchie réelle, sinon
+      regroupement par filets sobres ou par l'espace. JAMAIS bordure haute ET basse sur
+      chaque ligne d'une liste ou d'un tableau : un seul filet, employé avec parcimonie ;
+      au-delà de ~5 items, une liste brute n'est pas la bonne forme. Ombres teintées à
+      la teinte du fond, jamais du noir pur. Libellé de bouton tenant sur une ligne,
+      contraste AA vérifié sur chaque bouton et chaque champ ; libellé au-dessus du
+      champ, jamais le placeholder en guise de libellé. États vide, chargement et
+      erreur fournis, pas sous-entendus.
+    comportement: >
+      Toute animation porte une intention nommée (hiérarchie, narration, retour d'action,
+      changement d'état) — « ça faisait joli » n'en est pas une ; du mouvement annoncé est
+      du mouvement réellement rendu. `prefers-reduced-motion` respecté dès qu'il y a du
+      mouvement. Animation limitée à transform et opacity. Pas d'écouteur de défilement
+      appelé à chaque image. Cibles de performance déclarées : LCP < 2,5 s, INP < 200 ms,
+      CLS < 0,1.
+  frontiere: >
+    Importe un NIVEAU d'exigence sur la finition d'une page générée. N'autorise NI la
+    copie du gabarit, NI la reprise de l'identité visuelle, NI l'emprunt de la voix
+    d'auteur de la référence — on mesure notre exigence à la sienne, on ne la reproduit
+    pas. Deux réserves portées au clair : la référence prescrit des ressources chargées
+    par le réseau (picsum.photos, cdn.simpleicons.org) que la règle A1 du socle interdit
+    et que check_html.py refuse en FAIL bloquant, et une pile applicative imposée
+    (Next.js, Tailwind v4, Motion, GSAP) qui heurte la neutralité du socle. Ces deux
+    familles de prescriptions sont HORS de la barre : elles ne font pas partie du niveau
+    importé. La charte Digit-AI et l'autonomie réseau priment et restent la contrainte
+    de forme.
+  justification: >
+    La référence traite exactement la cible — le rendu générique d'une page produite par
+    un agent — et la traite en règles binaires localisables plutôt qu'en intentions, ce
+    qui la rend décomposable en critères vérifiables ; le dépôt est public, inspectable
+    et lu (consultation du 14/08/2026), et son verdict d'admission est déjà tranché :
+    référence de niveau, jamais outil installé (étude d'opportunité du 14/08/2026, O3).
+  statut: todo (pas 5 du protocole — validation humaine en un tour — NON exécuté ;
+    barre rédigée sous mandat TF-0198, elle ne s'auto-valide pas)
