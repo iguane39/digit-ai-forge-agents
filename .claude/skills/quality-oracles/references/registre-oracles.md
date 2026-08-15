@@ -112,3 +112,19 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
 - **Artefact unique.** Les quatre jugent le même fichier sous quatre angles
   (énoncé, traçabilité, couverture, affirmations chiffrées) : un référentiel qui passe
   les quatre est celui que les forges aval peuvent consommer.
+
+## Injection du 15/08/2026 — restitution lisible (TF-0235, v2.11.0-v2.11.1)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Restitution lisible : la page se conçoit pour ses lecteurs | `node c:/dev/digit-ai-forge-design/oracles/oracle-restitution.mjs <page.html> --json-only` — RL-1 vue d'ensemble (verdict, ≥ 3 KPI, navigation de vues), RL-3 KPI complets (valeur, définition, repère), RL-4 question des graphiques, RL-9 chemins de lecteurs, RL-10 manifeste d'écarts | cli | ✅ |
+
+- **Périmètre déclaratif** : ne juge que les pages portant `data-restitution` ;
+  les autres reçoivent SKIP motivé — jamais un FAIL sur une page hors périmètre.
+- **Référentiel** : `c:/dev/digit-ai-forge-design/REFERENTIEL-RESTITUTION.md` ;
+  RL-2/5/6/7/8 déclarées non jugées (socle L7, composant filtres G1-G6, rendu,
+  revue D8 de critique-le-design, iso-contenu de campagne). Règle opposable : R-36
+  (`REGLES-PROJET.md` §P du pilot).
+- **v2.11.1** : `timeout_ms: 600000` posé sur les deux oracles claims — le budget
+  par défaut de 120 s tuait `oracle-claims` sur les livrables de ~500 Ko (PASS en
+  7 min lancé seul, constaté sur le rapport SEO AuxPortesDeLaBaie du 15/08, TF-0239).
