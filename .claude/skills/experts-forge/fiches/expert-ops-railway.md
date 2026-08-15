@@ -9,6 +9,12 @@ d'un produit sur Railway versés au corpus (`references/corpus-ops-railway.md` �
 échec via l'API GraphQL). Mise à jour du corpus source uniquement — la rubrique, la frontière
 et le verdict d'admission ci-dessous restent ceux jugés le 11/08/2026, non rejugés.
 
+**Corpus enrichi le 15/08/2026 (TF-0269)** : 3 constats du second déploiement réel versés au
+corpus (`references/corpus-ops-railway.md` §12-§14 — domaine généré `<service>-<environnement>`
+et nommage R-24, renommage d'un domaine existant par la seule mutation GraphQL
+`serviceDomainUpdate` à 5 champs requis, origine publique posée en variable d'environnement).
+Mise à jour du corpus source uniquement — structure admise inchangée, admission non rejugée.
+
 ## 0. Mérite un expert (3 conditions, renseignées à la création)
 1. Récurrence : le cas réel prouvé de TF-0040 : ASD déployé sur Railway artisanalement (preuve du coût de D-P1) ; toute cible `plan railway` de forge-ops consommera cette fiche
 2. Corpus disponible : checklist propre constituée (`references/corpus-ops-railway.md`, sources officielles)

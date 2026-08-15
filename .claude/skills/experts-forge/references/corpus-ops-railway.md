@@ -62,3 +62,37 @@ recouper si Railway republie sa documentation sur ces points).
     projet) : requêtes `deploymentLogs` (logs de build et d'exécution) et `httpLogs` (couche
     edge/proxy, champ `upstreamErrors` pour les connexions refusées vers l'appli) — c'est par
     là qu'un déploiement mort remonte réellement sa cause. Source : https://docs.railway.com/guides/public-api
+
+Items 12-14 ajoutés le 15/08/2026 (TF-0269) : trois constats du **second déploiement réel**
+(run de version 20260815b-bdl — l'URL publique livrée portait un doublon
+`<service>-recette-production`, et les URLs auto-référentes du produit sortaient sur l'hôte
+interne). Source : constat direct du run MEP, pas un doc officiel — à recouper si Railway
+republie sa documentation sur ces points.
+
+12. **Le domaine généré concatène service ET environnement — nommer le SERVICE selon R-24**
+    — le domaine `.up.railway.app` fabriqué par Railway est `<nom-service>-<nom-environnement>`.
+    Un service nommé pour son usage (`<appli>-recette`) déployé dans l'environnement par défaut
+    `production` donne `<appli>-recette-production.up.railway.app` : un doublon qui se contredit
+    lui-même, et une URL publique livrée fausse. Le nom du service ne porte donc JAMAIS
+    l'environnement : c'est l'environnement Railway qui le porte. Corrige : nommer le service
+    `<appli>` et l'environnement selon la convention R-24 (`<appli>-{dev|qualif|production}`
+    pour l'hôte résultant), ou renommer l'environnement — le renommage fait partie du
+    déploiement type, jamais d'un rattrapage après livraison. À décider AVANT le premier
+    déploiement : un domaine déjà créé ne se renomme plus par le CLI (§13).
+13. **Renommer un domaine existant : mutation GraphQL `serviceDomainUpdate`, jamais le CLI** —
+    `railway domain` refuse de renommer un domaine déjà attaché : il répond « Domains already
+    exist » et n'offre aucun verbe de renommage. Le seul canal est l'API publique GraphQL
+    (`https://backboard.railway.com/graphql/v2`, jeton de projet), mutation
+    `serviceDomainUpdate`, dont les **5 champs sont TOUS requis** — `serviceDomainId`,
+    `domain`, `environmentId`, `serviceId`, `targetPort` : en omettre un fait échouer la
+    mutation (l'ancien domaine reste en place, sans erreur visible côté CLI). Récupérer d'abord
+    les identifiants par requête (le `serviceDomainId` n'est pas le nom du domaine), puis muter.
+    Source : constat du run 20260815b-bdl + https://docs.railway.com/guides/public-api
+14. **Origine publique en variable d'environnement, sinon les URLs auto-référentes mentent** —
+    un produit qui fabrique des URLs absolues vers lui-même (canonical, `og:url`, `<loc>` du
+    sitemap, `url`/`@id` du JSON-LD, liens d'e-mail) doit lire son origine publique dans une
+    variable de service (ex. `<PRODUIT>_URL_BASE=https://<appli>-qualif.up.railway.app`), posée
+    au déploiement. Sans elle, l'appli retombe sur son hôte interne (`http://localhost:<PORT>`)
+    et sert en production des URLs auto-référentes pointant nulle part — invisible au
+    healthcheck (la page répond 200) et invisible aux tests unitaires (hôte de test légitime).
+    Poser la variable fait partie du déploiement type, au même titre que `healthcheckPath`.
