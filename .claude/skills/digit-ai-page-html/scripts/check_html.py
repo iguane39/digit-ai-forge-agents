@@ -77,6 +77,30 @@ RE_LITTERAL = re.compile(
     r"\{\{[^}\n]{0,40}\}\}|\$\{[^}\n]{0,40}\})"
     r"(?=$|[\s)\]».;,:!?<—–-])")
 
+# L14 — la PLOMBERIE affichée : une convention de balisage interne qui traverse le rendu.
+#
+# Né d'un défaut livré (Produit-10, 14/08) : un rapport diffusé portait 71 occurrences de
+# marqueurs `[c:ec-sources]` en clair dans ses phrases — « 85 [c:ec-sources] sources ALX ».
+# Il était PASS à check_html, PASS à render_page sur cinq largeurs, PASS à 24 contrôles
+# d'interactions maison. Aucun oracle ne LISAIT le texte rendu ; l'humain l'a vu au premier
+# coup d'œil, capture à l'appui.
+#
+# L11 couvrait déjà deux des sept motifs cités par le retour (`{{…}}`, `${…}`) — la preuve
+# que l'axe était juste et le filet troué. L14 prend les autres, et ne redit pas L11.
+#
+# Deux niveaux, et la distinction n'est pas cosmétique :
+#   FAIL — ce qui n'a JAMAIS de raison d'être lu : marqueur crocheté à préfixe court
+#          (`[c:…]`, `[ref:…]`), substitution printf (`%s`, `%(nom)s`), « lorem ipsum » ;
+#   WARN — `TODO` / `FIXME` / `XXX` / `HACK` : une page PEUT légitimement parler de tâches
+#          (le registre TODO du pilot en est une). En faire un échec forcerait une exemption
+#          sur une page honnête, et une exemption de routine ne se lit plus.
+RE_GABARIT = re.compile(
+    r"(?:^|[\s(«:;,>—–-])"
+    r"(\[[a-zA-Z]{1,6}:[^\]\n]{1,48}\]|%\([\w-]{1,24}\)[sdifr]|%[sdifr]\b|lorem ipsum)",
+    re.IGNORECASE)
+RE_MARQUEUR_TRAVAIL = re.compile(
+    r"(?:^|[\s(«:;,>])(TODO|FIXME|XXX|HACK)(?=$|[\s)»:;,.!?—–-])")
+
 # En-têtes de colonne qui annoncent une valeur CALCULÉE : sans formule publiée, le
 # lecteur doit croire sur parole la colonne qui classe tout le reste.
 RE_TH_SCORE = re.compile(
@@ -358,6 +382,20 @@ def _sommaire(a: Arbre):
     return None
 
 
+BALISES_CITATION = ("code", "pre", "kbd", "samp")
+
+
+def _cite(porteur) -> bool:
+    """Le texte est-il DANS une balise de citation ? Alors il est montre, pas fuite.
+
+    Distinction tranchee chez forge-data le 14/08 (TF-0160) et verifiee sur 213 chiffres :
+    un marqueur place dans un span de code est une MENTION. La reprendre ici evite qu une
+    page qui DOCUMENTE une convention soit accusee de la laisser fuiter — cas reel : la
+    carte TF-0227 du registre TODO, qui cite les marqueurs pour decrire le defaut.
+    """
+    return any(n.tag in BALISES_CITATION for n in [porteur, *porteur.ancetres()])
+
+
 def check_lisibilite(html: str, a: Arbre):
     fails, warns = [], []
     ids = index_ids(a)
@@ -428,7 +466,10 @@ def check_lisibilite(html: str, a: Arbre):
     fuites = []
     for txt, porteur in a.textes:
         for m in RE_LITTERAL.finditer(txt):
-            if porteur.tag in ("code", "pre", "kbd", "samp"):
+            # L'exemption « code » vaut pour le porteur ET ses ancetres : un litteral dans
+            # <pre><span>…</span></pre> est cite, pas fuite (l exemption ne regardait que le
+            # porteur direct — trouve le 15/08 en instruisant TF-0227).
+            if _cite(porteur):
                 continue
             if any("data-litteral-ok" in n.attrs
                    for n in [porteur, *porteur.ancetres()]):
@@ -625,6 +666,38 @@ def check_lisibilite(html: str, a: Arbre):
                 f"L13 {len(kpis_morts)} KPI (.kpi/.tuile) non cliquable(s) au-dessus d'une "
                 "liste de ≥ 8 lignes — un KPI qui compte des éléments affichés les filtre "
                 "(H3, composant kpi-filter.js) ; un KPI d'éléments hors page le dit.")
+
+    # --- L14 : plomberie affichée (TF-0227, lot Produit-10 du 14/08) ----------
+    # Le texte est déjà extrait hors `<script>` et `<style>` par le parseur : le coût est
+    # d'une expression par motif, comme le retour l'avait estimé.
+    def _exempte(porteur):
+        for n in [porteur, *porteur.ancetres()]:
+            if (n.att("data-motif-ok") or "").strip():
+                return True
+        return False
+
+    gabarits, marqueurs = [], []
+    for txt, porteur in a.textes:
+        t = txt.strip()
+        if not t or _cite(porteur) or _exempte(porteur):
+            continue
+        for m in RE_GABARIT.finditer(t):
+            gabarits.append((m.group(1), porteur.chemin()))
+        for m in RE_MARQUEUR_TRAVAIL.finditer(t):
+            marqueurs.append((m.group(1), porteur.chemin()))
+    for motif, ou in gabarits[:6]:
+        fails.append(
+            f"L14 plomberie affichée : « {motif} » rendu en clair dans le texte ({ou}) — "
+            "convention de balisage interne qui n'aurait pas dû traverser l'émetteur ; "
+            'exemption possible par data-motif-ok="<raison>".')
+    if len(gabarits) > 6:
+        fails.append(f"L14 plomberie affichée : {len(gabarits) - 6} autre(s) occurrence(s).")
+    if marqueurs:
+        distincts = sorted({m for m, _ in marqueurs})
+        warns.append(
+            f"L14 {len(marqueurs)} marqueur(s) de travail dans le texte visible "
+            f"({', '.join(distincts)}) — légitime si la page PARLE de tâches, à retirer "
+            "sinon ; jamais un échec, une page honnête ne doit pas s'exempter.")
 
     # --- L5 : surlignage inline -------------------------------------------
     # Le piege n'est pas seulement une regle `mark { … }` fautive : c'est la
