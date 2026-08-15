@@ -66,6 +66,13 @@ CAS = {
     # (data-filterable pose L4 muette, exemple de lecture pose L10 muette).
     "l13-liste-sans-recherche.html": {"L13"},
     "l11-litteral-null.html": {"L11"},
+    # TF-0227 (lot SCC_ALX du 14/08) : 71 marqueurs [c:id] dans un livrable DIFFUSE, PASS
+    # a tous les oracles du socle. La rouge porte le defaut reel, mot pour mot.
+    "l14-plomberie-affichee.html": {"L14"},
+    # Les deux sorties legitimes, chacune sa fixture : citer dans du code, ou s exempter
+    # AVEC un motif. Sans elles, la regle passerait pour un simple refus de crochets.
+    "l14-jetons-cites-en-code.html": set(),
+    "l14-exemption-motivee.html": set(),
     "l3-score-sans-formule.html": {"L3"},
     "l3-valeur-opaque.html": {"L3"},
 }
