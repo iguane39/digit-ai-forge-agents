@@ -18,13 +18,18 @@ Usage :
 Sortie : un PNG par breakpoint (suffixe -w{largeur}) + rapport PASS/FAIL.
 Code retour 0 = PASS (aucun bloquant), 1 = FAIL.
 
-Les PNG ne sont JAMAIS déposés à côté du fichier audité : ils atterrissent dans
-`<dossier du HTML>/.oracles/`, un sous-dossier d'atelier que l'orchestrateur
-quality-oracles ignore déjà à la marche. Auditer un dossier de livrables y
-déposait auparavant autant de PNG que de pages × breakpoints — 12 d'un coup dans
-un livrable client. `--out <dossier>` place les captures ailleurs (scratchpad de
-session, dossier de rapport) ; le chemin de chaque PNG reste dans le rapport,
-puisque V5 et V6 s'inspectent dessus.
+Les PNG ne tombent JAMAIS dans un arbre de LIVRAISON. Deux cas :
+  - page hors livraison → `<dossier du HTML>/.oracles/`, sous-dossier d'atelier
+    que l'orchestrateur quality-oracles ignore déjà à la marche ;
+  - page sous `output/`, `old/`, `dist/`… → dossier temporaire nommé, chemin
+    imprimé au rapport.
+
+Le premier correctif (TF-0058) n'avait déplacé les captures que d'un cran : un
+`.oracles/` DANS `output/` reste dans ce que le client reçoit, et un audit y a
+laissé 25 Mo qu'il a fallu déplacer à la main (reconstat TF-0230, 14/08).
+`--out <dossier>` fait foi quand il est donné — c'est ainsi qu'un run journalise
+ses captures. Le chemin de chaque PNG reste dans le rapport, puisque V5 et V6
+s'inspectent dessus.
 
 Fonctionne dans les deux environnements de la forge (généralisé depuis
 digit-ai-schemas/scripts/render_schema.py — composition, pas duplication) :
@@ -449,8 +454,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: 
           .replace("__L2_COL_MAX__", str(L2_COL_MAX))
           .replace("__L2_ETIQUETTE_MAX__", str(L2_ETIQUETTE_MAX)))
 
-    # Défaut : sous-dossier d'atelier, jamais le dossier audité lui-même.
-    png_dir = out_dir if out_dir is not None else html_path.resolve().parent / ".oracles"
+    png_dir = _dossier_captures(html_path, out_dir)
     png_dir.mkdir(parents=True, exist_ok=True)
 
     report: dict = {"file": str(html_path), "png_dir": str(png_dir),
@@ -525,6 +529,33 @@ def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: 
     return 0 if report["verdict"] == "PASS" else 1
 
 
+# TF-0230 (lot Produit-10, 14/08) — reconstat sur TF-0058, archivé « corrigé » et ne l'étant
+# qu'à moitié. Le correctif d'origine avait déplacé les PNG d'un cran, dans un sous-dossier
+# `.oracles/` du dossier audité. Or le MOTIF de l'item était « 12 PNG dans le dossier même que
+# le client reçoit » : auditer un livrable de `output\` y déposait toujours 25 Mo de captures,
+# qu'il a fallu déplacer à la main. Un sous-dossier d'un dossier livré reste dans ce qui est
+# livré. Corriger « à moitié » puis archiver, c'est fermer un item sans fermer le défaut — et
+# le registre ment ensuite sur son propre reste-à-faire.
+#
+# Règle : les captures ne tombent JAMAIS dans un arbre de livraison. Elles sont un artefact
+# d'atelier (V5/V6 s'inspectent à l'œil, puis on n'en fait plus rien) ; leur place par défaut
+# est hors du projet, et leur chemin est imprimé pour qu'on les retrouve. `--out` reste le
+# moyen de les garder — c'est ce que fait un run qui veut les journaliser.
+DOSSIERS_LIVRAISON = {"output", "old", "livrables", "dist", "public"}
+
+
+def _dossier_captures(html_path: Path, out_dir: Path | None) -> Path:
+    """Où déposer les PNG. `--out` explicite fait foi ; sinon, jamais un arbre de livraison."""
+    if out_dir is not None:
+        return out_dir
+    resolu = html_path.resolve()
+    parents = {p.name.lower() for p in resolu.parents}
+    if parents & DOSSIERS_LIVRAISON:
+        import tempfile
+        return Path(tempfile.gettempdir()) / "digit-ai-render" / resolu.stem
+    return resolu.parent / ".oracles"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Rendu + mesures : V1/V2/V4 et L2-largeur bloquants, V3/V7 avertissements")
     ap.add_argument("html", type=Path)
@@ -534,8 +565,9 @@ def main() -> None:
     ap.add_argument("--scale", type=int, default=2)
     ap.add_argument("--output", choices=["text", "json"], default="text")
     ap.add_argument("--out", type=Path, default=None, dest="out_dir",
-                    help="dossier des PNG (défaut : <dossier du HTML>/.oracles/ — "
-                         "jamais le dossier audité lui-même)")
+                    help="dossier des PNG (défaut : <dossier du HTML>/.oracles/, ou un dossier "
+                         "temporaire si la page vit dans un arbre de LIVRAISON — "
+                         "output/, old/, dist/… : un livrable ne reçoit jamais de captures)")
     ap.add_argument("--etats-ouverts", action="store_true", dest="etats_ouverts",
                     help="TF-0176 : ouvre details + premier panneau de filtre + remplit la "
                          "première recherche AVANT mesures et captures — l'état fermé cache "

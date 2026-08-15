@@ -346,10 +346,35 @@ def check_charte(html: str):
             warns.append(f"Saut de hiérarchie de titre : h{a} suivi de h{b}.")
             break
 
+    # TF-0228 (lot Produit-10, 14/08) — cet avertissement frappait le script que le pattern S-G1
+    # du MÊME socle EXIGE en <head>, avant <style>, pour poser data-theme avant la première
+    # peinture. `defer` produirait exactement le flash que le pattern évite : la page était
+    # donc sommée de violer sa propre charte. Conséquence mesurée : les 4 livrables HTML d'un
+    # projet portaient cet avertissement à CHAQUE exécution depuis le 13/08 — et c'est dans ce
+    # bruit permanent que TF-0227 (71 marqueurs affichés) est passé inaperçu. Un avertissement
+    # inévitable cesse d'être lu, puis couvre les autres.
+    #
+    # Reconnaissance par ce que le script FAIT (il pose data-theme), pas par une étiquette :
+    # les pages déjà générées n'en portent aucune et un label rétroactif ne serait jamais posé.
+    # L'attribut déclaratif `data-theme-init` est accepté aussi, pour les pages à venir. Toute
+    # AUTRE balise <script> bloquante en <head> reste signalée — le périmètre bouge, pas la
+    # sévérité.
     head = re.search(r"<head[^>]*>(.*?)</head>", html, re.S | re.I)
-    if head and re.search(r"<script(?![^>]*\bdefer\b)(?![^>]*\basync\b)[^>]*>",
-                          head.group(1), re.I):
-        warns.append("Script bloquant dans <head> (utiliser defer ou placer en fin de body).")
+    if head:
+        dedans = head.group(1)
+        bloquants = 0
+        for m in re.finditer(r"<script([^>]*)>(.*?)</script>", dedans, re.S | re.I):
+            attrs, corps = m.group(1), m.group(2)
+            if re.search(r"\b(defer|async)\b", attrs, re.I):
+                continue
+            if "data-theme-init" in attrs.lower() or RE_G1_CABLAGE.search(corps):
+                continue
+            bloquants += 1
+        if bloquants:
+            warns.append(
+                f"{bloquants} script(s) bloquant(s) dans <head> (utiliser defer ou placer en "
+                "fin de body) — l'initialisation de thème S-G1 est exemptée : elle DOIT "
+                "s'exécuter avant la première peinture.")
 
     if "<main" not in low:
         warns.append("Aucun <main> (repère sémantique principal recommandé).")
@@ -537,6 +562,27 @@ def check_lisibilite(html: str, a: Arbre):
                 return True
         return False
 
+    def bareme_de_groupe(n):
+        """TF-0231 (reconstat de TF-0170, lot Produit-10 du 14/08) — ARBITRAGE.
+
+        La question posée : L3 vaut-elle pour tout `N / M` de la page, ou pour les seules
+        cellules de tableau ? Elle s'est posée parce que la règle a exigé un barème sur deux
+        valeurs d'INDICATEUR (`9 / 85`, `8 / 12`), pas sur des cellules.
+
+        Décision : **la portée ne se réduit pas**. Un KPI est le chiffre le plus lu d'une
+        page — souvent le seul — et c'est là qu'une valeur sans échelle trompe le plus. La
+        restreindre aux `td` exempterait précisément les valeurs de première lecture. Le
+        contournement retenu par le run (un barème dédié) « a d'ailleurs amélioré le
+        document » : la règle avait raison sur le fond.
+
+        Ce qui manquait n'était pas de la portée mais de l'ERGONOMIE : une colonne peut
+        déclarer son barème une fois sur le `<th>` (RA-4), un groupe d'indicateurs n'avait
+        aucun équivalent et devait le répéter sur chacun. Un barème porté par le conteneur du
+        groupe vaut donc pour les valeurs qu'il contient — même raisonnement que la colonne,
+        même exigence de fond, un seul endroit où l'écrire.
+        """
+        return any(decrit_par(anc) for anc in n.ancetres())
+
     vus = set()
     for n in a.racine.descendants():
         cl = n.classes()
@@ -552,8 +598,9 @@ def check_lisibilite(html: str, a: Arbre):
         if est_score:
             # Un barème n'est pas un tooltip : il doit exister DANS la page, donc
             # survivre au PDF, et être atteignable par aria-describedby — porté par la
-            # cellule OU, pour une colonne homogène, une fois par le th (RA-4).
-            if not decrit_par(n) and not bareme_de_colonne(n):
+            # cellule, OU une fois par le th d'une colonne homogène (RA-4), OU une fois
+            # par le conteneur d'un groupe d'indicateurs (TF-0231).
+            if not decrit_par(n) and not bareme_de_colonne(n) and not bareme_de_groupe(n):
                 if n.att("aria-describedby"):
                     fails.append(f'L3 barème introuvable ou trop court pour « {libelle} » '
                                  f'(aria-describedby="{n.att("aria-describedby")}").')
@@ -565,8 +612,13 @@ def check_lisibilite(html: str, a: Arbre):
             if (t is not None and not t.strip()) or (al is not None and not al.strip()):
                 fails.append(f'L3 légende VIDE sur « {libelle} » — un title="" annonce une '
                              f"explication et n'en donne aucune ({n.chemin()}).")
+            # TF-0231 : la légende de groupe vaut pour les valeurs du groupe, comme le
+            # barème de groupe ci-dessus. Sans ce parallèle, l'ergonomie annoncée ne
+            # marcherait pour AUCUN indicateur — un KPI est toujours une « valeur », et il
+            # aurait fallu répéter la même phrase sur chacun.
             elif not (t and t.strip()) and not (al and al.strip()) \
-                    and not decrit_par(n) and not legende_visible(n):
+                    and not decrit_par(n) and not legende_visible(n) \
+                    and not bareme_de_groupe(n):
                 fails.append(f'L3 valeur sans légende : « {libelle} » — title, aria-label, '
                              f"aria-describedby ou légende visible attendus ({n.chemin()}).")
 
@@ -658,14 +710,33 @@ def check_lisibilite(html: str, a: Arbre):
                 "recherche statique (input[type=search]) dans la page — une liste longue se "
                 "cherche (standard H2) ; l'outillage du socle (barre recherche + "
                 "réinitialisation + compteur) est le modèle.")
+        # TF-0229 (lot Produit-10, 14/08) — le message PROMETTAIT une porte que le code n'ouvrait
+        # pas : « un KPI d'éléments hors page LE DIT », alors que seul `data-kpi-filtre` était
+        # testé. Aucun moyen déclaratif de « le dire » n'existait. Six indicateurs d'un rapport
+        # réel portaient chacun une légende nommant le chapitre où vivent leurs éléments — les
+        # six étaient signalés quand même. Une règle dont le message décrit une échappatoire
+        # inexistante est pire qu'une règle sans échappatoire : elle apprend au lecteur que les
+        # messages du socle ne sont pas fiables.
+        #
+        # Deux façons de le dire, aucune n'étant un blanc-seing : l'attribut explicite avec son
+        # motif, ou la légende du composant KPI du socle (`.kpi-d` / `.kpi-hint`) si elle porte
+        # vraiment un texte. Une légende vide ne déclare rien et ne vaut pas exemption.
+        def _declare_hors_page(n) -> bool:
+            if (n.att("data-kpi-hors-page") or "").strip():
+                return True
+            return any((d.classes() & {"kpi-d", "kpi-hint"}) and d.texte_propre()
+                       for d in n.descendants())
+
         kpis_morts = [n for n in a.racine.descendants()
                       if (n.classes() & {"kpi", "tuile"}) and n.tag != "button"
-                      and n.att("data-kpi-filtre") is None]
+                      and n.att("data-kpi-filtre") is None
+                      and not _declare_hors_page(n)]
         if kpis_morts:
             warns.append(
                 f"L13 {len(kpis_morts)} KPI (.kpi/.tuile) non cliquable(s) au-dessus d'une "
                 "liste de ≥ 8 lignes — un KPI qui compte des éléments affichés les filtre "
-                "(H3, composant kpi-filter.js) ; un KPI d'éléments hors page le dit.")
+                "(H3, composant kpi-filter.js) ; un KPI d'éléments hors page le dit, par "
+                'data-kpi-hors-page="<motif>" ou une légende .kpi-d/.kpi-hint non vide.')
 
     # --- L14 : plomberie affichée (TF-0227, lot Produit-10 du 14/08) ----------
     # Le texte est déjà extrait hors `<script>` et `<style>` par le parseur : le coût est
