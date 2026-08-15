@@ -3,6 +3,12 @@
 Version 1.0.0 — 11/08/2026 — Statut registre : **ok** — admise le 11/08/2026 (verdict MATERIEL 5/5,
 oracle-judge session S′ `claude -p` ; dossier A/B : `fixtures/fixture-ops-railway.md` ; verdict : `run-admission/verdict-ops-railway.json`).
 
+**Corpus enrichi le 15/08/2026 (TF-0258)** : 4 pièges constatés au premier déploiement réel
+d'un produit sur Railway versés au corpus (`references/corpus-ops-railway.md` §8-§11 —
+`startCommand` sans shell, bind IPv4 du healthcheck/edge, volume monté root, logs runtime en
+échec via l'API GraphQL). Mise à jour du corpus source uniquement — la rubrique, la frontière
+et le verdict d'admission ci-dessous restent ceux jugés le 11/08/2026, non rejugés.
+
 ## 0. Mérite un expert (3 conditions, renseignées à la création)
 1. Récurrence : le cas réel prouvé de TF-0040 : ASD déployé sur Railway artisanalement (preuve du coût de D-P1) ; toute cible `plan railway` de forge-ops consommera cette fiche
 2. Corpus disponible : checklist propre constituée (`references/corpus-ops-railway.md`, sources officielles)
