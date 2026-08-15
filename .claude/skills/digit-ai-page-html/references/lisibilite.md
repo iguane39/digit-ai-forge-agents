@@ -389,11 +389,58 @@ simple observation du tableau.
 **Trace attendue** : la revue de lecture se consigne (défaut par défaut, preuve à l'appui).
 Un run qui déclare « lisibilité OK » sans énumérer ce qui a été relu n'a pas fait de revue.
 
+## L13 — Une page à listes s'offre une recherche et des KPI vivants
+
+**Règle.** Une page qui montre au moins une table de ≥ 8 lignes **se parcourt** : elle doit
+porter d'elle-même un champ de recherche statique (`input[type=search]`) — une recherche
+injectée au runtime par un composant ne compte pas, la page doit l'offrir sans dépendance.
+Les KPI posés au-dessus d'une telle liste sont des affordances de filtre.
+
+**Contrôle mécanique.** `L13` — échec sur l'absence de champ de recherche ; **avertissement**
+(pas échec) sur les KPI non cliquables, la distinction consultation / livrable interactif
+restant à trancher.
+
+## L14 — La plomberie ne s'affiche pas
+
+**Règle.** Une convention de balisage interne n'a **rien à faire dans le texte rendu**. Le
+défaut fondateur (14/08, rapport Produit-10) : un livrable **diffusé** portait 71 occurrences de
+marqueurs `[c:ec-sources]` en clair dans ses phrases — « 85 [c:ec-sources] sources ALX »,
+« 258 [c:ec-claims] lignes de tableau ». Il était PASS à `check_html.py`, PASS à
+`render_page.py` sur cinq largeurs, PASS à 24 contrôles d'interactions maison. **Aucun oracle
+ne lisait le texte rendu.** C'est l'humain qui l'a vu, au premier coup d'œil, capture à
+l'appui.
+
+Deux niveaux, et la distinction porte une décision :
+
+- **échec** — ce qui n'a jamais de raison d'être lu : marqueur crocheté à préfixe court
+  (`[c:…]`, `[ref:…]`), substitution `printf` (`%s`, `%(nom)s`), « lorem ipsum » ;
+- **avertissement** — `TODO` / `FIXME` / `XXX` / `HACK` : une page peut légitimement **parler
+  de tâches** (le registre TODO du pilot en est une). En faire un échec forcerait une
+  exemption sur une page honnête, et une exemption de routine ne se lit plus.
+
+**Deux sorties légitimes, et ce ne sont pas des échappatoires.**
+
+1. **Citer dans du code.** Un jeton placé dans `<code>`, `<pre>`, `<kbd>` ou `<samp>` — ou
+   dans l'un de leurs descendants — est une **mention**, pas une fuite. C'est la distinction
+   que `oracle-restituer` de forge-data a tranchée le 14/08 (vérifiée sur 213 chiffres) ;
+   elle vaut ici à l'identique, et elle est typographiquement juste avant d'être commode.
+2. **S'exempter avec un motif** : `data-motif-ok="<raison>"`, sur le nœud ou un ancêtre. Sans
+   raison, l'attribut ne compte pas — même convention que `data-filterable-reason`.
+
+**Corriger l'émetteur, pas la page.** Le registre TODO du pilot citait les marqueurs pour
+*décrire* ce défaut et se retrouvait accusé de le commettre. La correction n'a pas été
+d'exempter la page — une exemption globale aurait couvert une vraie fuite le jour venu — mais
+d'apprendre au générateur à rendre un jeton technique en `<code>`, ce qu'il faisait déjà pour
+les littéraux de L11.
+
+**Revue de lecture.** Qu'un motif exempté le soit pour une raison qui tient à la page, et non
+parce qu'on n'a pas voulu corriger l'émetteur.
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L12
-python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L12)
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L14
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L14)
 python scripts/check_html.py page.html --output json
 python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu
 python scripts/self_test.py                            # fixtures rouges et vertes du skill
