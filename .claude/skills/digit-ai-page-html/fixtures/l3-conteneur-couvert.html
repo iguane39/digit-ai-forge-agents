@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 — conteneur-valeur couvert par son descendant (TF-0233)</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:16px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L3 — conteneur-valeur couvert par son descendant</h1>
+<p>Le <code>div.kpi</code> est classé valeur (CL_VALEUR) mais ne porte lui-même aucune
+légende : c'est le nombre qu'il CONTIENT qui pointe la légende par
+<code>aria-describedby</code>. Depuis TF-0233, ce montage est couvert — exiger une
+seconde légende sur le conteneur forçait la duplication.</p>
+<div class="kpi">
+  <span class="stat" aria-describedby="legende-kpi">12&nbsp;/&nbsp;14</span>
+  <p id="legende-kpi">Contrôles passés sur le périmètre de la période — les 2 restants
+  sont bloqués par la dette d'instrumentation, détaillée au chapitre méthode.</p>
+</div>
+</main></body></html>
