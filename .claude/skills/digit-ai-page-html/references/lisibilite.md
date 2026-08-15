@@ -400,6 +400,13 @@ Les KPI posés au-dessus d'une telle liste sont des affordances de filtre.
 (pas échec) sur les KPI non cliquables, la distinction consultation / livrable interactif
 restant à trancher.
 
+**Dire qu'un KPI compte des éléments hors page** (TF-0229) : `data-kpi-hors-page="<motif>"`,
+ou une légende `.kpi-d` / `.kpi-hint` **non vide**. Le message de la règle promettait cette
+porte depuis le début (« un KPI d'éléments hors page le dit ») alors qu'aucun moyen de le dire
+n'existait : six indicateurs qui nommaient chacun leur chapitre étaient signalés quand même.
+Une règle dont le message décrit une échappatoire inexistante apprend au lecteur que les
+messages du socle ne sont pas fiables — c'est plus coûteux que la règle elle-même.
+
 ## L14 — La plomberie ne s'affiche pas
 
 **Règle.** Une convention de balisage interne n'a **rien à faire dans le texte rendu**. Le
