@@ -3,8 +3,8 @@ name: prompt-analyzer-l99
 description: >
   Analyse approfondie de prompts en 8 couches stratégiques (OODA, Chainlogic, Blindspots, Factcheck, Premortem, Wargame, Deepthink, Synthèse). Utiliser ce skill dès que l'utilisateur demande d'analyser, auditer, améliorer, optimiser, décortiquer ou stress-tester un prompt, que ce soit un prompt personnel ou un prompt client. Aussi déclencher quand l'utilisateur mentionne L99, analyse de prompt, prompt review, audit de prompt, améliore ce prompt, optimise ce prompt, ou colle un prompt en demandant de le passer au crible. Fonctionne sur tout type de prompt, y compris system prompts, user prompts, chaînes de prompts, templates, instructions agent.
 metadata:
-  version: "2.1.0"
-  updated: "2026-06-22"
+  version: "2.2.0"
+  updated: "2026-07-20"
 ---
 
 # Prompt Analyzer L99
@@ -40,11 +40,15 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
 | 5 | Premortem | 5 causes d'échec les plus probables + mécanisme + mitigation |
 | 6 | Wargame | 3 attaques : utilisateur exigeant, expert du domaine, contradicteur (+ lentille robustesse) |
 | 7 | Deepthink | Implications de 2e/3e ordre, effets d'échelle, dépendances systémiques |
-| 8 | Synthèse | **Score /100** + diagnostic 3 lignes + **prompt réécrit** + **contrat de sortie** + changelog tracé |
+| 8 | Synthèse | **Score /100** + diagnostic 3 lignes + **prompt réécrit** + **contrat de sortie** + **protocole de tests du livrable** *(conditionnel)* + changelog tracé |
 
 Le chapitre 8 est le livrable principal : le prompt réécrit conserve l'intention originale,
 comble les angles morts, intègre les garde-fous, **embarque ses propres critères de réussite
-(contrat de sortie)**, et reste directement utilisable.
+(contrat de sortie)**, et reste directement utilisable. Si le prompt produit un livrable
+substantiel (code, document, deck, page, template, données), le Ch8 **prescrit** en plus un
+**protocole de tests du livrable** — typé par oracles, jeu d'essai minimal, boucle bornée à
+3 itérations — embarqué dans le prompt réécrit. Le protocole s'applique au livrable produit
+à l'exécution, jamais au prompt lui-même ; il n'est jamais exécuté par L99.
 
 ## Exemple d'invocation et de sortie attendue
 
@@ -67,6 +71,9 @@ Rédige-moi un post LinkedIn percutant sur l'IA.'"
   1re ligne, 3 paragraphes courts, CTA conversationnel, ≤5 hashtags."
   Contrat de sortie = 150-200 mots · 1 hook en L1 · 3 paragraphes ·
   1 CTA · ≤5 hashtags · pas de jargon non défini.
+  Protocole de tests = livrable "contenu court" → pas d'oracle
+  automatisable ; 1 passe de revue contre les critères binaires du
+  contrat, pas de boucle.
   Changelog = +audience (bloquant Ch3), +format (majeur Ch3), +contrat.
 ```
 
