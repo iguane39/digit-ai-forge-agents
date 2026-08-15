@@ -1,7 +1,7 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L12 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
 metadata:
   version: "1.6.0"
 ---
@@ -93,9 +93,11 @@ la mesure de lecture se règle sur le conteneur, pas sur le paragraphe),
 **V1** (débordement horizontal), **V2** (contraste WCAG AA : ≥ 4.5:1,
 ≥ 3:1 en texte large) et **V4** (chevauchements — superposition voulue = `data-overlap-ok`),
 signale **V3/V7** (alignements, espacements) en avertissements, et produit un PNG par
-breakpoint **dans `<dossier du HTML>/.oracles/`** — jamais à côté du fichier audité, sans
-quoi auditer un dossier de livrables y sème autant de PNG que de pages × breakpoints
-(`--out <dossier>` pour les envoyer ailleurs).
+breakpoint **hors de tout arbre de livraison** (TF-0230) : `<dossier du HTML>/.oracles/`
+pour une page ordinaire, un dossier temporaire nommé si la page vit sous `output/`, `old/`,
+`dist/`… — un `.oracles/` DANS `output/` reste dans ce que le client reçoit, et un audit y
+avait laissé 25 Mo à déplacer à la main. `--out <dossier>` fait foi quand il est donné :
+c'est ainsi qu'un run journalise ses captures.
 **V5** (croisements) et **V6** (images) restent à inspecter sur ces PNG — on ne
 juge jamais un rendu depuis le code seul. Corriger à la source (tokens, géométrie), relancer
 jusqu'au PASS. Liste canonique et sévérités :
@@ -105,7 +107,7 @@ pour toute la forge**, les autres skills livrables la citent sans la redéfinir.
 Enfin, contrôler la **lisibilité** — ce que le lecteur peut effectivement lire et utiliser :
 
 ```bash
-python scripts/check_html.py page.html --regles L     # L1-L12 seules
+python scripts/check_html.py page.html --regles L     # L1-L14 seules
 python scripts/self_test.py                           # prouve que chaque règle échoue
 ```
 
@@ -127,7 +129,7 @@ l'orchestrateur du run. Règles, conventions de marquage et partage mécanique /
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
 - Checklist canonique zéro défaut visuel V1–V7 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
-- Règles de lisibilité L1–L12 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
+- Règles de lisibilité L1–L14 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants
 
