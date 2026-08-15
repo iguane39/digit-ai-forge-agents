@@ -298,8 +298,16 @@ def check_charte(html: str):
     if "<!doctype html>" not in low:
         fails.append("DOCTYPE html manquant.")
 
-    if not re.search(r'<html[^>]*\blang\s*=\s*"fr"', low):
-        fails.append('Attribut lang="fr" absent sur <html>.')
+    # TF-0241 (15/08) : un livrable non francophone ASSUMÉ déclare sa langue — le mur
+    # « lang="fr" ou rien » bloquait les kits bilingues (constaté sur AuditCore en).
+    # fr reste le défaut Digit-AI : toute autre langue passe en avertissement, jamais
+    # en silence ; l'absence de déclaration reste un échec.
+    m_lang = re.search(r'<html[^>]*\blang\s*=\s*"([a-z]{2}(?:-[a-z0-9]+)*)"', low)
+    if not m_lang:
+        fails.append('Attribut lang absent ou vide sur <html> (défaut Digit-AI : lang="fr").')
+    elif m_lang.group(1) != "fr" and not m_lang.group(1).startswith("fr-"):
+        warns.append(f'lang="{m_lang.group(1)}" déclaré — accepté (TF-0241, livrable non '
+                     'francophone assumé) ; le défaut Digit-AI reste "fr".')
 
     m_charset = re.search(r'<meta[^>]*charset', low)
     m_title = re.search(r"<title[ >]", low)
@@ -542,6 +550,20 @@ def check_lisibilite(html: str, a: Arbre):
                         if n.att("aria-describedby") else "")
         return cible is not None and len(cible.texte_propre()) >= 20
 
+    def couvert_par_descendant(n):
+        # TF-0233 (15/08) : un conteneur-valeur dont un DESCENDANT porte la légende est
+        # couvert — le lecteur atteint la légende par le chiffre que le conteneur
+        # contient ; exiger une seconde légende sur le conteneur forçait la duplication
+        # (deux échecs L3 pour un seul chiffre, dont un insatisfiable sans redite).
+        # Arbitrage : la légende est atteignable depuis N'IMPORTE QUEL descendant.
+        for e in n.descendants():
+            if e is n:
+                continue
+            if (e.att("title") or "").strip() or (e.att("aria-label") or "").strip() \
+                    or decrit_par(e):
+                return True
+        return False
+
     def bareme_de_colonne(n):
         """RA-4 (retour Produit-10, 13/08) : quand toute une COLONNE partage le même barème
         (86 cellules N/M sur un mapping), le déclarer une fois sur le <th> suffit — l'exiger
@@ -618,7 +640,7 @@ def check_lisibilite(html: str, a: Arbre):
             # aurait fallu répéter la même phrase sur chacun.
             elif not (t and t.strip()) and not (al and al.strip()) \
                     and not decrit_par(n) and not legende_visible(n) \
-                    and not bareme_de_groupe(n):
+                    and not bareme_de_groupe(n) and not couvert_par_descendant(n):
                 fails.append(f'L3 valeur sans légende : « {libelle} » — title, aria-label, '
                              f"aria-describedby ou légende visible attendus ({n.chemin()}).")
 
