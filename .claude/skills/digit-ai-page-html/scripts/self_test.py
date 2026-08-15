@@ -75,6 +75,9 @@ CAS = {
     "l14-exemption-motivee.html": set(),
     "l3-score-sans-formule.html": {"L3"},
     "l3-valeur-opaque.html": {"L3"},
+    # TF-0233 (15/08) : un conteneur-valeur dont un DESCENDANT porte la légende est
+    # couvert — plus de double échec L3 pour un seul chiffre.
+    "l3-conteneur-couvert.html": set(),
 }
 
 RE_CODE = re.compile(r"^(L\d+)\b")
@@ -95,6 +98,14 @@ RE_CODE_A = re.compile(r"^(A\d+(?:-bis)?)\b")
 # « charte » : mêmes garanties anti-parasite que A1. Ensemble vide de FAILS
 # n'exclut pas un WARN (cas sans bouton) — seul check() décide, ici on ne juge
 # que les codes G en échec bloquant.
+# TF-0241 (15/08) : la langue se DÉCLARE — lang="en" assumé passe (avertissement,
+# jamais un échec), lang absent échoue. Jugé en famille charte, anti-parasite : la
+# fixture verte doit être charte-verte par ailleurs.
+CAS_LANG = {
+    "charte-lang-en.html": False,     # aucun échec attendu (warn seulement)
+    "charte-lang-absent.html": True,  # un échec « lang » attendu, et lui seul
+}
+
 CAS_G1 = {
     "g1-bouton-sans-cablage.html": {"G1"},  # bascule morte : bouton présent, jamais câblé
     "g1-bouton-cable.html": set(),          # bascule câblée : silence exigé
@@ -163,6 +174,24 @@ def run():
             "attendu": sorted(attendu),
             "obtenu": sorted(obtenu),
             "detail": "" if ok else " | ".join(fails + parasites)[:400],
+        })
+    for nom, echec_lang_attendu in CAS_LANG.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE",
+                              "attendu": ["lang" if echec_lang_attendu else "(aucun)"],
+                              "obtenu": [], "detail": "fixture manquante"})
+            continue
+        fails, _ = check(chemin.read_text(encoding="utf-8"), regles="charte")
+        fails_lang = [f for f in fails if "lang" in f.lower()]
+        parasites = [f for f in fails if f not in fails_lang]
+        ok = (bool(fails_lang) == echec_lang_attendu) and not parasites
+        resultats.append({
+            "fixture": nom,
+            "verdict": "OK" if ok else "ECHEC",
+            "attendu": ["lang"] if echec_lang_attendu else [],
+            "obtenu": (["lang"] if fails_lang else []) + parasites,
+            "detail": "" if ok else " | ".join(fails)[:400],
         })
     for nom, attendu in CAS_G1.items():
         chemin = FIXTURES / nom
