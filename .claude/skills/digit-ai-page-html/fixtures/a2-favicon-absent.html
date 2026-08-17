@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Fixture A2 rouge · favicon absent — 20260817a</title>
+<!-- Fixture A2 ROUGE (TF-0303) — aucun favicon. Loi transverse n°3 : la surface implicite
+     se propose d'office et s'écarte explicitement, jamais par omission. Sans icône, l'onglet
+     porte le glyphe générique du navigateur et le livrable se perd parmi vingt autres ;
+     l'attendu est le favicon-lettre du gabarit, SVG en data: URI, initiale du client ou du
+     projet. Le reste de la page est conforme : seule A2 doit parler. -->
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --line: #E6EAF2; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; --line: #263248; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Livrable sans favicon</h1>
+<p>Rien d'autre ne cloche : c'est l'icône d'onglet qui manque, et elle ne se réclame
+jamais d'elle-même — d'où la règle.</p>
+</main>
+</body>
+</html>

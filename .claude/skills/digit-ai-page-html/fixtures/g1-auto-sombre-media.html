@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Fixture G1 rouge · auto-sombre hérité de l'OS — 20260817a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- Fixture G1 ROUGE (TF-0303) — le mécanisme RETIRÉ, revenu par la porte du CSS.
+     La bascule est là et elle est câblée : G1 « bascule morte » se tait, à raison. Le défaut
+     est ailleurs, et c'est celui du livrable Produit-01 du 17/08 : la palette sombre est
+     pilotée par prefers-color-scheme, donc par l'OS du lecteur. Retiré le 13/08 (TF-0158)
+     après un retour humain réel, tranché par RV-9 le 14/08 — clair par défaut STRICT, le
+     sombre est un CHOIX. Un livrable circule ; il doit s'ouvrir identique chez tous ses
+     lecteurs. La verte correspondante est g1-bouton-cable.html, qui CITE le mécanisme dans
+     un commentaire pour dire qu'il est proscrit : la règle doit y rester muette. -->
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --surface: #FFFFFF; --line: #E6EAF2; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; --surface: #121B2E; --line: #263248; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0B1220; --ink: #EEF2F8; --surface: #121B2E; --line: #263248; }
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+.theme-toggle { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; } .theme-toggle { display: none; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Thème sombre imposé par le poste du lecteur</h1>
+<button id="theme-toggle" class="theme-toggle" type="button"
+        aria-label="Bascule thème sombre" aria-pressed="false">Thème</button>
+<p>La bascule fonctionne, mais la première peinture ne dépend pas du lecteur : elle dépend
+du réglage de son système. Deux lecteurs du même fichier ne voient pas le même document.</p>
+</main>
+<script>
+(function () {
+  var bouton = document.getElementById('theme-toggle');
+  var racine = document.documentElement;
+  bouton.addEventListener('click', function () {
+    racine.setAttribute('data-theme',
+      racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
+</body>
+</html>
