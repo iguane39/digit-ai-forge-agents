@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A1 — verte : le réseau cité en commentaire ne charge rien — 20260817a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- Consigne du socle, écrite là où elle s'applique : ne JAMAIS charger la police par
+     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto"> ni
+     poser un fond par url(https://cdn.exemple.invalid/fond.png) — un livrable sortant
+     est autonome (D-10). Ce commentaire ne déclenche aucune requête : le navigateur ne
+     résout rien dedans, et A1 doit y rester muet (TF-0307). -->
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif; --accent: #2a5db0; }
+/* Fond d'origine url(https://cdn.exemple.invalid/sceau.png) remplacé par un data: URI —
+   la trace de la correction reste lisible en place, elle ne charge rien. */
+.sceau { background: url(data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==); }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page autonome qui documente son propre interdit</h1>
+<h2>Un commentaire n'est ni du balisage ni du CSS</h2>
+<p>Cette page cite deux formes d'appel réseau — une feuille de style distante et un fond
+CSS distant — uniquement dans des commentaires, HTML pour la première et CSS pour la
+seconde. Aucune des deux n'est résolue au chargement : le document reste lisible hors
+ligne, sans qu'aucun serveur tiers apprenne quand ni d'où il est ouvert.</p>
+<p>La jumelle rouge de cette fixture, <code>a1-reseau-hors-commentaire.html</code>, ne
+diffère que par une chose : la même <code>url()</code> y sort du commentaire et devient
+une vraie requête. A1 doit la refuser, et refuser celle-là seulement.</p>
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="image embarquée en data URI">
+</main>
+</body>
+</html>

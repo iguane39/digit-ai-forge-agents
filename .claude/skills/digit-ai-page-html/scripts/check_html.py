@@ -1121,7 +1121,14 @@ def check_autonomie(html: str):
     """A1 : aucune ressource chargée par le réseau. Retourne (fails, warns)."""
     constats = []
 
-    for m in RE_BALISE.finditer(html):
+    # Vue « balisage réel » (TF-0307) : un commentaire ne charge RIEN — le navigateur ne
+    # résout ni la balise ni l'`url()` qu'il contient. A1 se juge donc commentaires retirés,
+    # comme les contrôles de la charte (cf. `_sans_commentaires`). Défaut latent buté trois
+    # fois pendant la campagne du 17/08 sur les règles voisines : un gabarit qui écrit
+    # « ne pas charger de police par url(https://…) » se faisait accuser de le faire.
+    net = _sans_commentaires(html)
+
+    for m in RE_BALISE.finditer(net):
         balise = m.group(1).lower()
         attrs = {k.lower(): v.strip("\"'") for k, v in RE_ATTR.findall(m.group(2))}
         if balise in BALISES_CHARGEANTES:
@@ -1140,9 +1147,13 @@ def check_autonomie(html: str):
         if "style" in attrs and RE_CSS_RESEAU.search(attrs["style"]):
             constats.append(f"style=\"{attrs['style'][:70]}\" sur <{balise}>")
 
-    for bloc in re.findall(r"<style[^>]*>(.*?)</style>", html, re.S | re.I):
-        for hit in RE_CSS_RESEAU.finditer(bloc):
-            extrait = bloc[hit.start():hit.start() + 70].strip()
+    for bloc in re.findall(r"<style[^>]*>(.*?)</style>", net, re.S | re.I):
+        # Les commentaires CSS aussi, même raison et même geste qu'en G1 : une `url()`
+        # commentée en `/* … */` est morte pour le navigateur, l'accuser interdirait au
+        # socle d'expliquer en place ce qu'il vient de retirer.
+        bloc_net = RE_COMMENTAIRE_CSS.sub(" ", bloc)
+        for hit in RE_CSS_RESEAU.finditer(bloc_net):
+            extrait = bloc_net[hit.start():hit.start() + 70].strip()
             constats.append(f"CSS : {extrait}")
 
     fails = []
@@ -1161,6 +1172,11 @@ def check_autonomie(html: str):
     # ne suffit PAS (un commentaire peut porter une paire équilibrée) : on lit comme le
     # navigateur — chaque bloc script s'arrête à la PREMIÈRE fermeture ; tout « </script »
     # survivant hors bloc est la fermeture réelle devenue orpheline, preuve de la troncature.
+    #
+    # A1-bis se juge sur le texte BRUT, contrairement à A1 ci-dessus (TF-0307) : le défaut
+    # qu'il traque est précisément une séquence écrite dans un commentaire, et retirer les
+    # commentaires HTML pourrait avaler la fermeture orpheline qui le prouve (une page
+    # tronquée n'a plus de balisage cohérent — un `<!--` non refermé y mangerait la suite).
     hors_blocs = re.sub(r"<script\b[^>]*>.*?</script", "", html, flags=re.S | re.I)
     orphelins = len(re.findall(r"</script", hors_blocs, re.I))
     if orphelins:
