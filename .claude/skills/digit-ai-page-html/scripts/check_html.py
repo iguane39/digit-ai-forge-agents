@@ -1263,11 +1263,83 @@ def check_theme_toggle(html: str):
 
 
 # ---------------------------------------------------------------------------
-def check(html: str, regles: str = "tout"):
-    """Retourne (fails, warns) — deux listes de messages."""
+# EXEMPTIONS DÉCLARÉES (TF-0308) — R-30 §3 : une exemption non consignée n'existe pas.
+#
+# Le cas : les gabarits du skill `digit-ai-schemas` sont rouges à ce contrôle, et trois
+# d'entre eux le resteront quoi qu'on fasse — ce sont des FRAGMENTS par conception, dont
+# l'en-tête dit lui-même « insérer ce <svg> dans une page HTML qui utilise le squelette de
+# template-multi-bandes.html ». Un fragment n'a ni <head>, ni <title>, ni favicon, ni
+# :root : la page HÔTE les porte, et c'est ELLE qui se juge. Un quatrième cas est plus
+# étroit : un gabarit à trous ne peut pas porter d'indice de version DATÉ, puisque la
+# version appartient à l'instance produite, pas au canevas.
+#
+# Le geste : jamais un silence, jamais un fichier retiré du contrôle. Le fichier reste
+# jugé sur TOUT le reste (réseau A1, thème G1, police Syne, lisibilité L1-L14) et les
+# règles écartées sont ANNONCÉES avec leur motif, à chaque exécution.
+#
+# Le registre est nominatif, pas arborescent : exempter tout `digit-ai-schemas/assets/`
+# aurait aussi couvert les trois PAGES du même dossier — dont la fuite Google Fonts que
+# la même campagne corrige. Un gabarit ajouté demain échoue donc jusqu'à ce qu'on le
+# déclare ici : une exemption se décide, elle ne se devine pas.
+FAMILLE_AUTOPORTANCE = (
+    "A1 DOCTYPE", "A1 <html>", "A1 <head>", "A1 <body>", "A2 ", "A3 ", "A4 ",
+    "<title> vide", "Aucun <h1>", ":root absent", "@media print absent",
+)
+FAMILLE_A4_VERSION = ("A4 titre sans indice de version",)
+
+_HOTE_SCHEMAS = ("son en-tête le déclare : à insérer dans le squelette "
+                 "template-multi-bandes.html, qui porte le <head> et se juge, lui, "
+                 "en page autonome")
+EXEMPTIONS_DECLAREES = (
+    ("digit-ai-schemas/assets/template-topologie.html", FAMILLE_AUTOPORTANCE,
+     f"fragment SVG de canevas, pas une page — {_HOTE_SCHEMAS}"),
+    ("digit-ai-schemas/assets/template-flux-temporel.html", FAMILLE_AUTOPORTANCE,
+     f"fragment SVG de canevas, pas une page — {_HOTE_SCHEMAS}"),
+    ("digit-ai-schemas/assets/template-tableau-de-bord.html", FAMILLE_AUTOPORTANCE,
+     f"blocs HTML/CSS de canevas, pas une page — {_HOTE_SCHEMAS}"),
+    ("digit-ai-schemas/assets/template-multi-bandes.html", FAMILLE_A4_VERSION,
+     "gabarit à trous : le titre est « {{TITRE_PAGE}} · Digit-AI » et l'indice de version "
+     "daté appartient à l'INSTANCE produite, jamais au canevas — les autres règles A "
+     "(squelette, charset, favicon, réseau) sont tenues et restent jugées"),
+)
+
+
+def exemption_declaree(source):
+    """(familles, motif) déclarés pour ce fichier, ou (None, None) — le cas de tous
+    les livrables : sans chemin, ou hors registre, rien n'est écarté."""
+    if not source:
+        return None, None
+    chemin = str(source).replace("\\", "/")
+    for suffixe, familles, motif in EXEMPTIONS_DECLAREES:
+        if chemin.endswith(suffixe):
+            return familles, motif
+    return None, None
+
+
+def check(html: str, regles: str = "tout", source=None):
+    """Retourne (fails, warns) — deux listes de messages.
+
+    `source` (chemin du fichier) n'est lu que pour confronter le registre
+    d'exemptions déclarées ci-dessus : sans lui, aucune exemption ne s'applique.
+    """
     fails, warns = [], []
+    familles, motif = exemption_declaree(source)
     if regles in ("tout", "charte"):
         f, w = check_charte(html)
+        if familles:
+            gardes = [x for x in f if not x.startswith(familles)]
+            ecartes = len(f) - len(gardes)
+            if ecartes:
+                warns.append(
+                    f"SKIP exemption déclarée ({ecartes} contrôle(s) écarté(s)) — {motif}. "
+                    "Tout le reste est jugé : réseau A1, thème G1, police, lisibilité.")
+            else:
+                # Une exemption qui n'écarte plus rien est une dette qui dort : le fichier
+                # est devenu conforme, la ligne du registre doit partir.
+                warns.append(
+                    "exemption déclarée SANS EFFET sur ce fichier — plus aucun contrôle "
+                    "écarté : retirer sa ligne de EXEMPTIONS_DECLAREES (check_html.py).")
+            f = gardes
         fails += f
         warns += w
         f, w = check_autonomie(html)
@@ -1302,7 +1374,7 @@ def main():
     else:
         html, source = SAMPLE, "(échantillon intégré)"
 
-    fails, warns = check(html, args.regles)
+    fails, warns = check(html, args.regles, source=args.path)
     verdict = "PASS" if not fails else "FAIL"
 
     if args.output == "json":

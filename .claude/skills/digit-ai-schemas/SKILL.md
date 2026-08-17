@@ -56,6 +56,25 @@ Le SVG est toujours encapsulé dans une page HTML autonome Digit-AI : eyebrow ma
 
 Nommage : `{Marque} - {TypeDoc} {Client} - {Scope} - {YYYYMMDD}{indice}.{ext}` (ex. `Digit-AI - Brief POC-Hub - Architecture detaillee - 20260527d.html`). Indice alphabétique incrémenté à chaque itération du jour, redémarre à `a` chaque jour. Numéro de version (V0, V1…) affiché dans le bloc méta du contenu, **jamais dans le nom de fichier**.
 
+**Aucune police distante (A1/D-10, TF-0308).** Les gabarits ne portent plus de `<link>` vers `fonts.googleapis.com` : un livrable qui téléphone au chargement signale au serveur tiers quand et d'où il est lu, et perd son rendu hors ligne. Les familles Roboto / DM Sans / JetBrains Mono restent déclarées avec leur **pile de repli système** ; le rendu fidèle vient des WOFF2 bundlés de `scripts/fonts/` (installés au cache fontconfig par `render_schema.py`). Ne pas remettre ces `<link>` dans une page produite.
+
+### Ce que check_html juge dans `assets/`, et ce qu'il écarte (TF-0308)
+
+Les six fichiers de `assets/` passent le contrôle de conformité du socle
+(`digit-ai-page-html/scripts/check_html.py`, famille charte). Trois sont des **pages** et
+sont jugées entièrement : `exemple-reference.html`, `template-modele-donnees.html`,
+`template-multi-bandes.html` (ce dernier avec une exemption étroite : l'indice de version
+**daté** appartient à l'instance produite, son titre est un `{{PLACEHOLDER}}`).
+
+Trois sont des **fragments par conception** — `template-topologie.html`,
+`template-flux-temporel.html`, `template-tableau-de-bord.html` : ils s'insèrent dans le
+squelette de `template-multi-bandes.html`, qui porte le `<head>`, le `<title>` et le favicon.
+La famille « autoportance » y est écartée par une **exemption déclarée et annoncée** (registre
+`EXEMPTIONS_DECLAREES` de `check_html.py`, avec son motif ; le contrôle l'imprime à chaque
+exécution). Tout le reste reste jugé : réseau A1, thème G1, police interdite, lisibilité.
+Un gabarit ajouté à `assets/` **échoue** tant qu'il n'est pas soit conforme, soit déclaré —
+une exemption se décide, elle ne se devine pas (R-30 §3).
+
 ## Workflow d'exécution
 
 1. **Identifier le canevas** via la grille ci-dessus ; si ambigu, poser une question fermée (canevas A ou B).
@@ -79,7 +98,7 @@ uv run python render_schema.py <chemin-vers-schema.html>
 Le script screenshote le conteneur `.diagram-wrap` (cadrage serré sur le schéma + son padding, hors eyebrow / H1 / footer) et écrit un PNG à côté du HTML. Lire ensuite ce PNG avec l'outil Read.
 
 Le script s'adapte seul à deux environnements, sans réglage manuel :
-- **Claude Code** (réseau ouvert) : Chromium installé localement, polices Google chargées par le réseau.
+- **Claude Code** (réseau ouvert) : Chromium installé localement. Depuis TF-0308 les gabarits ne chargent plus les polices par le réseau : le rendu utilise les polices installées sur le poste, sinon la pile de repli — vérifier la fidélité typographique sur le PNG, un titre en repli système se voit.
 - **Sandbox Claude.ai web** (réseau sur liste blanche) : il auto-détecte le Chromium pré-installé de l'image (`/opt/pw-browsers`) et installe les WOFF2 bundlés dans `scripts/fonts/` au cache fontconfig local — Roboto / DM Sans / JetBrains Mono rendent fidèlement même si `fonts.googleapis.com` est bloqué. Le script attend `document.fonts.ready` avant le screenshot, sinon les débordements de texte sont invisibles au rendu.
 
 **Première installation — Claude Code uniquement** (le sandbox web n'en a pas besoin, le navigateur y est déjà présent) :
