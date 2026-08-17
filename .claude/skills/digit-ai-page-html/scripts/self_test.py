@@ -113,6 +113,33 @@ CAS_G1 = {
 }
 RE_CODE_G = re.compile(r"^(G\d+)\b")
 
+# AUTOPORTANCE (TF-0303, décidé par l'étude d'opportunité 20260817b — verdict O3) :
+# mécanisation des règles A1 (squelette auto-portant), A2/G2 (favicon data:), A3 (charset
+# dans les 1024 premiers octets), A4 (titre marque + objet + version datée) et de la
+# branche R-30 « clair par défaut STRICT » de G1 (auto-sombre hérité de l'OS interdit
+# depuis TF-0158, tranché RV-9). Codes A et G jugés ENSEMBLE : le cas fondateur les cumule,
+# et les séparer aurait fait passer un fragment sans en-tête pour un simple défaut de titre.
+#
+# Cas fondateur (lot Produit-01, 17/08) : un rapport d'audit remis à un client, écrit pour
+# une publication hébergée — l'hôte fournissait le squelette, le fichier livré n'en avait
+# aucun. Quatre règles écrites du socle violées d'un coup, zéro contrôle pour le dire.
+CAS_AUTOPORTANCE = {
+    "a1-fragment-sans-head.html": {"A1", "A2", "A3", "A4", "G1"},
+    "a1-fragment-corrige.html": set(),      # le MÊME contenu, rendu auto-portant
+    # La position se mesure en octets, pas en caractères, et le commentaire n'est pas
+    # coupable en soi : les deux jumelles ne diffèrent que par l'ordre de trois lignes.
+    "a3-charset-tardif.html": {"A3"},
+    "a3-charset-en-tete.html": set(),
+    "a4-titre-sans-marque.html": {"A4"},    # « Écarts Approval V1 » verbatim
+    "a4-titre-sans-version.html": {"A4"},   # marque et objet présents, révision muette
+    "a2-favicon-absent.html": {"A2"},
+    "a2-favicon-fichier-externe.html": {"A2"},   # déclaré, mais pas embarqué
+    # La verte de l'auto-sombre est g1-bouton-cable.html : elle CITE prefers-color-scheme
+    # en commentaire pour dire qu'il est retiré — la règle doit y rester muette.
+    "g1-auto-sombre-media.html": {"G1"},
+}
+RE_CODE_AG = re.compile(r"^(A\d+(?:-bis)?|G\d+)\b")
+
 # Cas mesurés AU RENDU : le contrôle statique de L2 lit le CSS du conteneur et ne
 # voit pas un paragraphe bridé à l'intérieur. Ces deux-là ne se jugent qu'en
 # ouvrant la page dans un navigateur.
@@ -192,6 +219,26 @@ def run():
             "attendu": ["lang"] if echec_lang_attendu else [],
             "obtenu": (["lang"] if fails_lang else []) + parasites,
             "detail": "" if ok else " | ".join(fails)[:400],
+        })
+    for nom, attendu in CAS_AUTOPORTANCE.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE", "attendu": sorted(attendu),
+                              "obtenu": [], "detail": "fixture manquante"})
+            continue
+        fails, _ = check(chemin.read_text(encoding="utf-8"), regles="charte")
+        obtenu = codes(fails, RE_CODE_AG)
+        # Même garde anti-parasite que A1 et G1 : un échec de charte NON codé (h1 absent,
+        # :root manquant, @media print oublié) rendrait le cas trompeur — on croirait
+        # mesurer l'autoportance, on mesurerait un oubli de gabarit.
+        parasites = [f for f in fails if not RE_CODE_AG.match(f)]
+        ok = obtenu == attendu and not parasites
+        resultats.append({
+            "fixture": nom,
+            "verdict": "OK" if ok else "ECHEC",
+            "attendu": sorted(attendu),
+            "obtenu": sorted(obtenu),
+            "detail": "" if ok else " | ".join(fails + parasites)[:400],
         })
     for nom, attendu in CAS_G1.items():
         chemin = FIXTURES / nom

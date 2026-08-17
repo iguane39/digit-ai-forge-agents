@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Fixture A2 rouge · favicon en fichier — 20260817a</title>
+<!-- Fixture A2 ROUGE (TF-0303) — la SECONDE branche de la règle : le favicon est déclaré,
+     mais il pointe un fichier voisin. Le lien n'est pas une requête réseau, donc A1 se
+     tait légitimement — et pourtant le livrable qui voyage seul (pièce jointe, archive,
+     dossier client) arrive sans son icône. C'est ce que « embarqué en data: URI » veut
+     dire, et c'est pourquoi la présence d'un <link rel="icon"> ne suffit pas à passer.
+     Sans cette rouge, A2 ne prouverait que la moitié de ce qu'elle affirme. -->
+<link rel="icon" type="image/svg+xml" href="favicon-approval.svg">
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --line: #E6EAF2; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; --line: #263248; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Favicon déclaré, mais posé à côté du fichier</h1>
+<p>Déplacez ce fichier d'un dossier et l'icône disparaît : un livrable auto-portant
+embarque son favicon.</p>
+</main>
+</body>
+</html>

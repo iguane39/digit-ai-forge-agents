@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Fixture A3 VERTE (TF-0303) — jumelle de a3-charset-tardif.html, au commentaire près.
+
+     Le MÊME commentaire long, la MÊME page, un seul changement : les deux balises meta
+     passent avant lui. C'est ce qui prouve que la règle mesure une POSITION et non la
+     présence d'un commentaire — sans cette verte, A3 passerait pour un interdit de
+     documenter son propre en-tête, ce qui serait absurde dans un socle qui exige des
+     commentaires porteurs de provenance.
+
+     Rappel du défaut d'origine : le gabarit du socle déclarait son charset au 1613e octet,
+     le commentaire S-G1 et son script d'initialisation de thème le repoussant hors de la
+     fenêtre de sniffing des 1024 premiers octets. Mesuré par check_html.py le 17/08 sur
+     assets/boilerplate.html, corrigé le même jour par cette remontée exacte. La leçon est
+     d'ordre, pas de volume : un socle peut se documenter autant qu'il veut, à condition de
+     déclarer d'abord comment se lit ce qu'il écrit.
+
+     Tout le reste est conforme, comme dans la rouge : squelette complet, langue déclarée,
+     viewport présent, titre au motif A4 avec son indice daté, favicon-lettre embarqué en
+     data: URI, tokens en :root, impression prévue, breakpoint de confort. La règle A3 doit
+     rester silencieuse ici, et la famille charte entière avec elle. -->
+<title>Digit-AI — Fixture A3 verte · charset en tête — 20260817a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --line: #E6EAF2; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; --line: #263248; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Encodage déclaré en toute première position</h1>
+<p>Le charset et le viewport ouvrent le bloc d'en-tête ; le commentaire long qui suit ne
+coûte rien à la lecture de l'encodage.</p>
+</main>
+</body>
+</html>

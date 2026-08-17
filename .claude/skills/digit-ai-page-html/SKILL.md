@@ -32,10 +32,29 @@ si la page vise aussi le PDF.
   (le sombre est un CHOIX du lecteur), impression toujours claire. Le boilerplate
   l'embarque déjà (snippet S-G1). Un bouton présent sans script qui pose `data-theme` est
   une bascule morte, FAIL bloquant ; son absence totale (rendu figé print/PDF) n'est qu'un
-  avertissement.
-- **Favicon-lettre obligatoire** (systématisation du 13/08, loi transverse n°3) : tout HTML
-  créé porte un favicon SVG en `data:` URI avec la **première lettre du nom du client ou du
-  projet** — le boilerplate l'embarque (remplacer `{L}`).
+  avertissement. Depuis TF-0303 (17/08), tout `prefers-color-scheme` qui **pilote** le thème
+  (bloc `<style>`, attribut `style`, appel `matchMedia`) est un FAIL bloquant : la règle
+  était écrite trois fois et jouée zéro fois — elle est revenue dans un livrable client.
+  Une **mention** en commentaire reste muette : le socle doit pouvoir documenter son interdit.
+- **Auto-portance du fichier livré (A1, TF-0303)** : `<!DOCTYPE html>`, `<html>`, `<head>`
+  et `<body>` sont dans le FICHIER. Un HTML écrit pour une publication hébergée n'en a
+  aucun — l'hôte les fournit à la publication, et le fichier qui part en pièce jointe reste
+  un fragment sans langue, sans encodage et sans viewport. FAIL bloquant par balise manquante.
+- **`charset` puis `viewport` en TOUTE PREMIÈRE position du `<head>` (A3)** : la déclaration
+  d'encodage doit tomber dans les **1024 premiers octets** (fenêtre de sniffing de la
+  spécification) — mesurée en octets de l'encodage réel, pas en caractères. Le boilerplate
+  lui-même la déclarait au 1613e (son commentaire S-G1 et son script d'initialisation la
+  repoussaient) : corrigé le 17/08. FAIL bloquant.
+- **Titre au motif A4** : `{Marque} — {Objet} · {Client} — {YYYYMMDD}{a,b,c…}`. Deux FAIL
+  distincts, parce que les deux manques ne se corrigent pas du même geste : titre d'un seul
+  bloc (pas de marque séparée de l'objet), et absence d'indice de version **daté** — « V1 »
+  ne distingue pas deux révisions du même jour. Le titre est la seule métadonnée qui suit le
+  fichier partout : onglet, favori, pied d'impression, pièce jointe.
+- **Favicon-lettre obligatoire** (A2/G2, systématisation du 13/08, loi transverse n°3) : tout
+  HTML créé porte un favicon SVG en `data:` URI avec la **première lettre du nom du client ou
+  du projet** — le boilerplate l'embarque (remplacer `{L}`). FAIL bloquant depuis TF-0303,
+  aux deux branches : aucun `<link rel="icon">`, ou un `rel="icon"` qui pointe un FICHIER
+  (le livrable qui voyage seul arrive alors sans son icône).
 - Toutes les couleurs, polices et rayons en **variables `:root`** — aucun hex en dur.
 - Toujours une **pile de repli système** derrière les web fonts.
 - **Autonomie réseau totale (A1, décision D-10)** : aucune requête au chargement — pas de
@@ -72,9 +91,12 @@ python scripts/check_html.py chemin/vers/page.html
 # JSON pour intégration : python scripts/check_html.py page.html --output json
 ```
 
-Le script signale les **échecs bloquants** (Syne présent, `lang` absent, charset non prioritaire,
+Le script signale les **échecs bloquants** (Syne présent, `lang` absent, charset non prioritaire
+ou déclaré au-delà du 1024e octet — A3, squelette `html`/`head`/`body` absent — A1, titre hors
+motif marque + objet + version datée — A4, favicon absent ou non embarqué — A2,
 `<h1>` absent ou multiple, `:root` absent, `<title>` vide, pas de `@media print`, ressource
-chargée par le réseau — A1, bouton `.theme-toggle` sans script câblant `data-theme` — G1) et des
+chargée par le réseau — A1, bouton `.theme-toggle` sans script câblant `data-theme` — G1,
+thème piloté par `prefers-color-scheme` — G1) et des
 **avertissements** (repli de font manquant, `alt` manquant, saut de niveau de titre, script
 bloquant en `<head>`, pas de repère sémantique, aucun bouton de bascule — G1, légitime sur un
 rendu figé). Corriger tous les échecs, traiter les avertissements selon le contexte, relancer
