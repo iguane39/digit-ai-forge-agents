@@ -91,6 +91,12 @@ CAS_AUTONOMIE = {
     # RA-1 (SCC_ALX, 13/08) : un </script> en clair dans le commentaire d'un asset inliné
     # tronque le script hôte — le déséquilibre ouvertures/fermetures le trahit.
     "a1bis-script-tronque.html": {"A1-bis"},
+    # TF-0307 : deux jumelles qui ne diffèrent QUE par la place d'une url() — dans un
+    # commentaire (rien n'est chargé, silence exigé) ou dans la règle CSS qui suit
+    # (requête réelle, A1 doit la nommer). Sans la rouge, retirer les commentaires
+    # pourrait avaler le CSS qui les suit sans que rien ne le dise.
+    "a1-reseau-cite-en-commentaire.html": set(),
+    "a1-reseau-hors-commentaire.html": {"A1"},
 }
 RE_CODE_A = re.compile(r"^(A\d+(?:-bis)?)\b")
 

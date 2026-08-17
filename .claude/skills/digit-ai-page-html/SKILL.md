@@ -60,7 +60,9 @@ si la page vise aussi le PDF.
 - **Autonomie réseau totale (A1, décision D-10)** : aucune requête au chargement — pas de
   CDN, pas de police distante, pas d'image externe. CSS/JS inline, images en `data:` URI,
   polices en repli système. Un lien cliquable `<a href>` reste légitime (rien ne se charge
-  sans geste du lecteur). Contrôlé par `check_html.py` (FAIL bloquant).
+  sans geste du lecteur). Une URL réseau **citée en commentaire** (HTML `<!-- -->` ou CSS
+  `/* */`) reste muette elle aussi — rien n'y est résolu, et le socle doit pouvoir écrire en
+  place ce qu'il vient de retirer (TF-0307). Contrôlé par `check_html.py` (FAIL bloquant).
 - Nommage fichier : `Digit-AI - {TypeDoc} {Client} - {Scope} - {YYYYMMDD}{a,b,c…}.{ext}`.
 
 Détail complet + tokens (palette, rayons, familles, année de référence) :
