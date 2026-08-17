@@ -4,11 +4,25 @@
 //   ## Workstream <nom> — deadline : AAAA-MM-JJ
 //   - etape: <id> · <titre> · echeance: AAAA-MM-JJ · sortie: <critère> · depend: <ids ou ->
 //   chemin critique : id1 > id2 > id3
+//   ## Risques
+//   - risque: <énoncé> · probabilite: <cotation> · impact: <cotation> · proprietaire: <qui> · parade: <action>
+//   ## Parties prenantes
+//   - partie-prenante: <qui> · role: <rôle> · attente: <attente> · canal: <canal>
+//   ## Mesures de succès
+//   - mesure: <indicateur> · cible: <valeur visée> · source: <source de mesure>
 // Contrôles :
 //   W1 aucune étape après la deadline de son workstream ;
 //   W2 dépendances acycliques et toutes référencées ;
 //   W3 chaque étape porte un critère de sortie non vide ;
-//   W4 chemin critique désigné, chaque id du chemin existant.
+//   W4 chemin critique désigné, chaque id du chemin existant ;
+//   W5 registre de risques : ≥ 1 risque, chacun coté (probabilite, impact) avec propriétaire et parade ;
+//   W6 parties prenantes : ≥ 1 partie prenante, chacune avec rôle, attente et canal ;
+//   W7 mesures de succès : ≥ 1 mesure, chacune avec cible et source de mesure.
+// W5-W7 (TF-0323) : un risque est ce que le plan ne contrôle pas et qui peut arriver — objet
+// DISTINCT d'une hypothèse (ce dont le plan dépend sans le contrôler), qui n'est pas au schéma
+// de ce domaine (0 occurrence dans l'oracle et ses fixtures au 17/08/2026 : rien à articuler ici).
+// Une mesure de succès se suit dans le temps (indicateur, cible, source) — distincte du critère
+// de sortie binaire d'une étape, jugé par W3.
 // Réserve documentée (inventaire P2 O8) : le schéma migre vers Notion (décision 22/07) —
 // l'oracle lira l'export ; à caler sur l'architecture v1.1 de pilote-de-mission.
 // Provenance : pilote-de-mission, 2 instanciations réelles (APDLB v1.1, un AO public) —
@@ -20,7 +34,12 @@ const DOM = 'Plan de mission (cohérence structurelle)';
 const findings = [];
 const non_juge = [
   'réalisme des charges et des dates (jugement de pilotage, pas de structure)',
-  'export Notion non encore câblé (réserve inventaire O8 — format md canonique en attendant)'
+  'export Notion non encore câblé (réserve inventaire O8 — format md canonique en attendant)',
+  'W5 : la QUALITÉ d\'un risque — pertinence de l\'énoncé, cotation plausible, parade réellement praticable, exhaustivité du registre (l\'oracle tient la forme, pas le jugement de pilotage)',
+  'W5 : l\'échelle de cotation probabilité/impact n\'est pas arrêtée (revue prévue au 17/11/2026) — la valeur est exigée NON VIDE, jamais confrontée à un vocabulaire fermé',
+  'W6 : la complétude de la cartographie (une partie prenante oubliée est invisible ici) et la justesse de l\'attente prêtée à chacune',
+  'W7 : la sincérité d\'une cible et l\'existence réelle de la source de mesure — aucun relevé n\'est effectué, aucune valeur n\'est confrontée à sa source',
+  'la cadence de communication et les artefacts périodiques (revue RAID, rapport d\'avancement, REX, suivi des bénéfices) : hors périmètre de ce domaine (TF-0324 candidat)'
 ];
 const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-plan-de-mission', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
@@ -59,6 +78,41 @@ const cc = txt.match(/chemin critique\s*:\s*(.+)$/im);
 if (!cc) findings.push({ sev: 'bloquant', msg: 'W4 — chemin critique non désigné', where: base });
 else for (const id of cc[1].split('>').map(s => s.trim()).filter(Boolean))
   if (!etapes.has(id)) findings.push({ sev: 'bloquant', msg: `W4 — chemin critique : étape inconnue « ${id} »`, where: base });
+// W5-W7 — objets de gouvernance : une règle par objet, chacune bloquante.
+// L'objet se reconnaît à son entrée « - <mot-clé>: » ; ses attributs sont les segments
+// « clé: valeur » séparés par « · ». Un attribut absent ou vide produit un constat qui NOMME
+// l'attribut manquant — jamais « ligne non reconnue » : sinon un plan incomplet serait
+// indiscernable d'un plan sans la section (loi transverse n° 3, l'oubli n'existe pas).
+const attributs = seg => {
+  const m = new Map();
+  for (const s of seg) { const a = s.match(/^([a-z-]+)\s*:\s*([\s\S]*)$/i); if (a) m.set(a[1].toLowerCase(), a[2].trim()); }
+  return m;
+};
+const OBJETS = [
+  { regle: 'W5', cle: 'risque', libelle: 'registre de risques', tete: 'énoncé du risque', requis: ['probabilite', 'impact', 'proprietaire', 'parade'], entrees: [] },
+  { regle: 'W6', cle: 'partie-prenante', libelle: 'cartographie des parties prenantes', tete: 'identité de la partie prenante', requis: ['role', 'attente', 'canal'], entrees: [] },
+  { regle: 'W7', cle: 'mesure', libelle: 'mesures de succès', tete: 'intitulé de l\'indicateur', requis: ['cible', 'source'], entrees: [] }
+];
+lines.forEach((l, i) => {
+  const m = l.match(/^\s*[-*]\s*(risque|partie-prenante|mesure)\s*:\s*(.+)$/i);
+  if (!m) return;
+  const o = OBJETS.find(x => x.cle === m[1].toLowerCase());
+  const seg = m[2].split('·').map(s => s.trim());
+  o.entrees.push({ tete: seg.shift(), attrs: attributs(seg), ligne: i + 1 });
+});
+const court = s => (s.length > 40 ? s.slice(0, 40) + '…' : s);
+for (const o of OBJETS) {
+  if (!o.entrees.length) {
+    findings.push({ sev: 'bloquant', msg: `${o.regle} — ${o.libelle} absent : aucune entrée « - ${o.cle}: … » (format canonique en tête de cet oracle)`, where: base });
+    continue;
+  }
+  for (const e of o.entrees) {
+    if (!e.tete) findings.push({ sev: 'bloquant', msg: `${o.regle} — entrée ${o.cle} sans ${o.tete}`, where: base + ':' + e.ligne });
+    for (const a of o.requis) if (!e.attrs.get(a))
+      findings.push({ sev: 'bloquant', msg: `${o.regle} — ${o.cle} « ${court(e.tete) || '(sans intitulé)'} » : attribut « ${a} » ${e.attrs.has(a) ? 'vide' : 'absent'}`, where: base + ':' + e.ligne });
+  }
+}
 if (findings.length) out('FAIL', 1);
-findings.push({ sev: 'info', msg: `conforme : ${wsCount} workstream(s), ${etapes.size} étape(s), W1-W4 vérifiés`, where: base });
+const n = c => OBJETS.find(o => o.cle === c).entrees.length;
+findings.push({ sev: 'info', msg: `conforme : ${wsCount} workstream(s), ${etapes.size} étape(s), ${n('risque')} risque(s), ${n('partie-prenante')} partie(s) prenante(s), ${n('mesure')} mesure(s) — W1-W7 vérifiés`, where: base });
 out('PASS', 0);
