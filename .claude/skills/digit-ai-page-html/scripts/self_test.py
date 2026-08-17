@@ -162,6 +162,82 @@ CAS_RENDU = {
 }
 
 
+# EXEMPTIONS DÉCLARÉES (TF-0308) — double sens du registre `EXEMPTIONS_DECLAREES`.
+#
+# Fixtures EMBARQUÉES ici, et non des fichiers de `fixtures/` : le mécanisme se déclenche
+# sur le CHEMIN du fichier jugé (registre nominatif), et une fixture de ce skill ne peut
+# pas vivre dans l'arbre d'un autre skill. Même contrainte, même choix que le self-test
+# du hook C7. Ce que ces cas prouvent : l'exemption s'applique là où elle est déclarée,
+# nulle part ailleurs, et n'écarte QUE ce qu'elle nomme.
+FRAGMENT_CANEVAS = "\n".join([
+    "<!-- TEMPLATE TOPOLOGIE · canevas Digit-AI",
+    "     Utilisation : insérer ce <svg>...</svg> dans une page qui utilise le squelette",
+    "     de template-multi-bandes.html. -->",
+    '<div class="diagram-wrap">',
+    '  <svg viewBox="0 0 1400 720" xmlns="http://www.w3.org/2000/svg" role="img">',
+    "    <title>{{TITRE_TOPOLOGIE}} | {{SOUSTITRE}}</title>",
+    '    <rect x="60" y="76" width="200" height="114" rx="8" fill="#ede9fe"/>',
+    "  </svg>",
+    "</div>",
+])
+CHEMIN_DECLARE = ".claude/skills/digit-ai-schemas/assets/template-topologie.html"
+CHEMIN_GABARIT = ".claude/skills/digit-ai-schemas/assets/template-multi-bandes.html"
+# Page datée : sous le chemin du gabarit à trous, l'exemption A4-version n'écarte plus
+# rien — le contrôle doit le DIRE, sinon une ligne de registre survit à son motif.
+PAGE_DATEE = "\n".join([
+    '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    "<title>Digit-AI — Canevas multi-bandes · essai — 20260817a</title>",
+    '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg/%3E">',
+    "<style>:root { --ink: #0f172a; } @media print { body { background: #fff; } }</style>",
+    "</head><body><h1>Essai</h1><p>Contenu.</p></body></html>",
+])
+
+
+def run_exemptions():
+    """Cas à double sens du registre d'exemptions déclarées. Même forme que run()."""
+    def a_code_autoportance(fails):
+        return any(f.startswith(("A1 DOCTYPE", "A1 <head>", "A3 ", "A2 ")) for f in fails)
+
+    cas = []
+
+    fails, warns = check(FRAGMENT_CANEVAS, regles="charte", source=CHEMIN_DECLARE)
+    cas.append(("VERTE  fragment déclaré : autoportance écartée",
+                not a_code_autoportance(fails)
+                and any("SKIP exemption déclarée" in w for w in warns), fails))
+
+    fails, warns = check(FRAGMENT_CANEVAS, regles="charte", source=CHEMIN_DECLARE)
+    cas.append(("VERTE  le SKIP NOMME son motif (jamais muet)",
+                any("fragment SVG de canevas" in w and "template-multi-bandes" in w
+                    for w in warns), warns))
+
+    fails, _ = check(FRAGMENT_CANEVAS, regles="charte",
+                     source="output/livrable-client.html")
+    cas.append(("ROUGE  même contenu HORS registre : les échecs reviennent",
+                a_code_autoportance(fails), fails))
+
+    fails, _ = check(FRAGMENT_CANEVAS, regles="charte")
+    cas.append(("ROUGE  sans chemin fourni : aucune exemption possible",
+                a_code_autoportance(fails), fails))
+
+    cdn = FRAGMENT_CANEVAS.replace(
+        '<div class="diagram-wrap">',
+        '<link rel="stylesheet" href="https://cdn.exemple.invalid/t.css">\n'
+        '<div class="diagram-wrap">')
+    fails, _ = check(cdn, regles="charte", source=CHEMIN_DECLARE)
+    cas.append(("ROUGE  fichier exempté qui charge un CDN : A1 réseau reste en échec",
+                any("requête(s) réseau" in f for f in fails), fails))
+
+    fails, warns = check(PAGE_DATEE, regles="charte", source=CHEMIN_GABARIT)
+    cas.append(("       exemption devenue inutile : annoncée SANS EFFET",
+                any("SANS EFFET" in w for w in warns), warns))
+
+    return [{"fixture": nom, "verdict": "OK" if tenu else "ECHEC",
+             "attendu": ["exemption"], "obtenu": ["exemption"] if tenu else [],
+             "detail": "" if tenu else " | ".join(detail)[:300]}
+            for nom, tenu, detail in cas]
+
+
 def codes(messages, motif=RE_CODE):
     out = set()
     for m in messages:
@@ -314,7 +390,7 @@ def main():
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
-    res = run()
+    res = run() + run_exemptions()
     rendu = run_rendu()
     if rendu:
         res += rendu

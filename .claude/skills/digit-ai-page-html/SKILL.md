@@ -104,6 +104,18 @@ bloquant en `<head>`, pas de repère sémantique, aucun bouton de bascule — G1
 rendu figé). Corriger tous les échecs, traiter les avertissements selon le contexte, relancer
 jusqu'au PASS.
 
+**Exemptions déclarées (TF-0308, R-30 §3).** Un fichier qui n'est pas une page ne peut pas
+tenir les règles d'une page : les fragments de canevas de `digit-ai-schemas` (à insérer dans
+un squelette hôte) n'ont ni `<head>`, ni `<title>`, ni favicon par conception. Ces cas sont
+nommés un par un dans `EXEMPTIONS_DECLAREES` (`check_html.py`), avec la famille de contrôles
+écartée et son motif — registre **nominatif**, jamais un dossier entier, pour qu'un fichier
+ajouté demain échoue tant qu'on ne l'a pas déclaré. Le contrôle rend alors un **SKIP annoncé
+à chaque exécution** (avertissement citant le motif et le nombre de contrôles écartés), et
+juge tout le reste : réseau A1, thème G1, police, lisibilité. Une exemption qui n'écarte plus
+rien se signale d'elle-même (« SANS EFFET ») pour qu'on retire sa ligne. Le passage par le
+chemin du fichier est la seule porte : sans `source`, aucune exemption ne s'applique — un
+livrable ne peut pas s'exempter lui-même.
+
 Puis lancer l'**oracle zéro défaut visuel** (rendu multi-breakpoints + mesures) :
 
 ```bash
