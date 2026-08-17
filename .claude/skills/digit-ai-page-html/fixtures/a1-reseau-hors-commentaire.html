@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A1 — rouge : la vraie url() hors commentaire reste refusée — 20260817a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- Consigne du socle, écrite là où elle s'applique : ne JAMAIS charger la police par
+     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto"> ni
+     poser un fond par url(https://cdn.exemple.invalid/fond.png) — un livrable sortant
+     est autonome (D-10). Ce commentaire est le MÊME que dans la fixture verte : retirer
+     les commentaires ne doit pas rendre A1 aveugle à ce qui suit (TF-0307). -->
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif; --accent: #2a5db0; }
+/* Fond d'origine url(https://cdn.exemple.invalid/sceau.png) : la ligne suivante, elle,
+   n'est pas un commentaire — c'est la fuite réelle que A1 doit nommer. */
+.sceau { background: url(https://cdn.exemple.invalid/sceau.png); }
+@media (max-width: 640px) { body { font-size: 15px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Page qui téléphone malgré ses commentaires rassurants</h1>
+<h2>Le commentaire innocente, la déclaration accuse</h2>
+<p>Cette page est la jumelle de <code>a1-reseau-cite-en-commentaire.html</code> : mêmes
+commentaires, même consigne recopiée, une seule différence — la règle CSS
+<code>.sceau</code> pointe vraiment vers un serveur distant. Le fond est donc téléchargé
+à l'ouverture, et le serveur tiers apprend quand et d'où le document est lu.</p>
+<p>Si le retrait des commentaires avalait le CSS qui les suit, cette fixture passerait au
+vert : c'est exactement ce qu'elle interdit.</p>
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="image embarquée en data URI">
+</main>
+</body>
+</html>
