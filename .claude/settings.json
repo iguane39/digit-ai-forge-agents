@@ -13,6 +13,12 @@
         "hooks": [{ "type": "command", "command": "bash .queue/gates/g1-block-direct.sh" }]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/qo-gate-write.mjs" }]
+      }
+    ],
     "SubagentStop": [
       { "hooks": [{ "type": "command", "command": "bash .queue/gates/g2-require-receipt.sh" }] }
     ],
