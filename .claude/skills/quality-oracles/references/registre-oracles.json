@@ -1,5 +1,5 @@
 {
-    "version":  "2.11.1",
+    "version":  "2.12.0",
     "note":  "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel.",
     "oracles":  [
                     {
@@ -627,11 +627,16 @@
                                     "{skilldir}/scripts/oracle-plan-de-mission.mjs",
                                     "{file}"
                                 ],
-                        "checklist":  "W1-W4 en tête d oracle-plan-de-mission.mjs (deadlines, dépendances acycliques, critères de sortie, chemin critique)",
+                        "checklist":  "W1-W7 en tête d oracle-plan-de-mission.mjs (deadlines, dépendances acycliques, critères de sortie, chemin critique, registre de risques, parties prenantes, mesures de succès — W5-W7 ajoutés le 17/08/2026, TF-0323)",
                         "statut":  "ok",
                         "non_juge":  [
                                          "réalisme des charges/dates",
-                                         "export Notion à câbler (réserve O8)"
+                                         "export Notion à câbler (réserve O8)",
+                                         "qualité d un risque (cotation plausible, parade praticable, exhaustivité) — la forme seule est jugée",
+                                         "échelle de cotation probabilité/impact non arrêtée (revue 17/11/2026) : valeur exigée non vide, jamais confrontée à un vocabulaire fermé",
+                                         "complétude de la cartographie des parties prenantes",
+                                         "sincérité d une cible et existence réelle de sa source (aucun relevé effectué)",
+                                         "cadence et artefacts périodiques (revue RAID, avancement, REX, bénéfices) : hors domaine (TF-0324 candidat)"
                                      ],
                         "content_patterns":  [
                                                  "## Workstream"

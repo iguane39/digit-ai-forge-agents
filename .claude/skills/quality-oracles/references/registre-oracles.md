@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.10.0, alignée sur le JSON le 09/08/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.12.0, alignée sur le JSON le 17/08/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -28,7 +28,7 @@
 | Simulateur JS (KPI vs modèle de référence) | `scripts/oracle-simulateur-js.mjs <page.html> --attendus <json>` — J1 autoportance des libs, J2 KPI aux valeurs par défaut vs attendus à tolérance déclarée | cli | ✅ |
 | Parité de migration (routes symétriques) | `scripts/oracle-parite-migration.mjs <routes.txt>` — P1 captures, P2 canonical/og normalisés, P3 domaine cible, P4 liens, P5 noindex ; verdict go/no-go | cli | ✅ |
 | Inventaire de connecteurs (interop) | `scripts/oracle-inventaire-interop.mjs <inventaire.md>` — I1 colonnes obligatoires, I2 cellules renseignées, I3 vocabulaire fermé des statuts (établi sourcé / à vérifier / divergence datée), I4 doublons | cli | ✅ |
-| Plan de mission (cohérence structurelle) | `scripts/oracle-plan-de-mission.mjs <plan.md>` — W1 deadlines, W2 dépendances acycliques, W3 critères de sortie, W4 chemin critique | cli | ✅ |
+| Plan de mission (cohérence structurelle) | `scripts/oracle-plan-de-mission.mjs <plan.md>` — W1 deadlines, W2 dépendances acycliques, W3 critères de sortie, W4 chemin critique, **W5 registre de risques** (probabilite, impact, proprietaire, parade), **W6 parties prenantes** (role, attente, canal), **W7 mesures de succès** (cible, source) — W5-W7 ajoutés le 17/08/2026 (TF-0323) : l'échelle de cotation n'est pas arrêtée, la valeur est exigée non vide | cli | ✅ |
 | CDC de cadrage (contrat de sortie) | `scripts/oracle-cdc-cadrage.mjs <cdc.md>` — C1 7 sections non vides, C2 inventaire exécuté ou arrêt déclaré, C3 verdicts RÉUTILISÉ/ÉTENDU/CRÉÉ, C4 ≥6 seuils chiffrés sans objectif de volume, C5 doublet surface+mutation, C6 noyau/adaptateurs et limite déclarée, C7 termes subjectifs comme critère, C8 marquage [FAIT]/[HYP], C9 zéro bloc de code, C10 questions indicées en fin | cli | ✅ |
 | Post LinkedIn (contraintes de publication) | `scripts/oracle-post-linkedin.mjs <post.txt> [--fenetre 210]` — L1 longueur, L2 hook, L3 zéro URL, L4 Unicode Bold réversible, L5 hashtags 3-5 | cli | ✅ |
 | Fiches prospection ICE (structure et classement) | `scripts/oracle-fiche-prospection-ice.mjs <diagnostic.html>` — K1 9 champs du skill, K2 bornes ICE 1-10, K3 classement = re-tri exécuté | cli | ✅ |
