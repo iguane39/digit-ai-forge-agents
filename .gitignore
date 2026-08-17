@@ -5,7 +5,8 @@ Thumbs.db
 
 # Artefacts d'exécution des oracles — recalculés à chaque passe, jamais versionnés
 # (TF-0022). Le journal `*.oracles.json` reste versionné : c'est une preuve de verdict,
-# pas un cache ; idem `_oracles-journal*`, dont l'oracle etat-forge dérive `dernier_usage`.
+# pas un cache ; idem `_oracles-journal*`, dont l'oracle etat-forge dérive `dernier_usage`
+# — hors de l'arbre des skills seulement, cf. les deux exceptions ci-dessous.
 __pycache__/
 *.oracles-cache.json
 *.oracles-historique.jsonl
@@ -13,6 +14,14 @@ __pycache__/
 # des skills, c'est du bruit qui s'est invité deux fois dans un commit. Hors de cet
 # arbre (output/, p4/), le journal reste une preuve de verdict et reste versionné.
 .claude/skills/**/*.oracles.json
+# TF-0296 : le journal de RÉPERTOIRE de run-oracles.mjs (`_oracles-journal.json` et son
+# `-historique.jsonl`) échappait aux motifs `*.oracles*` — 13 sidecars étaient donc
+# COMMITTÉS sous .claude/skills/, et ce bruit versionné a masqué TF-0289 deux jours
+# (K2 vert à tort). Même arbitrage que la ligne ci-dessus : bruit dans l'arbre des
+# skills, preuve hors de cet arbre. `sync-skills.mjs` les ignorait déjà à la copie
+# (IGNORE_FICHIER) : le dépôt disait l'inverse de son propre outil de synchronisation.
+.claude/skills/**/_oracles-journal*.json
+.claude/skills/**/_oracles-journal*.jsonl
 # Captures de render_page.py (atelier de l'oracle visuel, jamais un livrable).
 .oracles/
 
