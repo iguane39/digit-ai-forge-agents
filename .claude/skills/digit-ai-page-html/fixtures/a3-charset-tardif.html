@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- Fixture A3 ROUGE (TF-0303) — la déclaration d'encodage EXISTE, elle arrive trop tard.
+
+     La spécification HTML borne la fenêtre de sniffing aux 1024 premiers octets : au-delà,
+     l'analyseur a déjà arrêté un encodage par défaut et le charset déclaré ne le rattrape
+     plus toujours. La conséquence est banale et coûteuse sur un rapport rédigé en français :
+     « périmètre » rendu « pÃ©rimÃ¨tre », et un lecteur qui conclut à un document abîmé.
+
+     Le piège est réel, pas théorique : le gabarit du socle lui-même y était tombé. Son
+     commentaire S-G1 et le script d'initialisation de thème qu'il documente occupaient
+     1613 octets AVANT le charset — mesuré par check_html.py sur assets/boilerplate.html
+     le 17/08, corrigé le même jour en remontant charset puis viewport en toute première
+     position du bloc d'en-tête. Le contrôle a donc trouvé son premier défaut dans sa
+     propre référence, ce qui est exactement l'usage d'un contrôle exécuté.
+
+     Cette fixture reproduit la mécanique avec le moyen le plus honnête : un commentaire
+     long, du genre qu'un socle documenté produit naturellement. Rien d'autre ne cloche —
+     squelette complet, langue déclarée, viewport présent, titre au motif A4 avec son
+     indice daté, favicon-lettre embarqué, tokens en :root, impression prévue. Seule la
+     POSITION du charset la départage de sa jumelle verte a3-charset-en-tete.html, qui
+     porte le même commentaire déplacé sous les deux balises meta. La règle mesure des
+     octets de l'encodage réel, jamais des caractères : un commentaire accentué comme
+     celui-ci consomme la fenêtre deux fois plus vite qu'un texte anglais. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Fixture A3 rouge · charset tardif — 20260817a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --line: #E6EAF2; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; --line: #263248; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Encodage déclaré au-delà de la fenêtre de sniffing</h1>
+<p>Le charset est bien là, mais après plus de mille octets de commentaire : la fenêtre des
+1024 premiers octets est déjà consommée quand l'analyseur le rencontre.</p>
+</main>
+</body>
+</html>

@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<!-- A3 (TF-0303, 17/08) — charset PUIS viewport en TOUTE PREMIÈRE position : la
+     déclaration d'encodage doit tomber dans les 1024 premiers octets, sinon l'analyseur
+     devine. Le commentaire S-G1 ci-dessous et son script la repoussaient au 1613e octet :
+     mesuré par check_html.py, sur ce gabarit même. L'ordre compte, la position aussi. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- S-G1 (1/4, R-30 amendé TF-0158 le 13/08) — initialisation AVANT le <style> : pose
      data-theme avant la première peinture (zéro flash). CLAIR PAR DÉFAUT, STRICTEMENT :
      un livrable circule et s'ouvre identique chez tous ses lecteurs — l'auto-sombre
@@ -25,9 +31,10 @@
   if (meta) { meta.setAttribute('content', theme); }
 })();
 </script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Digit-AI — {Objet} · {Client}</title>
+  <!-- A4 : marque — objet · client — indice de version DATÉ ({YYYYMMDD}{a,b,c…}, le même
+       que le nom de fichier). Sans lui, deux révisions du même jour portent le même nom à
+       l'écran ; « V1 » ne les distingue pas (défaut du 17/08, lot Approval2). -->
+  <title>Digit-AI — {Objet} · {Client} — 20260817a</title>
   <meta name="description" content="{Résumé clair du livrable en une phrase.}">
   <meta name="theme-color" content="#2563EB">
   <!-- « light » à l'écriture : le script d'initialisation ci-dessus le passe à « dark » si,

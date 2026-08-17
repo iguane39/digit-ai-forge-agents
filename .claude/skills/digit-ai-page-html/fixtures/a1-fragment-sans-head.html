@@ -1,0 +1,30 @@
+<!-- Fixture A1 ROUGE — le cas Approval2 du 17/08, rejoué mot pour mot (TF-0303).
+     Un rapport d'audit remis à un client avait été écrit pour une publication HÉBERGÉE :
+     le service fournit doctype, <html>, la balise d'en-tête et <body> au moment de la
+     publication, donc le fichier écrit sur disque n'en a AUCUN. Quatre règles du socle
+     tombent d'un seul coup — A1 (auto-portance), A3 (lang, charset, viewport), A4 (titre
+     « Écarts Approval V1 » : ni marque ni indice daté), A2 (aucun favicon) — et R-30 avec
+     elles : le thème sombre est câblé sur prefers-color-scheme, précisément le mécanisme
+     retiré le 13/08 (TF-0158) et tranché par RV-9 le 14/08.
+     Aucun contrôle ne l'a signalé : c'est ce trou que la campagne TF-0303 ferme. -->
+<title>Écarts Approval V1</title>
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --surface: #FFFFFF; --line: #E6EAF2; --blue: #2563EB; }
+/* Défaut R-30 : le thème suit l'OS du lecteur au lieu d'être son choix explicite. */
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0B1220; --ink: #EEF2F8; --surface: #121B2E; --line: #263248; }
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; } }
+</style>
+<div class="wrap">
+<h1>Écarts de périmètre relevés sur le cahier des charges</h1>
+<p>Ce fragment n'est pas un livrable : ouvert hors du service qui l'héberge, il perd sa
+langue déclarée, son encodage et son viewport en même temps. Sur un rapport rédigé en
+français, l'affichage dépend alors de la devinette du navigateur.</p>
+<p>Le titre, seule métadonnée qui suit le fichier partout, ne porte ni la marque ni
+l'indice de version daté : deux révisions du même jour se ressemblent à l'écran.</p>
+</div>

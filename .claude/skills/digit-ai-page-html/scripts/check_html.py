@@ -51,7 +51,8 @@ from html.parser import HTMLParser
 SAMPLE = """<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Digit-AI — Exemple</title>
+<title>Digit-AI — Exemple de page conforme · Socle — 20260817a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%232563EB'%3ED%3C/text%3E%3C/svg%3E">
 <style>:root{--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;}
 @media (max-width:640px){body{font-size:15px;}}
 @media print{body{background:#fff;}}</style></head>
@@ -289,14 +290,92 @@ def _non_nul(v):
 
 
 # ---------------------------------------------------------------------------
+# A4 — le titre porte marque, objet et indice de version (BEST-PRACTICES A4, motif
+# « {Marque} — {Objet} · {Client} — {version} », repère F2 « Nhood — … — V20260715a »).
+#
+# Né d'un défaut livré (lot Approval2, 17/08) : un rapport d'audit remis à un client
+# s'intitulait « Écarts Approval V1 » — ni marque, ni indice DATÉ. Le titre est la seule
+# métadonnée qui suit le fichier partout (onglet, favori, pied d'impression, pièce jointe
+# d'un courriel) : sans marque le lecteur ne sait pas d'où vient le document, sans date
+# deux révisions du même jour portent le même nom à l'écran.
+#
+# Deux conditions mesurables, dans cet ordre de lecture :
+#   · la forme SEGMENTÉE du motif (au moins un séparateur entouré d'espaces) — c'est ce
+#     qui sépare la marque de l'objet ; la marque elle-même ne se vérifie pas sans
+#     registre de marques, et un tel registre serait une fausse précision (écart assumé) ;
+#   · un indice de version DATÉ, au nommage du socle (`{YYYYMMDD}{a,b,c…}`), en ISO ou en
+#     date longue française. « V1 » n'en est pas un : c'est précisément ce que portait le
+#     livrable fautif.
+RE_A4_SEGMENTS = re.compile(r"\s[—–·|-]\s")
+RE_A4_VERSION = re.compile(
+    r"\bv?\d{8}[a-z]?\b"                                  # 20260817a · V20260715a
+    r"|\b\d{4}-\d{2}-\d{2}\b"                             # 2026-08-17
+    r"|\b\d{1,2}\s+(?:janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|"
+    r"septembre|octobre|novembre|d[ée]cembre)\s+\d{4}\b",  # 17 août 2026
+    re.I)
+
+# A2/G2 — favicon SVG en `data:` URI (BEST-PRACTICES A2, systématisé G2 le 13/08 au titre
+# de la loi transverse n°3). Zéro requête, net en PDF, et un onglet identifiable parmi
+# vingt. Le `rel` se lit par JETONS : « apple-touch-icon » contient le mot « icon » sans
+# être le favicon du document.
+RE_A2_LINK = re.compile(r"<link\b[^>]*>", re.I)
+RE_A2_REL = re.compile(r'\brel\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))', re.I)
+RE_A2_HREF = re.compile(r'\bhref\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))', re.I)
+
+
+def _val(m):
+    """Valeur d'attribut, quel que soit le guillemetage (ou son absence)."""
+    return next((g for g in m.groups() if g is not None), "") if m else ""
+
+
+RE_COMMENTAIRE_HTML = re.compile(r"<!--.*?-->", re.S)
+RE_COMMENTAIRE_CSS = re.compile(r"/\*.*?\*/", re.S)
+
+
+def _sans_commentaires(html: str) -> str:
+    """HTML privé de ses commentaires — un commentaire n'est ni du balisage ni du CSS.
+
+    Pas une précaution de principe : les trois règles ajoutées le 17/08 se sont chacune
+    trompée sur un commentaire au premier essai, et toujours sur un texte du socle qui
+    DOCUMENTE la règle. Le gabarit écrit « initialisation AVANT le <style> » : l'extraction
+    naïve des blocs `<style>` ouvrait son bloc dans le commentaire et y lisait le mot
+    « prefers-color-scheme » que le socle cite pour dire qu'il est RETIRÉ. La fixture rouge
+    du fragment écrit « le service fournit <html>, … et <body> » : A1 la croyait complète.
+    La fixture A2 écrit « la présence d'un <link rel="icon"> ne suffit pas » : A2 y voyait
+    un favicon. Un contrôle qui accuse — ou innocente — sur un commentaire condamne le
+    socle à ne plus expliquer ses propres règles.
+    """
+    return RE_COMMENTAIRE_HTML.sub(" ", html)
+
+
+# ---------------------------------------------------------------------------
 # CHARTE — contrôles historiques, inchangés dans leur sévérité.
 # ---------------------------------------------------------------------------
 def check_charte(html: str):
     fails, warns = [], []
     low = html.lower()
+    # Vue « balisage réel » (commentaires retirés) : les contrôles de PRÉSENCE d'une balise
+    # s'y jugent, sinon un commentaire qui cite la balise attendue innocente la page.
+    low_net = _sans_commentaires(html).lower()
+    net = _sans_commentaires(html)
 
     if "<!doctype html>" not in low:
-        fails.append("DOCTYPE html manquant.")
+        fails.append("A1 DOCTYPE html manquant.")
+
+    # A1 (suite) — TF-0303 (lot Approval2, 17/08) : un HTML écrit pour une publication
+    # HÉBERGÉE n'est pas auto-portant. L'hôte fournit <html>, <head> et <body> AU MOMENT
+    # de la publication ; le fichier écrit sur disque, celui qui part en pièce jointe et
+    # qui reste dans les dossiers, n'en a AUCUN. Constaté sur pièces : un rapport d'audit
+    # remis à un client, sans doctype ni head — donc sans langue déclarée, sans encodage
+    # et sans viewport d'un seul coup. A1 est la règle qui PORTE les trois autres : les
+    # contrôles A3 ne peuvent même pas s'appliquer à un fragment.
+    for balise in ("html", "head", "body"):
+        if not re.search(rf"<{balise}[\s>]", low_net):
+            fails.append(
+                f"A1 <{balise}> absent — ce fichier est un FRAGMENT, pas un livrable "
+                "auto-portant : si un service d'hébergement fournit le squelette à la "
+                "publication, le fichier livré, lui, ne l'a pas (A1, cas Approval2 du "
+                "17/08).")
 
     # TF-0241 (15/08) : un livrable non francophone ASSUMÉ déclare sa langue — le mur
     # « lang="fr" ou rien » bloquait les kits bilingues (constaté sur AuditCore en).
@@ -304,7 +383,8 @@ def check_charte(html: str):
     # en silence ; l'absence de déclaration reste un échec.
     m_lang = re.search(r'<html[^>]*\blang\s*=\s*"([a-z]{2}(?:-[a-z0-9]+)*)"', low)
     if not m_lang:
-        fails.append('Attribut lang absent ou vide sur <html> (défaut Digit-AI : lang="fr").')
+        fails.append('A3 attribut lang absent ou vide sur <html> '
+                     '(défaut Digit-AI : lang="fr").')
     elif m_lang.group(1) != "fr" and not m_lang.group(1).startswith("fr-"):
         warns.append(f'lang="{m_lang.group(1)}" déclaré — accepté (TF-0241, livrable non '
                      'francophone assumé) ; le défaut Digit-AI reste "fr".')
@@ -312,12 +392,31 @@ def check_charte(html: str):
     m_charset = re.search(r'<meta[^>]*charset', low)
     m_title = re.search(r"<title[ >]", low)
     if not m_charset:
-        fails.append("<meta charset> absent.")
+        fails.append("A3 <meta charset> absent.")
     elif m_title and m_charset.start() > m_title.start():
-        fails.append("<meta charset> doit précéder <title> (priorité d'encodage).")
+        fails.append("A3 <meta charset> doit précéder <title> (priorité d'encodage).")
+
+    # A3 (suite) — TF-0303 : la déclaration d'encodage doit tomber dans les 1024 PREMIERS
+    # OCTETS, seuil de la spécification HTML : au-delà, l'analyseur a déjà commencé à
+    # deviner. Sur un rapport rédigé en français, deviner signifie « é » rendu « Ã© » —
+    # et le lecteur croit à un document abîmé. La mesure est en octets de l'encodage
+    # réel, pas en caractères : un long commentaire accentué consomme deux fois plus vite.
+    # Le gabarit du socle lui-même tombait à 1613 (le commentaire S-G1 et son script
+    # d'initialisation passaient AVANT le charset) — la règle a trouvé son premier défaut
+    # dans sa propre référence.
+    if m_charset:
+        m_charset_h = re.search(r"<meta[^>]*charset", html, re.I)
+        debut = m_charset_h.start() if m_charset_h else m_charset.start()
+        octets = len(html[:debut].encode("utf-8"))
+        if octets >= 1024:
+            fails.append(
+                f"A3 <meta charset> déclaré au {octets}e octet — la spécification exige "
+                "les 1024 premiers : au-delà, le navigateur a déjà commencé à deviner "
+                "l'encodage. Placer charset PUIS viewport en toute première position du "
+                "<head>, avant tout commentaire et tout script d'initialisation.")
 
     if not re.search(r'<meta[^>]*name\s*=\s*"viewport"', low):
-        fails.append("<meta viewport> absent.")
+        fails.append("A3 <meta viewport> absent.")
 
     # TF-0174 (13/08) : les <h1> des GABARITS JS (template literals dans <script>) ne sont
     # jamais au DOM — le navigateur lit un script comme du texte brut. Les blocs script
@@ -336,6 +435,44 @@ def check_charte(html: str):
     title_txt = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
     if not title_txt or not title_txt.group(1).strip():
         fails.append("<title> vide ou absent.")
+    else:
+        # A4 (TF-0303) — le titre PORTE le document hors de son dossier. Jugé sur les deux
+        # composantes vérifiables du motif : la segmentation (marque séparée de l'objet) et
+        # l'indice de version daté. Les deux messages sont distincts : « sans marque » et
+        # « sans version » ne se corrigent pas du même geste.
+        titre = re.sub(r"\s+", " ", title_txt.group(1)).strip()
+        if not RE_A4_SEGMENTS.search(titre):
+            fails.append(
+                f"A4 titre sans marque : « {titre[:70]} » — motif attendu "
+                "« {Marque} — {Objet} · {Client} — {version} » : un titre d'un seul bloc "
+                "ne dit pas d'où vient le document (cas Approval2 : « Écarts Approval V1 »).")
+        if not RE_A4_VERSION.search(titre):
+            fails.append(
+                f"A4 titre sans indice de version daté : « {titre[:70]} » — reprendre "
+                "l'indice du nommage socle ({YYYYMMDD}{a,b,c…}), une date ISO ou une date "
+                "longue française ; « V1 » ne distingue pas deux révisions du même jour.")
+
+    # A2/G2 (TF-0303) — favicon SVG en `data:` URI. Absent, l'onglet porte l'icône
+    # générique du navigateur et le document se perd parmi vingt autres ; posé en fichier
+    # externe, il devient une requête (A1) ou une icône morte dès que le fichier voyage
+    # seul. Le gabarit du socle l'embarque : remplacer {L} par l'initiale du client.
+    liens_icone = []
+    for m in RE_A2_LINK.finditer(net):
+        rels = set(_val(RE_A2_REL.search(m.group(0))).lower().split())
+        if rels & {"icon", "shortcut"}:
+            liens_icone.append(m.group(0))
+    if not liens_icone:
+        fails.append(
+            "A2 favicon absent — tout HTML créé porte son favicon-lettre en `data:` URI "
+            "(<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml,…\">), "
+            "initiale du client ou du projet : zéro requête, net en PDF, onglet "
+            "identifiable (A2/G2, loi transverse n°3).")
+    elif not any(re.match(r"\s*data:", _val(RE_A2_HREF.search(t)), re.I)
+                 for t in liens_icone):
+        fails.append(
+            "A2 favicon non embarqué : le <link rel=\"icon\"> pointe un FICHIER "
+            f"({_val(RE_A2_HREF.search(liens_icone[0]))[:60]!r}) — un livrable qui voyage "
+            "seul perd son icône ; embarquer le SVG en `data:` URI.")
 
     if not re.search(r"@media\s+print", low):
         fails.append("@media print absent (robustesse export PDF).")
@@ -1050,10 +1187,50 @@ RE_G1_BOUTON = re.compile(
 RE_G1_CABLAGE = re.compile(
     r'\.setAttribute\s*\(\s*[\'"]data-theme[\'"]|\.dataset\.theme\s*=', re.I)
 
+# G1 (suite, TF-0303) — l'AUTO-SOMBRE hérité de l'OS. Retiré le 13/08 (TF-0158) après un
+# retour humain réel, contradiction levée par RV-9 le 14/08 : clair par défaut STRICT, le
+# sombre est un CHOIX du lecteur (bascule + persistance). Le mécanisme est pourtant revenu
+# le 17/08 dans un livrable remis à un client (lot Approval2) — une règle écrite trois fois
+# et jouée zéro fois ne s'oppose à rien (R-35).
+#
+# Détecté là où il AGIT, jamais là où il est CITÉ : dans le CSS (bloc <style> ou attribut
+# style) et dans un appel matchMedia. Une mention en commentaire — le gabarit du socle et la
+# fixture verte g1-bouton-cable en portent une, pour expliquer le retrait — reste muette :
+# sans cette distinction, la règle condamnerait la documentation de son propre interdit.
+RE_G1_AUTO_CSS = re.compile(r"prefers-color-scheme", re.I)
+RE_G1_AUTO_JS = re.compile(
+    r"matchMedia\s*\(\s*[\"'][^\"']*prefers-color-scheme", re.I)
+
 
 def check_theme_toggle(html: str):
     """G1 : retourne (fails, warns)."""
     fails, warns = [], []
+
+    # L'auto-sombre se juge AVANT la présence d'un bouton : le cas fondateur (Approval2)
+    # n'avait aucune bascule et suivait quand même l'OS — sortir tôt l'aurait innocenté.
+    auto = []
+    net = _sans_commentaires(html)
+    for bloc in re.findall(r"<style[^>]*>(.*?)</style>", net, re.S | re.I):
+        # Les commentaires CSS aussi : la fixture verte du fragment corrigé explique en
+        # `/* … */` d'où elle vient (« repassé de prefers-color-scheme à data-theme »).
+        if RE_G1_AUTO_CSS.search(RE_COMMENTAIRE_CSS.sub(" ", bloc)):
+            auto.append("bloc <style>")
+    for m in RE_BALISE.finditer(net):
+        attrs = {k.lower(): v.strip("\"'") for k, v in RE_ATTR.findall(m.group(2))}
+        if "style" in attrs and RE_G1_AUTO_CSS.search(attrs["style"]):
+            auto.append(f"attribut style sur <{m.group(1).lower()}>")
+    scripts_js = RE_COMMENTAIRE_CSS.sub(" ", "".join(
+        re.findall(r"<script[^>]*>(.*?)</script>", net, re.S | re.I)))
+    if RE_G1_AUTO_JS.search(scripts_js):
+        auto.append("appel matchMedia")
+    if auto:
+        fails.append(
+            f"G1 auto-sombre hérité de l'OS : prefers-color-scheme pilote le thème "
+            f"({', '.join(sorted(set(auto)))}) — retiré le 13/08 (TF-0158), tranché par "
+            "RV-9 le 14/08 : clair par défaut STRICT. Un livrable circule et s'ouvre "
+            "identique chez tous ses lecteurs ; le sombre se choisit par la bascule "
+            "S-G1 (`:root[data-theme=\"dark\"]` + localStorage), jamais par l'OS.")
+
     if not RE_G1_BOUTON.search(html):
         warns.append(
             "G1 aucun bouton de bascule thème sombre détecté (.theme-toggle ou "

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Écarts de périmètre · Approval — 20260817a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
+<style>
+/* Fixture VERTE jumelle de a1-fragment-sans-head.html : le MÊME contenu, rendu
+   auto-portant. Squelette complet, charset puis viewport en tête (A3), titre au motif A4
+   avec son indice daté, favicon-lettre en data: URI (A2) — et le sombre repassé du
+   mécanisme interdit (prefers-color-scheme) au choix du lecteur : data-theme sur :root,
+   bascule câblée, persistance, impression toujours claire (R-30 / RV-9). */
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --surface: #FFFFFF; --line: #E6EAF2; --blue: #2563EB; }
+:root[data-theme="dark"] { --bg: #0B1220; --ink: #EEF2F8; --surface: #121B2E; --line: #263248; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+.theme-toggle { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; color: #000; } .theme-toggle { display: none; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Écarts de périmètre relevés sur le cahier des charges</h1>
+<button id="theme-toggle" class="theme-toggle" type="button"
+        aria-label="Bascule thème sombre" aria-pressed="false">Thème</button>
+<p>Le même contenu, cette fois auto-portant : ouvert seul, en pièce jointe ou dix ans plus
+tard, il déclare sa langue, son encodage et son viewport lui-même.</p>
+<p>Le titre porte la marque, l'objet et l'indice de version daté du nommage socle ; le
+favicon-lettre est embarqué en <code>data:</code> URI, sans une seule requête réseau.</p>
+</main>
+<script>
+(function () {
+  var bouton = document.getElementById('theme-toggle');
+  var racine = document.documentElement;
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  racine.setAttribute('data-theme', stocke === 'dark' ? 'dark' : 'light');
+  bouton.addEventListener('click', function () {
+    var theme = racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    racine.setAttribute('data-theme', theme);
+    try { localStorage.setItem('digitai-theme', theme); } catch (e) {}
+    bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+  });
+})();
+</script>
+</body>
+</html>
