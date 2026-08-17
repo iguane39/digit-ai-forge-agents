@@ -35,7 +35,8 @@ const INSTALL = path.join(os.homedir(), '.claude', 'skills');
 const IGNORE_DOSSIER = new Set(['__pycache__', '.venv', 'node_modules', '.oracles']);
 const IGNORE_FICHIER = [
   /\.oracles-cache\.json$/, /\.oracles-historique\.jsonl$/, /\.oracles\.json$/,
-  /^_oracles-journal/, /\.pyc$/, /\.bak$/, /\.avant-/, /^uv\.lock$/, /^\.tmp-niv-/,
+  /^_oracles-journal/, /^_routages-journal/, /\.pyc$/, /\.bak$/, /\.avant-/,
+  /^uv\.lock$/, /^\.tmp-niv-/,
 ];
 
 const args = process.argv.slice(2);

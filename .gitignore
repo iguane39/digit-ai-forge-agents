@@ -22,6 +22,12 @@ __pycache__/
 # (IGNORE_FICHIER) : le dépôt disait l'inverse de son propre outil de synchronisation.
 .claude/skills/**/_oracles-journal*.json
 .claude/skills/**/_oracles-journal*.jsonl
+# TF-0306 : même famille, hors des 13 sidecars nommés par TF-0296 donc resté TRACKÉ.
+# `_routages-journal.jsonl` est le journal d'exécution de route-experts.mjs (append à
+# chaque routage, route-experts.mjs:52) : le seul lancement du self-test de routage y
+# ajoute 4 lignes, donc un diff parasite que le prochain commit pressé embarque.
+# Journal d'exécution, régénéré par l'usage, jamais lu comme donnée versionnée.
+.claude/skills/**/_routages-journal*.jsonl
 # Captures de render_page.py (atelier de l'oracle visuel, jamais un livrable).
 .oracles/
 
