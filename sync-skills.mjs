@@ -129,9 +129,26 @@ if (MODE === 'diff') {
     }
     const par = {};
     etats.forEach((e) => { par[e.etat] = (par[e.etat] || 0) + 1; });
-    console.log(`\n❌ dérive : ${etats.length} écart(s) — `
-      + Object.entries(par).map(([k, v]) => `${LIB[k]} ${v}`).join(' · '));
-    console.log('réconcilier : node sync-skills.mjs --sync --vers installation|depot [--skill <nom>]');
+    // TF-0361 (constat en passant, 18/08/2026) — une différence de FINS DE LIGNE n'est pas
+    // une dérive de contenu, et ce fichier le sait déjà puisqu'il la classe à part. La
+    // compter comme dérive faisait sortir « dérive : 11 écart(s) » sur onze fichiers
+    // rigoureusement identiques — asymétrie CRLF/LF entre un dépôt normalisé par git et une
+    // copie posée par `--sync`, donc PERMANENTE sur poste Windows. Un outil qui crie sur du
+    // bruit qu'il a lui-même identifié comme du bruit apprend à être ignoré : TF-0228, en
+    // petit. Les lignes restent LISTÉES — on ne les cache pas, on cesse de les appeler dérive.
+    const reels = etats.filter((e) => e.etat !== 'fins_de_ligne');
+    const bruit = etats.length - reels.length;
+    if (reels.length) {
+      console.log(`\n❌ dérive : ${reels.length} écart(s) de contenu — `
+        + Object.entries(par).filter(([k]) => k !== 'fins_de_ligne')
+          .map(([k, v]) => `${LIB[k]} ${v}`).join(' · ')
+        + (bruit ? ` (plus ${bruit} fichier(s) où SEULES les fins de ligne diffèrent)` : ''));
+      console.log('réconcilier : node sync-skills.mjs --sync --vers installation|depot [--skill <nom>]');
+    } else {
+      console.log(`\n✅ aligné en CONTENU — ${bruit} fichier(s) ne diffèrent que par `
+        + 'leurs fins de ligne : listés ci-dessus, non comptés comme dérive. `--sync` les '
+        + 'uniformise si le bruit gêne.');
+    }
   }
   const inconnus = fs.existsSync(INSTALL)
     ? fs.readdirSync(INSTALL, { withFileTypes: true }).filter((d) => d.isDirectory())
@@ -140,7 +157,9 @@ if (MODE === 'diff') {
   if (inconnus.length && !SKILL) {
     console.log(`\nℹ installés hors de ce dépôt (non comparés, jamais touchés) : ${inconnus.join(' · ')}`);
   }
-  process.exit(etats.length ? 1 : 0);
+  // Exit 1 sur une dérive de CONTENU seulement : un exit non nul sur du bruit de fins de
+  // ligne ferait échouer une recette pour rien, et on apprendrait à passer outre.
+  process.exit(etats.some((e) => e.etat !== 'fins_de_ligne') ? 1 : 0);
 }
 
 // --- sync -------------------------------------------------------------------
