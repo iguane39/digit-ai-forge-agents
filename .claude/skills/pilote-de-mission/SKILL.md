@@ -30,6 +30,13 @@ Format canonique d'une étape (exemple) :
   statut : à faire · fait si : dossier prêt à envoyer
 ```
 
+4. **Tenir la cadence** : les cinq artefacts qui reviennent — revue RAID, rapport
+   d'avancement, compte rendu, REX de fin, suivi des bénéfices — se **dérivent** de l'état de
+   mission, sans jamais en tenir un second. Table normative, régime de preuve et juge de
+   chacun : [references/artefacts-de-cadence.md](references/artefacts-de-cadence.md). La
+   cadence de chacun est une **donnée de l'instance**, déclarée dans l'état, jugée par
+   `quality-oracles/scripts/oracle-cadence-de-mission.mjs` (C1-C5).
+
 ## Règles dures
 
 - L'**état de mission** est la source de vérité unique (fichier mémoire `/areas` en chat,
@@ -40,6 +47,10 @@ Format canonique d'une étape (exemple) :
   d'hypothèse sur le chemin critique re-date la mission et le dit explicitement.
 - Décisions attendues de l'utilisateur : toujours en liste indicée (a, b, c…).
 - Aucun montant inventé ; chiffres sourcés ou « à vérifier ».
+- Les cinq **artefacts de cadence** sont tous rendus dans l'état de mission : chacun déclaré
+  avec sa cadence, sa dernière occurrence et sa source, **ou** déclaré `non-applicable` avec
+  son motif. Écarter est légitime, omettre ne l'est pas (TF-0324, mesuré : 0 occurrence de
+  « RAID », « compte rendu » ou « rapport d'avancement » dans la forge au 16/08).
 
 ## Environnements
 
