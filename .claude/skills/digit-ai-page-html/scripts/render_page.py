@@ -148,18 +148,85 @@ MEASURE_JS = r"""
   };
 
   // ---- V1 : débordement horizontal --------------------------------------
-  if (doc.scrollWidth > doc.clientWidth + 1) {
+  const docDeborde = doc.scrollWidth > doc.clientWidth + 1;
+  if (docDeborde) {
     issues.v1_overflow.push({ what: 'document', detail:
       `scrollWidth ${doc.scrollWidth}px > viewport ${doc.clientWidth}px` });
   }
+  // TF-0382 (lot Produit-10 20260818b) — trois défauts d'un seul `break`, et le pire n'est pas
+  // le plafond.
+  //
+  // MESURÉ : sur un rapport réel à 1280 px, la sortie portait EXACTEMENT 16 éléments, tous
+  // descendants du MÊME tableau (8 colonnes, 77 lignes). Le plafond était donc atteint à
+  // l'intérieur d'un seul sous-arbre — table + thead + tr + th + tbody + td d'un même tableau
+  // comptaient pour six défauts alors qu'il n'y en a qu'UN. Conséquence : deux autres tableaux
+  // de gabarit identique n'ont JAMAIS été examinés, et rien ne le disait. Un lecteur comprenait
+  // « 16 défauts » là où il fallait lire « 16 relevés, inventaire interrompu » — un chiffre qui
+  // n'est ni un compte ni une borne annoncée. Et `blocking` additionne ce chiffre : la sévérité
+  // affichée était elle-même plafonnée.
+  //
+  // Trois corrections, dans l'ordre où elles comptent :
+  //   1. on ne s'arrête PLUS : tout est parcouru, le compte exact est connu ;
+  //   2. on regroupe par SOUS-ARBRE responsable — l'ancêtre débordant le plus extérieur est la
+  //      cause, ses descendants débordent parce qu'il déborde. Le plafond est alors atteint pour
+  //      de vraies raisons ;
+  //   3. le détail seul est plafonné, et la troncature est DÉCLARÉE avec son plafond et le total.
+  const debordants = [];
   for (const el of document.body.querySelectorAll('*')) {
     if (!visible(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.right > doc.clientWidth + 1 && getComputedStyle(el).position !== 'fixed') {
-      issues.v1_overflow.push({ what: label(el), detail:
-        `bord droit à ${Math.round(r.right)}px pour un viewport de ${doc.clientWidth}px` });
-      if (issues.v1_overflow.length > 15) break;
+      debordants.push({ el, right: r.right });
     }
+  }
+  const ensemble = new Set(debordants.map(d => d.el));
+  // La CAUSE est l'ancêtre débordant le plus extérieur : si le parent déborde, l'enfant déborde
+  // avec lui et ne constitue pas un second défaut à corriger.
+  const racine = (el) => {
+    let cause = el;
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      if (ensemble.has(p)) cause = p;
+    }
+    return cause;
+  };
+  const groupes = new Map();
+  for (const d of debordants) {
+    const cause = racine(d.el);
+    const g = groupes.get(cause) || { el: cause, right: 0, descendants: 0 };
+    g.right = Math.max(g.right, d.right);
+    if (d.el !== cause) g.descendants += 1;
+    groupes.set(cause, g);
+  }
+  const PLAFOND_V1 = 16;
+  const causes = [...groupes.values()];
+  for (const g of causes.slice(0, PLAFOND_V1)) {
+    issues.v1_overflow.push({
+      what: label(g.el),
+      detail: `bord droit à ${Math.round(g.right)}px pour un viewport de ${doc.clientWidth}px`
+        + (g.descendants
+          ? ` — ${g.descendants} descendant(s) débordent AVEC lui, comptés dans ce seul défaut`
+          : ''),
+    });
+  }
+  // La troncature se DIT, avec son plafond et le compte exact : sans ce drapeau, une liste
+  // plafonnée se lit comme un inventaire complet.
+  if (causes.length > PLAFOND_V1) {
+    // `total` compte TOUS les défauts V1, l'entrée « document » comprise : un total qui oublie
+    // une entrée déjà listée n'est ni le compte de la liste ni celui du réel. Défaut mesuré sur
+    // ma propre première écriture — blocking valait 19 pour une liste de 17.
+    const totalV1 = causes.length + (docDeborde ? 1 : 0);
+    issues.v1_tronque = {
+      plafond: PLAFOND_V1,
+      total: totalV1,
+      detaillees: issues.v1_overflow.length,
+      causes_regroupees: causes.length,
+      elements_debordants: debordants.length,
+      motif: `inventaire des débordements TRONQUÉ : ${totalV1} défaut(s) V1 mesuré(s) — `
+        + `${causes.length} cause(s) distincte(s) regroupant ${debordants.length} élément(s)`
+        + `${docDeborde ? ', plus le document lui-même' : ''} — dont `
+        + `${issues.v1_overflow.length} détaillé(s) ci-dessus. Le compte, lui, est exact : `
+        + `c'est lui qui dit l'ampleur`,
+    };
   }
 
   // ---- V2 : contraste WCAG ----------------------------------------------
@@ -529,7 +596,12 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                               "Augmenter --timeout, reduire --scale, ou assumer l ecart declare"),
                 }
                 captures_manquees.append(width)
-            blocking = (len(issues["v1_overflow"]) + len(issues["v2_contrast"])
+            # TF-0382 — `blocking` comptait les LIGNES d'une liste plafonnee, donc la severite
+            # etait plafonnee avec elle. Il compte desormais les CAUSES reelles : le total exact
+            # quand l inventaire a ete tronque, la longueur de la liste sinon. Ce n est pas un
+            # assouplissement — le compte MONTE des qu il y a plus de causes que de lignes.
+            v1 = issues.get("v1_tronque", {}).get("total") or len(issues["v1_overflow"])
+            blocking = (v1 + len(issues["v2_contrast"])
                         + len(issues["v4_overlap"]) + len(issues["l2_width"])
                         + len(issues["l2_gouttiere"]))
             blocking_total += blocking
@@ -576,6 +648,8 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                                      ("unmeasured", "Non mesurable", "à vérifier visuellement")]:
                 for item in iss[key]:
                     print(f"  [{kind}] {title} : {item['what']} — {item['detail']}")
+            if iss.get("v1_tronque"):
+                print(f"  [BORNE] V1 : {iss['v1_tronque']['motif']}")
             if data["blocking"] == 0 and not any(iss[k] for k in ("v3_align", "v7_spacing", "unmeasured")):
                 print("  aucun défaut mesuré")
         print(f"\nVerdict : {report['verdict']}")
