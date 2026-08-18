@@ -45,6 +45,17 @@ si la page vise aussi le PDF.
   spécification) — mesurée en octets de l'encodage réel, pas en caractères. Le boilerplate
   lui-même la déclarait au 1613e (son commentaire S-G1 et son script d'initialisation la
   repoussaient) : corrigé le 17/08. FAIL bloquant.
+  **L'ordre du `<head>` est donc prescrit, et le pattern S-G1 le dit maintenant** (TF-0368,
+  18/08) : `charset` et `viewport` avant tout SCRIPT — le commentaire S-G1 et son script
+  viennent après. Ce qui est mesuré reste la fenêtre de 1024 octets, pas la position littérale :
+  un court commentaire d'en-tête avant `charset` est admis (le boilerplate en porte un, et
+  déclare `charset` au ~400e octet) ; un script, non — il pèse trop pour tenir dans la fenêtre.
+  Reconstat qui a valu cette précision : l'avertissement « script bloquant dans `<head>` »
+  avait été dénoncé le 14/08 comme un faux positif permanent (TF-0228) ; le 18/08, il a
+  **disparu des cinq livrables** d'un projet réel après le seul correctif A3. Il ne signalait
+  pas une fatalité, il signalait un ordre fautif — et le message ne le disait pas, parce qu'il
+  ne parlait que de `defer`. Un avertissement qui ne nomme pas sa cause corrigeable se fait
+  exempter au lieu de se faire corriger.
 - **Titre au motif A4** : `{Marque} — {Objet} · {Client} — {YYYYMMDD}{a,b,c…}`. Deux FAIL
   distincts, parce que les deux manques ne se corrigent pas du même geste : titre d'un seul
   bloc (pas de marque séparée de l'objet), et absence d'indice de version **daté** — « V1 »

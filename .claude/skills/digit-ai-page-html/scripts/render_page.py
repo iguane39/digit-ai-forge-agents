@@ -14,6 +14,7 @@ visuelle des PNG produits — ce script ne les juge pas.
 Usage :
     python render_page.py <page.html> [--widths 1280,768,390] [--selector body]
                           [--scale 2] [--output json] [--out <dossier>]
+                          [--timeout 30000]   # TF-0365 : page très haute
 
 Sortie : un PNG par breakpoint (suffixe -w{largeur}) + rapport PASS/FAIL.
 Code retour 0 = PASS (aucun bloquant), 1 = FAIL.
@@ -435,8 +436,27 @@ MEASURE_JS = r"""
 """
 
 
-def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: bool,
-        out_dir: Path | None = None, etats_ouverts: bool = False) -> int:
+# TF-0365 (lot SCC_ALX 20260818a, 18/08) — une page TRES HAUTE rendait l'outil muet.
+# Fait mesure : un livrable CONFORME de 271 Ko et 45 tableaux atteint 151 615 px de haut a
+# 390 px de large (135 272 a 768, 43 409 a 1280) — les tableaux passent en cartes sous 768, ce
+# que le socle prescrit lui-meme. `Page.screenshot` portait un delai FIXE de 30 s sans option,
+# `--scale` n'acceptait qu'un entier, et aucun repli n'existait : l'outil terminait sur une
+# trace Playwright brute, pas sur un verdict. Un livrable conforme devenait non jugeable passe
+# une certaine longueur, sans que rien ne le dise.
+#
+# Le point qui rend le correctif simple, et qu'il fallait voir : les mesures V1/V2/V4/V3/V7 et
+# L2 sont prises par `page.evaluate(js)` AVANT la capture, dans le DOM. Une capture qui echoue
+# ne coute donc RIEN de ce qui est bloquant — elle coute l'inspection humaine de V5
+# (croisements) et V6 (images), qui se fait a l'oeil sur le PNG. La reponse n'est pas de reussir
+# la capture a tout prix : c'est de NOMMER ce qu'on perd quand elle echoue.
+CAPTURE_TIMEOUT_DEFAUT = 30_000
+FAMILLES_SANS_IMAGE = "V1 debordement, V2 contraste, V4 chevauchement, V3, V7, L2"
+FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
+
+
+def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json: bool,
+        out_dir: Path | None = None, etats_ouverts: bool = False,
+        capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT) -> int:
     ensure_browser_path()
     ensure_local_fonts()
     try:
@@ -458,8 +478,9 @@ def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: 
     png_dir.mkdir(parents=True, exist_ok=True)
 
     report: dict = {"file": str(html_path), "png_dir": str(png_dir),
-                    "breakpoints": {}, "verdict": None}
+                    "breakpoints": {}, "verdict": None, "non_juge": []}
     blocking_total = 0
+    captures_manquees: list[int] = []
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -490,20 +511,54 @@ def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: 
             issues = page.evaluate(js)
             png = png_dir / f"{html_path.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None
-            if target:
-                target.screenshot(path=str(png))
-            else:
-                page.screenshot(path=str(png), full_page=True)
-
+            capture: dict = {"faite": True, "motif": ""}
+            try:
+                if target:
+                    target.screenshot(path=str(png), timeout=capture_timeout)
+                else:
+                    page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+            except Exception as erreur:  # noqa: BLE001 — toute panne, pas seulement le delai
+                hauteur = page.evaluate("() => document.documentElement.scrollHeight")
+                capture = {
+                    "faite": False,
+                    "hauteur_px": hauteur,
+                    "motif": (f"capture impossible a {width} px : {type(erreur).__name__} — "
+                              f"page haute de {hauteur} px, delai {capture_timeout} ms. Les "
+                              f"familles lues dans le DOM restent JUGEES ({FAMILLES_SANS_IMAGE}) ; "
+                              f"{FAMILLES_AVEC_IMAGE} ne sont PAS jugees faute d image. "
+                              "Augmenter --timeout, reduire --scale, ou assumer l ecart declare"),
+                }
+                captures_manquees.append(width)
             blocking = (len(issues["v1_overflow"]) + len(issues["v2_contrast"])
                         + len(issues["v4_overlap"]) + len(issues["l2_width"])
                         + len(issues["l2_gouttiere"]))
             blocking_total += blocking
-            report["breakpoints"][width] = {"png": str(png), "issues": issues, "blocking": blocking}
+            report["breakpoints"][width] = {
+                "png": str(png) if capture["faite"] else None,
+                "capture": capture, "issues": issues, "blocking": blocking,
+            }
             page.close()
         browser.close()
 
     report["verdict"] = "PASS" if blocking_total == 0 else "FAIL"
+
+    # TF-0365 — ce qui n a pas pu etre mesure se DIT, dans la sortie machine autant qu au
+    # terminal. Un PASS qui tairait l absence des images serait plus faible que celui d hier en
+    # ayant l air identique : c est exactement le silence que cet item ferme.
+    report["captures_manquees"] = captures_manquees
+    if captures_manquees:
+        largeurs = ", ".join(f"{w} px" for w in captures_manquees)
+        report["non_juge"].append(
+            f"{FAMILLES_AVEC_IMAGE} : NON JUGEES a {largeurs} — capture impossible, aucune image "
+            f"a inspecter. Les familles du DOM ({FAMILLES_SANS_IMAGE}) sont jugees et comptent "
+            "dans le verdict")
+        if len(captures_manquees) == len(widths):
+            report["non_juge"].append(
+                "AUCUNE largeur n a produit d image : le verdict ne porte que sur les mesures du "
+                "DOM. Il est valide pour ce qu il dit, et muet sur le rendu — ne pas le lire "
+                "comme une inspection visuelle faite")
+    else:
+        report["non_juge"].append(f"{FAMILLES_AVEC_IMAGE} : a inspecter sur les PNG produits")
 
     if as_json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -523,8 +578,9 @@ def run(html_path: Path, widths: list[int], selector: str, scale: int, as_json: 
                     print(f"  [{kind}] {title} : {item['what']} — {item['detail']}")
             if data["blocking"] == 0 and not any(iss[k] for k in ("v3_align", "v7_spacing", "unmeasured")):
                 print("  aucun défaut mesuré")
-        print(f"\nVerdict : {report['verdict']}  "
-              f"(V5 croisements et V6 images restent à inspecter sur les PNG produits)")
+        print(f"\nVerdict : {report['verdict']}")
+        for note in report["non_juge"]:
+            print(f"  non jugé — {note}")
         print(f"PNG : {png_dir}")
     return 0 if report["verdict"] == "PASS" else 1
 
@@ -562,7 +618,16 @@ def main() -> None:
     ap.add_argument("--widths", default=",".join(map(str, DEFAULT_WIDTHS)),
                     help="largeurs de viewport, séparées par des virgules")
     ap.add_argument("--selector", default="body", help="ex. .diagram-wrap pour un schéma")
-    ap.add_argument("--scale", type=int, default=2)
+    # TF-0365 — `--scale` en FLOTTANT : `--scale 0.4` sortait « invalid int value », alors que
+    # réduire l'échelle est le premier levier sur une page très haute (moins de pixels à
+    # encoder). Un entier n'était pas une contrainte de Playwright, c'était un type trop étroit.
+    ap.add_argument("--scale", type=float, default=2.0,
+                    help="facteur d'échelle du rendu ; accepte un flottant (0.4 sur une page "
+                         "très haute — moins de pixels à encoder, capture qui aboutit)")
+    ap.add_argument("--timeout", type=int, default=CAPTURE_TIMEOUT_DEFAUT, dest="capture_timeout",
+                    help=f"délai de capture en ms (défaut {CAPTURE_TIMEOUT_DEFAUT}). Une capture "
+                         "qui échoue n'interrompt plus l'outil : les familles lues dans le DOM "
+                         "restent jugées, V5/V6 sont déclarées NON JUGÉES")
     ap.add_argument("--output", choices=["text", "json"], default="text")
     ap.add_argument("--out", type=Path, default=None, dest="out_dir",
                     help="dossier des PNG (défaut : <dossier du HTML>/.oracles/, ou un dossier "
@@ -577,7 +642,8 @@ def main() -> None:
         sys.exit(f"ERREUR : fichier introuvable : {args.html}")
     widths = [int(w) for w in str(args.widths).split(",") if w.strip()]
     raise SystemExit(run(args.html, widths, args.selector, args.scale,
-                         args.output == "json", args.out_dir, args.etats_ouverts))
+                         args.output == "json", args.out_dir, args.etats_ouverts,
+                         args.capture_timeout))
 
 
 if __name__ == "__main__":
