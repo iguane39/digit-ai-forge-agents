@@ -26,20 +26,23 @@
 // Réserve documentée (inventaire P2 O8) : le schéma migre vers Notion (décision 22/07) —
 // l'oracle lira l'export ; à caler sur l'architecture v1.1 de pilote-de-mission.
 //
-// PROVENANCE NON REJOUABLE — TF-0326, constaté le 18/08/2026.
-// La provenance ci-dessous cite `pilote-de-mission` et « 2 instanciations réelles (APDLB
-// v1.1, un AO public) ». Recherche exécutée ce jour : AUCUN répertoire `pilote-de-mission`
-// dans les 15 dépôts de `c:\dev`, ni dans les 24 skills installés sous `~/.claude/skills`.
-// Cinq fichiers le MENTIONNENT, zéro ne le CONTIENT — et l'un de ces cinq est cette ligne.
-// Même maladie que TF-0290 (hook C7 en copie installée seule), en pire : ici même la copie
-// installée est absente.
+// PROVENANCE RETROUVÉE ET VÉRIFIÉE — TF-0326, clos le 18/08/2026.
+// Le 18/08 au matin, `pilote-de-mission` n'existait dans aucun dépôt ni aucune installation
+// de ce poste : 16 fichiers le mentionnaient, zéro ne le contenait, et la provenance ci-dessous
+// n'était donc opposable à rien. L'humain a remis l'objet le jour même
+// (`digit-ai-factory/input/pilote-de-mission.skill`) ; il est versionné depuis dans ce dépôt,
+// sous `.claude/skills/pilote-de-mission/` (v1.0.0, SKILL.md + 3 références).
 //
-// Ce que ça change, et ce que ça ne change pas : les règles W1-W7 de cet oracle sont
-// AUTOPORTANTES — elles se lisent, se rejouent et se jugent sur ses fixtures, sans rien
-// devoir à l'objet cité. Ce qui n'est PAS opposable, c'est l'argument d'autorité « ça vient
-// d'un skill qui a servi deux fois » : personne ne peut l'ouvrir pour le vérifier. Aucune
-// décision ne doit donc s'appuyer sur le CONTENU de `pilote-de-mission` tant qu'il n'est pas
-// versionné quelque part (le registre a failli en décider une : TF-0326).
+// Ce que la remise a permis de VÉRIFIER, et le résultat compte : les deux instanciations
+// citées existent bien (`references/instanciations-types.md` — APDLB du 20-21/07 avec son
+// premier cycle d'adaptation réel, et l'AO Client-E lot 4 du 21/07, absorption d'une mission
+// déjà en cours). La provenance est donc rejouable : elle se lit, elle se date, elle se
+// contredit si elle est fausse.
+//
+// Et la preuve amont du lot Run-Delivery se confirme, mesurée sur l'objet réel :
+// « risque », « parties prenantes », « RAID », « compte rendu », « rapport d'avancement »,
+// « lessons learned », « REX », « mesure de succès », « bénéfice » — **0 occurrence** dans les
+// quatre fichiers du skill. W5-W7 comblaient donc un trou réel, pas supposé.
 //
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';

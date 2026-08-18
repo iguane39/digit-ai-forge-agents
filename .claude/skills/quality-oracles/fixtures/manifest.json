@@ -495,7 +495,7 @@
    "attendu_green": [
     "PASS"
    ],
-   "provenance": "pilote-de-mission — 2 instanciations réelles (APDLB v1.1, un AO public), plans non outillés (inventaire P2 §1, §3 O8). NON REJOUABLE (TF-0326, 18/08/2026) : l objet cite n existe dans AUCUN depot ni installation de ce poste — les regles W1-W7 restent autoportantes et jugees sur fixtures, mais son CONTENU n est opposable a rien"
+   "provenance": "pilote-de-mission v1.0.0 — 2 instanciations réelles (APDLB 20-21/07/2026, AO Client-E lot 4 du 21/07/2026), plans non outillés (inventaire P2 §1, §3 O8). REJOUABLE depuis le 18/08/2026 (TF-0326) : l objet est versionne dans ce depot sous .claude/skills/pilote-de-mission/ — les deux instanciations se lisent dans references/instanciations-types.md"
   },
   {
    "nom": "plan-de-mission-w5",
