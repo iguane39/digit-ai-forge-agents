@@ -1,7 +1,7 @@
 {
   "manifeste": "versions-livrees",
   "initialise_le": "2026-07-23",
-  "mis_a_jour_le": "2026-08-18 (maj-versions-livrees --livrer : 6 écart(s) soldé(s))",
+  "mis_a_jour_le": "2026-08-18 (maj-versions-livrees --livrer : 1 écart(s) soldé(s))",
   "note": "M5 (note P1 §3/D3) : versions réelles montées dans {repo forge}/.claude/skills, extraites mécaniquement des frontmatters — comparées par l'oracle etat-forge (O3) en début de session forge. Source claude.ai de la file des candidats : /areas/forge-file-candidats.md.",
   "skills": {
     "ameliore-un-skill": {
@@ -36,6 +36,10 @@
     "la-barre": {
       "version": null,
       "source": "frontmatter sans champ version (constat, rien d inventé)"
+    },
+    "pilote-de-mission": {
+      "version": "1.0.0",
+      "source": "frontmatter SKILL.md"
     },
     "prompt-analyzer-l99": {
       "version": "2.2.0",

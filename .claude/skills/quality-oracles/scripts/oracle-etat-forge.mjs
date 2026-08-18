@@ -57,6 +57,43 @@ for (const [name, info] of Object.entries(man.skills)) {
   }
 }
 
+// F1-bis — la direction INVERSE (TF-0362, 18/08/2026). F1 itère sur le manifeste : un skill
+// MONTÉ mais absent du manifeste ne produit donc aucun constat — il est livré, il s'exécute, et
+// aucun contrôle de version ne le regarde. Cas réel : `la-barre`, dans cette situation depuis
+// une date inconnue, trouvé le 18/08 non par cet oracle mais par un SECOND outil écrit pour
+// solder autre chose. Un contrôle qui itère sur une liste ne voit jamais ce qui n'y est pas —
+// même famille que l'écart servi/versionné de forge-tests, dont la boucle n'itérait que sur les
+// locales SERVIES (TF-0333).
+//
+// L'arbre comparé est celui que `skills_root` désigne : l'INSTALLATION quand le manifeste
+// voyage avec un lot, le DÉPÔT quand on le joue depuis la forge. Le message dit « l'arbre
+// comparé » et non « monté » — nommer le mauvais arbre enverrait chercher au mauvais endroit.
+//
+// AVERTISSEMENT, jamais bloquant, et le motif est réel : le manifeste décrit ce qui a été
+// LIVRÉ. Tout skill monté n'a pas vocation à l'être — un skill tiers, un skill d'une autre
+// forge, un essai local. Bloquer ici ferait échouer l'ouverture de session sur la présence
+// d'un skill étranger, c'est-à-dire un gate qu'on apprendrait à contourner (R-33 bis). Le
+// signaler suffit à ce qu'il cesse d'être invisible.
+if (fs.existsSync(root)) {
+  const declares = new Set(Object.keys(man.skills));
+  const montes = fs.readdirSync(root, { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => d.name)
+    .filter(n => ['SKILL.md', 'SKILL.fixture.md'].some(f => fs.existsSync(path.join(root, n, f))))
+    .filter(n => !declares.has(n))
+    .sort();
+  for (const nom of montes) {
+    findings.push({
+      sev: 'avertissement',
+      msg: `F1-bis — skill présent dans l'arbre comparé et ABSENT du manifeste : ${nom} — aucun `
+        + `contrôle de version ne `
+        + `le regarde. L'ajouter au manifeste s'il est livré par cette forge, ou le déclarer `
+        + `étranger ; le silence, lui, n'est pas un état`,
+      where: base,
+    });
+  }
+}
+
 // F2 — fixtures du manifest quality-oracles présentes
 const qoFix = path.join(root, 'quality-oracles', 'fixtures');
 const qoMan = path.join(qoFix, 'manifest.json');
