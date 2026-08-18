@@ -1287,6 +1287,37 @@ FAMILLE_AUTOPORTANCE = (
 )
 FAMILLE_A4_VERSION = ("A4 titre sans indice de version",)
 
+# TF-0336 (18/08/2026) — l'arbitrage rendu sur les {{PLACEHOLDER}} des gabarits.
+# L11 refuse un littéral de langage rendu dans du texte visible : « une valeur non renseignée
+# doit être traitée par le producteur, pas rendue telle quelle ». C'est juste POUR UNE PAGE.
+# Appliquée à un GABARIT, la règle refuse au canevas ce qui EST le canevas : les six fichiers
+# de `digit-ai-schemas/assets/` sortaient tous FAIL sous `--regles L`, uniquement là-dessus.
+# Un contrôle qui refuse par construction tout un dossier ne se joue plus : c'est le bruit de
+# fond que TF-0228 a coûté cher à éteindre, et que TF-0308 a déjà tranché pour la charte.
+#
+# L'exemption est donc NOMINATIVE (six fichiers, jamais un dossier), ÉTROITE (L11 seule — L1
+# à L14 restent jugées) et ANNONCÉE à chaque exécution. Et surtout : elle ne peut pas fuir
+# vers un livrable, parce qu'elle s'apparie sur le CHEMIN. Une page produite depuis un de ces
+# gabarits n'a pas ce chemin : elle est jugée par L11 en entier — ce qui est exactement le
+# défaut que L11 existe pour attraper.
+FAMILLE_L11_GABARIT = ("L11 ",)
+
+# Même arbitrage, autre règle, même cause : L3 exige qu'une légende fasse au moins 20
+# caractères (`decrit_par`) ou 12 (`legende_visible`). Sur un gabarit, la légende est
+# `{{KPI1_LABEL}}` — 14 caractères de trou. Le seuil juge la LONGUEUR d'un texte que le
+# canevas n'a pas encore. La STRUCTURE, elle, reste exigée et elle est tenue : chaque
+# `.kpi-value` du gabarit porte un `aria-describedby` vers l'id de son `.kpi-label`
+# (posé le 18/08). Ce qui est écarté est le seuil, jamais la présence — et l'instance
+# produite, qui a un vrai libellé, est jugée par L3 en entier.
+FAMILLE_L3_GABARIT = ("L3 valeur sans légende",)
+_MOTIF_L3_GABARIT = ("gabarit à trous : L3 mesure la LONGUEUR d'une légende, et la légende "
+                     "est ici un {{PLACEHOLDER}}. La structure est tenue (aria-describedby "
+                     "de chaque valeur vers l'id de son libellé) et reste jugée ; le seuil "
+                     "s'appliquera à l'instance, qui porte le vrai libellé")
+_MOTIF_GABARIT = ("gabarit à trous : ses {{PLACEHOLDER}} SONT son objet. L11 reste armée "
+                  "en entier sur toute page produite depuis lui — l'exemption s'apparie au "
+                  "chemin du canevas, jamais au contenu")
+
 _HOTE_SCHEMAS = ("son en-tête le déclare : à insérer dans le squelette "
                  "template-multi-bandes.html, qui porte le <head> et se juge, lui, "
                  "en page autonome")
@@ -1301,19 +1332,41 @@ EXEMPTIONS_DECLAREES = (
      "gabarit à trous : le titre est « {{TITRE_PAGE}} · Digit-AI » et l'indice de version "
      "daté appartient à l'INSTANCE produite, jamais au canevas — les autres règles A "
      "(squelette, charset, favicon, réseau) sont tenues et restent jugées"),
+    ("digit-ai-schemas/assets/template-tableau-de-bord.html", FAMILLE_L3_GABARIT,
+     _MOTIF_L3_GABARIT),
+    ("digit-ai-schemas/assets/template-flux-temporel.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
+    ("digit-ai-schemas/assets/template-modele-donnees.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
+    ("digit-ai-schemas/assets/template-multi-bandes.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
+    ("digit-ai-schemas/assets/template-tableau-de-bord.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
+    ("digit-ai-schemas/assets/template-topologie.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
 )
 
 
-def exemption_declaree(source):
+def exemption_declaree(source, hors=()):
     """(familles, motif) déclarés pour ce fichier, ou (None, None) — le cas de tous
-    les livrables : sans chemin, ou hors registre, rien n'est écarté."""
+    les livrables : sans chemin, ou hors registre, rien n'est écarté.
+
+    TF-0336 : un même fichier peut porter PLUSIEURS lignes au registre (un fragment de
+    canevas est à la fois non autoporteur et à trous). Elles se cumulent, et `hors` permet à
+    l'appelant de ne retenir que celles qui concernent sa famille de contrôles — sinon
+    l'exemption L11 se serait annoncée « sans effet » pendant la passe charte, et
+    réciproquement, en accusant une dette qui n'existe pas.
+    """
     if not source:
         return None, None
     chemin = str(source).replace("\\", "/")
-    for suffixe, familles, motif in EXEMPTIONS_DECLAREES:
-        if chemin.endswith(suffixe):
-            return familles, motif
-    return None, None
+    familles, motifs = [], []
+    for suffixe, fam, motif in EXEMPTIONS_DECLAREES:
+        if not chemin.endswith(suffixe):
+            continue
+        if hors and fam not in hors:
+            continue
+        familles += list(fam)
+        if motif not in motifs:
+            motifs.append(motif)
+    if not familles:
+        return None, None
+    return tuple(familles), " · ".join(motifs)
 
 
 def check(html: str, regles: str = "tout", source=None):
@@ -1323,7 +1376,7 @@ def check(html: str, regles: str = "tout", source=None):
     d'exemptions déclarées ci-dessus : sans lui, aucune exemption ne s'applique.
     """
     fails, warns = [], []
-    familles, motif = exemption_declaree(source)
+    familles, motif = exemption_declaree(source, hors=(FAMILLE_AUTOPORTANCE, FAMILLE_A4_VERSION))
     if regles in ("tout", "charte"):
         f, w = check_charte(html)
         if familles:
@@ -1350,6 +1403,22 @@ def check(html: str, regles: str = "tout", source=None):
         warns += w
     if regles in ("tout", "L"):
         f, w = check_lisibilite(html, construire(html))
+        # TF-0336 — même mécanique que pour la charte, et pour la même raison : ce qui est
+        # écarté est NOMMÉ à chaque exécution, et une exemption devenue inutile s'accuse
+        # elle-même. Un contrôle écarté en silence est un contrôle perdu.
+        fam_l, motif_l = exemption_declaree(source, hors=(FAMILLE_L11_GABARIT, FAMILLE_L3_GABARIT))
+        if fam_l:
+            gardes = [x for x in f if not x.startswith(fam_l)]
+            ecartes = len(f) - len(gardes)
+            if ecartes:
+                warns.append(
+                    f"SKIP exemption déclarée ({ecartes} contrôle(s) L écarté(s)) — {motif_l}. "
+                    "Tout le reste de la famille L est jugé.")
+            else:
+                warns.append(
+                    "exemption L déclarée SANS EFFET sur ce fichier — plus aucun contrôle "
+                    "écarté : retirer sa ligne de EXEMPTIONS_DECLAREES (check_html.py).")
+            f = gardes
         fails += f
         warns += w
     return fails, warns

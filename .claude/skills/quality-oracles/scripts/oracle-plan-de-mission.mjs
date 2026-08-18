@@ -25,8 +25,23 @@
 // de sortie binaire d'une étape, jugé par W3.
 // Réserve documentée (inventaire P2 O8) : le schéma migre vers Notion (décision 22/07) —
 // l'oracle lira l'export ; à caler sur l'architecture v1.1 de pilote-de-mission.
-// Provenance : pilote-de-mission, 2 instanciations réelles (APDLB v1.1, un AO public) —
-// inventaire P2 §3 O8. Contrat JSON commun · exit 0/1/2.
+//
+// PROVENANCE NON REJOUABLE — TF-0326, constaté le 18/08/2026.
+// La provenance ci-dessous cite `pilote-de-mission` et « 2 instanciations réelles (APDLB
+// v1.1, un AO public) ». Recherche exécutée ce jour : AUCUN répertoire `pilote-de-mission`
+// dans les 15 dépôts de `c:\dev`, ni dans les 24 skills installés sous `~/.claude/skills`.
+// Cinq fichiers le MENTIONNENT, zéro ne le CONTIENT — et l'un de ces cinq est cette ligne.
+// Même maladie que TF-0290 (hook C7 en copie installée seule), en pire : ici même la copie
+// installée est absente.
+//
+// Ce que ça change, et ce que ça ne change pas : les règles W1-W7 de cet oracle sont
+// AUTOPORTANTES — elles se lisent, se rejouent et se jugent sur ses fixtures, sans rien
+// devoir à l'objet cité. Ce qui n'est PAS opposable, c'est l'argument d'autorité « ça vient
+// d'un skill qui a servi deux fois » : personne ne peut l'ouvrir pour le vérifier. Aucune
+// décision ne doit donc s'appuyer sur le CONTENU de `pilote-de-mission` tant qu'il n'est pas
+// versionné quelque part (le registre a failli en décider une : TF-0326).
+//
+// Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
