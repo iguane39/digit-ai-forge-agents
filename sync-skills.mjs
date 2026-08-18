@@ -32,10 +32,19 @@ const INSTALL = path.join(os.homedir(), '.claude', 'skills');
 
 // Artefacts d'exécution et sauvegardes de travail : hors comparaison par construction.
 // Ce ne sont pas des sources, ils divergent à chaque run et le dire serait du bruit.
+//
+// TF-0336 (18/08/2026) — `/\.bak$/` ne couvrait QUE le suffixe nu. Un
+// `SKILL.md.bak-20260407` traînait à l'installation depuis quatre mois, compté comme un
+// fichier du skill à chaque comparaison : la forme DATÉE est justement celle qu'on produit
+// quand on sauvegarde à la main, donc la plus probable. Le motif la couvre désormais.
+// Les `.bak` VERSIONNÉS, eux, ont été retirés du dépôt le même jour : une sauvegarde suivie
+// par git est une seconde source qui diverge — et les deux divergeaient déjà de leurs
+// sources. L'historique git EST la sauvegarde ; un `.bak` à côté ne fait qu'ajouter une
+// vérité concurrente à celle qu'on vient de corriger.
 const IGNORE_DOSSIER = new Set(['__pycache__', '.venv', 'node_modules', '.oracles']);
 const IGNORE_FICHIER = [
   /\.oracles-cache\.json$/, /\.oracles-historique\.jsonl$/, /\.oracles\.json$/,
-  /^_oracles-journal/, /^_routages-journal/, /\.pyc$/, /\.bak$/, /\.avant-/,
+  /^_oracles-journal/, /^_routages-journal/, /\.pyc$/, /\.bak(-\d{8})?$/, /\.avant-/,
   /^uv\.lock$/, /^\.tmp-niv-/,
 ];
 

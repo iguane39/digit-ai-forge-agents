@@ -56,7 +56,16 @@ Le SVG est toujours encapsulé dans une page HTML autonome Digit-AI : eyebrow ma
 
 Nommage : `{Marque} - {TypeDoc} {Client} - {Scope} - {YYYYMMDD}{indice}.{ext}` (ex. `Digit-AI - Brief POC-Hub - Architecture detaillee - 20260527d.html`). Indice alphabétique incrémenté à chaque itération du jour, redémarre à `a` chaque jour. Numéro de version (V0, V1…) affiché dans le bloc méta du contenu, **jamais dans le nom de fichier**.
 
-**Aucune police distante (A1/D-10, TF-0308).** Les gabarits ne portent plus de `<link>` vers `fonts.googleapis.com` : un livrable qui téléphone au chargement signale au serveur tiers quand et d'où il est lu, et perd son rendu hors ligne. Les familles Roboto / DM Sans / JetBrains Mono restent déclarées avec leur **pile de repli système** ; le rendu fidèle vient des WOFF2 bundlés de `scripts/fonts/` (installés au cache fontconfig par `render_schema.py`). Ne pas remettre ces `<link>` dans une page produite.
+**Aucune police distante (A1/D-10, TF-0308) — et les faces sont EMBARQUÉES (TF-0336).** Les gabarits ne portent plus de `<link>` vers `fonts.googleapis.com` : un livrable qui téléphone au chargement signale au serveur tiers quand et d'où il est lu, et perd son rendu hors ligne. Ne pas remettre ces `<link>` dans une page produite.
+
+Jusqu'au 18/08, le rendu fidèle venait des WOFF2 bundlés de `scripts/fonts/`, **installés au cache fontconfig par `render_schema.py`** — c'est-à-dire d'une propriété du POSTE. Un gabarit ouvert ailleurs (autre machine, client, revue) retombait donc sur la pile système sans que rien ne le dise. Les faces vivent désormais DANS les pages, en `@font-face` data: base64, posées par un générateur :
+
+```bash
+node .claude/skills/digit-ai-schemas/scripts/embarquer-polices.mjs --constat   # écart ? exit 1
+node .claude/skills/digit-ai-schemas/scripts/embarquer-polices.mjs --ecrire    # (re)pose le bloc
+```
+
+Portée : **les pages seulement** (celles qui portent un `<head>`). Les trois fragments de canevas sont insérés dans `template-multi-bandes.html`, qui porte déjà les faces — les y dupliquer ajouterait 300 Ko par insertion pour la même police. **Écart assumé et déclaré au CSS produit** : sous-ensemble `latin` uniquement, graisses réellement employées ; `latin-ext` s'ajoute en une ligne du générateur le jour où un schéma porte du polonais, du tchèque ou du turc. La pile de repli système reste déclarée sur chaque famille.
 
 ### Ce que check_html juge dans `assets/`, et ce qu'il écarte (TF-0308)
 
