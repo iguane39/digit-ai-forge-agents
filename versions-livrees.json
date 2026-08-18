@@ -1,28 +1,28 @@
 {
   "manifeste": "versions-livrees",
   "initialise_le": "2026-07-23",
-  "mis_a_jour_le": "2026-07-24 (admission S-prime : 9 fiches ok, registre experts v0.4.0 ; correctif juge win32, quality-oracles 2.6.1)",
+  "mis_a_jour_le": "2026-08-18 (maj-versions-livrees --livrer : 6 écart(s) soldé(s))",
   "note": "M5 (note P1 §3/D3) : versions réelles montées dans {repo forge}/.claude/skills, extraites mécaniquement des frontmatters — comparées par l'oracle etat-forge (O3) en début de session forge. Source claude.ai de la file des candidats : /areas/forge-file-candidats.md.",
   "skills": {
     "ameliore-un-skill": {
       "version": null,
-      "source": "frontmatter sans champ version (constat, rien d'inventé)"
+      "source": "frontmatter sans champ version (constat, rien d inventé)"
     },
     "contre-expertise": {
-      "version": "1.1.0",
+      "version": "1.2.0",
       "source": "frontmatter SKILL.md"
     },
     "data-quality-auditor": {
       "version": null,
-      "source": "frontmatter sans champ version (constat, rien d'inventé)"
+      "source": "frontmatter sans champ version (constat, rien d inventé)"
     },
     "digit-ai-page-html": {
-      "version": "1.1.0",
+      "version": "1.6.0",
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-schemas": {
       "version": null,
-      "source": "frontmatter sans champ version (constat, rien d'inventé)"
+      "source": "frontmatter sans champ version (constat, rien d inventé)"
     },
     "experts-forge": {
       "version": "1.4.0",
@@ -33,18 +33,22 @@
       "version": "1.0.0",
       "source": "frontmatter SKILL.md"
     },
+    "la-barre": {
+      "version": null,
+      "source": "frontmatter sans champ version (constat, rien d inventé)"
+    },
     "prompt-analyzer-l99": {
-      "version": "2.1.0",
+      "version": "2.2.0",
       "source": "frontmatter SKILL.md"
     },
     "quality-oracles": {
-      "version": "2.6.1",
+      "version": "2.7.0",
       "source": "frontmatter SKILL.md",
-      "registre": "2.6.0"
+      "registre": "2.12.0"
     },
     "write-an-expert": {
       "version": null,
-      "source": "frontmatter sans champ version (constat, rien d'inventé)"
+      "source": "frontmatter sans champ version (constat, rien d inventé)"
     },
     "write-an-oracle": {
       "version": "1.0.1",
