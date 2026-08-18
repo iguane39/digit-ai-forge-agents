@@ -187,9 +187,28 @@ else {
         cmd = [...pyFx, ...cmd.slice(1)];
       }
       const r = spawnSync(cmd[0], cmd.slice(1), { encoding: 'utf8', timeout: 180000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
-      let v = null; try { v = JSON.parse((r.stdout || '').trim().match(/\{[\s\S]*\}/)[0]).verdict; } catch {}
+      let v = null, sortie = null;
+      try { sortie = JSON.parse((r.stdout || '').trim().match(/\{[\s\S]*\}/)[0]); v = sortie.verdict; } catch {}
       if (!v) v = r.status === 0 ? 'PASS' : r.status === 2 ? 'SKIP' : 'FAIL';
       const attendu = fx['attendu_' + side];
+
+      // TF-0362 (18/08/2026) — le VERDICT seul ne verrouille pas une règle non bloquante.
+      // Une fixture rouge qui échoue déjà sur une autre règle reste FAIL même si celle qu'on
+      // voulait prouver disparaît : le self-test resterait vert sur un contrôle mort. Champ
+      // optionnel `attendu_messages_<side>` : des fragments qui doivent APPARAÎTRE dans les
+      // messages. Il n'est exigé de personne — mais toute règle en AVERTISSEMENT devrait
+      // l'avoir, faute de quoi rien ne la tient.
+      const fragments = fx['attendu_messages_' + side] || [];
+      if (fragments.length) {
+        const texte = JSON.stringify(sortie?.findings || []);
+        const absents = fragments.filter(f => !texte.includes(f));
+        if (absents.length) {
+          ko(`fixture ${fx.nom}/${side} : message(s) attendu(s) ABSENT(S) — ${absents.join(' · ')} `
+            + `(le verdict ${v} vient d'une autre règle : celle-ci n'est plus prouvée)`);
+        } else {
+          ok(`fixture ${fx.nom}/${side} : ${fragments.length} message(s) attendu(s) présent(s)`);
+        }
+      }
       if (!attendu.includes(v)) ko(`fixture ${fx.nom}/${side} : verdict ${v}, attendu ${attendu.join('|')} — l'oracle ne juge pas comme prouvé`);
       else if (v === 'SKIP') ok(`fixture ${fx.nom}/${side} : SKIP toléré (dépend de : ${fx.dependant_outil || 'outil externe'})`);
       else ok(`fixture ${fx.nom}/${side} : ${v} conforme`);

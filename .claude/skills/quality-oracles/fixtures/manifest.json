@@ -406,7 +406,11 @@
    "attendu_green": [
     "PASS"
    ],
-   "provenance": "La forge elle-même — experts-forge v1.3.0 livrée le 21/07/2026 non installée (registre monté v0.3.0, fixture accessibilite absente), constat prouvé note P1 §3 / inventaire P2 §3 O3, 23/07/2026 — cas rejoué tel quel par la fixture rouge"
+   "provenance": "La forge elle-même — experts-forge v1.3.0 livrée le 21/07/2026 non installée (registre monté v0.3.0, fixture accessibilite absente), constat prouvé note P1 §3 / inventaire P2 §3 O3, 23/07/2026 — cas rejoué tel quel par la fixture rouge · F1-bis (TF-0362, 18/08/2026) : la direction inverse — un skill MONTE et absent du manifeste n etait regarde par rien ; cas reel `la-barre`, trouve par un second outil et non par cet oracle",
+   "attendu_messages_red": [
+    "F1-bis",
+    "skill-hors-manifeste"
+   ]
   },
   {
    "nom": "exigences-ao",
