@@ -385,6 +385,89 @@ def run_rendu():
     return out
 
 
+def run_v1_bornes():
+    """TF-0382 — les DEUX sens de la borne V1, en comptes EXACTS.
+
+    `CAS_RENDU` teste « au moins n constats » : sur ces deux cas-là, un `>=` ne discriminerait
+    rien — 16 entrees passeraient un `>= 4` aussi bien que 4. Or c'est precisement le nombre qui
+    est en cause. D'ou une branche a part, a egalite stricte.
+
+    Sens 1 — REGROUPEMENT : trois tableaux de gabarit identique, chacun portant 54 descendants
+    debordants. Avant correction : 16 releves, tous dans le PREMIER tableau, les deux suivants
+    jamais examines et rien ne le disait. Apres : 4 constats (le document + une cause par
+    tableau), chacun annoncant ses descendants.
+
+    Sens 2 — TRONCATURE DECLAREE : dix-neuf blocs FRERES, donc dix-neuf causes qu'aucun
+    regroupement ne peut fusionner. Le plafond est alors atteint pour de vraies raisons, et le
+    drapeau doit dire le compte exact — 20 defauts pour 17 lignes detaillees.
+
+    Silencieux si playwright est absent : la borne se mesure dans un navigateur, pas en prose.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import json as _json
+    import subprocess
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-v1-bornes-")
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+
+    def mesurer(nom):
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            return None
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(chemin),
+                            "--widths", "1440", "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return _json.loads(r.stdout)["breakpoints"]["1440"]
+        except Exception:
+            return None
+
+    out = []
+    groupe = mesurer("v1-trois-tableaux-debordants.html")
+    if groupe is None:
+        out.append({"fixture": "v1-trois-tableaux-debordants.html", "verdict": "ECHEC",
+                    "attendu": 4, "obtenu": 0, "detail": "fixture absente ou rendu illisible"})
+    else:
+        n = len(groupe["issues"]["v1_overflow"])
+        avec_descendants = [x for x in groupe["issues"]["v1_overflow"]
+                            if "descendant(s) débordent AVEC lui" in x["detail"]]
+        # Egalite stricte : 3 tableaux + le document. Et les trois tableaux doivent ANNONCER
+        # leurs descendants, sinon le regroupement serait silencieux — on aurait remplace une
+        # troncature muette par une fusion muette.
+        ok = (n == 4 and len(avec_descendants) == 3
+              and groupe["issues"].get("v1_tronque") is None
+              and groupe["blocking"] == 4)
+        out.append({"fixture": "v1-trois-tableaux-debordants.html",
+                    "verdict": "OK" if ok else "ECHEC", "attendu": 4, "obtenu": n,
+                    "regle": "v1_overflow (regroupement par sous-arbre)",
+                    "detail": "" if ok else (f"{n} constat(s) au lieu de 4, "
+                                             f"{len(avec_descendants)} annoncant des descendants "
+                                             f"au lieu de 3, blocking {groupe['blocking']}")})
+
+    borne = mesurer("v1-dix-neuf-causes-independantes.html")
+    if borne is None:
+        out.append({"fixture": "v1-dix-neuf-causes-independantes.html", "verdict": "ECHEC",
+                    "attendu": 20, "obtenu": 0, "detail": "fixture absente ou rendu illisible"})
+    else:
+        t = borne["issues"].get("v1_tronque")
+        # Le compte EXACT est ce qui dit l'ampleur ; la liste, elle, est plafonnee. Les deux
+        # doivent etre lisibles, et `blocking` doit suivre le compte, pas la liste.
+        ok = bool(t) and t["total"] == 20 and t["detaillees"] == 17 and t["plafond"] == 16 \
+            and borne["blocking"] == 20 and "TRONQUÉ" in t["motif"]
+        out.append({"fixture": "v1-dix-neuf-causes-independantes.html",
+                    "verdict": "OK" if ok else "ECHEC", "attendu": 20,
+                    "obtenu": (t or {}).get("total", 0),
+                    "regle": "v1_tronque (borne declaree)",
+                    "detail": "" if ok else f"drapeau {t!r}, blocking {borne['blocking']}"})
+
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -394,6 +477,11 @@ def main():
     rendu = run_rendu()
     if rendu:
         res += rendu
+    # TF-0382 — les deux sens de la borne V1, en comptes EXACTS (branche a part : CAS_RENDU
+    # teste « au moins n », et c est precisement le nombre qui est en cause ici).
+    bornes = run_v1_bornes()
+    if bornes:
+        res += bornes
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":
