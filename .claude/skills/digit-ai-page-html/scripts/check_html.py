@@ -31,6 +31,7 @@ Sortie : liste de FAIL (bloquants) et WARN (à traiter selon contexte).
 Code de sortie : 0 si aucun FAIL, 1 sinon.
 """
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -499,6 +500,19 @@ def check_charte(html: str):
     # bruit permanent que TF-0227 (71 marqueurs affichés) est passé inaperçu. Un avertissement
     # inévitable cesse d'être lu, puis couvre les autres.
     #
+    # RECONSTAT RA-11 / TF-0368 (lot Produit-10 20260818a, 18/08) — et il INFIRME à moitié ce qui
+    # précède. Le 14/08, cet avertissement était dénoncé comme un faux positif permanent, et
+    # l'exemption ci-dessous a été posée pour ça. Mesure du 18/08 : après avoir placé `charset`
+    # et `viewport` en TOUTE PREMIÈRE position du <head> (correctif A3), l'avertissement a
+    # DISPARU des cinq livrables d'un projet réel. Le bruit n'était donc pas inévitable — il
+    # signalait un vrai défaut d'ORDRE dans le <head>, que personne ne lisait dans le message
+    # parce que le message ne parlait que de `defer`.
+    #
+    # L'exemption S-G1 reste juste et n'est pas retirée : le script de thème doit bien s'exécuter
+    # avant la première peinture. Ce qui change est le MESSAGE — il dit maintenant ce qui doit
+    # précéder le script. Un avertissement qui ne nomme pas la cause corrigeable se lit comme
+    # une fatalité, et une fatalité, on l'exempte au lieu de la corriger.
+    #
     # Reconnaissance par ce que le script FAIT (il pose data-theme), pas par une étiquette :
     # les pages déjà générées n'en portent aucune et un label rétroactif ne serait jamais posé.
     # L'attribut déclaratif `data-theme-init` est accepté aussi, pour les pages à venir. Toute
@@ -519,7 +533,10 @@ def check_charte(html: str):
             warns.append(
                 f"{bloquants} script(s) bloquant(s) dans <head> (utiliser defer ou placer en "
                 "fin de body) — l'initialisation de thème S-G1 est exemptée : elle DOIT "
-                "s'exécuter avant la première peinture.")
+                "s'exécuter avant la première peinture. **Et l'ordre du <head> compte** : "
+                "`charset` PUIS `viewport` avant TOUT script et TOUT commentaire (A3) — un "
+                "script placé avant eux repousse la déclaration d'encodage hors des 1024 "
+                "premiers octets.")
 
     if "<main" not in low:
         warns.append("Aucun <main> (repère sémantique principal recommandé).")
@@ -1424,13 +1441,49 @@ def check(html: str, regles: str = "tout", source=None):
     return fails, warns
 
 
+# TF-0366 (lot Produit-10 20260818a, 18/08) — un verdict archivé ne disait pas sous quel JEU DE
+# RÈGLES il avait été rendu. Fait mesuré : la règle A3 (« `<meta charset>` déclaré au 2470e
+# octet — la spécification exige les 1024 premiers ») met en échec un livrable DÉCLARÉ PASS le
+# 14/08 et rejoué à l'identique le 18 : le fichier n'a pas changé, la règle est POSTÉRIEURE. Un
+# journal d'oracles archivé (R-32) affirmait donc un PASS qui n'était plus vrai, et rien dans le
+# journal ne permettait de le savoir sans tout rejouer.
+#
+# La version est DÉRIVÉE, jamais tenue à la main (loi 4) — et elle ne dérive pas du fichier
+# entier : l'empreinte du source changerait à chaque virgule d'un commentaire, et tout journal
+# paraîtrait périmé pour rien. Ce qui identifie un jeu de règles, c'est la LISTE DES RÈGLES
+# qu'il émet. Ajouter A3 la change ; réécrire un commentaire ne la change pas.
+_CODE_REGLE = re.compile(r"""["']((?:A\d|G\d|L\d{1,2}|S-G\d|V\d|RA-\d)) """)
+
+
+def jeu_de_regles(source_py=None) -> dict:
+    """Identité du jeu de règles : les codes émis, et leur empreinte. Dérivée du code source.
+
+    Le champ voyage dans la sortie JSON et se recopie au journal d'oracles (R-32). Un journal
+    dont l'empreinte diffère de l'empreinte courante n'est pas faux — il est ANTÉRIEUR, et
+    c'est tout ce qu'on veut pouvoir dire sans rejouer.
+    """
+    chemin = source_py or __file__
+    with open(chemin, encoding="utf-8", errors="replace") as f:
+        texte = f.read()
+    codes = sorted({m.group(1) for m in _CODE_REGLE.finditer(texte)})
+    empreinte = hashlib.sha256("|".join(codes).encode("utf-8")).hexdigest()[:12]
+    return {"regles": codes, "nombre": len(codes), "empreinte": empreinte}
+
+
 def main():
     ap = argparse.ArgumentParser(description="Conformité HTML au socle Digit-AI.")
     ap.add_argument("path", nargs="?", help="Chemin du fichier HTML (sinon échantillon).")
     ap.add_argument("--output", choices=["text", "json"], default="text")
     ap.add_argument("--regles", choices=["tout", "charte", "L"], default="tout",
                     help="famille de contrôles (défaut : tout)")
+    ap.add_argument("--version-regles", action="store_true", dest="version_regles",
+                    help="imprimer l'identité du jeu de règles (codes + empreinte) et sortir — "
+                         "TF-0366 : c'est ce que R-32 recopie au journal pour qu'un verdict "
+                         "archivé dise sous quelles règles il a été rendu")
     args = ap.parse_args()
+    if args.version_regles:
+        print(json.dumps(jeu_de_regles(), ensure_ascii=False))
+        raise SystemExit(0)
 
     if args.path:
         try:
@@ -1449,12 +1502,15 @@ def main():
     if args.output == "json":
         print(json.dumps(
             {"source": source, "regles": args.regles, "verdict": verdict,
-             "fails": fails, "warns": warns},
+             "version_regles": jeu_de_regles(), "fails": fails, "warns": warns},
             ensure_ascii=False, indent=2))
     else:
         print(f"Source  : {source}")
         print(f"Règles  : {args.regles}")
+        jeu = jeu_de_regles()
         print(f"Verdict : {verdict}")
+        print(f"Règles  : {jeu['nombre']} règles, empreinte {jeu['empreinte']} "
+              f"(à recopier au journal R-32 — un journal d'une autre empreinte est ANTÉRIEUR)")
         if fails:
             print("\nÉchecs bloquants :")
             for x in fails:
