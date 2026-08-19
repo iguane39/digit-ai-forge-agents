@@ -82,6 +82,70 @@ check("ledger : run_open + append + verify PASS, corruption → FAIL", () => {
   throw new Error("ledger corrompu accepté");
 });
 
+// TF-0385 (19/08) — FORME DU PAYLOAD de `oracles_verdict`. Le fait mesuré : 8 entrées de ce
+// type dans un même ledger réel, SIX formes de champs différentes ; la liste des oracles qui
+// ont tourné sur un run n'était donc pas calculable, et un juge de l'enclenchement n'avait pas
+// d'entrée. Quatre sens joués, et le troisième est celui qui empêche le contrôle d'être
+// désactivé au premier usage.
+check("ledger TF-0385 : `oracles_verdict` conforme sous schéma déclaré → PASS", () => {
+  const lf = join(out, "ledger-schema-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
+  run(ledger, ["append", lf, JSON.stringify({
+    type: "oracles_verdict", oracle: "oracle-conformite-projet", verdict: "PASS",
+    cible: "racine du projet", journal: "forge/oracles/conformite.json",
+  })]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("une entrée conforme doit passer");
+  if (!v.includes("forme vérifiée sur 1 entrée")) throw new Error("le verdict doit DIRE ce qu il a vérifié : " + v);
+});
+
+check("ledger TF-0385 : `oracles_verdict` sans `oracle` → FAIL qui NOMME le champ", () => {
+  const lf = join(out, "ledger-schema-rouge.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
+  // La forme réellement rencontrée : un `oracles` imbriqué, aucun verdict de premier niveau.
+  run(ledger, ["append", lf, JSON.stringify({
+    type: "oracles_verdict", etape: "tests", oracles: { forge_tests: "PARTIEL" },
+  })]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "verify", lf], { stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stderr || "") + String(e.stdout || ""); }
+  if (sortie === null) throw new Error("une entrée sans `oracle` ni `verdict` a été acceptée");
+  if (!sortie.includes("`oracle`")) throw new Error("l échec ne NOMME pas le champ manquant : " + sortie);
+  if (!sortie.includes("`verdict`")) throw new Error("le second champ manquant n est pas nommé : " + sortie);
+  if (!sortie.includes("aucun juge ne peut savoir ce qui a tourne")) {
+    throw new Error("l échec ne dit pas POURQUOI le champ est dû : " + sortie);
+  }
+});
+
+// LE SENS QUI COMPTE LE PLUS. Sans lui, ce contrôle mettrait en échec les trois ledgers du parc
+// dès son premier passage — et un contrôle qui met tout l'existant en échec se fait désactiver
+// (R-33 bis). L'antériorité se DÉCLARE, sur le modèle exact de R-32 bis du pilot.
+check("ledger TF-0385 : un ledger SANS `schema_ledger` est DÉCLARÉ non vérifié, jamais mis en échec", () => {
+  const lf = join(out, "ledger-anterieur.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "avant le schema" })]);
+  run(ledger, ["append", lf, JSON.stringify({
+    type: "oracles_verdict", etape: "tests", oracles: { forge_tests: "PARTIEL" },
+  })]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("un ledger antérieur au schéma ne doit PAS échouer");
+  if (!v.includes("[NON VÉRIFIÉ]")) throw new Error("l antériorité doit être DITE, pas tue : " + v);
+  if (!v.includes("l'histoire ne se réécrit pas")) {
+    throw new Error("le remède doit viser le PROCHAIN run, jamais la réécriture : " + v);
+  }
+});
+
+check("ledger TF-0385 : les autres types ne sont PAS contraints", () => {
+  // Un ledger sur-contraint cesse d accepter ce qu un run a besoin de consigner. Seul le type
+  // dont l absence de forme rendait un fait incalculable est jugé.
+  const lf = join(out, "ledger-autres-types.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "note", n_importe_quoi: true })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "mise_en_production", detail: "libre" })]);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) {
+    throw new Error("un type non contraint doit rester libre");
+  }
+});
+
 check("ledger --fichier : payload lu depuis un fichier (avec BOM UTF-8 PowerShell) → mêmes validations", () => {
   const lf = join(out, "ledger-fichier.jsonl");
   const p1 = join(out, "payload-1.json");
