@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.12.0, alignée sur le JSON le 17/08/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.13.0, alignée sur le JSON le 20/08/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -55,6 +55,7 @@
 | Traçabilité besoin ↔ exigence ↔ vue (référentiel de conception) | `node c:/dev/digit-ai-forge-conception/oracles/oracle-tracabilite.mjs <EXIGENCES.json> [--vue <fichier>]…` — T1 aucun orphelin des deux côtés, T2 exactement un critère, T3 vue alignée sur l'empreinte sha256 de sa source, T4 statut épistémique porteur de sa source | cli | ✅ |
 | Couverture de la surface fonctionnelle | `node c:/dev/digit-ai-forge-conception/oracles/oracle-surface.mjs <EXIGENCES.json> [--seuil 95]` — S1 tout élément non couvert est NOMMÉ, S2 ratio publié avec sa liste, S3 lien de surface valide ou raison `hors_surface` | cli | ✅ |
 | Affirmations chiffrées d'un référentiel d'exigences | `node c:/dev/digit-ai-forge-conception/oracles/oracle-claims.mjs <EXIGENCES.json>` — A1 chiffre d'un champ narratif tracé à une source ou marqué « à vérifier », A2 périmètre écarté déclaré (un chiffre de critère est une cible, pas une affirmation) | cli | ✅ |
+| Dossier CAB (DOCX, template Nhood) | `scripts/oracle-dossier-cab.mjs <dossier.docx> [--depot AAAA-MM-JJ] [--couleur-titres RRGGBB]` — C1 sections du template, C2 tableau d'en-tête renseigné, C3 zéro placeholder, C4 sections non vides, C5 date du nom == date prévue, C6 règle Easyvista J+5, C7 numérotation Word (numId non partagé), C8 marqueurs [À COMPLÉTER] recensés, C9 couleur de titres de la charte | cli | ✅ |
 ## Oracles de la forge design (chantier forge-design, 04/08/2026)
 
 Les cinq oracles ci-dessus vivent hors `~/.claude/skills` : leur source est

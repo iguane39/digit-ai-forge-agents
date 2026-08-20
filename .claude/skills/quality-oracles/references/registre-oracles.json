@@ -1,5 +1,5 @@
 {
-  "version": "2.12.0",
+  "version": "2.13.0",
   "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel.",
   "oracles": [
     {
@@ -912,6 +912,24 @@
         "affirmations non chiffrées"
       ],
       "timeout_ms": 600000
+    },
+    {
+      "domaine": "Dossier CAB (DOCX, template Nhood)",
+      "ext": [],
+      "type": "cli",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-dossier-cab.mjs",
+        "{file}"
+      ],
+      "checklist": "C1 sections §1-§4 + points de contrôle + e-mails FR/EN · C2 tableau d'en-tête renseigné (nom du changement, demandeur, date prévue) · C3 aucun placeholder du template laissé · C4 chaque section porte du contenu · C5 date du nom de fichier == date prévue · C6 règle Easyvista J+5 (si --depot) · C7 numérotation Word : deux listes séparées par un titre ne partagent pas leur numId · C8 marqueurs [À COMPLÉTER] recensés (warn) · C9 couleur de titres de la charte en mise en forme directe — INVOCATION EXPLICITE uniquement : le .docx est un zip, le contenu ne se filtre pas, et router tout .docx ici ferait échouer à tort un document qui n'est pas un dossier CAB",
+      "statut": "ok",
+      "non_juge": [
+        "la JUSTESSE métier du changement décrit — un dossier complet et faux passe C1-C9",
+        "l'opportunité de la date de dépôt hors règle J+5",
+        "le rendu final Word (pagination, sauts) — l'oracle lit le XML, pas la mise en page paginée"
+      ],
+      "provenance": "né le 20/08/2026 sur un dossier MEP réel (défaut C9 observé : titres recréés en bleu Word par défaut) ; versionné le 20/08 par TF-0415 — il avait vécu un jour dans la seule copie INSTALLÉE, hors de tout dépôt"
     }
   ]
 }
