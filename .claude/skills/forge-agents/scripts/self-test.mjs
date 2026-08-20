@@ -191,6 +191,157 @@ await checkAsync("ledger : verrou — appends concurrents (2 process × N) sans 
   if (new Set(seqs).size !== seqs.length) throw new Error("collision de seq détectée entre process concurrents");
 });
 
+// --- TF-0410 (20/08) : HORODATAGES — accumulation, garde à l'append, rectification déclarée.
+// Le fait mesuré : un ledger réel de 138 entrées portait DEUX reculs d'horodatage et le second
+// est resté invisible trois jours, parce que `verify` sortait au premier écart. Le sens qui
+// compte le plus ici est le test ANTI-FAIL-FAST : il ne suffit pas que le verdict soit rouge,
+// il faut que les DEUX seq soient nommés — un contrôle qui cesse de compter ne dit pas
+// « un défaut », il dit « au moins un défaut ».
+//
+// Les fixtures rouges sont écrites À LA MAIN et non par `append` : `append` refuse désormais un
+// ts qui remonte, donc il ne peut plus fabriquer le défaut. Cette impossibilité EST le correctif.
+function ecrireBrut(chemin, entrees) {
+  writeFileSync(chemin, entrees.map((e) => JSON.stringify(e)).join("\n") + "\n");
+}
+// Deux reculs, et un seul serait vu par un vérificateur fail-fast : seq 3 (09:00 sous 12:00)
+// et seq 5 (11:00 sous 13:00).
+const DEUX_RECULS = [
+  { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-ts" },
+  { seq: 2, ts: "2026-01-01T12:00:00Z", type: "note", detail: "en ordre" },
+  { seq: 3, ts: "2026-01-01T09:00:00Z", type: "mise_en_production", detail: "horodatée à l heure de l action" },
+  { seq: 4, ts: "2026-01-01T13:00:00Z", type: "note", detail: "en ordre" },
+  { seq: 5, ts: "2026-01-01T11:00:00Z", type: "mise_en_production", detail: "second recul, celui qui restait masqué" },
+];
+const DECL_3 = { seq: 3, ts_consigne: "2026-01-01T09:00:00Z", ts_reel_estime: "2026-01-01T12:30:00Z", cause: "heure de l action et non de consignation" };
+const DECL_5 = { seq: 5, ts_consigne: "2026-01-01T11:00:00Z", ts_reel_estime: "2026-01-01T13:30:00Z", cause: "heure de l action et non de consignation" };
+function verifyRouge(lf) {
+  try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { return { sortie: String(e.stdout || "") + String(e.stderr || ""), code: e.status }; }
+  throw new Error("verify aurait dû sortir en échec (exit 1)");
+}
+
+check("ledger TF-0410 : ledger sans recul → PASS exit 0 (le contrôle plus strict ne casse pas le vert)", () => {
+  const lf = join(out, "ts-vert.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-ts" },
+    { seq: 2, ts: "2026-01-01T10:00:00Z", type: "note", detail: "ts égal : non décroissant, donc accepté" },
+    { seq: 3, ts: "2026-01-01T11:00:00Z", type: "note", detail: "croissant" },
+  ]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("un ledger monotone doit passer");
+  if (v.includes("[RECTIFIÉ]")) throw new Error("aucune rectification n est déclarée : rien ne doit s imprimer");
+});
+
+check("ledger TF-0410 : DEUX reculs → FAIL qui nomme les DEUX seq et les deux horodatages (anti-fail-fast)", () => {
+  const lf = join(out, "ts-deux-reculs.jsonl");
+  ecrireBrut(lf, DEUX_RECULS);
+  const { sortie } = verifyRouge(lf);
+  for (const attendu of [
+    "seq 3 : horodatage décroissant (2026-01-01T09:00:00Z après 2026-01-01T12:00:00Z)",
+    "seq 5 : horodatage décroissant (2026-01-01T11:00:00Z après 2026-01-01T13:00:00Z)",
+  ]) if (!sortie.includes(attendu)) throw new Error(`écart non nommé : « ${attendu} » absent de la sortie`);
+  if (!sortie.includes("2 écart(s)")) throw new Error("le compte des écarts doit être dit (2), pas seulement le premier écart");
+});
+
+check("ledger TF-0410 : rectification déclarant les DEUX seq → exit 0 avec DEUX lignes [RECTIFIÉ]", () => {
+  const lf = join(out, "ts-rectifie-deux.jsonl");
+  ecrireBrut(lf, [...DEUX_RECULS, {
+    seq: 6, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage", entrees: [DECL_3, DECL_5],
+  }]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("les deux écarts sont déclarés : le ledger doit passer");
+  const rectifies = v.split("\n").filter((l) => l.includes("[RECTIFIÉ]"));
+  if (rectifies.length !== 2) throw new Error(`2 lignes [RECTIFIÉ] attendues, ${rectifies.length} trouvée(s) — rectifié n est pas effacé`);
+  for (const s of ["seq 3", "seq 5", "déclaré par la rectification du seq 6"])
+    if (!v.includes(s)) throw new Error(`« ${s} » absent des lignes [RECTIFIÉ]`);
+  if (!v.includes("rectifié(s) (seq 3, 5)")) throw new Error("le verdict PASS doit compter les écarts rectifiés, jamais les taire");
+});
+
+check("ledger TF-0410 : rectification partielle (un seul des deux) → exit 1, un FAIL ET un [RECTIFIÉ]", () => {
+  const lf = join(out, "ts-rectifie-partiel.jsonl");
+  ecrireBrut(lf, [...DEUX_RECULS, {
+    seq: 6, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage", entrees: [DECL_3],
+  }]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("[RECTIFIÉ] seq 3")) throw new Error("le seq déclaré doit s imprimer [RECTIFIÉ] même quand le verdict est rouge");
+  if (!sortie.includes("1 écart(s) non rectifié(s)")) throw new Error("l écart NON déclaré doit rester un FAIL compté");
+  if (!sortie.includes("seq 5 : horodatage décroissant")) throw new Error("l écart non déclaré doit être nommé");
+  if (sortie.includes("[RECTIFIÉ] seq 5")) throw new Error("un seq NON déclaré ne doit jamais passer pour rectifié");
+});
+
+check("ledger TF-0410 : la rectification ne couvre pas un seq POSTÉRIEUR — on ne se dédouane pas d'avance", () => {
+  const lf = join(out, "ts-rectif-future.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-ts" },
+    { seq: 2, ts: "2026-01-01T12:00:00Z", type: "rectification_horodatage", entrees: [
+      { seq: 3, ts_consigne: "2026-01-01T09:00:00Z", ts_reel_estime: "2026-01-01T12:30:00Z", cause: "tentative de couverture anticipée" }] },
+    { seq: 3, ts: "2026-01-01T09:00:00Z", type: "note", detail: "recul couvert d avance ?" },
+  ]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("ne lui est pas ANTÉRIEUR")) throw new Error("la déclaration d un seq postérieur doit être refusée explicitement");
+  if (!sortie.includes("seq 3 : horodatage décroissant")) throw new Error("l écart doit rester un FAIL : la couverture anticipée ne vaut rien");
+  if (sortie.includes("[RECTIFIÉ]")) throw new Error("rien ne doit être rectifié par une déclaration anticipée");
+});
+
+check("ledger TF-0410 : `ts_consigne` qui ne correspond pas à l'histoire ne couvre rien", () => {
+  const lf = join(out, "ts-rectif-menteuse.jsonl");
+  ecrireBrut(lf, [...DEUX_RECULS, {
+    seq: 6, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage",
+    entrees: [{ ...DECL_3, ts_consigne: "2026-01-01T08:00:00Z" }, DECL_5],
+  }]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("ne correspond pas à")) throw new Error("un ts_consigne qui ne colle pas au ts réel doit être dit");
+  if (sortie.includes("[RECTIFIÉ] seq 3")) throw new Error("seq 3 ne doit PAS être rectifié : la déclaration ne correspond pas");
+  if (!sortie.includes("[RECTIFIÉ] seq 5")) throw new Error("seq 5, correctement déclaré, doit rester rectifié");
+});
+
+check("ledger TF-0410 : déclaration incomplète (cause absente) → écart, jamais une couverture", () => {
+  const lf = join(out, "ts-rectif-incomplete.jsonl");
+  const { cause, ...sansCause } = DECL_3;
+  ecrireBrut(lf, [...DEUX_RECULS, {
+    seq: 6, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage", entrees: [sansCause, DECL_5],
+  }]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("déclaration incomplète") || !sortie.includes("`cause`")) throw new Error("le champ dû manquant doit être nommé");
+  if (sortie.includes("[RECTIFIÉ] seq 3")) throw new Error("une déclaration incomplète ne couvre rien");
+});
+
+check("ledger TF-0410 : la rectification n'agit QUE sur les horodatages — un seq rompu reste FAIL", () => {
+  const lf = join(out, "ts-rectif-hors-perimetre.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-ts" },
+    { seq: 3, ts: "2026-01-01T11:00:00Z", type: "note", detail: "seq 2 sauté" },
+    { seq: 4, ts: "2026-01-01T12:00:00Z", type: "rectification_horodatage", entrees: [
+      { seq: 3, ts_consigne: "2026-01-01T11:00:00Z", ts_reel_estime: "2026-01-01T11:00:00Z", cause: "tentative de couvrir un seq rompu" }] },
+  ]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("append-only rompu")) throw new Error("un seq rompu doit rester un FAIL : rien ne le déclare rectifiable");
+});
+
+check("ledger TF-0410 : append refuse un `ts` de payload ANTÉRIEUR au maximum, sans rien écrire", () => {
+  const lf = join(out, "ts-append-garde.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "self-test-garde", ts: "2026-01-01T12:00:00Z" })]);
+  const avant = readFileSync(lf, "utf8");
+  try {
+    execFileSync("node", [ledger, "append", lf, JSON.stringify({
+      type: "mise_en_production", ts: "2026-01-01T09:00:00Z", detail: "heure du run Azure",
+    })], { encoding: "utf8", stdio: "pipe" });
+    throw new Error("append aurait dû refuser un ts antérieur");
+  } catch (e) {
+    if (!e.status) throw e; // relance l'échec du test lui-même, jamais confondu avec un refus
+    const err = String(e.stderr || "");
+    if (!err.includes("[LEDGER FAIL]") || !err.includes("ANTÉRIEUR")) throw new Error(`refus attendu nommant l antériorité, reçu : ${err.slice(0, 200)}`);
+    if (!err.includes("ts_action")) throw new Error("le refus doit dire OÙ consigner l heure de l action (ts_action)");
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("le fichier a été modifié malgré le refus — un refus doit être sans écriture");
+  // Et le sens inverse : un ts fourni qui NE remonte PAS reste accepté, mais annoncé.
+  const okOut = run(ledger, ["append", lf, JSON.stringify({ type: "note", ts: "2026-01-01T13:00:00Z", detail: "consignation fixée" })]);
+  if (!okOut.includes("[ATTENTION]")) throw new Error("un ts imposé par le payload doit être annoncé, jamais silencieux");
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre après un ts imposé non décroissant");
+  const lignes = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  if (lignes.length !== 2) throw new Error(`2 entrées attendues, ${lignes.length} — le refus n a rien laissé passer`);
+});
+
 check("oracle-defs : graphe def→def cohérent (fixture verte) → PASS", () => {
   const j = JSON.parse(run(oracledefs, [join(fixtures, "oracle-defs", "green")]));
   if (j.verdict !== "PASS") throw new Error(`verdict ${j.verdict} attendu PASS`);
