@@ -636,6 +636,22 @@
         "PASS"
       ],
       "provenance": "TF-0324 (18/08/2026) — la CADENCE etait le seul des cinq artefacts sans juge, etabli par la cartographie du pilot (output/03-etudes/20260818-cartographie-oracles-cadence-de-mission.md) : trois des cinq artefacts avaient deja le leur (W5, S1-S8, oracle-claims). La date de reference est FIGEE a 2026-08-18 dans la commande : sans elle la fraicheur deriverait avec l horloge du poste et la fixture cesserait d etre rejouable. La fixture rouge plante UN defaut par regle, C5 etant l OMISSION — celle qu un controle iterant sur ce qui est la ne verrait jamais."
+    },
+    {
+      "nom": "dossier-cab",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-dossier-cab.mjs",
+        "{fixture}"
+      ],
+      "red": "dossier-cab-red.docx",
+      "green": "dossier-cab-green.docx",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
     }
   ]
 }
