@@ -164,3 +164,76 @@ data-kpi-valeur="candidat">` + `data-<attr>` sur chaque ligne. Masquage par
 La règle **L13** de `check_html` exige la recherche statique dès 8 lignes et signale les
 KPI non cliquables au-dessus d'une liste. Modèles éprouvés : `todo/TODO.html` (pilot,
 oracle 13/13) et le dashboard forge-tests (tuiles).
+
+## 9 — Onglets accessibles 🔴 (dès qu'un rapport se lit par onglets)
+
+Asset : [`assets/tabs.js`](../assets/tabs.js) (TF-0425, lot Hoopiz 20260820a). Un rapport à
+onglets réécrivait ~50 lignes de JS à chaque livrable ; le composant porte les rôles
+WAI-ARIA, les flèches (cycle), Home/End, le `#hash` qui ouvre le bon onglet (cible = panneau
+**ou** élément dans un panneau — les liens de sommaire inter-onglets marchent), et
+l'impression de **tous** les panneaux. Contrat de marquage :
+
+```html
+<div class="tabs" data-tabs>
+  <div role="tablist" aria-label="Chapitres">
+    <button type="button" role="tab" id="tab-a" aria-controls="pan-a" aria-selected="true">Synthèse</button>
+    <button type="button" role="tab" id="tab-b" aria-controls="pan-b" aria-selected="false" tabindex="-1">Constats</button>
+  </div>
+  <section role="tabpanel" id="pan-a" aria-labelledby="tab-a">…</section>
+  <section role="tabpanel" id="pan-b" aria-labelledby="tab-b" hidden>…</section>
+</div>
+```
+```css
+[role="tablist"] { display: flex; gap: 4px; border-bottom: 2px solid var(--line); }
+[role="tab"] { font: inherit; font-family: var(--head); font-weight: 700; color: var(--muted); background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 14px; cursor: pointer; }
+[role="tab"][aria-selected="true"] { color: var(--blue); border-bottom-color: var(--blue); }
+[role="tab"]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+[role="tabpanel"] { padding-top: 16px; }
+@media print { [role="tablist"] { display: none; } [role="tabpanel"][hidden] { display: block; } }
+```
+Initialisation : `DigitAITabs.initAll()`. Règle **L16** de `check_html` : tout `role=tab` vise un
+`tabpanel` résolu, tout panneau est étiqueté par son onglet, les panneaux masqués sont
+réaffichés sous `@media print`. Revue de lecture : `render_page.py --sections "[role=tabpanel]"`
+capture chaque panneau.
+
+## 10 — Ligne de tableau dépliable 🟡 (détail à la demande sans quitter le tableau)
+
+Asset : [`assets/table-detail.js`](../assets/table-detail.js) (TF-0432, lot Hoopiz
+20260820b). La convention `tr[data-detail]` existait côté **consommateur** (`table-filters.js`
+l'exclut du comptage et la fait voyager avec sa ligne mère) sans composant pour la
+**produire** — 99 lignes dépliables écrites à la main sur un seul livrable. Contrat :
+
+```html
+<tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-1">›</button> L1</td><td>ko</td><td>délai</td></tr>
+<tr data-detail id="det-1" hidden><td colspan="3">Le contrôle a échoué à 1 280 px : délai de 3,2 s mesuré le 20/08.</td></tr>
+```
+```css
+.td-btn { font: inherit; color: var(--blue); background: none; border: 1px solid var(--line); border-radius: var(--r-sm); width: 24px; height: 24px; cursor: pointer; transition: transform .15s; }
+.td-btn[aria-expanded="true"] { transform: rotate(90deg); }
+tr[data-detail] td { background: var(--bg, #f6f8fc); border-bottom: 1px solid var(--line); padding: 12px 16px 12px 44px; }
+@media print { tr[data-detail][hidden] { display: table-row; } .td-btn { display: none; } }
+```
+Initialisation : `DigitAITableDetail.initAll()` ; un `#hash` qui vise un élément d'une ligne
+fermée l'ouvre. Le chevron est `›` (U+203A), présent dans toute pile de repli (TF-0435) — jamais
+`\25B6`. Règle **L17** de `check_html` : toute ligne de détail a un `id`, un bouton qui la vise,
+un `colspan` égal au nombre de colonnes, et une règle `@media print` qui la déplie. Avec
+`table-filters.js` : la ligne de détail suit le filtrage de sa ligne mère.
+
+## 11 — Gabarits de chapitre : `.chap.lire` et `.chap.duo` 🔴 (règle L2 corrigée, TF-0421)
+
+Portés par le boilerplate. La mesure de lecture se règle sur le **conteneur**, jamais sur le
+paragraphe (`width: min(75ch, 100%)` sur `.prose` laissait 60 % d'un écran de 1 800 px vide
+— vert à L2 tel qu'il était écrit, refusé par le client). `section.chap.lire` : conteneur de
+lecture de ~1 080 px centré, le texte le remplit. `section.chap.duo` : grille 7/5 texte +
+encart utile (KPI, légende, figure), repli sous 1 100 px. `render_page.py` L2 juge désormais
+quelle que soit la propriété CSS qui bride, et 1920 px est dans les largeurs par défaut.
+
+## Filtres de colonne — compléments (TF-0429 / TF-0430 / TF-0431)
+
+`table-filters.js` : `init(table, { apresFiltrage(table, visibles, total) })` est appelé à la
+fin de **chaque** filtrage (cases, Tous/Aucun, recherche) — et `instance.appliquer` est
+enveloppable (les gestionnaires internes passent par l'instance). **État vide** fourni : un
+filtre qui ne laisse rien insère une ligne `tr[data-tf-empty]` (libellé `data-tf-vide`
+surchargeable) avec le bouton « Tout réafficher », retirée dès qu'une ligne revient. Le
+**panneau choisit son côté** selon la place mesurée (`tf-droite`) et neutralise le rognage du
+conteneur `overflow-x:auto` tant qu'il est ouvert (`data-tf-ouvert`), rétabli à la fermeture.

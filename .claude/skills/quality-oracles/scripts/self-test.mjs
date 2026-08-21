@@ -132,6 +132,39 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
     bad.length ? ko('profil ' + pf + ' : plancher non désactivable exclu — ' + bad.join(' ; ')) : ok('profil ' + pf + ' : niveaux valides, plancher respecté (' + Object.keys(pj.niveaux).join('/') + ')');
   } catch {}
 }
+// TF-0437 (lot Hoopiz 20260820b) : oracle-perf publie le compte DOM en DEUX temps — total et hors
+// zones repliées/citées. Preuve : une page dont la moitié des nœuds vit dans <pre>/<details>
+// rend elements_hors_zones < elements, et le message le dit.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-perf2-'));
+  const riche = '<!doctype html><html><head><title>t</title></head><body>' + '<p><b>x</b></p>'.repeat(20)
+    + '<details><summary>src</summary><pre data-cite>' + '<span>c</span>'.repeat(60) + '</pre></details></body></html>';
+  fs.writeFileSync(path.join(tmp, 'riche.html'), riche);
+  const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-perf.mjs'), path.join(tmp, 'riche.html')], { encoding: 'utf8' });
+  let j = null; try { j = JSON.parse(r.stdout); } catch {}
+  const m = j && j.metriques;
+  !m ? ko('TF-0437 : oracle-perf sans métriques lisibles')
+    : !(m.elements_hors_zones_repliees_citees < m.elements) ? ko(`TF-0437 : compte hors zones (${m.elements_hors_zones_repliees_citees}) non inférieur au total (${m.elements})`)
+      : !/hors zones/.test(JSON.stringify(j.findings)) ? ko('TF-0437 : le message ne publie pas le compte hors zones')
+        : ok('TF-0437 : oracle-perf publie le DOM en deux temps (total / hors zones repliées-citées)');
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+// TF-0428 (lot Hoopiz 20260820a) : sous un arbre de LIVRAISON (output/, old/, dist/), run-oracles
+// n'écrit AUCUN sidecar à côté du livrable — journaux dans un dossier frère _oracles/.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-liv-'));
+  const livraison = path.join(tmp, 'output', 'rapport');
+  fs.mkdirSync(livraison, { recursive: true });
+  const page = path.join(livraison, 'Client - Rapport - 20260821a.html');
+  fs.writeFileSync(page, '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Digit-AI — Rapport · test — 20260821a</title></head><body><h1>x</h1></body></html>');
+  spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), page, '--no-cache', '--json', '--profil', path.join(SKILLDIR, 'fixtures', 'profil-test-niveaux.json')], { encoding: 'utf8', timeout: 180000 });
+  const aCote = fs.readdirSync(livraison).filter(f => /\.oracles/.test(f));
+  const frere = fs.existsSync(path.join(livraison, '_oracles')) ? fs.readdirSync(path.join(livraison, '_oracles')) : [];
+  aCote.length ? ko(`TF-0428 : ${aCote.length} sidecar(s) écrit(s) À CÔTÉ du livrable sous output/ : ${aCote.join(', ')}`)
+    : !frere.some(f => /\.oracles\.json$/.test(f)) ? ko('TF-0428 : aucun journal dans _oracles/ — les sidecars ont disparu au lieu d\'être déplacés')
+      : ok('TF-0428 : sous output/, les journaux vont dans _oracles/ frère, rien à côté du livrable');
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
 // preuve comportementale : perf-red.html non jugé en niveau note (perf exclu), FAIL en production
 {
   // tmpdir du POSTE, jamais fixtures/ : un process tué en plein run y fuyait ses dossiers

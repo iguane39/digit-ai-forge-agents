@@ -78,6 +78,29 @@ CAS = {
     # TF-0233 (15/08) : un conteneur-valeur dont un DESCENDANT porte la légende est
     # couvert — plus de double échec L3 pour un seul chiffre.
     "l3-conteneur-couvert.html": set(),
+    # Lot Hoopiz 20260820a/b (21/08) — TF-0423 : L7 refuse le chapeau répété, le chapeau de
+    # remplissage ; L10 refuse l'exemple de lecture en double. TF-0433 : « note » n'est un score
+    # que suivi d'un chiffre — la carte-remarque se tait, la note chiffrée échoue. TF-0434 : un
+    # libellé-identifiant sans title est elliptique (échec nommé), avec title il passe.
+    # TF-0425/TF-0432 : onglets et lignes dépliables — rouge sans câblage, verte conforme.
+    "l7-chapeaux-identiques.html": {"L7"},
+    "l7-chapeau-remplissage.html": {"L7"},
+    "l10-exemple-double.html": {"L10"},
+    "l3-note-encadre.html": set(),
+    "l3-note-chiffree.html": {"L3"},
+    "l8-identifiant-sans-title.html": {"L8"},
+    "l8-identifiant-avec-title.html": set(),
+    "l16-onglets-sans-controls.html": {"L16"},
+    "l16-onglets-conformes.html": set(),
+    "l17-depliant-sans-bouton.html": {"L17"},
+    "l17-depliant-conforme.html": set(),
+}
+
+# TF-0435 : L15 est un AVERTISSEMENT — jugé à part, sur les warns. La verte emploie un chevron
+# sûr (U+203A), la rouge le triangle U+25B6 qui sortait en tofu sur mobile.
+CAS_AVERT = {
+    "l15-glyphe-hors-liste.html": {"L15"},
+    "l15-glyphe-sur.html": set(),
 }
 
 RE_CODE = re.compile(r"^(L\d+)\b")
@@ -152,6 +175,12 @@ RE_CODE_AG = re.compile(r"^(A\d+(?:-bis)?|G\d+)\b")
 CAS_RENDU = {
     "l2r-texte-a-50-pourcent.html": ("l2_width", 1),   # paragraphe bridé
     "l2r-texte-pleine-largeur.html": ("l2_width", 0),  # colonne de mesure
+    # TF-0421 (lot Hoopiz 20260820a) : la bride par `width: min(75ch, 100%)` passait L2 (qui ne
+    # regardait que max-width) et laissait 60 % de la fenêtre vide à 1 800 px. L2 mesure
+    # désormais QUELLE QUE SOIT la propriété ; la mesure de lecture se pose sur le conteneur
+    # (.chap.lire), jamais sur le paragraphe.
+    "l2r-texte-width-min.html": ("l2_width", 1),       # bride par width:min(ch)
+    "l2r-chap-lire.html": ("l2_width", 0),             # conteneur de lecture, texte plein
     "l2g-gouttiere-etiquettes.html": ("l2_gouttiere", 1),   # colonne d'étiquettes
     "l2g-etiquettes-en-tete.html": ("l2_gouttiere", 0),     # étiquette en tête
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
@@ -264,6 +293,26 @@ def run():
             "attendu": sorted(attendu),
             "obtenu": sorted(obtenu),
             "detail": "" if ok else " | ".join(fails)[:400],
+        })
+    for nom, attendu in CAS_AVERT.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE", "attendu": sorted(attendu),
+                              "obtenu": [], "detail": "fixture manquante"})
+            continue
+        fails, warns = check(chemin.read_text(encoding="utf-8"), regles="L")
+        # Seul L15 est en cause : l'avertissement L6 « aucun sommaire » d'une page minimale
+        # n'est pas l'objet de ces deux jumelles, qui ne diffèrent que par le glyphe.
+        obtenu = codes(warns) & {"L15"}
+        # un avertissement ne doit jamais s'accompagner d'un ÉCHEC L parasite : la fixture est
+        # verte par ailleurs, seul le glyphe la distingue de sa jumelle.
+        ok = obtenu == attendu and not codes(fails)
+        resultats.append({
+            "fixture": nom,
+            "verdict": "OK" if ok else "ECHEC",
+            "attendu": sorted(attendu),
+            "obtenu": sorted(obtenu | codes(fails)),
+            "detail": "" if ok else " | ".join(warns + fails)[:400],
         })
     for nom, attendu in CAS_AUTONOMIE.items():
         chemin = FIXTURES / nom

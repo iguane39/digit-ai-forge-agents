@@ -11,11 +11,13 @@ Deux familles de contrôles, déterministes, sans dépendance externe ni appel L
               pose jamais data-theme est une affordance sans effet (loi transverse
               n°1) — FAIL. L'absence totale de bouton n'est qu'un avertissement :
               un rendu figé (export print/PDF) n'a légitimement aucune bascule.
-  · L1-L10  — lisibilité (references/lisibilite.md) : texte tronqué, largeur de
+  · L1-L17  — lisibilité (references/lisibilite.md) : texte tronqué, largeur de
               lecture, valeur sans barème, liste longue non filtrable, surlignage
               qui casse les mots, sommaire muet ou à ancre morte, chapitre sans
-              chapeau, lien interne sans destination, détail vide, table de données
-              sans mode d'emploi.
+              chapeau (ou chapeau répété/de remplissage), lien interne sans
+              destination, détail vide, table de données sans mode d'emploi ;
+              L15 glyphe CSS hors liste blanche (avertissement), L16 onglets
+              accessibles, L17 lignes de tableau dépliables.
 
 Ce qui suppose de LIRE (clarté, pertinence, justesse d'un chapeau) n'est pas ici :
 c'est la revue de lecture, déclarée comme telle dans references/lisibilite.md.
@@ -61,9 +63,29 @@ SAMPLE = """<!DOCTYPE html>
 
 VIDES = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link",
          "meta", "param", "source", "track", "wbr"}
+# L7 (TF-0423) : lexique FERMÉ du remplissage — la phrase qui paraphrase le titre au lieu de
+# dire ce que le chapitre apprend ; et plafond de mots au-delà duquel c'est un paragraphe.
+RE_CHAPEAU_REMPLISSAGE = re.compile(
+    r"ce chapitre (apporte|présente|presente|détaille|detaille|regroupe|contient|expose) "
+    r"(les éléments|les elements|les données|les donnees|les informations|le contenu|ce qui est) "
+    r"(annonc|attendu|li[ée]|relatif|indiqu)", re.I)
+SEUIL_MOTS_CHAPEAU = 60
+# L8 (TF-0434) : un libellé-identifiant du document — H5, E2, 1.5, ADR 0022, RD-12.
+RE_IDENTIFIANT = re.compile(r"^(?:[A-Z]{1,4}[ -]?\d{1,4}(?:[.\-]\d{1,4})?|\d{1,3}(?:\.\d{1,3})+)$")
+# L15 (TF-0435) : glyphes employés en content: CSS — liste blanche de ce qui est réputé présent
+# dans toute pile de repli ; tout le reste est signalé (jamais un échec).
+RE_CONTENT_CSS = re.compile(r"""content\s*:\s*(["'])((?:\\.|(?!\1).)*)\1""")
+GLYPHES_SURS = set("–—‘’“”•…‹›«»·×→←↑↓↔✓✔✗✘©®°±≥≤≠∞€  ​")
+# L16 / L17 : réaffichage à l'impression (composants tabs.js et table-detail.js).
+RE_PRINT_TABPANEL = re.compile(r"@media\s+print[^{]*\{[\s\S]*?tabpanel", re.I)
+RE_PRINT_DETAIL = re.compile(r"@media\s+print[^{]*\{[\s\S]*?data-detail", re.I)
 
 # Classes qui désignent une valeur mise en avant.
-CL_SCORE = {"sc", "score", "note", "jauge"}          # → barème lié obligatoire
+# TF-0433 (lot Hoopiz 20260820b) : « note » est AMBIGU — note chiffrée ou remarque (« card note »).
+# Il n'entre ici que combiné à un chiffre dans le contenu (voir est_score) ; `.card.note` est
+# la classe d'encadré du socle, et le message de L3 nomme désormais ce qui l'a déclenché.
+CL_SCORE = {"sc", "score", "jauge"}                  # → barème lié obligatoire
+CL_SCORE_AMBIGUE = {"note"}                           # score seulement si un chiffre suit
 CL_VALEUR = {"kpi", "badge", "pastille", "pv", "chip-val", "stat"}  # → légende
 
 RE_NM = re.compile(r"^\s*\d+(?:[.,]\d+)?\s*/\s*\d+\s*$")
@@ -763,6 +785,7 @@ def check_lisibilite(html: str, a: Arbre):
     for n in a.racine.descendants():
         cl = n.classes()
         est_score = bool(cl & CL_SCORE) or (
+            bool(cl & CL_SCORE_AMBIGUE) and bool(RE_NM.match(n.texte_propre() or ""))) or (
             RE_NM.match(n.texte_propre() or "") and n.tag in ("span", "b", "strong", "td", "em"))
         est_valeur = bool(cl & CL_VALEUR)
         if not (est_score or est_valeur):
@@ -849,7 +872,10 @@ def check_lisibilite(html: str, a: Arbre):
     for v, (genre, n, ou) in list(vus_o.items())[:6]:
         fails.append(f"L3 {genre} sans légende : « {v} » × {n} ({ou}) — title, "
                      "aria-label ou barème lié attendus : cette valeur est écrite "
-                     "pour une machine, pas pour un lecteur.")
+                     "pour une machine, pas pour un lecteur. (Déclenché par une classe "
+                     "de score — sc, score, jauge, ou « note » suivie d'un chiffre — ou "
+                     "par un motif chiffré « n/m » ; un encadré de remarque s'écrit "
+                     ".card.note ou .card.encadre.)")
 
     # --- L4 : liste longue filtrable --------------------------------------
     for t in [n for n in a.racine.descendants() if n.tag == "table"]:
@@ -1006,6 +1032,12 @@ def check_lisibilite(html: str, a: Arbre):
             if href.startswith("#") and href[1:] in ids:
                 cibles.append((href[1:], ids[href[1:]]))
 
+    # TF-0423 (lot Hoopiz 20260820a) : L7 et L10 se satisfaisaient d'une conformité MÉCANIQUE —
+    # 12 chapeaux identiques au mot près posés par un script d'optimisation d'oracle, un
+    # « Mode d'emploi » en double. Un chapeau est une phrase ÉCRITE, jamais générée : identique
+    # dans deux chapitres, tiré du lexique de remplissage, ou plus long qu'un paragraphe, il
+    # échoue. Un exemple de lecture répété mot pour mot dans un même chapitre aussi.
+    chapeaux_vus: dict = {}
     for ident, sec in cibles:
         chapeaux = [e for e in sec.descendants()
                     if e.classes() & {"ch-apprend", "ch-st"}]
@@ -1013,6 +1045,24 @@ def check_lisibilite(html: str, a: Arbre):
             fails.append(f"L7 chapitre #{ident} sans chapeau d'ouverture — un élément "
                          ".ch-apprend d'au moins 40 caractères (« ce que ce chapitre "
                          "vous apprend ») est attendu.")
+        for e in chapeaux:
+            txt = " ".join(e.texte_propre().split())
+            cle = txt.lower().rstrip(" .…")
+            if len(cle) < 40:
+                continue
+            if cle in chapeaux_vus and chapeaux_vus[cle] != ident:
+                fails.append(f"L7 chapeau IDENTIQUE dans #{chapeaux_vus[cle]} et #{ident} : "
+                             f"« {txt[:60]}… » — un chapeau dit ce que CE chapitre apprend ; "
+                             "répété, il n'apprend rien (remplissage généré).")
+            chapeaux_vus.setdefault(cle, ident)
+            if RE_CHAPEAU_REMPLISSAGE.search(cle):
+                fails.append(f"L7 chapeau de remplissage dans #{ident} : « {txt[:60]}… » — "
+                             "« ce chapitre présente/apporte les éléments annoncés par son "
+                             "titre » paraphrase le titre ; écrire ce que le lecteur apprend.")
+            if len(txt.split()) > SEUIL_MOTS_CHAPEAU:
+                fails.append(f"L7 chapeau de {len(txt.split())} mots dans #{ident} — au-delà de "
+                             f"{SEUIL_MOTS_CHAPEAU}, c'est un paragraphe reclassé en chapeau, "
+                             "pas une phrase d'ouverture.")
         grosses = [t for t in sec.descendants()
                    if t.tag == "table" and _lignes_tbody(t) >= 8]
         if grosses:
@@ -1022,6 +1072,12 @@ def check_lisibilite(html: str, a: Arbre):
                 fails.append(f"L10 chapitre de données #{ident} sans exemple de lecture — "
                              "un élément .exemple-lecture d'au moins 30 caractères est "
                              "attendu pour une table de ≥ 8 lignes.")
+            textes_ex = [" ".join(e.texte_propre().split()).lower() for e in ex]
+            doublons = {t for t in textes_ex if textes_ex.count(t) > 1}
+            for t in sorted(doublons):
+                fails.append(f"L10 exemple de lecture en DOUBLE dans #{ident} : « {t[:60]}… » — "
+                             "le second est du remplissage ; un exemple par tableau, "
+                             "chacun disant ce qu'il faut voir dans LE sien.")
 
     # --- L8 : liens internes ---------------------------------------------
     dans_toc = set(id(n) for n in toc.descendants()) if toc is not None else set()
@@ -1048,9 +1104,19 @@ def check_lisibilite(html: str, a: Arbre):
         libelle = lien.texte_propre()
         aide = (lien.att("title") or lien.att("aria-label") or "").strip()
         if len(libelle) < 8 and len(aide) < 12:
-            fails.append(f"L8 lien interne muet : « {libelle or '(sans texte)'} » → {href} — "
-                         "libellé de 8 caractères nommant la cible, ou title/aria-label "
-                         "de 12 caractères.")
+            # TF-0434 (lot Hoopiz 20260820b) : un libellé qui est un IDENTIFIANT du document
+            # (H5, E2, 1.5, ADR 0022) n'est pas muet pour son lecteur — il est elliptique pour
+            # un lecteur d'écran. La sortie la plus simple se dit en premier : un title court.
+            if RE_IDENTIFIANT.match(libelle.strip()):
+                fails.append(f"L8 lien interne elliptique : « {libelle} » → {href} — le libellé "
+                             "est un identifiant du document, il peut rester court : ajoutez "
+                             "un title (ou aria-label) d'au moins 12 caractères décrivant la "
+                             "cible, ex. title=\"Question H5 — délais de livraison\".")
+            else:
+                fails.append(f"L8 lien interne muet : « {libelle or '(sans texte)'} » → {href} — "
+                             "ajoutez un title décrivant la cible (au moins 12 caractères) : "
+                             "le libellé visible peut rester court ; sinon, un libellé d'au "
+                             "moins 8 caractères nommant la cible.")
         elif href[1:] not in ids:
             fails.append(f"L8 lien interne vers une ancre inexistante : {href} "
                          f"(« {libelle[:40]} »).")
@@ -1106,6 +1172,80 @@ def check_lisibilite(html: str, a: Arbre):
                      f"« clé — valeur » enchaînés par des points-virgules "
                      f"(« {extrait}… », {ou}) — au-delà de 3, c'est un tableau ou "
                      "une liste, avec une ligne qui dit ce qu'il faut y voir.")
+
+    # --- L15 : glyphes en content: CSS hors liste blanche (AVERTISSEMENT) ---
+    # TF-0435 (lot Hoopiz 20260820b) : un chevron écrit content: "\25B6" passait tous les
+    # oracles et s'affichait en tofu sur mobile — la pile de repli mono n'a pas ce caractère.
+    # Contrôle statique bon marché : tout caractère hors Latin-1 et hors liste blanche de
+    # glyphes réputés présents est SIGNALÉ, jamais un échec : « vérifiez ce glyphe sur un
+    # poste sans vos polices ». Corrigé dans le socle par la même occasion (chevrons U+203A).
+    vus_glyphes = set()
+    for m in RE_CONTENT_CSS.finditer(_sans_commentaires(html)):
+        brut = m.group(2)
+        texte_css = re.sub(r"\\([0-9a-fA-F]{1,6})\s?", lambda x: chr(int(x.group(1), 16)), brut)
+        for ch in texte_css:
+            o = ord(ch)
+            if o < 0x0100 or ch in GLYPHES_SURS or ch in vus_glyphes:
+                continue
+            vus_glyphes.add(ch)
+            warns.append(f"L15 glyphe « {ch} » (U+{o:04X}) en content: CSS hors liste blanche — "
+                         "vérifiez son rendu sur un poste sans vos polices (pile de repli) ; "
+                         "préférez › ‹ • – → ou une icône SVG dessinée.")
+
+    # --- L16 : onglets accessibles (composant tabs.js) ------------------------
+    # TF-0425 (lot Hoopiz 20260820a) : tout role=tab vise un tabpanel résolu, tout tabpanel
+    # est étiqueté par son onglet, et les panneaux masqués sont réaffichés à l'impression.
+    tabs = [n for n in a.racine.descendants() if n.att("role") == "tab"]
+    panels = [n for n in a.racine.descendants() if n.att("role") == "tabpanel"]
+    for t in tabs:
+        ac = (t.att("aria-controls") or "").strip()
+        if not ac or ac not in ids or ids[ac].att("role") != "tabpanel":
+            fails.append(f"L16 onglet « {t.texte_propre()[:30]} » sans panneau résolu — "
+                         "aria-controls doit viser un élément role=\"tabpanel\" existant "
+                         f"({t.chemin()}).")
+    for p in panels:
+        lb = (p.att("aria-labelledby") or "").strip()
+        if not lb or lb not in ids or ids[lb].att("role") != "tab":
+            fails.append(f"L16 panneau #{p.att('id') or '?'} sans onglet étiqueteur — "
+                         "aria-labelledby doit viser son role=\"tab\".")
+    if panels and any("hidden" in p.attrs for p in panels) and not RE_PRINT_TABPANEL.search(html):
+        fails.append("L16 panneaux d'onglets masqués et aucune règle @media print ne les "
+                     "réaffiche — à l'impression, TOUS les panneaux se lisent "
+                     "([role=\"tabpanel\"][hidden] { display: block } sous @media print).")
+
+    # --- L17 : ligne de tableau dépliable (composant table-detail.js) ---------
+    # TF-0432 (lot Hoopiz 20260820b) : toute ligne tr[data-detail] a un id et un bouton qui la
+    # vise, sa cellule couvre toutes les colonnes, et elle s'imprime dépliée.
+    details = [n for n in a.racine.descendants() if n.tag == "tr" and "data-detail" in n.attrs]
+    boutons_controls = {(n.att("aria-controls") or "").strip()
+                        for n in a.racine.descendants() if n.tag == "button"}
+    for det in details:
+        did = (det.att("id") or "").strip()
+        if not did:
+            fails.append(f"L17 ligne de détail sans id ({det.chemin()}) — aucun bouton ne "
+                         "peut la viser.")
+            continue
+        if did not in boutons_controls:
+            fails.append(f"L17 ligne de détail #{did} sans bouton — un <button "
+                         f"aria-expanded aria-controls=\"{did}\"> est attendu dans sa ligne mère.")
+        tables = [x for x in det.ancetres() if x.tag == "table"]
+        if tables:
+            theads = [x for x in tables[0].descendants() if x.tag == "thead"]
+            n_cols = 0
+            if theads:
+                premiere = [x for x in theads[0].descendants() if x.tag == "tr"]
+                if premiere:
+                    n_cols = sum(int(c.att("colspan") or 1) for c in premiere[0].enfants
+                                 if isinstance(c, Noeud) and c.tag in ("th", "td"))
+            cellules = [c for c in det.enfants if isinstance(c, Noeud) and c.tag == "td"]
+            couvert = sum(int(c.att("colspan") or 1) for c in cellules)
+            if n_cols and couvert != n_cols:
+                fails.append(f"L17 ligne de détail #{did} : colspan {couvert} pour {n_cols} "
+                             "colonnes — le détail couvre toute la largeur du tableau.")
+    if details and not RE_PRINT_DETAIL.search(html):
+        fails.append("L17 lignes de détail présentes et aucune règle @media print ne les "
+                     "déplie — à l'impression, le détail se lit "
+                     "(tr[data-detail][hidden] { display: table-row } sous @media print).")
 
     return fails, warns
 

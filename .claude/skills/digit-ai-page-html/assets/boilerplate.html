@@ -55,6 +55,10 @@
       --bg: #FAFBFF;
       --surface: #FFFFFF;
       --card: #FFFFFF;
+      /* Focus — PRESCRIT par token, consomme par toute affordance (RGAA 10.7, WCAG 2.4.7) :
+         un anneau improvise par chaque auteur n'est pas une charte. */
+      --focus-anneau: 2px solid var(--blue);
+      --focus-decalage: 2px;
       /* Couleurs — encres */
       --ink: #0F172A;
       --muted: #64748B;
@@ -102,17 +106,24 @@
       line-height: 1.55;
       font-size: 16px;
     }
-    /* Deux largeurs, pas une (regle L2). Le conteneur suit l'ecran — jamais de
-       plafond px nu : un max-width fixe tombe sous 75 % de la fenetre sur les
-       grands ecrans. La PROSE, elle, reste bornee en ch — une ligne de texte sur
-       1680px est illisible. Elargir uniformement remplacerait un defaut par un autre. */
+    /* Regle L2 (corrigee, TF-0421 — lot Hoopiz 20260820a) : la mesure de lecture est portee
+       par le CONTENEUR, jamais par le paragraphe. L'ancienne doctrine (« conteneur relatif,
+       prose bornee en ch ») bridait chaque <p> a 75ch : a 1 800 px, 60 % de la fenetre vide,
+       livre vert, refuse par le client. Deux gabarits de chapitre NOMMES remplacent la bride :
+         .chap.lire  — conteneur de lecture (~1 080 px centres) : le texte le remplit ;
+         .chap.duo   — grille 7/5 texte + encart utile (KPI, legende, figure), repli < 1 100 px.
+       Un <p> seul sur une largeur de 1 680 px reste illisible : c'est le CHAPITRE qu'on
+       retrecit (.chap.lire), pas la ligne. render_page.py L2 juge quelle que soit la propriete. */
     .wrap { max-width: var(--w); margin: 0 auto; padding: 32px 24px 64px; }
+    .chap.lire { max-width: 1080px; margin-left: auto; margin-right: auto; }
+    .chap.duo { display: grid; grid-template-columns: 7fr 5fr; gap: 32px; align-items: start; }
+    @media (max-width: 1100px) { .chap.duo { grid-template-columns: 1fr; } }
 
     h1, h2, h3 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
     h1 { font-size: 2rem; margin: 0 0 .25em; }
     h2 { font-size: 1.4rem; font-weight: 700; margin: 2em 0 .5em; }
     h3 { font-size: 1.1rem; font-weight: 700; margin: 1.5em 0 .4em; }
-    p, li { margin: 0 0 1em; max-width: var(--prose); }
+    p, li { margin: 0 0 1em; }
     a { color: var(--blue); }
     code, pre { font-family: var(--mono); }
 
@@ -126,7 +137,7 @@
     .theme-toggle { appearance: none; border: 1px solid var(--line); background: var(--surface);
       color: var(--ink); border-radius: 999px; width: 36px; height: 36px; flex: none; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center; }
-    .theme-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .theme-toggle:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
     .theme-toggle .icon-sun { display: none; }
     :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
     :root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
@@ -169,7 +180,7 @@
         --teal:#0E9488;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
         --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
       }
-      body { background: #FFFFFF; }
+      body { background: var(--surface); }
       .wrap { max-width: none; padding: 0; }
       .card { break-inside: avoid; page-break-inside: avoid; }
       a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em; color: var(--muted); }
