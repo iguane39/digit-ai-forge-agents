@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 rendu — chevauchement réel — 20260821a</title>
+<!--
+  TF-0444, contre-épreuve. L'exclusion de colgroup/col ne doit RIEN éteindre d'autre : deux
+  frères qui se recouvrent réellement restent un défaut V4 BLOQUANT. Sans cette fixture, le
+  correctif du faux positif aurait pu désactiver la règle sans que rien ne le dise.
+
+  Ici : deux blocs frères, en flux, dont le second remonte de 40 px sur le premier par une
+  marge négative — aucune position absolue, aucun data-overlap-ok, donc aucune exemption.
+
+  Attendu : au moins 1 constat v4_overlap.
+-->
+<style>
+:root{--ink:#0F172A;--line:#E2E8F0;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.bloc{border:1px solid var(--line);padding:16px;background:#fff}
+.chevauche{margin-top:-40px;background:#F1F5F9}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>V4 rendu — deux frères qui se recouvrent vraiment</h1>
+<div class="bloc"><p>Premier bloc. Il occupe sa boîte et n'en sort pas. Premier bloc. Il occupe sa boîte et n'en sort pas. Premier bloc. Il occupe sa boîte et n'en sort pas.</p></div>
+<div class="bloc chevauche"><p>Second bloc, remonté de 40 px sur le premier par une marge négative. Le recouvrement est réel : un lecteur perd des mots.</p></div>
+</main></body></html>

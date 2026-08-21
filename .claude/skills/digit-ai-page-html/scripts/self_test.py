@@ -141,6 +141,10 @@ CAS_G1 = {
     "g1-sans-bouton.html": set(),           # aucun bouton : WARN seulement, jamais un FAIL
 }
 RE_CODE_G = re.compile(r"^(G\d+)\b")
+# TF-0445 : famille S — structure du document (S1 cohérence de tableau). Une famille de plus
+# demande son extracteur : `codes()` ne rend que ce que son motif reconnaît, et un code non
+# reconnu se lit « aucun défaut » — c'est un faux vert de recette, pas une lacune anodine.
+RE_CODE_S = re.compile(r"^(S\d+)\b")
 
 # AUTOPORTANCE (TF-0303, décidé par l'étude d'opportunité 20260817b — verdict O3) :
 # mécanisation des règles A1 (squelette auto-portant), A2/G2 (favicon data:), A3 (charset
@@ -181,6 +185,18 @@ CAS_RENDU = {
     # (.chap.lire), jamais sur le paragraphe.
     "l2r-texte-width-min.html": ("l2_width", 1),       # bride par width:min(ch)
     "l2r-chap-lire.html": ("l2_width", 0),             # conteneur de lecture, texte plein
+    # TF-0444 (21/08) : <colgroup>/<col> DÉCLARENT des largeurs, ils ne mettent rien en page —
+    # leur boîte englobe celle du tableau, donc tout tableau à colgroup rendait deux faux
+    # positifs BLOQUANTS (50 mesurés sur un livrable sain). Les deux sens sont dus : sans la
+    # contre-épreuve, corriger le faux positif aurait pu éteindre la règle en silence.
+    "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
+    "v4-chevauchement-reel.html": ("v4_overlap", 1),   # deux frères qui se recouvrent vraiment
+    # TF-0440 (21/08) : L2 mesurait le paragraphe contre son conteneur — déplacer la bride
+    # d'un cran la satisfaisait sans rien changer pour le lecteur. Les deux fixtures ne
+    # diffèrent que par le CENTRAGE de la colonne : centrée = mesure de lecture (légitime),
+    # calée à gauche = gouttière (refusée par le lecteur humain le 21/08).
+    "l2c-conteneur-cale-a-gauche.html": ("l2_conteneur", 1),
+    "l2c-conteneur-centre.html": ("l2_conteneur", 0),
     "l2g-gouttiere-etiquettes.html": ("l2_gouttiere", 1),   # colonne d'étiquettes
     "l2g-etiquettes-en-tete.html": ("l2_gouttiere", 0),     # étiquette en tête
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
@@ -274,6 +290,35 @@ def codes(messages, motif=RE_CODE):
         if c:
             out.add(c.group(1))
     return out
+
+
+# TF-0445 (21/08) — S1 : cohérence de tableau. Jugée sous `regles="charte"` et non "L" : ce
+# n'est pas de la lisibilité, c'est de la structure. Les cas ne comparent QUE les codes S,
+# sinon le bruit des règles de charte (favicon, responsive) d'une fixture minimale masquerait
+# le seul point qu'elles prouvent.
+CAS_STRUCTURE = {
+    "s1-tableau-incoherent.html": {"S1"},   # `|` non échappé : 5 cellules pour un en-tête de 4
+    "s1-tableau-coherent.html": set(),      # même page, la barre verticale échappée
+    "s1-rowspan-non-juge.html": set(),      # rowspan : non comptable, écarté avec son motif
+}
+
+
+def run_structure():
+    """Cas à double sens de S1. Ne compare que les codes S — voir le commentaire ci-dessus."""
+    resultats = []
+    for nom, attendu in CAS_STRUCTURE.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE", "attendu": sorted(attendu),
+                              "obtenu": [], "detail": "fixture manquante"})
+            continue
+        fails, _ = check(chemin.read_text(encoding="utf-8"), regles="charte")
+        obtenu = codes(fails, RE_CODE_S)
+        ok = obtenu == attendu
+        resultats.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                          "attendu": sorted(attendu), "obtenu": sorted(obtenu),
+                          "detail": "" if ok else "codes S obtenus != attendus"})
+    return resultats
 
 
 def run():
@@ -434,6 +479,68 @@ def run_rendu():
     return out
 
 
+def run_repli_cartes():
+    """TF-0442 — le repli en cartes du socle, mesuré à 390 px (là où il sert).
+
+    Les autres cas de rendu se jouent à 1440 px : le repli ne s'y déclenche pas. Cette branche
+    mesure la seule largeur où il compte.
+
+    Ce que la mesure a APPRIS, et qui n'était pas la thèse de départ. La thèse était : « un
+    conteneur `overflow-x: auto` ne fait pas passer V1, le repli en cartes le fait ». Mesuré le
+    21/08 sur ces deux fixtures, avec le socle À JOUR : les DEUX rendent 0 constat V1 à 390 px.
+    La raison est que le socle porte désormais `overflow-wrap: anywhere` sur les cellules — le
+    tableau ne déborde plus, il s'ÉCRASE. La capture le montre sans discussion : huit colonnes
+    réduites à un ou deux caractères par ligne, « Identifiant » rendu sur cinq lignes, et
+    V1 PASS.
+
+    Donc : le repli en cartes n'est PAS un correctif de débordement, c'est un correctif de
+    LISIBILITÉ — et V1 est muet sur un tableau écrasé, même famille d'angle mort que TF-0440
+    (une règle satisfaite sans être tenue). Le constat est versé au registre en candidat.
+
+    Ce que ces deux cas verrouillent donc, en attendant :
+      · le repli du socle ne CASSE rien (0 constat V1, la carte tient dans le viewport) ;
+      · le cas sans repli est à 0 AUJOURD'HUI, et ce zéro est le défaut, pas le succès. Le jour
+        où une règle saura voir l'écrasement, ce cas devra passer à >= 1 — et c'est ici qu'on
+        le lira.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import json as _json
+    import subprocess
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-repli-")
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    cas = {
+        "v1-tableau-repli-cartes.html": 0,   # replié : chaque ligne devient une carte
+        "v1-tableau-sans-repli.html": 0,     # écrasé : 0 par ÉCRASEMENT, pas par confort
+    }
+    out = []
+    for nom, attendu in cas.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            out.append({"fixture": nom, "verdict": "ABSENTE", "attendu": attendu,
+                        "obtenu": 0, "detail": "fixture manquante"})
+            continue
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(chemin),
+                            "--widths", "390", "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            n = len(_json.loads(r.stdout)["breakpoints"]["390"]["issues"]["v1_overflow"])
+        except Exception:
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": attendu,
+                        "obtenu": 0, "detail": "render_page illisible"})
+            continue
+        ok = n == attendu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": n, "regle": "v1_overflow (390 px)",
+                    "detail": "" if ok else f"{n} constat(s) v1_overflow à 390 px"})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_v1_bornes():
     """TF-0382 — les DEUX sens de la borne V1, en comptes EXACTS.
 
@@ -522,10 +629,14 @@ def main():
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
-    res = run() + run_exemptions()
+    res = run() + run_exemptions() + run_structure()
     rendu = run_rendu()
     if rendu:
         res += rendu
+    # TF-0442 — le repli en cartes se mesure a 390 px, la seule largeur ou il se declenche.
+    repli = run_repli_cartes()
+    if repli:
+        res += repli
     # TF-0382 — les deux sens de la borne V1, en comptes EXACTS (branche a part : CAS_RENDU
     # teste « au moins n », et c est precisement le nombre qui est en cause ici).
     bornes = run_v1_bornes()
