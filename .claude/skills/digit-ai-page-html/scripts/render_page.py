@@ -77,6 +77,10 @@ DEFAULT_WIDTHS = [1920, 1280, 768, 390]
 # attend du texte. Ne s'applique qu'au-dela d'un viewport de bureau : sous cette
 # largeur, une bride de lecture est sans effet visible.
 L2_MIN_RATIO = 0.85
+# TF-0440 — seuil du CONTENEUR de lecture : en deçà de 85 % de ce que son parent lui offre,
+# une colonne calée à gauche est une gouttière, pas une mesure de lecture. Même valeur que
+# L2_MIN_RATIO, et pour la même raison — ce qui change est ce qu'on mesure, pas le seuil.
+L2C_MIN_RATIO = 0.85
 L2_MIN_VIEWPORT = 1100
 L2_MIN_CHARS = 120
 
@@ -133,7 +137,7 @@ def ensure_local_fonts() -> None:
 MEASURE_JS = r"""
 () => {
   const issues = { v1_overflow: [], v2_contrast: [], v3_align: [], v4_overlap: [], v7_spacing: [],
-                   l2_width: [], l2_gouttiere: [], unmeasured: [] };
+                   l2_width: [], l2_gouttiere: [], l2_conteneur: [], unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -325,6 +329,16 @@ MEASURE_JS = r"""
         const a = kids[i], b = kids[j];
         if (svgIcone || groupeTitre) continue;
         if (a.el.hasAttribute('data-overlap-ok') || b.el.hasAttribute('data-overlap-ok')) continue;
+        // TF-0444 (21/08) : <colgroup> et <col> sont des elements de DECLARATION, pas de mise
+        // en page. Leur boite englobe par construction celle du tableau — donc tout tableau
+        // portant un colgroup produisait deux faux positifs BLOQUANTS (« colgroup x thead »,
+        // « colgroup x tbody »). Mesure : 50 defauts V4 sur un livrable par ailleurs sain,
+        // a 1920 px comme a 1280 px. Consequence : la SEULE construction que HTML prevoit pour
+        // declarer des largeurs de colonnes etait interdite par l'oracle, et le run s'en
+        // detournait en portant les largeurs sur les <th> — un contournement a refaire a
+        // chaque fois. Meme nature d'exclusion que position: fixed ci-dessous.
+        const declaratif = (el) => ['colgroup', 'col'].includes(el.tagName.toLowerCase());
+        if (declaratif(a.el) || declaratif(b.el)) continue;
         const sa = getComputedStyle(a.el), sb = getComputedStyle(b.el);
         if (sa.position === 'absolute' || sb.position === 'absolute' ||
             sa.position === 'fixed' || sb.position === 'fixed') continue;  // superpositions par construction
@@ -465,6 +479,68 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- L2 (rendu, suite) : le CONTENEUR de lecture calé à gauche ---------
+  // TF-0440. L2 ci-dessus mesure le paragraphe contre son conteneur — donc déplacer la bride
+  // d'un cran la satisfait sans rien changer pour le lecteur. Mesuré le 21/08 sur la même
+  // page : bride sur `p` → BLOQUANT (ratio 0,57) ; MÊME bride portée par un div parent
+  // (`width: min(100%, 82ch)`, `p { max-width: none }`) → PASS aux trois breakpoints, alors
+  // que le texte occupe TOUJOURS 57 % de la fenêtre. La règle devenait satisfaisable sans être
+  // tenue, et un run de bonne foi la satisfaisait en créant la gouttière qu'elle interdisait.
+  //
+  // Le discriminant n'est pas la largeur — une colonne de lecture étroite est LÉGITIME, c'est
+  // même la doctrine (.chap.lire). C'est l'ASYMÉTRIE : une colonne CENTRÉE est une mesure de
+  // lecture, le blanc se répartit des deux côtés et l'œil revient au début de ligne sans
+  // effort. Une colonne calée à GAUCHE laisse tout le blanc à droite — c'est exactement ce que
+  // le lecteur humain a refusé le 21/08 (« la moitié de la page vide à droite »).
+  //
+  // Trois conditions cumulatives, pour ne rien condamner à tort :
+  //   1. le conteneur occupe moins de __L2C_MIN_RATIO__ de la largeur que son parent lui offre ;
+  //   2. sa marge droite dépasse le double de sa marge gauche (donc : pas centré) ;
+  //   3. AUCUN frère ne porte de contenu à sa droite (sinon ce n'est pas du vide, c'est une
+  //      mise en page à deux pistes — déjà couverte par l2_gouttiere).
+  // Échappatoire déclarative : `data-colonne-ok` sur le conteneur, pour une colonne étroite
+  // voulue et assumée. Déclarée, jamais devinée.
+  if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
+    const vusC = new Set();
+    for (const el of document.body.querySelectorAll('p, li, blockquote, .va, .prose')) {
+      if (!visible(el)) continue;
+      if ((el.textContent || '').trim().length < __L2_MIN_CHARS__) continue;
+      if (el.closest('table') || el.closest('nav')) continue;
+      // Le conteneur BRIDEUR : le premier ancêtre notablement plus étroit que son propre parent.
+      let boite = null;
+      for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+        const p = n.parentElement;
+        if (!p) break;
+        const rn = n.getBoundingClientRect(), rp = p.getBoundingClientRect();
+        if (rp.width > 0 && rn.width / rp.width < __L2C_MIN_RATIO__) { boite = { n, rn, rp }; break; }
+      }
+      if (!boite) continue;
+      if (boite.n.closest('[data-colonne-ok]')) continue;
+      const gauche = boite.rn.left - boite.rp.left;
+      const droite = boite.rp.right - boite.rn.right;
+      if (droite <= gauche * 2) continue;          // centré, ou décalé vers la droite : légitime
+      if (droite < 40) continue;                   // vide négligeable
+      // Un frère occupe-t-il la place à droite ? Alors ce n'est pas une gouttière.
+      const voisin = [...(boite.n.parentElement ? boite.n.parentElement.children : [])].some((f) => {
+        if (f === boite.n || !visible(f)) return false;
+        const rf = f.getBoundingClientRect();
+        if (!(f.textContent || '').trim() && !f.querySelector('img, svg, canvas')) return false;
+        return rf.left >= boite.rn.right - 4 &&
+               Math.min(rf.bottom, boite.rn.bottom) - Math.max(rf.top, boite.rn.top) > 8;
+      });
+      if (voisin) continue;
+      const cle = boite.n.tagName + '|' + (boite.n.className || '');
+      if (vusC.has(cle)) continue;
+      vusC.add(cle);
+      issues.l2_conteneur.push({ what: label(boite.n), detail:
+        `conteneur de lecture calé à gauche — ${Math.round(boite.rn.width)}px pour ` +
+        `${Math.round(boite.rp.width)}px offerts, ${Math.round(droite)}px de vide à droite ` +
+        `contre ${Math.round(gauche)}px à gauche, et aucun contenu voisin. Centrer la colonne ` +
+        `(.chap.lire) ou lui donner un voisin utile ; si elle est étroite à dessein, le ` +
+        `déclarer par data-colonne-ok` });
+    }
+  }
+
   // ---- L2 (rendu, suite) : la gouttiere d'etiquettes --------------------
   // Angle mort de la mesure precedente : une grille `etiquette | contenu` ou la
   // colonne d'etiquettes prend 22 % de la largeur. Chaque colonne remplit bien sa
@@ -553,6 +629,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
           .replace("__ALIGN_TOL__", str(ALIGN_TOLERANCE_PX))
           .replace("__V7_MAX__", str(V7_MAX_DETAILS))
           .replace("__L2_MIN_RATIO__", str(L2_MIN_RATIO))
+          .replace("__L2C_MIN_RATIO__", str(L2C_MIN_RATIO))
           .replace("__L2_MIN_VIEWPORT__", str(L2_MIN_VIEWPORT))
           .replace("__L2_MIN_CHARS__", str(L2_MIN_CHARS))
           .replace("__L2_COL_MAX__", str(L2_COL_MAX))
@@ -632,7 +709,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             v1 = issues.get("v1_tronque", {}).get("total") or len(issues["v1_overflow"])
             blocking = (v1 + len(issues["v2_contrast"])
                         + len(issues["v4_overlap"]) + len(issues["l2_width"])
-                        + len(issues["l2_gouttiere"]))
+                        + len(issues["l2_gouttiere"]) + len(issues["l2_conteneur"]))
             blocking_total += blocking
             report["breakpoints"][width] = {
                 "png": str(png) if capture["faite"] else None,
@@ -672,6 +749,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                                      ("v4_overlap", "V4 chevauchement", "BLOQUANT"),
                                      ("l2_width", "L2 largeur de texte", "BLOQUANT"),
                                      ("l2_gouttiere", "L2 gouttière d'étiquettes", "BLOQUANT"),
+                                     ("l2_conteneur", "L2 conteneur calé à gauche", "BLOQUANT"),
                                      ("v3_align", "V3 alignement", "avertissement"),
                                      ("v7_spacing", "V7 espacement", "avertissement"),
                                      ("unmeasured", "Non mesurable", "à vérifier visuellement")]:

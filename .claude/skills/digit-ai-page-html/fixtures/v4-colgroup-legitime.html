@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 rendu — colgroup légitime — 20260821a</title>
+<!--
+  TF-0444. <colgroup> et <col> sont des éléments de DÉCLARATION, pas de mise en page : leur
+  boîte englobe par construction celle du tableau. Avant correctif, tout tableau portant un
+  colgroup produisait DEUX faux positifs V4 BLOQUANTS (« colgroup × thead », « colgroup ×
+  tbody ») — 50 sur un livrable réel, à 1920 px comme à 1280 px, page par ailleurs saine.
+  Conséquence : la seule construction que HTML prévoit pour déclarer des largeurs de colonnes
+  était interdite par l'oracle du socle.
+
+  Attendu : 0 constat v4_overlap.
+-->
+<style>
+:root{--ink:#0F172A;--line:#E2E8F0;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>V4 rendu — largeurs de colonnes déclarées par colgroup</h1>
+<table>
+  <colgroup>
+    <col style="width:5%">
+    <col style="width:45%">
+    <col style="width:30%">
+    <col style="width:20%">
+  </colgroup>
+  <thead><tr><th>#</th><th>Constat</th><th>Remédiation</th><th>Porteur</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>La colonne d'identifiants recevait un quart de la largeur du tableau alors que son contenu le plus large tient en un caractère.</td><td>Largeurs dérivées du contenu, déclarées par colgroup.</td><td>socle HTML</td></tr>
+    <tr><td>2</td><td>Le texte de la colonne de prose se repliait sur cinq lignes pendant que la colonne voisine restait vide.</td><td>Poids par longueur au 90e centile.</td><td>socle HTML</td></tr>
+    <tr><td>3</td><td>Aucune guidance au référentiel : chaque run réinventait sa répartition.</td><td>Heuristique versée aux composants.</td><td>référentiel</td></tr>
+  </tbody>
+</table>
+</main></body></html>

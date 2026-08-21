@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 rendu — conteneur CENTRÉ, légitime — 20260821a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+.chap.lire{max-width:1080px;margin:0 auto} .chap.lire p{max-width:none}
+</style></head>
+<!--
+  TF-0440, sens VERT. Jumelle exacte de l2c-conteneur-cale-a-gauche, à une chose près : la
+  colonne est CENTRÉE (margin: 0 auto). Le blanc se répartit des deux côtés, l œil revient au
+  début de ligne sans effort — c est la mesure de lecture que la doctrine prescrit (.chap.lire),
+  et elle ne doit RIEN déclencher. Fixture distincte de l2r-chap-lire : deux entrées de même clé
+  dans CAS_RENDU (un dict) écraseraient la première en silence.
+
+  Attendu : 0 constat l2_conteneur.
+-->
+<body><main class="wrap">
+<h1>L2 rendu — conteneur de lecture .chap.lire</h1>
+<section class="chap lire"><p>Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. </p></section></main></body></html>
