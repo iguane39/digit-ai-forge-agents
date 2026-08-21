@@ -34,6 +34,38 @@ Cibles : **Viewer** (navigateur) et **PDF** (WeasyPrint) ; les divergences sont 
 - 🟡 Précéder le `<link>` fonts de `preconnect` vers `fonts.googleapis.com` et `fonts.gstatic.com` (`crossorigin`).
 - ⚪ `line-height` corps ~1.5, lignes ≤ ~80 caractères.
 
+### Structurer un raisonnement long — les puces sont une affordance de lecture 🔴
+
+**Retour humain du 21/08/2026** : « pour les textes longs, favorise les puces et sous-puces pour
+organiser les idées, sujets ou actions / décisions à afficher ou traiter ; cela facilite la
+lecture et la compréhension ». Le constat instruit derrière : aucune des règles de lisibilité
+L1-L17 ne porte sur la mise en forme d'un raisonnement. Elles couvrent la troncature, les
+légendes, le barème, le sommaire, les chapeaux, la plomberie — **pas la structure du propos**.
+
+**Le repère.** Un paragraphe qui ÉNUMÈRE est une liste écrite en prose. Les marqueurs qui le
+trahissent, et qui sont le signal de conversion :
+
+- des repères ordonnés dans le texte — « (a) … (b) … (c) », « premièrement … ensuite … enfin » ;
+- une annonce chiffrée — « trois conséquences », « deux risques », « quatre conditions » ;
+- une série de propositions séparées par des points-virgules sur plus de trois lignes ;
+- une suite de couples *cause → effet* ou *option → conséquence*.
+
+**La conversion.** Une liste par niveau de raisonnement, jamais plus de deux niveaux :
+l'énumération d'idées en premier niveau, ce qui les qualifie (preuve, conséquence, borne) en
+second. Une puce porte **une** idée ; si elle porte une phrase et sa justification, la
+justification devient une sous-puce ou reste en prose sous la liste.
+
+**Ce que ça ne remplace pas.** Un raisonnement qui ENCHAÎNE — où chaque proposition dépend de la
+précédente — se lit mieux en prose : le découper en puces casse le lien logique et laisse le
+lecteur reconstruire l'ordre. La liste sert l'énumération, pas la démonstration.
+
+**Mesuré** sur la reprise d'un livrable réel le 21/08 : les blocs « Risque » et « Impacts du
+changement » convertis donnent 71 listes de lecture et 243 puces, **les deux oracles restant
+PASS** — la conversion ne coûte rien aux contrôles existants et change la lisibilité du
+document. Une règle L en AVERTISSEMENT (un paragraphe au-delà de N lignes portant des marqueurs
+d'énumération) reste à instruire : elle ne serait jamais un échec, un auteur ayant toujours
+raison contre une heuristique de mise en forme.
+
 ## 4 — Accessibilité (WCAG 2.2 AA)
 
 - 🔴 Contraste texte ≥ **4.5:1** (≥ 3:1 si large ≥ 24px ou 19px bold).

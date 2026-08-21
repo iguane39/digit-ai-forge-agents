@@ -34,7 +34,15 @@
   <!-- A4 : marque — objet · client — indice de version DATÉ ({YYYYMMDD}{a,b,c…}, le même
        que le nom de fichier). Sans lui, deux révisions du même jour portent le même nom à
        l'écran ; « V1 » ne les distingue pas (défaut du 17/08, lot Produit-01). -->
-  <title>Digit-AI — {Objet} · {Client} — 20260817a</title>
+  <!--
+  TF-0442, sens ROUGE. Le tableau est DANS un conteneur .table-hote (overflow-x: auto) et il
+  déborde quand même : V1 compare le bord droit au viewport sans regarder si un ancêtre défile.
+  C'est l'état mesuré le 21/08 sur un livrable réel — 26 défauts à 390 px alors que TOUS les
+  tableaux étaient déjà dans un conteneur scrollable.
+
+  Attendu à 390 px : au moins 1 constat v1_overflow.
+-->
+<title>Digit-AI — V1 — tableau large sans repli — 20260821a</title>
   <meta name="description" content="{Résumé clair du livrable en une phrase.}">
   <meta name="theme-color" content="#2563EB">
   <!-- « light » à l'écriture : le script d'initialisation ci-dessus le passe à « dark » si,
@@ -231,8 +239,8 @@
   <div class="wrap">
     <header class="doc" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
       <div>
-        <p class="eyebrow">Digit-AI · {TypeDoc}</p>
-        <h1>{Titre du livrable}</h1>
+        <p class="eyebrow">Digit-AI · fixture de recette</p>
+        <h1>V1 — un conteneur qui défile ne fait pas passer V1</h1>
       </div>
       <!-- S-G1 (3/4, R-30) — bouton de bascule thème sombre -->
       <button id="theme-toggle" class="theme-toggle" type="button"
@@ -250,19 +258,26 @@
 
     <main>
       <section>
-        <h2>{Section}</h2>
-        <p>{Contenu en balises sémantiques. Décliner les couleurs via les tokens
-           <code>:root</code> uniquement, jamais en dur.}</p>
-
-        <div class="card">
-          <h3>{Sous-élément}</h3>
-          <p>{Carte de contenu — solidaire en PDF grâce à <code>break-inside: avoid</code>.}</p>
+        <h2>Tableau de mesures, cinq colonnes</h2>
+        <div class="table-hote">
+        <table>
+          <caption>Mesures relevées</caption>
+          <thead><tr><th scope="col">Identifiant</th><th scope="col">Périmètre</th><th scope="col">Contrôle</th><th scope="col">Sortie</th><th scope="col">Verdict</th><th scope="col">Gravité</th><th scope="col">Porteur</th><th scope="col">Échéance</th></tr></thead>
+          <tbody>
+        <tr><td>M-23</td><td>exposition</td><td>en-têtes de sécurité posés sur la réponse</td><td>trois en-têtes présents sur quatre attendus</td><td>écart</td><td>majeur</td><td>socle HTML</td><td>2026-08-21</td></tr>
+        <tr><td>M-23</td><td>exposition</td><td>en-têtes de sécurité posés sur la réponse</td><td>trois en-têtes présents sur quatre attendus</td><td>écart</td><td>majeur</td><td>socle HTML</td><td>2026-08-21</td></tr>
+        <tr><td>M-23</td><td>exposition</td><td>en-têtes de sécurité posés sur la réponse</td><td>trois en-têtes présents sur quatre attendus</td><td>écart</td><td>majeur</td><td>socle HTML</td><td>2026-08-21</td></tr>
+        <tr><td>M-23</td><td>exposition</td><td>en-têtes de sécurité posés sur la réponse</td><td>trois en-têtes présents sur quatre attendus</td><td>écart</td><td>majeur</td><td>socle HTML</td><td>2026-08-21</td></tr>
+        <tr><td>M-23</td><td>exposition</td><td>en-têtes de sécurité posés sur la réponse</td><td>trois en-têtes présents sur quatre attendus</td><td>écart</td><td>majeur</td><td>socle HTML</td><td>2026-08-21</td></tr>
+        <tr><td>M-23</td><td>exposition</td><td>en-têtes de sécurité posés sur la réponse</td><td>trois en-têtes présents sur quatre attendus</td><td>écart</td><td>majeur</td><td>socle HTML</td><td>2026-08-21</td></tr>
+          </tbody>
+        </table>
         </div>
       </section>
     </main>
 
     <footer class="doc">
-      Digit-AI — {Client} · {Scope} · 2026
+      Digit-AI · fixture · 2026
     </footer>
   </div>
 

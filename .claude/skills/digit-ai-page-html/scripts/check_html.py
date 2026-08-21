@@ -1274,6 +1274,86 @@ RE_BALISE = re.compile(r"<(\w+)\b([^>]*)>", re.S)
 RE_ATTR = re.compile(r"([\w-]+)\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)")
 
 
+def check_structure(a: Arbre):
+    """S1 — cohérence de tableau : chaque ligne du corps porte autant de cellules que l'en-tête.
+
+    Le fait qui la fait naître (TF-0445, 21/08/2026). Cinq lignes du tableau de mesures d'un
+    livrable portaient une barre verticale NON ÉCHAPPÉE à l'intérieur d'un `<span>` de code —
+    alternatives de regex (`grep -niE "deploy|webapp|acr"`) et opérateur de shell (`||`). Le
+    découpage en cellules a rendu 7 à 9 cellules pour un en-tête de 4, et le rendu a produit
+    UNE DEMI-PAGE BLANCHE sous la ligne concernée, visible sur la capture 1280 px que l'oracle
+    produit lui-même. Sur cette même page : `check_html` PASS « aucun problème détecté » et
+    `render_page` PASS, zéro bloquant aux trois breakpoints. Ni l'un ni l'autre ne comptait les
+    cellules d'une ligne.
+
+    C'est un défaut de STRUCTURE, pas de style : invisible à la relecture humaine d'un document
+    long, invisible à un contrôle de rendu (la page ne déborde pas, elle se troue), et pourtant
+    il rend le tableau faux — les valeurs glissent d'une colonne.
+
+    Ce que S1 NE juge PAS, et le déclare : un tableau portant un `rowspan` n'est pas comptable
+    ligne à ligne (une cellule d'une ligne occupe la suivante) ; ces tableaux sont écartés avec
+    leur motif plutôt que jugés à tort. Un tableau sans en-tête n'a pas de référence : il est
+    écarté de même.
+    """
+    fails, warns = [], []
+    tables = [n for n in a.racine.descendants() if n.tag == "table"]
+    if not tables:
+        return fails, warns
+
+    def _cellules(tr):
+        """Largeur d'une ligne, colspan compris. `colspan` illisible compte pour 1."""
+        largeur = 0
+        for c in tr.descendants():
+            if c.tag not in ("td", "th"):
+                continue
+            # Une cellule d'un tableau IMBRIQUÉ appartient à l'autre tableau, pas à celui-ci.
+            parent_tr = next((x for x in c.ancetres() if x.tag == "tr"), None)
+            if parent_tr is not tr:
+                continue
+            try:
+                largeur += max(1, int(str(c.att("colspan") or "1").strip()))
+            except ValueError:
+                largeur += 1
+        return largeur
+
+    ecartes = []
+    for i, table in enumerate(tables, 1):
+        lignes = [n for n in table.descendants() if n.tag == "tr"
+                  and next((x for x in n.ancetres() if x.tag == "table"), None) is table]
+        if len(lignes) < 2:
+            continue
+        if any(c.att("rowspan") for l in lignes for c in l.descendants() if c.tag in ("td", "th")):
+            ecartes.append(f"tableau {i} (rowspan : la largeur d'une ligne n'est pas comptable seule)")
+            continue
+        entete = next((l for l in lignes if any(c.tag == "th" for c in l.descendants())), None)
+        if entete is None:
+            ecartes.append(f"tableau {i} (aucun en-tête : pas de largeur de référence)")
+            continue
+        attendu = _cellules(entete)
+        if attendu == 0:
+            continue
+        for j, ligne in enumerate(lignes, 1):
+            if ligne is entete:
+                continue
+            large = _cellules(ligne)
+            if large == attendu:
+                continue
+            # Le premier texte de la ligne situe le défaut pour l'auteur, qui ne compte pas
+            # les <td> à l'œil dans un document de quarante lignes.
+            repere = " ".join(ligne.texte().split())[:48]
+            fails.append(
+                f"S1 tableau incohérent : tableau {i}, ligne {j} porte {large} cellule(s) pour "
+                f"un en-tête de {attendu} — « {repere} ». Cause la plus fréquente : un caractère "
+                "`|` non échappé dans une cellule (regex, opérateur de shell) qui a été lu comme "
+                "un séparateur. Le tableau rend faux — les valeurs glissent de colonne — et la "
+                "page se troue sans jamais déborder, donc aucun contrôle de rendu ne le voit.")
+    if ecartes:
+        warns.append("S1 non jugé sur " + ", ".join(ecartes[:4])
+                     + (f" et {len(ecartes) - 4} autre(s)" if len(ecartes) > 4 else "")
+                     + " — un tableau non comptable se déclare, il ne se juge pas à tort.")
+    return fails, warns
+
+
 def check_autonomie(html: str):
     """A1 : aucune ressource chargée par le réseau. Retourne (fails, warns)."""
     constats = []
@@ -1556,6 +1636,13 @@ def check(html: str, regles: str = "tout", source=None):
         fails += f
         warns += w
         f, w = check_theme_toggle(html)
+        fails += f
+        warns += w
+        # S1 (TF-0445) : cohérence de tableau. Défaut de STRUCTURE — invisible à la relecture
+        # humaine, invisible au rendu (la page se troue sans déborder), et pourtant le tableau
+        # rend faux. Il a fallu qu'un humain le voie sur une capture pendant que les deux
+        # oracles rendaient PASS.
+        f, w = check_structure(construire(html))
         fails += f
         warns += w
     if regles in ("tout", "L"):

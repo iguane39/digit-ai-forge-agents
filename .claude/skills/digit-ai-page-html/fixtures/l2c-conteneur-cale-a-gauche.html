@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 rendu — conteneur calé à gauche — 20260821a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+.col-lecture{width:min(100%,82ch)} .col-lecture p{max-width:none}
+</style></head>
+<!--
+  TF-0440, sens ROUGE. MEME page que l2r-chap-lire, a une chose pres : la colonne de lecture
+  n est plus centree (margin: 0 auto) mais calee a gauche (width: min(100%, 82ch)). Le
+  paragraphe remplit son conteneur — L2 classique dit donc PASS — et le lecteur voit la moitie
+  de la page vide a droite. C est l etat exact refuse par le lecteur humain le 21/08.
+
+  Attendu : au moins 1 constat l2_conteneur.
+-->
+<body><main class="wrap">
+<h1>L2 rendu — la bride déplacée d un cran : conteneur calé à gauche</h1>
+<section class="col-lecture"><p>Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. </p></section></main></body></html>

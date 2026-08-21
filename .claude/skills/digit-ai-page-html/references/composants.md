@@ -144,6 +144,54 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
 
 ---
 
+### 6 bis — Largeurs de colonnes : un tableau de données n'est pas une grille régulière 🔴
+
+**Retour humain du 21/08/2026** sur un livrable remis : « des colonnes avec uniquement un ID
+n'ont pas besoin d'une largeur aussi importante, et les colonnes avec des textes ont besoin de
+plus de largeur ». Mesure sur un tableau d'actions à 4 colonnes en `table-layout: fixed` sans
+largeurs déclarées : la colonne `#` — contenu le plus large, **un caractère** — recevait **25 %**
+de la largeur. Après dérivation depuis le contenu : 4,1 %, et les colonnes de texte passent de
+25 % chacune à 25 / 43 / 27 %.
+
+**La voie standard est `<colgroup>`**, et elle est utilisable depuis TF-0444 : `colgroup` et
+`col` étaient comptés par V4 comme des boîtes recouvrant `thead` et `tbody` — deux faux
+positifs BLOQUANTS par tableau, 50 sur un livrable réel — ce qui poussait les runs à porter les
+largeurs sur les `<th>`, contournement à refaire à chaque fois. L'oracle les exclut désormais.
+
+**Heuristique**, vérifiée sur les 25 tableaux d'une même page :
+
+1. `base` = max(longueur de l'en-tête, **90e centile** des longueurs de cellule de la colonne) —
+   le centile plutôt que le maximum, sinon une seule cellule bavarde emporte la colonne ;
+2. `poids` = `base ^ 0,6` — le texte se **replie**, il ne s'étale pas linéairement : une colonne
+   qui contient trois fois plus de caractères n'a pas besoin de trois fois plus de largeur ;
+3. plancher **4 %**, plafond **42 %**, puis renormalisation à 100 % ;
+4. une colonne dont le contenu le plus large tient en **12 caractères** passe en
+   `white-space: nowrap` — elle ne se repliera jamais, autant lui garantir sa ligne.
+
+```html
+<table class="repli-cartes">
+  <colgroup>
+    <col style="width:4%">    <!-- # : un caractère -->
+    <col style="width:25%">   <!-- Constat -->
+    <col style="width:43%">   <!-- Remédiation : la plus bavarde -->
+    <col style="width:28%">   <!-- Porteur -->
+  </colgroup>
+  <thead><tr><th scope="col">#</th><th scope="col">Constat</th><th scope="col">Remédiation</th><th scope="col">Porteur</th></tr></thead>
+  <tbody>
+    <tr><td data-label="#" class="serre">1</td><td data-label="Constat">…</td><td data-label="Remédiation">…</td><td data-label="Porteur">…</td></tr>
+  </tbody>
+</table>
+```
+```css
+table { table-layout: fixed; }
+td.serre, th.serre { white-space: nowrap; }   /* colonnes de ≤ 12 caractères */
+```
+
+**Ce que l'heuristique ne remplace pas** : la mesure. Les pourcentages se dérivent du contenu
+RÉEL du tableau, pas d'un gabarit — et le résultat se juge par `render_page.py` aux largeurs
+cibles, comme le seuil de repli ci-dessus. Un tableau dont une colonne tombe sous le plancher
+après renormalisation est un tableau qui a trop de colonnes : le replier, ou en retirer une.
+
 ## Note d'usage
 
 - **Recherche in-page** (surlignage insensible aux accents) : composant dédié déjà fourni,
