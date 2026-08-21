@@ -84,6 +84,14 @@ Si les lignes doivent être courtes, **rétrécir la colonne** — une grille, u
 mesure — et laisser le texte la remplir. Ne jamais laisser un paragraphe flotter dans une
 boîte deux fois plus large que lui.
 
+**Quelle que soit la propriété (TF-0421, lot Client-B 20260820a).** `width: min(75ch, 100%)`
+contournait la mesure (qui ne regardait que `max-width`) et produisait exactement le défaut :
+texte à 40 % d'un écran de 1 800 px, livré vert, refusé par le client. `render_page.py` L2
+retire `max-width` **et** `width` le temps d'une mesure : toute bride du texte en deçà de
+85 % de la place offerte échoue. La bonne forme est nommée et portée par le boilerplate :
+`section.chap.lire` (conteneur de lecture ~1 080 px) et `section.chap.duo` (grille 7/5 texte +
+encart utile) — composants.md §11.
+
 **Troisième forme : la gouttière d'étiquettes.** Une grille `étiquette | contenu` dont la
 colonne d'étiquettes prend 22 % de la largeur utile. Chaque colonne remplit sa case — la
 mesure de largeur ci-dessus rend 1,00 — et pourtant le lecteur voit un tiers de page vide et
@@ -244,6 +252,13 @@ section, d'au moins 40 caractères.
 **Contrôle mécanique.** `L7` — toute section cible du sommaire sans chapeau d'ouverture
 d'au moins 40 caractères.
 
+**Un chapeau est une phrase ÉCRITE, jamais générée (TF-0423, lot Client-B 20260820a).** Douze
+chapeaux identiques au mot près, posés par un script qui optimisait l'oracle, ont passé L7 sur
+un livrable refusé par le client. Trois formes mécaniques de ce défaut échouent désormais :
+chapeau **identique** dans deux chapitres ; chapeau tiré du **lexique de remplissage** (« ce
+chapitre apporte/présente les éléments annoncés par son titre ») ; chapeau de plus de 60 mots
+(un paragraphe reclassé). Corriger en **écrivant** — jamais en reformulant pour passer.
+
 **Revue de lecture.** Que le chapeau annonce le bon apport — un chapeau générique
 (« ce chapitre présente les données ») passe le contrôle et rate la règle.
 
@@ -254,7 +269,10 @@ d'au moins 40 caractères.
 
 **Deux formes acceptées.** Un libellé visible d'au moins **8 caractères** nommant la cible ;
 ou un libellé court accompagné d'un `title` / `aria-label` d'au moins 12 caractères qui la
-nomme.
+nomme. **La sortie la plus simple se dit en premier (TF-0434)** : un libellé qui est un
+**identifiant du document** (H5, E2, 1.5, ADR 0022) n'est pas muet pour son lecteur — il est
+elliptique pour un lecteur d'écran ; il reste court et prend un `title` de 12 caractères.
+L'allonger nuirait à la lecture.
 
 **Contrôle mécanique.** `L8` — tout `<a href="#…">` hors sommaire dont le texte visible fait
 moins de 8 caractères et qui ne porte ni `title` ni `aria-label` d'au moins 12 caractères.
@@ -386,8 +404,14 @@ simple observation du tableau.
 | Fidélité des libellés de lien | Le libellé nomme-t-il la cible ou un synonyme approximatif ? |
 | Barème | Les crans sont-ils discriminants et vérifiables ? |
 
-**Trace attendue** : la revue de lecture se consigne (défaut par défaut, preuve à l'appui).
-Un run qui déclare « lisibilité OK » sans énumérer ce qui a été relu n'a pas fait de revue.
+**Trace attendue — OBLIGATOIRE (TF-0422, lot Client-B 20260820a)** : la revue de lecture se
+consigne dans `REVUE.md` à côté du livrable, au gabarit
+[gabarit-revue-de-lecture.md](gabarit-revue-de-lecture.md) — captures lues (1920, 1280, 768,
+390 et une par section via `render_page.py --sections`), une ligne par constat (largeur ·
+section · constat · suite · preuve), ou la mention « aucun constat » datée. Un run qui
+déclare « lisibilité OK » sans `REVUE.md` n'a pas fait de revue : une page verte à tous les
+oracles a été refusée par son client à l'ouverture — les oracles mesurent des propriétés
+locales, personne ne regardait la page comme un lecteur.
 
 ## L13 — Une page à listes s'offre une recherche et des KPI vivants
 
@@ -443,11 +467,48 @@ les littéraux de L11.
 **Revue de lecture.** Qu'un motif exempté le soit pour une raison qui tient à la page, et non
 parce qu'on n'a pas voulu corriger l'émetteur.
 
+## L15 — Un glyphe en `content:` CSS existe dans la pile de repli (avertissement)
+
+**Règle.** Un caractère posé par `content:` s'affiche avec les polices du lecteur, pas les
+vôtres. Un chevron écrit `"\25B6"` passait tous les oracles et sortait en **tofu** sur mobile
+(TF-0435, lot Client-B 20260820b) : la pile de repli mono n'a pas ce caractère ; seul l'œil
+humain l'a vu sur les captures.
+
+**Contrôle mécanique.** `L15` — tout caractère hors Latin-1 et hors liste blanche (chevrons
+simples `› ‹`, guillemets, tirets, puces, flèches, coches) employé en `content:` est
+**signalé**, jamais un échec : « vérifiez ce glyphe sur un poste sans vos polices ». Préférer
+`›`, `•`, `–`, `→`, ou une icône SVG dessinée. Le socle emploie `›` (U+203A) partout.
+
+## L16 — Des onglets accessibles, et tous imprimés
+
+**Règle.** Un rapport à onglets se lit au clavier, s'ouvre au bon onglet depuis un lien, et
+s'imprime en entier. Composant : `assets/tabs.js` (composants.md §9, TF-0425).
+
+**Contrôle mécanique.** `L16` — tout `role="tab"` vise par `aria-controls` un `role="tabpanel"`
+existant ; tout panneau porte `aria-labelledby` vers son onglet ; des panneaux `hidden` sans
+règle `@media print` qui les réaffiche échouent.
+
+**Revue de lecture.** `render_page.py --sections "[role=tabpanel]"` : une capture par onglet,
+lue comme un lecteur qui n'en verrait qu'un.
+
+## L17 — Une ligne de tableau dépliable se déplie, se vise et s'imprime
+
+**Règle.** Le détail à la demande vit dans le tableau (`tr[data-detail]`), s'ouvre par un
+bouton, se déplie à l'impression, et suit sa ligne mère au filtrage. Composant :
+`assets/table-detail.js` (composants.md §10, TF-0432).
+
+**Contrôle mécanique.** `L17` — toute ligne `tr[data-detail]` a un `id`, un `<button
+aria-controls>` qui la vise, une cellule dont le `colspan` couvre toutes les colonnes, et une
+règle `@media print` qui la déplie.
+
+**Revue de lecture.** Que le détail dise plus que la ligne — sinon c'est un dépliant qui cache
+trop peu (L9).
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L14
-python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L14)
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L17
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L17)
 python scripts/check_html.py page.html --output json
 python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu
 python scripts/self_test.py                            # fixtures rouges et vertes du skill

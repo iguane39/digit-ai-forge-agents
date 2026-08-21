@@ -73,6 +73,17 @@ Une classe par couleur sémantique, à appliquer sur un `<g>` qui contient `<rec
 ```
 À appliquer sur un `<rect>` qui englobe toute une zone fonctionnelle (ex. : la bande des pipelines, le cadre d'une organisation Azure DevOps). La couleur du stroke encode la nature de la zone (violet pour l'Agent IA, gris pour neutre).
 
+### Superpositions voulues et `data-overlap-ok` (TF-0424, lot Client-B 20260820a)
+
+`render_page.py` V4 juge les **chevauchements entre nœuds** et entre nœud et flèche. Les formes
+internes d'un **groupe titré** (`<g><title>…</title><rect/><text/></g>`) se superposent par
+construction — un nœud de schéma est UN objet — et ne sont plus jugées : grouper chaque nœud
+dans un `<g>` porteur d'un `<title>` suffit, **sans poser `data-overlap-ok` sur chaque forme**
+(l'exemple de référence en portait 581, déduits de l'exemple faute de doc). `data-overlap-ok`
+reste la déclaration d'une superposition voulue **entre nœuds** (badge sur un coin de boîte,
+étiquette à cheval sur une flèche) : il se pose sur l'un des deux éléments frères concernés,
+et il documente un choix, pas une gêne.
+
 ## 4 · Markers de flèches
 
 Toujours définir les markers dans `<defs>` au début du SVG, avec `refX=9` (pointe nette qui touche bien le bord du nœud cible) :

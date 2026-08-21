@@ -67,7 +67,10 @@ FONT_DIR_CANDIDATES = [
     Path("/mnt/skills/user/digit-ai-schemas/scripts/fonts"),
 ]
 
-DEFAULT_WIDTHS = [1280, 768, 390]
+# TF-0422 (lot Client-B 20260820a, 21/08) : 1920 entre dans les largeurs par défaut — le défaut de
+# colonne étroite (texte à 40 % d'un écran de 1 800 px, livré vert, refusé par le client) ne se
+# voit qu'à partir de ~1 600 px ; 1280/768/390 ne le montraient jamais.
+DEFAULT_WIDTHS = [1920, 1280, 768, 390]
 
 # L2 au rendu : un bloc de texte doit occuper au moins ce ratio de la largeur que
 # son conteneur lui offre. En dessous, la page laisse du vide la ou le lecteur
@@ -311,10 +314,16 @@ MEASURE_JS = r"""
       const rr = racine.getBoundingClientRect();
       return rr.width > 0 && rr.height > 0 && rr.width < 48 && rr.height < 48;
     })();
+    // TF-0424 (lot Client-B 20260820a) : les formes INTERNES d'un groupe SVG titre (<g><title>…)
+    // se superposent par construction — un rect et son text sont un seul noeud de schema, pas
+    // deux elements de mise en page. V4 ne juge que les chevauchements ENTRE noeuds et entre
+    // noeud et fleche ; data-overlap-ok n'est plus a poser sur chaque forme d'un noeud.
+    const groupeTitre = parent.tagName.toLowerCase() === 'g' &&
+      [...parent.children].some((c) => c.tagName.toLowerCase() === 'title');
     for (let i = 0; i < kids.length; i++) {
       for (let j = i + 1; j < kids.length; j++) {
         const a = kids[i], b = kids[j];
-        if (svgIcone) continue;
+        if (svgIcone || groupeTitre) continue;
         if (a.el.hasAttribute('data-overlap-ok') || b.el.hasAttribute('data-overlap-ok')) continue;
         const sa = getComputedStyle(a.el), sb = getComputedStyle(b.el);
         if (sa.position === 'absolute' || sb.position === 'absolute' ||
@@ -429,21 +438,29 @@ MEASURE_JS = r"""
       if (txt.length < __L2_MIN_CHARS__) continue;
       if (el.closest('table') || el.closest('nav')) continue;
       const cs = getComputedStyle(el);
-      if (cs.maxWidth === 'none' || cs.display === 'inline') continue;
+      if (cs.display === 'inline') continue;
+      // TF-0421 (lot Client-B 20260820a) : la bride se mesure QUELLE QUE SOIT la propriete.
+      // `width: min(75ch, 100%)` passait (maxWidth === 'none') et laissait 60 % de la fenetre
+      // vide a 1 800 px — livre vert, refuse par le client. On retire max-width ET width le temps
+      // d'une mesure : l'element dit alors la place que son conteneur lui offre. Une colonne de
+      // grille ne bouge pas ; un paragraphe bride, si. La mesure de lecture se pose sur le
+      // CONTENEUR (.chap.lire), jamais sur le paragraphe (lisibilite.md L2).
       const w1 = el.getBoundingClientRect().width;
-      const avant = el.style.maxWidth;
-      el.style.maxWidth = 'none';
+      const avantMax = el.style.maxWidth, avantW = el.style.width;
+      el.style.maxWidth = 'none'; el.style.width = 'auto';
       const w2 = el.getBoundingClientRect().width;
-      el.style.maxWidth = avant;
+      el.style.maxWidth = avantMax; el.style.width = avantW;
       if (w2 <= 0) continue;
       const ratio = w1 / w2;
       if (ratio < __L2_MIN_RATIO__) {
-        const cle = el.tagName + '|' + (el.className || '') + '|' + cs.maxWidth;
+        const bride = cs.maxWidth !== 'none' ? `max-width:${cs.maxWidth}` : `width:${cs.width} (conteneur ${Math.round(w2)}px)`;
+        const cle = el.tagName + '|' + (el.className || '') + '|' + bride;
         if (vus.has(cle)) continue;
         vus.add(cle);
         issues.l2_width.push({ what: label(el), detail:
           `largeur ${Math.round(w1)}px pour ${Math.round(w2)}px disponibles ` +
-          `(ratio ${ratio.toFixed(2)}, seuil __L2_MIN_RATIO__) — bride par max-width:${cs.maxWidth}` });
+          `(ratio ${ratio.toFixed(2)}, seuil __L2_MIN_RATIO__) — bride par ${bride} ; ` +
+          `poser la mesure de lecture sur le conteneur (.chap.lire), pas sur le texte` });
       }
     }
   }
@@ -523,7 +540,7 @@ FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
 
 def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json: bool,
         out_dir: Path | None = None, etats_ouverts: bool = False,
-        capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT) -> int:
+        capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None) -> int:
     ensure_browser_path()
     ensure_local_fonts()
     try:
@@ -584,6 +601,18 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                     target.screenshot(path=str(png), timeout=capture_timeout)
                 else:
                     page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+                # TF-0422 : une capture PAR SECTION — un panneau d'onglet masqué est rendu
+                # visible le temps de sa capture, puis remis dans son état.
+                if sections:
+                    for i, handle in enumerate(page.query_selector_all(sections), start=1):
+                        etait_cache = handle.evaluate("el => { const h = el.hidden; el.hidden = false; return h; }")
+                        try:
+                            handle.screenshot(path=str(png_dir / f"{html_path.stem}-w{width}-section{i:02d}.png"),
+                                              timeout=capture_timeout)
+                        finally:
+                            if etait_cache:
+                                handle.evaluate("el => { el.hidden = true; }")
+                    capture["sections"] = len(page.query_selector_all(sections))
             except Exception as erreur:  # noqa: BLE001 — toute panne, pas seulement le delai
                 hauteur = page.evaluate("() => document.documentElement.scrollHeight")
                 capture = {
@@ -711,13 +740,18 @@ def main() -> None:
                     help="TF-0176 : ouvre details + premier panneau de filtre + remplit la "
                          "première recherche AVANT mesures et captures — l'état fermé cache "
                          "les défauts des composants interactifs")
+    ap.add_argument("--sections", default=None,
+                    help="TF-0422 : sélecteur CSS des sections à capturer UNE PAR UNE en plus "
+                         "de la page (ex. [role=tabpanel], section.chap) — un panneau masqué "
+                         "est rendu visible le temps de sa capture. C'est la matière de la "
+                         "revue de lecture (references/gabarit-revue-de-lecture.md)")
     args = ap.parse_args()
     if not args.html.is_file():
         sys.exit(f"ERREUR : fichier introuvable : {args.html}")
     widths = [int(w) for w in str(args.widths).split(",") if w.strip()]
     raise SystemExit(run(args.html, widths, args.selector, args.scale,
                          args.output == "json", args.out_dir, args.etats_ouverts,
-                         args.capture_timeout))
+                         args.capture_timeout, args.sections))
 
 
 if __name__ == "__main__":

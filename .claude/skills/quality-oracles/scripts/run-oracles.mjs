@@ -80,7 +80,20 @@ const today = new Date().toISOString().slice(0, 10);
 const findExempt = (f, domaine) => exemptions.find(e => (path.basename(f) === e.fichier || rel(f).endsWith(e.fichier)) && e.domaine === domaine);
 
 // ---- C5 : cache par hash (contenu + script + profil) — jamais de cache sur FAIL ni SKIP --------
-const cachePath = fs.statSync(target).isFile() ? target + '.oracles-cache.json' : path.join(target, '.oracles-cache.json');
+// TF-0428 (lot Client-B 20260820a, 21/08) — même doctrine que render_page.py (TF-0230) : sous un
+// arbre de LIVRAISON (output/, old/, dist/, build/), aucun journal à côté du livrable — ce que le
+// client reçoit ne contient pas les traces de son audit. Les sidecars vont dans un dossier
+// frère `_oracles/` (déjà ignoré par walk()), et l'emplacement est annoncé en fin d'exécution.
+const SEGMENTS_LIVRAISON = new Set(['output', 'old', 'Old', 'dist', 'build']);
+const sousLivraison = p => path.resolve(p).split(/[\\/]/).some(s => SEGMENTS_LIVRAISON.has(s));
+const dossierSidecars = fs.statSync(target).isFile() ? path.dirname(target) : target;
+const horsLivraison = sousLivraison(target) ? path.join(dossierSidecars, '_oracles') : null;
+if (horsLivraison) { try { fs.mkdirSync(horsLivraison, { recursive: true }); } catch {} }
+const cheminSidecar = (suffixe, nomDossier) => {
+  if (fs.statSync(target).isFile()) return horsLivraison ? path.join(horsLivraison, path.basename(target) + suffixe) : target + suffixe;
+  return horsLivraison ? path.join(horsLivraison, nomDossier) : path.join(target, nomDossier);
+};
+const cachePath = cheminSidecar('.oracles-cache.json', '.oracles-cache.json');
 let cache = {}; if (!NOCACHE && fs.existsSync(cachePath)) { try { cache = JSON.parse(fs.readFileSync(cachePath, 'utf8')); } catch {} }
 const sha = b => crypto.createHash('sha256').update(b).digest('hex').slice(0, 16);
 const fileHash = new Map();
@@ -203,8 +216,9 @@ const nPass = results.filter(r => r.verdict === 'PASS').length;
 const nSkip = results.filter(r => r.verdict === 'SKIP').length;
 const verdict = nFail ? 'FAIL' : (nPass ? 'PASS' : 'INCONCLUSIF');
 const journal = { cible: target, date_iso: new Date().toISOString(), registre_version: registry.version, profil: path.basename(profilPath, '.json'), niveau: NIVEAU, verdict, resume: { pass: nPass, fail: nFail, skip: nSkip, cache: cacheHits }, bilan_fichiers: bilan, bilan_complet: bilanOk, exemptions_actives: exemptes, resultats: results, actions_couverture: actions };
-const journalPath = fs.statSync(target).isFile() ? target + '.oracles.json' : path.join(target, '_oracles-journal.json');
+const journalPath = cheminSidecar('.oracles.json', '_oracles-journal.json');
 fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2), 'utf8');
+if (horsLivraison && !JSON_OUT) console.error('journaux d\'oracles écrits HORS livraison (TF-0428) : ' + horsLivraison);
 const histoPath = journalPath.replace(/\.json$/, '-historique.jsonl');
 fs.appendFileSync(histoPath, JSON.stringify({ date_iso: journal.date_iso, verdict, profil: journal.profil, niveau: NIVEAU, resume: journal.resume, fails: results.filter(r => r.verdict === 'FAIL').map(r => r.domaine + ':' + r.file) }) + '\n', 'utf8');
 const exitCode = verdict === 'FAIL' ? 1 : verdict === 'INCONCLUSIF' ? 2 : 0;
