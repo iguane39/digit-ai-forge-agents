@@ -51,4 +51,23 @@
 .tf-opts label:hover { background: var(--bg, #f6f8fc); }
 .tf-opts input[type="checkbox"] { accent-color: var(--blue); }
 
-@media print { .tf-btn, .tf-panel { display: none; } }
+/* TF-0431 : panneau aligne a droite quand la place manque (choisi par le composant) ;
+   le conteneur defilant porteur d'un panneau ouvert ne rogne plus (data-tf-ouvert). */
+.tf-panel.tf-droite { left: auto; right: 0; }
+[data-tf-ouvert] { overflow: visible !important; }
+
+/* TF-0430 : etat vide — un filtre qui ne laisse rien le DIT dans le tableau, et offre la
+   seule action utile a ce moment. */
+tr[data-tf-empty] td {
+  padding: 18px 12px; text-align: center; color: var(--muted);
+  font-style: italic; border-bottom: 1px solid var(--line);
+}
+.tf-reset {
+  font: inherit; font-style: normal; font-weight: 600; color: var(--blue);
+  background: none; border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 4px 10px; margin-left: 10px; cursor: pointer;
+}
+.tf-reset:hover { border-color: var(--blue); }
+.tf-reset:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+@media print { .tf-btn, .tf-panel, tr[data-tf-empty] { display: none; } }

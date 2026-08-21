@@ -130,8 +130,9 @@ livrable ne peut pas s'exempter lui-même.
 Puis lancer l'**oracle zéro défaut visuel** (rendu multi-breakpoints + mesures) :
 
 ```bash
-python scripts/render_page.py page.html            # défaut : 1280, 768, 390 px
+python scripts/render_page.py page.html            # défaut : 1920, 1280, 768, 390 px (TF-0422)
 # schéma : --selector .diagram-wrap · JSON : --output json
+# revue de lecture : --sections "[role=tabpanel]"  → une capture par section, par largeur
 ```
 
 Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de la largeur
@@ -165,9 +166,14 @@ règles sont nées de défauts relevés par des lecteurs humains sur un livrable
 trois oracles précédents validaient — chacune a sa fixture rouge.
 
 Ce qui suppose de LIRE (clarté du propos, pertinence, justesse d'un chapeau) n'est pas
-mécanisé : c'est la **revue de lecture**, déclarée comme telle et à la charge de
-l'orchestrateur du run. Règles, conventions de marquage et partage mécanique / revue :
-[references/lisibilite.md](references/lisibilite.md).
+mécanisé : c'est la **revue de lecture — OBLIGATOIRE avant toute livraison (TF-0422)**.
+Capturer (`render_page.py`, 1920/1280/768/390 + `--sections`), **ouvrir et lire** les
+captures, consigner chaque constat dans `REVUE.md` au gabarit
+[references/gabarit-revue-de-lecture.md](references/gabarit-revue-de-lecture.md) (largeur ·
+section · constat · suite · preuve) ou la mention « aucun constat » datée. Une page verte à
+tous les oracles a été refusée par son client à l'ouverture : les oracles mesurent des
+propriétés locales, la revue regarde la page comme un lecteur. Règles, conventions de
+marquage et partage mécanique / revue : [references/lisibilite.md](references/lisibilite.md).
 
 ## Référentiel détaillé
 
@@ -184,7 +190,7 @@ l'orchestrateur du run. Règles, conventions de marquage et partage mécanique /
 
 **Optionnel** —
 
-- Bibliothèque de composants chartés prêts à coller (KPI, badges de statut, barres de progression, légende, barre d'outils + compteur, tableau repliable en cartes), validés par les oracles : [references/composants.md](references/composants.md).
+- Bibliothèque de composants chartés prêts à coller (KPI, badges de statut, barres de progression, légende, barre d'outils + compteur, tableau repliable en cartes, **onglets accessibles** `assets/tabs.js` — L16, **ligne de tableau dépliable** `assets/table-detail.js` — L17, gabarits de chapitre `.chap.lire`/`.chap.duo` — L2), validés par les oracles : [references/composants.md](references/composants.md).
 - Recherche dans le document + compteur d'occurrences (pour catalogues/référentiels parcourus,
   insensible aux accents, viewer-only) : [references/composant-recherche.md](references/composant-recherche.md)
   (asset : [assets/find-in-page.js](assets/find-in-page.js)).
