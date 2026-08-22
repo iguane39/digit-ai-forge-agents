@@ -3,13 +3,24 @@ name: digit-ai-page-html
 description: >
   Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Ceetrus, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
 metadata:
-  version: "1.6.0"
+  version: "1.7.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.7.0 (22/08/2026)** — trois retours clients fermés.
+**L1** : le SUJET d'un sélecteur est son DERNIER composant, plus son premier —
+`a.kpi .kpi-label{display:flex}` faisait de tout lien un élément de bloc, et six phrases
+correctes échouaient d'un coup ; le message nomme désormais le sélecteur fautif.
+**L18** (neuve) : un identifiant du vocabulaire du livrable — `E2`, `H3`, `ADR 0009` — RÉSOUT à
+sa première occurrence (`title`, `aria-describedby`, ancre interne). Retour direct du client :
+« je ne sais pas ce qu'est E2 ».
+**L19** (neuve) : `overflow-wrap: anywhere` sur un sélecteur de PROSE est refusé — nécessaire sur
+un chemin, ravageur sur du texte courant (« Utilisabl/e », « 231 occurrenc/es »).
+Recette 91/91 → 95/95.
 
 ## Cibles de rendu
 
