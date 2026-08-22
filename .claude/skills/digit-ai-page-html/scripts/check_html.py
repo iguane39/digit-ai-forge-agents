@@ -605,6 +605,20 @@ def _cite(porteur) -> bool:
     return any(n.tag in BALISES_CITATION for n in [porteur, *porteur.ancetres()])
 
 
+def _contenu_cite(porteur) -> bool:
+    """Le texte vient-il d'une zone déclarée CITÉE (`data-cite`) ?
+
+    Même doctrine que TF-0436 côté oracle-slop (21/08) : un oracle de FORME ne juge pas un
+    texte que le livrable n'a pas écrit. Cas réel du 22/08 : la page du registre TODO rend le
+    `contenu` des candidatures — écrit par leurs émetteurs, souvent en énumérations — et L12
+    l'accusait de « données en prose ». Corriger reviendrait à réécrire le registre, qui est
+    append-only. La zone se DÉCLARE (`data-cite`), elle ne se devine pas : c'est une
+    convention exigible, pas une exemption tacite, et elle ne couvre que L12 — tout le reste
+    (troncature, contraste, largeur, liens) continue de juger le rendu, cité ou non.
+    """
+    return any("data-cite" in n.attrs for n in [porteur, *porteur.ancetres()])
+
+
 def check_lisibilite(html: str, a: Arbre):
     fails, warns = [], []
     ids = index_ids(a)
@@ -1162,6 +1176,8 @@ def check_lisibilite(html: str, a: Arbre):
         if t.count(";") < 2 or len(t) < 60:
             continue
         if porteur.tag in ("code", "pre", "script", "style"):
+            continue
+        if _contenu_cite(porteur):     # zone déclarée citée (data-cite) — texte non écrit par la page
             continue
         segments = [s.strip() for s in t.split(";") if s.strip()]
         couples = [s for s in segments if RE_SEGMENT.match(s)]

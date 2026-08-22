@@ -61,6 +61,10 @@ CAS = {
     "l9-depliant-muet.html": {"L9"},
     "l9-depliant-inutile.html": {"L9"},
     "l12-enumeration-en-prose.html": {"L12"},
+    # 22/08 — la MÊME page, sa zone de contenu déclarée citée (data-cite) : L12 se tait.
+    # Doctrine TF-0436 étendue : un oracle de forme ne juge pas un texte que la page n'a pas
+    # écrit. Cas réel : la page du registre TODO rend le contenu des candidatures.
+    "l12-enumeration-citee.html": set(),
     "l10-table-sans-mode-emploi.html": {"L10"},
     # Delta n°6 (14/08) : liste ≥ 8 lignes sans champ de recherche statique — L13 seule
     # (data-filterable pose L4 muette, exemple de lecture pose L10 muette).
