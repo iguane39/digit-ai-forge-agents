@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.8.0"
+  version: "2.9.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -91,6 +91,14 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   **bilan 4 états** par fichier (jugé / exempté / délégué / signalé — somme = nb de fichiers, aucun silence), exemptions, journal `<cible>.oracles.json` + historique `*-historique.jsonl`.
   Le journal et chaque ligne d'historique portent l'**empreinte du contenu jugé** au format existant `forge-ops/empreinte@1`
   (`{format, release, ts, fichiers:{chemin: sha256 complet}}`) : un verdict dit désormais SUR QUOI il a été rendu.
+- **Où vivent les journaux** — sous un segment de livraison (`output/`, `old/`, `dist/`, `build/`), les journaux
+  sortent AU-DESSUS du premier segment rencontré, dans un `.oracles/` qui rejoue l'arborescence relative.
+  Corrigé le 22/08/2026 (TF-0501) : l'intention « ce que le client reçoit ne contient pas les traces de son audit »
+  était écrite depuis TF-0428 et n'était pas tenue — `_oracles/` était un dossier ENFANT du dossier livré, et le
+  message annonçait pourtant « HORS livraison », ce qui rendait le défaut invisible. Un journal écrit avant ce
+  correctif reste lu en repli dans l'ancien `_oracles/`, jamais réécrit.
+- **Registre injectable** — `--registre <chemin>` charge un registre d'oracles autre que celui du skill.
+  Sert les recettes qui doivent faire passer un oracle particulier sur une cible (TF-0497).
 - **Fraîcheur d'un verdict** — `node scripts/run-oracles.mjs <cible> --verifier-empreinte` : confronte l'empreinte du journal au
   contenu présent, **sans rejouer les oracles**. `FRAIS` (exit 0) · **`PERIME` (exit 1) — un verdict périmé BLOQUE**, il n'avertit pas
   (arbitrage humain du 22/08/2026) · `NON JUGEABLE` (exit 2) quand il n'y a pas de journal, ou quand le journal est ANTÉRIEUR au
