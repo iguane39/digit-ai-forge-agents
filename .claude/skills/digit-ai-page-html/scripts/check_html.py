@@ -101,6 +101,15 @@ RE_LITTERAL = re.compile(
     r"\{\{[^}\n]{0,40}\}\}|\$\{[^}\n]{0,40}\})"
     r"(?=$|[\s)\]».;,:!?<—–-])")
 
+# L18 (TF-0517) — les RENVOIS CODÉS du vocabulaire d'un livrable. Motif fermé et volontairement
+# étroit : ce sont les familles réellement employées par les livrables de la maison. Un jeton hors
+# de cette liste n'est pas détecté, et c'est le prix du zéro faux positif — `E2` est un renvoi,
+# `A4` est un format de papier, et seule la liste les sépare.
+# `TF-nnnn` est VOLONTAIREMENT hors du motif : un identifiant de notre registre dans un texte
+# rendu est de la plomberie interne, donc le domaine de L14 — l'y remettre ferait crier deux
+# règles pour un seul défaut, et L18 signalerait les pages qui PARLENT du registre.
+RE_RENVOI = re.compile(r"\b(?:[ECH]\d{1,3}|Q-[A-Z]{1,3}\d{0,3}|R[AD]-\d{1,3}|ADR\s\d{4})\b")
+
 # L14 — la PLOMBERIE affichée : une convention de balisage interne qui traverse le rendu.
 #
 # Né d'un défaut livré (SCC_ALX, 14/08) : un rapport diffusé portait 71 occurrences de
@@ -646,22 +655,50 @@ def check_lisibilite(html: str, a: Arbre):
     # retrouve seule en tête de ligne. Constaté en production : « Le blocage
     # principal — », puis le titre du nœud, puis « . La fusion à opérer… ». Le
     # point est orphelin, la phrase coupée en deux, et rien ne le signalait.
+    # TF-0488 (22/08/2026) — LE SUJET D'UN SÉLECTEUR EST SON DERNIER COMPOSANT, PAS LE PREMIER.
+    # La collecte lisait `re.match(r"^([a-z]...)", sélecteur)` et ramassait TOUTES les classes du
+    # sélecteur. Sur `a.kpi .kpi-label { display: flex }` elle capturait donc « a » et « .kpi »,
+    # alors que le display s'applique à `.kpi-label` — le descendant. Conséquence : `a` entrait
+    # dans l'ensemble des blocs, et TOUTE ponctuation suivant un lien devenait une faute.
+    #
+    # MESURÉ chez un produit : six échecs bloquants d'un coup sur des phrases parfaitement formées
+    # du type « … voir la <a>matrice 7.2</a>. ». Et le message ne pouvait pas mettre sur la voie :
+    # il désignait la PHRASE, jamais le sélecteur qui l'avait rendue fautive. Contournement subi :
+    # réécrire huit sélecteurs pour qu'ils commencent par une classe — c'est-à-dire déformer la
+    # feuille de style pour plaire au contrôle.
+    #
+    # On découpe donc sur les combinateurs (espace, `>`, `+`, `~`), on garde le DERNIER compound,
+    # et on retient AUSSI quel sélecteur a fait entrer chaque jeton : le message le nomme.
     blocs = set()
+    origine = {}
     for sel, d in css:
         if d.get("display") in ("block", "flex", "grid", "table", "list-item"):
             for morceau in sel.split(","):
                 m = morceau.strip()
-                for cl in re.findall(r"\.([A-Za-z_][\w-]*)", m):
-                    blocs.add("." + cl)
-                mt = re.match(r"^([a-z][a-z0-9]*)", m)
+                if not m:
+                    continue
+                sujet = re.split(r"[\s>+~]+", m)[-1]
+                jetons = ["." + cl for cl in re.findall(r"\.([A-Za-z_][\w-]*)", sujet)]
+                mt = re.match(r"^([a-z][a-z0-9]*)", sujet)
                 if mt:
-                    blocs.add(mt.group(1))
+                    jetons.append(mt.group(1))
+                for j in jetons:
+                    blocs.add(j)
+                    origine.setdefault(j, m)
     blocs |= {"p", "div", "section", "li", "dd", "dt", "h1", "h2", "h3", "h4",
               "ul", "ol", "dl", "table", "details", "summary", "nav", "header",
               "footer", "main", "article", "aside", "blockquote", "figure"}
 
     def est_bloc(n):
         return n.tag in blocs or any(("." + c) in blocs for c in n.classes())
+
+    # Le sélecteur fautif, pour que le message mette sur la voie (TF-0488). Une règle qui désigne
+    # la phrase oblige à deviner ; une règle qui nomme le sélecteur se corrige en une lecture.
+    def pourquoi_bloc(n):
+        for j in [n.tag, *["." + c for c in n.classes()]]:
+            if j in origine:
+                return f" (mis en bloc par le sélecteur « {origine[j]} »)"
+        return " (élément de bloc par défaut du langage)"
 
     orphelines = []
     for parent in [a.racine, *a.racine.descendants()]:
@@ -674,12 +711,12 @@ def check_lisibilite(html: str, a: Arbre):
                 continue
             t = e.lstrip()
             if t and t[0] in ".,;:!?…" and prec is not None and est_bloc(prec):
-                orphelines.append((t[:44], prec.chemin()))
+                orphelines.append((t[:44], prec.chemin(), pourquoi_bloc(prec)))
             if e.strip():
                 prec = None
-    for extrait, ou in orphelines[:6]:
+    for extrait, ou, cause in orphelines[:6]:
         fails.append(f"L1 ponctuation orpheline : une ligne s'ouvre sur « {extrait} » "
-                     f"après l'élément de bloc {ou} — la phrase a été coupée par "
+                     f"après l'élément de bloc {ou}{cause} — la phrase a été coupée par "
                      "l'insertion d'un élément en son milieu.")
 
     # --- L11 : aucun littéral de langage dans le texte visible ------------
@@ -985,6 +1022,125 @@ def check_lisibilite(html: str, a: Arbre):
             f"L14 {len(marqueurs)} marqueur(s) de travail dans le texte visible "
             f"({', '.join(distincts)}) — légitime si la page PARLE de tâches, à retirer "
             "sinon ; jamais un échec, une page honnête ne doit pas s'exempter.")
+
+    # --- L18 : un IDENTIFIANT porte son sens (TF-0517, 22/08/2026) ---------
+    # Retour DIRECT du client, en cours de session : « je ne sais pas ce qu'est E2 ». Sa consigne
+    # tient en une phrase — garder les codes, ils servent la traçabilité, mais les accompagner de
+    # leur SENS à chaque emploi.
+    #
+    # La référence couvrait deux cas VOISINS et laissait celui-ci entre les deux : L3 exige qu'une
+    # VALEUR mise en avant porte sa légende (« Maturité 1/5 sans barème n'informe pas »), L14
+    # interdit que la PLOMBERIE interne s'affiche. Un identifiant qui appartient légitimement au
+    # vocabulaire du livrable — E2, C1, H3, Q-M8, ADR 0009 — n'est ni l'un ni l'autre : c'est un
+    # RENVOI MUET, et rien ne le voyait.
+    #
+    # LE PLUS INSTRUCTIF, et c'est ce qui rend la règle mécanisable sans invention : le rapport HTML
+    # du même projet FAISAIT DÉJÀ LA CHOSE CORRECTEMENT — chaque renvoi portait une infobulle
+    # « Question ouverte H3 : … » et un lien vers sa définition. La bonne pratique existait dans le
+    # produit ; comme elle n'était écrite nulle part, ELLE S'ARRÊTAIT À LA FRONTIÈRE DU HTML et ne
+    # passait ni dans les livrables Markdown ni dans la restitution.
+    #
+    # CE QUI EST JUGÉ : la PREMIÈRE occurrence de chaque jeton dans la page doit RÉSOUDRE — un
+    # `title` non vide, un `aria-label`, un `aria-describedby` qui pointe une cible existante, ou un
+    # lien interne vers une ancre présente. Les occurrences suivantes ne sont pas exigées : imposer
+    # la glose à chaque ligne produirait du bruit, et le client demandait de comprendre, pas de
+    # répéter. Les zones CITÉES (`<code>`, `<pre>`, `<blockquote>`) sont hors jugement, comme
+    # ailleurs : une citation ne se glose pas sans falsifier sa source.
+    ids_page = {n.attrs["id"] for n in a.racine.descendants() if n.attrs.get("id")}
+    vus = set()
+    muets = []
+    # DEUX BORNES, trouvées en jouant la règle sur les fixtures existantes — trois faux positifs
+    # d'un coup, tous légitimes :
+    #   · le `<head>` n'est PAS de la prose lue. Un `<title>` qui cite un identifiant décrit la
+    #     page, il ne renvoie à rien ; exiger une glose dans un titre de document est absurde ;
+    #   · un TITRE qui porte un `id` EST la définition du jeton. `<h2 id="q-h5">Question H5 …</h2>`
+    #     n'a pas à renvoyer vers lui-même — c'est la cible des autres renvois. Une règle qui
+    #     demande à une définition de se gloser tourne en rond.
+    lignee = lambda n: [n, *n.ancetres()]
+    dans_tete = lambda n: any(x.tag == "head" for x in lignee(n))
+    est_definition = lambda n: any(x.tag in ("h1", "h2", "h3", "h4", "h5", "h6", "dt")
+                                   and (x.attrs.get("id") or "").strip() for x in lignee(n))
+    for txt, porteur in a.textes:
+        t = txt.strip()
+        if not t or _cite(porteur) or dans_tete(porteur) or est_definition(porteur):
+            continue
+        for m in RE_RENVOI.finditer(t):
+            jeton = m.group(0)
+            if jeton in vus:
+                continue
+            vus.add(jeton)
+            resout = False
+            for n in [porteur, *porteur.ancetres()]:
+                if (n.att("title") or "").strip() or (n.att("aria-label") or "").strip():
+                    resout = True
+                    break
+                cible = (n.att("aria-describedby") or "").strip()
+                if cible and any(c in ids_page for c in cible.split()):
+                    resout = True
+                    break
+                href = (n.att("href") or "").strip()
+                if href.startswith("#") and href[1:] in ids_page:
+                    resout = True
+                    break
+                if (n.att("data-code-glose") or "").strip():
+                    resout = True
+                    break
+            if not resout:
+                muets.append((jeton, porteur.chemin()))
+    for jeton, ou in muets[:6]:
+        fails.append(
+            f"L18 identifiant muet : « {jeton} » employé sans son sens ({ou}) — première "
+            "occurrence dans la page. Un code sert la traçabilité, il ne se lit pas : joindre "
+            "un `title` qui le développe, un `aria-describedby` vers sa définition, ou un lien "
+            "interne vers son ancre. Retour client du 22/08 : « je ne sais pas ce qu'est E2 ».")
+    if len(muets) > 6:
+        fails.append(f"L18 identifiant muet : {len(muets) - 6} autre(s) jeton(s) sans glose.")
+
+    # --- L19 : la coupure de mot au rendu (TF-0492, 22/08/2026) ------------
+    # Trois occurrences signalées par le client sur deux versions successives : « Utilisabl/e »,
+    # « Plateform/e », « 231 occurrenc/es ». Cause : `overflow-wrap: anywhere`, nécessaire sur les
+    # identifiants techniques et les chemins, RAVAGEUR sur du texte courant en colonne étroite.
+    #
+    # Aucun oracle ne le voyait : le texte n'est ni tronqué (L1), ni en débordement (V1), ni en
+    # contraste insuffisant (V2) — il est simplement ILLISIBLE, et c'est la première chose que voit
+    # un lecteur. Le contrôle du RENDU (deux fragments sur deux lignes sans césure) demande un
+    # navigateur et vit dans `render_page.py` ; ici, le complément STATIQUE, qui suffit à empêcher
+    # la cause : `anywhere` posé sur un sélecteur de PROSE.
+    #
+    # Ce qui reste légitime, et n'est donc pas jugé : `anywhere` sur `code`, `pre`, `kbd`, `samp`,
+    # `a[href]`, ou toute classe dont le nom dit l'usage technique (`.chemin`, `.jeton`, `.id`,
+    # `.code`, `.uri`, `.url`, `.sha`, `.hash`, `.mono`). L'exemption explicite reste
+    # `data-coupure-ok="<raison>"` côté élément, sur le modèle de L14.
+    PROSE = {"p", "li", "td", "th", "dd", "dt", "body", "div", "span", "section", "article",
+             "main", "blockquote", "figcaption", "caption", "h1", "h2", "h3", "h4", "h5", "h6"}
+    TECHNIQUE = re.compile(r"(code|pre|kbd|samp|chemin|jeton|\bid\b|uri|url|sha|hash|mono|"
+                           r"path|token|ident|slug|a\[href\]|tabular)", re.I)
+    coupeurs = []
+    for sel, d in css:
+        valeurs = " ".join([(d.get("overflow-wrap") or ""), (d.get("word-break") or ""),
+                            (d.get("word-wrap") or "")]).lower()
+        if "anywhere" not in valeurs and "break-all" not in valeurs:
+            continue
+        for morceau in sel.split(","):
+            m = morceau.strip()
+            if not m or TECHNIQUE.search(m):
+                continue
+            sujet = re.split(r"[\s>+~]+", m)[-1]
+            nom = (re.match(r"^([a-z][a-z0-9]*)", sujet) or [None, None])[1]
+            classes = re.findall(r"\.([A-Za-z_][\w-]*)", sujet)
+            # Un sélecteur de prose : un nom d'élément de prose SANS classe qui le restreigne,
+            # ou une classe dont le nom ne dit aucun usage technique.
+            if (nom in PROSE and not classes) or (classes and not nom):
+                coupeurs.append((m, valeurs.strip()))
+    for sel, val in coupeurs[:6]:
+        fails.append(
+            f"L19 coupure de mot en prose : « {sel} » porte « {val} » — nécessaire sur un "
+            "identifiant technique, ravageur sur du texte courant : un mot se casse en deux au "
+            "milieu d'une ligne (« Utilisabl/e », « 231 occurrenc/es »), sans césure ni trait "
+            "d'union. Réserver `anywhere` à `code`, `pre`, `a[href]` et aux cellules "
+            'd\'identifiants ; exemption possible par data-coupure-ok="<raison>".')
+    if len(coupeurs) > 6:
+        fails.append(f"L19 coupure de mot en prose : {len(coupeurs) - 6} autre(s) sélecteur(s).")
 
     # --- L5 : surlignage inline -------------------------------------------
     # Le piege n'est pas seulement une regle `mark { … }` fautive : c'est la
