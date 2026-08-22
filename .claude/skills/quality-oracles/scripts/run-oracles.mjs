@@ -218,7 +218,7 @@ const verdict = nFail ? 'FAIL' : (nPass ? 'PASS' : 'INCONCLUSIF');
 const journal = { cible: target, date_iso: new Date().toISOString(), registre_version: registry.version, profil: path.basename(profilPath, '.json'), niveau: NIVEAU, verdict, resume: { pass: nPass, fail: nFail, skip: nSkip, cache: cacheHits }, bilan_fichiers: bilan, bilan_complet: bilanOk, exemptions_actives: exemptes, resultats: results, actions_couverture: actions };
 const journalPath = cheminSidecar('.oracles.json', '_oracles-journal.json');
 fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2), 'utf8');
-if (horsLivraison && !JSON_OUT) console.error('journaux d\'oracles écrits HORS livraison (TF-0428) : ' + horsLivraison);
+if (horsLivraison && !JSONOUT) console.error('journaux d\'oracles écrits HORS livraison (TF-0428) : ' + horsLivraison);
 const histoPath = journalPath.replace(/\.json$/, '-historique.jsonl');
 fs.appendFileSync(histoPath, JSON.stringify({ date_iso: journal.date_iso, verdict, profil: journal.profil, niveau: NIVEAU, resume: journal.resume, fails: results.filter(r => r.verdict === 'FAIL').map(r => r.domaine + ':' + r.file) }) + '\n', 'utf8');
 const exitCode = verdict === 'FAIL' ? 1 : verdict === 'INCONCLUSIF' ? 2 : 0;
