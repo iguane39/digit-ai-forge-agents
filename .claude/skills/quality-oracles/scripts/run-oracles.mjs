@@ -43,7 +43,15 @@ const plancherViole = [...EXCLUS].filter(d => PLANCHER.includes(d));
 if (plancherViole.length) { console.error('profil invalide : domaine(s) du plancher non désactivable exclus au niveau ' + NIVEAU + ' : ' + plancherViole.join(' ; ')); process.exit(2); }
 const WARN_TOLERES = NIVCONF.warn_toleres !== false;
 
-const registry = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8'));
+// TF-0497 (22/08/2026) : le registre se charge depuis le skill, SAUF si `--registre` en nomme
+// un autre. Sans ce point d'entree, la garde des deux bords (empreinte avant/apres) restait
+// impossible a jouer : la seule facon deterministe de faire changer une cible PENDANT un run est
+// d'y faire passer un oracle qui la mute, et rien ne permettait d'en injecter un. Une garde
+// cablee que rien ne joue se decouvre cassee le jour ou elle devait servir.
+const registrePath = args.includes('--registre')
+  ? path.resolve(args[args.indexOf('--registre') + 1])
+  : path.join(SKILLDIR, 'references', 'registre-oracles.json');
+const registry = JSON.parse(fs.readFileSync(registrePath, 'utf8'));
 const IGNORE = new Set(['node_modules', '.git', '.venv', 'dist', 'build', 'old', 'Old', '__pycache__', 'fixtures']);
 function walk(p) {
   const st = fs.statSync(p);
@@ -82,12 +90,32 @@ const findExempt = (f, domaine) => exemptions.find(e => (path.basename(f) === e.
 // ---- C5 : cache par hash (contenu + script + profil) — jamais de cache sur FAIL ni SKIP --------
 // TF-0428 (lot Hoopiz 20260820a, 21/08) — même doctrine que render_page.py (TF-0230) : sous un
 // arbre de LIVRAISON (output/, old/, dist/, build/), aucun journal à côté du livrable — ce que le
-// client reçoit ne contient pas les traces de son audit. Les sidecars vont dans un dossier
-// frère `_oracles/` (déjà ignoré par walk()), et l'emplacement est annoncé en fin d'exécution.
+// client reçoit ne contient pas les traces de son audit.
+//
+// TF-0501 (22/08/2026) : l'intention ci-dessus était écrite depuis TF-0428, elle n'était pas
+// tenue. `path.join(dirname(cible), '_oracles')` produit un dossier ENFANT du dossier livré —
+// pour `output/rapport/livrable.html`, c'était `output/rapport/_oracles/`, à l'intérieur de ce
+// que le client reçoit. Le message de fin annonçait pourtant « HORS livraison », ce qui rendait
+// le défaut invisible : il répondait d'avance à la question qu'on se serait posée. Mesuré chez
+// un produit : `_oracles/` recréé à CHAQUE écriture surveillée, supprimé à la main deux fois.
+//
+// Les journaux sortent maintenant au-dessus du PREMIER segment de livraison rencontré, dans un
+// `.oracles/` qui rejoue l'arborescence relative — déterministe (donc `--verifier-empreinte`
+// retrouve son journal), sans collision de noms, et hors de tout ce qui part chez le client.
 const SEGMENTS_LIVRAISON = new Set(['output', 'old', 'Old', 'dist', 'build']);
 const sousLivraison = p => path.resolve(p).split(/[\\/]/).some(s => SEGMENTS_LIVRAISON.has(s));
 const dossierSidecars = fs.statSync(target).isFile() ? path.dirname(target) : target;
-const horsLivraison = sousLivraison(target) ? path.join(dossierSidecars, '_oracles') : null;
+// Racine = le parent du premier segment de livraison ; le reste du chemin est rejoué sous .oracles/.
+const horsLivraisonDe = (dossier) => {
+  const parts = path.resolve(dossier).split(/[\\/]/);
+  const i = parts.findIndex(x => SEGMENTS_LIVRAISON.has(x));
+  if (i < 0) return null;
+  return path.join(parts.slice(0, i).join(path.sep), '.oracles', ...parts.slice(i));
+};
+const horsLivraison = sousLivraison(target) ? horsLivraisonDe(dossierSidecars) : null;
+// Repli de LECTURE sur l'ancien emplacement : un journal écrit avant TF-0501 reste lisible et
+// n'est pas déclaré disparu. Rien n'y est plus écrit — l'ancien dossier ne se recrée jamais.
+const horsLivraisonAncien = sousLivraison(target) ? path.join(dossierSidecars, '_oracles') : null;
 if (horsLivraison) { try { fs.mkdirSync(horsLivraison, { recursive: true }); } catch {} }
 const cheminSidecar = (suffixe, nomDossier) => {
   if (fs.statSync(target).isFile()) return horsLivraison ? path.join(horsLivraison, path.basename(target) + suffixe) : target + suffixe;
@@ -95,6 +123,15 @@ const cheminSidecar = (suffixe, nomDossier) => {
 };
 const cachePath = cheminSidecar('.oracles-cache.json', '.oracles-cache.json');
 const journalPathTot = cheminSidecar('.oracles.json', '_oracles-journal.json');
+// Pour la LECTURE seule (--verifier-empreinte), un journal d'avant TF-0501 vit encore dans
+// l'ancien `_oracles/`. On l'accepte en repli plutôt que de déclarer disparu un verdict réel.
+const journalPathLecture = () => {
+  if (fs.existsSync(journalPathTot) || !horsLivraisonAncien) return journalPathTot;
+  const ancien = fs.statSync(target).isFile()
+    ? path.join(horsLivraisonAncien, path.basename(target) + '.oracles.json')
+    : path.join(horsLivraisonAncien, '_oracles-journal.json');
+  return fs.existsSync(ancien) ? ancien : journalPathTot;
+};
 let cache = {}; if (!NOCACHE && fs.existsSync(cachePath)) { try { cache = JSON.parse(fs.readFileSync(cachePath, 'utf8')); } catch {} }
 const sha = b => crypto.createHash('sha256').update(b).digest('hex').slice(0, 16);
 
@@ -138,9 +175,10 @@ if (args.includes('--verifier-empreinte')) {
     else console.log((etat === 'FRAIS' ? '\u2705 ' : etat === 'PERIME' ? '\u274C ' : '\u2796 ') + etat + ' \u2014 ' + message);
     process.exit(code);
   };
-  if (!fs.existsSync(journalPathTot)) dire(2, 'NON JUGEABLE', 'aucun journal pour cette cible \u2014 il n\'y a pas de verdict a verifier : ' + rel(journalPathTot));
-  let jrn = null; try { jrn = JSON.parse(fs.readFileSync(journalPathTot, 'utf8')); } catch {}
-  if (!jrn) dire(2, 'NON JUGEABLE', 'journal illisible \u2014 un journal casse ne vaut pas un verdict perime : ' + rel(journalPathTot));
+  const jLu = journalPathLecture();
+  if (!fs.existsSync(jLu)) dire(2, 'NON JUGEABLE', 'aucun journal pour cette cible \u2014 il n\'y a pas de verdict a verifier : ' + rel(jLu));
+  let jrn = null; try { jrn = JSON.parse(fs.readFileSync(jLu, 'utf8')); } catch {}
+  if (!jrn) dire(2, 'NON JUGEABLE', 'journal illisible \u2014 un journal casse ne vaut pas un verdict perime : ' + rel(jLu));
   if (!jrn.empreinte || !jrn.empreinte.fichiers) dire(2, 'NON JUGEABLE', 'verdict ' + (jrn.verdict || '?') + ' du ' + (jrn.date_iso || '?') + ' rendu AVANT que les empreintes soient scellees \u2014 anteriorite declaree, jamais mise en echec (rejouer le run pour sceller)');
   const maintenant = empreinteDe(files);
   const bouges = divergences(jrn.empreinte, maintenant);
@@ -292,7 +330,7 @@ const journal = { cible: target, date_iso: new Date().toISOString(), registre_ve
   verdict_oracles: verdictOracles };
 const journalPath = journalPathTot;
 fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2), 'utf8');
-if (horsLivraison && !JSONOUT) console.error('journaux d\'oracles écrits HORS livraison (TF-0428) : ' + horsLivraison);
+if (horsLivraison && !JSONOUT) console.error('journaux d\'oracles écrits hors de l\'arbre de livraison (TF-0428, corrigé TF-0501) : ' + horsLivraison);
 const histoPath = journalPath.replace(/\.json$/, '-historique.jsonl');
 fs.appendFileSync(histoPath, JSON.stringify({ date_iso: journal.date_iso, verdict, profil: journal.profil, niveau: NIVEAU, resume: journal.resume, fails: results.filter(r => r.verdict === 'FAIL').map(r => r.domaine + ':' + r.file), empreinte: journal.empreinte, empreinte_motif: journal.empreinte_motif }) + '\n', 'utf8');
 const exitCode = (verdict === 'FAIL' || verdict === 'PERIME') ? 1 : verdict === 'INCONCLUSIF' ? 2 : 0;
@@ -305,7 +343,7 @@ for (const e of exemptes) console.log(`  🔶 [${e.domaine}] ${e.file} — EXEMP
 if (actions.length) { console.log('\n  Couverture — domaines à vérifier hors oracle CLI (action) :'); for (const a of actions) console.log(`   • [${a.domaine}] ${a.hint}${a.statut === 'todo' ? ' (oracle à outiller)' : ''}`); }
 console.log(`\n  Bilan fichiers (${files.length}) : jugé=${bilan['jugé'].length} · exempté=${bilan['exempté'].length} · délégué=${bilan['délégué'].length} · signalé=${bilan['signalé'].length}${bilanOk ? '' : '  ⚠ BILAN INCOMPLET — silence détecté'}${cacheHits ? ' · cache=' + cacheHits : ''}`);
 console.log('\n' + (verdict === 'PERIME'
-  ? '\u274C PERIME \u2014 ' + journal.empreinte_motif + ' Relancer sur une cible stable.'
+  ? '\u274C ' + journal.empreinte_motif + ' Relancer sur une cible stable.'
   : verdict === 'FAIL'
   ? `❌ NON CONFORME — ${nFail} oracle(s) en échec (${nPass} PASS, ${nSkip} SKIP). Corriger la source puis relancer.`
   : verdict === 'INCONCLUSIF'
