@@ -1,0 +1,30 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digit-AI - Fixture L2-filet pleine largeur - 20260822a</title>
+<style>
+:root { --muted:#555; --line:#ddd; --surface:#f5f5f5; --ink:#111; }
+body { margin:0; padding:16px; font-family:sans-serif; color:var(--ink); background:#fff; }
+/* Le conteneur est etroit par CONSTRUCTION, pas par media query : la fixture isole le mecanisme
+   (une <caption> dont le tableau parent passe en display:block) sans dependre de la largeur du
+   viewport de test. Le defaut d'origine se produisait sous 640 px, la ou le repli en cartes
+   bascule ; ici il se reproduit a toute largeur, ce qui est justement le propos de L2-filet. */
+.colonne { width:360px; }
+table { width:100%; border-collapse:collapse; font-size:.9rem; }
+caption { text-align:left; color:var(--muted); font-size:.85rem; padding:6px 0; }
+thead th { background:var(--surface); text-align:left; padding:10px 12px; }
+tbody td { padding:10px 12px; border-bottom:1px solid var(--line); }
+/* VERT — `table` reste un tableau : seuls tr/td passent en block, comme le boilerplate du skill
+   le faisait deja. La <caption> garde une vraie boite de tableau et occupe la largeur offerte. */
+.colonne tr, .colonne td { display:block; width:100%; }
+.colonne thead { display:none; }
+.colonne tbody td { border:none; padding:5px 0; display:flex; justify-content:space-between; gap:12px; }
+.colonne tbody td::before { content:attr(data-label); font-weight:700; color:var(--muted); }
+</style></head><body>
+<h1>Fixture L2-filet — pleine largeur</h1>
+<p>Les deux fixtures de ce couple sont identiques a une seule regle CSS pres, celle ci-dessous.</p>
+<div class="colonne">
+<table><caption>Legende de reference longue de cent huit caracteres exactement pour mesurer la largeur reelle rendue</caption>
+<thead><tr><th scope="col">ID</th><th scope="col">Nom</th></tr></thead>
+<tbody><tr><td data-label="ID">B2</td><td data-label="Nom">Grille de KPI</td></tr></tbody>
+</table>
+</div></body></html>
