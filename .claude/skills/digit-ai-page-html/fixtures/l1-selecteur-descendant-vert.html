@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L1 sujet du selecteur — 20260822a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--faint:#64748B;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* TF-0488 : le display s'applique au DESCENDANT .kpi-label, pas au lien `a`.
+   Un sujet lu au PREMIER composant faisait entrer « a » et « .kpi » dans les
+   blocs, et toute ponctuation suivant un lien devenait une faute. */
+a.kpi .kpi-label{display:flex;gap:4px}
+li.item > .badge{display:block}
+.carte + .carte .titre{display:grid}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L1 — le sujet d'un selecteur est son dernier composant</h1>
+<p>Pour le detail, voir la <a class="kpi" href="#matrice" title="Matrice de decision, section 7.2 du rapport"><span class="kpi-label">matrice de decision</span></a>.
+Cette phrase est correctement formee : le point suit un lien en ligne, pas un bloc.</p>
+<ul><li class="item">Un point apres un <a href="#matrice" title="Matrice de decision, section 7.2 du rapport">renvoi vers la matrice</a>. Toujours correct.</li></ul>
+<p class="carte">Une carte, dont le <a href="#matrice" title="Matrice de decision, section 7.2 du rapport">renvoi vers la matrice</a>. Correct aussi.</p>
+<h2 id="matrice">Matrice de decision</h2>
+<p>La cible des renvois ci-dessus, pour que les ancres resolvent.</p>
+</main></body></html>

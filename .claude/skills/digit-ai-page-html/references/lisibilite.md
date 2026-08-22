@@ -504,10 +504,68 @@ règle `@media print` qui la déplie.
 **Revue de lecture.** Que le détail dise plus que la ligne — sinon c'est un dépliant qui cache
 trop peu (L9).
 
+## L18 — Un identifiant porte son SENS, là où on le lit
+
+*Retour DIRECT du client, en cours de session, le 22/08/2026* : **« je ne sais pas ce qu'est
+E2 »**. Sa consigne tient en une phrase — **garder les codes, ils servent la traçabilité, mais
+les accompagner de leur sens à chaque emploi**.
+
+Cette référence couvrait deux cas VOISINS et laissait celui-ci entre les deux : **L3** exige
+qu'une *valeur* mise en avant porte sa légende, **L14** interdit que la *plomberie* interne
+s'affiche. Un identifiant qui appartient légitimement au vocabulaire du livrable — `E2`, `C1`,
+`H3`, `Q-M8`, `ADR 0009` — n'est ni l'un ni l'autre : c'est un **renvoi muet**.
+
+**Le plus instructif, et c'est ce qui a rendu la règle écrivable sans rien inventer** : le
+rapport HTML du même projet **faisait déjà la chose correctement** — chaque renvoi portait une
+infobulle « Question ouverte H3 : … » et un lien vers sa définition. La bonne pratique existait
+dans le produit ; comme elle n'était écrite nulle part, **elle s'arrêtait à la frontière du
+HTML** et ne passait ni dans les livrables Markdown ni dans la restitution. Quatre documents et
+une restitution entière ont employé une trentaine de codes sans glose, jusqu'à l'interruption.
+
+**Contrôle mécanique.** `L18` — la **première** occurrence de chaque jeton dans la page doit
+RÉSOUDRE : un `title` non vide, un `aria-label`, un `aria-describedby` qui pointe une cible
+existante, un lien interne vers une ancre présente, ou `data-code-glose="<raison>"`. Les
+occurrences suivantes ne sont pas exigées — imposer la glose à chaque ligne produirait du bruit,
+et le client demandait à comprendre, pas à relire.
+
+**Trois bornes, toutes déclarées.** Le motif des jetons est **fermé** — `[ECH]\d+`,
+`Q-[A-Z]+\d*`, `RA-\d+`, `RD-\d+`, `ADR \d{4}` — parce que `E2` est un renvoi quand `A4` est un
+format de papier, et que seule une liste les sépare ; `TF-nnnn` en est **volontairement absent**,
+un identifiant de notre registre relevant de L14 et pas d'ici. Le `<head>` n'est pas jugé : un
+`<title>` qui cite un code décrit la page, il ne renvoie à rien. Et **un titre portant un `id`
+EST la définition** du jeton : elle ne se renvoie pas à elle-même.
+
+**Hors HTML, la glose doit être EN LIGNE** — point de revue de lecture, pas contrôle mécanique.
+C'est précisément ce que le retour jumeau (aucun contrôle de lisibilité sur un Markdown) rend
+impossible à attraper aujourd'hui.
+
+## L19 — La coupure de mot est réservée à ce qui en a besoin
+
+*Trois occurrences signalées par le client sur deux versions successives* : « Utilisabl/e »,
+« Plateform/e », « 231 occurrenc/es ». Cause unique : `overflow-wrap: anywhere` — **nécessaire**
+sur les identifiants techniques et les chemins, **ravageur** sur du texte courant en colonne
+étroite.
+
+Aucun contrôle ne le voyait, et c'est ce qui rend le cas intéressant : le texte n'est ni tronqué
+(L1), ni en débordement (V1), ni en contraste insuffisant (V2). Il est **simplement illisible**,
+et c'est la première chose que voit un lecteur.
+
+**Contrôle mécanique.** `L19` — `overflow-wrap: anywhere` ou `word-break: break-all` posé sur un
+sélecteur de PROSE (un élément de prose sans classe qui le restreigne, ou une classe dont le nom
+ne dit aucun usage technique) est un échec. Restent légitimes et non jugés : `code`, `pre`,
+`kbd`, `samp`, `a[href]`, et toute classe qui nomme son usage (`.chemin`, `.jeton`, `.uri`,
+`.sha`, `.mono`, `.identifiant`…). Exemption explicite : `data-coupure-ok="<raison>"`.
+
+**Ce que L19 ne fait PAS, et c'est déclaré** : elle empêche la CAUSE, elle ne mesure pas l'EFFET.
+Détecter au rendu qu'un mot est effectivement tombé sur deux lignes sans césure demande un
+navigateur et vit dans `render_page.py` ; ce contrôle-là n'existe pas encore. Une feuille de style
+qui casse la prose est refusée en amont, ce qui suffit à empêcher le défaut d'entrer — mais une
+page héritée qui le porte déjà autrement n'est pas vue.
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L17
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L19
 python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L17)
 python scripts/check_html.py page.html --output json
 python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu

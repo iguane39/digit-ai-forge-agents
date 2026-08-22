@@ -41,6 +41,23 @@ CAS = {
     "lisibilite-verte.html": set(),
     "l1-texte-coupe.html": {"L1"},
     "l1-ponctuation-orpheline.html": {"L1"},
+    # TF-0488 (22/08) — le SUJET d un selecteur est son DERNIER composant. La verte porte
+    # `a.kpi .kpi-label{display:flex}`, `li.item > .badge{display:block}` et
+    # `.carte + .carte .titre{display:grid}` : avec la lecture au PREMIER composant, elle
+    # rendait 3 faux L1 sur des phrases parfaitement formees (mesure du 22/08). La rouge garde
+    # le meme CSS et y ajoute une vraie ponctuation orpheline : la regle doit encore mordre.
+    "l1-selecteur-descendant-vert.html": set(),
+    "l1-selecteur-descendant-rouge.html": {"L1"},
+    # TF-0517 (22/08) — retour DIRECT du client : « je ne sais pas ce qu est E2 ». Un renvoi code
+    # porte son sens la ou on le lit. La verte emploie la bonne pratique qui existait DEJA dans le
+    # rapport HTML du meme projet : une infobulle qui developpe le code, plus son ancre de
+    # definition. Elle ne passait nulle part ailleurs, faute d etre ecrite.
+    "l18-identifiant-muet.html": {"L18"},
+    "l18-identifiant-glose.html": set(),
+    # TF-0492 (22/08) — `overflow-wrap: anywhere` est necessaire sur un chemin, ravageur sur de
+    # la prose. La verte le reserve a `code`, `pre` et aux classes qui disent leur usage technique.
+    "l19-coupure-en-prose.html": {"L19"},
+    "l19-coupure-reservee-au-technique.html": set(),
     "l2-largeur-bridee.html": {"L2"},
     "l3-tooltip-vide.html": {"L3"},
     "l3-bareme-absent.html": {"L3"},
