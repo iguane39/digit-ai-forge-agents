@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.7.0"
+  version: "2.8.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -70,6 +70,9 @@ détectable avant l'écriture.
 - L'oracle est en **lecture seule** pendant la boucle : ni seuils, ni références, ni registre ne bougent
   entre deux itérations. Toute **exemption** vit dans `.oracles-exemptions.json` (fichier, domaine,
   justification, échéance — expirée = FAIL) et est listée dans la restitution. Modifier l'oracle en cours de boucle = gaming.
+- **Un verdict dit sur quoi il porte (22/08/2026)** : le journal scelle l'empreinte du contenu jugé, et
+  `--verifier-empreinte` refuse (exit 1) de confirmer un verdict dont la cible a changé depuis. Citer un `CONFORME`
+  rendu sur un autre contenu est une affirmation fausse, pas une approximation.
 - **Ligne de couverture obligatoire (M1, D1, 23/07/2026)** : toute restitution d'audit se clôt par
   « domaines jugés : N · hors registre : M → M candidats écrits ». Une restitution sans cette ligne
   est non conforme — contrôlable par l'oracle `etat-forge` (F4).
@@ -86,6 +89,14 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   par **extension + `trigger_files` + contenu** (`content_patterns`), **type réel** (magic bytes ≠ extension = FAIL), exécution
   **parallèle** + **cache** par hash (jamais sur FAIL/SKIP) + `timeout_ms`, verdict **PASS / FAIL / INCONCLUSIF** (exit 0/1/2),
   **bilan 4 états** par fichier (jugé / exempté / délégué / signalé — somme = nb de fichiers, aucun silence), exemptions, journal `<cible>.oracles.json` + historique `*-historique.jsonl`.
+  Le journal et chaque ligne d'historique portent l'**empreinte du contenu jugé** au format existant `forge-ops/empreinte@1`
+  (`{format, release, ts, fichiers:{chemin: sha256 complet}}`) : un verdict dit désormais SUR QUOI il a été rendu.
+- **Fraîcheur d'un verdict** — `node scripts/run-oracles.mjs <cible> --verifier-empreinte` : confronte l'empreinte du journal au
+  contenu présent, **sans rejouer les oracles**. `FRAIS` (exit 0) · **`PERIME` (exit 1) — un verdict périmé BLOQUE**, il n'avertit pas
+  (arbitrage humain du 22/08/2026) · `NON JUGEABLE` (exit 2) quand il n'y a pas de journal, ou quand le journal est ANTÉRIEUR au
+  mécanisme et ne porte pas d'empreinte — antériorité **déclarée, jamais mise en échec** : un verdict ancien n'est pas un verdict faux.
+  Pourquoi : mesuré le 22/08/2026, 2 journaux confrontables sur 2 portaient un `PASS` rendu avant une modification de leur cible ;
+  un `CONFORME` cité dans une restitution vieillissait en silence, ni re-vérifiable ni invalidable.
 - **Profils** — `profils/digit-ai.json` · `generique.json` (défaut : digit-ai, env `QO_PROFIL`) : budgets perf,
   politique pptx, convention de nommage, marqueurs de sources et motifs additionnels (claims : `motifs_bloquants` / `motifs_warn`),
   niveaux d'exigence (§6), seuils `visual_diff` (seuil_ratio, breakpoints, tolerance_pixel), rubrique du juge, `ignore_patterns`. Un contexte client = un JSON, zéro code.
