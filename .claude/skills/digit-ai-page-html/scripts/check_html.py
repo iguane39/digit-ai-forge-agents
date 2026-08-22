@@ -75,7 +75,10 @@ RE_IDENTIFIANT = re.compile(r"^(?:[A-Z]{1,4}[ -]?\d{1,4}(?:[.\-]\d{1,4})?|\d{1,3
 # L15 (TF-0435) : glyphes employés en content: CSS — liste blanche de ce qui est réputé présent
 # dans toute pile de repli ; tout le reste est signalé (jamais un échec).
 RE_CONTENT_CSS = re.compile(r"""content\s*:\s*(["'])((?:\\.|(?!\1).)*)\1""")
-GLYPHES_SURS = set("–—‘’“”•…‹›«»·×→←↑↓↔✓✔✗✘©®°±≥≤≠∞€  ​")
+# TF-0490 (22/08/2026) — la liste porte AUSSI les lettres latines etendues (oe, ae et leurs
+# capitales). Ce ne sont pas des ornements : ce sont des lettres du francais, presentes dans
+# toute police qui pretend l'ecrire. Les exclure aurait fait signaler « coeur » et « oeuvre ».
+GLYPHES_SURS = set("–—‘’“”•…‹›«»·×→←↑↓↔✓✔✗✘©®°±≥≤≠∞€  ​œŒæÆ")
 # L16 / L17 : réaffichage à l'impression (composants tabs.js et table-detail.js).
 RE_PRINT_TABPANEL = re.compile(r"@media\s+print[^{]*\{[\s\S]*?tabpanel", re.I)
 RE_PRINT_DETAIL = re.compile(r"@media\s+print[^{]*\{[\s\S]*?data-detail", re.I)

@@ -479,6 +479,30 @@ simples `› ‹`, guillemets, tirets, puces, flèches, coches) employé en `con
 **signalé**, jamais un échec : « vérifiez ce glyphe sur un poste sans vos polices ». Préférer
 `›`, `•`, `–`, `→`, ou une icône SVG dessinée. Le socle emploie `›` (U+203A) partout.
 
+### L15 bis — et le SOCLE ne propage pas un glyphe qu'il interdit (TF-0490, 22/08/2026)
+
+**Le même défaut, deux fois, et c'est ce qui le rend intéressant.** Le lot du 20/08 avait
+signalé un chevron absent des piles de repli déclarées ; tout le socle est passé à `›` (U+203A).
+Le 22/08, il revient : un producteur reprend le composant `details`/`summary`, recopie les
+triangles de l'exemple (U+25B8, U+25BE), et hérite du risque.
+
+**La cause n'est pas le producteur.** `L15` juge les glyphes en `content:` CSS d'une page
+PRODUITE ; personne ne jugeait ceux que le socle offre à la copie. **Un exemple est une
+prescription silencieuse : ce qu'il montre sera repris.**
+
+**Contrôle.** Il ne vit pas dans `check_html.py` — il ne juge pas une page, il juge le socle
+lui-même : `self_test.py`, contrôle « glyphes du socle ». Il relit les BLOCS DE CODE des
+références et les FIXTURES, et échoue sur tout glyphe hors liste blanche.
+
+**La borne est délibérée** : la PROSE des références n'est pas jugée. Les marqueurs de gravité
+de `bonnes-pratiques.md` sont la LÉGENDE du document, pas un exemple — personne ne les recopie
+dans un livrable, et les interdire dégraderait la référence sans rien gagner. Le premier jet du
+contrôle lisait la ligne entière dès qu'elle portait du code, et condamnait donc « - 🔴 Ouvrir
+par `<!DOCTYPE html>` » : un contrôle qui déborde de son domaine se fait désactiver.
+
+**La liste blanche s'est élargie du même geste** : `œ Œ æ Æ` y entrent. Ce ne sont pas des
+ornements mais des lettres du français, et les exclure faisait signaler « cœur » et « œuvre ».
+
 ## L16 — Des onglets accessibles, et tous imprimés
 
 **Règle.** Un rapport à onglets se lit au clavier, s'ouvre au bon onglet depuis un lien, et

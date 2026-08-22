@@ -11,7 +11,7 @@ s'inlinent ensemble : le composant livré sans son habillage sort en rendu brut 
 (constaté et refusé sur livrable réel). L'état OUVERT du panneau se juge par
 `render_page.py --etats-ouverts` (V2/V4). Après `initAll()`, appeler-le sur toute page hôte.
 
-## ⚠ Le `<th>` est POSSÉDÉ par le composant après `init()` (RA-6, SCC_ALX 14/08)
+## Le `<th>` est POSSÉDÉ par le composant après `init()` (RA-6, SCC_ALX 14/08)
 
 `init()` **injecte** le bouton de facette et son panneau DANS le `<th>`. Toute extension qui
 réécrit `th.textContent` ou `th.innerHTML` (armer un tri, renommer une colonne…) **détruit
