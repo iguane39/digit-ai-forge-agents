@@ -300,6 +300,25 @@
       ]
     },
     {
+      "nom": "claims-autoportant",
+      "commentaire": "TF-0485/0486/0487 (22/08) — un livrable AUTOPORTANT embarque son code, sa charte et ses sources : aucune de ces zones n'est une affirmation du livrable. La VERTE porte les trois cas reels du lot v2-architecture-cible (couleurs #334155 et #374151 dans <style>, « 1 $ » et une reference arriere $1 dans <script>, 100% dans une citation <blockquote data-cite> et dans un <pre>) ET un chiffre correctement source, pour prouver que l'oracle a bien regarde plutot que rendu SKIP. La ROUGE a la MEME forme, a une difference pres : le montant est dans la prose du livrable.",
+      "cmd": [
+        "node",
+        "{skilldir}/scripts/oracle-claims.mjs",
+        "{fixture}",
+        "--profil",
+        "{skilldir}/profils/digit-ai.json"
+      ],
+      "red": "claims-autoportant-red.html",
+      "green": "claims-autoportant-green.html",
+      "attendu_red": [
+        "FAIL"
+      ],
+      "attendu_green": [
+        "PASS"
+      ]
+    },
+    {
       "nom": "coherence",
       "cmd": [
         "node",

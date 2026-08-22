@@ -173,6 +173,32 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
       : ok("TF-0428/0501 : sous output/, aucune trace d'audit chez le client, et le journal existe au-dessus du segment de livraison");
   fs.rmSync(tmp, { recursive: true, force: true });
 }
+// TF-0484 (lot v2-architecture-cible, 22/08) — LE LANCEUR JOUÉ DE BOUT EN BOUT, SANS `--json`.
+// La ligne qui ANNONÇAIT le correctif TF-0428 référençait une variable inexistante (`JSON_OUT`
+// au lieu de `JSONOUT`) et levait une ReferenceError APRÈS l'écriture du journal, mais AVANT le
+// calcul du code de sortie : le journal portait `"verdict": "PASS"` et le processus sortait en 1.
+// Le hook d'écriture refusait alors TOUTE écriture surveillée, quel que soit le verdict réel.
+//
+// Pourquoi aucune recette ne l'attrapait, et c'est l'enseignement : toutes lançaient le lanceur
+// avec `--json`, et la ligne fautive était dans la branche `!JSONOUT`. UN CHEMIN DE SORTIE NON
+// JOUÉ N'EST PAS UN CHEMIN TESTÉ. Cette recette joue donc la sortie TERMINAL, celle qu'un humain
+// et le hook d'écriture empruntent réellement — le code est corrigé depuis 9039944, il n'était
+// couvert par rien.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-e2e-'));
+  const livraison = path.join(tmp, 'output');
+  fs.mkdirSync(livraison, { recursive: true });
+  const cible = path.join(livraison, 'note.md');
+  fs.writeFileSync(cible, '# Note\n\nUne phrase simple, sans chiffre ni secret.\n', 'utf8');
+  const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), cible, '--no-cache'], { encoding: 'utf8', timeout: 180000 });
+  const sortie = (r.stdout || '') + (r.stderr || '');
+  /ReferenceError|is not defined/.test(sortie) ? ko('TF-0484 : le lanceur lève une ReferenceError sur le chemin terminal — ' + (sortie.split('\n').find(l => /ReferenceError/.test(l)) || ''))
+    : r.status !== 0 ? ko(`TF-0484 : exit ${r.status} sur une cible conforme — un PASS qui sort en échec bloque le hook d'écriture`)
+      : !/CONFORME/.test(sortie) ? ko('TF-0484 : le bilan CONFORME / NON CONFORME n\'est jamais imprimé sur le chemin terminal')
+        : !/Journal\s*:/.test(sortie) ? ko('TF-0484 : le chemin du journal n\'est pas dit à l\'humain')
+          : ok('TF-0484 : lanceur joué SANS --json — exit 0, bilan imprimé, chemin du journal dit');
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
 // preuve comportementale : perf-red.html non jugé en niveau note (perf exclu), FAIL en production
 {
   // tmpdir du POSTE, jamais fixtures/ : un process tué en plein run y fuyait ses dossiers
