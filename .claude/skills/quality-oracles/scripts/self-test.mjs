@@ -158,11 +158,19 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
   const page = path.join(livraison, 'Client - Rapport - 20260821a.html');
   fs.writeFileSync(page, '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Digit-AI — Rapport · test — 20260821a</title></head><body><h1>x</h1></body></html>');
   spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), page, '--no-cache', '--json', '--profil', path.join(SKILLDIR, 'fixtures', 'profil-test-niveaux.json')], { encoding: 'utf8', timeout: 180000 });
-  const aCote = fs.readdirSync(livraison).filter(f => /\.oracles/.test(f));
-  const frere = fs.existsSync(path.join(livraison, '_oracles')) ? fs.readdirSync(path.join(livraison, '_oracles')) : [];
-  aCote.length ? ko(`TF-0428 : ${aCote.length} sidecar(s) écrit(s) À CÔTÉ du livrable sous output/ : ${aCote.join(', ')}`)
-    : !frere.some(f => /\.oracles\.json$/.test(f)) ? ko('TF-0428 : aucun journal dans _oracles/ — les sidecars ont disparu au lieu d\'être déplacés')
-      : ok('TF-0428 : sous output/, les journaux vont dans _oracles/ frère, rien à côté du livrable');
+  // TF-0501 (22/08/2026) : ce controle jugeait l'IMPLEMENTATION (« les journaux sont dans
+  // _oracles/ ») et non l'intention. Il passait donc au vert alors que `_oracles/` vivait SOUS
+  // l'arbre livre — un controle qui decrit le code au lieu de l'exigence confirme le defaut.
+  // Il juge maintenant les deux moities de l'exigence : rien sous output/, et la trace existe.
+  const sousLivre = [];
+  (function scan(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name); e.isDirectory() ? scan(p) : sousLivre.push(path.relative(path.join(tmp, 'output'), p));
+  } })(path.join(tmp, 'output'));
+  const traces = sousLivre.filter(f => /\.oracles/.test(f));
+  const journal = path.join(tmp, '.oracles', 'output', 'rapport', path.basename(page) + '.oracles.json');
+  traces.length ? ko(`TF-0428/0501 : ${traces.length} trace(s) d'audit SOUS output/ : ${traces.join(', ')} — c'est ce que le client recoit`)
+    : !fs.existsSync(journal) ? ko("TF-0428/0501 : aucun journal hors de l'arbre — les sidecars ont disparu au lieu d'etre deplaces")
+      : ok("TF-0428/0501 : sous output/, aucune trace d'audit chez le client, et le journal existe au-dessus du segment de livraison");
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 // preuve comportementale : perf-red.html non jugé en niveau note (perf exclu), FAIL en production
@@ -308,6 +316,107 @@ else {
       vieux.code !== 2 ? ko('antériorité : exit ' + vieux.code + ' sur un verdict antérieur au mécanisme — attendu 2 (déclaré, jamais en échec)')
         : ok('antériorité : verdict sans empreinte → NON JUGEABLE, exit 2, jamais mis en échec');
     }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// preuve comportementale : les journaux sortent REELLEMENT de l'arbre de livraison (TF-0501)
+// Le fait fondateur : l'intention « ce que le client reçoit ne contient pas les traces de son
+// audit » était écrite depuis TF-0428 et n'était pas tenue — `_oracles/` était un dossier ENFANT
+// du dossier livré, et le message de fin annonçait « HORS livraison », ce qui rendait le défaut
+// invisible en répondant d'avance à la question qu'on se serait posée. Mesuré chez un produit :
+// dossier recréé à chaque écriture surveillée, supprimé à la main deux fois.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-livraison-'));
+  try {
+    const livre = path.join(tmp, 'output', 'rapport');
+    fs.mkdirSync(livre, { recursive: true });
+    const cible = path.join(livre, 'livrable.md');
+    fs.writeFileSync(cible, '# Livrable\n\nContenu client.\n', 'utf8');
+    const lancer = (...extra) => spawnSync(process.execPath,
+      [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), cible, '--no-cache', ...extra],
+      { encoding: 'utf8', timeout: 180000 });
+    lancer();
+
+    // (1) ce que le client reçoit ne contient QUE le livrable — la vraie question posée par l'item
+    const sousOutput = [];
+    (function scan(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name); e.isDirectory() ? scan(p) : sousOutput.push(path.relative(tmp, p));
+    } })(path.join(tmp, 'output'));
+    sousOutput.length !== 1 || !sousOutput[0].endsWith('livrable.md')
+      ? ko('livraison : ' + sousOutput.length + ' fichier(s) sous output/ — ' + sousOutput.join(' · ') + ' ; le client ne doit recevoir que son livrable')
+      : ok('livraison : output/ ne contient que le livrable, aucune trace d\'audit');
+
+    // (2) le journal existe bel et bien, au-dessus du segment de livraison et pas ailleurs
+    const attendu = path.join(tmp, '.oracles', 'output', 'rapport', 'livrable.md.oracles.json');
+    !fs.existsSync(attendu) ? ko('livraison : journal introuvable à l\'emplacement attendu ' + attendu + ' — sortir de l\'arbre ne doit pas revenir à perdre la trace')
+      : ok('livraison : journal écrit hors de l\'arbre, à un chemin déterministe qui rejoue l\'arborescence');
+
+    // (3) et il reste retrouvable par le mode fraîcheur — un journal qu'on ne relit pas est perdu
+    const v = lancer('--verifier-empreinte');
+    v.status !== 0 ? ko('livraison : --verifier-empreinte ne retrouve pas le journal déplacé (exit ' + v.status + ')')
+      : ok('livraison : --verifier-empreinte retrouve le journal à son nouvel emplacement');
+
+    // (4) BORNE d'antériorité — un journal écrit AVANT TF-0501 vit dans l'ancien `_oracles/`.
+    // Il est lu en repli plutôt que déclaré disparu : un verdict réel ne devient pas faux parce
+    // que le code a change d'avis sur l'endroit où il l'écrit.
+    const ancien = path.join(livre, '_oracles');
+    fs.mkdirSync(ancien, { recursive: true });
+    fs.renameSync(attendu, path.join(ancien, 'livrable.md.oracles.json'));
+    fs.rmSync(path.join(tmp, '.oracles'), { recursive: true, force: true });
+    const repli = lancer('--verifier-empreinte');
+    repli.status !== 0 ? ko('livraison : journal d\'avant TF-0501 non lu en repli (exit ' + repli.status + ') — un verdict réel serait déclaré disparu')
+      : ok('livraison : journal d\'avant TF-0501 lu en repli dans l\'ancien _oracles/, jamais réécrit');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// preuve comportementale : la garde des DEUX BORDS attrape une cible qui change PENDANT le run
+// (TF-0497). Elle etait cablee depuis TF-0478 et joue par AUCUNE recette : la seule facon
+// deterministe de faire bouger une cible en cours de run est d'y faire passer un oracle qui la
+// mute, et rien ne permettait d'en injecter un. `--registre` (TF-0497) ouvre ce point d'entree.
+// Ce que ce cas verrouille : un oracle rend PASS, et le verdict sort quand meme PERIME — sans la
+// garde, le run rendrait un PASS parfaitement credible sur un contenu qui n'existe deja plus.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-toctou-'));
+  try {
+    const cible = path.join(tmp, 'note.md');
+    fs.writeFileSync(cible, '# Note\n\nStable au depart.\n', 'utf8');
+    const muteur = path.join(tmp, 'muteur.mjs');
+    fs.writeFileSync(muteur, "import fs from 'node:fs';\n"
+      + "fs.appendFileSync(process.argv[2], '\\nligne ajoutee PENDANT le run\\n', 'utf8');\n"
+      + "console.log(JSON.stringify({ oracle: 'muteur', domaine: 'Recette TOCTOU', verdict: 'PASS', findings: [], non_juge: [] }));\n", 'utf8');
+    const registre = path.join(tmp, 'registre.json');
+    fs.writeFileSync(registre, JSON.stringify({ version: 'toctou-test', oracles: [
+      { domaine: 'Recette TOCTOU', ext: ['.md'], type: 'cli', statut: 'ok',
+        cmd: ['node', muteur.split(path.sep).join('/'), '{file}'], timeout_ms: 30000 },
+    ] }), 'utf8');
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'),
+      cible, '--no-cache', '--json', '--registre', registre], { encoding: 'utf8', timeout: 180000 });
+    let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch {}
+
+    !j ? ko('TOCTOU : run-oracles --json inexploitable sur le cas de mutation concurrente')
+      : j.verdict !== 'PERIME' ? ko('TOCTOU : verdict ' + j.verdict + ' alors que la cible a change PENDANT le run')
+        : r.status === 0 ? ko('TOCTOU : exit 0 — un verdict perime doit BLOQUER (arbitrage a1), pas avertir')
+          : j.empreinte !== null ? ko('TOCTOU : une empreinte a ete scellee malgre la divergence (D6 : omise, jamais fausse)')
+            : !/PERIME/.test(j.empreinte_motif || '') ? ko('TOCTOU : aucun motif ecrit — un refus muet ne se diagnostique pas')
+              : j.verdict_oracles !== 'PASS' ? ko('TOCTOU : le verdict rendu par les oracles n\'est pas conserve — la trace de ce qui a ete juge est perdue')
+                : ok('TOCTOU : cible mutee pendant le run → PERIME exit ' + r.status + ', empreinte omise avec motif, PASS des oracles conserve au journal');
+
+    // BORNE — le meme registre sur une cible que rien ne mute doit rester PASS : la garde ne doit
+    // pas transformer tout run en peremption, sinon elle serait desactivee dans la semaine.
+    const muet = path.join(tmp, 'muet.mjs');
+    fs.writeFileSync(muet, "console.log(JSON.stringify({ oracle: 'muet', domaine: 'Recette TOCTOU', verdict: 'PASS', findings: [], non_juge: [] }));\n", 'utf8');
+    const reg2 = path.join(tmp, 'registre-muet.json');
+    fs.writeFileSync(reg2, JSON.stringify({ version: 'toctou-test', oracles: [
+      { domaine: 'Recette TOCTOU', ext: ['.md'], type: 'cli', statut: 'ok',
+        cmd: ['node', muet.split(path.sep).join('/'), '{file}'], timeout_ms: 30000 },
+    ] }), 'utf8');
+    const r2 = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'),
+      cible, '--no-cache', '--json', '--registre', reg2], { encoding: 'utf8', timeout: 180000 });
+    let j2 = null; try { j2 = JSON.parse((r2.stdout || '').trim()); } catch {}
+    !j2 ? ko('TOCTOU (borne) : run-oracles --json inexploitable')
+      : j2.verdict === 'PERIME' ? ko('TOCTOU (borne) : PERIME sur une cible que rien ne mute — faux positif, la garde serait desactivee')
+        : !j2.empreinte ? ko('TOCTOU (borne) : aucune empreinte scellee alors que rien n\'a bouge')
+          : ok('TOCTOU (borne) : meme registre, cible non mutee → ' + j2.verdict + ' et empreinte scellee, aucun faux perime');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
