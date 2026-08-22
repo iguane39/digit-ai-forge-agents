@@ -111,7 +111,18 @@ RE_LITTERAL = re.compile(
 # `TF-nnnn` est VOLONTAIREMENT hors du motif : un identifiant de notre registre dans un texte
 # rendu est de la plomberie interne, donc le domaine de L14 — l'y remettre ferait crier deux
 # règles pour un seul défaut, et L18 signalerait les pages qui PARLENT du registre.
-RE_RENVOI = re.compile(r"\b(?:[ECH]\d{1,3}|Q-[A-Z]{1,3}\d{0,3}|R[AD]-\d{1,3}|ADR\s\d{4})\b")
+#
+# ET `H1`, `C1`, `E1` N'Y SONT PAS NON PLUS, pour une raison mesurée : `H1` désigne un TITRE HTML
+# bien plus souvent qu'une question numérotée. Le premier jet les devinait, et la règle a
+# immédiatement fait échouer la page du registre du pilot sur la phrase « le premier replace ne
+# matche rien … LE TITRE RESTE » — où `H1` est l'élément de titre. Un contrôle qui crie sur le
+# vocabulaire du langage qu'il juge n'est pas tenable.
+#
+# Les familles GUESSABLES sont donc celles qui n'ont pas d'homonyme : `Q-…`, `RA-…`, `RD-…`,
+# `ADR nnnn`. Les familles AMBIGUËS se DÉCLARENT, par `data-codes="E,C,H"` sur n'importe quel
+# ancêtre — la page qui emploie un vocabulaire de renvois sait lequel, et le déclarer coûte un
+# attribut. C'est la loi n° 4 : un référentiel qui dépend du document est une donnée du document.
+RE_RENVOI = re.compile(r"\b(?:Q-[A-Z]{1,3}\d{0,3}|R[AD]-\d{1,3}|ADR\s\d{4})\b")
 
 # L14 — la PLOMBERIE affichée : une convention de balisage interne qui traverse le rendu.
 #
@@ -1050,6 +1061,14 @@ def check_lisibilite(html: str, a: Arbre):
     # répéter. Les zones CITÉES (`<code>`, `<pre>`, `<blockquote>`) sont hors jugement, comme
     # ailleurs : une citation ne se glose pas sans falsifier sa source.
     ids_page = {n.attrs["id"] for n in a.racine.descendants() if n.attrs.get("id")}
+    # Les familles déclarées par la page s'ajoutent au motif : `data-codes="E,C,H"`.
+    familles = set()
+    for n in [a.racine, *a.racine.descendants()]:
+        for lettre in (n.att("data-codes") or "").replace(" ", "").split(","):
+            if lettre and len(lettre) <= 2 and lettre.isalpha():
+                familles.add(lettre.upper())
+    motif = RE_RENVOI if not familles else re.compile(
+        RE_RENVOI.pattern[:-3] + "|(?:" + "|".join(sorted(familles)) + r")\d{1,3})\b")
     vus = set()
     muets = []
     # DEUX BORNES, trouvées en jouant la règle sur les fixtures existantes — trois faux positifs
@@ -1065,9 +1084,13 @@ def check_lisibilite(html: str, a: Arbre):
                                    and (x.attrs.get("id") or "").strip() for x in lignee(n))
     for txt, porteur in a.textes:
         t = txt.strip()
-        if not t or _cite(porteur) or dans_tete(porteur) or est_definition(porteur):
+        # `data-cite` compte AUSSI (TF-0436, même doctrine que L12) : un renvoi dans un texte que
+        # le livrable N'A PAS ÉCRIT n'est pas son défaut. Cas réel du 22/08 : la page du registre
+        # rend le `contenu` des candidatures — écrit par leurs émetteurs, qui y citent leurs
+        # propres codes (`RD-14`). Exiger la glose reviendrait à réécrire un registre append-only.
+        if not t or _cite(porteur) or _contenu_cite(porteur) or dans_tete(porteur) or est_definition(porteur):
             continue
-        for m in RE_RENVOI.finditer(t):
+        for m in motif.finditer(t):
             jeton = m.group(0)
             if jeton in vus:
                 continue
