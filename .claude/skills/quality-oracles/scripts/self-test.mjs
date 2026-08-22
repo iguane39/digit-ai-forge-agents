@@ -249,6 +249,68 @@ else {
   }
 }
 
+// preuve comportementale : empreinte du contenu jugé et péremption bloquante (TF-0478, verdict O2)
+// Le fait fondateur, mesuré le 22/08/2026 : sur 2 journaux d'oracles confrontables à leur cible,
+// 2 portaient un PASS rendu AVANT une modification de cette cible. Le hachage existait déjà dans
+// le lanceur, mais servait la seule clé de cache — aucun verdict ne disait sur quel contenu il
+// avait été rendu, et un CONFORME cité dans une restitution vieillissait en silence.
+// Les quatre cas ci-dessous jouent les DEUX SENS sur la même cible : seul le contenu les sépare.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-empreinte-'));
+  try {
+    const cible = path.join(tmp, 'note.md');
+    fs.writeFileSync(cible, '# Note\n\nUn contenu stable, jugé tel quel.\n', 'utf8');
+    const lancer = (...extra) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'),
+        cible, '--no-cache', '--json', ...extra], { encoding: 'utf8', timeout: 180000 });
+      let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch {}
+      return { j, code: r.status };
+    };
+
+    // (1) l'empreinte est SCELLÉE, au format existant, en sha256 complet, une par fichier du bilan
+    const run = lancer();
+    const e = run.j && run.j.empreinte;
+    const nBilan = run.j ? Object.values(run.j.bilan_fichiers).reduce((a, l) => a + l.length, 0) : -1;
+    !run.j ? ko('empreinte : run-oracles --json inexploitable')
+      : !e ? ko('empreinte : aucune empreinte scellée sur une cible stable')
+        : e.format !== 'forge-ops/empreinte@1' ? ko('empreinte : format « ' + e.format + ' » — le format existant se réutilise, il ne se réinvente pas (D1)')
+          : Object.keys(e.fichiers).length !== nBilan ? ko('empreinte : ' + Object.keys(e.fichiers).length + ' fichier(s) empreinté(s) pour ' + nBilan + ' au bilan')
+            : Object.values(e.fichiers).some(h => !/^[0-9a-f]{64}$/.test(h)) ? ko('empreinte : sha256 non complet — la troncature reste réservée à la clé de cache (D3)')
+              : ok('empreinte scellée : forge-ops/empreinte@1, sha256 complet, une empreinte par fichier du bilan');
+
+    // (2) sens VERT — rien n'a changé : le verdict porte toujours sur ce contenu, exit 0
+    const frais = lancer('--verifier-empreinte');
+    frais.code !== 0 ? ko('fraîcheur : exit ' + frais.code + ' sur une cible inchangée — un verdict frais doit passer')
+      : (frais.j && frais.j.etat) !== 'FRAIS' ? ko('fraîcheur : état « ' + (frais.j && frais.j.etat) + ' » sur une cible inchangée')
+        : ok('fraîcheur : cible inchangée → FRAIS, exit 0');
+
+    // (3) sens ROUGE — le contenu a changé APRÈS le verdict : PÉRIMÉ, et il BLOQUE.
+    // C'est l'arbitrage humain du 22/08 (option a1) : périmé bloque, il n'avertit pas. Sans lui,
+    // le verdict précédent resterait citable alors qu'il ne porte plus sur rien de présent.
+    fs.appendFileSync(cible, '\nUne ligne ajoutée après le verdict.\n', 'utf8');
+    const perime = lancer('--verifier-empreinte');
+    perime.code === 0 ? ko('péremption : exit 0 après modification — un verdict périmé doit BLOQUER (a1), pas avertir')
+      : (perime.j && perime.j.etat) !== 'PERIME' ? ko('péremption : état « ' + (perime.j && perime.j.etat) + ' » alors que la cible a changé')
+        : !(perime.j.fichiers_modifies || []).length ? ko('péremption : aucun fichier nommé — un refus qui ne dit pas QUOI a bougé ne se diagnostique pas')
+          : ok('péremption bloquante : cible modifiée après le verdict → PERIME, exit ' + perime.code + ', fichier(s) nommé(s)');
+
+    // (4) BORNE d'antériorité — un journal écrit AVANT ce mécanisme ne porte pas d'empreinte.
+    // Il est DÉCLARÉ non jugeable, jamais mis en échec : un verdict ancien n'est pas un verdict
+    // faux, et une règle neuve qui met l'existant en échec se fait désactiver dans la semaine.
+    const jp = fs.readdirSync(tmp).find(f => f.endsWith('.oracles.json'));
+    if (!jp) ko('antériorité : journal introuvable pour la borne');
+    else {
+      const p = path.join(tmp, jp);
+      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+      delete j.empreinte; delete j.empreinte_motif;
+      fs.writeFileSync(p, JSON.stringify(j), 'utf8');
+      const vieux = lancer('--verifier-empreinte');
+      vieux.code !== 2 ? ko('antériorité : exit ' + vieux.code + ' sur un verdict antérieur au mécanisme — attendu 2 (déclaré, jamais en échec)')
+        : ok('antériorité : verdict sans empreinte → NON JUGEABLE, exit 2, jamais mis en échec');
+    }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));
