@@ -653,12 +653,64 @@ def run_v1_bornes():
     return out
 
 
+def run_glyphes_du_socle():
+    """TF-0490 (22/08/2026) — LE SOCLE NE PROPAGE PAS UN GLYPHE QU'IL INTERDIT.
+
+    Le fait fondateur, et c'est une CONFIRMATION : le lot du 20/08 avait signalé un chevron
+    absent des piles de repli déclarées (TF-0435), corrigé en passant tout le socle à `›`
+    (U+203A). Le 22/08, le même défaut revient — un producteur reprend le composant
+    `details`/`summary` du socle, recopie les triangles de l'exemple, et hérite du risque.
+
+    LA CAUSE N'EST PAS LE PRODUCTEUR : c'est que rien ne juge les EXEMPLES du socle. `L15` juge
+    les glyphes en `content:` CSS d'une page produite ; personne ne juge ceux que le socle offre
+    à la copie. Un exemple est une prescription silencieuse : ce qu'il montre sera repris.
+
+    CE QUI EST JUGÉ, et la borne est délibérée : les BLOCS DE CODE des références (ce qu'on
+    recopie) et les FIXTURES (ce qui sert de modèle). PAS la prose des références : les marqueurs
+    de gravité de `bonnes-pratiques.md` (🔴 🟡 ⚪) sont la LÉGENDE du document, pas un exemple —
+    personne ne les recopie dans un livrable, et les interdire dégraderait la référence sans rien
+    gagner. Un contrôle qui déborde de son domaine se fait désactiver.
+    """
+    from check_html import GLYPHES_SURS
+    racine = Path(__file__).resolve().parent.parent
+    cibles = sorted((racine / 'references').rglob('*.md')) + sorted((racine / 'fixtures').rglob('*.html'))
+    fautifs = {}
+    for f in cibles:
+        texte = f.read_text(encoding='utf-8')
+        dans_code = False
+        for i, ligne in enumerate(texte.split('\n'), 1):
+            if f.suffix == '.md':
+                if ligne.strip().startswith('```'):
+                    dans_code = not dans_code
+                    continue
+                if not dans_code:
+                    # On ne lit QUE le contenu des spans de code, jamais la ligne entière : un
+                    # marqueur de gravité en tête de puce (« - 🔴 Ouvrir par `<!DOCTYPE html>` »)
+                    # n'est pas un exemple recopié, et juger la ligne le condamnait à tort.
+                    ligne = ' '.join(re.findall(r'`([^`]+)`', ligne))
+                    if not ligne:
+                        continue
+            for ch in set(ligne):
+                if ord(ch) > 0x00FF and ch not in GLYPHES_SURS:
+                    fautifs.setdefault(ch, []).append(f'{f.name}:{i}')
+    if not fautifs:
+        return [{'fixture': 'socle (références + fixtures)', 'verdict': 'OK',
+                 'attendu': 'aucun glyphe hors liste blanche dans un exemple',
+                 'obtenu': f'{len(cibles)} fichier(s) relus', 'regle': 'TF-0490 glyphes du socle',
+                 'detail': ''}]
+    detail = ' · '.join(f'U+{ord(c):04X} ({"/".join(o[:2])})' for c, o in sorted(fautifs.items()))
+    return [{'fixture': 'socle (références + fixtures)', 'verdict': 'ECHEC',
+             'attendu': 'aucun glyphe hors liste blanche dans un exemple',
+             'obtenu': f'{len(fautifs)} glyphe(s)', 'regle': 'TF-0490 glyphes du socle',
+             'detail': detail}]
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
-    res = run() + run_exemptions() + run_structure()
+    res = run() + run_exemptions() + run_structure() + run_glyphes_du_socle()
     rendu = run_rendu()
     if rendu:
         res += rendu
