@@ -94,8 +94,59 @@ const cheminSidecar = (suffixe, nomDossier) => {
   return horsLivraison ? path.join(horsLivraison, nomDossier) : path.join(target, nomDossier);
 };
 const cachePath = cheminSidecar('.oracles-cache.json', '.oracles-cache.json');
+const journalPathTot = cheminSidecar('.oracles.json', '_oracles-journal.json');
 let cache = {}; if (!NOCACHE && fs.existsSync(cachePath)) { try { cache = JSON.parse(fs.readFileSync(cachePath, 'utf8')); } catch {} }
 const sha = b => crypto.createHash('sha256').update(b).digest('hex').slice(0, 16);
+
+// ---- empreinte du contenu juge (TF-0478, verdict O2 du 22/08/2026) -------------------------
+// Le hachage existait deja ici, mais uniquement pour la cle de cache : la valeur etait calculee
+// puis jetee. Aucun verdict ne disait donc SUR QUEL CONTENU il avait ete rendu, et un CONFORME
+// cite dans une restitution vieillissait en silence — mesure le 22/08 : 2 journaux confrontables
+// sur 2 portaient un PASS rendu avant une modification de leur cible.
+//
+// Le format n'est PAS invente ici : c'est `forge-ops/empreinte@1`, deja produit par
+// forge-ops/scripts/ops.mjs (scellerEmpreinte). Un lecteur `empreinte@1` existant reste
+// compatible — il ne consomme que `fichiers`.
+//
+// Deux choix qui ne sont pas des details : le sha est COMPLET (la troncature a 16 reste reservee
+// a la cle de cache, ou une collision ne coute qu'un recalcul), et la granularite est une
+// association chemin -> empreinte plutot qu'un hachage d'arbre unique — un hachage global dirait
+// que quelque chose a bouge, jamais QUOI.
+const sha256Complet = b => crypto.createHash('sha256').update(b).digest('hex');
+const empreinteDe = (liste) => {
+  const fichiers = {};
+  for (const f of liste) { try { fichiers[rel(f)] = sha256Complet(fs.readFileSync(f)); } catch { fichiers[rel(f)] = 'ABSENT'; } }
+  return { format: 'forge-ops/empreinte@1', release: rel(target), ts: new Date().toISOString(), fichiers };
+};
+// Compare deux releves et rend la liste des chemins qui ont diverge — apparus, disparus, modifies.
+const divergences = (a, b) => {
+  const chemins = new Set([...Object.keys(a.fichiers), ...Object.keys(b.fichiers)]);
+  return [...chemins].filter(c => a.fichiers[c] !== b.fichiers[c]);
+};
+
+// ---- --verifier-empreinte : ce verdict deja rendu vaut-il encore ? (TF-0478, a1) -----------
+// Ecrire l'empreinte sans jamais la lire ne corrigerait rien. Le defaut mesure n'est pas qu'un
+// run mente au moment ou il s'execute : c'est qu'un verdict DEJA RENDU reste citable apres que
+// sa cible a change. Ce mode repond a la seule question qui compte pour un lecteur, sans
+// rejouer les oracles — et il BLOQUE (exit 1), conformement a l'arbitrage humain du 22/08.
+//
+// Antériorité : un journal ecrit AVANT ce mecanisme ne porte pas d'empreinte. Il est DECLARE
+// non jugeable (exit 2), jamais mis en echec — un verdict ancien n'est pas un verdict faux.
+if (args.includes('--verifier-empreinte')) {
+  const dire = (code, etat, message, detail) => {
+    if (JSONOUT) process.stdout.write(JSON.stringify({ oracle: 'run-oracles --verifier-empreinte', cible: rel(target), etat, verdict: etat === 'FRAIS' ? 'PASS' : etat === 'PERIME' ? 'FAIL' : 'SKIP', message, fichiers_modifies: detail || [] }));
+    else console.log((etat === 'FRAIS' ? '\u2705 ' : etat === 'PERIME' ? '\u274C ' : '\u2796 ') + etat + ' \u2014 ' + message);
+    process.exit(code);
+  };
+  if (!fs.existsSync(journalPathTot)) dire(2, 'NON JUGEABLE', 'aucun journal pour cette cible \u2014 il n\'y a pas de verdict a verifier : ' + rel(journalPathTot));
+  let jrn = null; try { jrn = JSON.parse(fs.readFileSync(journalPathTot, 'utf8')); } catch {}
+  if (!jrn) dire(2, 'NON JUGEABLE', 'journal illisible \u2014 un journal casse ne vaut pas un verdict perime : ' + rel(journalPathTot));
+  if (!jrn.empreinte || !jrn.empreinte.fichiers) dire(2, 'NON JUGEABLE', 'verdict ' + (jrn.verdict || '?') + ' du ' + (jrn.date_iso || '?') + ' rendu AVANT que les empreintes soient scellees \u2014 anteriorite declaree, jamais mise en echec (rejouer le run pour sceller)');
+  const maintenant = empreinteDe(files);
+  const bouges = divergences(jrn.empreinte, maintenant);
+  if (bouges.length) dire(1, 'PERIME', 'verdict ' + jrn.verdict + ' du ' + jrn.date_iso + ' \u2014 ' + bouges.length + ' fichier(s) modifie(s) depuis : ' + bouges.slice(0, 5).join(' \u00b7 ') + (bouges.length > 5 ? ' (+' + (bouges.length - 5) + ')' : '') + '. Ce verdict ne porte plus sur le contenu present : le citer serait faux.', bouges);
+  dire(0, 'FRAIS', 'verdict ' + jrn.verdict + ' du ' + jrn.date_iso + ' \u2014 ' + Object.keys(jrn.empreinte.fichiers).length + ' fichier(s) inchange(s) depuis le run : le verdict porte toujours sur ce contenu.');
+}
 const fileHash = new Map();
 const hashOf = f => { if (!fileHash.has(f)) { try { fileHash.set(f, sha(fs.readFileSync(f))); } catch { fileHash.set(f, 'ERR'); } } return fileHash.get(f); };
 function cacheKey(o, file) {
@@ -196,7 +247,13 @@ async function pool() {
   };
   await Promise.all(Array.from({ length: Math.min(POOL, pending.length) }, worker));
 }
+// Bord AVANT : l'empreinte est prise juste avant que le premier oracle ne lise quoi que ce soit.
+const empreinteAvant = empreinteDe(files);
 await pool();
+// Bord APRES : reprise a l'identique. Si les deux relevés divergent, la cible a change PENDANT
+// le run et le verdict ne porte sur aucun etat coherent — ni sur l'avant, ni sur l'apres.
+const empreinteApres = empreinteDe(files);
+const bouges = divergences(empreinteAvant, empreinteApres);
 for (const s of slots) if (s) results.push(s);
 for (const t of tasks) if (targetIsFile || t.f !== target) setEtat(t.f, 'jugé');   // tout fichier réellement passé à un oracle est « jugé » — y compris la cible fichier unique ; seul le dossier-target (trigger_files) reste hors bilan
 if (!NOCACHE) { try { fs.writeFileSync(cachePath, JSON.stringify(cache, null, 1), 'utf8'); } catch {} }
@@ -214,14 +271,31 @@ const bilanOk = Object.values(bilan).reduce((a, l) => a + l.length, 0) === files
 const nFail = results.filter(r => r.verdict === 'FAIL').length;
 const nPass = results.filter(r => r.verdict === 'PASS').length;
 const nSkip = results.filter(r => r.verdict === 'SKIP').length;
-const verdict = nFail ? 'FAIL' : (nPass ? 'PASS' : 'INCONCLUSIF');
-const journal = { cible: target, date_iso: new Date().toISOString(), registre_version: registry.version, profil: path.basename(profilPath, '.json'), niveau: NIVEAU, verdict, resume: { pass: nPass, fail: nFail, skip: nSkip, cache: cacheHits }, bilan_fichiers: bilan, bilan_complet: bilanOk, exemptions_actives: exemptes, resultats: results, actions_couverture: actions };
-const journalPath = cheminSidecar('.oracles.json', '_oracles-journal.json');
+const verdictOracles = nFail ? 'FAIL' : (nPass ? 'PASS' : 'INCONCLUSIF');
+
+// PEREMPTION — arbitrage humain du 22/08 (option a1) : un verdict perime BLOQUE, il n'avertit pas.
+// Ce que la doctrine refuse ici, c'est de certifier un contenu que la suite n'a jamais juge dans
+// l'etat ou il se trouve maintenant. Le verdict des oracles est CONSERVE dans le journal (il a
+// bien ete rendu, et sur quoi se lit a l'empreinte du bord avant) ; ce qui change est le verdict
+// PRONONCE et le code de sortie.
+const perime = bouges.length > 0;
+const verdict = perime ? 'PERIME' : verdictOracles;
+const journal = { cible: target, date_iso: new Date().toISOString(), registre_version: registry.version, profil: path.basename(profilPath, '.json'), niveau: NIVEAU, verdict, resume: { pass: nPass, fail: nFail, skip: nSkip, cache: cacheHits }, bilan_fichiers: bilan, bilan_complet: bilanOk, exemptions_actives: exemptes, resultats: results, actions_couverture: actions,
+  // D5 : `release` porte le chemin de la cible, le format reste `empreinte@1` inchange.
+  empreinte: perime ? null : empreinteApres,
+  // D6 : quand les bords divergent, l'empreinte est OMISE plutot que fausse, et le motif ecrit.
+  // Une empreinte qui ne correspond a rien serait pire que pas d'empreinte du tout.
+  empreinte_motif: perime
+    ? 'PERIME — ' + bouges.length + ' fichier(s) modifie(s) PENDANT le run : ' + bouges.slice(0, 5).join(' · ')
+      + (bouges.length > 5 ? ' (+' + (bouges.length - 5) + ')' : '') + '. Aucune empreinte scellee : le verdict ne porte sur aucun etat coherent.'
+    : null,
+  verdict_oracles: verdictOracles };
+const journalPath = journalPathTot;
 fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2), 'utf8');
 if (horsLivraison && !JSONOUT) console.error('journaux d\'oracles écrits HORS livraison (TF-0428) : ' + horsLivraison);
 const histoPath = journalPath.replace(/\.json$/, '-historique.jsonl');
-fs.appendFileSync(histoPath, JSON.stringify({ date_iso: journal.date_iso, verdict, profil: journal.profil, niveau: NIVEAU, resume: journal.resume, fails: results.filter(r => r.verdict === 'FAIL').map(r => r.domaine + ':' + r.file) }) + '\n', 'utf8');
-const exitCode = verdict === 'FAIL' ? 1 : verdict === 'INCONCLUSIF' ? 2 : 0;
+fs.appendFileSync(histoPath, JSON.stringify({ date_iso: journal.date_iso, verdict, profil: journal.profil, niveau: NIVEAU, resume: journal.resume, fails: results.filter(r => r.verdict === 'FAIL').map(r => r.domaine + ':' + r.file), empreinte: journal.empreinte, empreinte_motif: journal.empreinte_motif }) + '\n', 'utf8');
+const exitCode = (verdict === 'FAIL' || verdict === 'PERIME') ? 1 : verdict === 'INCONCLUSIF' ? 2 : 0;
 
 if (JSONOUT) { process.stdout.write(JSON.stringify(journal)); process.exit(exitCode); }
 const L = '─'.repeat(70);
@@ -230,7 +304,9 @@ for (const r of results) console.log(`  ${r.verdict === 'PASS' ? '✅' : r.verdi
 for (const e of exemptes) console.log(`  🔶 [${e.domaine}] ${e.file} — EXEMPTÉ : ${e.justification} (échéance ${e.expire})`);
 if (actions.length) { console.log('\n  Couverture — domaines à vérifier hors oracle CLI (action) :'); for (const a of actions) console.log(`   • [${a.domaine}] ${a.hint}${a.statut === 'todo' ? ' (oracle à outiller)' : ''}`); }
 console.log(`\n  Bilan fichiers (${files.length}) : jugé=${bilan['jugé'].length} · exempté=${bilan['exempté'].length} · délégué=${bilan['délégué'].length} · signalé=${bilan['signalé'].length}${bilanOk ? '' : '  ⚠ BILAN INCOMPLET — silence détecté'}${cacheHits ? ' · cache=' + cacheHits : ''}`);
-console.log('\n' + (verdict === 'FAIL'
+console.log('\n' + (verdict === 'PERIME'
+  ? '\u274C PERIME \u2014 ' + journal.empreinte_motif + ' Relancer sur une cible stable.'
+  : verdict === 'FAIL'
   ? `❌ NON CONFORME — ${nFail} oracle(s) en échec (${nPass} PASS, ${nSkip} SKIP). Corriger la source puis relancer.`
   : verdict === 'INCONCLUSIF'
     ? `⚠️ INCONCLUSIF — aucun oracle n'a réellement jugé (0 PASS, 0 FAIL, ${nSkip} SKIP). Un run sans jugement n'est pas un ✓ (§5) : installer les outils manquants ou traiter les actions de couverture.`
