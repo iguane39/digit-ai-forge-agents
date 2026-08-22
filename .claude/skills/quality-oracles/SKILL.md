@@ -105,6 +105,16 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   mécanisme et ne porte pas d'empreinte — antériorité **déclarée, jamais mise en échec** : un verdict ancien n'est pas un verdict faux.
   Pourquoi : mesuré le 22/08/2026, 2 journaux confrontables sur 2 portaient un `PASS` rendu avant une modification de leur cible ;
   un `CONFORME` cité dans une restitution vieillissait en silence, ni re-vérifiable ni invalidable.
+- **Surface d'analyse (2.9.0, TF-0485/0486/0487)** — un livrable AUTOPORTANT embarque son code, sa charte et ses
+  sources ; aucune de ces zones n'est une affirmation DU LIVRABLE. `oracle-claims` blanchit donc `<script>`, `<style>`,
+  `<pre>`, `<code>`, `<blockquote>`, tout élément portant `data-cite`, et le code en ligne des Markdown — lignes
+  préservées, les numéros de constat restent justes. Même règle que L1 de `check_html`
+  (`if parent.tag in ("script", "style"): continue`), qui était le précédent disponible et n'avait pas été suivi.
+  Mesuré le 22/08 : une référence arrière `$1` lue comme « montant 1 $ » (FAIL bloquant), deux couleurs de charte
+  (`#334155`, `#374151`) lues comme des nombres non sourcés — et seulement les couleurs PUREMENT numériques, `#0F172A`
+  passant —, onze « 100% » provenant de documents CITÉS, incorrigibles sans falsifier la source. Les contournements
+  subis avant correction disent le coût : réécrire les `$1` en fonctions de remplacement, écrire deux couleurs en
+  `rgb()` alors que la charte prescrit l'hexadécimal. Dégrader le livrable pour plaire à l'oracle.
 - **Profils** — `profils/digit-ai.json` · `generique.json` (défaut : digit-ai, env `QO_PROFIL`) : budgets perf,
   politique pptx, convention de nommage, marqueurs de sources et motifs additionnels (claims : `motifs_bloquants` / `motifs_warn`),
   niveaux d'exigence (§6), seuils `visual_diff` (seuil_ratio, breakpoints, tolerance_pixel), rubrique du juge, `ignore_patterns`. Un contexte client = un JSON, zéro code.

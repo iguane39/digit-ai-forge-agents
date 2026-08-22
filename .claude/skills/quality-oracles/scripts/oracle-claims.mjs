@@ -43,9 +43,40 @@ const compile = (list, label) => (list || []).map(p => { try { return new RegExp
 const PROFIL_BLOQ = compile(conf.motifs_bloquants, 'bloquant');
 const PROFIL_WARN = compile(conf.motifs_warn, 'warn');
 
+// TF-0485, TF-0486 et TF-0487 (lot v2-architecture-cible, 22/08) — TROIS FAUX POSITIFS, UN SEUL
+// MÉCANISME : l'oracle jugeait tout le fichier comme du texte écrit par le livrable. Or un
+// livrable AUTOPORTANT embarque son code, sa charte et ses sources ; la surface d'analyse
+// contenait donc des choses que personne n'a « affirmées ».
+//   · TF-0485 — `s.replace(/[*][*]([^*]+)[*][*]/g, '<strong>$1</strong>')` : la référence arrière
+//     `$1` lue comme « montant 1 $ sans source », FAIL bloquant, en pointant `(function () {`
+//     trois lignes plus haut. Contournement subi côté produit : réécrire les quatre `$1/$2` en
+//     fonctions de remplacement — c'est-à-dire dégrader le code pour plaire à l'oracle, et le
+//     prochain auteur réécrira `$1` sans savoir pourquoi il ne faut pas.
+//   · TF-0486 — `#334155` et `#374151` lus comme « nombre non sourcé ». Ce sont deux tokens de
+//     couleur du bloc `:root`, c'est-à-dire exactement ce que la charte PRESCRIT d'écrire. Seules
+//     les couleurs purement numériques étaient touchées (`#0F172A` passait) : un oracle dont le
+//     verdict dépend des lettres présentes dans une couleur n'est pas lisible.
+//   · TF-0487 — « pourcentage 100% non sourcé », onze occurrences, toutes dans les douze documents
+//     Markdown CITÉS par le rapport. Ceux du texte propre ont pu être reformulés ; ceux des
+//     citations sont INCORRIGIBLES sans falsifier la source.
+//
+// Le précédent existait déjà dans la forge et n'avait pas été suivi : la règle L1 de check_html
+// fait `if parent.tag in ("script", "style"): continue`. Même règle ici, étendue au contenu CITÉ
+// — `<pre>`, `<code>`, `<blockquote>`, et tout élément portant `data-cite`. Les lignes sont
+// PRÉSERVÉES (on blanchit, on ne supprime pas) pour que les numéros de ligne restent justes.
+const NEUTRALISE = m => m.replace(/[^\n]/g, ' ');
 let text = fs.readFileSync(file, 'utf8');
-text = text.replace(/```[\s\S]*?```/g, m => m.replace(/[^\n]/g, ' '));                 // code exclu, lignes préservées
-if (/\.html?$/.test(file)) text = text.replace(/<table[\s\S]*?<\/table>/gi, m => m.replace(/[^\n]/g, ' ')).replace(/<[^>]+>/g, ' ');
+text = text.replace(/```[\s\S]*?```/g, NEUTRALISE);                                    // bloc de code exclu
+text = text.replace(/`[^`\n]+`/g, NEUTRALISE);                                         // code en ligne aussi
+if (/\.html?$/.test(file)) text = text
+  .replace(/<script\b[\s\S]*?<\/script>/gi, NEUTRALISE)                                // le JS inline n'affirme rien
+  .replace(/<style\b[\s\S]*?<\/style>/gi, NEUTRALISE)                                  // la charte non plus
+  .replace(/<pre\b[\s\S]*?<\/pre>/gi, NEUTRALISE)
+  .replace(/<code\b[\s\S]*?<\/code>/gi, NEUTRALISE)
+  .replace(/<blockquote\b[\s\S]*?<\/blockquote>/gi, NEUTRALISE)
+  .replace(/<([a-z0-9]+)\b[^>]*\bdata-cite\b[^>]*>[\s\S]*?<\/\1>/gi, NEUTRALISE)        // source citée verbatim
+  .replace(/<table[\s\S]*?<\/table>/gi, NEUTRALISE)
+  .replace(/<[^>]+>/g, ' ');
 const lines = text.split('\n');
 const base = path.basename(file);
 const isTableLine = l => /^\s*\|/.test(l);
@@ -55,7 +86,9 @@ const para = i => [lines[i - 1] || '', lines[i], lines[i + 1] || ''].join(' ');
 const findings = [];
 const MONEY = /(\d[\d\s\u00a0\u202f.,]*)\s*(k?€|k?\$|K€)/g;
 const PCT = /(\d[\d.,]*)\s*%/g;
-const BIG = /(?<![\d.,€$%])\b\d{1,3}(?:[\s\u00a0\u202f]\d{3})+(?:[.,]\d+)?\b|\b\d{4,}\b/g;
+// Le `#` entre dans la garde arrière (TF-0486) : `#334155` n'est pas un nombre affirmé, c'est une
+// couleur. La garde vaut aussi hors HTML — un Markdown peut porter une couleur de charte.
+const BIG = /(?<![\d.,€$%#])\b\d{1,3}(?:[\s\u00a0\u202f]\d{3})+(?:[.,]\d+)?\b|(?<!#)\b\d{4,}\b/g;
 const TJM = /\bTJM\b[^\d\n]{0,12}\d[\d\s\u00a0\u202f.,]*/gi;                            // v2 — TJM chiffré
 const JH = /\d[\d\s.,]*\s*(?:j\.?h\.?|jours?[- ]hommes?|j\/h)\b/gi;                     // v2 — charge en jours-homme
 const DATEVAL = /\b\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\b|\b\d{1,2}(?:er)?\s+(?:janv|févr|fevr|mars|avr|mai|juin|juil|août|aout|sept|oct|nov|déc|dec)/i;
