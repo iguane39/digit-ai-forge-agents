@@ -134,7 +134,13 @@ caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 6px
 thead th { background: var(--surface); text-align: left; font-family: var(--head); font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--line); padding: 10px 12px; }
 tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
 @media (max-width: 640px) {
-  table, tbody, tr, td { display: block; width: 100%; }
+  /* TF-0499 (22/08/2026) : `table` ne passe JAMAIS en display:block. Une <caption> dont le
+     tableau parent est en block recoit une boite de tableau anonyme qui se reduit au contenu :
+     mesure a 390 px sur une legende de 108 caracteres, elle rendait 70 x 192 px — une colonne
+     d'un mot — contre 366 x 42 px une fois la regle alignee. Le boilerplate du skill ne touchait
+     deja que thead/tr/td : c'est LUI qui fait foi, et cet extrait ne le suivait pas. Constate sur
+     livrable reel : quinze tableaux touches, jamais vus par aucun oracle. */
+  tr, td { display: block; width: 100%; }
   thead { display: none; }
   tbody tr { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; margin: 10px 0; }
   tbody td { border: none; padding: 5px 0; display: flex; justify-content: space-between; gap: 12px; }

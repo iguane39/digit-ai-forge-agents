@@ -137,7 +137,7 @@ def ensure_local_fonts() -> None:
 MEASURE_JS = r"""
 () => {
   const issues = { v1_overflow: [], v2_contrast: [], v3_align: [], v4_overlap: [], v7_spacing: [],
-                   l2_width: [], l2_gouttiere: [], l2_conteneur: [], unmeasured: [] };
+                   l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -444,6 +444,48 @@ MEASURE_JS = r"""
   // mesure et on compare. Si l'element s'elargit fortement, c'est bien une
   // bride qui laissait du vide -- pas une colonne legitimement etroite (une
   // colonne de grille ne bouge pas quand on retire son max-width).
+  // ---- L2-filet (TF-0500, 22/08/2026) : un texte ecrase en colonne d'un mot -----------------
+  // L2-largeur ne pouvait STRUCTURELLEMENT pas voir ce defaut, pour trois raisons dont chacune
+  // suffisait : sa collecte ignorait `caption` ; la ligne `closest('table')` l'aurait ecartee de
+  // toute facon, une legende etant toujours dans un tableau ; et son seuil de 1100 px la rendait
+  // muette sous cette largeur, or le defaut n'existe QUE sous 640 px — la ou les mises en page
+  // basculent de table a block. Le seuil de 1100 px n'est PAS supprime : il protege d'un faux
+  // positif precis (une bride de lecture est sans effet visible sur ecran etroit).
+  //
+  // Cette regle ne mesure pas une mesure de lecture mais un RAPPORT D'ASPECT ANORMAL : un bloc
+  // dont la largeur tombe sous 25 % de celle de son conteneur ALORS QUE son contenu passe a la
+  // ligne a presque chaque mot est un defaut a toute largeur. Les deux conditions sont exigees
+  // ensemble : une colonne etroite qui respire n'est pas un defaut, un texte long dans une boite
+  // large non plus.
+  {
+    const vusF = new Set();
+    for (const el of document.body.querySelectorAll('p, dd, li, blockquote, caption, .va, .prose')) {
+      if (!visible(el) || vusF.has(el)) continue;
+      vusF.add(el);
+      const txt = (el.textContent || '').trim();
+      const mots = txt.split(/\s+/).filter(Boolean).length;
+      if (mots < 6) continue;                       // trop court pour distinguer un filet d'un titre
+      if (el.closest('nav')) continue;
+      // `caption` est volontairement admise : l'exclusion `closest('table')` de L2-largeur vise
+      // les CELLULES, pas la legende, et c'est elle qui portait le defaut mesure.
+      if (el.closest('table') && el.tagName !== 'CAPTION') continue;
+      const par = el.parentElement;
+      if (!par) continue;
+      const w = el.getBoundingClientRect().width;
+      const wp = par.getBoundingClientRect().width;
+      if (w <= 0 || wp <= 0) continue;
+      if (w / wp >= 0.25) continue;                 // il occupe sa place : rien a dire
+      const cs2 = getComputedStyle(el);
+      let lh = parseFloat(cs2.lineHeight);
+      if (!isFinite(lh) || lh <= 0) lh = parseFloat(cs2.fontSize) * 1.2;
+      const lignes = Math.round(el.getBoundingClientRect().height / lh);
+      if (lignes < mots * 0.8) continue;            // il passe a la ligne normalement
+      issues.l2_filet.push({ what: label(el), detail:
+        `${Math.round(w)}px de large pour ${Math.round(wp)}px de conteneur (${Math.round(100 * w / wp)}%), `
+        + `${lignes} ligne(s) pour ${mots} mot(s) — texte ecrase en filet` });
+    }
+  }
+
   if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
     const vus = new Set();
     for (const el of document.body.querySelectorAll('p, dd, li, blockquote, .va, .prose')) {
@@ -709,7 +751,8 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             v1 = issues.get("v1_tronque", {}).get("total") or len(issues["v1_overflow"])
             blocking = (v1 + len(issues["v2_contrast"])
                         + len(issues["v4_overlap"]) + len(issues["l2_width"])
-                        + len(issues["l2_gouttiere"]) + len(issues["l2_conteneur"]))
+                        + len(issues["l2_gouttiere"]) + len(issues["l2_conteneur"])
+                        + len(issues["l2_filet"]))
             blocking_total += blocking
             report["breakpoints"][width] = {
                 "png": str(png) if capture["faite"] else None,
@@ -750,6 +793,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                                      ("l2_width", "L2 largeur de texte", "BLOQUANT"),
                                      ("l2_gouttiere", "L2 gouttière d'étiquettes", "BLOQUANT"),
                                      ("l2_conteneur", "L2 conteneur calé à gauche", "BLOQUANT"),
+                                     ("l2_filet", "L2 texte écrasé en filet", "BLOQUANT"),
                                      ("v3_align", "V3 alignement", "avertissement"),
                                      ("v7_spacing", "V7 espacement", "avertissement"),
                                      ("unmeasured", "Non mesurable", "à vérifier visuellement")]:

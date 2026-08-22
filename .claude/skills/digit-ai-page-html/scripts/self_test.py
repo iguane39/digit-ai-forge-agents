@@ -203,6 +203,14 @@ CAS_RENDU = {
     "l2c-conteneur-centre.html": ("l2_conteneur", 0),
     "l2g-gouttiere-etiquettes.html": ("l2_gouttiere", 1),   # colonne d'étiquettes
     "l2g-etiquettes-en-tete.html": ("l2_gouttiere", 0),     # étiquette en tête
+    # TF-0500 (22/08) : L2-largeur ne pouvait STRUCTURELLEMENT pas voir un texte écrasé en
+    # colonne d'un mot — caption absente de sa collecte, écartée par closest('table'), et
+    # seuil de 1100 px alors que le défaut n'existe que sous 640 px. L2-filet mesure un rapport
+    # d'aspect anormal, à toute largeur. Les deux fixtures ne diffèrent QUE par une règle CSS :
+    # `table` en display:block (la caption tombe à 70px pour 366px de conteneur, 12 lignes pour
+    # 15 mots) ou non (366px, 2 lignes). Mesuré le 22/08 avant et après correction.
+    "l2f-caption-ecrasee-en-filet.html": ("l2_filet", 1),
+    "l2f-caption-pleine-largeur.html": ("l2_filet", 0),
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
     # haut de boîte au suivant. Les deux pages sont identiques à une chose près —
     # un paragraphe hors de l'échelle d'espacement dans la rouge.
