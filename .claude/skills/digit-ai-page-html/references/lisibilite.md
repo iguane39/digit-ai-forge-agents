@@ -612,7 +612,7 @@ internes dans le même conteneur. *Une phrase qui promet une vue ne compte pas.*
 
 *La mesure qui a ouvert cette porte.* Le registre compte 49 domaines. Sur un livrable réel de
 85 Ko et 297 entrées, le lanceur en jugeait **quatre**, et **aucun de lisibilité** : les règles
-L1-L20 vivent dans `check_html.py`, qui ne s'exécute que sur du HTML. Or le **Markdown est le
+L1-L21 vivent dans `check_html.py`, qui ne s'exécute que sur du HTML. Or le **Markdown est le
 format de livraison dominant** des runs d'architecture et de conseil — le projet concerné remet
 dix documents Markdown et un seul HTML. Conséquence directe : le défaut de L18 (un identifiant
 sans son sens) s'est produit **dans les documents Markdown**, là où rien ne regardait, et c'est
@@ -645,10 +645,32 @@ sur neuf** d'une restitution au gabarit — une forme PRESCRITE, où un bloc qui
 est exactement ce que la consigne demande. Elle ne juge donc que les **tableaux**. *Un contrôle
 qui condamne la forme qu'un gabarit prescrit met le gabarit en défaut, jamais l'auteur.*
 
+## L21 — Un composant DÉCLARÉ porte son style (TF-0521, 23/08/2026)
+
+*Le fait.* Deux squelettes de la bibliothèque portaient `<nav class="toc">` et des entrées
+correctement annotées. **L6 était satisfaite au sens mécanique**, `check_html` rendait PASS, et le
+rendu aussi — il n'y avait ni chevauchement ni troncature. Mais **aucune règle CSS ne visait
+`.toc`** : le sommaire se rendait en liste numérotée nue, ce qu'aucun livrable du parc ne fait. Le
+défaut n'a été vu qu'en comparant à un livrable RÉEL du même produit.
+
+**C'est une classe entière de défauts que ni l'un ni l'autre oracle ne peut voir.** Un oracle de
+MARQUAGE trouve la classe et s'arrête là ; un oracle de RENDU ne voit rien tant que rien ne
+déborde. Entre les deux, *un composant peut être annoncé et n'exister pas*.
+
+**Contrôle mécanique.** `L21` — toute classe de composant de la charte présente dans le marquage
+est visée par au moins une règle CSS de la page. Liste **fermée** : `toc`, `toc-t`, `toc-d`,
+`ch-apprend`, `table-hote`, `repli-cartes`, `diagram-wrap`. Un nom hors liste n'est pas jugé —
+inventer des composants pour avoir quelque chose à exiger serait pire que ne rien exiger.
+
+**Ce que la règle a trouvé en entrant** : huit fixtures du socle déclaraient `.toc` ou
+`.ch-apprend` sans les styler. Ce n'était pas un faux positif — c'était **le même défaut**, dans
+les fixtures. Elles ont été complétées plutôt que la règle affaiblie : *une fixture qui ne
+ressemble pas à une vraie page mesure autre chose que ce qu'on croit.*
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L20
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L21
 python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L17)
 python scripts/check_html.py page.html --output json
 python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu

@@ -11,6 +11,12 @@ mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline
 @media (max-width:640px){.wrap{padding:10px}}
 @media print{body{background:#fff}}
 
+/* L21 (TF-0521) : un composant DÉCLARÉ porte son style — un sommaire annoncé et non stylé se
+   rend en liste numérotée nue, ce qu'aucun livrable du parc ne fait. */
+nav.toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 24px;margin:18px 0;padding:14px 16px;border:1px solid var(--line,#E2E8F0);border-radius:8px}
+.toc-t{font-weight:600}
+.toc-d{color:var(--faint,#64748B)}
+.ch-apprend{margin:.2em 0 1em;color:var(--faint,#64748B)}
 </style></head>
 <body><main class="wrap">
 <h1>L7 — chapeaux identiques</h1>

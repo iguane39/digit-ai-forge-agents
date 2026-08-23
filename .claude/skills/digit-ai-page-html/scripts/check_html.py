@@ -1232,6 +1232,44 @@ def check_lisibilite(html: str, a: Arbre):
     if len(lourds) > 6:
         fails.append(f"L20 bloc préformaté sans alternative : {len(lourds) - 6} autre(s) occurrence(s).")
 
+    # --- L21 : un composant DÉCLARÉ sans style est invisible aux DEUX oracles (TF-0521) ------
+    #
+    # LE FAIT, mesuré le 23/08. Deux squelettes de la bibliothèque portaient `<nav class="toc">` et
+    # des entrées correctement annotées : L6 était satisfaite AU SENS MÉCANIQUE, `check_html` rendait
+    # PASS, et le rendu aussi puisqu'il n'y avait ni chevauchement ni troncature. Mais AUCUNE règle
+    # CSS ne visait `.toc` : le sommaire se rendait en liste numérotée nue, ce qu'aucun livrable du
+    # parc ne fait. Le défaut n'a été vu qu'en comparant à un livrable RÉEL du même produit.
+    #
+    # C'est une CLASSE ENTIÈRE de défauts que ni l'un ni l'autre oracle ne peut voir : un oracle de
+    # MARQUAGE trouve la classe et s'arrête là ; un oracle de RENDU ne voit rien tant que rien ne
+    # déborde. Entre les deux, un composant peut être annoncé et n'exister pas.
+    #
+    # La liste est FERMÉE et connue — ce sont les composants de la charte, ceux dont l'absence de
+    # style se voit. Un nom de classe hors liste n'est pas jugé : inventer des composants pour avoir
+    # quelque chose à exiger serait pire que ne rien exiger.
+    COMPOSANTS_CHARTE = ("toc", "toc-t", "toc-d", "ch-apprend", "table-hote", "repli-cartes",
+                         "diagram-wrap")
+    # Les sélecteurs présents dans la feuille, tous compounds confondus : c'est la présence d'une
+    # règle qui compte, pas où elle vise.
+    styles = set()
+    for sel, _d in css:
+        for cl in re.findall(r"\.([A-Za-z_][\w-]*)", sel):
+            styles.add(cl)
+    declarees = set()
+    for n in a.racine.descendants():
+        for c in n.classes():
+            if c in COMPOSANTS_CHARTE:
+                declarees.add(c)
+    orphelins = sorted(declarees - styles)
+    for cl in orphelins[:6]:
+        fails.append(
+            f"L21 composant déclaré sans style : la classe « {cl} » est employée dans le marquage et "
+            "AUCUNE règle CSS ne la vise — le composant est annoncé et n'existe pas. Un oracle de "
+            "marquage le trouve et s'arrête là ; un oracle de rendu ne voit rien tant que rien ne "
+            "déborde. Ajouter le bloc de style du composant, ou retirer la classe.")
+    if len(orphelins) > 6:
+        fails.append(f"L21 composant déclaré sans style : {len(orphelins) - 6} autre(s) classe(s).")
+
     # --- L5 : surlignage inline -------------------------------------------
     # Le piege n'est pas seulement une regle `mark { … }` fautive : c'est la
     # COLLISION DE NOM. Un conteneur de recherche `.find` et un surlignage
