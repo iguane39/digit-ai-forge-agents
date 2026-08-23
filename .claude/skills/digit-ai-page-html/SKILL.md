@@ -2,6 +2,10 @@
 name: digit-ai-page-html
 description: >
   Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
+# TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
+# reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
+# n'empeche jamais l'appel direct par `/digit-ai-page-html`.
+paths: "**/*.html, **/*.md"
 metadata:
   version: "1.12.0"
 ---
