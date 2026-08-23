@@ -1168,6 +1168,70 @@ def check_lisibilite(html: str, a: Arbre):
     if len(coupeurs) > 6:
         fails.append(f"L19 coupure de mot en prose : {len(coupeurs) - 6} autre(s) sélecteur(s).")
 
+    # --- L20 : un bloc préformaté LOURD offre une alternative de lecture (TF-0495) ----------
+    #
+    # LE FAIT. Le client a demandé que les documents sources soient inclus dans le livrable
+    # autoportant. Ils l'ont été — en blocs de texte brut, dont un de 67 Ko contenant une
+    # trentaine de tableaux Markdown. TOUS LES ORACLES PASSAIENT : le contenu est là, la page est
+    # conforme, rien ne déborde. Il a fallu que le client écrive « il faut pouvoir formater les
+    # MDs, sinon c'est illisible », PUIS le redemande une seconde fois, pour qu'un lecteur à deux
+    # vues soit produit.
+    #
+    # C'est la frontière entre « le contenu est PRÉSENT » et « le contenu est EXPLOITABLE », et
+    # aucune règle ne la tenait. Le principe existait pourtant à côté : L10 impose un mode d'emploi
+    # aux chapitres de données. Il ne couvrait pas le contenu EMBARQUÉ.
+    #
+    # CE QUI EST EXIGÉ : au-delà du seuil, un `<pre>` offre une alternative de lecture — une vue
+    # mise en forme, un sommaire, ou un repli par sections — OU déclare pourquoi le texte brut fait
+    # foi (`data-brut-fait-foi="<raison>"`). Même logique que `data-filterable="off"` avec motif :
+    # CE QUI EST DÉLIBÉRÉ SE DÉCLARE, CE QUI EST SUBI SE CORRIGE.
+    #
+    # L'alternative est reconnue par ce qui la CÂBLE, jamais par une intention : un bouton ou une
+    # case qui bascule la vue (`aria-controls` vers le bloc ou son conteneur), ou un sommaire de
+    # liens internes dans le même conteneur. Une phrase promettant une vue ne compte pas.
+    SEUIL_PRE_OCTETS = 4096
+    SEUIL_PRE_LIGNES = 80
+    lourds = []
+    for n in a.racine.descendants():
+        if n.tag != "pre":
+            continue
+        texte_pre = " ".join(t for t, porteur in a.textes if porteur is n or n in porteur.ancetres())
+        lignes_pre = texte_pre.count(chr(10)) + 1
+        octets = len(texte_pre.encode("utf-8"))
+        if octets < SEUIL_PRE_OCTETS and lignes_pre < SEUIL_PRE_LIGNES:
+            continue
+        lignee = [n, *n.ancetres()]
+        if any((x.att("data-brut-fait-foi") or "").strip() for x in lignee):
+            continue
+        # Une bascule câblée, ou un sommaire de liens internes : on cherche dans les ANCÊTRES,
+        # parce que la commande vit à côté du bloc, pas dedans.
+        cible_ids = {x.attrs.get("id") for x in lignee if x.attrs.get("id")}
+        alternative = False
+        for m in a.racine.descendants():
+            controle = (m.att("aria-controls") or "").strip()
+            if controle and cible_ids & set(controle.split()):
+                alternative = True
+                break
+        if not alternative:
+            for x in lignee:
+                liens = [d for d in x.descendants()
+                         if d.tag == "a" and (d.att("href") or "").startswith("#")]
+                if len(liens) >= 3:
+                    alternative = True
+                    break
+        if not alternative:
+            lourds.append((n.chemin(), octets, lignes_pre))
+    for ou, octets, nl_ in lourds[:6]:
+        fails.append(
+            f"L20 bloc préformaté sans alternative de lecture : {ou} porte "
+            f"{octets // 1024} Ko / {nl_} ligne(s) de texte brut — au-delà de "
+            f"{SEUIL_PRE_OCTETS // 1024} Ko ou {SEUIL_PRE_LIGNES} lignes, « le contenu est là » ne "
+            "veut pas dire « le contenu est lisible ». Offrir une vue mise en forme, un sommaire ou "
+            'un repli par sections (bascule câblée par aria-controls), ou déclarer '
+            'data-brut-fait-foi="<raison>" si le texte brut fait foi.')
+    if len(lourds) > 6:
+        fails.append(f"L20 bloc préformaté sans alternative : {len(lourds) - 6} autre(s) occurrence(s).")
+
     # --- L5 : surlignage inline -------------------------------------------
     # Le piege n'est pas seulement une regle `mark { … }` fautive : c'est la
     # COLLISION DE NOM. Un conteneur de recherche `.find` et un surlignage

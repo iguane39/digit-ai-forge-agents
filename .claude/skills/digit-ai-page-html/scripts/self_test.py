@@ -19,6 +19,7 @@ import argparse
 import json
 import re
 import shutil
+import subprocess
 import sys
 
 # Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression
@@ -58,6 +59,14 @@ CAS = {
     # la prose. La verte le reserve a `code`, `pre` et aux classes qui disent leur usage technique.
     "l19-coupure-en-prose.html": {"L19"},
     "l19-coupure-reservee-au-technique.html": set(),
+    # TF-0495 (22/08) — la frontiere entre « le contenu est PRESENT » et « le contenu est
+    # EXPLOITABLE ». Un document embarque en texte brut passait TOUS les oracles ; il a fallu que
+    # le client le redemande DEUX FOIS pour qu'une vue lisible soit produite. Les trois fixtures
+    # portent le MEME bloc de 95 lignes : sans alternative, avec une bascule cablee, et avec le
+    # motif declare — parce que ce qui est delibere se declare et ce qui est subi se corrige.
+    "l20-brut-sans-alternative.html": {"L20"},
+    "l20-brut-avec-bascule.html": set(),
+    "l20-brut-declare.html": set(),
     "l2-largeur-bridee.html": {"L2"},
     "l3-tooltip-vide.html": {"L3"},
     "l3-bareme-absent.html": {"L3"},
@@ -705,12 +714,51 @@ def run_glyphes_du_socle():
              'detail': detail}]
 
 
+def run_markdown():
+    """TF-0518 (22/08/2026) — LA PORTE DU MARKDOWN, ouverte et jouée dans les deux sens.
+
+    Le registre compte 48 domaines ; mesuré sur un livrable réel de 85 Ko, le lanceur en jugeait
+    QUATRE et aucun de lisibilité. Les règles L1-L19 vivent dans `check_html.py`, qui ne
+    s'exécute que sur du HTML — or le Markdown est le format de livraison DOMINANT des runs
+    d'architecture et de conseil, et c'est exactement là que le défaut du retour jumeau (un
+    identifiant sans son sens) s'est produit. Un humain l'a trouvé, comme pour L14.
+
+    La paire rouge/verte porte le MÊME contenu à trois différences près, pour que ce qui est
+    jugé soit isolé : un chapitre qui ouvre sur un tableau nu, un marqueur de balisage interne
+    resté dans le texte, et un code employé sans son sens.
+    """
+    outil = Path(__file__).resolve().parent / 'check_markdown.py'
+    fx = Path(__file__).resolve().parent.parent / 'fixtures'
+    out = []
+    attendus = {'m-lisibilite-rouge.md': {'M7', 'M14', 'M18'}, 'm-lisibilite-vert.md': set()}
+    for nom, attendu in attendus.items():
+        cible = fx / nom
+        if not cible.exists():
+            out.append({'fixture': nom, 'verdict': 'ECHEC', 'attendu': 'fixture présente',
+                        'obtenu': 'absente', 'regle': 'M (markdown)', 'detail': ''})
+            continue
+        r = subprocess.run([sys.executable, str(outil), str(cible), '--output', 'json'],
+                           capture_output=True, text=True, encoding='utf-8', timeout=60)
+        try:
+            j = json.loads(r.stdout)
+        except Exception:
+            out.append({'fixture': nom, 'verdict': 'ECHEC', 'attendu': 'sortie JSON',
+                        'obtenu': 'illisible', 'regle': 'M (markdown)', 'detail': (r.stderr or '')[:160]})
+            continue
+        obtenus = {m.split()[0] for m in j.get('fails', [])}
+        ok = obtenus == attendu
+        out.append({'fixture': nom, 'verdict': 'OK' if ok else 'ECHEC',
+                    'attendu': ','.join(sorted(attendu)) or '(aucune règle)',
+                    'obtenu': ','.join(sorted(obtenus)) or '(aucune)',
+                    'regle': 'M (markdown)', 'detail': ''})
+    return out
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
-    res = run() + run_exemptions() + run_structure() + run_glyphes_du_socle()
+    res = run() + run_exemptions() + run_structure() + run_glyphes_du_socle() + run_markdown()
     rendu = run_rendu()
     if rendu:
         res += rendu

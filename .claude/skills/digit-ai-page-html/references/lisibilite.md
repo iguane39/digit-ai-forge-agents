@@ -586,10 +586,69 @@ navigateur et vit dans `render_page.py` ; ce contrôle-là n'existe pas encore. 
 qui casse la prose est refusée en amont, ce qui suffit à empêcher le défaut d'entrer — mais une
 page héritée qui le porte déjà autrement n'est pas vue.
 
+## L20 — « le contenu est là » ne veut pas dire « le contenu est lisible » (TF-0495, 22/08/2026)
+
+*Le fait.* Le client a demandé que les documents sources soient inclus dans le livrable
+autoportant. Ils l'ont été — en blocs de texte brut, dont un de **67 Ko contenant une trentaine
+de tableaux Markdown**. **Tous les oracles passaient** : le contenu est là, la page est
+conforme, rien ne déborde. Il a fallu que le client écrive « il faut pouvoir formater les MDs,
+sinon c'est illisible », **puis le redemande une seconde fois**, pour qu'un lecteur à deux vues
+soit produit.
+
+C'est la frontière entre **le contenu PRÉSENT** et **le contenu EXPLOITABLE**, et aucune règle
+ne la tenait. Le principe existait pourtant juste à côté : **L10** impose un mode d'emploi aux
+chapitres de données. Il ne couvrait pas le contenu **embarqué**.
+
+**Contrôle mécanique.** `L20` — au-delà de **4 Ko ou 80 lignes**, un `<pre>` offre une
+alternative de lecture (vue mise en forme, sommaire, repli par sections) **ou** déclare
+`data-brut-fait-foi="<raison>"`. Même logique que `data-filterable="off"` avec motif : **ce qui
+est délibéré se déclare, ce qui est subi se corrige.**
+
+L'alternative est reconnue par ce qui la **câble**, jamais par une intention : un contrôle
+portant `aria-controls` vers le bloc ou son conteneur, ou un sommaire d'au moins trois liens
+internes dans le même conteneur. *Une phrase qui promet une vue ne compte pas.*
+
+## Hors HTML — la porte du Markdown (TF-0518, 22/08/2026)
+
+*La mesure qui a ouvert cette porte.* Le registre compte 49 domaines. Sur un livrable réel de
+85 Ko et 297 entrées, le lanceur en jugeait **quatre**, et **aucun de lisibilité** : les règles
+L1-L20 vivent dans `check_html.py`, qui ne s'exécute que sur du HTML. Or le **Markdown est le
+format de livraison dominant** des runs d'architecture et de conseil — le projet concerné remet
+dix documents Markdown et un seul HTML. Conséquence directe : le défaut de L18 (un identifiant
+sans son sens) s'est produit **dans les documents Markdown**, là où rien ne regardait, et c'est
+un humain qui l'a trouvé. Exactement comme le défaut fondateur de L14.
+
+`scripts/check_markdown.py` porte le **sous-ensemble indépendant du format de rendu**, sous des
+noms qui disent leur origine :
+
+| règle | ce qu'elle tient | transposée de |
+|---|---|---|
+| `M7` | un chapitre ouvre par ce qu'il apprend, pas par un tableau nu | L7 |
+| `M10` | au-delà de 12 lignes de tableau, une phrase dit COMMENT lire | L10 |
+| `M14` | aucune plomberie interne dans le texte | L14 |
+| `M18` | un identifiant porte son sens, **en ligne** | L18 |
+
+**Hors HTML, la glose est forcément EN LIGNE** : il n'y a ni infobulle ni ancre à survoler. `M18`
+l'accepte entre parenthèses, après un tiret, ou après deux-points — les trois formes qu'un œil
+lit sans cliquer.
+
+**Ce qui reste dehors, et le dit.** Les règles qui dépendent du RENDU n'ont pas de sens sur un
+Markdown, dont la mise en page appartient au lecteur : L1, L2, L5, L15, L19. Et **L3** (une
+valeur porte sa légende) comme **L12** (une énumération n'est pas une phrase) restent une **revue
+de lecture** : reconnaître « une valeur mise en avant » dans du Markdown demande de lire, et les
+mécaniser produirait plus de bruit que de gain. Le partage mécanique / revue écrit plus haut
+s'applique tel quel — *il n'y avait pas de doctrine à inventer, seulement une porte à ouvrir*.
+
+**Une borne trouvée en jouant la règle**, qui vaut d'être dite : `M7` condamnait d'abord tout
+chapitre ouvrant sur des « données », listes à puces comprises. Elle faisait échouer **sept blocs
+sur neuf** d'une restitution au gabarit — une forme PRESCRITE, où un bloc qui ouvre par ses puces
+est exactement ce que la consigne demande. Elle ne juge donc que les **tableaux**. *Un contrôle
+qui condamne la forme qu'un gabarit prescrit met le gabarit en défaut, jamais l'auteur.*
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L19
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L20
 python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L17)
 python scripts/check_html.py page.html --output json
 python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu

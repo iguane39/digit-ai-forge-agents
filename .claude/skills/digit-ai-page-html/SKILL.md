@@ -3,13 +3,23 @@ name: digit-ai-page-html
 description: >
   Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
 metadata:
-  version: "1.7.0"
+  version: "1.8.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.8.0 (22/08/2026)** — deux retours clients de plus, et une PORTE ouverte.
+**L20** (neuve) : au-dela de 4 Ko ou 80 lignes, un bloc de texte brut offre une alternative de
+lecture ou declare `data-brut-fait-foi`. Un document de 67 Ko embarque en brut passait TOUS les
+oracles ; le client a du le redemander deux fois. « Le contenu est la » ne veut pas dire « le
+contenu est lisible ».
+**`scripts/check_markdown.py`** (neuf) : les regles independantes du rendu s'appliquent enfin aux
+`.md` — `M7`, `M10`, `M14`, `M18`. Le Markdown est le format de livraison dominant des runs de
+conseil, et aucun controle de lisibilite ne l'atteignait. Domaine enregistre au registre des
+oracles. Recette 96/96 -> 101/101.
 
 **1.7.0 (22/08/2026)** — trois retours clients fermés.
 **L1** : le SUJET d'un sélecteur est son DERNIER composant, plus son premier —

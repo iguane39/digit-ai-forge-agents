@@ -45,6 +45,28 @@
       ]
     },
     {
+     "domaine": "Lisibilité d'un document (Markdown)",
+     "ext": [
+      ".md"
+     ],
+     "type": "cli",
+     "cmd": [
+      "python",
+      "{skillsroot}/digit-ai-page-html/scripts/check_markdown.py",
+      "{file}",
+      "--output",
+      "json"
+     ],
+     "checklist": "M7 un chapitre ouvre par ce qu'il apprend (pas un tableau nu) · M10 un chapitre de plus de 12 lignes de tableau dit COMMENT le lire · M14 aucune plomberie interne dans le texte · M18 un identifiant du vocabulaire du document porte son sens EN LIGNE (première occurrence)",
+     "statut": "ok",
+     "provenance": "TF-0518 (22/08/2026) — mesuré sur un livrable réel de 85 Ko : le lanceur jugeait 4 domaines sur 48 et AUCUN de lisibilité, les règles L1-L19 vivant dans check_html.py. Or le Markdown est le format de livraison dominant des runs d'architecture et de conseil, et c'est là que le défaut du retour jumeau s'est produit.",
+     "non_juge": [
+      "les règles qui dépendent du RENDU (texte tronqué, largeur, surlignage, glyphes, coupure de mot) : la mise en page d'un Markdown appartient au lecteur",
+      "L3 (une valeur porte sa légende) et L12 (une énumération n'est pas une phrase) restent une revue de lecture — les mécaniser sur du Markdown produirait plus de bruit que de gain",
+      "M18 ne voit que les familles sans homonyme (Q-…, RA-…, RD-…, ADR nnnn) plus celles que le document DÉCLARE en frontmatter (`codes: E,C,H`)"
+     ]
+    },
+    {
       "domaine": "Rendu PPTX (structure & compatibilité)",
       "ext": [
         ".pptx",
