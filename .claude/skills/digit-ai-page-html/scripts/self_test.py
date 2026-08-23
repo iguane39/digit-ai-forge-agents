@@ -40,6 +40,13 @@ FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 # fichier -> règles attendues (ensemble de codes). Ensemble vide = doit passer.
 CAS = {
     "lisibilite-verte.html": set(),
+    # TF-0489 (23/08) — LE LECTEUR DE SOURCE, le composant que la regle A1 rendait necessaire
+    # et qui n existait pas : une page autoportante ne peut pas renvoyer a des fichiers du
+    # depot, donc elle EMBARQUE les documents cites — et un <pre> de 67 Ko est illisible. La
+    # fixture porte le composant COLLE (aucun fichier voisin), son document en Markdown, et la
+    # doctrine des liens non cliquables. Elle doit passer TOUTES les regles : c est un exemple
+    # de reference, pas une demonstration.
+    "src-lecteur-de-source.html": set(),
     "l1-texte-coupe.html": {"L1"},
     "l1-ponctuation-orpheline.html": {"L1"},
     # TF-0488 (22/08) — le SUJET d un selecteur est son DERNIER composant. La verte porte

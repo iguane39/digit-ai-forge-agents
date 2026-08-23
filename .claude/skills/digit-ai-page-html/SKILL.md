@@ -3,13 +3,21 @@ name: digit-ai-page-html
 description: >
   Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
 metadata:
-  version: "1.11.0"
+  version: "1.12.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.12.0 (23/08/2026)** — **lecteur de source embarquee** (composant 12) : le composant que la
+regle A1 rendait necessaire et qui n'existait pas. Une page autoportante ne peut pas renvoyer a des
+fichiers du depot — elle EMBARQUE les documents cites, et un bloc brut de 67 Ko est illisible. Rendu
+DIFFERE au premier depliage (douze documents rendus d'avance : DOM de 7 000 a plus de 25 000
+noeuds), liens NON cliquables avec leur cible en infobulle (un lien mort ment davantage qu'une
+absence de lien), et sous-ensemble de Markdown borne — ce qui n'est pas reconnu sort en paragraphe,
+jamais en HTML brut.
 
 **1.11.0 (23/08/2026)** — **`--matrice-etats`** (neuve) : cinq états mesurés et capturés, et le
 bloquant **`etat_muet`** — un état vide qui ne se déclare pas. Deux défauts qu'un client avait

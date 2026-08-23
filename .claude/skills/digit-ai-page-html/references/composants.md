@@ -110,7 +110,7 @@ conteneur `overflow-x:auto`**). Le repli en cartes empilées via `data-label` es
 robuste. Un `thead` **sticky** ne se justifie que dans un conteneur à hauteur bornée ; hors de
 ce cas il se peint par-dessus la première ligne — le laisser statique.
 
-**Le seuil dépend du CONTENU, pas d'un pixel fixe (RA-2, mesuré sur livrable réel le 13/08)** :
+**Le seuil dépend du CONTENU, pas d'un pixel fixe (RA-2 — la deuxième remarque d'un lot de retours, mesurée sur livrable réel le 13/08)** :
 un tableau de 9 colonnes portant de la prose déborde encore à 1 200 px (V1 mesuré : bord droit
 à 1 173 px pour un viewport de 1 100 px). Règle de calibrage : ~130 px de largeur utile par
 colonne de prose — un tableau de N colonnes textuelles se replie sous `N × 130 px` environ, et
@@ -281,6 +281,46 @@ paragraphe (`width: min(75ch, 100%)` sur `.prose` laissait 60 % d'un écran de 1
 lecture de ~1 080 px centré, le texte le remplit. `section.chap.duo` : grille 7/5 texte +
 encart utile (KPI, légende, figure), repli sous 1 100 px. `render_page.py` L2 juge désormais
 quelle que soit la propriété CSS qui bride, et 1920 px est dans les largeurs par défaut.
+
+## 12 — Lecteur de source embarquée 🔴 (dès qu'un livrable CITE un document du dépôt)
+
+`assets/source-reader.js` — **le composant que la règle A1 rendait nécessaire, et qui n'existait
+pas.** A1 exige un fichier autoportant : un rapport qui renvoie à des fichiers du dépôt **perd ses
+sources dès qu'il part par courriel**. La conséquence logique est d'EMBARQUER les documents cités —
+et un `<pre>` de 67 Ko de Markdown est illisible. Faute de composant, un livrable a dû écrire à la
+main ~130 lignes de convertisseur, une bascule à deux vues, et un rendu différé.
+
+```html
+<details class="src" data-src-format="markdown">
+  <summary>Note de cadrage — 1,2 Ko</summary>
+  <script type="text/plain" class="src-brut">…le document, tel quel…</script>
+</details>
+<script>/* source-reader.js collé ici : une page autoportante n'a pas de fichier voisin */</script>
+<script>DigitAISourceReader.init();</script>
+```
+
+**Trois partis pris, tous payés par un défaut réel.**
+
+| Parti pris | Pourquoi | Ce qu'il évite |
+|---|---|---|
+| **Rendu DIFFÉRÉ** au premier dépliage | douze documents rendus d'avance faisaient passer le DOM de 7 000 à **plus de 25 000 nœuds** | l'échec de l'oracle de performance, découvert par essai sur un livrable |
+| **Liens NON cliquables**, cible en infobulle | ils visent le dépôt, donc rien depuis la page | *un lien mort ment davantage qu'une absence de lien* |
+| Document dans un `<script type="text/plain">` | le seul emplacement où du Markdown brut n'est ni interprété comme du HTML, ni ré-échappé | un `<pre>` caché compterait dans le DOM dès le chargement — ce que le rendu différé cherche à éviter |
+
+**Sous-ensemble de Markdown volontairement borné** : titres (un `#` embarqué devient `h2`, la page
+hôte garde son `h1`), tableaux (dans une zone qui défile horizontalement — un tableau large ne doit
+pas faire déborder la page hôte, V1 est bloquant), listes, blocs de code, citations, séparateurs,
+gras/italique/code en ligne. **Ce qui n'est pas reconnu sort en paragraphe, jamais en HTML brut** :
+un document cité est une DONNÉE, et une donnée ne s'exécute pas.
+
+**Deux pièges d'écriture, notés parce qu'ils se repaient sinon.** (1) Le composant est destiné à
+être **collé** dans la page : toute séquence de fermeture de script, *même en commentaire*, fermerait
+le bloc de la page hôte — elles sont écrites échappées dans le fichier. (2) Le jeton qui protège le
+code en ligne est construit par `String.fromCharCode`, jamais écrit en littéral : un premier jet
+employait « espace chiffre espace », et la phrase « il y a 3 cas » devenait un `<code>` vide.
+
+Fixture de référence : `fixtures/src-lecteur-de-source.html` — passe check_html (A1 comprise) et la
+matrice d'états de `render_page.py`, qui déplie le document et mesure le rendu obtenu.
 
 ## Filtres de colonne — compléments (TF-0429 / TF-0430 / TF-0431)
 
