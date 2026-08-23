@@ -846,6 +846,37 @@ VERIF_ETATS = {
     }""",
 }
 
+# ---------------------------------------------------------------------------
+# LES FAMILLES DE CONSTATS, ET LEUR POIDS — SOURCE UNIQUE (23/08/2026, choix humain).
+#
+# POURQUOI CETTE TABLE EXISTE. Le poids d'une famille était écrit à TROIS endroits dans ce fichier
+# (la liste d'affichage, le compteur de bloquants, la liste de la matrice d'états) et une
+# quatrième fois chez chaque consommateur. Mesure du 23/08 : trois familles nées après la table de
+# forge-design n'y figuraient pas, et DEUX d'entre elles — bloquantes ici — y arrivaient en simple
+# avertissement. Le constat était là, visible, et ne pesait plus rien. Une double vérité ne se
+# corrige pas : elle se supprime.
+#
+# `--familles` publie cette table : un consommateur la LIT au lieu d'en tenir une copie.
+# `v1_tronque` n'y figure pas — ce n'est pas une famille de constats mais une BORNE déclarée.
+FAMILLES = [
+    ("v1_overflow", "V1 débordement horizontal", "bloquant"),
+    ("v2_contrast", "V2 contraste", "bloquant"),
+    ("v4_overlap", "V4 chevauchement de blocs", "bloquant"),
+    ("l2_width", "L2 largeur de texte bridée", "bloquant"),
+    ("l2_gouttiere", "L2 gouttière d'étiquettes", "bloquant"),
+    ("l2_conteneur", "L2 conteneur de lecture calé à gauche", "bloquant"),
+    ("l2_filet", "L2 texte écrasé en filet", "bloquant"),
+    ("etat_muet", "État vide MUET (loi n° 3)", "bloquant"),
+    ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
+    ("v3_align", "V3 alignement d'une série", "avertissement"),
+    ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
+    ("unmeasured", "Non mesurable — à vérifier à l'œil", "info"),
+]
+BLOQUANTES = [c for c, _l, sev in FAMILLES if sev == "bloquant"]
+AVERTIES = [c for c, _l, sev in FAMILLES if sev == "avertissement"]
+LIBELLE = {c: l for c, l, _sev in FAMILLES}
+SEVERITE = {c: sev for c, _l, sev in FAMILLES}
+
 CAPTURE_TIMEOUT_DEFAUT = 30_000
 FAMILLES_SANS_IMAGE = "V1 debordement, V2 contraste, V4 chevauchement, V3, V7, L2"
 FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
@@ -862,11 +893,14 @@ def compter_bloquants(issues: dict) -> int:
     etat juge avec un autre bareme que l'etat au repos ne serait pas comparable a lui.
     `l2_freres` (TF-0491) n'y figure pas : c'est un avertissement, et il le reste ici.
     """
-    v1 = issues.get("v1_tronque", {}).get("total") or len(issues["v1_overflow"])
-    return (v1 + len(issues["v2_contrast"])
-            + len(issues["v4_overlap"]) + len(issues["l2_width"])
-            + len(issues["l2_gouttiere"]) + len(issues["l2_conteneur"])
-            + len(issues["l2_filet"]) + len(issues.get("etat_muet", [])))
+    # DÉRIVÉ de la table unique : ajouter une famille bloquante ne demande plus de penser à ce
+    # compteur, et en oublier une ici n'est plus possible.
+    total = issues.get("v1_tronque", {}).get("total") or len(issues.get("v1_overflow", []))
+    for cle in BLOQUANTES:
+        if cle == "v1_overflow":
+            continue                      # déjà compté ci-dessus, borne comprise
+        total += len(issues.get(cle, []) or [])
+    return total
 
 
 def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json: bool,
@@ -1055,18 +1089,9 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
         for width, data in report["breakpoints"].items():
             iss = data["issues"]
             print(f"\n===== {width}px — {Path(data['png']).name} =====")
-            for key, title, kind in [("v1_overflow", "V1 débordement", "BLOQUANT"),
-                                     ("v2_contrast", "V2 contraste", "BLOQUANT"),
-                                     ("v4_overlap", "V4 chevauchement", "BLOQUANT"),
-                                     ("l2_width", "L2 largeur de texte", "BLOQUANT"),
-                                     ("l2_gouttiere", "L2 gouttière d'étiquettes", "BLOQUANT"),
-                                     ("l2_conteneur", "L2 conteneur calé à gauche", "BLOQUANT"),
-                                     ("l2_filet", "L2 texte écrasé en filet", "BLOQUANT"),
-                                     ("l2_freres", "L2 alignement entre freres", "avertissement"),
-                                     ("v3_align", "V3 alignement", "avertissement"),
-                                     ("v7_spacing", "V7 espacement", "avertissement"),
-                                     ("unmeasured", "Non mesurable", "à vérifier visuellement")]:
-                for item in iss[key]:
+            for key, title, sev in FAMILLES:
+                kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "à vérifier visuellement")
+                for item in iss.get(key, []) or []:
                     print(f"  [{kind}] {title} : {item['what']} — {item['detail']}")
             if iss.get("v1_tronque"):
                 print(f"  [BORNE] V1 : {iss['v1_tronque']['motif']}")
@@ -1080,13 +1105,9 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                     continue
                 print(f"  — état « {nom} » ({e.get('motif', '')}) : "
                       f"{e['blocking']} bloquant(s)")
-                for key, title, kind in [("v1_overflow", "V1 débordement", "BLOQUANT"),
-                                         ("v2_contrast", "V2 contraste", "BLOQUANT"),
-                                         ("v4_overlap", "V4 chevauchement", "BLOQUANT"),
-                                         ("l2_width", "L2 largeur de texte", "BLOQUANT"),
-                                         ("l2_freres", "L2 alignement entre freres", "avertissement"),
-                                         ("etat_muet", "ÉTAT VIDE MUET", "BLOQUANT")]:
-                    for item in e["issues"].get(key, []):
+                for key, title, sev in FAMILLES:
+                    kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "info")
+                    for item in e["issues"].get(key, []) or []:
                         print(f"      [{kind}] {title} : {item['what']} — {item['detail']}")
         print(f"\nVerdict : {report['verdict']}")
         for note in report["non_juge"]:
@@ -1124,7 +1145,9 @@ def _dossier_captures(html_path: Path, out_dir: Path | None) -> Path:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Rendu + mesures : V1/V2/V4 et L2-largeur bloquants, V3/V7 avertissements")
-    ap.add_argument("html", type=Path)
+    # Optionnel : `--familles` publie la table des poids et ne rend aucune page. Sans ce
+    # nargs, argparse refusait la commande avant meme d'atteindre le drapeau.
+    ap.add_argument("html", type=Path, nargs="?")
     ap.add_argument("--widths", default=",".join(map(str, DEFAULT_WIDTHS)),
                     help="largeurs de viewport, séparées par des virgules")
     ap.add_argument("--selector", default="body", help="ex. .diagram-wrap pour un schéma")
@@ -1147,6 +1170,11 @@ def main() -> None:
                     help="TF-0176 : ouvre details + premier panneau de filtre + remplit la "
                          "première recherche AVANT mesures et captures — l'état fermé cache "
                          "les défauts des composants interactifs")
+    ap.add_argument("--familles", action="store_true",
+                    help="publie la table des familles de constats et leur POIDS, en JSON : "
+                         "un consommateur la LIT au lieu d'en tenir une copie (source unique, "
+                         "choix humain du 23/08/2026). `v1_tronque` n'y figure pas — c'est une "
+                         "borne déclarée, pas une famille")
     ap.add_argument("--matrice-etats", action="store_true", dest="matrice_etats",
                     help="TF-0493 : joue une MATRICE D'ETATS et mesure chacun — tout déplié, "
                          "filtre ouvert sur la première PUIS la dernière colonne (un panneau ne "
@@ -1164,6 +1192,13 @@ def main() -> None:
                          "est rendu visible le temps de sa capture. C'est la matière de la "
                          "revue de lecture (references/gabarit-revue-de-lecture.md)")
     args = ap.parse_args()
+    if args.familles:
+        print(json.dumps({"schema": "digit-ai/familles-mesure@1",
+                          "familles": {c: {"libelle": l, "severite": sev} for c, l, sev in FAMILLES}},
+                         ensure_ascii=False, indent=1))
+        return 0
+    if args.html is None:
+        sys.exit("ERREUR : aucun fichier HTML donne (le positionnel n'est optionnel que pour --familles)")
     if not args.html.is_file():
         sys.exit(f"ERREUR : fichier introuvable : {args.html}")
     widths = [int(w) for w in str(args.widths).split(",") if w.strip()]

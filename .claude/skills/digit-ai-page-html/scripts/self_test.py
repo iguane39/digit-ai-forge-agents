@@ -47,6 +47,14 @@ CAS = {
     # doctrine des liens non cliquables. Elle doit passer TOUTES les regles : c est un exemple
     # de reference, pas une demonstration.
     "src-lecteur-de-source.html": set(),
+    # 23/08, choix humain (option etendue) : une PROMESSE ecrite en commentaire est verifiee. Le
+    # cas fondateur est QUANTIFIE — « un <title> par forme » — et le schema portait bien UN titre,
+    # celui du diagramme entier, et aucun sur ses formes. Une regle de simple presence passait
+    # donc en donnant l'impression de couvrir son propre cas fondateur. Les deux fixtures ne
+    # different que par les titres poses sur les groupes, et par un commentaire de NEGATION qui
+    # ne promet rien.
+    "l22-promesse-non-tenue.html": {"L22"},
+    "l22-promesse-tenue.html": set(),
     "l1-texte-coupe.html": {"L1"},
     "l1-ponctuation-orpheline.html": {"L1"},
     # TF-0488 (22/08) — le SUJET d un selecteur est son DERNIER composant. La verte porte

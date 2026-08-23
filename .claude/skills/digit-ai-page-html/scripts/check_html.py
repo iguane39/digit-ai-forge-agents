@@ -1270,6 +1270,134 @@ def check_lisibilite(html: str, a: Arbre):
     if len(orphelins) > 6:
         fails.append(f"L21 composant déclaré sans style : {len(orphelins) - 6} autre(s) classe(s).")
 
+    # --- L22 : une PROMESSE écrite en commentaire est vérifiée (23/08/2026, choix humain) ----
+    #
+    # LE FAIT, et il a coûté deux fois. Dans les schémas de la bibliothèque, un commentaire
+    # annonçait mot pour mot « un <title> par forme, aucun script ». Aucune forme ne le portait :
+    # l'infobulle promise n'existait pas, ET les nœuds non identifiés produisaient QUATRE
+    # chevauchements bloquants au contrôle de rendu. Le commentaire a survécu des jours parce que
+    # rien ne lit un commentaire — un oracle de marquage lit le marquage, un oracle de rendu lit des
+    # pixels, et entre les deux une promesse de prose vaut preuve.
+    #
+    # CE QUI EST JUGÉ : un commentaire qui NOMME une balise alors que le bloc qui le contient n'en
+    # porte aucune. Le bloc est l'élément englobant le plus proche parmi ceux qui font sens
+    # (schéma, figure, section, table, détails…), à défaut le document entier.
+    #
+    # TROIS GARDES, sans quoi la règle serait une nuisance :
+    #   · la NÉGATION est respectée — « aucun script », « ne pas mettre de <title> ici », « sans
+    #     <caption> » documentent un choix, ils ne promettent rien ;
+    #   · l'échappatoire déclarative `promesse-ok`, pour un commentaire qui parle d'ailleurs — une
+    #     convention générale, un exemple d'anti-patron ;
+    #   · la lecture se fait sur le HTML BRUT. Le premier jet bouclait sur une liste de
+    #     commentaires que l'analyseur n'expose pas : la règle aurait été MORTE EN CROYANT VIVRE,
+    #     et c'est la classe de défaut que cette journée a payée trois fois.
+    #
+    # UNE PROMESSE QUANTIFIÉE SE COMPTE (« un <title> par forme ») : c'est la seule forme qui
+    # attrape le défaut fondateur, puisque le schéma portait bien UN titre. Le vocabulaire du
+    # quantificateur est fermé — forme, groupe, nœud, ligne, colonne, section, figure — et une
+    # promesse formulée autrement retombe sur la simple présence. Cette limite est assumée : mieux
+    # vaut un contrôle étroit et juste qu'un contrôle large qui devine.
+    PROMETTABLES = ("title", "figcaption", "caption", "summary", "legend", "label")
+    NEGATIONS = ("aucun", "aucune", "pas de", "ne pas", "jamais", "sans ", "retirer", "supprim",
+                 "au lieu de", "plutot que", "plutôt que", "interdit", "non ", "eviter", "éviter")
+    ENGLOBANTS = ("svg", "figure", "section", "details", "table", "article", "aside", "nav")
+
+    def _etendue_du_bloc(texte: str, position: int) -> tuple[str, str]:
+        """(nom du bloc, son texte) pour le bloc englobant le plus proche de `position`."""
+        meilleur = ("document", texte)
+        for tag in ENGLOBANTS:
+            # La dernière ouverture avant la position, dont la fermeture vient après : c'est
+            # l'englobant. Un compteur de profondeur évite de prendre la fermeture d'un frère
+            # imbriqué du même nom.
+            for m in re.finditer(r"<" + tag + r"[\s>]", texte[:position], re.I):
+                depart = m.start()
+                prof, i = 0, depart
+                fin_bloc = None
+                for mm in re.finditer(r"<\s*(/?)" + tag + r"[\s>]", texte[depart:], re.I):
+                    prof += -1 if mm.group(1) else 1
+                    if prof == 0:
+                        fin_bloc = depart + mm.end()
+                        break
+                if fin_bloc is None or fin_bloc <= position:
+                    continue
+                # Le bloc le plus PROCHE, donc celui qui commence le plus tard.
+                if meilleur[0] == "document" or depart > texte.find(meilleur[1]):
+                    meilleur = (tag, texte[depart:fin_bloc])
+        return meilleur
+
+    for mc in re.finditer(r"<!--(.*?)-->", html, re.S):
+        commentaire = mc.group(1)
+        if "promesse-ok" in commentaire:
+            continue
+        bas = commentaire.lower()
+        for tag in PROMETTABLES:
+            trouve = None
+            for m in re.finditer(r"<\s*" + tag + r"\b", bas):
+                avant = bas[max(0, m.start() - 60):m.start()]
+                if any(neg in avant for neg in NEGATIONS):
+                    continue
+                trouve = m
+                break
+            if trouve is None:
+                continue
+            nom_bloc, texte_bloc = _etendue_du_bloc(html, mc.start())
+            net_bloc = _sans_commentaires(texte_bloc)
+            poses = len(re.findall(r"<\s*" + tag + r"\b", net_bloc, re.I))
+            # UNE PROMESSE QUANTIFIÉE SE COMPTE. Le commentaire fondateur disait « un <title> par
+            # forme » : le schéma portait UN titre — celui du diagramme entier — et aucun sur ses
+            # groupes. Une règle de simple présence passait donc, en donnant l'impression de
+            # couvrir son cas fondateur. Le vocabulaire du quantificateur est fermé et court :
+            # ce qui n'y figure pas retombe sur la présence, et la limite est déclarée.
+            # LE PORTEUR D'UN SCHÉMA EST LE GROUPE, comme la doctrine du socle le dit depuis
+            # TF-0424 : un `<g>` titré est UN nœud, et les primitives qu'il contient n'en sont pas.
+            # Compter les primitives accusait les gabarits (6 formes pour 3 titres, alors que chaque
+            # nœud portait le sien) ; compter des TOTAUX laissait passer un groupe sans titre dès
+            # que le diagramme entier en avait un. On vérifie donc CHAQUE porteur, ce qui est ce que
+            # la promesse dit.
+            PORTEURS = {"forme": "g", "groupe": "g", "noeud": "g", "nœud": "g",
+                        "ligne": "tr", "colonne": "th", "section": "section", "figure": "figure"}
+            quant = re.search(r"\bpar\s+(" + "|".join(PORTEURS) + r")s?\b", bas)
+            if quant:
+                nom_porteur = PORTEURS[quant.group(1)]
+                # L'étendue de chaque porteur, par compteur de profondeur : un groupe imbriqué ne
+                # doit pas voler le titre de son parent.
+                sans = 0
+                total = 0
+                for mp in re.finditer(r"<" + nom_porteur + r"[\s>]", net_bloc, re.I):
+                    depart = mp.start()
+                    prof, fin_p = 0, None
+                    for mm in re.finditer(r"<\s*(/?)" + nom_porteur + r"[\s>]", net_bloc[depart:], re.I):
+                        prof += -1 if mm.group(1) else 1
+                        if prof == 0:
+                            fin_p = depart + mm.end()
+                            break
+                    etendue = net_bloc[depart:fin_p] if fin_p else net_bloc[depart:]
+                    total += 1
+                    if not re.search(r"<\s*" + tag + r"\b", etendue, re.I):
+                        sans += 1
+                if not total:
+                    continue                     # rien à porter : la promesse est sans objet ici
+                if not sans:
+                    continue                     # chaque porteur porte l'élément promis
+                fails.append(
+                    f"L22 promesse en commentaire non tenue : un commentaire annonce « <{tag}> par "
+                    f"{quant.group(1)} » et {sans} {quant.group(1)}(s) sur {total} n'en portent "
+                    f"aucun, dans le bloc « {nom_bloc} ». C'est le défaut fondateur de cette règle : "
+                    "un schéma portait UN titre — celui du diagramme entier — et aucun sur ses "
+                    "nœuds, ce qui a coûté l'infobulle promise ET quatre chevauchements bloquants. "
+                    "Poser l'élément sur chaque porteur, écrire la négation si le choix est de ne "
+                    "pas le faire, ou déclarer par « promesse-ok ».")
+                break
+            if poses:
+                continue
+            fails.append(
+                f"L22 promesse en commentaire non tenue : un commentaire annonce « <{tag}> » et le "
+                f"bloc « {nom_bloc} » qui le contient n'en porte AUCUN. Une promesse de prose vaut "
+                "preuve tant que rien ne la lit : c'est ce qui a laissé un schéma sans ses "
+                "infobulles, et quatre chevauchements bloquants avec. Poser l'élément, écrire la "
+                "négation si le choix est de ne pas le mettre, ou déclarer par « promesse-ok ».")
+            break
+
     # --- L5 : surlignage inline -------------------------------------------
     # Le piege n'est pas seulement une regle `mark { … }` fautive : c'est la
     # COLLISION DE NOM. Un conteneur de recherche `.find` et un surlignage
