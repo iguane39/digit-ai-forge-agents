@@ -233,6 +233,14 @@ CAS_RENDU = {
     # calée à gauche = gouttière (refusée par le lecteur humain le 21/08).
     "l2c-conteneur-cale-a-gauche.html": ("l2_conteneur", 1),
     "l2c-conteneur-centre.html": ("l2_conteneur", 0),
+    # TF-0491 (23/08) — la rupture d'alignement ENTRE FRERES EMPILES. Les trois mesures L2
+    # precedentes comparent un bloc a ce que son CONTENEUR lui offre : une prose bornee ET
+    # CENTREE au-dessus de cartes pleine largeur les satisfait toutes les trois. Le client l'a
+    # pourtant signalee TROIS FOIS en quatre versions, sous trois formulations. Les trois
+    # fixtures sont geometriquement liees : la rouge, la meme alignee, et la meme DECLAREE.
+    "l2fr-freres-desalignes.html": ("l2_freres", 1),       # prose bornee sur cartes larges
+    "l2fr-freres-alignes.html": ("l2_freres", 0),          # le meme, aligne — ce que le client demandait
+    "l2fr-freres-declares.html": ("l2_freres", 0),         # le meme, mais data-mesure-lecture
     "l2g-gouttiere-etiquettes.html": ("l2_gouttiere", 1),   # colonne d'étiquettes
     "l2g-etiquettes-en-tete.html": ("l2_gouttiere", 0),     # étiquette en tête
     # TF-0500 (22/08) : L2-largeur ne pouvait STRUCTURELLEMENT pas voir un texte écrasé en

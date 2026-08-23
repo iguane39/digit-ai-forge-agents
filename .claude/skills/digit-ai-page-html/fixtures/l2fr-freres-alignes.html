@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 rendu — freres ALIGNES, legitime — 20260823a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+/* LE DEFAUT : la prose est bornee et CENTREE — donc legitime pour l2_conteneur — mais elle
+   surplombe des cartes qui prennent toute la largeur offerte. Chaque bloc remplit bien sa
+   boite ; c'est leur DESACCORD qui saute aux yeux. */
+.intro{max-width:none}
+.cartes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.carte{border:1px solid #cbd5e1;padding:16px;border-radius:8px}
+@media (max-width:640px){.wrap{padding:10px}.cartes{grid-template-columns:1fr}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-0491, sens VERT. Jumelle exacte de l2fr-freres-desalignes, a UNE declaration de style
+  pres : la prose n'est plus bornee, elle prend la largeur offerte comme ses freres. Le bord
+  droit tombe au meme endroit pour les deux blocs — c'est ce que le client demandait mot pour
+  mot (« le texte d intro devrait etre sur toute la ligne »).
+
+  Attendu : 0 constat l2_freres. Sans cette contre-epreuve, la regle pourrait crier sur toute
+  page ayant une prose et des cartes, et on ne le saurait pas.
+-->
+<body><main class="wrap">
+<h1>Lotissements — vue d ensemble</h1>
+<section class="intro"><p>Cette introduction explique ce que la page contient et comment la lire, sur plusieurs lignes, comme le fait toute page de synthese remise a un lecteur humain. Elle porte assez de texte pour etre mesuree comme de la prose et non comme une legende. Elle porte assez de texte pour etre mesuree comme de la prose et non comme une legende. Elle porte assez de texte pour etre mesuree comme de la prose et non comme une legende.</p></section>
+<section class="cartes">
+  <article class="carte"><h2>Lotissement nord</h2><p>Quatre-vingt-deux lots, dont douze reserves. Voirie livree, reseaux en cours de raccordement.</p></article>
+  <article class="carte"><h2>Lotissement centre</h2><p>Cent-quatre lots, dont trente-et-un reserves. Voirie en cours, reseaux livres.</p></article>
+  <article class="carte"><h2>Lotissement sud</h2><p>Soixante-sept lots, dont neuf reserves. Voirie livree, reseaux livres, remise prevue.</p></article>
+</section>
+</main></body></html>

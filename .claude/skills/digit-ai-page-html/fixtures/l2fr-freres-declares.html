@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 rendu — freres desalignes mais DECLARES, legitime — 20260823a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+/* LE DEFAUT : la prose est bornee et CENTREE — donc legitime pour l2_conteneur — mais elle
+   surplombe des cartes qui prennent toute la largeur offerte. Chaque bloc remplit bien sa
+   boite ; c'est leur DESACCORD qui saute aux yeux. */
+.intro{max-width:1000px;margin:0 auto}
+.cartes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.carte{border:1px solid #cbd5e1;padding:16px;border-radius:8px}
+@media (max-width:640px){.wrap{padding:10px}.cartes{grid-template-columns:1fr}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-0491, sens ROUGE. Rejoue le defaut signale TROIS FOIS par un client sous trois formes
+  differentes, sur quatre versions livrees : « colonne de texte a 40 % de la fenetre », « le
+  texte d intro devrait etre sur toute la ligne », « les lotissements ne prennent qu une partie
+  de la largeur ». Cause unique, et invisible aux trois mesures L2 existantes : la prose est
+  bornee et CENTREE (donc l2_conteneur se tait, a juste titre), au-dessus de cartes
+  qui occupent toute la largeur offerte. Le rapport mesure ici (0,78) reproduit celui du
+  livrable refuse (1 080 px de prose pour 1 424 px de cartes, soit 0,76) a la largeur ou se
+  jouent les autres fixtures de rendu — 1 440 px. Le lecteur ne voit pas deux blocs conformes : il voit un bord droit qui
+  ne tombe pas au meme endroit.
+
+  MAIS l'ecart est ici DECLARE par data-mesure-lecture : une mesure de lecture etroite
+  au-dessus d'un bloc large est un choix typographique defendable, et l'auteur le porte
+  explicitement. Un ecart declare n'est plus un ecart subi — c'est le seul point ou la regle
+  accepte de se taire, et elle ne se tait que sur declaration.
+
+  Attendu : 0 constat l2_freres, sur une page GEOMETRIQUEMENT IDENTIQUE a la rouge.
+-->
+<body><main class="wrap">
+<h1>Lotissements — vue d ensemble</h1>
+<section class="intro" data-mesure-lecture><p>Cette introduction explique ce que la page contient et comment la lire, sur plusieurs lignes, comme le fait toute page de synthese remise a un lecteur humain. Elle porte assez de texte pour etre mesuree comme de la prose et non comme une legende. Elle porte assez de texte pour etre mesuree comme de la prose et non comme une legende. Elle porte assez de texte pour etre mesuree comme de la prose et non comme une legende.</p></section>
+<section class="cartes">
+  <article class="carte"><h2>Lotissement nord</h2><p>Quatre-vingt-deux lots, dont douze reserves. Voirie livree, reseaux en cours de raccordement.</p></article>
+  <article class="carte"><h2>Lotissement centre</h2><p>Cent-quatre lots, dont trente-et-un reserves. Voirie en cours, reseaux livres.</p></article>
+  <article class="carte"><h2>Lotissement sud</h2><p>Soixante-sept lots, dont neuf reserves. Voirie livree, reseaux livres, remise prevue.</p></article>
+</section>
+</main></body></html>
