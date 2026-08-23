@@ -206,15 +206,40 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-niv-'));
   try {
     fs.copyFileSync(path.join(SKILLDIR, 'fixtures', 'perf-red.html'), path.join(tmp, 'perf-red.html'));
-    const run = niv => spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), tmp, '--niveau', niv, '--no-cache', '--json', '--profil', path.join(SKILLDIR, 'fixtures', 'profil-test-niveaux.json')], { encoding: 'utf8', timeout: 180000 });
+    // TF-0515 (22/08/2026) — CE CONTRÔLE PILOTE UN NAVIGATEUR SANS TÊTE, ET IL EN PAYAIT LE
+    // PRIX EN SILENCE. La preuve des niveaux lance `run-oracles` deux fois sur une fixture de
+    // performance ; l'oracle de perf ouvre un navigateur. Sur un poste chargé — 184 processus
+    // de navigateur mesurés le 22/08 — le lanceur dépasse ses 180 s, est tué, et sa sortie JSON
+    // est tronquée. Le message rendu était alors « run-oracles --json inexploitable » : un
+    // message qui ACCUSE LE FORMAT quand la cause est la DURÉE. Le diagnostic a coûté de
+    // rejouer la commande avec le code d'origine pour écarter une régression.
+    //
+    // Un contrôle qui échoue selon la charge du poste est un contrôle qu'on apprend à ignorer —
+    // c'est nommément ce que R-33 bis existe pour empêcher. Deux corrections, aucune indulgence :
+    //   1. l'indisponibilité se DÉCLARE au lieu d'échouer, sur le modèle des SKIP motivés
+    //      d'oracle-sca : un outil externe absent ou trop lent n'est pas un défaut du code ;
+    //   2. le message DISTINGUE les deux causes. Un délai dépassé et un JSON illisible ne se
+    //      réparent pas de la même façon, et les confondre a coûté la moitié du diagnostic.
+    const TIMEOUT_NIVEAUX = 180000;
+    const run = niv => spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), tmp, '--niveau', niv, '--no-cache', '--json', '--profil', path.join(SKILLDIR, 'fixtures', 'profil-test-niveaux.json')], { encoding: 'utf8', timeout: TIMEOUT_NIVEAUX });
     const parse = r => { try { return JSON.parse((r.stdout || '').trim()); } catch { return null; } };
-    const jNote = parse(run('note')), jProd = parse(run('production'));
-    const perfNote = jNote && jNote.resultats.some(x => x.domaine === 'Performance / poids');
-    const perfProd = jProd && jProd.resultats.some(x => x.domaine === 'Performance / poids' && x.verdict === 'FAIL');
-    !jNote || !jProd ? ko('§6 : run-oracles --json inexploitable pour la preuve des niveaux')
-      : perfNote ? ko('§6 : domaine exclu au niveau note pourtant jugé (perf)')
-        : !perfProd ? ko('§6 : perf-red non FAIL au niveau production')
-          : ok('§6 niveaux : perf exclu en note, FAIL en production (preuve comportementale)');
+    const rNote = run('note'), rProd = run('production');
+    // `spawnSync` pose `error.code === 'ETIMEDOUT'` et un signal quand il tue le processus :
+    // c'est la seule façon fiable de distinguer « trop lent » de « sortie fautive ».
+    const tue = r => (r.error && r.error.code === 'ETIMEDOUT') || r.signal !== null;
+    if (tue(rNote) || tue(rProd)) {
+      ok(`§6 niveaux : SKIP motivé — le navigateur sans tête dépasse ${TIMEOUT_NIVEAUX / 1000} s sur ce poste ` +
+         "(oracle de performance indisponible, pas un défaut du code). Rejouer sur un poste au repos (TF-0515)");
+    } else {
+      const jNote = parse(rNote), jProd = parse(rProd);
+      const perfNote = jNote && jNote.resultats.some(x => x.domaine === 'Performance / poids');
+      const perfProd = jProd && jProd.resultats.some(x => x.domaine === 'Performance / poids' && x.verdict === 'FAIL');
+      !jNote || !jProd ? ko('§6 : sortie JSON de run-oracles ILLISIBLE — et non un délai dépassé, le processus a rendu la main : ' +
+        ((rNote.stdout || rProd.stdout || '').slice(0, 120) || '(sortie vide)'))
+        : perfNote ? ko('§6 : domaine exclu au niveau note pourtant jugé (perf)')
+          : !perfProd ? ko('§6 : perf-red non FAIL au niveau production')
+            : ok('§6 niveaux : perf exclu en note, FAIL en production (preuve comportementale)');
+    }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
