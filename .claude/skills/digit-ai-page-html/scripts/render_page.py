@@ -745,14 +745,134 @@ MEASURE_JS = r"""
 # ne coute donc RIEN de ce qui est bloquant — elle coute l'inspection humaine de V5
 # (croisements) et V6 (images), qui se fait a l'oeil sur le PNG. La reponse n'est pas de reussir
 # la capture a tout prix : c'est de NOMMER ce qu'on perd quand elle echoue.
+# TF-0493 (23/08) — LA MATRICE D'ETATS. Deux defauts trouves par un client sur un seul
+# livrable, tous deux reproductibles en deux clics, tous deux invisibles au rendu par defaut :
+#   (1) le panneau de filtre CREE un ascenseur horizontal a l'ouverture ;
+#   (2) le bouton « Aucun » DETRUIT l'affichage — le tableau se reduit a quelques pixels, sans
+#       un mot pour le lecteur.
+# `--etats-ouverts` existait et avait ete utilise. Il ouvre les details et le premier panneau,
+# et ne produit AUCUN etat d'echec : filtre sans resultat, recherche sans correspondance, liste
+# vide. Or C'EST LA QUE LES COMPOSANTS CASSENT, precisement parce que personne ne les regarde.
+#
+# Chaque etat dit s'il a pu s'APPLIQUER. Un etat qui ne trouve pas son declencheur n'est pas
+# vert : il est declare NON JOUE, avec son motif. Un composant absent est une reponse ; un etat
+# muet serait un mensonge.
+#
+# Les selecteurs sont ceux du socle (references/composant-filtres-tableau.md) : `.tf-btn`
+# ouvre un panneau, `.tf-none` decoche tout, `.tf-search` filtre la liste de valeurs.
+ETATS_MATRICE = [
+    ("tout-deplie", """() => {
+        const d = [...document.querySelectorAll('details')];
+        d.forEach((x) => { x.open = true; });
+        const b = document.querySelector('.tf-btn, .dd-btn');
+        if (b) b.click();
+        if (!d.length && !b) return { applique: false, motif: 'aucun <details> ni panneau de filtre dans la page' };
+        return { applique: true, motif: `${d.length} <details> ouvert(s)${b ? ', premier panneau deplie' : ''}` };
+    }"""),
+    ("filtre-premiere-colonne", """() => {
+        const b = [...document.querySelectorAll('.tf-btn')];
+        if (!b.length) return { applique: false, motif: 'aucun declencheur de filtre (.tf-btn) — page sans tableau filtrable' };
+        b[0].click();
+        return { applique: true, motif: 'panneau de la PREMIERE colonne ouvert' };
+    }"""),
+    ("filtre-derniere-colonne", """() => {
+        const b = [...document.querySelectorAll('.tf-btn')];
+        if (!b.length) return { applique: false, motif: 'aucun declencheur de filtre (.tf-btn)' };
+        if (b.length < 2) return { applique: false, motif: 'une seule colonne filtrable — meme etat que la premiere, non rejoue' };
+        b[b.length - 1].click();
+        return { applique: true, motif: `panneau de la DERNIERE colonne ouvert (${b.length} colonnes filtrables) — un panneau ne deborde pas du meme cote a droite qu a gauche` };
+    }"""),
+    ("filtre-sans-resultat", r"""() => {
+        const b = document.querySelector('.tf-btn');
+        if (!b) return { applique: false, motif: 'aucun declencheur de filtre (.tf-btn)' };
+        b.click();
+        const panneau = document.querySelector('.tf-panel:not([hidden])') || document;
+        const aucun = panneau.querySelector('.tf-none')
+          || [...panneau.querySelectorAll('button, label')].find((e) => /^\s*aucun/i.test(e.textContent || ''));
+        if (!aucun) return { applique: false, motif: 'panneau ouvert, mais aucune bascule « Aucun » (.tf-none) a actionner' };
+        aucun.click();
+        return { applique: true, motif: 'toutes les valeurs decochees — le tableau ne doit plus porter AUCUNE ligne, et le dire' };
+    }"""),
+    ("recherche-sans-correspondance", """() => {
+        const champ = document.querySelector('.tf-search, input[type=search]');
+        if (!champ) return { applique: false, motif: 'aucun champ de recherche (.tf-search, input[type=search])' };
+        champ.focus();
+        champ.value = 'zzzqqqxwv';
+        champ.dispatchEvent(new Event('input', { bubbles: true }));
+        champ.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'v' }));
+        return { applique: true, motif: 'recherche sur une chaine improbable — zero correspondance attendue, annoncee' };
+    }"""),
+]
+
+# Ce que V1/V2/V4 ne verront JAMAIS, et qui est pourtant le defaut le plus grave des deux
+# trouves par le client : « le bouton Aucun DETRUIT l'affichage — le tableau se reduit a
+# quelques pixels, SANS UN MOT ». Aucune famille de mesure ne parle de ce silence : la page est
+# geometriquement irreprochable, elle ne deborde pas, elle ne se chevauche pas, elle ne dit
+# simplement plus rien. C'est la loi transverse n° 3 appliquee aux etats vides : l'oubli
+# n'existe pas — un etat vide se DECLARE, il ne se devine pas.
+#
+# Le socle prescrit deja la forme du message (`.tf-count` en zone vivante, classe `zero`,
+# `.tf-vide-msg`) : ce controle ne fait qu'exiger qu'elle soit la, VISIBLE et PORTEUSE DE TEXTE.
+# Le piege a eviter : le panneau de filtre contient lui-meme un bouton « Aucun ». Le compter
+# comme message rendrait la regle verte sur le defaut exact qu'elle traque.
+VERIF_ETATS = {
+    "filtre-sans-resultat": """() => {
+        const lignes = [...document.querySelectorAll('tbody tr')].filter((r) =>
+          getComputedStyle(r).display !== 'none' && !r.hasAttribute('data-tf-hidden')
+          && r.getBoundingClientRect().height > 1);
+        const visible = (el) => {
+          const s = getComputedStyle(el);
+          if (s.display === 'none' || s.visibility === 'hidden' || parseFloat(s.opacity) === 0) return false;
+          const r = el.getBoundingClientRect();
+          return r.width > 1 && r.height > 1;
+        };
+        const dit = [...document.querySelectorAll('.tf-vide, .tf-vide-msg, .tf-count, [aria-live], .zero, .empty')]
+          .filter((el) => !el.closest('.tf-panel, .tf-btn'))
+          .some((el) => visible(el) && (el.textContent || '').trim().length > 2);
+        return { lignes: lignes.length, dit };
+    }""",
+    "recherche-sans-correspondance": """() => {
+        const opts = [...document.querySelectorAll('.tf-opt, .tf-opts label')].filter((el) =>
+          getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 1);
+        const visible = (el) => {
+          const s = getComputedStyle(el);
+          if (s.display === 'none' || s.visibility === 'hidden') return false;
+          const r = el.getBoundingClientRect();
+          return r.width > 1 && r.height > 1;
+        };
+        const dit = [...document.querySelectorAll('.tf-vide, .tf-vide-msg, .tf-count, [aria-live], .zero, .empty')]
+          .some((el) => visible(el) && (el.textContent || '').trim().length > 2);
+        return { lignes: opts.length, dit };
+    }""",
+}
+
 CAPTURE_TIMEOUT_DEFAUT = 30_000
 FAMILLES_SANS_IMAGE = "V1 debordement, V2 contraste, V4 chevauchement, V3, V7, L2"
 FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
 
 
+def compter_bloquants(issues: dict) -> int:
+    """Les CAUSES bloquantes d'un jeu de mesures.
+
+    TF-0382 — `blocking` comptait les LIGNES d'une liste plafonnee, donc la severite etait
+    plafonnee avec elle. Il compte les CAUSES reelles : le total exact quand l'inventaire a ete
+    tronque, la longueur de la liste sinon. Ce n'est pas un assouplissement — le compte MONTE des
+    qu'il y a plus de causes que de lignes.
+    TF-0493 — extrait en fonction pour etre applique a l'identique aux etats de la matrice : un
+    etat juge avec un autre bareme que l'etat au repos ne serait pas comparable a lui.
+    `l2_freres` (TF-0491) n'y figure pas : c'est un avertissement, et il le reste ici.
+    """
+    v1 = issues.get("v1_tronque", {}).get("total") or len(issues["v1_overflow"])
+    return (v1 + len(issues["v2_contrast"])
+            + len(issues["v4_overlap"]) + len(issues["l2_width"])
+            + len(issues["l2_gouttiere"]) + len(issues["l2_conteneur"])
+            + len(issues["l2_filet"]) + len(issues.get("etat_muet", [])))
+
+
 def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json: bool,
         out_dir: Path | None = None, etats_ouverts: bool = False,
-        capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None) -> int:
+        capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None,
+        matrice_etats: bool = False, matrice_toutes_largeurs: bool = False) -> int:
     ensure_browser_path()
     ensure_local_fonts()
     try:
@@ -844,16 +964,68 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             # etait plafonnee avec elle. Il compte desormais les CAUSES reelles : le total exact
             # quand l inventaire a ete tronque, la longueur de la liste sinon. Ce n est pas un
             # assouplissement — le compte MONTE des qu il y a plus de causes que de lignes.
-            v1 = issues.get("v1_tronque", {}).get("total") or len(issues["v1_overflow"])
-            blocking = (v1 + len(issues["v2_contrast"])
-                        + len(issues["v4_overlap"]) + len(issues["l2_width"])
-                        + len(issues["l2_gouttiere"]) + len(issues["l2_conteneur"])
-                        + len(issues["l2_filet"]))
+            blocking = compter_bloquants(issues)
             blocking_total += blocking
             report["breakpoints"][width] = {
                 "png": str(png) if capture["faite"] else None,
                 "capture": capture, "issues": issues, "blocking": blocking,
             }
+
+            # ---- TF-0493 · la matrice d'etats -------------------------------------------
+            # Chaque etat REPART d'une page neuve : un etat qui heriterait du precedent ne
+            # serait plus l'etat qu'il pretend etre. Cout assume, et c'est pour cela que la
+            # matrice ne se joue par defaut qu'a la largeur la plus grande — celle ou les
+            # panneaux ont le plus de place et debordent quand meme.
+            if matrice_etats and (matrice_toutes_largeurs or width == max(widths)):
+                etats: dict = {}
+                for nom, action in ETATS_MATRICE:
+                    page.goto(html_path.resolve().as_uri())
+                    page.wait_for_load_state("networkidle")
+                    page.wait_for_timeout(150)
+                    try:
+                        applique = page.evaluate(action)
+                    except Exception as erreur:  # noqa: BLE001
+                        applique = {"applique": False,
+                                    "motif": f"le declencheur a leve {type(erreur).__name__}"}
+                    if not applique.get("applique"):
+                        etats[nom] = {"applique": False, "motif": applique.get("motif", "")}
+                        report["non_juge"].append(
+                            f"etat « {nom} » NON JOUE a {width} px : {applique.get('motif', '')}")
+                        continue
+                    page.wait_for_timeout(250)
+                    iss_e = page.evaluate(js)
+                    png_e = png_dir / f"{html_path.stem}-w{width}-etat-{nom}.png"
+                    cap_e = {"faite": True, "motif": ""}
+                    try:
+                        page.screenshot(path=str(png_e), full_page=True, timeout=capture_timeout)
+                    except Exception as erreur:  # noqa: BLE001
+                        cap_e = {"faite": False,
+                                 "motif": f"capture impossible : {type(erreur).__name__} — "
+                                          f"les familles du DOM restent jugees"}
+                    # UN ETAT VIDE SE DIT. Verification propre a l'etat, la ou une famille
+                    # generale n'a rien a mesurer : la geometrie est saine, c'est le SILENCE
+                    # qui est le defaut.
+                    verif = VERIF_ETATS.get(nom)
+                    if verif:
+                        try:
+                            vu = page.evaluate(verif)
+                        except Exception:  # noqa: BLE001
+                            vu = None
+                        if vu and vu.get("lignes") == 0 and not vu.get("dit"):
+                            iss_e.setdefault("etat_muet", []).append({
+                                "what": f"état « {nom} »",
+                                "detail": "plus AUCUNE ligne visible, et pas un mot pour le "
+                                          "dire — le lecteur voit un tableau réduit à quelques "
+                                          "pixels et ne sait pas si l'outil a filtré ou cassé. "
+                                          "Le socle prescrit la forme du message : .tf-count "
+                                          "en zone vivante (aria-live) avec la classe zero, ou "
+                                          ".tf-vide-msg. Loi n° 3 : un état vide se déclare"})
+                    bloq_e = compter_bloquants(iss_e)
+                    blocking_total += bloq_e
+                    etats[nom] = {"applique": True, "motif": applique.get("motif", ""),
+                                  "png": str(png_e) if cap_e["faite"] else None,
+                                  "capture": cap_e, "issues": iss_e, "blocking": bloq_e}
+                report["breakpoints"][width]["etats"] = etats
             page.close()
         browser.close()
 
@@ -900,6 +1072,22 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 print(f"  [BORNE] V1 : {iss['v1_tronque']['motif']}")
             if data["blocking"] == 0 and not any(iss[k] for k in ("l2_freres", "v3_align", "v7_spacing", "unmeasured")):
                 print("  aucun défaut mesuré")
+            # TF-0493 — la matrice d'etats, etat par etat. Un etat NON JOUE se lit ici aussi :
+            # « aucun défaut » sur un etat qui ne s'est jamais applique serait le pire des verdicts.
+            for nom, e in (data.get("etats") or {}).items():
+                if not e.get("applique"):
+                    print(f"  — état « {nom} » NON JOUÉ : {e.get('motif', '')}")
+                    continue
+                print(f"  — état « {nom} » ({e.get('motif', '')}) : "
+                      f"{e['blocking']} bloquant(s)")
+                for key, title, kind in [("v1_overflow", "V1 débordement", "BLOQUANT"),
+                                         ("v2_contrast", "V2 contraste", "BLOQUANT"),
+                                         ("v4_overlap", "V4 chevauchement", "BLOQUANT"),
+                                         ("l2_width", "L2 largeur de texte", "BLOQUANT"),
+                                         ("l2_freres", "L2 alignement entre freres", "avertissement"),
+                                         ("etat_muet", "ÉTAT VIDE MUET", "BLOQUANT")]:
+                    for item in e["issues"].get(key, []):
+                        print(f"      [{kind}] {title} : {item['what']} — {item['detail']}")
         print(f"\nVerdict : {report['verdict']}")
         for note in report["non_juge"]:
             print(f"  non jugé — {note}")
@@ -959,6 +1147,17 @@ def main() -> None:
                     help="TF-0176 : ouvre details + premier panneau de filtre + remplit la "
                          "première recherche AVANT mesures et captures — l'état fermé cache "
                          "les défauts des composants interactifs")
+    ap.add_argument("--matrice-etats", action="store_true", dest="matrice_etats",
+                    help="TF-0493 : joue une MATRICE D'ETATS et mesure chacun — tout déplié, "
+                         "filtre ouvert sur la première PUIS la dernière colonne (un panneau ne "
+                         "déborde pas du même côté), filtre ne laissant aucune ligne, recherche "
+                         "sans correspondance. C'est là que les composants cassent, parce que "
+                         "personne ne les regarde. Chaque état repart d'une page NEUVE et rend "
+                         "sa capture ; un état qui ne trouve pas son déclencheur est déclaré NON "
+                         "JOUÉ, jamais vert. Par défaut à la plus GRANDE largeur demandée")
+    ap.add_argument("--matrice-toutes-largeurs", action="store_true", dest="matrice_toutes_largeurs",
+                    help="joue la matrice d'états à CHAQUE largeur (coût : autant de "
+                         "chargements de page que d'états × largeurs)")
     ap.add_argument("--sections", default=None,
                     help="TF-0422 : sélecteur CSS des sections à capturer UNE PAR UNE en plus "
                          "de la page (ex. [role=tabpanel], section.chap) — un panneau masqué "
@@ -970,7 +1169,8 @@ def main() -> None:
     widths = [int(w) for w in str(args.widths).split(",") if w.strip()]
     raise SystemExit(run(args.html, widths, args.selector, args.scale,
                          args.output == "json", args.out_dir, args.etats_ouverts,
-                         args.capture_timeout, args.sections))
+                         args.capture_timeout, args.sections,
+                         args.matrice_etats, args.matrice_toutes_largeurs))
 
 
 if __name__ == "__main__":
