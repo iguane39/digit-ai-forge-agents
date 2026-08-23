@@ -1,6 +1,10 @@
 ---
 name: contre-expertise
 description: Fournit une contre-expertise de fond d'un livrable fini — résultat, document, solution ou architecture proposée — pour challenger la pertinence, la robustesse et les alternatives (« est-ce la bonne solution ? ») via 3 angles fixes (conformité déléguée à quality-oracles, expertise routée via experts-forge, contradiction et alternatives sourcées), avec verdict Valider/Renforcer/Reprendre, constats à preuve typée, contradictions arbitrées et top 5 corrections impact×effort. Use when / déclencher sur invocation explicite uniquement : « contre-expertise de… », « challenge ce résultat / cette solution / cette proposition », « fais l'avocat du diable sur… », « seconde opinion sur… ». Jamais systématique ni proactif. Ne pas déclencher pour vérifier la conformité d'un livrable (→ quality-oracles), auditer une propale (→ digit-ai-propale-review), auditer un skill (→ ameliore-un-skill), analyser un prompt (→ prompt-analyzer-l99), ni annoter une réponse en cours de production (→ experts-forge).
+# TF-0475 : une contre-expertise argumente, elle ne reecrit pas ce qu'elle challenge. Les
+# outils d'ecriture sortent du pool pendant qu'elle est active (la restriction se leve au
+# message suivant). Plus fort qu'un rappel en prose, et sans effet sur son analyse.
+disallowed-tools: Write Edit NotebookEdit
 metadata:
   version: 1.2.0
 ---

@@ -11,6 +11,9 @@ description: >
   ou demande pourquoi un skill déclenche mal. Ne pas déclencher pour créer un skill de zéro
   (→ write-a-skill), auditer une propale (→ digit-ai-propale-review) ni analyser un prompt
   (→ prompt-analyzer-l99).
+# TF-0475 : le noyau declare ce skill APPELE PAR MOT-CLE (lexique d'invocation RV-6).
+# Le modele ne le charge donc pas de lui-meme ; l'appel direct reste entier.
+disable-model-invocation: true
 ---
 
 # Améliore un skill

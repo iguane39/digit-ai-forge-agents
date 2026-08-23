@@ -145,7 +145,11 @@ if (s4) {
 }
 
 // --- C7 : termes subjectifs comme critère ------------------------------------------------------
-const SUBJ = /\b(optimal(?:e|es|aux)?|exhaustifs?|exhaustives?|exhaustivité|robustes?|robustesse|complets?|complètes?)\b|\bde\s+qualité\b/gi;
+// `\b` est ASCII : « exhaustivité » et « de qualité » finissent par « é », donc la frontière
+// finale ne se posait jamais — deux termes que la règle cherchait sans pouvoir les voir. Trouvé
+// par `oracle-pieges-regex` sur le parc (23/08/2026).
+const B0 = "(?<![0-9A-Za-zÀ-ÿ])", B1 = "(?![0-9A-Za-zÀ-ÿ])";
+const SUBJ = new RegExp(B0 + "(optimal(?:e|es|aux)?|exhaustifs?|exhaustives?|exhaustivité|robustes?|robustesse|complets?|complètes?)" + B1 + "|" + B0 + "de\\s+qualité" + B1, "gi");
 lines.forEach((l, i) => {
   const m = l.match(SUBJ);
   if (!m) return;
