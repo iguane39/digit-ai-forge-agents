@@ -67,6 +67,12 @@ CAS = {
     "l20-brut-sans-alternative.html": {"L20"},
     "l20-brut-avec-bascule.html": set(),
     "l20-brut-declare.html": set(),
+    # TF-0521 (23/08) — un composant DECLARE sans style est invisible aux DEUX oracles : celui du
+    # MARQUAGE trouve la classe et s'arrete la, celui du RENDU ne voit rien tant que rien ne deborde.
+    # Mesure : deux squelettes de la bibliotheque portaient un sommaire annonce et non style, il se
+    # rendait en liste numerotee nue — vu seulement en comparant a un livrable REEL. La rouge est la
+    # fixture verte AVEC LE SEUL BLOC DE STYLE DU SOMMAIRE RETIRE : une difference, une regle.
+    "l21-composant-sans-style.html": {"L21"},
     "l2-largeur-bridee.html": {"L2"},
     "l3-tooltip-vide.html": {"L3"},
     "l3-bareme-absent.html": {"L3"},

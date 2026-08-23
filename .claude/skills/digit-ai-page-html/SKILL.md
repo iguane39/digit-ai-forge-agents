@@ -3,13 +3,20 @@ name: digit-ai-page-html
 description: >
   Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
 metadata:
-  version: "1.8.0"
+  version: "1.9.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.9.0 (23/08/2026)** — **L21** (neuve) : une classe de composant de la charte présente dans le
+marquage est visée par au moins une règle CSS. Deux squelettes portaient un sommaire annoncé et
+non stylé : L6 passait, le rendu passait, et le sommaire se rendait en liste nue. Un oracle de
+marquage trouve la classe et s'arrête là ; un oracle de rendu ne voit rien tant que rien ne
+déborde. En entrant, la règle a trouvé le même défaut dans HUIT fixtures du socle — complétées.
+Recette 101/101 → 102/102.
 
 **1.8.0 (22/08/2026)** — deux retours clients de plus, et une PORTE ouverte.
 **L20** (neuve) : au-dela de 4 Ko ou 80 lignes, un bloc de texte brut offre une alternative de
