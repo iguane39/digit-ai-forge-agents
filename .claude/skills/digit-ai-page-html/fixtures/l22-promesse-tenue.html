@@ -1,9 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232563EB'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<title>Digit-AI — L22 promesse tenue — 20260823a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--fond:#F8FAFF;
+ --accent:#2563EB;--mark:#FEF08A;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+/* Le lecteur de source. Toute classe posee par le composant est visee ici : une classe employee
+   dans le marquage et visee par AUCUNE regle est un composant annonce qui n'existe pas (L21). */
+details.src{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:14px 0;
+ background:var(--fond)}
+details.src>summary{cursor:pointer;font-weight:600}
+.src-barre{display:flex;justify-content:flex-end;margin:8px 0}
+.src-bascule{border:1px solid var(--line);background:var(--surface);color:var(--muted);
+ border-radius:999px;padding:3px 12px;font:inherit;font-size:.82rem;cursor:pointer}
+.src-bascule[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.src-corps{font-size:.92rem}
+.src-corps h2,.src-corps h3{margin:.9em 0 .3em}
+.src-corps table{border-collapse:collapse;width:100%;font-size:.86rem}
+.src-corps th,.src-corps td{border:1px solid var(--line);padding:6px 9px;text-align:left;
+ vertical-align:top}
+.src-corps pre{background:var(--surface);border:1px solid var(--line);border-radius:6px;
+ padding:10px;overflow-x:auto}
+.src-corps blockquote{margin:.6em 0;padding-left:12px;border-left:3px solid var(--line);
+ color:var(--muted)}
+/* Un lien de document embarque n'est PAS cliquable : il le montre par un pointille, jamais par
+   une couleur de lien — la couleur promettrait un clic. */
+.src-lien{border-bottom:1px dotted var(--muted);cursor:help}
+.src-zone-tableau{overflow-x:auto}
+figure.diagram-wrap{margin:14px 0;padding:10px;border:1px solid var(--line);border-radius:8px}
+figure.diagram-wrap svg{width:100%;height:auto}
+figure.diagram-wrap figcaption{color:var(--muted);font-size:.84rem;text-align:center;margin-top:6px}
+.src-texte{white-space:pre-wrap;font-size:.82rem;background:var(--surface);
+ border:1px solid var(--line);border-radius:6px;padding:10px;overflow-x:auto}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}details.src{page-break-inside:avoid}
+ details.src>*{display:block !important}}
+</style></head>
+<!--
+  TF-0489 — le composant que la regle A1 du socle rendait NECESSAIRE et qui n'existait pas. Un
+  fichier autoportant ne peut pas renvoyer a des fichiers du depot : il perd ses sources des qu'il
+  part par courriel. La consequence est d'EMBARQUER les documents cites — et un <pre> de 67 Ko de
+  Markdown est illisible.
+
+  Trois choses a verifier sur cette page :
+    - le document est rendu au PREMIER DEPLIAGE, jamais au chargement (le DOM reste petit) ;
+    - la bascule « texte brut » / « mis en forme » montre les deux vues du MEME document ;
+    - les liens du document cite ne sont PAS cliquables : leur cible passe en infobulle.
+-->
+<body><main class="wrap">
+<h1>Rapport avec ses sources embarquées</h1>
+<figure class="diagram-wrap">
+  <svg viewBox="0 0 400 120" role="img" aria-labelledby="sch-t">
+    <title id="sch-t">le chemin d un lot</title>
+    <!-- Les infobulles sont NATIVES : un <title> par forme, aucun script. -->
+    <!-- Ici, pas de <caption> : ce n est pas un tableau de donnees. -->
+    <g class="n1"><title>collecteur, tenu par l exploitant</title><rect x="20" y="30" width="150" height="60" rx="8"/>
+      <text x="95" y="65" text-anchor="middle">collecteur</text></g>
+  </svg>
+  <figcaption>le chemin d un lot, de son depot a son ingestion</figcaption>
+</figure>
+
+<p>Ce rapport cite un document du dépôt. Comme la page doit rester autoportante, le document est
+<strong>embarqué</strong> : il se lit ici, replié par défaut.</p>
+
+<details class="src" data-src-format="markdown">
+  <summary>Note de cadrage — 1,2 Ko</summary>
+  <script type="text/plain" class="src-brut">
+# Note de cadrage
+
+Le lecteur trouve ici le document tel qu'il a ete remis, avec ses 3 sections et son tableau.
+
+## Perimetre
+
+- ce qui est couvert, avec un chemin `docs/projet/FONCTIONNEL.md`
+- ce qui ne l'est pas, et [le document qui le dit](docs/projet/TODO-PRODUIT.md)
+
+## Chiffres
+
+| Indicateur | Valeur | Releve le |
+|---|---|---|
+| pages servies | 201 | 2026-08-21 |
+| routes FR | 201 | 2026-08-21 |
+| routes EN | 200 | 2026-08-21 |
+
+> Une route sur 201 existe en FR et pas en EN. C'est le constat qui a fait naitre le pan.
+
+## Extrait de configuration
+
+```
+schedules:
+  - cron: "7 7 1-7 * 1"
+```
+  </script>
+</details>
+
+<p>Le document ci-dessus n'est rendu qu'au premier dépliage : douze documents rendus d'avance
+avaient fait passer un DOM de 7 000 à plus de 25 000 nœuds, au-delà du seuil d'échec de l'oracle
+de performance.</p>
+
+<script>
+/* Le composant est COLLE dans la page : une page autoportante n'a pas de fichier
+   voisin (regle A1 du socle). La source de verite reste assets/source-reader.js — ce bloc en est
+   une copie, et c'est le prix de l'autoportance. */
 /* source-reader — le LECTEUR DE SOURCE d'une page autoportante (TF-0489, 23/08/2026).
- *
- * promesses-verifiees — ce fichier ADHÈRE au contrôle des promesses de commentaire
- * (`oracle-promesses` du pilot) : une classe ou un attribut nommé ici doit exister dans le code.
- * C'est ce contrôle qui a trouvé la première promesse non tenue de ce composant — `data-src-format`
- * était annoncé dans l'exemple d'usage ci-dessous et lu par personne.
  *
  * NOTE D'ECRITURE, et elle a ete payee : ce fichier est destine a etre COLLE dans une page
  * autoportante (regle A1 : aucun fichier voisin). Toute sequence de fermeture de script, MEME EN
@@ -159,12 +262,6 @@
     var brut = bloc.querySelector('.src-brut');
     if (!brut || bloc.querySelector('.src-vue')) return;
     var source = brut.textContent || '';
-    // `data-src-format` est désormais LU. Il était annoncé dans l'exemple d'usage en tête de ce
-    // fichier — et lu par personne : une promesse de commentaire, exactement le défaut que ce
-    // composant décrit ailleurs, trouvé chez lui. Ce qui est promis est donc tenu : tout format
-    // autre que markdown s'affiche en TEXTE BRUT, seule vue honnête d'un contenu qu'on ne sait
-    // pas rendre — le convertisseur est borné, et rendre au hasard mentirait davantage.
-    var markdown = (bloc.getAttribute('data-src-format') || 'markdown').toLowerCase() === 'markdown';
     var vue = document.createElement('div');
     vue.className = 'src-vue';
     var barre = document.createElement('div');
@@ -176,10 +273,10 @@
     bouton.textContent = 'texte brut';
     var corps = document.createElement('div');
     corps.className = 'src-corps';
-    corps.innerHTML = markdown ? convertir(source) : '';
+    corps.innerHTML = convertir(source);
     var pre = document.createElement('pre');
     pre.className = 'src-texte';
-    pre.hidden = markdown;
+    pre.hidden = true;
     pre.textContent = source;
     bouton.addEventListener('click', function () {
       var brutVisible = pre.hidden;
@@ -188,9 +285,9 @@
       bouton.setAttribute('aria-pressed', brutVisible ? 'true' : 'false');
       bouton.textContent = brutVisible ? 'mis en forme' : 'texte brut';
     });
-    if (markdown) barre.appendChild(bouton);
+    barre.appendChild(bouton);
     vue.appendChild(barre);
-    if (markdown) vue.appendChild(corps);
+    vue.appendChild(corps);
     vue.appendChild(pre);
     bloc.appendChild(vue);
     bloc.setAttribute('data-src-rendu', 'oui');
@@ -213,3 +310,7 @@
 
   global.DigitAISourceReader = { init: init, convertir: convertir };
 })(typeof window !== 'undefined' ? window : this);
+
+DigitAISourceReader.init();
+</script>
+</main></body></html>

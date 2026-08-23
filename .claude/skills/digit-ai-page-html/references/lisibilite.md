@@ -612,7 +612,7 @@ internes dans le même conteneur. *Une phrase qui promet une vue ne compte pas.*
 
 *La mesure qui a ouvert cette porte.* Le registre compte 49 domaines. Sur un livrable réel de
 85 Ko et 297 entrées, le lanceur en jugeait **quatre**, et **aucun de lisibilité** : les règles
-L1-L21 vivent dans `check_html.py`, qui ne s'exécute que sur du HTML. Or le **Markdown est le
+L1-L22 vivent dans `check_html.py`, qui ne s'exécute que sur du HTML. Or le **Markdown est le
 format de livraison dominant** des runs d'architecture et de conseil — le projet concerné remet
 dix documents Markdown et un seul HTML. Conséquence directe : le défaut de L18 (un identifiant
 sans son sens) s'est produit **dans les documents Markdown**, là où rien ne regardait, et c'est
@@ -667,10 +667,48 @@ inventer des composants pour avoir quelque chose à exiger serait pire que ne ri
 les fixtures. Elles ont été complétées plutôt que la règle affaiblie : *une fixture qui ne
 ressemble pas à une vraie page mesure autre chose que ce qu'on croit.*
 
+## L22 — Une promesse écrite en commentaire est TENUE (TF-0532, 23/08/2026)
+
+*Le fait, et il a coûté quatre défauts bloquants.* Un schéma d'une page livrée portait ce
+commentaire : `<!-- un <title> par forme, pour l'infobulle au survol -->`. Le diagramme entier avait
+UN titre ; **aucun de ses nœuds n'en avait**. L'infobulle promise n'existait pas, et les nœuds sans
+titre se chevauchaient — **quatre chevauchements V4, tous bloquants**. Le commentaire, lui, a
+traversé quatre versions et trois relectures sans être contredit : *il se lisait comme une preuve*.
+
+**C'est la loi n° 1 appliquée à la prose.** « Toute affordance est câblée ou n'existe pas » vaut pour
+un bouton ; un commentaire qui annonce un élément est une affordance de LECTURE — il dispense le
+relecteur de vérifier. Une promesse de commentaire non tenue est donc pire qu'un silence : elle
+consomme l'attention qui aurait trouvé le défaut.
+
+**Contrôle mécanique.** `L22` — un commentaire HTML qui annonce un élément portable (`<title>`,
+`<figcaption>`, `<caption>`, `<summary>`, `<legend>`, `<label>`) le fait exister dans son bloc. Deux
+formes jugées : l'annonce simple (l'élément existe quelque part dans le bloc englobant) et
+l'annonce **quantifiée** — « un `<title>` par forme », « une `<caption>` par tableau » — où **CHAQUE
+porteur** est vérifié, un par un.
+
+**Ce que la règle a appris en se trompant, et c'est le cœur de l'affaire.** Le premier jet comptait
+des TOTAUX : « 6 formes, 3 titres, défaut ». Il se trompait *dans les deux sens* — il accusait les
+gabarits du socle, où chaque nœud portait bien son titre à l'intérieur de son groupe, et il laissait
+passer la fixture rouge, où le titre du diagramme entier suffisait au total. *Un contrôle qui se
+trompe dans les deux sens ne mesure pas ce qu'il prétend mesurer* : il compte, là où la promesse
+parle de chacun. Le porteur d'un schéma est le **groupe** (`<g>`), comme la doctrine du socle le dit
+depuis TF-0424 — un groupe titré est UN nœud, ses primitives n'en sont pas.
+
+**Négations et échappatoire.** Un commentaire qui dit ne PAS poser l'élément (« aucun title : le
+libellé est déjà dans la forme ») ne promet rien et n'est pas jugé. Le choix assumé se déclare par
+`promesse-ok`.
+
+**La même loi côté CODE.** Un commentaire de code qui nomme une classe ou un attribut promet
+exactement de la même façon — et le pilot le vérifie par `oracle-promesses`, sur les fichiers qui
+ont **signé** (`promesses-verifiees` en tête). Cette adhésion n'est pas de la timidité : le balayage
+sans signature rendait **un constat vrai sur huit**, et un contrôle bruyant s'apprend à être ignoré.
+Il a trouvé sa première vraie promesse chez `source-reader.js` du socle lui-même — `data-src-format`
+était documenté dans son exemple d'usage et **lu par personne** ; il est désormais lu.
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L21
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L22
 python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L17)
 python scripts/check_html.py page.html --output json
 python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu
@@ -681,7 +719,7 @@ Les fixtures de `fixtures/` prouvent que chaque règle **peut échouer** : une p
 texte coupé, largeur bridée, tooltip vide, barème absent, colonne calculée sans formule,
 valeur opaque, table non filtrable, surlignage à padding, collision de nom de classe,
 ancre morte, entrée de sommaire muette, chapitre sans chapeau, lien muet, détail vide,
-table sans mode d'emploi, littéral `null` — plus une fixture verte qui les passe toutes.
-Une règle sans fixture rouge n'est pas un contrôle. **26 cas, 22 rouges** — dont quatre
+table sans mode d'emploi, littéral `null`, promesse de commentaire non tenue — plus une fixture verte qui les passe toutes.
+Une règle sans fixture rouge n'est pas un contrôle. **70 cas de lisibilité, 50 rouges** (comptés sur `fixtures/` le 23/08 — le chiffre précédent, « 26 cas », datait de dix règles plus tôt) — dont quatre
 mesurés au rendu (`l2r-*`, `l2g-*`), rejoués par `self_test.py` quand playwright est
 disponible.
