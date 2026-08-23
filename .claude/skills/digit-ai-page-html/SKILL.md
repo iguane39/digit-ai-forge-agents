@@ -3,13 +3,17 @@ name: digit-ai-page-html
 description: >
   Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
 metadata:
-  version: "1.10.0"
+  version: "1.11.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.11.0 (23/08/2026)** — **`--matrice-etats`** (neuve) : cinq états mesurés et capturés, et le
+bloquant **`etat_muet`** — un état vide qui ne se déclare pas. Deux défauts qu'un client avait
+trouvés en deux clics sur un livrable « tous oracles verts ».
 
 **1.10.0 (23/08/2026)** — **L2-frères** (neuve, avertissement) : la rupture d'alignement entre
 frères EMPILÉS, invisible aux trois mesures L2 existantes qui comparent chaque bloc à son propre
@@ -170,7 +174,25 @@ Puis lancer l'**oracle zéro défaut visuel** (rendu multi-breakpoints + mesures
 python scripts/render_page.py page.html            # défaut : 1920, 1280, 768, 390 px (TF-0422)
 # schéma : --selector .diagram-wrap · JSON : --output json
 # revue de lecture : --sections "[role=tabpanel]"  → une capture par section, par largeur
+# composants interactifs : --matrice-etats         → cinq états mesurés ET capturés (TF-0493)
 ```
+
+**La matrice d'états (`--matrice-etats`, TF-0493) — les composants cassent là où personne ne
+regarde.** Cinq états, chacun repartant d'une **page neuve**, chacun mesuré et capturé : tout
+déplié · filtre ouvert sur la **première** puis sur la **dernière** colonne · filtre ne laissant
+aucune ligne · recherche sans correspondance. Deux défauts trouvés par un client sur un seul
+livrable, tous deux reproductibles en deux clics, tous deux invisibles au rendu par défaut : un
+panneau de filtre qui **crée un ascenseur horizontal** à l'ouverture, et un bouton « Aucun » qui
+**détruit l'affichage sans un mot**. `--etats-ouverts` existait et avait été utilisé — il ouvre le
+premier panneau et ne produit **aucun état d'échec**.
+
+Ce que la matrice ajoute au-delà de V1/V2/V4 : **un état vide se déclare** (loi n° 3). Plus aucune
+ligne visible et pas un mot pour le dire → **bloquant** `etat_muet` ; le socle prescrit déjà la
+forme du message (`.tf-count` en zone vivante avec la classe `zero`, ou `.tf-vide-msg`). Et un état
+qui ne trouve pas son déclencheur est déclaré **NON JOUÉ**, jamais vert : un composant absent est
+une réponse, un état muet serait un mensonge. La preuve qui justifie d'ouvrir **les deux**
+colonnes : sur la même page, le panneau rend 0 constat sur la première et 2 sur la dernière — un
+panneau ne déborde pas du même côté à droite qu'à gauche.
 
 Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de la largeur
 qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'une grille —

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — matrice d etats — panneau ancre a DROITE, legitime — 20260823a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --danger:#B91C1C;--mark:#FEF08A;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+th{position:relative}
+.tf-btn{border:0;background:none;cursor:pointer;font:inherit;color:var(--muted)}
+.tf-panel{position:absolute;z-index:10;top:100%;left:0;background:var(--surface);
+ border:1px solid var(--line);border-radius:6px;padding:8px;width:900px}
+.tf-panel.tf-droite{left:auto;right:0}
+.tf-panel[hidden]{display:none}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-0493, sens ROUGE — le PREMIER des deux defauts trouves par le client : « le panneau de
+  filtre CREE un ascenseur horizontal a l ouverture ». Le panneau est large et ancre a GAUCHE de
+  son en-tete. Sur la PREMIERE colonne il tient dans la page ; sur la DERNIERE il en sort. C est
+  exactement pourquoi la matrice ouvre les deux : un panneau ne deborde pas du meme cote a
+  droite qu a gauche, et un seul des deux etats ne prouve rien.
+
+  Attendu : 0 constat v1_overflow sur TOUS les etats. Le panneau fait toujours 900 px : seule
+  son ancre change (.tf-droite). La regle ne juge pas la largeur d un panneau, elle juge qu il
+  reste DANS la page.
+-->
+<body><main class="wrap">
+<h1>Lots livres</h1>
+<table id="t"><thead><tr><th>Lot</th><th>Statut</th></tr></thead>
+<tbody>
+  <tr><td>nord</td><td>livre</td></tr>
+  <tr><td>centre</td><td>en cours</td></tr>
+  <tr><td>sud</td><td>livre</td></tr>
+</tbody></table>
+<div id="compte" class="tf-count" data-tf-count-for="t" aria-live="polite"></div>
+<script>
+// Composant de filtres reduit a ce que la matrice actionne : un declencheur par colonne, un
+// panneau, une bascule « Aucun ». Ecrit ici SANS message d etat vide — c est le defaut mesure.
+(function () {
+  var t = document.getElementById('t');
+  var ths = t.querySelectorAll('thead th');
+  for (var i = 0; i < ths.length; i++) {
+    (function (th) {
+      var b = document.createElement('button');
+      b.className = 'tf-btn'; b.type = 'button'; b.setAttribute('aria-expanded', 'false');
+      b.textContent = ' ›';
+      var p = document.createElement('div');
+      p.className = 'tf-panel'; p.hidden = true;
+      var aucun = document.createElement('button');
+      aucun.className = 'tf-none'; aucun.type = 'button'; aucun.textContent = 'Aucun';
+      aucun.addEventListener('click', function () {
+        var trs = t.querySelectorAll('tbody tr');
+        for (var k = 0; k < trs.length; k++) trs[k].setAttribute('data-tf-hidden', '');
+        for (var k2 = 0; k2 < trs.length; k2++) trs[k2].style.display = 'none';
+        // L etat vide se DIT : zone vivante, texte explicite, et le chemin pour en sortir.
+        var c = document.getElementById('compte');
+        c.className = 'tf-count zero';
+        c.textContent = 'Aucune ligne ne correspond au filtre — rouvrir le panneau et cliquer sur « Tous » pour tout revoir.';
+      });
+      var tous = document.createElement('button');
+      tous.className = 'tf-all'; tous.type = 'button'; tous.textContent = 'Tous';
+      p.appendChild(tous); p.appendChild(aucun);
+      var opt = document.createElement('label');
+      opt.className = 'tf-opt'; opt.textContent = 'livre';
+      p.appendChild(opt);
+      // Le remede du socle : le dernier panneau s ancre a DROITE. Une seule classe, et le
+      // panneau se replie dans la page au lieu d en sortir.
+      if (th === ths[ths.length - 1]) p.classList.add('tf-droite');
+      b.addEventListener('click', function () {
+        p.hidden = !p.hidden;
+        b.setAttribute('aria-expanded', p.hidden ? 'false' : 'true');
+      });
+      th.appendChild(b); th.appendChild(p);
+    })(ths[i]);
+  }
+})();
+</script>
+</main></body></html>

@@ -767,6 +767,92 @@ def run_markdown():
                     'regle': 'M (markdown)', 'detail': ''})
     return out
 
+def run_matrice_etats():
+    """TF-0493 (23/08/2026) — LA MATRICE D'ETATS, et les deux defauts qu'un client a trouves.
+
+    Les deux etaient reproductibles en deux clics, et invisibles au rendu par defaut :
+      (1) le panneau de filtre CREE un ascenseur horizontal a l'ouverture ;
+      (2) le bouton « Aucun » DETRUIT l'affichage, sans un mot.
+    `--etats-ouverts` existait et avait ete utilise : il ouvre le PREMIER panneau et ne produit
+    aucun etat d'echec. Or c'est la que les composants cassent, parce que personne ne les
+    regarde.
+
+    LE CAS QUI PORTE LA DEMONSTRATION est le panneau debordant : la MEME page rend 0 constat sur
+    « filtre-premiere-colonne » et 2 sur « filtre-derniere-colonne ». Un panneau ne deborde pas
+    du meme cote a droite qu'a gauche — ouvrir le premier ne prouve donc rien du dernier, et
+    c'est exactement ce que faisait l'ancienne option.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    captures = tempfile.mkdtemp(prefix="self-test-matrice-")
+    # fixture -> etat -> (famille, compte attendu)
+    CAS = {
+        "mat-aucun-muet.html": {"filtre-sans-resultat": ("etat_muet", 1)},
+        "mat-aucun-annonce.html": {"filtre-sans-resultat": ("etat_muet", 0)},
+        "mat-panneau-deborde.html": {"filtre-derniere-colonne": ("v1_overflow", 2),
+                                     "filtre-premiere-colonne": ("v1_overflow", 0)},
+        "mat-panneau-ancre-droite.html": {"filtre-derniere-colonne": ("v1_overflow", 0)},
+    }
+    out = []
+    for nom, attendus in CAS.items():
+        cible = FIXTURES / nom
+        if not cible.exists():
+            out.append({"fixture": nom, "verdict": "ABSENTE", "attendu": "fixture présente",
+                        "obtenu": "absente", "regle": "matrice d états", "detail": ""})
+            continue
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(cible), "--widths", "1440",
+                            "--matrice-etats", "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            etats = json.loads(r.stdout)["breakpoints"]["1440"]["etats"]
+        except Exception:
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "matrice lisible",
+                        "obtenu": "illisible", "regle": "matrice d états",
+                        "detail": (r.stderr or r.stdout or "")[:160]})
+            continue
+        for etat, (famille, attendu) in attendus.items():
+            e = etats.get(etat) or {}
+            if not e.get("applique"):
+                out.append({"fixture": f"{nom} · {etat}", "verdict": "ECHEC",
+                            "attendu": f"état joué ({famille} ×{attendu})",
+                            "obtenu": "NON JOUÉ", "regle": "matrice d états",
+                            "detail": e.get("motif", "état absent de la matrice")})
+                continue
+            n = len(e.get("issues", {}).get(famille, []))
+            ok = (n >= attendu) if attendu else (n == 0)
+            out.append({"fixture": f"{nom} · {etat}", "verdict": "OK" if ok else "ECHEC",
+                        "attendu": attendu, "obtenu": n, "regle": f"{famille} (état)",
+                        "detail": "" if ok else f"{n} constat(s) {famille} dans l état {etat}"})
+    # Un etat NON JOUE se DECLARE : sur une page sans composant, la matrice ne doit pas rendre
+    # « aucun defaut » — ce serait le pire des verdicts. On le verifie sur une fixture nue.
+    nue = FIXTURES / "l2fr-freres-alignes.html"
+    if nue.exists():
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(nue), "--widths", "1440",
+                            "--matrice-etats", "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            j = json.loads(r.stdout)
+            etats = j["breakpoints"]["1440"]["etats"]
+            joues = [n for n, e in etats.items() if e.get("applique")]
+            declares = [x for x in j.get("non_juge", []) if "NON JOUE" in x]
+            ok = not joues and len(declares) >= 5
+            out.append({"fixture": "page sans composant · tous les états", "verdict": "OK" if ok else "ECHEC",
+                        "attendu": "0 état joué, chacun DÉCLARÉ au non_juge",
+                        "obtenu": f"{len(joues)} joué(s), {len(declares)} déclaré(s)",
+                        "regle": "matrice d états", "detail": ""})
+        except Exception:
+            out.append({"fixture": "page sans composant", "verdict": "ECHEC",
+                        "attendu": "matrice lisible", "obtenu": "illisible",
+                        "regle": "matrice d états", "detail": ""})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -785,6 +871,11 @@ def main():
     bornes = run_v1_bornes()
     if bornes:
         res += bornes
+    # TF-0493 — la matrice d etats : chaque etat mesure ET capture, et un etat qui ne trouve pas
+    # son declencheur est declare NON JOUE, jamais vert.
+    matrice = run_matrice_etats()
+    if matrice:
+        res += matrice
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

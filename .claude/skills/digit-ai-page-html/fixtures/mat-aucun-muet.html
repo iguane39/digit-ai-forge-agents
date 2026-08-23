@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — matrice d etats — « Aucun » MUET, refuse — 20260823a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --danger:#B91C1C;--mark:#FEF08A;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+th{position:relative}
+.tf-btn{border:0;background:none;cursor:pointer;font:inherit;color:var(--muted)}
+.tf-panel{position:absolute;z-index:10;top:100%;left:0;background:var(--surface);
+ border:1px solid var(--line);border-radius:6px;padding:8px;min-width:180px}
+.tf-panel[hidden]{display:none}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-0493, sens ROUGE. Rejoue le second defaut trouve par le client, celui qu'aucune famille de
+  mesure ne pouvait voir : « le bouton Aucun DETRUIT l affichage — le tableau se reduit a
+  quelques pixels, sans un mot ». La page est geometriquement irreprochable dans cet etat : elle
+  ne deborde pas, rien ne se chevauche, les contrastes tiennent. Elle ne dit simplement plus
+  rien, et le lecteur ne sait pas si l outil a filtre ou casse.
+
+  Attendu : 1 constat etat_muet sur l etat « filtre-sans-resultat », BLOQUANT.
+-->
+<body><main class="wrap">
+<h1>Lots livres</h1>
+<table id="t"><thead><tr><th>Lot</th><th>Statut</th></tr></thead>
+<tbody>
+  <tr><td>nord</td><td>livre</td></tr>
+  <tr><td>centre</td><td>en cours</td></tr>
+  <tr><td>sud</td><td>livre</td></tr>
+</tbody></table>
+<script>
+// Composant de filtres reduit a ce que la matrice actionne : un declencheur par colonne, un
+// panneau, une bascule « Aucun ». Ecrit ici SANS message d etat vide — c est le defaut mesure.
+(function () {
+  var t = document.getElementById('t');
+  var ths = t.querySelectorAll('thead th');
+  for (var i = 0; i < ths.length; i++) {
+    (function (th) {
+      var b = document.createElement('button');
+      b.className = 'tf-btn'; b.type = 'button'; b.setAttribute('aria-expanded', 'false');
+      b.textContent = ' ›';
+      var p = document.createElement('div');
+      p.className = 'tf-panel'; p.hidden = true;
+      var aucun = document.createElement('button');
+      aucun.className = 'tf-none'; aucun.type = 'button'; aucun.textContent = 'Aucun';
+      aucun.addEventListener('click', function () {
+        var trs = t.querySelectorAll('tbody tr');
+        for (var k = 0; k < trs.length; k++) trs[k].setAttribute('data-tf-hidden', '');
+        for (var k2 = 0; k2 < trs.length; k2++) trs[k2].style.display = 'none';
+        // ET RIEN D AUTRE. Pas de compteur, pas de message, pas de zone vivante.
+      });
+      var tous = document.createElement('button');
+      tous.className = 'tf-all'; tous.type = 'button'; tous.textContent = 'Tous';
+      p.appendChild(tous); p.appendChild(aucun);
+      var opt = document.createElement('label');
+      opt.className = 'tf-opt'; opt.textContent = 'livre';
+      p.appendChild(opt);
+      b.addEventListener('click', function () {
+        p.hidden = !p.hidden;
+        b.setAttribute('aria-expanded', p.hidden ? 'false' : 'true');
+      });
+      th.appendChild(b); th.appendChild(p);
+    })(ths[i]);
+  }
+})();
+</script>
+</main></body></html>
