@@ -93,6 +93,18 @@ L2_MIN_CHARS = 120
 # 1215). Un seuil pose au-dessus du defaut qui l'a motive ne prouve rien. 20 % est
 # aussi la borne haute de la doctrine ; la grille legitime du meme rapport, qui
 # porte les etiquettes Constat / Impact / Action, mesure 10 % et reste hors cause.
+# TF-0491 (23/08) — l2_freres : le meme defaut signale TROIS FOIS par un client, sous trois
+# formes ("colonne de texte a 40 % de la fenetre", "le texte d'intro devrait etre sur toute la
+# ligne", "les lotissements ne prennent qu'une partie de la largeur"), sur quatre versions
+# livrees. Cause unique : de la prose bornee a 1 080 px placee AU-DESSUS de cartes occupant
+# 1 424 px. Aucune des trois mesures L2 ne peut le voir : elles comparent un bloc a ce que son
+# conteneur lui OFFRE, et un conteneur borne offre 1 080 px — le bloc les remplit, donc PASS.
+# Ce que voit le lecteur est ailleurs : la rupture d'alignement ENTRE FRERES EMPILES.
+# Seuil a 80 % : en dessous, l'oeil accroche le decalage du bord droit.
+L2_FRERES_MIN_RATIO = 0.80
+# Un frere trop etroit ne fait pas reference : un encart de 300 px a cote d'une prose de 240 px
+# n'est pas une rupture d'alignement, c'est une mise en page.
+L2_FRERES_MIN_LARGEUR = 500
 L2_COL_MAX = 0.20
 L2_ETIQUETTE_MAX = 60
 ALIGN_TOLERANCE_PX = 2.0
@@ -137,7 +149,8 @@ def ensure_local_fonts() -> None:
 MEASURE_JS = r"""
 () => {
   const issues = { v1_overflow: [], v2_contrast: [], v3_align: [], v4_overlap: [], v7_spacing: [],
-                   l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], unmeasured: [] };
+                   l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
+                   unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -621,6 +634,87 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- L2 (rendu, suite) : la rupture d'alignement ENTRE FRERES (TF-0491) --------------
+  // Les trois mesures L2 ci-dessus comparent un bloc a ce que son CONTENEUR lui offre. Elles
+  // sont aveugles au cas le plus visible pour un lecteur : deux blocs EMPILES l'un sur l'autre,
+  // qui ne commencent pas au meme bord ou ne finissent pas au meme bord. Le client l'a signale
+  // trois fois en quatre versions, sous trois formulations differentes, sans que la cause soit
+  // vue — parce que chaque bloc, pris seul, remplissait bien sa boite.
+  //
+  // Ce n'est PAS un bloquant, et c'est délibéré : une mesure de lecture etroite au-dessus d'un
+  // tableau large est un choix typographique defendable. Mais alors il se DECLARE
+  // (`data-mesure-lecture`) au lieu d'etre subi. Un avertissement qui nomme LES DEUX blocs
+  // laisse l'auteur trancher ; un bloquant l'obligerait a mentir pour passer.
+  //
+  // Trois gardes, pour ne rien condamner a tort :
+  //   1. les deux blocs sont EMPILES (aucun recouvrement vertical) — deux colonnes cote a cote
+  //      ont des largeurs differentes par construction, c'est une mise en page, pas un defaut ;
+  //   2. le frere de reference est LARGE (>= __L2F_MIN_LARGEUR__ px) et porte du contenu ;
+  //   3. le bloc etroit porte du TEXTE LONG (>= __L2_MIN_CHARS__) : un titre, une legende ou un
+  //      bouton sont courts par nature et n'ont jamais a s'aligner sur un tableau.
+  if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
+    const vusF = new Set();
+    const contenu = (el) => (el.textContent || '').trim().length > 0
+      || !!el.querySelector('img, svg, canvas, table, input, button');
+    for (const parent of document.body.querySelectorAll('*')) {
+      // On ne juge que les FLUX VERTICAUX. Dans une grille ou une boite flexible, la largeur
+      // d'un enfant est decidee par sa PISTE, pas par lui : comparer deux enfants de pistes
+      // differentes n'a aucun sens. Mesure qui a impose la garde : six constats sur la page du
+      // registre du pilot, ou une cellule « Demandeur » de 250 px occupe une colonne de grille
+      // pendant que la cellule « Impact » s'etend sur les deux (1 301 px). La page est SAINE ;
+      // c'est la mesure qui etait fausse. La grille reste jugeable comme BLOC, en tant que
+      // frere d'un autre bloc — c'est le cas de la fixture rouge, ou les cartes sont la
+      // reference.
+      const dParent = getComputedStyle(parent).display;
+      if (!(dParent === 'block' || dParent === 'flow-root' || dParent === 'list-item')) continue;
+      const enfants = [...parent.children].filter((c) => visible(c) && contenu(c));
+      if (enfants.length < 2) continue;
+      const boites = enfants.map((c) => ({ c, r: c.getBoundingClientRect() }));
+      for (const petit of boites) {
+        const texte = (petit.c.textContent || '').trim();
+        if (texte.length < __L2_MIN_CHARS__) continue;
+        if (petit.c.closest('table, nav, thead, tbody')) continue;
+        if (petit.c.closest('[data-mesure-lecture]')) continue;   // ecart DECLARE : on se tait
+        // Un bloc qui PARTAGE SA LIGNE avec un frere fait partie d'une rangee : sa largeur est
+        // celle de sa piste, et la comparer a un bloc d'une AUTRE rangee est un faux positif.
+        // Mesure : six constats de ce type sur la page du registre du pilot (une cellule
+        // « Demandeur » de 250 px face a un bloc « Impact » de 1 301 px, ratio 0,19) — la page
+        // est saine, c'est une grille de metadonnees. Meme garde que l2_conteneur avec son
+        // « aucun frere a droite », et c'est la seule qui distingue une rangee d'un empilement.
+        const enLigne = boites.some((a) => a.c !== petit.c
+          && Math.min(a.r.bottom, petit.r.bottom) - Math.max(a.r.top, petit.r.top) > 8);
+        if (enLigne) continue;
+        // Le frere de reference : le plus large, empile (aucun recouvrement vertical).
+        let ref = null;
+        for (const autre of boites) {
+          if (autre.c === petit.c) continue;
+          if (autre.r.width < __L2F_MIN_LARGEUR__) continue;
+          // Un TITRE ou un filet occupe toute la largeur par nature : le prendre pour reference
+          // rendrait le constat vrai geometriquement et faux pour le lecteur, qui ne compare pas
+          // sa prose a un titre. La reference doit etre un BLOC DE CONTENU — plusieurs lignes de
+          // haut, pas une ligne unique. Trouve en jouant la fixture : le premier jet nommait h1.
+          if (autre.c.matches('h1, h2, h3, h4, h5, h6, hr, header, footer, figcaption')) continue;
+          if (autre.r.height < 48) continue;
+          const empile = autre.r.top >= petit.r.bottom - 4 || autre.r.bottom <= petit.r.top + 4;
+          if (!empile) continue;
+          if (!ref || autre.r.width > ref.r.width) ref = autre;
+        }
+        if (!ref) continue;
+        const ratio = petit.r.width / ref.r.width;
+        if (ratio >= __L2F_MIN_RATIO__) continue;
+        const cle = label(petit.c) + '|' + label(ref.c);
+        if (vusF.has(cle)) continue;
+        vusF.add(cle);
+        issues.l2_freres.push({ what: `${label(petit.c)} sous/sur ${label(ref.c)}`, detail:
+          `rupture d'alignement entre freres empiles : ${Math.round(petit.r.width)}px de texte ` +
+          `contre ${Math.round(ref.r.width)}px pour le bloc voisin (ratio ${ratio.toFixed(2)}, ` +
+          `seuil __L2F_MIN_RATIO__) — le lecteur voit un bord droit qui ne tombe pas au meme ` +
+          `endroit. Aligner les deux blocs, ou DECLARER la mesure de lecture par ` +
+          `data-mesure-lecture sur le bloc etroit`});
+      }
+    }
+  }
+
   // ---- Plafond V7 : au-dela d'un certain nombre, ce n'est plus une liste de cas
   // isoles mais un defaut d'echelle d'espacement. On garde les premiers, on agrege
   // le reste en une ligne : un avertissement qui defile sur 288 lignes ne se lit
@@ -674,6 +768,8 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
           .replace("__L2C_MIN_RATIO__", str(L2C_MIN_RATIO))
           .replace("__L2_MIN_VIEWPORT__", str(L2_MIN_VIEWPORT))
           .replace("__L2_MIN_CHARS__", str(L2_MIN_CHARS))
+          .replace("__L2F_MIN_RATIO__", str(L2_FRERES_MIN_RATIO))
+          .replace("__L2F_MIN_LARGEUR__", str(L2_FRERES_MIN_LARGEUR))
           .replace("__L2_COL_MAX__", str(L2_COL_MAX))
           .replace("__L2_ETIQUETTE_MAX__", str(L2_ETIQUETTE_MAX)))
 
@@ -794,6 +890,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                                      ("l2_gouttiere", "L2 gouttière d'étiquettes", "BLOQUANT"),
                                      ("l2_conteneur", "L2 conteneur calé à gauche", "BLOQUANT"),
                                      ("l2_filet", "L2 texte écrasé en filet", "BLOQUANT"),
+                                     ("l2_freres", "L2 alignement entre freres", "avertissement"),
                                      ("v3_align", "V3 alignement", "avertissement"),
                                      ("v7_spacing", "V7 espacement", "avertissement"),
                                      ("unmeasured", "Non mesurable", "à vérifier visuellement")]:
@@ -801,7 +898,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                     print(f"  [{kind}] {title} : {item['what']} — {item['detail']}")
             if iss.get("v1_tronque"):
                 print(f"  [BORNE] V1 : {iss['v1_tronque']['motif']}")
-            if data["blocking"] == 0 and not any(iss[k] for k in ("v3_align", "v7_spacing", "unmeasured")):
+            if data["blocking"] == 0 and not any(iss[k] for k in ("l2_freres", "v3_align", "v7_spacing", "unmeasured")):
                 print("  aucun défaut mesuré")
         print(f"\nVerdict : {report['verdict']}")
         for note in report["non_juge"]:

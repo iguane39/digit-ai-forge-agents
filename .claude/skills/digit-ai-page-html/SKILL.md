@@ -3,13 +3,22 @@ name: digit-ai-page-html
 description: >
   Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L14 à fixtures rouges.
 metadata:
-  version: "1.9.0"
+  version: "1.10.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.10.0 (23/08/2026)** — **L2-frères** (neuve, avertissement) : la rupture d'alignement entre
+frères EMPILÉS, invisible aux trois mesures L2 existantes qui comparent chaque bloc à son propre
+conteneur. Mesuré : un même défaut signalé TROIS FOIS par un client en quatre versions, sous
+trois formulations. Écart légitime → `data-mesure-lecture`. Trouvé en la jouant sur nos propres
+pages : deux instances de gabarit passaient l'audit statique et échouaient au rendu (contraste
+2,48:1 sur la ligne pédagogique, bride de lecture posée sur le paragraphe, quatre chevauchements
+V4 dans un schéma dont les nœuds n'avaient pas le `<title>` que son propre commentaire
+promettait). Trois causes, un même aveuglement : le contrôle statique ne rend pas la page.
 
 **1.9.0 (23/08/2026)** — **L21** (neuve) : une classe de composant de la charte présente dans le
 marquage est visée par au moins une règle CSS. Deux squelettes portaient un sommaire annoncé et
@@ -168,7 +177,15 @@ qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'un
 la mesure de lecture se règle sur le conteneur, pas sur le paragraphe),
 **V1** (débordement horizontal), **V2** (contraste WCAG AA : ≥ 4.5:1,
 ≥ 3:1 en texte large) et **V4** (chevauchements — superposition voulue = `data-overlap-ok`),
-signale **V3/V7** (alignements, espacements) en avertissements, et produit un PNG par
+signale **L2-frères** (TF-0491), **V3** et **V7** en avertissements — L2-frères compare la
+largeur d'un bloc de texte à celle de son **frère empilé** : trois mesures L2 ne voyaient que
+le rapport d'un bloc à son propre conteneur, et une prose bornée ET CENTRÉE au-dessus de
+cartes pleine largeur les satisfaisait toutes les trois. Le lecteur, lui, voit un bord droit
+qui ne tombe pas au même endroit — signalé trois fois par un client, sous trois formulations,
+sur quatre versions. Ce n'est pas un bloquant : une mesure de lecture étroite est un choix
+défendable, mais elle se **déclare** (`data-mesure-lecture` sur le bloc étroit) au lieu d'être
+subie. Ne se prononce que dans un **flux vertical** — dans une grille ou une boîte flexible, la
+largeur d'un enfant est décidée par sa piste, pas par lui, et produit un PNG par
 breakpoint **hors de tout arbre de livraison** (TF-0230) : `<dossier du HTML>/.oracles/`
 pour une page ordinaire, un dossier temporaire nommé si la page vit sous `output/`, `old/`,
 `dist/`… — un `.oracles/` DANS `output/` reste dans ce que le client reçoit, et un audit y
