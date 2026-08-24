@@ -267,6 +267,39 @@ MEASURE_JS = r"""
     r: fg.r * fg.a + bg.r * (1 - fg.a),
     g: fg.g * fg.a + bg.g * (1 - fg.a),
     b: fg.b * fg.a + bg.b * (1 - fg.a), a: 1 });
+  // TF-0582 (lot Produit-02 20260824) : ce qui PEINT sans etre un `background-color`.
+  //
+  // Le fait fondateur, mesure en production : un fond peint par `.color-exp::before` (50 % de la
+  // largeur) sous un texte dont l'element porte `background: transparent`. Une mesure qui compare
+  // `color` a `background-color` — ce que font la plupart des outils, dont axe-core — remonte
+  // alors au conteneur, y lit un fond clair, et CONCLUT QUE TOUT VA BIEN sur un texte a 1,0 de
+  // ratio. Le faux PASS est pire que l'absence de controle : il porte une signature.
+  //
+  // Cette sonde ne mesure pas ces cas — elle les DECLARE non mesurables. C'est le corollaire que
+  // l'item demandait d'ecrire : une sonde dit ce qu'elle ne voit pas, sinon son silence se lit
+  // comme un verdict.
+  const peintHorsFond = (el) => {
+    let node = el;
+    while (node && node !== document.documentElement.parentElement) {
+      const s = getComputedStyle(node);
+      if (s.mixBlendMode && s.mixBlendMode !== 'normal') return `mix-blend-mode:${s.mixBlendMode}`;
+      if (s.filter && s.filter !== 'none') return `filter:${s.filter}`;
+      for (const pseudo of ['::before', '::after']) {
+        const ps = getComputedStyle(node, pseudo);
+        if (!ps || ps.content === 'none') continue;
+        const fondPseudo = parseColor(ps.backgroundColor);
+        const imagePseudo = ps.backgroundImage && ps.backgroundImage !== 'none';
+        // Un pseudo-element qui peint ET qui a une surface : un `::before` sans dimension ne
+        // couvre rien, et l'accuser ferait crier la sonde sur des puces decoratives.
+        const surface = parseFloat(ps.width) > 0 && parseFloat(ps.height) > 0;
+        if (surface && ((fondPseudo && fondPseudo.a > 0.05) || imagePseudo))
+          return `${pseudo} peint (${imagePseudo ? ps.backgroundImage.slice(0, 40) : ps.backgroundColor})`;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  };
+
   const effectiveBg = (el) => {
     let node = el;
     while (node && node !== document.documentElement.parentElement) {
@@ -296,6 +329,16 @@ MEASURE_JS = r"""
     const bg = effectiveBg(el);
     if (bg.image) {
       issues.unmeasured.push({ what: label(el), detail: 'texte sur background-image — contraste non mesurable, à vérifier visuellement' });
+      continue;
+    }
+    // TF-0582 : avant de conclure, dire ce qu'on ne voit pas. Un fond peint par un
+    // pseudo-élément, un mix-blend-mode ou un filtre échappe à toute mesure par styles calculés.
+    const horsFond = peintHorsFond(el);
+    if (horsFond) {
+      issues.unmeasured.push({ what: label(el), detail:
+        `contraste NON MESURABLE par styles calculés — ${horsFond}. Un fond peint hors `
+        + `\`background-color\` échappe à cette sonde : mesurer au pixel après rendu, ou vérifier `
+        + `visuellement. Le silence d'une sonde n'est pas un verdict (TF-0582)` });
       continue;
     }
     const fgFlat = fg.a < 1 ? blend(fg, bg.color) : fg;
