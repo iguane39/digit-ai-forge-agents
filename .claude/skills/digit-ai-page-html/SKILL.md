@@ -7,13 +7,33 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.14.0"
+  version: "1.15.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.15.0 (24/08/2026)** — **quatre frictions d'un lot client, dont deux contradictions du socle avec
+lui-même.** · **L19 n'accuse plus le repli en cartes** : `composants.md` §6 impose
+`overflow-wrap: anywhere` sur les cellules comme palier OBLIGATOIRE, et L19 traitait `td` comme de la
+prose — huit livrables PASS le 19/08 rendaient douze FAIL le 24/08 sans qu'un octet ait bougé. La
+cause profonde était que `regles_css` APLATISSAIT la feuille sans garder le contexte d'at-rule : un
+sélecteur écrit sous `@media` était jugé comme s'il s'appliquait partout. Le contexte est désormais
+porté, et l'exemption exige DEUX conditions cumulatives (sous media query ET signature de repli) —
+un `anywhere` sur un `p` sous media query reste jugé. · **Le calibrage du repli est MÉCANISÉ** : il
+était écrit en prose, donc retraduit par chaque émetteur, et mal — repli réglé à 900 px quand un
+tableau de huit colonnes débordait jusque vers 1 400 (16 débordements bloquants, invisibles cinq
+jours). Trois paliers lisent le nombre de colonnes dans le marquage ; plus rien à calibrer. Deux
+défauts trouvés en l'écrivant : un jeton `--replier` qui ne déclenchait RIEN (une propriété
+personnalisée n'active aucune règle — une affordance non câblée dans le document qui l'enseigne), et
+`width: 100%` sans `box-sizing` qui débordait de son propre remplissage. · **V4 tolère la géométrie
+de police entre inline frères** : la boîte d'un inline vaut la hauteur d'em, pas l'interligne, donc
+deux surlignages de lignes voisines se recouvrent sans qu'un pixel peint ne se superpose — mesuré sur
+1 246 surlignages : 5 px à interligne 1,22, rien à 1,45. · **L'encre du surlignage se POSE** :
+`composant-recherche.md` prescrivait `color: inherit`, ce qui rendait un badge à texte clair
+illisible en recherche active — 21 constats de contraste bloquants, ratio 1,04:1. Recette 116 → 119.
 
 **1.14.0 (24/08/2026)** — **V8 « contenu rogné »** (neuve, BLOQUANTE) : le seul défaut qu'un oracle
 VISUEL ne peut pas voir. Une fiche livrée, déclarée conforme la veille par les DEUX contrôles, avait

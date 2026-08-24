@@ -27,7 +27,7 @@ nue, jamais le sens porté par la seule couleur.
 .kpi-label { font-family: var(--sans); color: var(--muted); font-size: .8rem; }
 .kpi-value { font-family: var(--head); font-weight: 800; font-size: 1.6rem; color: var(--ink); }
 .kpi-hint { color: var(--muted); font-size: .75rem; }   /* --muted, pas --faint : contraste AA */
-@media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1020px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
 ```
 
 ## 2 — Badge de statut 🔴 (dès qu'un état est affiché)
@@ -119,6 +119,63 @@ le seuil de repli et la largeur où le tableau tient à l'aise : `overflow-wrap:
 les cellules (mot longs cassés, pas de débordement). La preuve reste `render_page.py` aux
 largeurs cibles — jamais le seuil sur parole.
 
+**LA RÈGLE EST DÉSORMAIS MÉCANISÉE, PARCE QU'ÉCRITE EN PROSE ELLE ÉTAIT RETRADUITE ET MAL
+RETRADUITE (TF-0558, 24/08/2026).** Le calibrage ci-dessus restait à la charge de chaque émetteur,
+et l'exemple de code figeait `640 px` — deux textes qui se contredisent dans la même section. Coût
+mesuré sur un livrable réel : repli réglé à 900 px alors qu'un tableau de 8 colonnes débordait
+jusque vers 1 400 px (bord droit à 1 308 px pour un viewport de 1 280) — **16 débordements
+bloquants, invisibles cinq jours**. Le même 900 px était figé en dur dans un gabarit de la factory :
+tout projet qui instanciait la famille le reproduisait.
+
+*Trois lignes de CSS remplacent la prose*, et aucun émetteur n'a plus rien à calibrer : le nombre
+de colonnes se LIT dans le marquage, et le palier se déclenche seul.
+
+```css
+/* Le repli anticipé se déclenche sur le NOMBRE DE COLONNES, lu dans le marquage — jamais sur un
+   pixel choisi à la main. Trois paliers, calibrés sur la mesure et non sur la règle du pouce :
+   5 colonnes sous 1 020 px, 7 sous 1 400, 9 sous 1 700. Le « ~130 px par colonne » de l'énoncé
+   ci-dessus est OPTIMISTE — la mesure du 24/08 donne ~165 px pour des colonnes de prose (huit
+   colonnes débordaient encore à 1 308 px), et c'est ce chiffre-là qui fixe les paliers.
+
+   LE PRÉFIXE EST RÉPÉTÉ, ET C'EST VOULU. Un premier jet posait un jeton (`--replier: 1`) en
+   espérant qu'il déclenche le bloc : une propriété personnalisée ne déclenche RIEN par elle-même,
+   c'est une valeur que quelque chose doit lire. La prescription aurait été une affordance non
+   câblée — exactement ce que la première loi transverse interdit, écrite dans le document qui
+   l'enseigne. La verbosité est le prix du fait que ça marche.
+
+   `box-sizing: border-box` N'EST PAS DÉCORATIF : une cellule en `width: 100%` avec du
+   remplissage déborde de la valeur de ce remplissage. Mesuré en écrivant cette prescription —
+   bord droit à 1 300 px pour un viewport de 1 280, soit exactement les 2 × 10 px de padding.
+   Le repli s'appliquait, et il débordait quand même : une parade qui reproduit le défaut
+   qu'elle corrige. */
+@media (max-width: 1020px) {
+  .table-wrap:has(th:nth-child(5)) thead { display: none; }
+  .table-wrap:has(th:nth-child(5)) tr,
+  .table-wrap:has(th:nth-child(5)) td { display: block; width: 100%; box-sizing: border-box; }
+  .table-wrap:has(th:nth-child(5)) tbody td { overflow-wrap: anywhere; }
+  .table-wrap:has(th:nth-child(5)) tbody td::before { content: attr(data-label); font-weight: 700; }
+}
+@media (max-width: 1400px) {
+  .table-wrap:has(th:nth-child(7)) thead { display: none; }
+  .table-wrap:has(th:nth-child(7)) tr,
+  .table-wrap:has(th:nth-child(7)) td { display: block; width: 100%; box-sizing: border-box; }
+  .table-wrap:has(th:nth-child(7)) tbody td { overflow-wrap: anywhere; }
+  .table-wrap:has(th:nth-child(7)) tbody td::before { content: attr(data-label); font-weight: 700; }
+}
+@media (max-width: 1700px) {
+  .table-wrap:has(th:nth-child(9)) thead { display: none; }
+  .table-wrap:has(th:nth-child(9)) tr,
+  .table-wrap:has(th:nth-child(9)) td { display: block; width: 100%; box-sizing: border-box; }
+  .table-wrap:has(th:nth-child(9)) tbody td { overflow-wrap: anywhere; }
+  .table-wrap:has(th:nth-child(9)) tbody td::before { content: attr(data-label); font-weight: 700; }
+}
+```
+
+**Mesure du 24/08** : le livrable qui rendait 16 débordements bloquants repasse à **0 bloquant**
+sans qu'aucune classe soit posée à la main. Le tableau doit vivre dans un `.table-wrap` et ses
+cellules porter `data-label` — deux exigences que le boilerplate du socle pose déjà. *Une règle de calibrage écrite en prose est une règle que chaque projet retraduit,
+et une retraduction sur trois se trompe — ici elle s'est trompée sur celui qui l'avait écrite.*
+
 ```html
 <table>
   <caption>Inventaire</caption>
@@ -140,7 +197,7 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
      d'un mot — contre 366 x 42 px une fois la regle alignee. Le boilerplate du skill ne touchait
      deja que thead/tr/td : c'est LUI qui fait foi, et cet extrait ne le suivait pas. Constate sur
      livrable reel : quinze tableaux touches, jamais vus par aucun oracle. */
-  tr, td { display: block; width: 100%; }
+  tr, td { display: block; width: 100%; box-sizing: border-box; }
   thead { display: none; }
   tbody tr { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; margin: 10px 0; }
   tbody td { border: none; padding: 5px 0; display: flex; justify-content: space-between; gap: 12px; }
