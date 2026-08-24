@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Repli calibré à huit colonnes — Digit-AI v1.0.0</title>
+<style>
+  :root { --encre:#1a1a1a; --fond:#fff; --muted:#5b6472; --line:#dfe3e8; --surface:#f6f8fa; --r-sm:6px; }
+  body { margin:0; background:var(--fond); color:var(--encre); font-family:"DM Sans",system-ui,sans-serif; }
+  h1 { font-family:"Roboto",system-ui,sans-serif; font-size:1.4rem; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  caption { text-align:left; color:var(--muted); font-size:.85rem; padding:6px 0; }
+  thead th { background:var(--surface); text-align:left; font-weight:700; border-bottom:2px solid var(--line); padding:8px 10px; }
+  tbody td { padding:8px 10px; border-bottom:1px solid var(--line); }
+  /* LE CALIBRAGE MÉCANISÉ (§6) : huit colonnes se replient sous 1 200 px sans qu'aucune classe
+     soit posée à la main — le nombre de colonnes se lit dans le marquage. */
+  @media (max-width: 1400px) {
+    .table-wrap:has(th:nth-child(7)) thead { display: none; }
+    /* `tbody` doit passer en block avec ses lignes : laisse en `table-row-group`, il garde la
+       largeur de colonnes du tableau et le repli ne se voit pas. Mesure : bord droit a 1300px
+       pour un viewport de 1280 malgre `tr, td` en block. */
+    .table-wrap:has(th:nth-child(7)) tbody,
+    .table-wrap:has(th:nth-child(7)) tr,
+    .table-wrap:has(th:nth-child(7)) td { display: block; width: 100%; box-sizing: border-box; }
+    .table-wrap:has(th:nth-child(7)) tbody td { overflow-wrap: anywhere; }
+    .table-wrap:has(th:nth-child(7)) tbody td::before { content: attr(data-label); font-weight: 700; color: var(--muted); }
+  }
+</style></head>
+<body>
+<h1>Inventaire à huit colonnes — Digit-AI</h1>
+<div class="table-wrap"><table>
+<caption>Huit colonnes de prose — mode d'emploi : chaque ligne devient une carte sous 1 200 px.</caption>
+<thead><tr><th>Identifiant du lot</th><th>Objet mesuré</th><th>Verdict rendu</th><th>Gravité retenue</th><th>Porteur nommé</th><th>Échéance posée</th><th>Preuve citée</th><th>Commentaire long</th></tr></thead>
+<tbody>
+<tr><td data-label="Identifiant du lot">LOT-2026-0824-a</td><td data-label="Objet mesuré">calibrage du repli</td><td data-label="Verdict rendu">bloquant levé</td><td data-label="Gravité retenue">majeure</td><td data-label="Porteur nommé">socle de pages</td><td data-label="Échéance posée">2026-08-24</td><td data-label="Preuve citée">rendu aux quatre largeurs</td><td data-label="Commentaire long">prose courte mais réelle</td></tr>
+<tr><td data-label="Identifiant du lot">LOT-2026-0824-b</td><td data-label="Objet mesuré">seuil figé à 900 px</td><td data-label="Verdict rendu">remplacé</td><td data-label="Gravité retenue">majeure</td><td data-label="Porteur nommé">gabarit de la factory</td><td data-label="Échéance posée">2026-08-24</td><td data-label="Preuve citée">16 débordements avant</td><td data-label="Commentaire long">seconde prose courte</td></tr>
+</tbody></table></div>
+</body></html>

@@ -73,6 +73,13 @@ CAS = {
     # TF-0492 (22/08) — `overflow-wrap: anywhere` est necessaire sur un chemin, ravageur sur de
     # la prose. La verte le reserve a `code`, `pre` et aux classes qui disent leur usage technique.
     "l19-coupure-en-prose.html": {"L19"},
+    # TF-0554 (24/08, lot Produit-10) — LA REGLE REFUSAIT CE QUE LE SOCLE EXIGE. `composants.md` §6
+    # impose « overflow-wrap: anywhere sur les cellules » comme palier intermediaire OBLIGATOIRE du
+    # repli en cartes ; L19 traitait `td` comme de la prose et rendait FAIL bloquant. Mesure : huit
+    # livrables PASS le 19/08 rendaient douze FAIL le 24/08 sans qu un octet ait bouge. La cause
+    # profonde etait que `regles_css` APLATISSAIT la feuille sans garder le contexte d at-rule : un
+    # selecteur ecrit sous `@media` etait juge comme s il s appliquait partout.
+    "l19-repli-cartes-legitime.html": set(),
     "l19-coupure-reservee-au-technique.html": set(),
     # TF-0495 (22/08) — la frontiere entre « le contenu est PRESENT » et « le contenu est
     # EXPLOITABLE ». Un document embarque en texte brut passait TOUS les oracles ; il a fallu que
@@ -242,6 +249,23 @@ CAS_RENDU = {
     # contre-épreuve, corriger le faux positif aurait pu éteindre la règle en silence.
     "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
     "v4-chevauchement-reel.html": ("v4_overlap", 1),   # deux frères qui se recouvrent vraiment
+    # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.
+    # Deux surlignages de lignes consecutives se recouvrent donc geometriquement des que line-height
+    # est serre, SANS QU'AUCUN PIXEL PEINT NE SE SUPERPOSE. Mesure du 19/08 sur 1 246 surlignages
+    # d'un livrable reel : a 1,22 le recouvrement vaut 5 px et rend un BLOQUANT a 390 px ; a 1,45 il
+    # disparait. La parade existante ne couvrait que l'inline reparti sur plusieurs lignes ; deux
+    # FRERES du meme parent restaient juges sur leur boite d'em. Les deux fixtures voisines
+    # (chevauchement reel, colgroup) prouvent que la tolerance n'a pas eteint la regle.
+    "v4-inline-freres-interligne.html": ("v4_overlap", 0),
+    # TF-0558 (24/08, lot Produit-10) — LE CALIBRAGE DU REPLI ETAIT ECRIT EN PROSE, donc retraduit par
+    # chaque emetteur, et mal : repli regle a 900 px alors qu un tableau de huit colonnes debordait
+    # jusque vers 1 400 (bord droit mesure a 1 308 px pour un viewport de 1 280). Il est desormais
+    # MECANISE — le nombre de colonnes se lit dans le marquage, `:has(th:nth-child(n))` declenche le
+    # palier, aucun emetteur ne calibre plus rien. Cette fixture porte huit colonnes et doit rendre
+    # ZERO debordement aux quatre largeurs. Deux defauts trouves en l ecrivant : un jeton
+    # `--replier` qui ne declenchait rien (une propriete personnalisee n active aucune regle), et
+    # `width:100%` sans `box-sizing` qui debordait de son propre remplissage — 1 300 px pour 1 280.
+    "repli-huit-colonnes.html": ("v1_overflow", 0),
     # TF-0440 (21/08) : L2 mesurait le paragraphe contre son conteneur — déplacer la bride
     # d'un cran la satisfaisait sans rien changer pour le lecteur. Les deux fixtures ne
     # diffèrent que par le CENTRAGE de la colonne : centrée = mesure de lecture (légitime),

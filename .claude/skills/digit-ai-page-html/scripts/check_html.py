@@ -294,20 +294,55 @@ def index_ids(a: Arbre) -> dict:
 # cherche pas à comprendre la cascade, seulement à trouver une déclaration
 # fautive là où elle est écrite.
 # ---------------------------------------------------------------------------
-def regles_css(styles):
+def regles_css(styles, avec_contexte=False):
+    """Aplatit la feuille en couples (selecteur, declarations).
+
+    LE CONTEXTE D'AT-RULE ETAIT PERDU, ET CA A COUTE DOUZE FAUX BLOQUANTS (TF-0554, 24/08). Cette
+    fonction jetait toute at-rule : un selecteur ecrit DANS un `@media` se retrouvait juge comme
+    s'il s'appliquait partout. Mesure : huit livrables PASS le 19/08 rendaient douze FAIL le 24/08
+    sans qu'un octet ait bouge, tous sur des cellules de tableau stylees UNIQUEMENT sous la media
+    query du repli en cartes — c'est-a-dire la ou le socle lui-meme l'EXIGE. Un oracle qui juge un
+    selecteur sans savoir sous quelle condition il vit condamne ce que la charte prescrit.
+
+    `avec_contexte=True` rend des triplets (selecteur, declarations, contexte), le contexte etant le
+    texte des at-rules englobantes ou une chaine vide. La forme a deux elements reste le defaut : les
+    autres regles n'en ont pas besoin, et changer leur contrat pour une seule aurait ete un risque
+    sans gain.
+    """
     css = "\n".join(styles)
     css = re.sub(r"/\*.*?\*/", " ", css, flags=re.S)
     out = []
-    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
-        sel, decls = m.group(1).strip(), m.group(2)
-        if sel.startswith("@"):
+    pile = []          # at-rules ouvertes, tenues par comptage d'accolades
+    i = 0
+    while True:
+        j = css.find("{", i)
+        if j < 0:
+            break
+        tete = css[i:j].strip()
+        if tete.startswith("@"):
+            # At-rule A BLOCS : ses enfants sont des regles. On empile son texte et on entre dedans.
+            pile.append(tete)
+            i = j + 1
             continue
+        k = css.find("}", j)
+        if k < 0:
+            break
         d = {}
-        for morceau in decls.split(";"):
+        for morceau in css[j + 1:k].split(";"):
             if ":" in morceau:
-                k, v = morceau.split(":", 1)
-                d[k.strip().lower()] = v.strip().lower()
-        out.append((sel.lower(), d))
+                cle, val = morceau.split(":", 1)
+                d[cle.strip().lower()] = val.strip().lower()
+        if tete:
+            contexte = " ".join(pile).lower()
+            out.append((tete.lower(), d, contexte) if avec_contexte else (tete.lower(), d))
+        i = k + 1
+        # Une accolade fermante qui suit sans selecteur ferme l'at-rule la plus recente.
+        while pile:
+            m = re.match(r"\s*\}", css[i:])
+            if not m:
+                break
+            pile.pop()
+            i += m.end()
     return out
 
 
@@ -1142,10 +1177,26 @@ def check_lisibilite(html: str, a: Arbre):
     TECHNIQUE = re.compile(r"(code|pre|kbd|samp|chemin|jeton|\bid\b|uri|url|sha|hash|mono|"
                            r"path|token|ident|slug|a\[href\]|tabular)", re.I)
     coupeurs = []
-    for sel, d in css:
+    # LE REPLI EN CARTES EST PRESCRIT PAR LE SOCLE, ET L19 LE CONDAMNAIT (TF-0554, 24/08).
+    # `composants.md` §6 impose un « palier intermediaire OBLIGATOIRE entre le seuil de repli et la
+    # largeur ou le tableau tient a l'aise : overflow-wrap: anywhere sur les cellules ». L19 traitait
+    # `td` comme de la prose et rendait FAIL bloquant — l'un obligeait ce que l'autre interdisait.
+    # Mesure : huit livrables PASS le 19/08, douze FAIL le 24/08, sans qu'un octet ait bouge.
+    #
+    # DEUX CONDITIONS CUMULATIVES pour l'exemption, parce qu'une seule ouvrirait une porte trop
+    # large : le selecteur vit sous une MEDIA QUERY (donc il ne s'applique pas au rendu courant de
+    # la prose), ET ses declarations portent la SIGNATURE du repli en cartes (`display: block` sur
+    # une cellule, ou une cellule sous un conteneur de tableau). Un `anywhere` pose sur un `p` sous
+    # media query reste donc jugé, et c'est voulu.
+    SIGNATURE_CARTES = re.compile(r"(table|cellule|card|carte|repli)", re.I)
+    for sel, d, contexte in regles_css(a.styles, avec_contexte=True):
         valeurs = " ".join([(d.get("overflow-wrap") or ""), (d.get("word-break") or ""),
                             (d.get("word-wrap") or "")]).lower()
         if "anywhere" not in valeurs and "break-all" not in valeurs:
+            continue
+        sous_media = "@media" in (contexte or "")
+        cellule = re.search(r"\b(td|th)\b", sel) is not None
+        if sous_media and cellule and ((d.get("display") == "block") or SIGNATURE_CARTES.search(sel)):
             continue
         for morceau in sel.split(","):
             m = morceau.strip()

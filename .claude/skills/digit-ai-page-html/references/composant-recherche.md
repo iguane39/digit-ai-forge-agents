@@ -36,12 +36,25 @@ Trois éléments — un champ, un compteur (`aria-live="polite"`), un conteneur 
 CSS (adapter aux tokens du livrable — voir `charte-et-tokens.md`) :
 
 ```css
-mark.find-hit { background: var(--amber-fill, #fde9c8); color: inherit; border-radius: 2px;
-                display: inline; padding: 0; margin: 0; }
+mark.find-hit { background: var(--amber-fill, #fde9c8); color: var(--ink, #1a1a1a);
+                border-radius: 2px; display: inline; padding: 0; margin: 0; }
 .find-bar     { display: flex; flex-direction: column; gap: 2px; }
 .find-count   { margin-top: 4px; font-size: .72rem; color: var(--muted); min-height: 1em; }
 .find-count.zero { color: #c0392b; }
 ```
+
+🔴 **L'ENCRE SE POSE, ELLE NE S'HÉRITE PAS (TF-0557, 24/08/2026).** Cette prescription portait
+`color: inherit`, et c'était un défaut latent que seul le croisement de deux composants du MÊME socle
+révélait. Sur un badge à texte clair — le motif de pastille de ce socle, blanc sur bleu —, le
+surlignage repeint le **fond** en ambre sans toucher au texte : blanc sur presque blanc, **ratio
+mesuré 1,04:1**. Mesure du 19/08 sur un livrable réel : **21 constats de contraste BLOQUANTS** aux
+quatre largeurs, et **uniquement en état de recherche active**.
+
+*Pourquoi il a survécu si longtemps* : il faut une page qui porte les deux composants **et** une
+recherche en cours pour qu'il apparaisse. Aucun des deux composants, jugé seul, n'est fautif — c'est
+leur rencontre qui l'est, et une bibliothèque qui décrit ses pièces une par une ne voit jamais ces
+défauts-là. L'encre est donc posée EXPLICITEMENT, avec un jeton qui bascule avec le fond en thème
+sombre : le contraste tient des deux côtés.
 
 🔴 **Trois classes disjointes, et c'est le point.** Le surlignage porte `find-hit`, le
 compteur `find-count`, le conteneur ce que le livrable veut — jamais la même que le

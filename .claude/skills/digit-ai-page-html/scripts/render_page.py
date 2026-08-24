@@ -370,6 +370,34 @@ MEASURE_JS = r"""
           const y = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
           if (x > 1 && y > 1 && x * y > inter) { inter = x * y; ix = x; iy = y; }
         }
+        // DEUX INLINE FRERES DE LIGNES CONSECUTIVES NE SE CHEVAUCHENT PAS (TF-0559, 24/08).
+        // La boite d'un element inline vaut la HAUTEUR D'EM de la police, pas l'interligne :
+        // deux inline sur des lignes voisines se recouvrent donc des que line-height est
+        // inferieur a cette hauteur, SANS QU'AUCUN PIXEL PEINT NE SE SUPERPOSE. La parade
+        // existante ne couvrait que l'inline reparti sur plusieurs lignes (une boite par
+        // ligne) ; deux FRERES restaient juges sur leur boite d'em.
+        //
+        // Mesure du 19/08 sur 1 246 surlignages d'un livrable reel : a interligne 1,22 le
+        // recouvrement vaut 5 px et rend un BLOQUANT a 390 px ; a 1,3 il vaut encore 3 px ;
+        // a 1,45 il disparait. Le seuil n'est donc pas arbitraire — c'est exactement l'ecart
+        // entre hauteur d'em et interligne, et on l'ignore quand le recouvrement tient dedans.
+        //
+        // Meme nature d'exclusion que colgroup/col et que le groupe SVG titre : une boite qui
+        // ne peint rien n'est pas une collision. Ce qui reste juge : un vrai recouvrement
+        // horizontal, et tout chevauchement entre elements de NIVEAU BLOC.
+        if (inter > 0 && a.el.parentElement && a.el.parentElement === b.el.parentElement
+            && sa.display.startsWith('inline') && sb.display.startsWith('inline')) {
+          const marge = (el, s) => {
+            const em = parseFloat(s.fontSize) || 0;
+            let lh = parseFloat(s.lineHeight);
+            if (!isFinite(lh) || lh <= 0) lh = em * 1.2;
+            // La boite d'em depasse l'interligne de cette difference : au-dela, c'est un vrai
+            // chevauchement ; en dessous, c'est de la geometrie de police.
+            return Math.max(0, em * 1.15 - lh);
+          };
+          const toleree = Math.max(marge(a.el, sa), marge(b.el, sb)) + 1;
+          if (iy <= toleree) continue;
+        }
         if (inter > 0) {
           const aire = (bs) => bs.reduce((t, r) => t + r.width * r.height, 0);
           const smaller = Math.min(aire(ba), aire(bb));

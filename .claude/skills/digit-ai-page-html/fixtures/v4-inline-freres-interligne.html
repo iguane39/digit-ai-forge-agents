@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Inline frères et interligne — Digit-AI v1.0.0</title>
+<style>
+  :root { --encre:#1a1a1a; --fond:#fff; --mark:#fde9c8; }
+  body { margin:0; background:var(--fond); color:var(--encre); font-family:"DM Sans",system-ui,sans-serif; }
+  /* LE CAS MESURÉ : un interligne serré. La boîte d'un inline vaut la hauteur d'em, pas
+     l'interligne — deux surlignages de lignes consécutives se recouvrent donc géométriquement
+     sans qu'un seul pixel peint ne se superpose. */
+  /* La mesure de lecture est posée sur le CONTENEUR et DÉCLARÉE : cette fixture ne prouve
+     qu'une chose — la géométrie de police entre inline frères — et pas la largeur de lecture. */
+  .chap.lire { max-width: 34ch; margin: 0 auto; }
+  p.serre { line-height: 1.22; margin: 0; }
+  mark.find-hit { background: var(--mark); color: var(--encre); padding: 0; margin: 0; display: inline; }
+</style></head>
+<body>
+<h1>Inline frères et interligne — Digit-AI</h1>
+<div class="chap lire" data-mesure-lecture="fixture : la largeur n'est pas le sujet"><p class="serre">Un texte de prose assez long pour tenir sur plusieurs lignes, où <mark class="find-hit">premier surlignage</mark> tombe sur une ligne et <mark class="find-hit">second surlignage</mark> sur la suivante, à un interligne serré.</p></div>
+</body></html>
