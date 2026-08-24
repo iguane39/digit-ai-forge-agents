@@ -14,7 +14,36 @@ vaut partout. Aucun livrable visuel ne part avec un défaut V1–V7 ouvert.
 | V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok` |
 | V5 | Flèches ou filets qui croisent un élément | Aucun connecteur à travers un nœud ou un texte ; routage en L pur (règle `digit-ai-schemas`) | **Visuel** — rendu + inspection (boucle render-view-fix) |
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
+| **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
+
+### V8 mérite son paragraphe : c'est le seul défaut qu'un oracle VISUEL ne peut pas voir
+
+*Le fait, du 24/08/2026.* Une fiche de sécurité livrée à un client avait été déclarée conforme la
+veille par les **deux** contrôles du socle — marquage PASS, rendu PASS. Le gabarit est une feuille A4
+à hauteur **figée** (`height: 297mm; overflow: hidden`) et le contenu ajouté l'a dépassée. Mesure
+exacte : boîte de **1123 px**, contenu de **1441 px**, **318 px** sous la ligne de flottaison,
+**41 éléments de texte devenus invisibles** — dont la section 7 (contrat de service et
+observabilité), la section 8 (FinOps) et le pied de page qui porte la référence du document.
+
+**Aucun signal**, ni à l'écran ni à l'impression. Le défaut n'a été découvert que parce que le
+destinataire a demandé un PDF et qu'on a comparé les mots : **1132 contre 1313**.
+
+*La cause est structurelle, et c'est pourquoi cette règle ne pouvait pas naître avant d'être payée* :
+un contrôle qui juge l'apparence de ce qui reste **visible** ne peut, par construction, rien dire de
+ce qui a été **rogné**. `overflow: hidden` EST le mécanisme qui rend un défaut invisible à un oracle
+visuel. V8 ne regarde donc pas l'apparence : elle compare la taille du **contenu** à celle de la
+**boîte**.
+
+**Corollaire pour la bibliothèque de gabarits, et il vaut plus que la règle** : *une hauteur de page
+est un PLANCHER (`min-height`), jamais un plafond.* Un gabarit qui fige `height` et masque son
+débordement transforme tout ajout futur de contenu en perte silencieuse. La version d'origine de la
+fiche tenait à 1123 px pile : le défaut était donc **latent depuis toujours**, et le premier ajout
+l'a révélé.
+
+**Portée volontairement étroite** : `hidden` et `clip` seulement. `auto` et `scroll` laissent au
+lecteur la possibilité de défiler à l'écran, et le socle prescrit lui-même leur usage pour les
+tableaux larges — les juger ici condamnerait un usage recommandé.
 
 ## Sévérité et verdict
 
