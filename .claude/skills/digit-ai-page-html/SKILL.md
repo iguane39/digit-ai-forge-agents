@@ -7,13 +7,30 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.13.0"
+  version: "1.14.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.14.0 (24/08/2026)** — **V8 « contenu rogné »** (neuve, BLOQUANTE) : le seul défaut qu'un oracle
+VISUEL ne peut pas voir. Une fiche livrée, déclarée conforme la veille par les DEUX contrôles, avait
+perdu deux sections entières et son pied de page — feuille A4 à hauteur FIGÉE, contenu 1441 px pour
+une boîte de 1123 px, 41 éléments de texte invisibles, aucun signal ni à l'écran ni à l'impression.
+Découvert par comparaison des mots d'un PDF (1132) à ceux de la page (1313). `overflow: hidden` EST
+le mécanisme qui rend un défaut invisible à un contrôle d'apparence : V8 compare donc la taille du
+CONTENU à celle de la BOÎTE, nomme le nombre d'éléments invisibles et cite les trois premiers.
+Portée étroite — `hidden` et `clip` seulement ; `auto`/`scroll` laissent le lecteur défiler, et le
+socle prescrit leur usage. Échappatoires : troncature d'une ligne à points de suspension (admise
+d'office, le lecteur la voit) ou `data-rognage-assume`. *Corollaire pour la bibliothèque : une
+hauteur de page est un PLANCHER (`min-height`), jamais un plafond — sinon tout ajout futur devient
+une perte silencieuse.* · **Message de remédiation de L2-largeur complété** : il prescrivait la
+moitié du geste, et la correction prescrite créait une seconde violation. Mesuré deux fois le même
+jour — premier passage « poser la mesure sur le conteneur », second passage « rupture d'alignement
+entre frères », dont la levée exige `data-mesure-lecture` que le premier message ne nommait pas. Le
+geste complet est désormais nommé en une fois. Recette 114 → 116 cas.
 
 **1.13.0 (23/08/2026)** — **L22** (neuve, bloquante) : une promesse écrite en COMMENTAIRE est
 tenue. Un schéma livré annonçait « un `<title>` par forme » et n'en portait qu'un, celui du

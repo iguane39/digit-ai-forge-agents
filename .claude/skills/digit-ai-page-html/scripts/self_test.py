@@ -264,6 +264,15 @@ CAS_RENDU = {
     # d'aspect anormal, à toute largeur. Les deux fixtures ne diffèrent QUE par une règle CSS :
     # `table` en display:block (la caption tombe à 70px pour 366px de conteneur, 12 lignes pour
     # 15 mots) ou non (366px, 2 lignes). Mesuré le 22/08 avant et après correction.
+    # TF-0551 (24/08, lot Bibliotheque-Video-IA-Enseigne-A) — LE DEFAUT QU'UN ORACLE VISUEL NE PEUT
+    # PAS VOIR. Une fiche livree, declaree conforme la veille par les DEUX controles, avait perdu
+    # deux sections entieres et son pied de page : gabarit A4 a hauteur FIGEE, contenu 1441px pour
+    # une boite de 1123px, 41 elements de texte invisibles. Aucun signal, ni a l'ecran ni a
+    # l'impression — `overflow:hidden` EST le mecanisme qui rend un defaut invisible a un controle
+    # d'apparence. Les deux fixtures ne different QUE par une propriete : `height` (plafond, le
+    # contenu disparait) ou `min-height` (plancher, la feuille s'allonge).
+    "rogne-contenu-perdu.html": ("contenu_rogne", 1),
+    "rogne-hauteur-plancher.html": ("contenu_rogne", 0),
     "l2f-caption-ecrasee-en-filet.html": ("l2_filet", 1),
     "l2f-caption-pleine-largeur.html": ("l2_filet", 0),
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un

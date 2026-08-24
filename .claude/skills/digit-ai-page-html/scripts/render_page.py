@@ -150,7 +150,7 @@ MEASURE_JS = r"""
 () => {
   const issues = { v1_overflow: [], v2_contrast: [], v3_align: [], v4_overlap: [], v7_spacing: [],
                    l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
-                   unmeasured: [] };
+                   contenu_rogne: [], unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -529,7 +529,10 @@ MEASURE_JS = r"""
         issues.l2_width.push({ what: label(el), detail:
           `largeur ${Math.round(w1)}px pour ${Math.round(w2)}px disponibles ` +
           `(ratio ${ratio.toFixed(2)}, seuil __L2_MIN_RATIO__) — bride par ${bride} ; ` +
-          `poser la mesure de lecture sur le conteneur (.chap.lire), pas sur le texte` });
+          `poser la mesure de lecture sur le CONTENEUR (.chap.lire), pas sur le texte, ET la ` +
+          `declarer par data-mesure-lecture sur ce conteneur des lors qu'il a des freres plus ` +
+          `larges (listes de reperes, tableaux) — sans quoi la correction cree une rupture ` +
+          `d'alignement entre freres, mesuree deux fois le 24/08` });
       }
     }
   }
@@ -715,6 +718,67 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- CONTENU ROGNE (TF-0551, 24/08) : ce qu'un oracle VISUEL ne peut pas voir --------
+  //
+  // LE FAIT, ET C'EST LE DEFAUT LE PLUS GRAVE QUE CE SOCLE AIT LAISSE PASSER. Une fiche livree,
+  // declaree conforme la veille par les deux controles, avait perdu DEUX SECTIONS ENTIERES et son
+  // pied de page. Le gabarit est une feuille A4 a hauteur FIGEE — .page{height:297mm;
+  // overflow:hidden} — et le contenu ajoute l'a depassee. Mesure : boite 1123px, contenu 1441px,
+  // 318px sous la ligne de flottaison, 41 elements feuilles porteurs de texte devenus invisibles.
+  // AUCUN SIGNAL, ni a l'ecran ni a l'impression. Le defaut n'a ete vu que parce qu'on a compare
+  // les mots du PDF a ceux de la page : 1132 contre 1313.
+  //
+  // LA CAUSE EST STRUCTURELLE, et c'est pourquoi cette regle ne pouvait pas exister avant d'etre
+  // payee : un controle qui juge l'apparence de ce qui reste VISIBLE ne peut rien dire de ce qui a
+  // ete ROGNE. `overflow:hidden` EST le mecanisme qui rend un defaut invisible a un oracle visuel.
+  // On ne regarde donc plus l'apparence : on compare la taille du CONTENU a celle de la BOITE.
+  //
+  // PORTEE VOLONTAIREMENT ETROITE — `hidden` et `clip` seulement. `auto` et `scroll` laissent au
+  // lecteur la possibilite de defiler a l'ecran ; les juger ici accuserait des zones de defilement
+  // legitimes, dont le socle prescrit lui-meme l'usage pour les tableaux larges.
+  {
+    const MARGE = 2;                       // 2px : le bruit d'arrondi d'un rendu, pas une perte
+    for (const el of document.body.querySelectorAll('*')) {
+      if (!visible(el)) continue;
+      const cs = getComputedStyle(el);
+      const oy = cs.overflowY, ox = cs.overflowX;
+      const masqueY = oy === 'hidden' || oy === 'clip';
+      const masqueX = ox === 'hidden' || ox === 'clip';
+      if (!masqueY && !masqueX) continue;
+      const dy = masqueY ? el.scrollHeight - el.clientHeight : 0;
+      const dx = masqueX ? el.scrollWidth - el.clientWidth : 0;
+      if (dy <= MARGE && dx <= MARGE) continue;
+      // TRONCATURE ASSUMEE ET VISIBLE : une seule ligne coupee avec des points de suspension est
+      // un choix que le lecteur VOIT. Ce n'est pas du contenu perdu en silence, et l'accuser ferait
+      // condamner un usage que la charte prescrit pour les libelles longs.
+      if (cs.textOverflow === 'ellipsis' && dy <= MARGE) continue;
+      if (el.hasAttribute('data-rognage-assume')) continue;
+      // CE QUI EST PERDU, nomme comme L2 le fait pour les largeurs : les elements FEUILLES
+      // porteurs de texte dont le haut tombe sous la ligne de flottaison de la boite.
+      const boite = el.getBoundingClientRect();
+      const perdus = [];
+      for (const f of el.querySelectorAll('*')) {
+        if (f.children.length) continue;                       // pas une feuille
+        const t = (f.textContent || '').trim();
+        if (!t) continue;
+        const r = f.getBoundingClientRect();
+        if (r.top - boite.top >= el.clientHeight - MARGE
+            || r.left - boite.left >= el.clientWidth - MARGE) perdus.push(f);
+      }
+      const cites = perdus.slice(0, 3).map((f) => label(f)).join(' · ');
+      issues.contenu_rogne.push({ what: label(el), detail:
+        (dy > MARGE ? `contenu ${el.scrollHeight}px pour une boite de ${el.clientHeight}px ` +
+                      `(${dy}px sous la ligne de flottaison)` : '') +
+        (dy > MARGE && dx > MARGE ? ' et ' : '') +
+        (dx > MARGE ? `contenu ${el.scrollWidth}px de large pour ${el.clientWidth}px` : '') +
+        ` — overflow:${masqueY ? oy : ox} MASQUE ce debordement : ${perdus.length} element(s) de ` +
+        `texte invisible(s)` + (cites ? `, dont ${cites}` : '') + '. Aucun signal n\'est donne au ' +
+        `lecteur, ni a l'ecran ni a l'impression. Une hauteur de page est un PLANCHER ` +
+        `(min-height), jamais un plafond : remplacer height par min-height, ou declarer la ` +
+        `troncature par data-rognage-assume si elle est voulue et visible` });
+    }
+  }
+
   // ---- Plafond V7 : au-dela d'un certain nombre, ce n'est plus une liste de cas
   // isoles mais un defaut d'echelle d'espacement. On garde les premiers, on agrege
   // le reste en une ligne : un avertissement qui defile sur 288 lignes ne se lit
@@ -867,6 +931,10 @@ FAMILLES = [
     ("l2_conteneur", "L2 conteneur de lecture calé à gauche", "bloquant"),
     ("l2_filet", "L2 texte écrasé en filet", "bloquant"),
     ("etat_muet", "État vide MUET (loi n° 3)", "bloquant"),
+    # TF-0551 (24/08) : une fiche livree avait perdu deux sections et son pied de page sous un
+    # `overflow:hidden`, avec DEUX oracles verts. Bloquant sans hesitation : c'est la seule
+    # famille dont le defaut ne se voit ni a l'ecran ni a l'impression.
+    ("contenu_rogne", "Contenu ROGNE par un debordement masque", "bloquant"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
