@@ -299,6 +299,14 @@ CAS_RENDU = {
     "rogne-hauteur-plancher.html": ("contenu_rogne", 0),
     "l2f-caption-ecrasee-en-filet.html": ("l2_filet", 1),
     "l2f-caption-pleine-largeur.html": ("l2_filet", 0),
+    # TF-0582 (lot Produit-02 20260824) : ce qui PEINT sans etre un `background-color`.
+    # Mesure en production : un fond peint par `.color-exp::before` sous un texte dont l'element
+    # porte `background: transparent`. Une mesure par styles calcules remonte au conteneur, y lit
+    # un fond clair et conclut « tout va bien » sur un texte a 1,0 de ratio — un faux PASS qui
+    # porte une signature. Les deux fixtures ont les MEMES couleurs : seule la facon de peindre
+    # les separe. La rouge doit sortir en NON MESURABLE, pas en contraste vert.
+    "v2p-pseudo-element-peint.html": ("unmeasured", 1),
+    "v2p-fond-mesurable.html": ("v2_contrast", 1),
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
     # haut de boîte au suivant. Les deux pages sont identiques à une chose près —
     # un paragraphe hors de l'échelle d'espacement dans la rouge.
