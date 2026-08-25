@@ -1,8 +1,8 @@
-# Zéro défaut visuel — checklist canonique V1–V7
+# Zéro défaut visuel — checklist canonique V1–V9
 
 **Liste unique pour toute la forge.** Les skills livrables (`digit-ai-pptx`, `digit-ai-fiches-html`,
 `digit-ai-schemas`, et ce socle) **référencent cette liste sans la redéfinir**. Un défaut ajouté ici
-vaut partout. Aucun livrable visuel ne part avec un défaut V1–V7 ouvert.
+vaut partout. Aucun livrable visuel ne part avec un défaut V1–V9 ouvert.
 
 ## La liste
 
@@ -15,7 +15,28 @@ vaut partout. Aucun livrable visuel ne part avec un défaut V1–V7 ouvert.
 | V5 | Flèches ou filets qui croisent un élément | Aucun connecteur à travers un nœud ou un texte ; routage en L pur (règle `digit-ai-schemas`) | **Visuel** — rendu + inspection (boucle render-view-fix) |
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
+| **V9** | **Actif visuel indiscernable de son fond** | Aucun `<img>` ni `<svg>` visible dont AUCUN pixel n'atteint **1,2:1** de contraste contre le fond effectivement peint derrière lui | **Mesuré (bloquant)** — `render_page.py` ; capture de l'élément et mesure au pixel, jamais sur le fichier source. Nomme le meilleur ratio atteint et la couleur dominante de l'actif |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
+
+### V9 : un actif visuel se valide dans le CONTEXTE où il est servi, jamais sur son fichier
+
+*Le fait, du 25/08/2026, payé en production.* Un site portait deux logos vectoriels pour deux
+contextes — `logo.svg` coloré pour les fonds clairs, `logo-white.svg` blanc pour le bandeau sombre.
+Le contenu coloré a été écrit dans les **deux**. La vérification faite était sincère et sans rapport
+avec le défaut : le SVG modifié rendu en PNG, le texte parasite bien disparu. C'était **vrai**. Mais
+un logo blanc devenu bleu foncé n'est visible que **posé sur son fond sombre** — le défaut n'existait
+pas dans le fichier, il existait dans le contexte d'usage. Servi : `#2d4047` sur `#2d4047`, **ratio
+1,0**. Une capture du bandeau l'a fait sauter aux yeux immédiatement.
+
+*Pourquoi V2 ne pouvait pas le voir.* V2 compare `color` au fond effectif : elle mesure du **texte**.
+Un actif visuel n'a pas de `color`, il a des **pixels**. V2 était donc littéralement vraie et sans
+aucune valeur sur ce cas — le défaut de portée exact que décrit la règle N-33 du pilot.
+
+*Le seuil est bas, et c'est délibéré.* WCAG 2.2 SC 1.4.11 demande 3:1 pour un objet graphique
+**porteur de sens**. Distinguer le porteur de sens du décor demande un jugement, et une sonde qui
+accuserait tout aplat décoratif se ferait éteindre. V9 ne juge donc que l'**indiscernable** : aucun
+pixel n'atteint 1,2 de contraste. À ce niveau il n'y a plus de jugement à rendre — l'actif n'est pas
+là. Ce qui vit **entre 1,2 et 3,0 est déclaré non jugé**, jamais tu.
 
 ### V8 mérite son paragraphe : c'est le seul défaut qu'un oracle VISUEL ne peut pas voir
 

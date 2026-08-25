@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V9 rendu — logo invisible sur bandeau sombre — 20260825a</title>
+<!--
+  TF-0633 (lot Produit-02 20260825d). Le cas fondateur, reproduit au plus simple : un logo
+  monochrome pose sur un bandeau de navigation uni.
+
+  Les DEUX fixtures sont le MEME fichier a une valeur hexadecimale pres — le remplissage du logo.
+  C'est ce qui en fait une preuve : si la regle rougissait sur les deux, ou passait sur les deux,
+  elle ne mesurerait pas ce qu'elle pretend mesurer.
+
+  Ici le remplissage du logo vaut EXACTEMENT la couleur du bandeau (#2d4047 sur #2d4047),
+  soit un ratio de contraste de 1,0 — le fantome mesure en production le 25/08. Le fichier SVG,
+  lui, est parfaitement valide : c'est tout le sujet.
+
+  Attendu : au moins 1 constat v9_actif_invisible.
+-->
+<style>
+:root{--marine:#2d4047;--sable:#a25d42;--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+.bandeau{background:var(--marine);padding:18px 24px;display:flex;align-items:center;gap:16px}
+.bandeau a{color:#fff;text-decoration:none;font-weight:600}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<header class="bandeau">
+  <svg width="120" height="32" viewBox="0 0 120 32" role="img" aria-label="Logo de la maison">
+    <rect x="0" y="6" width="28" height="20" rx="4" fill="#2d4047"/>
+    <text x="36" y="22" font-family="DM Sans, sans-serif" font-size="16" fill="#2d4047">MAISON</text>
+  </svg>
+  <a href="#contenu">Reservation</a>
+</header>
+<main id="contenu">
+  <h1>V9 rendu — un actif visuel se juge dans le contexte ou il est servi</h1>
+  <p>Le logo ci-dessus est pose sur le bandeau. Sur son propre fichier, il est valide dans les deux
+  versions de cette fixture : le defaut n'existe que POSE SUR SON FOND.</p>
+</main>
+</body></html>
