@@ -3,6 +3,8 @@
 Oracle mesuré de la checklist canonique references/zero-defaut-visuel.md :
   - V1  débordement horizontal (bloquant)
   - V2  contraste texte/fond WCAG AA : >= 4.5:1, ou >= 3:1 pour texte large (bloquant)
+  - V9  actif visuel INDISCERNABLE du fond peint derriere lui (bloquant) —
+        mesure au pixel sur une capture de l'element, pas sur son fichier
   - V4  chevauchements significatifs entre éléments frères (bloquant,
         sauf superposition déclarée data-overlap-ok, et sauf formes internes
         d'un même <svg> de petite taille — dessin d'icône, pas mise en page)
@@ -862,6 +864,49 @@ MEASURE_JS = r"""
               `d'espacement du gabarit plutot que les series une a une` });
   }
 
+  // ---- V9 : un ACTIF VISUEL se juge dans le CONTEXTE ou il est servi (TF-0633, 25/08) -----
+  //
+  // LE FAIT, remonte par un produit et paye en production. Un logo blanc devenu bleu fonce avait
+  // ete verifie — le SVG modifie rendu en PNG, le texte parasite disparu. C'etait VRAI, et sans
+  // aucun rapport avec le defaut : un logo blanc devenu bleu fonce n'est visible que POSE SUR SON
+  // FOND SOMBRE. Le defaut n'existait pas dans le fichier, il existait dans le contexte d'usage.
+  // Une capture du bandeau de navigation l'a fait sauter aux yeux immediatement.
+  //
+  // POURQUOI V2 NE LE VOYAIT PAS : V2 mesure `color` contre le fond effectif, donc du TEXTE. Un
+  // actif visuel n'a pas de `color` — il a des pixels. La sonde etait litteralement vraie et sans
+  // valeur sur ce cas, exactement le defaut de portee que N-33 decrit.
+  //
+  // CE QUI EST COLLECTE ICI, et pas plus : les cibles et le fond effectif calcule DANS la page,
+  // la ou `effectiveBg` et `peintHorsFond` vivent deja. La mesure des pixels se fait cote Python,
+  // sur une capture de l'element — parce que c'est la seule facon de voir ce qui est SERVI plutot
+  // que ce qui est DECLARE, et parce qu'un `<img>` charge depuis un fichier ne se lit pas au
+  // canvas sans salir le contexte.
+  issues.v9_cibles = [];
+  {
+    let n = 0;
+    for (const el of document.querySelectorAll('img, svg')) {
+      if (!visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      // Sous 8 px de cote, ce n'est plus un actif visuel : pastille, filet, pixel de suivi.
+      // Les accuser ferait crier la sonde sur du decor, et une sonde qui crie se fait eteindre.
+      if (r.width < 8 || r.height < 8) continue;
+      const bg = effectiveBg(el);
+      const horsFond = peintHorsFond(el);
+      n += 1;
+      el.setAttribute('data-v9', String(n));
+      issues.v9_cibles.push({
+        n,
+        what: label(el),
+        bg: bg.image ? null : bg.color,
+        // Le silence d'une sonde n'est pas un verdict (TF-0582) : ce qu'on ne peut pas mesurer
+        // se DIT, avec sa raison, au lieu de passer pour un vert.
+        nonMesurable: bg.image
+          ? "fond peint par une background-image — contraste de l'actif non mesurable par styles calcules"
+          : (horsFond ? `fond peint hors background-color (${horsFond})` : null),
+      });
+    }
+  }
+
   return issues;
 }
 """
@@ -1005,6 +1050,10 @@ FAMILLES = [
     # TF-0551 (24/08) : une fiche livree avait perdu deux sections et son pied de page sous un
     # `overflow:hidden`, avec DEUX oracles verts. Bloquant sans hesitation : c'est la seule
     # famille dont le defaut ne se voit ni a l'ecran ni a l'impression.
+    # TF-0633 (25/08, lot Produit-02) : un logo blanc devenu bleu fonce, servi sur un
+    # bandeau bleu fonce. Bloquant au meme titre que V2 : c'est le meme defaut — un contenu
+    # invisible — sur un objet que V2 ne sait pas voir, faute de `color` a mesurer.
+    ("v9_actif_invisible", "V9 actif visuel indiscernable de son fond", "bloquant"),
     ("contenu_rogne", "Contenu ROGNE par un debordement masque", "bloquant"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
@@ -1019,6 +1068,103 @@ SEVERITE = {c: sev for c, _l, sev in FAMILLES}
 CAPTURE_TIMEOUT_DEFAUT = 30_000
 FAMILLES_SANS_IMAGE = "V1 debordement, V2 contraste, V4 chevauchement, V3, V7, L2"
 FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
+
+
+# ---- V9 · la mesure des ACTIFS VISUELS, au pixel et dans leur contexte (TF-0633) -------------
+#
+# POURQUOI AU PIXEL, ET PAS PAR LES STYLES. Un actif visuel n'a pas de `color` : il a des pixels.
+# Un SVG referencé par `<img src>` n'est meme pas dans le DOM de la page, et le lire au canvas
+# salirait le contexte sur une page `file://`. La capture de l'element est donc la SEULE lecture
+# qui voit ce qui est SERVI plutot que ce qui est DECLARE — et c'est exactement la verification
+# qui manquait le 25/08 : « le correctif a capture le bandeau et le defaut a saute aux yeux ».
+#
+# LE SEUIL, ET POURQUOI IL EST BAS. WCAG 2.2 SC 1.4.11 demande 3:1 pour un objet graphique
+# porteur de sens. Ce controle ne juge PAS a 3:1, et c'est delibere : distinguer un actif porteur
+# de sens d'un decor demande un jugement, et une sonde qui accuserait tout aplat decoratif se
+# ferait eteindre — c'est la lecon de N-33 et celle du resserrage de S26. Il juge l'INDISCERNABLE :
+# aucun pixel de l'actif n'atteint 1,2 de contraste contre le fond peint derriere lui. A ce niveau
+# il n'y a plus de jugement a rendre, l'actif n'est pas la. Le cas fondateur mesurait 1,0.
+# Ce qui vit entre 1,2 et 3,0 est DECLARE non juge plutot que tu.
+_V9_SEUIL = 1.2
+_V9_MAX_PIXELS = 40_000        # au-dela, l'actif est reechantillonne : la couleur ne change pas
+
+
+def _v9_luminance(c) -> float:
+    def f(v):
+        v /= 255.0
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2])
+
+
+def _v9_ratio(c1, c2) -> float:
+    a, b = sorted((_v9_luminance(c1), _v9_luminance(c2)), reverse=True)
+    return (a + 0.05) / (b + 0.05)
+
+
+def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int) -> None:
+    """Juge chaque actif visuel contre le fond REELLEMENT peint derriere lui.
+
+    Ne leve jamais : tout ce qui empeche la mesure est DECLARE au non_juge. Le silence d'une
+    sonde n'est pas un verdict (TF-0582), et une sonde qui plante emporterait avec elle les
+    familles deja mesurees.
+    """
+    cibles = issues.pop("v9_cibles", None) or []
+    issues.setdefault("v9_actif_invisible", [])
+    if not cibles:
+        return
+    try:
+        import io as _io
+        from PIL import Image
+    except ImportError:
+        issues["unmeasured"].append({
+            "what": f"{len(cibles)} actif(s) visuel(s)",
+            "detail": "V9 non jugee : Pillow absent de l'environnement. `pip install pillow`",
+        })
+        return
+    for c in cibles:
+        if c.get("nonMesurable"):
+            issues["unmeasured"].append({"what": c["what"], "detail": f"V9 — {c['nonMesurable']}"})
+            continue
+        bg = c.get("bg") or {}
+        fond = (bg.get("r", 255), bg.get("g", 255), bg.get("b", 255))
+        el = page.query_selector(f'[data-v9="{c["n"]}"]')
+        if el is None:
+            issues["unmeasured"].append({"what": c["what"], "detail": "V9 — element introuvable a la capture"})
+            continue
+        try:
+            brut = el.screenshot(timeout=timeout_ms)
+            im = Image.open(_io.BytesIO(brut)).convert("RGBA")
+        except Exception as erreur:      # noqa: BLE001 — toute panne se declare, aucune n'arrete
+            issues["unmeasured"].append({
+                "what": c["what"],
+                "detail": f"V9 — capture impossible ({type(erreur).__name__}) : contraste de l'actif non juge",
+            })
+            continue
+        if im.width * im.height > _V9_MAX_PIXELS:
+            cote = max(1, int((_V9_MAX_PIXELS / max(1, im.width * im.height)) ** 0.5 * min(im.width, im.height)))
+            im = im.resize((max(1, im.width * cote // max(1, min(im.width, im.height))),
+                            max(1, im.height * cote // max(1, min(im.width, im.height)))))
+        couleurs = im.getcolors(maxcolors=1 << 20) or []
+        # Les pixels TRANSPARENTS laissent voir le fond : ils ne sont pas l'actif, et les compter
+        # ferait passer pour « contrastant » un logo invisible pose sur un fond clair.
+        opaques = [(n, px) for n, px in couleurs if px[3] >= 250]
+        if not opaques:
+            issues["unmeasured"].append({"what": c["what"], "detail": "V9 — actif entierement transparent : rien a mesurer"})
+            continue
+        total = sum(n for n, _ in opaques)
+        meilleur = max(_v9_ratio(px[:3], fond) for _, px in opaques)
+        if meilleur < _V9_SEUIL:
+            domine = max(opaques)[1]
+            issues["v9_actif_invisible"].append({
+                "what": c["what"],
+                "detail": (
+                    f"actif INDISCERNABLE de son fond — meilleur contraste {meilleur:.2f}:1 sur "
+                    f"{total} pixels opaques, contre un fond rgb({fond[0]:.0f}, {fond[1]:.0f}, {fond[2]:.0f}). "
+                    f"Couleur dominante de l'actif : rgb({domine[0]}, {domine[1]}, {domine[2]}). "
+                    "Un actif visuel se valide dans le contexte OU IL EST SERVI, pas sur son fichier : "
+                    "un logo blanc devenu sombre est juste sur son fichier et absent du bandeau (TF-0633)"
+                ),
+            })
 
 
 def compter_bloquants(issues: dict) -> int:
@@ -1101,6 +1247,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 page.wait_for_timeout(250)
 
             issues = page.evaluate(js)
+            mesurer_actifs_visuels(page, issues, capture_timeout)
             png = png_dir / f"{html_path.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None
             capture: dict = {"faite": True, "motif": ""}
@@ -1221,6 +1368,15 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 "comme une inspection visuelle faite")
     else:
         report["non_juge"].append(f"{FAMILLES_AVEC_IMAGE} : a inspecter sur les PNG produits")
+
+    # V9 dit ou elle s'arrete. WCAG 2.2 SC 1.4.11 demande 3:1 pour un objet graphique PORTEUR DE
+    # SENS ; distinguer le porteur de sens du decor demande un jugement, et une sonde qui
+    # accuserait tout aplat decoratif se ferait eteindre. V9 ne juge donc que l'INDISCERNABLE.
+    report["non_juge"].append(
+        "V9 : un actif visuel dont le contraste vit ENTRE 1,2 et 3,0 contre son fond n'est PAS "
+        "juge — sous 1,2 il est indiscernable et c'est un bloquant, au-dela de 3,0 il tient le "
+        "seuil WCAG 1.4.11 ; entre les deux, savoir si l'actif porte du sens ou decore est un "
+        "jugement humain. Ne pas lire ce silence comme un vert")
 
     if as_json:
         print(json.dumps(report, ensure_ascii=False, indent=2))

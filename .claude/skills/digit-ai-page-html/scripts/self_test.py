@@ -247,6 +247,13 @@ CAS_RENDU = {
     # leur boîte englobe celle du tableau, donc tout tableau à colgroup rendait deux faux
     # positifs BLOQUANTS (50 mesurés sur un livrable sain). Les deux sens sont dus : sans la
     # contre-épreuve, corriger le faux positif aurait pu éteindre la règle en silence.
+    # TF-0633 (25/08, lot Produit-02) — V8 : un actif visuel se juge dans le CONTEXTE ou il
+    # est servi. Les deux fixtures sont le meme fichier a une valeur hexadecimale pres, le
+    # remplissage du logo : #2d4047 sur un bandeau #2d4047 (le fantome mesure en production,
+    # ratio 1,0) contre #FFFFFF sur le meme bandeau. Si la regle rougissait sur les deux, ou
+    # passait sur les deux, elle ne mesurerait pas ce qu'elle pretend mesurer.
+    "v9-logo-invisible.html": ("v9_actif_invisible", 1),
+    "v9-logo-visible.html": ("v9_actif_invisible", 0),
     "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
     "v4-chevauchement-reel.html": ("v4_overlap", 1),   # deux frères qui se recouvrent vraiment
     # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.
