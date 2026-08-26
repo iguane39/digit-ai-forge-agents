@@ -471,6 +471,41 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// ---- TF-0659 : UN FAIL NE SORT JAMAIS SANS SA RAISON -----------------------------------------
+//
+// LE FAIT, vecu de premiere main le 26/08/2026. Le hook a BLOQUE l'ecriture d'un document sur
+// « [Lisibilite d'un document (Markdown)] », et le journal a porte {"verdict":"FAIL","detail":""}.
+// La raison existait pourtant : l'oracle appele emet `fails: [...]`, une liste de CHAINES, quand
+// ce runner n'allait chercher que `findings[].msg`. La raison etait PRODUITE, PUIS JETEE au
+// passage du contrat.
+//
+// COUT : trois tours pour retrouver le registre, y lire la commande, et rejouer l'oracle a la
+// main — apres quoi les neuf constats se sont affiches avec leur ligne et leur motif.
+//
+// Ce cas rejoue exactement ce scenario : un document qui echoue sur un oracle a contrat `fails`.
+// Sans le correctif, `detail` revient vide et le cas rougit.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-detail-'));
+  try {
+    const doc = path.join(tmp, 'doc.md');
+    fs.writeFileSync(doc,
+      '# Doc\n\nUne phrase d ouverture correcte et assez longue pour dire ce que le lecteur va '
+      + 'apprendre ici.\n\n## Chapitre\n\n| a | b |\n|---|---|\n| 1 | 2 |\n', 'utf8');
+    const r = spawnSync(process.execPath,
+      [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), doc, '--no-cache', '--json'],
+      { encoding: 'utf8', timeout: 180000 });
+    let j = null;
+    try { j = JSON.parse((r.stdout || '').slice((r.stdout || '').indexOf('{'))); } catch { /* rendu plus bas */ }
+    const md = j && (j.resultats || []).find(x => /Markdown/i.test(x.domaine || ''));
+    if (!j) ko('TF-0659 : run-oracles --json inexploitable');
+    else if (!md) ko('TF-0659 : l oracle Markdown n a pas ete planifie — le cas ne mesure rien');
+    else if (md.verdict !== 'FAIL') ko('TF-0659 : le document fautif ne fait pas echouer l oracle (' + md.verdict + ')');
+    else if (!md.detail) ko('TF-0659 : FAIL rendu avec un detail VIDE — la raison est produite par l oracle puis jetee au passage du contrat');
+    else ok('TF-0659 : un FAIL porte sa raison meme quand l oracle emet `fails[]` et non `findings[]` — ' + md.detail.slice(0, 60));
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

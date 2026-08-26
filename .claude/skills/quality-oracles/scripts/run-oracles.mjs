@@ -204,9 +204,40 @@ function runCli(o, file) {
       const status = error ? (typeof error.code === 'number' ? error.code : null) : 0;
       let verdict = obj && typeof obj.verdict === 'string' ? obj.verdict.toUpperCase() : null;
       if (!['PASS', 'FAIL', 'SKIP'].includes(verdict)) verdict = status === 0 ? (obj ? 'PASS' : 'SKIP') : status === 2 ? 'SKIP' : (error && error.killed ? 'FAIL' : status === null ? 'SKIP' : 'FAIL');
-      const nWarn = obj && Array.isArray(obj.findings) ? obj.findings.filter(f => f && f.sev === 'warn').length : 0;
-      const detail = obj && Array.isArray(obj.findings) && obj.findings.length ? obj.findings.map(f => f.msg).slice(0, 2).join(' ; ')
-        : (!obj && status === 0 ? 'contrat JSON non émis — verdict non retenu (P5/R1)' : (error && error.killed ? 'timeout oracle (' + (o.timeout_ms || 120000) + ' ms)' : (status === null ? 'oracle non exécutable' : '')));
+      // ---- TF-0659 : DEUX CONTRATS COEXISTENT POUR LA MEME CHOSE, et le lecteur n'en lisait qu'un.
+      //
+      // LE FAIT, vecu de premiere main le 26/08 : le hook a BLOQUE l'ecriture d'un document sur
+      // « [Lisibilite d'un document (Markdown)] », et le journal a porte
+      // {"verdict":"FAIL","detail":""} — DETAIL VIDE. La raison existait pourtant : l'oracle
+      // appele emet {"verdict","fails":[…]}, une liste de CHAINES nommee `fails`, quand ce lecteur
+      // n'allait chercher que `findings[].msg`. La raison etait PRODUITE PAR L'ORACLE, PUIS JETEE
+      // AU PASSAGE DU CONTRAT.
+      //
+      // COUT MESURE : trois tours pour retrouver le registre d'oracles, y lire la commande, puis
+      // rejouer l'oracle a la main — apres quoi les neuf constats se sont affiches en clair, avec
+      // leur ligne et leur motif. Un hook BLOQUANT qui rend la main sans dire quoi corriger coute
+      // plus cher qu'un hook verbeux.
+      //
+      // CE QUI EST FAIT ICI, et pourquoi c'est le lecteur qui cede : faire converger tous les
+      // oracles CLI vers une forme unique demanderait de modifier des paquets qui ne dependent pas
+      // de celui-ci, et laisserait le silence comme comportement par defaut pendant la migration.
+      // Le lecteur accepte donc LES DEUX FORMES. Il ne DEVINE rien : il lit ce que l'oracle a
+      // ecrit, sous l'un ou l'autre nom.
+      const texteDe = (x) => (typeof x === 'string' ? x : (x && (x.msg || x.message)) || '');
+      const raisons = obj && Array.isArray(obj.findings) && obj.findings.length ? obj.findings.map(texteDe)
+        : (obj && Array.isArray(obj.fails) && obj.fails.length ? obj.fails.map(texteDe) : []);
+      const nWarn = obj && Array.isArray(obj.findings) ? obj.findings.filter(f => f && f.sev === 'warn').length
+        : (obj && Array.isArray(obj.warns) ? obj.warns.length : 0);
+      let detail = raisons.filter(Boolean).slice(0, 2).join(' ; ')
+        || (!obj && status === 0 ? 'contrat JSON non émis — verdict non retenu (P5/R1)' : (error && error.killed ? 'timeout oracle (' + (o.timeout_ms || 120000) + ' ms)' : (status === null ? 'oracle non exécutable' : '')));
+      // LE GARDE-FOU QUI RESTE UTILE QUOI QU'IL ARRIVE : un FAIL sans raison le DIT, et donne la
+      // commande a rejouer — elle est deja connue du registre. Un echec muet est le pire des trois
+      // comportements possibles, parce qu'il a l'air d'un verdict alors qu'il est une panne de
+      // transmission.
+      if (verdict === 'FAIL' && !detail) {
+        detail = "l'oracle a ECHOUE et n'a pas su expliquer pourquoi — aucun `findings[]` ni `fails[]` "
+          + 'dans sa sortie JSON. Rejouer a la main pour voir ses constats : ' + parts.join(' ');
+      }
       res({ verdict, detail, nWarn });
     });
   });
