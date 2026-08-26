@@ -16,6 +16,7 @@ vaut partout. Aucun livrable visuel ne part avec un défaut V1–V9 ouvert.
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
 | **V9** | **Actif visuel indiscernable de son fond** | Aucun `<img>` ni `<svg>` visible dont AUCUN pixel n'atteint **1,2:1** de contraste contre le fond effectivement peint derrière lui | **Mesuré (bloquant)** — `render_page.py` ; capture de l'élément et mesure au pixel, jamais sur le fichier source. Nomme le meilleur ratio atteint et la couleur dominante de l'actif |
+| **V10** | **Verdict rendu sur un cadre qui ne contient pas le défaut** | Tout verdict visuel PORTANT SUR UNE PAGE s'appuie sur **au moins une capture pleine page**, et la revue **nomme ses captures avec leurs dimensions** | **Mesuré (bloquant)** — `oracle-verdict-visuel.mjs` du pilot (W1–W4) ; les captures par fenêtre jugent la ligne de flottaison et le défilement, **jamais la page** |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
 
 ### V9 : un actif visuel se valide dans le CONTEXTE où il est servi, jamais sur son fichier
@@ -80,6 +81,35 @@ tableaux larges — les juger ici condamnerait un usage recommandé.
   le défaut est dans l'échelle d'espacement du gabarit, pas dans les séries une à une.
 - **V5, V6 = bloquants visuels** : pas d'oracle automatique fiable ; vérifiés sur le rendu,
   jamais sur le code seul.
+
+### V10 : une répétition n'est pas un défaut de POINT, c'est un défaut de RELATION
+
+*Le fait, du 26/08/2026.* Une revue d'implémentation a rendu un verdict sur une page de
+réservation en s'appuyant sur une capture de **1440 × 900** — une FENÊTRE. La page mesure
+**1440 × 3684**. Le défaut recherché, un surtitre en double, se trouvait à **environ 800 px sous
+le bas** de la seule capture de bureau ; les deux autres captures de cette page, 375 × 780 et
+1440 × 900, ne l'atteignaient pas davantage. **Le verdict portait sur un quart de la page et se
+lisait comme un verdict sur la page.**
+
+**La capacité existait, dans le même dossier** : trois autres pages avaient une capture pleine —
+1440 × 7001, 1440 × 3723, 1440 × 5180. **Trois pages sur 203.** Le cadrage était choisi page par
+page, à la main, sans règle : *le hasard du cadrage décidait de ce que la revue pouvait voir.*
+
+**La raison de fond dépasse ce défaut-ci.** Une répétition n'existe **que dans le cadre qui
+contient LES DEUX occurrences**. Aucun nombre de captures par fenêtre n'y supplée — ce n'est pas
+une question de quantité, c'est une question de **cadre**. C'est ce qui distingue V10 de V1–V9 :
+les autres règles jugent un point, celle-ci juge ce que le cadre rend jugeable.
+
+**Corollaire opérationnel, et il est mesuré** : une revue nomme ses captures **et leurs
+dimensions**, une ligne chacune — `- fichier.png — 1440 × 3684 — pleine page`. L'oracle
+confronte alors la dimension écrite à l'en-tête du fichier (**une dimension recopiée de mémoire
+est une preuve qui ne prouve rien**), et signale une capture *déclarée* pleine page dont la
+hauteur vaut exactement une hauteur de fenêtre usuelle — c'est la signature du cas fondateur.
+
+**Ce que V10 ne dit pas** : que la page entière tient dans la capture. Seule la page connaît sa
+hauteur, et l'image ne la porte pas. La règle juge une **déclaration** et la met à l'épreuve du
+seul indice disponible. `render_page.py` capture déjà en pleine page par défaut ; le défaut
+fondateur venait de scripts de capture **du produit**, cadrés par fenêtre.
 
 ## Application par type de livrable
 
