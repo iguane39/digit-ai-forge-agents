@@ -279,7 +279,23 @@ Toujours en bas de la page hôte, format imposé :
 </footer>
 ```
 
-La marque du footer est toujours `DIGIT-AI · CONSEIL ET STRATÉGIE IA · 2026`. Année toujours `2026` jusqu'à modification explicite des instructions.
+La marque du footer est **paramétrable**, et c'est le seul point de la charte qui le soit.
+
+- **Défaut, et valeur employée quand rien n'est déclaré** : `DIGIT-AI · CONSEIL ET STRATÉGIE IA · 2026`.
+- **Engagement client** : un fichier `charte-livrable.json` à la racine du projet en cours
+  (ou sous `$FORGE_ROOT`) porte `{ "marque": "…", "baseline": "…", "annee": "2026" }` ; s'il
+  existe, ses valeurs remplacent la marque et la baseline du footer, et le reste de la charte
+  — polices, palette, routage des flèches, tooltips — ne bouge PAS.
+- **Ce fichier ne se commite jamais dans un dépôt publié** : il porte un nom de client, et un
+  nom de client dans un dépôt public est une fuite. C'est une donnée, pas du code (loi n° 4).
+
+*Pourquoi un paramètre et pas un skill par client (27/08/2026).* Un second générateur avait été
+forké pour un engagement : même canevas, même palette, même typographie, marque échangée. Le
+fork a divergé — il lui manquait une section entière du générateur maison — et son NOM, qui
+portait celui du client, fuitait dans un registre publié. Un paramètre ne diverge pas et ne
+nomme personne.
+
+Année toujours `2026` jusqu'à modification explicite des instructions.
 
 CSS du footer :
 ```css
