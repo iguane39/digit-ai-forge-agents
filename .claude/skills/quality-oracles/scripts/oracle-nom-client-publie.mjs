@@ -96,17 +96,42 @@ function ouvrir(artefact) {
 // d'espace de travail est une chaîne, pas un mot). Mélanger les deux dans une seule expression
 // est le piège payé en écrivant `oracle-synthese` : le motif technique s'était mis à matcher un
 // mot français ordinaire, et la règle rendait vert sans rien juger.
+// TROIS GENRES, ET LE TROISIÈME EST NÉ D'UNE MESURE, pas d'une intuition (27/08, second tour).
+// Verser un SIGLE court au référentiel comme un nom ordinaire produit des faux positifs immédiats :
+// mesuré sur le parc, le sigle « Fournisseur-A » attrapait `candidatsFreres` (4 occurrences) et `resFront`
+// (3), et le nom « Auchan » n'attrapait RIEN D'AUTRE que le mot `chevauchant` — zéro vrai positif,
+// un faux à 100 %. Un contrôle qui crie sur de la prose ordinaire se fait désactiver dans la
+// semaine, et il aura eu raison une fois pour dix fois où il aura menti.
+//   · nom          — insensible à la casse, sous-chaîne. Pour un nom propre assez long pour être
+//                    discriminant (« Zorglub », « Chronopode ») ;
+//   · identifiant  — SENSIBLE à la casse, sous-chaîne. Une chaîne technique n'est pas un mot ;
+//   · sigle        — insensible à la casse, MOT ENTIER. Pour un token court (2 à 5 lettres) qui
+//                    vit à l'intérieur de mots ordinaires.
+// La frontière de mot est explicite plutôt que confiée à `` : les noms du parc portent tirets,
+// points et accents, et `` place une frontière au milieu de « Client-A ».
 function termes(ref) {
   const t = [];
-  for (const n of ref.noms || []) t.push({ mot: n, casse: false, genre: 'nom' });
-  for (const i of ref.identifiants || []) t.push({ mot: i, casse: true, genre: 'identifiant' });
+  for (const n of ref.noms || []) t.push({ mot: n, casse: false, genre: 'nom', motEntier: false });
+  for (const i of ref.identifiants || []) t.push({ mot: i, casse: true, genre: 'identifiant', motEntier: false });
+  for (const g of ref.sigles || []) t.push({ mot: g, casse: false, genre: 'sigle', motEntier: true });
   return t;
 }
+
+// Ce qui NE sépare PAS deux mots : lettres, chiffres, et les liants internes d'un nom composé.
+const LIANT = /[\p{L}\p{N}_]/u;
 
 function chercheTexte(hay, terme) {
   const h = terme.casse ? hay : hay.toLowerCase();
   const m = terme.casse ? terme.mot : terme.mot.toLowerCase();
-  return h.includes(m);
+  if (!terme.motEntier) return h.includes(m);
+  let i = h.indexOf(m);
+  while (i !== -1) {
+    const avant = i === 0 ? '' : h[i - 1];
+    const apres = i + m.length >= h.length ? '' : h[i + m.length];
+    if (!LIANT.test(avant || ' ') && !LIANT.test(apres || ' ')) return true;
+    i = h.indexOf(m, i + 1);
+  }
+  return false;
 }
 
 function lots(tab, n) {
@@ -131,7 +156,7 @@ let ref;
 try { ref = JSON.parse(fs.readFileSync(refPath, 'utf8')); }
 catch (e) { out('SKIP', [], ['référentiel illisible (' + refPath + ') : ' + e.message], 2); }
 const T = termes(ref);
-if (!T.length) out('SKIP', [], ['référentiel vide (' + refPath + ') : ni `noms` ni `identifiants` — rien à chercher'], 2);
+if (!T.length) out('SKIP', [], ['référentiel vide (' + refPath + ') : ni `noms`, ni `identifiants`, ni `sigles` — rien à chercher'], 2);
 
 const { repo, temporaire, erreur } = ouvrir(cible);
 if (erreur) out('SKIP', [], [erreur], 2);
@@ -200,8 +225,15 @@ try {
   // Les révisions se passent par LOTS : une ligne de commande portant des milliers d'empreintes
   // se fait tronquer en silence sur ce poste, et un contrôle tronqué rend vert par accident.
   for (const t of T) {
+    // `-w` N'EST PAS COSMÉTIQUE ICI, et son oubli était un DÉFAUT DE COHÉRENCE entre angles :
+    // C1, C2 et C3 appliquaient la règle du mot entier, C4 la déléguait à `git grep` qui l'ignorait.
+    // Le même sigle était donc interdit dans l'arbre et toléré dans l'historique — ou l'inverse,
+    // selon l'angle. Trouvé par la fixture verte, qui criait sur un témoin de faux positif.
+    // La frontière de mot est confiée à git plutôt que réimplémentée (règle R3 : l'outil qui fait
+    // foi, jamais une copie maison).
     const argsGrep = ['grep', '-l', '-F'];
     if (!t.casse) argsGrep.push('-i');
+    if (t.motEntier) argsGrep.push('-w');
     argsGrep.push('-e', t.mot);
     for (const lot of lots(revs, 150)) {
       const r = git(repo, ...argsGrep, ...lot);

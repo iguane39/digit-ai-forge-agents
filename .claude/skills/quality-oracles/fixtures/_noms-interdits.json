@@ -1,5 +1,14 @@
 {
-  "commentaire": "RÉFÉRENTIEL DE JEU D'ESSAI — noms INVENTÉS, aucun client réel. Il vit ici, à côté des fixtures, uniquement pour que l'oracle soit prouvable sans publier un vrai nom dans le dépôt qui porte l'oracle. Le référentiel RÉEL vit hors de tout dépôt publié : voir la marche 4 de la résolution dans oracle-nom-client-publie.mjs.",
-  "noms": ["Zorglub", "Chronopode"],
-  "identifiants": ["wks-99999999999999"]
+ "commentaire": "RÉFÉRENTIEL DE JEU D'ESSAI — noms INVENTÉS, aucun client réel. Il vit ici, à côté des fixtures, uniquement pour que l'oracle soit prouvable sans publier un vrai nom dans le dépôt qui porte l'oracle. Le référentiel RÉEL vit hors de tout dépôt publié : voir la marche 4 de la résolution dans oracle-nom-client-publie.mjs.",
+ "noms": [
+  "Zorglub",
+  "Chronopode"
+ ],
+ "identifiants": [
+  "wks-99999999999999"
+ ],
+ "sigles": [
+  "ZRG"
+ ],
+ "note_sigles": "`sigles` = correspondance en MOT ENTIER, insensible à la casse. La fixture verte contient à dessein le mot `zorglubesque` et la chaîne `azrgue` : ils CONTIENNENT un terme interdit sans en être un, et leur présence prouve le second sens de la règle — l'oracle ne crie pas sur de la prose ordinaire."
 }
