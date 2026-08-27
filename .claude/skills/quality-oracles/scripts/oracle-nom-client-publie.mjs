@@ -231,7 +231,14 @@ try {
     // selon l'angle. Trouvé par la fixture verte, qui criait sur un témoin de faux positif.
     // La frontière de mot est confiée à git plutôt que réimplémentée (règle R3 : l'outil qui fait
     // foi, jamais une copie maison).
-    const argsGrep = ['grep', '-l', '-F'];
+    // `-I` EXCLUT LES BINAIRES, et son oubli était un SECOND défaut de cohérence entre angles,
+    // de la même famille que celui de `-w`. C1 saute les fichiers binaires (test d'octet nul) et
+    // le `non_juge` de cet oracle DÉCLARE « ne voit que le texte » — mais C4 déléguait à
+    // `git grep`, qui fouille les blobs binaires. Mesuré le 27/08 : 200 constats sur le pilot et
+    // 14 sur la forge du design, TOUS sur des `.png` de référence visuelle, où trois octets
+    // ressemblaient à un sigle. Zéro vrai positif, et une contradiction avec ce que l'oracle
+    // déclare ne pas juger — le pire genre de faux positif, celui qui dément la notice.
+    const argsGrep = ['grep', '-l', '-I', '-F'];
     if (!t.casse) argsGrep.push('-i');
     if (t.motEntier) argsGrep.push('-w');
     argsGrep.push('-e', t.mot);
