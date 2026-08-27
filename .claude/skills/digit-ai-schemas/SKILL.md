@@ -1,6 +1,6 @@
 ---
 name: digit-ai-schemas
-description: "Génère des schémas d'architecture, de topologie réseau, de flux temporel ou de tableau de bord aux standards graphiques Digit-AI. À utiliser systématiquement dès que le contexte concerne Digit-AI ou Enseigne-A et qu'un schéma technique est demandé (architecture cloud, topologie Azure, pipeline CI/CD, flux applicatif, comparatif visuel) — même si le mot 'schéma' n'est pas employé explicitement (ex. 'comment s'articulent les composants', 'dessine la chaîne', 'visualise la promotion'). Couvre cinq canevas standardisés — multi-bandes (architecture par couches), topologie (réseau hub-and-spoke), flux temporel (timeline avec swimlanes), tableau de bord (KPI portfolio), modèle de données (ERD avec classification PII). Garantit la charte Roboto / DM Sans / JetBrains Mono, la palette sémantique, le routage des flèches sans superposition et les tooltips structurés. Use when a technical diagram is requested in a Digit-AI or Enseigne-A context."
+description: "Génère des schémas d'architecture, de topologie réseau, de flux temporel ou de tableau de bord aux standards graphiques Digit-AI. À utiliser systématiquement dès qu'un schéma technique est demandé dans un contexte de livrable (Digit-AI, ou un engagement client dont la marque est paramétrée) (architecture cloud, topologie Azure, pipeline CI/CD, flux applicatif, comparatif visuel) — même si le mot 'schéma' n'est pas employé explicitement (ex. 'comment s'articulent les composants', 'dessine la chaîne', 'visualise la promotion'). Couvre cinq canevas standardisés — multi-bandes (architecture par couches), topologie (réseau hub-and-spoke), flux temporel (timeline avec swimlanes), tableau de bord (KPI portfolio), modèle de données (ERD avec classification PII). Garantit la charte Roboto / DM Sans / JetBrains Mono, la palette sémantique, le routage des flèches sans superposition et les tooltips structurés. Use when a technical diagram is requested in a Digit-AI or client-engagement context."
 ---
 
 # Skill Digit-AI Schemas · génération de schémas Digit-AI aux standards graphiques
@@ -9,9 +9,9 @@ Encode les standards graphiques des livrables Digit-AI (briefs d'architecture, d
 
 ## Quand déclencher
 
-Contexte Digit-AI / Enseigne-A **et** schéma technique attendu : demande explicite (« schéma », « diagramme », « visualise », « dessine ») ou implicite (« comment s'articulent », « la chaîne complète », « la topologie », « le flux »), contexte de livrable (brief d'architecture, dossier Conformité Finale / Handoff / MEP, support DA), ou présence des conventions Digit-AI dans les userPreferences.
+Contexte de livrable **et** schéma technique attendu : demande explicite (« schéma », « diagramme », « visualise », « dessine ») ou implicite (« comment s'articulent », « la chaîne complète », « la topologie », « le flux »), contexte de livrable (brief d'architecture, dossier Conformité Finale / Handoff / MEP, support DA), ou présence des conventions Digit-AI dans les userPreferences.
 
-Ne pas déclencher pour : schémas hors contexte Digit-AI (outils standards type Visualizer), diagrammes interactifs ou animés (le canevas Digit-AI est statique, imprimable PDF), simples listes ou tableaux.
+Ne pas déclencher pour : schémas hors contexte de livrable (outils standards type Visualizer), diagrammes interactifs ou animés (le canevas Digit-AI est statique, imprimable PDF), simples listes ou tableaux.
 
 ## Choix du canevas
 
@@ -23,7 +23,7 @@ Ne pas déclencher pour : schémas hors contexte Digit-AI (outils standards type
 | Tableau de bord | Synthèse KPI portfolio, vue de pilotage, comparatifs de parc | « dashboard », « vue DSI », « score par POC » | `references/canevas-tableau-de-bord.md` + `assets/template-tableau-de-bord.html` |
 | Modèle de données | Schéma relationnel de BDD, tables / colonnes / clés / relations, classification PII, dictionnaire de données | « schéma de base de données », « ERD », « MCD », « les tables et leurs relations » | `references/canevas-modele-donnees.md` + `assets/template-modele-donnees.html` |
 
-Si plusieurs canevas semblent applicables, multi-bandes est le défaut. Si aucun ne colle, le besoin est probablement hors périmètre Digit-AI — utiliser un outil standard.
+Si plusieurs canevas semblent applicables, multi-bandes est le défaut. Si aucun ne colle, le besoin est probablement hors périmètre — utiliser un outil standard.
 
 ## Conventions communes obligatoires
 
@@ -35,7 +35,7 @@ Quel que soit le canevas, **toujours lire `references/conventions-communes.md`**
 - Flèches en L pur, jamais en escalier multiple, jamais à travers un nœud ; couloirs verticaux dédiés pour les flux descendants
 - Titres de bande dans des pastilles blanches encadrées, hors couloirs de flèches
 - Tooltips au format structuré `Titre | Puce 1 | Puce 2 | Puce N` (backticks pour le code inline)
-- Footer : `Digit-AI · Conseil et stratégie IA · 2026`
+- Footer : `Digit-AI · Conseil et stratégie IA · 2026` — **marque paramétrable** pour un engagement client (`charte-livrable.json`, voir `references/conventions-communes.md`) ; le reste de la charte ne se paramètre pas
 
 Gabarit minimal d'un nœud et d'une flèche avec tooltips :
 

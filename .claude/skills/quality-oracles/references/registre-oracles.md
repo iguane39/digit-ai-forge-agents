@@ -33,7 +33,7 @@
 | Post LinkedIn (contraintes de publication) | `scripts/oracle-post-linkedin.mjs <post.txt> [--fenetre 210]` — L1 longueur, L2 hook, L3 zéro URL, L4 Unicode Bold réversible, L5 hashtags 3-5 | cli | ✅ |
 | Fiches prospection ICE (structure et classement) | `scripts/oracle-fiche-prospection-ice.mjs <diagnostic.html>` — K1 9 champs du skill, K2 bornes ICE 1-10, K3 classement = re-tri exécuté | cli | ✅ |
 | Données / dataset | skill `data-quality-auditor` (profilage : complétude, cohérence, distributions, anomalies, model-readiness) | skill | ✅ |
-| Schémas / diagrammes | skill `digit-ai-schemas` / `client-a-schemas` | skill | ✅ |
+| Schémas / diagrammes | skill `digit-ai-schemas` (marque paramétrable — un engagement client ne se forke plus) | skill | ✅ |
 | Prompts | skill `prompt-analyzer-l99` | skill | ✅ |
 | Versions de dépendances | `maj-versions.mjs` (kit RefAudit) | kit | ✅ |
 | Conformité rapport d'audit | `verifier-rapport-audit.mjs` (kit RefAudit) — checks 1-10 | kit | ✅ |
