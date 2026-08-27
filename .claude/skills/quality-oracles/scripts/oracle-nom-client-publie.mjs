@@ -107,8 +107,8 @@ function ouvrir(artefact) {
 //   · identifiant  — SENSIBLE à la casse, sous-chaîne. Une chaîne technique n'est pas un mot ;
 //   · sigle        — insensible à la casse, MOT ENTIER. Pour un token court (2 à 5 lettres) qui
 //                    vit à l'intérieur de mots ordinaires.
-// La frontière de mot est explicite plutôt que confiée à `` : les noms du parc portent tirets,
-// points et accents, et `` place une frontière au milieu de « Client-A ».
+// La frontière de mot est explicite plutôt que confiée à `\b` : les noms du parc portent tirets,
+// points et accents, et `\b` place une frontière au milieu de « Client-A ».
 function termes(ref) {
   const t = [];
   for (const n of ref.noms || []) t.push({ mot: n, casse: false, genre: 'nom', motEntier: false });
