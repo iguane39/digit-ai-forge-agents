@@ -1,0 +1,5 @@
+{
+  "commentaire": "RÉFÉRENTIEL DE JEU D'ESSAI — noms INVENTÉS, aucun client réel. Il vit ici, à côté des fixtures, uniquement pour que l'oracle soit prouvable sans publier un vrai nom dans le dépôt qui porte l'oracle. Le référentiel RÉEL vit hors de tout dépôt publié : voir la marche 4 de la résolution dans oracle-nom-client-publie.mjs.",
+  "noms": ["Zorglub", "Chronopode"],
+  "identifiants": ["wks-99999999999999"]
+}

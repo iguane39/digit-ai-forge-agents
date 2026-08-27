@@ -1,957 +1,976 @@
 {
-  "version": "2.13.0",
-  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel.",
-  "oracles": [
-    {
-      "domaine": "Rendu HTML / visuel",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "python",
-        "{skillsroot}/digit-ai-page-html/scripts/render_page.py",
-        "{file}",
-        "--output",
-        "json"
-      ],
-      "checklist": "digit-ai-page-html/references/zero-defaut-visuel.md (V1-V7)",
-      "statut": "ok",
-      "non_juge": [
-        "V5 croisements de flèches",
-        "V6 images déformées (inspection PNG)"
-      ]
-    },
-    {
-      "domaine": "Conformité charte HTML (charte, sémantique, print)",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "python",
-        "{skillsroot}/digit-ai-page-html/scripts/check_html.py",
-        "{file}",
-        "--output",
-        "json"
-      ],
-      "checklist": "digit-ai-page-html : DOCTYPE, lang=fr, meta charset prioritaire, meta viewport, <h1> unique, :root (tokens), <title> non vide, @media print, police Syne interdite — avertissements : repli de font, alt, saut de niveau de titre, script bloquant en head, repère sémantique",
-      "statut": "ok",
-      "non_juge": [
-        "rendu réel (débordement, contraste, chevauchement) — délégué à render_page.py",
-        "pertinence éditoriale du contenu"
-      ]
-    },
-    {
-     "domaine": "Lisibilité d'un document (Markdown)",
-     "ext": [
-      ".md"
-     ],
-     "type": "cli",
-     "cmd": [
-      "python",
-      "{skillsroot}/digit-ai-page-html/scripts/check_markdown.py",
-      "{file}",
-      "--output",
-      "json"
-     ],
-     "checklist": "M7 un chapitre ouvre par ce qu'il apprend (pas un tableau nu) · M10 un chapitre de plus de 12 lignes de tableau dit COMMENT le lire · M14 aucune plomberie interne dans le texte · M18 un identifiant du vocabulaire du document porte son sens EN LIGNE (première occurrence)",
-     "statut": "ok",
-     "provenance": "TF-0518 (22/08/2026) — mesuré sur un livrable réel de 85 Ko : le lanceur jugeait 4 domaines sur 48 et AUCUN de lisibilité, les règles L1-L19 vivant dans check_html.py. Or le Markdown est le format de livraison dominant des runs d'architecture et de conseil, et c'est là que le défaut du retour jumeau s'est produit.",
-     "non_juge": [
-      "les règles qui dépendent du RENDU (texte tronqué, largeur, surlignage, glyphes, coupure de mot) : la mise en page d'un Markdown appartient au lecteur",
-      "L3 (une valeur porte sa légende) et L12 (une énumération n'est pas une phrase) restent une revue de lecture — les mécaniser sur du Markdown produirait plus de bruit que de gain",
-      "M18 ne voit que les familles sans homonyme (Q-…, RA-…, RD-…, ADR nnnn) plus celles que le document DÉCLARE en frontmatter (`codes: E,C,H`)"
-     ]
-    },
-    {
-      "domaine": "Rendu PPTX (structure & compatibilité)",
-      "ext": [
-        ".pptx",
-        ".potx"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-pptx.mjs",
-        "{file}",
-        "--profil",
-        "{profil}"
-      ],
-      "checklist": "intégrité zip, [Content_Types].xml en 1re entrée, zéro <p:transition>, zéro média JPEG, smoke-test conversion LibreOffice",
-      "statut": "partiel",
-      "non_juge": [
-        "charte sémantique (kicker, logos, bijection sommaire↔intercalaires) → gate digit-ai-pptx",
-        "rendu visuel slide par slide → pipeline digit-ai-pptx"
-      ]
-    },
-    {
-      "domaine": "Accessibilité (WCAG structurel)",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "python",
-        "{skilldir}/scripts/oracle-a11y.py",
-        "{file}"
-      ],
-      "checklist": "lang, title, alt, noms accessibles, intitulés liens/boutons, ordre des titres, id uniques, zoom, tabindex",
-      "statut": "ok",
-      "non_juge": [
-        "audit axe-core complet",
-        "contraste (render_page V2)",
-        "navigation clavier"
-      ]
-    },
-    {
-      "domaine": "Performance / poids",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-perf.mjs",
-        "{file}",
-        "--profil",
-        "{profil}"
-      ],
-      "checklist": "budgets : poids total, taille DOM, JS inline, data URIs, refs externes",
-      "statut": "ok",
-      "non_juge": [
-        "temps de rendu réel / LCP sous charge (non déterministe)"
-      ]
-    },
-    {
-      "domaine": "Format / livraison / versioning",
-      "ext": [
-        ".html",
-        ".htm",
-        ".md",
-        ".json",
-        ".svg",
-        ".zip",
-        ".txt",
-        ".css",
-        ".tf",
-        ".yml",
-        ".yaml",
-        ".csv"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-format.mjs",
-        "{file}"
-      ],
-      "checklist": "encodage UTF-8, intégrité ZIP, placeholders, autoportance HTML",
-      "statut": "ok",
-      "non_juge": []
-    },
-    {
-      "domaine": "Code source",
-      "ext": [
-        ".js",
-        ".mjs",
-        ".cjs",
-        ".py",
-        ".ts",
-        ".tsx"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-code.mjs",
-        "{file}"
-      ],
-      "checklist": "compilation/syntaxe (compile != s'exécute)",
-      "statut": "ok",
-      "non_juge": [
-        "exécution & tests fonctionnels",
-        "lint/typage approfondi"
-      ]
-    },
-    {
-      "domaine": "Sécurité / secrets",
-      "ext": "any",
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-secrets.mjs",
-        "{file}"
-      ],
-      "checklist": "clés/tokens/PAT/mots de passe en clair (+ gitleaks si présent)",
-      "statut": "ok",
-      "non_juge": [
-        "SCA (voir oracle-sca)",
-        "historique git"
-      ]
-    },
-    {
-      "domaine": "Sécurité : vulnérabilités de dépendances (SCA)",
-      "ext": [],
-      "trigger_files": [
-        "requirements.txt",
-        "package.json"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-sca.mjs",
-        "{file}"
-      ],
-      "checklist": "pip-audit / npm audit / OSV sur versions épinglées",
-      "statut": "ok",
-      "non_juge": [
-        "dépendances transitives non épinglées"
-      ],
-      "note": "cibler un dossier projet ou un manifeste (requirements.txt / package.json)"
-    },
-    {
-      "domaine": "Sécurité : SAST (injection / exécution dangereuse)",
-      "ext": [
-        ".py",
-        ".js",
-        ".mjs",
-        ".cjs",
-        ".ts",
-        ".tsx",
-        ".jsx"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-sast.mjs",
-        "{file}"
-      ],
-      "checklist": "injection SQL/commande, eval/exec, shell=True, désérialisation, XSS (semgrep/bandit si présents, sinon règles intégrées)",
-      "statut": "ok",
-      "non_juge": [
-        "analyse de flux inter-fichiers",
-        "logique métier"
-      ]
-    },
-    {
-      "domaine": "Sortie LLM / IA générative",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-llm.mjs",
-        "{file}",
-        "--schema",
-        "{schema}"
-      ],
-      "checklist": "validation de schéma JSON (auto) + checklist de véracité (manuelle)",
-      "statut": "partiel",
-      "non_juge": [
-        "véracité factuelle (revue sourcée / recompute)",
-        "non-régression sans golden"
-      ],
-      "note": "partie auto = conformité de schéma ; véracité = revue humaine (loi §5)"
-    },
-    {
-      "domaine": "Données / dataset",
-      "ext": [
-        ".csv",
-        ".parquet",
-        ".xlsx",
-        ".tsv"
-      ],
-      "type": "skill",
-      "skill": "data-quality-auditor",
-      "checklist": "complétude, cohérence, distributions, anomalies, model-readiness",
-      "statut": "ok",
-      "non_juge": [
-        "véracité métier des valeurs (le profilage juge la qualité structurelle, pas la justesse métier)"
-      ]
-    },
-    {
-      "domaine": "Schémas / diagrammes",
-      "ext": [],
-      "type": "skill",
-      "skill": "digit-ai-schemas",
-      "checklist": "canevas, routage des flèches, tooltips, charte",
-      "statut": "ok",
-      "non_juge": []
-    },
-    {
-      "domaine": "Prompts",
-      "ext": [],
-      "type": "skill",
-      "skill": "prompt-analyzer-l99",
-      "checklist": "analyse L99 (8 couches), score /100, contrat de sortie",
-      "statut": "ok",
-      "non_juge": []
-    },
-    {
-      "domaine": "Versions de dépendances (« version actuelle »)",
-      "ext": [],
-      "type": "kit",
-      "cmd_ref": "node <projet>/compliance-pack/maj-versions.mjs <dossier-projet>",
-      "checklist": "version interrogée aux registres officiels (jamais estimée)",
-      "statut": "ok",
-      "non_juge": []
-    },
-    {
-      "domaine": "Conformité de rapport d'audit (kit RefAudit)",
-      "ext": [],
-      "type": "kit",
-      "cmd_ref": "node <projet>/compliance-pack/verifier-rapport-audit.mjs \"<rapport>.html\"",
-      "checklist": "checks 1-10 (placeholders, compile, domaines, familles, verdicts ADR, exécution, rendu, auto-test, versions)",
-      "statut": "ok",
-      "non_juge": []
-    },
-    {
-      "domaine": "Clôture de remédiation (kit RefAudit)",
-      "ext": [],
-      "type": "kit",
-      "cmd_ref": "node <projet>/compliance-pack/verifier-remediation.mjs \"<rapport>.html\" --status suivi.json",
-      "checklist": "chaque action faite avec preuve avant nouvel audit",
-      "statut": "ok",
-      "non_juge": []
-    },
-    {
-      "domaine": "Skill (audit)",
-      "ext": [],
-      "type": "skill",
-      "skill": "ameliore-un-skill",
-      "checklist": "grille 7 dimensions /5 pondérée + volet conformité oracles R1-R10 (references/regles-oracles.md)",
-      "statut": "ok",
-      "non_juge": [
-        "conformité oracles R1-R10 (audit dédié, references/regles-oracles.md)"
-      ]
-    },
-    {
-      "domaine": "Calculs / chiffres",
-      "ext": [
-        ".md",
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "checklist": "re-somme exécutée des lignes Total/Somme des tables md/html (milliers fr, virgule/point décimal, €, %, k€) ; tolérance arrondi ; le reste marqué à vérifier",
-      "statut": "partiel",
-      "non_juge": [
-        "calculs hors tables",
-        "formules métier",
-        "chiffres sans total de contrôle"
-      ],
-      "note": "domaine-spécifique : rejouer le calcul du livrable ; pas d'oracle générique",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-calculs.mjs",
-        "{file}"
-      ],
-      "content_patterns": [
-        "^\\s*\\|.*\\b(total|totaux|somme|sous-?total)\\b"
-      ]
-    },
-    {
-      "domaine": "Traçabilité des affirmations chiffrées",
-      "ext": [
-        ".md",
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-claims.mjs",
-        "{file}",
-        "--profil",
-        "{profil}"
-      ],
-      "checklist": "montant € hors table sans source ni « à vérifier » = bloquant ; % et grands nombres non sourcés = avertissement ; libellé répété à valeurs divergentes = bloquant ; actif selon profil",
-      "statut": "partiel",
-      "non_juge": [
-        "véracité des sources citées",
-        "affirmations non chiffrées",
-        "tables → oracle-calculs"
-      ],
-      "timeout_ms": 600000
-    },
-    {
-      "domaine": "Nommage / convention de livraison",
-      "ext": [
-        ".md",
-        ".html",
-        ".htm",
-        ".pptx",
-        ".potx",
-        ".pdf",
-        ".docx",
-        ".xlsx",
-        ".zip",
-        ".svg"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-nommage.mjs",
-        "{file}",
-        "--profil",
-        "{profil}"
-      ],
-      "checklist": "fichier au préfixe de la convention du profil → doit matcher la regex complète {TypeDoc} {Client} - {Scope} - {AAAAMMJJ}{a…} ; hors préfixe → SKIP",
-      "statut": "ok",
-      "non_juge": [
-        "fichiers hors préfixe",
-        "pertinence métier des segments"
-      ]
-    },
-    {
-      "domaine": "Jugement rédactionnel (LLM-juge externe)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-judge.mjs",
-        "{file}",
-        "--profil",
-        "{profil}"
-      ],
-      "checklist": "rubrique figée 5 axes (clarté, structure, complétude, ton, risques) via CLI claude — invocation EXPLICITE, avis outillé non déterministe",
-      "statut": "partiel",
-      "non_juge": [
-        "véracité factuelle",
-        "non-déterminisme assumé : jamais promu en verdict",
-        "CLI absent → SKIP motivé"
-      ]
-    },
-    {
-      "domaine": "Cohérence inter-documents",
-      "ext": "any",
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-coherence.mjs",
-        "{file}",
-        "--profil",
-        "{profil}"
-      ],
-      "checklist": "même grandeur labellisée ou total de table = même valeur dans tous les livrables du dossier (versions antérieures exclues par convention de nommage)",
-      "statut": "ok",
-      "non_juge": [
-        "cohérence des binaires (pptx, xlsx)",
-        "divergences sémantiques non chiffrées"
-      ]
-    },
-    {
-      "domaine": "Régression visuelle (golden diff)",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "python3",
-        "{skilldir}/scripts/oracle-visual-diff.py",
-        "{file}",
-        "--profil",
-        "{profil}"
-      ],
-      "timeout_ms": 120000,
-      "checklist": "rendu aux breakpoints du profil = goldens versionnés (± seuil_ratio, tolérance de canal, masques déclarés) ; goldens entérinés hors boucle via --accepter uniquement",
-      "statut": "ok",
-      "non_juge": [
-        "diff PIL par tolérance de canal (pixelmatch non installé — repli déclaré)",
-        "sémantique du changement (voulu vs subi)",
-        "sans golden : SKIP — initialisation hors boucle obligatoire"
-      ]
-    },
-    {
-      "domaine": "Programme de formation (structure pédagogique)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-programme-formation.mjs",
-        "{file}"
-      ],
-      "checklist": "5 contrôles C1-C5 en tête d oracle-programme-formation.mjs ; déclenchement auto par contenu (« durée annoncée : ») — .docx par invocation explicite uniquement (content matching limité aux formats texte)",
-      "statut": "ok",
-      "non_juge": [
-        "qualité pédagogique du contenu → fiche ingenierie-pedagogique",
-        "C2 sans seuil déclaré ni profil",
-        "C3 sans liste de référence fournie"
-      ],
-      "content_patterns": [
-        "durée annoncée *:"
-      ]
-    },
-    {
-      "domaine": "Charte PPTX sémantique (sommaire, kicker, logos, footer)",
-      "ext": [
-        ".pptx"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
-        "{file}"
-      ],
-      "checklist": "S1-S4 en tête d oracle-charte-pptx-semantique.mjs (bijection sommaire↔intercalaires, kicker, logos hors couverture/interlocuteurs, footer+pagination)",
-      "statut": "ok",
-      "non_juge": [
-        "logo vs image de contenu distingués par taille seule (seuil 2000000 EMU documenté)",
-        "footers hérités des layouts/masters non inspectés",
-        "structure zip/transitions/JPEG → oracle-pptx",
-        "rendu visuel → digit-ai-pptx"
-      ]
-    },
-    {
-      "domaine": "État de la forge (versions, couverture, fixtures, dormance)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-etat-forge.mjs",
-        "{file}"
-      ],
-      "checklist": "F1-F5 en tête d oracle-etat-forge.mjs (versions montées vs manifeste, fixtures présentes, corpus résolus, ligne de couverture, dormance)",
-      "statut": "ok",
-      "non_juge": [
-        "qualité du contenu des skills (→ ameliore-un-skill)",
-        "F5 sans dernier_usage renseigné",
-        "F4 sans --restitution"
-      ],
-      "trigger_files": [
-        "versions-livrees.json"
-      ]
-    },
-    {
-      "domaine": "Traçabilité exigences AO → réponse",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-exigences-ao.mjs",
-        "{file}",
-        "--exigences",
-        "{profil}"
-      ],
-      "checklist": "X1-X3 en tête d oracle-exigences-ao.mjs (exigences tracées par motif, rubriques à l identique, pièces livrées) — invocation explicite par dossier avec son référentiel (--exigences), pas de déclenchement auto",
-      "statut": "ok",
-      "non_juge": [
-        "qualité de la réponse à chaque exigence (→ propale-review/juge)",
-        "exhaustivité du référentiel fourni"
-      ]
-    },
-    {
-      "domaine": "Simulateur JS (KPI vs modèle de référence)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-simulateur-js.mjs",
-        "{file}"
-      ],
-      "checklist": "J1-J2 en tête d oracle-simulateur-js.mjs (autoportance des libs, KPI aux valeurs par défaut vs attendus à tolérance déclarée) — invocation explicite par dossier avec ses attendus (--attendus)",
-      "statut": "ok",
-      "non_juge": [
-        "exactitude métier du modèle de référence (les attendus font foi)",
-        "rendu visuel (→ render_page/visual-diff)",
-        "interactions au-delà des valeurs par défaut"
-      ]
-    },
-    {
-      "domaine": "Parité de migration (routes symétriques)",
-      "ext": [
-        ".txt"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-parite-migration.mjs",
-        "{file}"
-      ],
-      "checklist": "P1-P5 en tête d oracle-parite-migration.mjs (captures symétriques, canonical/og normalisés, domaine cible, liens, noindex) — le fichier de routes déclare source:/migre:/domaine-cible:",
-      "statut": "ok",
-      "non_juge": [
-        "codes HTTP réels (fetch hors captures)",
-        "parité visuelle (→ visual-diff)",
-        "performances (→ oracle-perf)"
-      ]
-    },
-    {
-      "domaine": "Inventaire de connecteurs (interop)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-inventaire-interop.mjs",
-        "{file}"
-      ],
-      "checklist": "I1-I4 en tête d oracle-inventaire-interop.mjs (colonnes obligatoires, cellules renseignées, vocabulaire fermé des statuts, doublons)",
-      "statut": "ok",
-      "non_juge": [
-        "exactitude technique des connecteurs (→ interop-archi)",
-        "complétude du périmètre"
-      ],
-      "content_patterns": [
-        "Moyen d.échange"
-      ]
-    },
-    {
-      "domaine": "Plan de mission (cohérence structurelle)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-plan-de-mission.mjs",
-        "{file}"
-      ],
-      "checklist": "W1-W7 en tête d oracle-plan-de-mission.mjs (deadlines, dépendances acycliques, critères de sortie, chemin critique, registre de risques, parties prenantes, mesures de succès — W5-W7 ajoutés le 17/08/2026, TF-0323)",
-      "statut": "ok",
-      "non_juge": [
-        "réalisme des charges/dates",
-        "export Notion à câbler (réserve O8)",
-        "qualité d un risque (cotation plausible, parade praticable, exhaustivité) — la forme seule est jugée",
-        "échelle de cotation probabilité/impact non arrêtée (revue 17/11/2026) : valeur exigée non vide, jamais confrontée à un vocabulaire fermé",
-        "complétude de la cartographie des parties prenantes",
-        "sincérité d une cible et existence réelle de sa source (aucun relevé effectué)",
-        "cadence et artefacts périodiques : hors domaine — désormais JUGÉS par oracle-cadence-de-mission (C1-C5, TF-0324 du 18/08/2026), qui lit le même état de mission et ne crée aucun second porteur d état"
-      ],
-      "content_patterns": [
-        "## Workstream"
-      ]
-    },
-    {
-      "domaine": "Cadence de mission (artefacts périodiques)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-cadence-de-mission.mjs",
-        "{file}"
-      ],
-      "checklist": "C1-C5 en tête d oracle-cadence-de-mission.mjs (attributs dus et nommés quand ils manquent, cadence en ensemble fermé — donnée d instance et jamais valeur codée, fraîcheur datée avec son retard en jours, source existante sur le disque, et C5 : les CINQ artefacts attendus tous rendus — déclarés ou écartés AVEC motif). TF-0324, 18/08/2026",
-      "statut": "ok",
-      "non_juge": [
-        "le CONTENU des artefacts : la fraîcheur seule est jugée. Le R de la revue RAID est jugé par W5 d oracle-plan-de-mission, le REX par S1-S8 d oracle-synthese, les chiffres par oracle-claims — aucun n est dupliqué",
-        "la sincérité de `derniere` : la date déclarée n est pas confrontée à la date de modification du fichier — limite du déclaratif, pas un oubli",
-        "les A, I et D de la revue RAID : seul le R est outillé (W5). Leur schéma reste à écrire",
-        "la comparaison attendu ↔ constaté du suivi des bénéfices : aucun oracle de l écosystème ne juge une SÉRIE TEMPORELLE — seconde capacité nommée par la cartographie du 18/08",
-        "la date de référence : `--aujourdhui AAAA-MM-JJ` si fournie, sinon l horloge du poste"
-      ]
-    },
-    {
-      "domaine": "Post LinkedIn (contraintes de publication)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-post-linkedin.mjs",
-        "{file}"
-      ],
-      "checklist": "L1-L5 en tête d oracle-post-linkedin.mjs (longueur, hook, zéro URL, Unicode Bold réversible, hashtags 3-5) — invocation explicite sur le fichier post",
-      "statut": "ok",
-      "non_juge": [
-        "qualité éditoriale (→ juge)",
-        "script du skill non rejoué (mapping Unicode standard)",
-        "lien en 1er commentaire non vérifiable"
-      ]
-    },
-    {
-      "domaine": "Fiches prospection ICE (structure et classement)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-fiche-prospection-ice.mjs",
-        "{file}"
-      ],
-      "checklist": "K1-K3 en tête d oracle-fiche-prospection-ice.mjs (9 champs du skill, bornes ICE 1-10, classement = re-tri exécuté)",
-      "statut": "ok",
-      "non_juge": [
-        "montants non sourcés (→ oracle-claims + exemptions 21/07)",
-        "pertinence métier",
-        "charte visuelle (→ page-html/fiches-html)"
-      ],
-      "content_patterns": [
-        "Score ICE"
-      ]
-    },
-    {
-      "domaine": "CDC de cadrage (contrat de sortie)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-cdc-cadrage.mjs",
-        "{file}"
-      ],
-      "checklist": "C1 7 sections 0-6 non vides · C2 commandes+sorties ou inventaire impossible · C3 verdicts RÉUTILISÉ/ÉTENDU/CRÉÉ · C4 ≥6 seuils chiffrés et aucun objectif de volume · C5 doublet surface+mutation et interdiction du score de mutation seul · C6 noyau/adaptateurs et limite de couverture déclarée · C7 termes subjectifs comme critère · C8 marquage [FAIT]/[HYP] · C9 zéro bloc de code · C10 questions indicées en fin avec reco et défaut",
-      "statut": "ok",
-      "non_juge": [
-        "authenticité des sorties de commandes (forme jugée, pas véracité)",
-        "pertinence des valeurs de seuils",
-        "justesse d application du marquage FAIT/HYP",
-        "objectifs de volume formulés implicitement",
-        "qualité rédactionnelle et faisabilité du plan"
-      ],
-      "provenance": "chantier Forge Tests, 2026-08-02 — fixture rouge dérivée d un CDC réel pré-corrections",
-      "content_patterns": [
-        "^## SECTION 0\\b"
-      ],
-      "note": "un oracle de gabarit documentaire ne doit jamais matcher une extension entière (RA-3, 05/08/2026) — trigger restreint au marqueur de gabarit ## SECTION 0, jamais à .md seul"
-    },
-    {
-      "domaine": "Design généré : marqueurs de slop",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-design/oracles/oracle-slop.mjs",
-        "{file}",
-        "--json-only"
-      ],
-      "checklist": "S1-S10 en tête d oracle-slop.mjs (bandeau latéral, texte en dégradé, polices réflexes, noir/blanc purs, palette IA, emojis, grille clonée, easing daté, rayon uniforme, sparkline décoratif)",
-      "statut": "ok",
-      "non_juge": [
-        "généricité de la direction artistique (jugement humain)",
-        "rendu réel : déléguer à render_page.py"
-      ],
-      "content_patterns": [
-        "Données de démonstration"
-      ]
-    },
-    {
-      "domaine": "Système de marque : traçabilité des tokens",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-design/oracles/oracle-tokens.mjs",
-        "{file}",
-        "--json-only"
-      ],
-      "checklist": "T1-T6 en tête d oracle-tokens.mjs (couleur en dur, police en dur, échelle 4pt, parité clair/sombre, contraste 4.5:1, chroma aux extrêmes)",
-      "statut": "ok",
-      "non_juge": [
-        "contraste des couleurs semi-transparentes ou composées : render_page.py V2",
-        "adéquation de la palette à la marque"
-      ],
-      "content_patterns": [
-        "Données de démonstration"
-      ]
-    },
-    {
-      "domaine": "Cible mobile : contrat d'usage tactile",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-design/oracles/oracle-mobile.mjs",
-        "{file}",
-        "--json-only"
-      ],
-      "checklist": "M1-M6 en tête d oracle-mobile.mjs (viewport et zoom, cibles 44px, safe-area-inset, reflow des tables sous 768px, orientation paysage, prefers-reduced-motion)",
-      "statut": "ok",
-      "non_juge": [
-        "taille tactile effective après cascade",
-        "gestes réels : parcours à exécuter"
-      ],
-      "content_patterns": [
-        "Données de démonstration"
-      ]
-    },
-    {
-      "domaine": "Visuels générés : traçabilité et budget",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-design/oracles/oracle-images.mjs",
-        "{file}",
-        "--json-only"
-      ],
-      "checklist": "I1-I6 en tête d oracle-images.mjs (alt utile, plafond unitaire, plafond global 10 Mo, zéro image réseau, manifeste de génération, complétude prompt/modèle/date)",
-      "statut": "ok",
-      "non_juge": [
-        "ce que l image montre réellement : revue humaine obligatoire",
-        "qualité esthétique"
-      ],
-      "content_patterns": [
-        "Données de démonstration"
-      ]
-    },
-    {
-      "domaine": "Corpus design : résolution des sources",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-design/oracles/oracle-corpus.mjs",
-        "{dir}",
-        "--json-only"
-      ],
-      "checklist": "C1-C7 en tête d oracle-corpus.mjs (colonnes, cellules, vocabulaire des statuts, unicité, polices réflexes, sources résolues, monoculture inter-clients) — invocation explicite par dossier",
-      "statut": "ok",
-      "non_juge": [
-        "pertinence sectorielle d un style : jugement humain",
-        "licence d embarquement des polices"
-      ]
-    },
-    {
-      "domaine": "Mouvement : craft de l'animation",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-design/oracles/oracle-motion.mjs",
-        "{file}",
-        "--json-only"
-      ],
-      "checklist": "R1-R7 en tête d oracle-motion.mjs (transition all, scale(0), ease-in sur UI, durée > 300 ms, transform-origin center sur élément ancré, propriété de layout animée, survol animé non protégé) — dérivé de review-animations d Emil Kowalski (MIT)",
-      "statut": "ok",
-      "non_juge": [
-        "fréquence d usage (100+/jour : ne pas animer du tout)",
-        "cohésion avec la personnalité du composant",
-        "timing asymétrique : intention non décidable sur le fichier"
-      ],
-      "content_patterns": [
-        "Données de démonstration"
-      ]
-    },
-    {
-      "domaine": "Filtres de colonne sur tableaux de donnees",
-      "ext": [
-        ".html",
-        ".htm"
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-filtres-tableau.mjs",
-        "{file}"
-      ],
-      "content_patterns": [
-        "<table"
-      ],
-      "checklist": "G1 tableau en perimetre (>= 8 lignes et >= 1 colonne categorielle) marque data-filterable ou exempte avec motif · G2 asset table-filters.js reference · G3 tableau initialise · G4 id + thead porteur de th · G5 compteur data-tf-count-for avec aria-live · G6 regle @media print reaffichant tr[data-tf-hidden]",
-      "statut": "ok",
-      "non_juge": [
-        "comportement d'execution (panneaux, Tous/Aucun, recherche, combinaison ET) — exige un rendu navigateur",
-        "pertinence metier des colonnes retenues comme categorielles (heuristique de cardinalite)",
-        "tableaux exemptes par data-filterable=\"off\""
-      ]
-    },
-    {
-      "domaine": "Exigences produit : testabilité de l'énoncé",
-      "ext": [],
-      "content_patterns": [
-        "\"exigences\"\\s*:\\s*\\["
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-conception/oracles/oracle-exigences.mjs",
-        "{file}"
-      ],
-      "checklist": "E1 champs obligatoires · E2 identifiant unique et non réaffecté · E3 critère chiffré avec unité ou binaire observable · E4 liste noire de termes subjectifs · E5 palier valide · E6 énoncé atomique",
-      "statut": "ok",
-      "non_juge": [
-        "pertinence produit de l'exigence",
-        "atomicité sémantique sans marqueur d'énumération"
-      ]
-    },
-    {
-      "domaine": "Traçabilité besoin ↔ exigence ↔ vue (référentiel de conception)",
-      "ext": [],
-      "content_patterns": [
-        "\"exigences\"\\s*:\\s*\\["
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-conception/oracles/oracle-tracabilite.mjs",
-        "{file}"
-      ],
-      "checklist": "T1 aucun orphelin des deux côtés · T2 exactement un critère par exigence · T3 vue alignée sur l'empreinte sha256 de sa source · T4 statut épistémique porteur de sa source ou de son mode de validation",
-      "statut": "ok",
-      "non_juge": [
-        "justesse du rattachement besoin ↔ exigence",
-        "véracité de la source citée",
-        "vues non passées en --vue (T3 ne juge que ce qu'on lui donne)"
-      ]
-    },
-    {
-      "domaine": "Couverture de la surface fonctionnelle",
-      "ext": [],
-      "content_patterns": [
-        "\"exigences\"\\s*:\\s*\\["
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-conception/oracles/oracle-surface.mjs",
-        "{file}"
-      ],
-      "checklist": "S1 chaque élément de surface non couvert est NOMMÉ · S2 ratio publié avec sa liste (seuil 95 % par défaut, --seuil) · S3 lien de surface valide ou raison hors_surface déclarée",
-      "statut": "ok",
-      "non_juge": [
-        "complétude de l'inventaire de surface lui-même"
-      ]
-    },
-    {
-      "domaine": "Affirmations chiffrées d'un référentiel d'exigences",
-      "ext": [],
-      "content_patterns": [
-        "\"exigences\"\\s*:\\s*\\["
-      ],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "c:/dev/digit-ai-forge-conception/oracles/oracle-claims.mjs",
-        "{file}"
-      ],
-      "checklist": "A1 tout chiffre d'un champ narratif (besoin, énoncé) est tracé à une source ou marqué « à vérifier » · A2 périmètre écarté déclaré : un chiffre de critère est une cible fixée, pas une affirmation sur le monde",
-      "statut": "ok",
-      "non_juge": [
-        "véracité de la source citée",
-        "affirmations non chiffrées"
-      ],
-      "timeout_ms": 600000
-    },
-    {
-      "domaine": "Dossier CAB (DOCX, template Client-A)",
-      "ext": [],
-      "type": "cli",
-      "cmd": [
-        "node",
-        "{skilldir}/scripts/oracle-dossier-cab.mjs",
-        "{file}"
-      ],
-      "checklist": "C1 sections §1-§4 + points de contrôle + e-mails FR/EN · C2 tableau d'en-tête renseigné (nom du changement, demandeur, date prévue) · C3 aucun placeholder du template laissé · C4 chaque section porte du contenu · C5 date du nom de fichier == date prévue · C6 règle Easyvista J+5 (si --depot) · C7 numérotation Word : deux listes séparées par un titre ne partagent pas leur numId · C8 marqueurs [À COMPLÉTER] recensés (warn) · C9 couleur de titres de la charte en mise en forme directe — INVOCATION EXPLICITE uniquement : le .docx est un zip, le contenu ne se filtre pas, et router tout .docx ici ferait échouer à tort un document qui n'est pas un dossier CAB",
-      "statut": "ok",
-      "non_juge": [
-        "la JUSTESSE métier du changement décrit — un dossier complet et faux passe C1-C9",
-        "l'opportunité de la date de dépôt hors règle J+5",
-        "le rendu final Word (pagination, sauts) — l'oracle lit le XML, pas la mise en page paginée"
-      ],
-      "provenance": "né le 20/08/2026 sur un dossier MEP réel (défaut C9 observé : titres recréés en bleu Word par défaut) ; versionné le 20/08 par TF-0415 — il avait vécu un jour dans la seule copie INSTALLÉE, hors de tout dépôt"
-    }
-  ]
+ "version": "2.13.0",
+ "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel.",
+ "oracles": [
+  {
+   "domaine": "Rendu HTML / visuel",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skillsroot}/digit-ai-page-html/scripts/render_page.py",
+    "{file}",
+    "--output",
+    "json"
+   ],
+   "checklist": "digit-ai-page-html/references/zero-defaut-visuel.md (V1-V7)",
+   "statut": "ok",
+   "non_juge": [
+    "V5 croisements de flèches",
+    "V6 images déformées (inspection PNG)"
+   ]
+  },
+  {
+   "domaine": "Conformité charte HTML (charte, sémantique, print)",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skillsroot}/digit-ai-page-html/scripts/check_html.py",
+    "{file}",
+    "--output",
+    "json"
+   ],
+   "checklist": "digit-ai-page-html : DOCTYPE, lang=fr, meta charset prioritaire, meta viewport, <h1> unique, :root (tokens), <title> non vide, @media print, police Syne interdite — avertissements : repli de font, alt, saut de niveau de titre, script bloquant en head, repère sémantique",
+   "statut": "ok",
+   "non_juge": [
+    "rendu réel (débordement, contraste, chevauchement) — délégué à render_page.py",
+    "pertinence éditoriale du contenu"
+   ]
+  },
+  {
+   "domaine": "Lisibilité d'un document (Markdown)",
+   "ext": [
+    ".md"
+   ],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skillsroot}/digit-ai-page-html/scripts/check_markdown.py",
+    "{file}",
+    "--output",
+    "json"
+   ],
+   "checklist": "M7 un chapitre ouvre par ce qu'il apprend (pas un tableau nu) · M10 un chapitre de plus de 12 lignes de tableau dit COMMENT le lire · M14 aucune plomberie interne dans le texte · M18 un identifiant du vocabulaire du document porte son sens EN LIGNE (première occurrence)",
+   "statut": "ok",
+   "provenance": "TF-0518 (22/08/2026) — mesuré sur un livrable réel de 85 Ko : le lanceur jugeait 4 domaines sur 48 et AUCUN de lisibilité, les règles L1-L19 vivant dans check_html.py. Or le Markdown est le format de livraison dominant des runs d'architecture et de conseil, et c'est là que le défaut du retour jumeau s'est produit.",
+   "non_juge": [
+    "les règles qui dépendent du RENDU (texte tronqué, largeur, surlignage, glyphes, coupure de mot) : la mise en page d'un Markdown appartient au lecteur",
+    "L3 (une valeur porte sa légende) et L12 (une énumération n'est pas une phrase) restent une revue de lecture — les mécaniser sur du Markdown produirait plus de bruit que de gain",
+    "M18 ne voit que les familles sans homonyme (Q-…, RA-…, RD-…, ADR nnnn) plus celles que le document DÉCLARE en frontmatter (`codes: E,C,H`)"
+   ]
+  },
+  {
+   "domaine": "Rendu PPTX (structure & compatibilité)",
+   "ext": [
+    ".pptx",
+    ".potx"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "intégrité zip, [Content_Types].xml en 1re entrée, zéro <p:transition>, zéro média JPEG, smoke-test conversion LibreOffice",
+   "statut": "partiel",
+   "non_juge": [
+    "charte sémantique (kicker, logos, bijection sommaire↔intercalaires) → gate digit-ai-pptx",
+    "rendu visuel slide par slide → pipeline digit-ai-pptx"
+   ]
+  },
+  {
+   "domaine": "Accessibilité (WCAG structurel)",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skilldir}/scripts/oracle-a11y.py",
+    "{file}"
+   ],
+   "checklist": "lang, title, alt, noms accessibles, intitulés liens/boutons, ordre des titres, id uniques, zoom, tabindex",
+   "statut": "ok",
+   "non_juge": [
+    "audit axe-core complet",
+    "contraste (render_page V2)",
+    "navigation clavier"
+   ]
+  },
+  {
+   "domaine": "Performance / poids",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-perf.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "budgets : poids total, taille DOM, JS inline, data URIs, refs externes",
+   "statut": "ok",
+   "non_juge": [
+    "temps de rendu réel / LCP sous charge (non déterministe)"
+   ]
+  },
+  {
+   "domaine": "Format / livraison / versioning",
+   "ext": [
+    ".html",
+    ".htm",
+    ".md",
+    ".json",
+    ".svg",
+    ".zip",
+    ".txt",
+    ".css",
+    ".tf",
+    ".yml",
+    ".yaml",
+    ".csv"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-format.mjs",
+    "{file}"
+   ],
+   "checklist": "encodage UTF-8, intégrité ZIP, placeholders, autoportance HTML",
+   "statut": "ok",
+   "non_juge": []
+  },
+  {
+   "domaine": "Code source",
+   "ext": [
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".py",
+    ".ts",
+    ".tsx"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-code.mjs",
+    "{file}"
+   ],
+   "checklist": "compilation/syntaxe (compile != s'exécute)",
+   "statut": "ok",
+   "non_juge": [
+    "exécution & tests fonctionnels",
+    "lint/typage approfondi"
+   ]
+  },
+  {
+   "domaine": "Sécurité / secrets",
+   "ext": "any",
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-secrets.mjs",
+    "{file}"
+   ],
+   "checklist": "clés/tokens/PAT/mots de passe en clair (+ gitleaks si présent)",
+   "statut": "ok",
+   "non_juge": [
+    "SCA (voir oracle-sca)",
+    "historique git"
+   ]
+  },
+  {
+   "domaine": "Sécurité : vulnérabilités de dépendances (SCA)",
+   "ext": [],
+   "trigger_files": [
+    "requirements.txt",
+    "package.json"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sca.mjs",
+    "{file}"
+   ],
+   "checklist": "pip-audit / npm audit / OSV sur versions épinglées",
+   "statut": "ok",
+   "non_juge": [
+    "dépendances transitives non épinglées"
+   ],
+   "note": "cibler un dossier projet ou un manifeste (requirements.txt / package.json)"
+  },
+  {
+   "domaine": "Sécurité : SAST (injection / exécution dangereuse)",
+   "ext": [
+    ".py",
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".ts",
+    ".tsx",
+    ".jsx"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sast.mjs",
+    "{file}"
+   ],
+   "checklist": "injection SQL/commande, eval/exec, shell=True, désérialisation, XSS (semgrep/bandit si présents, sinon règles intégrées)",
+   "statut": "ok",
+   "non_juge": [
+    "analyse de flux inter-fichiers",
+    "logique métier"
+   ]
+  },
+  {
+   "domaine": "Sortie LLM / IA générative",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-llm.mjs",
+    "{file}",
+    "--schema",
+    "{schema}"
+   ],
+   "checklist": "validation de schéma JSON (auto) + checklist de véracité (manuelle)",
+   "statut": "partiel",
+   "non_juge": [
+    "véracité factuelle (revue sourcée / recompute)",
+    "non-régression sans golden"
+   ],
+   "note": "partie auto = conformité de schéma ; véracité = revue humaine (loi §5)"
+  },
+  {
+   "domaine": "Données / dataset",
+   "ext": [
+    ".csv",
+    ".parquet",
+    ".xlsx",
+    ".tsv"
+   ],
+   "type": "skill",
+   "skill": "data-quality-auditor",
+   "checklist": "complétude, cohérence, distributions, anomalies, model-readiness",
+   "statut": "ok",
+   "non_juge": [
+    "véracité métier des valeurs (le profilage juge la qualité structurelle, pas la justesse métier)"
+   ]
+  },
+  {
+   "domaine": "Schémas / diagrammes",
+   "ext": [],
+   "type": "skill",
+   "skill": "digit-ai-schemas",
+   "checklist": "canevas, routage des flèches, tooltips, charte",
+   "statut": "ok",
+   "non_juge": []
+  },
+  {
+   "domaine": "Prompts",
+   "ext": [],
+   "type": "skill",
+   "skill": "prompt-analyzer-l99",
+   "checklist": "analyse L99 (8 couches), score /100, contrat de sortie",
+   "statut": "ok",
+   "non_juge": []
+  },
+  {
+   "domaine": "Versions de dépendances (« version actuelle »)",
+   "ext": [],
+   "type": "kit",
+   "cmd_ref": "node <projet>/compliance-pack/maj-versions.mjs <dossier-projet>",
+   "checklist": "version interrogée aux registres officiels (jamais estimée)",
+   "statut": "ok",
+   "non_juge": []
+  },
+  {
+   "domaine": "Conformité de rapport d'audit (kit RefAudit)",
+   "ext": [],
+   "type": "kit",
+   "cmd_ref": "node <projet>/compliance-pack/verifier-rapport-audit.mjs \"<rapport>.html\"",
+   "checklist": "checks 1-10 (placeholders, compile, domaines, familles, verdicts ADR, exécution, rendu, auto-test, versions)",
+   "statut": "ok",
+   "non_juge": []
+  },
+  {
+   "domaine": "Clôture de remédiation (kit RefAudit)",
+   "ext": [],
+   "type": "kit",
+   "cmd_ref": "node <projet>/compliance-pack/verifier-remediation.mjs \"<rapport>.html\" --status suivi.json",
+   "checklist": "chaque action faite avec preuve avant nouvel audit",
+   "statut": "ok",
+   "non_juge": []
+  },
+  {
+   "domaine": "Skill (audit)",
+   "ext": [],
+   "type": "skill",
+   "skill": "ameliore-un-skill",
+   "checklist": "grille 7 dimensions /5 pondérée + volet conformité oracles R1-R10 (references/regles-oracles.md)",
+   "statut": "ok",
+   "non_juge": [
+    "conformité oracles R1-R10 (audit dédié, references/regles-oracles.md)"
+   ]
+  },
+  {
+   "domaine": "Calculs / chiffres",
+   "ext": [
+    ".md",
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "checklist": "re-somme exécutée des lignes Total/Somme des tables md/html (milliers fr, virgule/point décimal, €, %, k€) ; tolérance arrondi ; le reste marqué à vérifier",
+   "statut": "partiel",
+   "non_juge": [
+    "calculs hors tables",
+    "formules métier",
+    "chiffres sans total de contrôle"
+   ],
+   "note": "domaine-spécifique : rejouer le calcul du livrable ; pas d'oracle générique",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{file}"
+   ],
+   "content_patterns": [
+    "^\\s*\\|.*\\b(total|totaux|somme|sous-?total)\\b"
+   ]
+  },
+  {
+   "domaine": "Traçabilité des affirmations chiffrées",
+   "ext": [
+    ".md",
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "montant € hors table sans source ni « à vérifier » = bloquant ; % et grands nombres non sourcés = avertissement ; libellé répété à valeurs divergentes = bloquant ; actif selon profil",
+   "statut": "partiel",
+   "non_juge": [
+    "véracité des sources citées",
+    "affirmations non chiffrées",
+    "tables → oracle-calculs"
+   ],
+   "timeout_ms": 600000
+  },
+  {
+   "domaine": "Nommage / convention de livraison",
+   "ext": [
+    ".md",
+    ".html",
+    ".htm",
+    ".pptx",
+    ".potx",
+    ".pdf",
+    ".docx",
+    ".xlsx",
+    ".zip",
+    ".svg"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-nommage.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "fichier au préfixe de la convention du profil → doit matcher la regex complète {TypeDoc} {Client} - {Scope} - {AAAAMMJJ}{a…} ; hors préfixe → SKIP",
+   "statut": "ok",
+   "non_juge": [
+    "fichiers hors préfixe",
+    "pertinence métier des segments"
+   ]
+  },
+  {
+   "domaine": "Jugement rédactionnel (LLM-juge externe)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-judge.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "rubrique figée 5 axes (clarté, structure, complétude, ton, risques) via CLI claude — invocation EXPLICITE, avis outillé non déterministe",
+   "statut": "partiel",
+   "non_juge": [
+    "véracité factuelle",
+    "non-déterminisme assumé : jamais promu en verdict",
+    "CLI absent → SKIP motivé"
+   ]
+  },
+  {
+   "domaine": "Cohérence inter-documents",
+   "ext": "any",
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-coherence.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "même grandeur labellisée ou total de table = même valeur dans tous les livrables du dossier (versions antérieures exclues par convention de nommage)",
+   "statut": "ok",
+   "non_juge": [
+    "cohérence des binaires (pptx, xlsx)",
+    "divergences sémantiques non chiffrées"
+   ]
+  },
+  {
+   "domaine": "Régression visuelle (golden diff)",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "python3",
+    "{skilldir}/scripts/oracle-visual-diff.py",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "timeout_ms": 120000,
+   "checklist": "rendu aux breakpoints du profil = goldens versionnés (± seuil_ratio, tolérance de canal, masques déclarés) ; goldens entérinés hors boucle via --accepter uniquement",
+   "statut": "ok",
+   "non_juge": [
+    "diff PIL par tolérance de canal (pixelmatch non installé — repli déclaré)",
+    "sémantique du changement (voulu vs subi)",
+    "sans golden : SKIP — initialisation hors boucle obligatoire"
+   ]
+  },
+  {
+   "domaine": "Programme de formation (structure pédagogique)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-programme-formation.mjs",
+    "{file}"
+   ],
+   "checklist": "5 contrôles C1-C5 en tête d oracle-programme-formation.mjs ; déclenchement auto par contenu (« durée annoncée : ») — .docx par invocation explicite uniquement (content matching limité aux formats texte)",
+   "statut": "ok",
+   "non_juge": [
+    "qualité pédagogique du contenu → fiche ingenierie-pedagogique",
+    "C2 sans seuil déclaré ni profil",
+    "C3 sans liste de référence fournie"
+   ],
+   "content_patterns": [
+    "durée annoncée *:"
+   ]
+  },
+  {
+   "domaine": "Charte PPTX sémantique (sommaire, kicker, logos, footer)",
+   "ext": [
+    ".pptx"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{file}"
+   ],
+   "checklist": "S1-S4 en tête d oracle-charte-pptx-semantique.mjs (bijection sommaire↔intercalaires, kicker, logos hors couverture/interlocuteurs, footer+pagination)",
+   "statut": "ok",
+   "non_juge": [
+    "logo vs image de contenu distingués par taille seule (seuil 2000000 EMU documenté)",
+    "footers hérités des layouts/masters non inspectés",
+    "structure zip/transitions/JPEG → oracle-pptx",
+    "rendu visuel → digit-ai-pptx"
+   ]
+  },
+  {
+   "domaine": "État de la forge (versions, couverture, fixtures, dormance)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{file}"
+   ],
+   "checklist": "F1-F5 en tête d oracle-etat-forge.mjs (versions montées vs manifeste, fixtures présentes, corpus résolus, ligne de couverture, dormance)",
+   "statut": "ok",
+   "non_juge": [
+    "qualité du contenu des skills (→ ameliore-un-skill)",
+    "F5 sans dernier_usage renseigné",
+    "F4 sans --restitution"
+   ],
+   "trigger_files": [
+    "versions-livrees.json"
+   ]
+  },
+  {
+   "domaine": "Traçabilité exigences AO → réponse",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-exigences-ao.mjs",
+    "{file}",
+    "--exigences",
+    "{profil}"
+   ],
+   "checklist": "X1-X3 en tête d oracle-exigences-ao.mjs (exigences tracées par motif, rubriques à l identique, pièces livrées) — invocation explicite par dossier avec son référentiel (--exigences), pas de déclenchement auto",
+   "statut": "ok",
+   "non_juge": [
+    "qualité de la réponse à chaque exigence (→ propale-review/juge)",
+    "exhaustivité du référentiel fourni"
+   ]
+  },
+  {
+   "domaine": "Simulateur JS (KPI vs modèle de référence)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-simulateur-js.mjs",
+    "{file}"
+   ],
+   "checklist": "J1-J2 en tête d oracle-simulateur-js.mjs (autoportance des libs, KPI aux valeurs par défaut vs attendus à tolérance déclarée) — invocation explicite par dossier avec ses attendus (--attendus)",
+   "statut": "ok",
+   "non_juge": [
+    "exactitude métier du modèle de référence (les attendus font foi)",
+    "rendu visuel (→ render_page/visual-diff)",
+    "interactions au-delà des valeurs par défaut"
+   ]
+  },
+  {
+   "domaine": "Parité de migration (routes symétriques)",
+   "ext": [
+    ".txt"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-parite-migration.mjs",
+    "{file}"
+   ],
+   "checklist": "P1-P5 en tête d oracle-parite-migration.mjs (captures symétriques, canonical/og normalisés, domaine cible, liens, noindex) — le fichier de routes déclare source:/migre:/domaine-cible:",
+   "statut": "ok",
+   "non_juge": [
+    "codes HTTP réels (fetch hors captures)",
+    "parité visuelle (→ visual-diff)",
+    "performances (→ oracle-perf)"
+   ]
+  },
+  {
+   "domaine": "Inventaire de connecteurs (interop)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-inventaire-interop.mjs",
+    "{file}"
+   ],
+   "checklist": "I1-I4 en tête d oracle-inventaire-interop.mjs (colonnes obligatoires, cellules renseignées, vocabulaire fermé des statuts, doublons)",
+   "statut": "ok",
+   "non_juge": [
+    "exactitude technique des connecteurs (→ interop-archi)",
+    "complétude du périmètre"
+   ],
+   "content_patterns": [
+    "Moyen d.échange"
+   ]
+  },
+  {
+   "domaine": "Plan de mission (cohérence structurelle)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-plan-de-mission.mjs",
+    "{file}"
+   ],
+   "checklist": "W1-W7 en tête d oracle-plan-de-mission.mjs (deadlines, dépendances acycliques, critères de sortie, chemin critique, registre de risques, parties prenantes, mesures de succès — W5-W7 ajoutés le 17/08/2026, TF-0323)",
+   "statut": "ok",
+   "non_juge": [
+    "réalisme des charges/dates",
+    "export Notion à câbler (réserve O8)",
+    "qualité d un risque (cotation plausible, parade praticable, exhaustivité) — la forme seule est jugée",
+    "échelle de cotation probabilité/impact non arrêtée (revue 17/11/2026) : valeur exigée non vide, jamais confrontée à un vocabulaire fermé",
+    "complétude de la cartographie des parties prenantes",
+    "sincérité d une cible et existence réelle de sa source (aucun relevé effectué)",
+    "cadence et artefacts périodiques : hors domaine — désormais JUGÉS par oracle-cadence-de-mission (C1-C5, TF-0324 du 18/08/2026), qui lit le même état de mission et ne crée aucun second porteur d état"
+   ],
+   "content_patterns": [
+    "## Workstream"
+   ]
+  },
+  {
+   "domaine": "Cadence de mission (artefacts périodiques)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-cadence-de-mission.mjs",
+    "{file}"
+   ],
+   "checklist": "C1-C5 en tête d oracle-cadence-de-mission.mjs (attributs dus et nommés quand ils manquent, cadence en ensemble fermé — donnée d instance et jamais valeur codée, fraîcheur datée avec son retard en jours, source existante sur le disque, et C5 : les CINQ artefacts attendus tous rendus — déclarés ou écartés AVEC motif). TF-0324, 18/08/2026",
+   "statut": "ok",
+   "non_juge": [
+    "le CONTENU des artefacts : la fraîcheur seule est jugée. Le R de la revue RAID est jugé par W5 d oracle-plan-de-mission, le REX par S1-S8 d oracle-synthese, les chiffres par oracle-claims — aucun n est dupliqué",
+    "la sincérité de `derniere` : la date déclarée n est pas confrontée à la date de modification du fichier — limite du déclaratif, pas un oubli",
+    "les A, I et D de la revue RAID : seul le R est outillé (W5). Leur schéma reste à écrire",
+    "la comparaison attendu ↔ constaté du suivi des bénéfices : aucun oracle de l écosystème ne juge une SÉRIE TEMPORELLE — seconde capacité nommée par la cartographie du 18/08",
+    "la date de référence : `--aujourdhui AAAA-MM-JJ` si fournie, sinon l horloge du poste"
+   ]
+  },
+  {
+   "domaine": "Post LinkedIn (contraintes de publication)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-post-linkedin.mjs",
+    "{file}"
+   ],
+   "checklist": "L1-L5 en tête d oracle-post-linkedin.mjs (longueur, hook, zéro URL, Unicode Bold réversible, hashtags 3-5) — invocation explicite sur le fichier post",
+   "statut": "ok",
+   "non_juge": [
+    "qualité éditoriale (→ juge)",
+    "script du skill non rejoué (mapping Unicode standard)",
+    "lien en 1er commentaire non vérifiable"
+   ]
+  },
+  {
+   "domaine": "Fiches prospection ICE (structure et classement)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-fiche-prospection-ice.mjs",
+    "{file}"
+   ],
+   "checklist": "K1-K3 en tête d oracle-fiche-prospection-ice.mjs (9 champs du skill, bornes ICE 1-10, classement = re-tri exécuté)",
+   "statut": "ok",
+   "non_juge": [
+    "montants non sourcés (→ oracle-claims + exemptions 21/07)",
+    "pertinence métier",
+    "charte visuelle (→ page-html/fiches-html)"
+   ],
+   "content_patterns": [
+    "Score ICE"
+   ]
+  },
+  {
+   "domaine": "CDC de cadrage (contrat de sortie)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-cdc-cadrage.mjs",
+    "{file}"
+   ],
+   "checklist": "C1 7 sections 0-6 non vides · C2 commandes+sorties ou inventaire impossible · C3 verdicts RÉUTILISÉ/ÉTENDU/CRÉÉ · C4 ≥6 seuils chiffrés et aucun objectif de volume · C5 doublet surface+mutation et interdiction du score de mutation seul · C6 noyau/adaptateurs et limite de couverture déclarée · C7 termes subjectifs comme critère · C8 marquage [FAIT]/[HYP] · C9 zéro bloc de code · C10 questions indicées en fin avec reco et défaut",
+   "statut": "ok",
+   "non_juge": [
+    "authenticité des sorties de commandes (forme jugée, pas véracité)",
+    "pertinence des valeurs de seuils",
+    "justesse d application du marquage FAIT/HYP",
+    "objectifs de volume formulés implicitement",
+    "qualité rédactionnelle et faisabilité du plan"
+   ],
+   "provenance": "chantier Forge Tests, 2026-08-02 — fixture rouge dérivée d un CDC réel pré-corrections",
+   "content_patterns": [
+    "^## SECTION 0\\b"
+   ],
+   "note": "un oracle de gabarit documentaire ne doit jamais matcher une extension entière (RA-3, 05/08/2026) — trigger restreint au marqueur de gabarit ## SECTION 0, jamais à .md seul"
+  },
+  {
+   "domaine": "Design généré : marqueurs de slop",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-design/oracles/oracle-slop.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "S1-S10 en tête d oracle-slop.mjs (bandeau latéral, texte en dégradé, polices réflexes, noir/blanc purs, palette IA, emojis, grille clonée, easing daté, rayon uniforme, sparkline décoratif)",
+   "statut": "ok",
+   "non_juge": [
+    "généricité de la direction artistique (jugement humain)",
+    "rendu réel : déléguer à render_page.py"
+   ],
+   "content_patterns": [
+    "Données de démonstration"
+   ]
+  },
+  {
+   "domaine": "Système de marque : traçabilité des tokens",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-design/oracles/oracle-tokens.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "T1-T6 en tête d oracle-tokens.mjs (couleur en dur, police en dur, échelle 4pt, parité clair/sombre, contraste 4.5:1, chroma aux extrêmes)",
+   "statut": "ok",
+   "non_juge": [
+    "contraste des couleurs semi-transparentes ou composées : render_page.py V2",
+    "adéquation de la palette à la marque"
+   ],
+   "content_patterns": [
+    "Données de démonstration"
+   ]
+  },
+  {
+   "domaine": "Cible mobile : contrat d'usage tactile",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-design/oracles/oracle-mobile.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "M1-M6 en tête d oracle-mobile.mjs (viewport et zoom, cibles 44px, safe-area-inset, reflow des tables sous 768px, orientation paysage, prefers-reduced-motion)",
+   "statut": "ok",
+   "non_juge": [
+    "taille tactile effective après cascade",
+    "gestes réels : parcours à exécuter"
+   ],
+   "content_patterns": [
+    "Données de démonstration"
+   ]
+  },
+  {
+   "domaine": "Visuels générés : traçabilité et budget",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-design/oracles/oracle-images.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "I1-I6 en tête d oracle-images.mjs (alt utile, plafond unitaire, plafond global 10 Mo, zéro image réseau, manifeste de génération, complétude prompt/modèle/date)",
+   "statut": "ok",
+   "non_juge": [
+    "ce que l image montre réellement : revue humaine obligatoire",
+    "qualité esthétique"
+   ],
+   "content_patterns": [
+    "Données de démonstration"
+   ]
+  },
+  {
+   "domaine": "Corpus design : résolution des sources",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-design/oracles/oracle-corpus.mjs",
+    "{dir}",
+    "--json-only"
+   ],
+   "checklist": "C1-C7 en tête d oracle-corpus.mjs (colonnes, cellules, vocabulaire des statuts, unicité, polices réflexes, sources résolues, monoculture inter-clients) — invocation explicite par dossier",
+   "statut": "ok",
+   "non_juge": [
+    "pertinence sectorielle d un style : jugement humain",
+    "licence d embarquement des polices"
+   ]
+  },
+  {
+   "domaine": "Mouvement : craft de l'animation",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-design/oracles/oracle-motion.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "R1-R7 en tête d oracle-motion.mjs (transition all, scale(0), ease-in sur UI, durée > 300 ms, transform-origin center sur élément ancré, propriété de layout animée, survol animé non protégé) — dérivé de review-animations d Emil Kowalski (MIT)",
+   "statut": "ok",
+   "non_juge": [
+    "fréquence d usage (100+/jour : ne pas animer du tout)",
+    "cohésion avec la personnalité du composant",
+    "timing asymétrique : intention non décidable sur le fichier"
+   ],
+   "content_patterns": [
+    "Données de démonstration"
+   ]
+  },
+  {
+   "domaine": "Filtres de colonne sur tableaux de donnees",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-filtres-tableau.mjs",
+    "{file}"
+   ],
+   "content_patterns": [
+    "<table"
+   ],
+   "checklist": "G1 tableau en perimetre (>= 8 lignes et >= 1 colonne categorielle) marque data-filterable ou exempte avec motif · G2 asset table-filters.js reference · G3 tableau initialise · G4 id + thead porteur de th · G5 compteur data-tf-count-for avec aria-live · G6 regle @media print reaffichant tr[data-tf-hidden]",
+   "statut": "ok",
+   "non_juge": [
+    "comportement d'execution (panneaux, Tous/Aucun, recherche, combinaison ET) — exige un rendu navigateur",
+    "pertinence metier des colonnes retenues comme categorielles (heuristique de cardinalite)",
+    "tableaux exemptes par data-filterable=\"off\""
+   ]
+  },
+  {
+   "domaine": "Exigences produit : testabilité de l'énoncé",
+   "ext": [],
+   "content_patterns": [
+    "\"exigences\"\\s*:\\s*\\["
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-conception/oracles/oracle-exigences.mjs",
+    "{file}"
+   ],
+   "checklist": "E1 champs obligatoires · E2 identifiant unique et non réaffecté · E3 critère chiffré avec unité ou binaire observable · E4 liste noire de termes subjectifs · E5 palier valide · E6 énoncé atomique",
+   "statut": "ok",
+   "non_juge": [
+    "pertinence produit de l'exigence",
+    "atomicité sémantique sans marqueur d'énumération"
+   ]
+  },
+  {
+   "domaine": "Traçabilité besoin ↔ exigence ↔ vue (référentiel de conception)",
+   "ext": [],
+   "content_patterns": [
+    "\"exigences\"\\s*:\\s*\\["
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-conception/oracles/oracle-tracabilite.mjs",
+    "{file}"
+   ],
+   "checklist": "T1 aucun orphelin des deux côtés · T2 exactement un critère par exigence · T3 vue alignée sur l'empreinte sha256 de sa source · T4 statut épistémique porteur de sa source ou de son mode de validation",
+   "statut": "ok",
+   "non_juge": [
+    "justesse du rattachement besoin ↔ exigence",
+    "véracité de la source citée",
+    "vues non passées en --vue (T3 ne juge que ce qu'on lui donne)"
+   ]
+  },
+  {
+   "domaine": "Couverture de la surface fonctionnelle",
+   "ext": [],
+   "content_patterns": [
+    "\"exigences\"\\s*:\\s*\\["
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-conception/oracles/oracle-surface.mjs",
+    "{file}"
+   ],
+   "checklist": "S1 chaque élément de surface non couvert est NOMMÉ · S2 ratio publié avec sa liste (seuil 95 % par défaut, --seuil) · S3 lien de surface valide ou raison hors_surface déclarée",
+   "statut": "ok",
+   "non_juge": [
+    "complétude de l'inventaire de surface lui-même"
+   ]
+  },
+  {
+   "domaine": "Affirmations chiffrées d'un référentiel d'exigences",
+   "ext": [],
+   "content_patterns": [
+    "\"exigences\"\\s*:\\s*\\["
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-conception/oracles/oracle-claims.mjs",
+    "{file}"
+   ],
+   "checklist": "A1 tout chiffre d'un champ narratif (besoin, énoncé) est tracé à une source ou marqué « à vérifier » · A2 périmètre écarté déclaré : un chiffre de critère est une cible fixée, pas une affirmation sur le monde",
+   "statut": "ok",
+   "non_juge": [
+    "véracité de la source citée",
+    "affirmations non chiffrées"
+   ],
+   "timeout_ms": 600000
+  },
+  {
+   "domaine": "Dossier CAB (DOCX, template Client-A)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-dossier-cab.mjs",
+    "{file}"
+   ],
+   "checklist": "C1 sections §1-§4 + points de contrôle + e-mails FR/EN · C2 tableau d'en-tête renseigné (nom du changement, demandeur, date prévue) · C3 aucun placeholder du template laissé · C4 chaque section porte du contenu · C5 date du nom de fichier == date prévue · C6 règle Easyvista J+5 (si --depot) · C7 numérotation Word : deux listes séparées par un titre ne partagent pas leur numId · C8 marqueurs [À COMPLÉTER] recensés (warn) · C9 couleur de titres de la charte en mise en forme directe — INVOCATION EXPLICITE uniquement : le .docx est un zip, le contenu ne se filtre pas, et router tout .docx ici ferait échouer à tort un document qui n'est pas un dossier CAB",
+   "statut": "ok",
+   "non_juge": [
+    "la JUSTESSE métier du changement décrit — un dossier complet et faux passe C1-C9",
+    "l'opportunité de la date de dépôt hors règle J+5",
+    "le rendu final Word (pagination, sauts) — l'oracle lit le XML, pas la mise en page paginée"
+   ],
+   "provenance": "né le 20/08/2026 sur un dossier MEP réel (défaut C9 observé : titres recréés en bleu Word par défaut) ; versionné le 20/08 par TF-0415 — il avait vécu un jour dans la seule copie INSTALLÉE, hors de tout dépôt"
+  },
+  {
+   "domaine": "Nom de client dans un depot publiable",
+   "ext": [
+    ".bundle",
+    "<repertoire de depot git>"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-nom-client-publie.mjs",
+    "{file}",
+    "--referentiel={referentiel}"
+   ],
+   "checklist": "C1 contenus des fichiers suivis de l'arbre courant · C2 noms des fichiers suivis · C3 messages de commit de tout l'historique · C4 noms et contenus des fichiers dans tout l'historique (y compris les fichiers retires de l'arbre)",
+   "statut": "ok",
+   "non_juge": "le TEXTE seul (ni image, ni archive, ni binaire) · les seuls noms du referentiel · la visibilite reelle du depot chez l'hebergeur · les fichiers non suivis ou ignores · les copies deja faites (forks, miroirs, caches)",
+   "commande": "scripts/oracle-nom-client-publie.mjs <depot|bundle> [--referentiel=<chemin hors depot>]",
+   "note": "Juge un DEPOT sur quatre angles (contenus suivis, noms de fichiers, messages de commit, historique complet). Le referentiel des noms interdits est une DONNEE vivant HORS des depots publies : sans lui l'oracle rend SKIP, jamais PASS."
+  }
+ ]
 }
