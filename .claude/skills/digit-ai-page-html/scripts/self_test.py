@@ -64,6 +64,14 @@ CAS = {
     # le meme CSS et y ajoute une vraie ponctuation orpheline : la regle doit encore mordre.
     "l1-selecteur-descendant-vert.html": set(),
     "l1-selecteur-descendant-rouge.html": {"L1"},
+    # TF-0683 (26/08) — le sujet etait bien lu, mais la CONTRAINTE D ANCETRE etait jetee :
+    # `.toc a` mettait en bloc TOUT `<a>` du document. Mesure sur piece : six constats faux sur
+    # un livrable, dont les deux seules issues vertes etaient de RETIRER des liens d une prose ou
+    # de RENOMMER une classe de sommaire pour tromper le controle. La verte porte un sommaire qui
+    # FERME avant la prose ; la rouge porte le meme CSS avec le lien VRAIMENT dans le sommaire,
+    # parce qu un matcher devenu trop strict passerait sinon pour un correctif.
+    "l1-ancetre-hors-portee-vert.html": set(),
+    "l1-ancetre-dans-portee-rouge.html": {"L1"},
     # TF-0517 (22/08) — retour DIRECT du client : « je ne sais pas ce qu est E2 ». Un renvoi code
     # porte son sens la ou on le lit. La verte emploie la bonne pratique qui existait DEJA dans le
     # rapport HTML du meme projet : une infobulle qui developpe le code, plus son ancre de

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L1 ancetre dans portee — 20260828a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--faint:#64748B;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.toc-d{color:var(--faint)}
+.ch-apprend{color:var(--ink)}
+.toc{margin:0 0 12px}
+.encadre{border:1px solid var(--faint);padding:8px}
+/* TF-0683, SECOND SENS : le lien EST descendant de `.encadre`, la regle s'applique
+   vraiment, la phrase est vraiment coupee, et L1 doit encore mordre. Sans ce cas, un
+   matcher devenu trop strict passerait pour un correctif. */
+.encadre a{display:block}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L1 — quand l'ancetre est bien la, la regle mord</h1>
+<nav class="toc" aria-label="Sommaire">
+<ul><li><a href="#s1">Le cas mesure <span class="toc-d">la coupure est reelle ici</span></a></li></ul>
+</nav>
+<section id="s1">
+<h2>Le cas mesure</h2>
+<p class="ch-apprend">Ce chapitre porte une vraie coupure : le lien y est descendant de l'encadre que le selecteur vise, donc la mise en bloc a bien lieu.</p>
+<div class="encadre">
+<p>Voir la <a href="#matrice" title="Matrice de decision, section 7.2 du rapport">matrice de decision</a>. La phrase est vraiment coupee, le lien etant mis en bloc en son milieu.</p>
+</div>
+<h2 id="matrice">Matrice de decision</h2>
+<p>La cible du renvoi ci-dessus, sans autre role que de resoudre l'ancre.</p>
+</section>
+</main></body></html>

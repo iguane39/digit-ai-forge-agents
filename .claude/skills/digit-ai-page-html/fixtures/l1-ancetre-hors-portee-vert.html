@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L1 contrainte d'ancetre — 20260828a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--faint:#64748B;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.toc-d{color:var(--faint)}
+.ch-apprend{color:var(--ink)}
+/* TF-0683 : la regle met en bloc les liens DU SOMMAIRE, et eux seuls. Le sommaire FERME
+   avant la prose, donc aucun lien de la prose n'en descend. Un matcher qui jette la
+   contrainte d'ancetre rendait ici des L1 faux, et les deux seules issues vertes etaient
+   de retirer des liens de la prose ou de renommer la classe du sommaire. */
+.toc a{display:block}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L1 — la contrainte d'ancetre d'un selecteur descendant se resout</h1>
+<nav class="toc" aria-label="Sommaire">
+<ul><li><a href="#s1">Le cas mesure <span class="toc-d">ce que la regle attribuait a tort</span></a></li></ul>
+</nav>
+<section id="s1">
+<h2>Le cas mesure</h2>
+<p class="ch-apprend">Ce chapitre montre pourquoi un lien de prose n'est pas mis en bloc par un selecteur de sommaire, et ce que coutait le contraire.</p>
+<p>Pour le detail, voir la <a href="#matrice" title="Matrice de decision, section 7.2 du rapport">matrice de decision</a>. La phrase continue apres le lien, et elle est parfaitement formee.</p>
+<p>Second renvoi vers le meme chapitre, pour verifier que la mesure ne tient pas au hasard d'un seul lien : <a href="#matrice" title="Matrice de decision, section 7.2 du rapport">detail de la matrice</a>. La phrase n'est pas coupee non plus.</p>
+<h2 id="matrice">Matrice de decision</h2>
+<p>La cible des renvois ci-dessus, sans autre role que de resoudre les ancres.</p>
+</section>
+</main></body></html>
