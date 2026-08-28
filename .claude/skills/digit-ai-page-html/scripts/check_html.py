@@ -718,35 +718,132 @@ def check_lisibilite(html: str, a: Arbre):
     #
     # On découpe donc sur les combinateurs (espace, `>`, `+`, `~`), on garde le DERNIER compound,
     # et on retient AUSSI quel sélecteur a fait entrer chaque jeton : le message le nomme.
-    blocs = set()
-    origine = {}
+    # LA CONTRAINTE D'ANCÊTRE SE RÉSOUT, ELLE NE SE JETTE PAS (TF-0683, mesure du 26/08/2026).
+    #
+    # Le correctif précédent (TF-0488) avait raison de retenir le DERNIER compound d'un sélecteur :
+    # dans `.kpi-label a`, c'est bien `a` qui reçoit le display. Mais il jetait tout ce qui
+    # précédait — et un jeton `a` mis dans un ensemble plat rend BLOC TOUT `<a>` DU DOCUMENT.
+    #
+    # MESURE SUR PIÈCE : un livrable recevait six constats L1 attribués au sélecteur `.toc a`, sur
+    # des liens dont AUCUN n'est descendant du `<nav class="toc">` — celui-ci fermant à l'octet
+    # 35102 quand les liens incriminés commencent à 35661. Dans un navigateur, la règle ne
+    # s'applique à aucun d'eux.
+    #
+    # CE QUE COÛTAIT LE FAUX POSITIF, et c'est pire que le bruit : les deux seuls gestes qui
+    # rendaient le livrable vert étaient de RETIRER des liens d'une prose où ils ont un sens, ou de
+    # RENOMMER une classe de sommaire pour tromper le contrôle. Les deux dégradent le document —
+    # or L1 existe précisément pour protéger la prose. Un contrôle dont la seule issue est la
+    # dégradation de ce qu'il juge travaille contre son propre objet.
+    #
+    # LE RISQUE INVERSE EST NOMMÉ ET TRAITÉ : un matcher trop strict laisserait passer une vraie
+    # coupure. Les sélecteurs qu'on ne sait pas évaluer — pseudo-classes, attributs, combinateurs
+    # de fratrie — restent donc PERMISSIFS (le sujet seul suffit à déclarer le bloc), mais ils ne
+    # sont plus NOMMÉS comme cause : dès qu'un contrôle dit POURQUOI, il en répond, et accuser la
+    # mauvaise pièce envoie corriger au mauvais endroit avec l'autorité d'un constat mesuré.
+    BLOCS_PAR_DEFAUT = {"p", "div", "section", "li", "dd", "dt", "h1", "h2", "h3", "h4",
+                        "ul", "ol", "dl", "table", "details", "summary", "nav", "header",
+                        "footer", "main", "article", "aside", "blockquote", "figure"}
+
+    def _decouper(sel):
+        """`.toc > ul a` -> (['.toc', 'ul', 'a'], ['>', ' ']). Combinateurs conservés."""
+        parties, comb, tampon, i = [], [], "", 0
+        while i < len(sel):
+            c = sel[i]
+            if c in ">+~":
+                if tampon.strip():
+                    parties.append(tampon.strip())
+                    comb.append(c)
+                tampon, i = "", i + 1
+            elif c.isspace():
+                j = i
+                while j < len(sel) and sel[j].isspace():
+                    j += 1
+                if j < len(sel) and sel[j] in ">+~":
+                    i = j
+                    continue
+                if tampon.strip():
+                    parties.append(tampon.strip())
+                    comb.append(" ")
+                tampon, i = "", j
+            else:
+                tampon, i = tampon + c, i + 1
+        if tampon.strip():
+            parties.append(tampon.strip())
+        return parties, comb
+
+    def _compound_matche(n, compound):
+        mt = re.match(r"^([a-zA-Z][\w-]*)", compound)
+        if mt and n.tag != mt.group(1).lower():
+            return False
+        for cl in re.findall(r"\.([A-Za-z_][\w-]*)", compound):
+            if cl not in n.classes():
+                return False
+        for idv in re.findall(r"#([A-Za-z_][\w-]*)", compound):
+            if n.att("id") != idv:
+                return False
+        return True
+
+    # Un compound n'est évaluable que s'il ne porte QUE tag, classes et id. Une pseudo-classe ou un
+    # sélecteur d'attribut dépend d'un état que ce contrôle ne connaît pas.
+    def _evaluable(compound):
+        return not re.search(r"[\[\]:()*]", compound)
+
+    regles = []          # (parties, combinateurs, sélecteur source, vérifiable)
     for sel, d in css:
         if d.get("display") in ("block", "flex", "grid", "table", "list-item"):
             for morceau in sel.split(","):
                 m = morceau.strip()
                 if not m:
                     continue
-                sujet = re.split(r"[\s>+~]+", m)[-1]
-                jetons = ["." + cl for cl in re.findall(r"\.([A-Za-z_][\w-]*)", sujet)]
-                mt = re.match(r"^([a-z][a-z0-9]*)", sujet)
-                if mt:
-                    jetons.append(mt.group(1))
-                for j in jetons:
-                    blocs.add(j)
-                    origine.setdefault(j, m)
-    blocs |= {"p", "div", "section", "li", "dd", "dt", "h1", "h2", "h3", "h4",
-              "ul", "ol", "dl", "table", "details", "summary", "nav", "header",
-              "footer", "main", "article", "aside", "blockquote", "figure"}
+                parties, comb = _decouper(m)
+                if not parties:
+                    continue
+                verifiable = all(_evaluable(p) for p in parties) and all(c in (" ", ">") for c in comb)
+                regles.append((parties, comb, m, verifiable))
+
+    def _chaine_matche(n, parties, comb):
+        if not _compound_matche(n, parties[-1]):
+            return False
+        courant = n
+        for k in range(len(parties) - 2, -1, -1):
+            if comb[k] == ">":
+                courant = courant.parent
+                if courant is None or not _compound_matche(courant, parties[k]):
+                    return False
+            else:
+                courant = courant.parent
+                while courant is not None and not _compound_matche(courant, parties[k]):
+                    courant = courant.parent
+                if courant is None:
+                    return False
+        return True
+
+    def _regle_qui_applique(n):
+        """La règle VÉRIFIÉE qui met `n` en bloc, sinon la règle PERMISSIVE, sinon None."""
+        for parties, comb, source, verifiable in regles:
+            if verifiable and _chaine_matche(n, parties, comb):
+                return source, True
+        for parties, comb, source, verifiable in regles:
+            if not verifiable and _compound_matche(n, parties[-1]):
+                return source, False
+        return None, False
 
     def est_bloc(n):
-        return n.tag in blocs or any(("." + c) in blocs for c in n.classes())
+        if n.tag in BLOCS_PAR_DEFAUT:
+            return True
+        return _regle_qui_applique(n)[0] is not None
 
     # Le sélecteur fautif, pour que le message mette sur la voie (TF-0488). Une règle qui désigne
     # la phrase oblige à deviner ; une règle qui nomme le sélecteur se corrige en une lecture.
+    # Depuis TF-0683, elle ne nomme QUE ce qu'elle a vérifié.
     def pourquoi_bloc(n):
-        for j in [n.tag, *["." + c for c in n.classes()]]:
-            if j in origine:
-                return f" (mis en bloc par le sélecteur « {origine[j]} »)"
+        source, verifie = _regle_qui_applique(n)
+        if source and verifie:
+            return f" (mis en bloc par le sélecteur « {source} »)"
+        if source:
+            return (f" (sélecteur « {source} » retenu SANS vérification de sa contrainte "
+                    "d'ancêtre : il porte une pseudo-classe, un attribut ou un combinateur "
+                    "de fratrie)")
         return " (élément de bloc par défaut du langage)"
 
     orphelines = []
