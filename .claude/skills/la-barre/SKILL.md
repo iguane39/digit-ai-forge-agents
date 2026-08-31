@@ -15,7 +15,6 @@ description: >
   constructeur/critique (→ forge-agents).
 # TF-0475 : le noyau declare ce skill APPELE PAR MOT-CLE (lexique d'invocation RV-6).
 # Le modele ne le charge donc pas de lui-meme ; l'appel direct reste entier.
-disable-model-invocation: true
 ---
 
 # La Barre
