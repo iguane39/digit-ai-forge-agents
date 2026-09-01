@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L23 — garde [hidden] posée</title>
+<style>
+:root{--ink:#0F172A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+/* La garde du socle : l'attribut hidden reste souverain, quel que soit le display que la
+   classe du composant pose. C'est la seule différence avec la fixture rouge. */
+[hidden]{display:none !important}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.voile{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L23 — le même voile, la garde posée</h1>
+<p>Le même panneau, le même display explicite : masqué pour de vrai cette fois.</p>
+<div class="voile" hidden><p>Panneau modal masqué.</p></div>
+</main></body></html>

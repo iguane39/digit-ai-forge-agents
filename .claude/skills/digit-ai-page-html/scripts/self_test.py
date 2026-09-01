@@ -55,6 +55,13 @@ CAS = {
     # ne promet rien.
     "l22-promesse-non-tenue.html": {"L22"},
     "l22-promesse-tenue.html": set(),
+    # TF-0733 (31/08) — le voile invisible aux seize oracles : un composant masque par `hidden`
+    # mais style par un display EXPLICITE devient un rectangle transparent qui intercepte chaque
+    # clic — invisible en capture, invisible a la lecture, trouve par elementFromPoint chez le
+    # produit. Les deux fixtures ne different que par la garde `[hidden]{display:none !important}` ;
+    # une page qui n'emploie pas `hidden` n'est pas jugee (borne ecrite dans la regle).
+    "l23-voile-sans-garde.html": {"L23"},
+    "l23-garde-posee.html": set(),
     "l1-texte-coupe.html": {"L1"},
     "l1-ponctuation-orpheline.html": {"L1"},
     # TF-0488 (22/08) — le SUJET d un selecteur est son DERNIER composant. La verte porte
