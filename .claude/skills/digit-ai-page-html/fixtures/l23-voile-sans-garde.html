@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L23 — voile hidden sans garde</title>
+<style>
+:root{--ink:#0F172A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* La scène du 31/08 : le composant masqué par l'attribut porte un display EXPLICITE — la
+   règle CSS l'emporte sur le display:none de l'agent utilisateur, et le voile transparent
+   couvre l'écran en interceptant chaque clic. Aucune garde [hidden] dans cette feuille. */
+.voile{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L23 — le voile invisible aux seize oracles</h1>
+<p>La page paraît saine : le panneau est masqué par son attribut, la capture ne montre rien.</p>
+<div class="voile" hidden><p>Panneau modal masqué.</p></div>
+</main></body></html>

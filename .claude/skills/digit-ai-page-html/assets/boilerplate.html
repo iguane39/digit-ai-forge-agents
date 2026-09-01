@@ -110,11 +110,25 @@
       line-height: 1.55;
       font-size: 16px;
     }
+    /* TF-0733 (31/08, lot produit) — LE VOILE INVISIBLE AUX SEIZE ORACLES. Un panneau masque
+       par l'attribut `hidden` mais style par un `display: flex` explicite : la regle CSS
+       l'emporte sur le display:none que l'attribut tient de la feuille de l'agent utilisateur,
+       et un rectangle TRANSPARENT couvre l'ecran en interceptant chaque clic — invisible en
+       capture (transparent), invisible a la lecture (syntaxiquement correct), trouve par
+       document.elementFromPoint. Cette ligne rend l'attribut SOUVERAIN : un composant masque
+       le reste, quel que soit le display que sa classe pose. Elle est OBLIGATOIRE de charte
+       sur toute page qui emploie `hidden` (controle L23 de check_html.py). */
+    [hidden] { display: none !important; }
+
     /* Regle L2 (corrigee, TF-0421 — lot Client-B 20260820a) : la mesure de lecture est portee
        par le CONTENEUR, jamais par le paragraphe. L'ancienne doctrine (« conteneur relatif,
        prose bornee en ch ») bridait chaque <p> a 75ch : a 1 800 px, 60 % de la fenetre vide,
        livre vert, refuse par le client. Deux gabarits de chapitre NOMMES remplacent la bride :
-         .chap.lire  — conteneur de lecture (~1 080 px centres) : le texte le remplit ;
+         .chap.lire  — un PASSAGE de lecture (~1 080 px centres) INSERE dans une mise en page
+                       large — JAMAIS l'enveloppe d'un chapitre entier : employe comme
+                       enveloppe, il place tout le document a 56 % d'une fenetre de 1 920 px,
+                       sous le plancher de largeur que ce squelette enonce, et render_page L2
+                       le refuse a bon droit (TF-0724 D2, constate par le destinataire humain) ;
          .chap.duo   — grille 7/5 texte + encart utile (KPI, legende, figure), repli < 1 100 px.
        Un <p> seul sur une largeur de 1 680 px reste illisible : c'est le CHAPITRE qu'on
        retrecit (.chap.lire), pas la ligne. render_page.py L2 juge quelle que soit la propriete. */
@@ -146,9 +160,19 @@
        pas ne se replie pas — c'est voulu : le repli sans etiquette rendrait des valeurs nues. */
     .table-hote { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
-    caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 6px 0; }
-    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+    caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 8px 0; }
+    /* TF-0724 D1 (31/08, lot produit) — `overflow-wrap: anywhere` NE VIT PLUS sur `th, td` :
+       pose la, la coupure s'appliquait a TOUTE cellule de prose, et L19 — le controle qui
+       accompagne ce squelette — refusait precisement cela. Tout document bati sur le socle et
+       portant un tableau de texte echouait SANS QUE SON AUTEUR AIT RIEN ECRIT (deux echecs
+       mesures sur un livrable, imputables au seul CSS du socle ; la surcharge ne suffisait
+       pas, l'oracle lisant la declaration et non la cascade). La coupure vit desormais aux
+       DEUX seuls endroits legitimes : le repli en cartes (composants.md §6, palier oblige,
+       tolere par L19 depuis TF-0554) et la classe explicite `.cellule-code` pour les cellules
+       d'identifiants techniques — une classe qui DIT son usage, comme L19 le demande. */
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th { font-family: var(--head); font-weight: 700; }
+    td.cellule-code, th.cellule-code { font-family: var(--mono); overflow-wrap: anywhere; }
     @media (max-width: 900px) {
       .table-hote { overflow-x: visible; }
       table.repli-cartes thead { display: none; }
@@ -158,10 +182,14 @@
       table.repli-cartes td:not([data-label])::before { content: none; }
     }
 
-    h1, h2, h3 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+    h1, h2, h3, h4 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
     h1 { font-size: 2rem; margin: 0 0 .25em; }
     h2 { font-size: 1.4rem; font-weight: 700; margin: 2em 0 .5em; }
     h3 { font-size: 1.1rem; font-weight: 700; margin: 1.5em 0 .4em; }
+    /* TF-0724 D3 : le socle s'arretait a h3 — un document au quatrieme niveau devait le styler
+       lui-meme, et declenchait « saut de hierarchie » s'il n'intercalait pas un h3. Le niveau 4
+       existe ; au-dela, c'est un composant, pas un titre. */
+    h4 { font-size: 1rem; font-weight: 700; margin: 1.2em 0 .3em; }
     p, li { margin: 0 0 1em; }
     a { color: var(--blue); }
     code, pre { font-family: var(--mono); }

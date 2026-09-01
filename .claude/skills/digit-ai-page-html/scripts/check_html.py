@@ -1418,6 +1418,38 @@ def check_lisibilite(html: str, a: Arbre):
     if len(orphelins) > 6:
         fails.append(f"L21 composant déclaré sans style : {len(orphelins) - 6} autre(s) classe(s).")
 
+    # --- L23 : l'attribut `hidden` reste SOUVERAIN face au CSS (TF-0733, 31/08) --------------
+    #
+    # LE FAIT, mesuré chez un produit avec SEIZE oracles au vert. Un panneau modal masqué par
+    # `hidden` était stylé par un `display: flex` explicite : la règle CSS l'emporte sur le
+    # `display: none` que l'attribut tient de la feuille de l'agent utilisateur, et un rectangle
+    # TRANSPARENT couvrait l'écran entier en interceptant chaque clic — bouton de connexion
+    # compris. Invisible en capture (transparent), invisible à la lecture (syntaxiquement
+    # correct), trouvé par `document.elementFromPoint` sur le centre du bouton.
+    #
+    # CE QUE LA RÈGLE JUGE, et sa borne : une page qui EMPLOIE l'attribut `hidden` doit porter
+    # la garde `[hidden] { display: none !important }` (boilerplate du socle depuis le 01/09).
+    # Une page sans `hidden` n'a rien à garder — l'exiger partout ferait crier sur tout
+    # l'existant pour un mécanisme qu'il n'emploie pas. NON JUGÉ, et c'est déclaré : le
+    # recouvrement ACCIDENTEL (deux éléments visibles superposés) ne se voit qu'au rendu —
+    # c'est la moitié exécutable de TF-0733 (elementFromPoint), qui appartient à render_page.
+    porteurs_hidden = [n for n in a.racine.descendants() if "hidden" in n.attrs]
+    if porteurs_hidden:
+        garde_ok = False
+        for sel, d in css:
+            valeur = (d.get("display") or "") if isinstance(d, dict) else str(d)
+            if "[hidden]" in sel and "none" in valeur and "!important" in valeur:
+                garde_ok = True
+                break
+        if not garde_ok:
+            premier = porteurs_hidden[0]
+            fails.append(
+                f"L23 attribut `hidden` sans garde : {len(porteurs_hidden)} élément(s) masqué(s) par "
+                "l'attribut et AUCUNE règle `[hidden] { display: none !important; }` dans la feuille — "
+                "tout `display` explicite posé par une classe l'emportera sur le masquage, et le "
+                "composant deviendra un voile transparent qui intercepte les clics (mesuré : page "
+                "entière inutilisable, seize oracles au vert). Ajouter la garde du boilerplate (TF-0733).")
+
     # --- L22 : une PROMESSE écrite en commentaire est vérifiée (23/08/2026, choix humain) ----
     #
     # LE FAIT, et il a coûté deux fois. Dans les schémas de la bibliothèque, un commentaire
