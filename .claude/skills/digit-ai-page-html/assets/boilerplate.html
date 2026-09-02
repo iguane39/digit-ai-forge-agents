@@ -68,6 +68,17 @@
       --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;
       --teal:  #0E9488; --teal-fill:  #EFFDFB; --teal-line:  #C7F0EA;
       --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
+      /* TF-0755 (02/09) : le QUATRIEME registre, employe par les livrables de la maison et
+         documente nulle part. Un rapport de conformite qui a eu besoin d'un « refus / non
+         declare » ne l'a pas trouve dans le socle et l'a INVENTE — alors que le livrable
+         conforme de reference portait deja ces trois valeurs exactes. Une palette dont un
+         registre entier n'est ecrit nulle part se fait reinventer, et deux reinventions donnent
+         deux rouges dans deux livrables de la meme maison. */
+      --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
+      /* TF-0754 (02/09) : hauteur de l'EN-TETE COLLANT. Le socle a tranche — l'en-tete garde le
+         bord haut, le thead collant et le sommaire lateral se decalent de var(--hh). Un token
+         consomme sans etre pose vaudrait 0 et ramenerait la collision (controle L29). */
+      --hh: 64px;
       /* Rayons */
       --r: 12px; --r-sm: 8px;
       /* Largeur du conteneur et largeur de lecture — cf. regle L2.
@@ -98,6 +109,7 @@
       --amber: #FBBF6D; --amber-fill: #2B2210; --amber-line: #4A3A18;
       --teal:  #5FE6D6; --teal-fill:  #0E2A27; --teal-line:  #164E48;
       --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
+      --red:   #F5A3A3; --red-fill:   #2C1416; --red-line:   #4C1F22;
     }
 
     * { box-sizing: border-box; }
@@ -198,6 +210,18 @@
       border-bottom: 2px solid var(--blue);
       padding-bottom: 16px; margin-bottom: 24px;
     }
+    /* ── B1 contre B6 : l'ARBITRAGE, en deux lignes (TF-0754, 02/09) ──────────────────
+       « header sticky » et « thead sticky » se superposaient sur toute page longue a
+       tableaux : le thead se collait au bord haut DERRIERE l'en-tete et devenait illisible,
+       ou bien on lui donnait un decalage au jugé et il flottait au-dessus des premieres
+       lignes de son propre tableau. Aucun des deux textes du socle ne disait lequel cede, ni
+       ne fournissait le decalage — un PRODUIT a fini par trancher, apres deux cycles de
+       rendu. L'en-tete garde le bord haut (c'est lui qui porte l'identite du livrable) ; ce
+       qui colle SOUS lui consomme --hh. Le sommaire lateral (L25) prend le meme repere. */
+    header.doc.colle { position: sticky; top: 0; z-index: 20; background: var(--bg); }
+    thead.colle th   { position: sticky; top: var(--hh); z-index: 10; background: var(--surface); }
+    nav.toc.colle    { position: sticky; top: var(--hh); z-index: 10; }
+    @media (max-width: 900px) { nav.toc.colle { position: static; } }
     .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
 
     /* S-G1 (3/4, R-30) — bouton de bascule, en-tête, haut à droite */
@@ -246,6 +270,7 @@
         --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
         --teal:#0E9488;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
         --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
+        --red:#B91C1C;   --red-fill:#FEF2F2;    --red-line:#F6CFCF;
       }
       body { background: var(--surface); }
       .wrap { max-width: none; padding: 0; }

@@ -38,6 +38,12 @@ Séparation volontaire entre **principes** (règles stables) et **valeurs param�
   --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;   /* alerte */
   --teal:  #0E9488; --teal-fill:  #EFFDFB; --teal-line:  #C7F0EA;   /* info */
   --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;   /* succès */
+  --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;   /* refus / non déclaré */
+
+  /* Hauteur de l'en-tête collant — consommée par le thead collant et par le sommaire
+     latéral (L29, L25). Un décalage qui vaut 0 par défaut ramène la collision qu'il
+     devait éviter : ce token se pose, il ne se devine pas. */
+  --hh: 64px;
 
   /* Rayons */
   --r: 12px; --r-sm: 8px;
@@ -57,6 +63,19 @@ Séparation volontaire entre **principes** (règles stables) et **valeurs param�
 - **Contraste.** Vérifier que `--muted` et `--faint` sur `--bg` atteignent les seuils WCAG
   (≥ 4.5:1 texte normal, ≥ 3:1 texte large) avant de les figer sur un livrable critique.
 - **Accents sémantiques.** La couleur ne porte jamais seule l'information : un statut
-  alerte/info/succès s'accompagne toujours d'un libellé ou d'une icône.
+  alerte/info/succès/refus s'accompagne toujours d'un libellé ou d'une icône.
+- **Le quatrième registre était employé et non documenté (TF-0755, 02/09/2026).** Un rapport de
+  conformité a eu besoin d'un registre « refus / non déclaré » — bas d'échelle d'une carte de
+  chaleur — ne l'a pas trouvé dans le socle, et l'a **inventé** comme extension locale. Or le
+  livrable conforme de référence de la maison portait **déjà** `--red` / `--red-fill` /
+  `--red-line` aux valeurs `#B91C1C` / `#FEF2F2` / `#F6CFCF` : *la palette les portait, la
+  documentation non*. Une palette dont un registre entier n'est documenté nulle part se fait
+  réinventer, et deux réinventions donnent deux rouges différents dans deux livrables de la même
+  maison. Les trois valeurs ci-dessus sont celles du livrable de référence, reprises telles
+  quelles — aucune teinte n'a été redécidée.
+- **`--hh`, hauteur de l'en-tête collant (TF-0754).** Le socle tranche : l'en-tête de document
+  garde le bord haut, le `thead` collant et le sommaire latéral se décalent de `var(--hh)`. Le
+  gabarit pose la valeur ; `check_html.py` (L29) refuse un `top: var(--hh)` consommé sans
+  déclaration.
 - **Année de référence.** Isolée en token `--annee-ref` pour éviter qu'une date en dur ne
   « périme » le gabarit. La mettre à jour en un seul point au changement d'année.
