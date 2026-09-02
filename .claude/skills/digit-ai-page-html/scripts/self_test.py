@@ -151,7 +151,7 @@ CAS = {
     # TF-0233 (15/08) : un conteneur-valeur dont un DESCENDANT porte la légende est
     # couvert — plus de double échec L3 pour un seul chiffre.
     "l3-conteneur-couvert.html": set(),
-    # Lot Client-B 20260820a/b (21/08) — TF-0423 : L7 refuse le chapeau répété, le chapeau de
+    # Lot Produit-05 20260820a/b (21/08) — TF-0423 : L7 refuse le chapeau répété, le chapeau de
     # remplissage ; L10 refuse l'exemple de lecture en double. TF-0433 : « note » n'est un score
     # que suivi d'un chiffre — la carte-remarque se tait, la note chiffrée échoue. TF-0434 : un
     # libellé-identifiant sans title est elliptique (échec nommé), avec title il passe.
@@ -267,7 +267,7 @@ RE_CODE_AG = re.compile(r"^(A\d+(?:-bis)?|G\d+)\b")
 CAS_RENDU = {
     "l2r-texte-a-50-pourcent.html": ("l2_width", 1),   # paragraphe bridé
     "l2r-texte-pleine-largeur.html": ("l2_width", 0),  # colonne de mesure
-    # TF-0421 (lot Client-B 20260820a) : la bride par `width: min(75ch, 100%)` passait L2 (qui ne
+    # TF-0421 (lot Produit-05 20260820a) : la bride par `width: min(75ch, 100%)` passait L2 (qui ne
     # regardait que max-width) et laissait 60 % de la fenêtre vide à 1 800 px. L2 mesure
     # désormais QUELLE QUE SOIT la propriété ; la mesure de lecture se pose sur le conteneur
     # (.chap.lire), jamais sur le paragraphe.
@@ -337,7 +337,7 @@ CAS_RENDU = {
     # d'aspect anormal, à toute largeur. Les deux fixtures ne diffèrent QUE par une règle CSS :
     # `table` en display:block (la caption tombe à 70px pour 366px de conteneur, 12 lignes pour
     # 15 mots) ou non (366px, 2 lignes). Mesuré le 22/08 avant et après correction.
-    # TF-0551 (24/08, lot Bibliotheque-Video-IA-Enseigne-A) — LE DEFAUT QU'UN ORACLE VISUEL NE PEUT
+    # TF-0551 (24/08, lot Produit-03) — LE DEFAUT QU'UN ORACLE VISUEL NE PEUT
     # PAS VOIR. Une fiche livree, declaree conforme la veille par les DEUX controles, avait perdu
     # deux sections entieres et son pied de page : gabarit A4 a hauteur FIGEE, contenu 1441px pour
     # une boite de 1123px, 41 elements de texte invisibles. Aucun signal, ni a l'ecran ni a

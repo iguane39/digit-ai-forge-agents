@@ -73,7 +73,7 @@ Une classe par couleur sémantique, à appliquer sur un `<g>` qui contient `<rec
 ```
 À appliquer sur un `<rect>` qui englobe toute une zone fonctionnelle (ex. : la bande des pipelines, le cadre d'une organisation Azure DevOps). La couleur du stroke encode la nature de la zone (violet pour l'Agent IA, gris pour neutre).
 
-### Superpositions voulues et `data-overlap-ok` (TF-0424, lot Client-B 20260820a)
+### Superpositions voulues et `data-overlap-ok` (TF-0424, lot Produit-05 20260820a)
 
 `render_page.py` V4 juge les **chevauchements entre nœuds** et entre nœud et flèche. Les formes
 internes d'un **groupe titré** (`<g><title>…</title><rect/><text/></g>`) se superposent par

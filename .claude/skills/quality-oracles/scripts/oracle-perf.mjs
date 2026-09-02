@@ -5,7 +5,7 @@
 // poids du JS inline, poids des data: URIs, références externes. Compare à des
 // budgets. NE MESURE PAS le temps de rendu réel / LCP sous charge (→ navigateur,
 // non déterministe) : déclaré en non_juge.
-// TF-0437 (lot Client-B 20260820b, 21/08) : le compte DOM est publié en DEUX temps — nœuds
+// TF-0437 (lot Produit-05 20260820b, 21/08) : le compte DOM est publié en DEUX temps — nœuds
 // totaux, et nœuds HORS zones repliées ou citées (<details>, tr[data-detail], <pre>, <code>,
 // <blockquote>, [data-cite]). Un livrable riche (99 lignes de détail, 12 sources embarquées)
 // et une page mal construite franchissent le même seuil ; le diagnostic les sépare, pas le

@@ -132,7 +132,7 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
     bad.length ? ko('profil ' + pf + ' : plancher non désactivable exclu — ' + bad.join(' ; ')) : ok('profil ' + pf + ' : niveaux valides, plancher respecté (' + Object.keys(pj.niveaux).join('/') + ')');
   } catch {}
 }
-// TF-0437 (lot Client-B 20260820b) : oracle-perf publie le compte DOM en DEUX temps — total et hors
+// TF-0437 (lot Produit-05 20260820b) : oracle-perf publie le compte DOM en DEUX temps — total et hors
 // zones repliées/citées. Preuve : une page dont la moitié des nœuds vit dans <pre>/<details>
 // rend elements_hors_zones < elements, et le message le dit.
 {
@@ -149,7 +149,7 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
         : ok('TF-0437 : oracle-perf publie le DOM en deux temps (total / hors zones repliées-citées)');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-// TF-0428 (lot Client-B 20260820a) : sous un arbre de LIVRAISON (output/, old/, dist/), run-oracles
+// TF-0428 (lot Produit-05 20260820a) : sous un arbre de LIVRAISON (output/, old/, dist/), run-oracles
 // n'écrit AUCUN sidecar à côté du livrable — journaux dans un dossier frère _oracles/.
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-liv-'));
