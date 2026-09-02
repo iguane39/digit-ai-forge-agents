@@ -91,6 +91,40 @@
 > ses fixtures rouge/verte sont rejouées par le self-test de `quality-oracles`, avec une
 > `--date` figée au manifest pour un rejeu déterministe.
 
+## Règle de PRÉCÉDENCE — une charte posée prime sur les fontes réflexes (TF-0732, D-41 (b))
+
+**Profil `digit-ai`, section `polices`.** La liste des « fontes réflexes » — dont la règle
+« DM Sans bannie » — s'adresse au **choix de fontes pour un travail neuf**. Elle **ne s'applique
+pas** à un livrable dont la **charte déclarée** prescrit ces fontes : le socle
+`digit-ai-page-html` prescrit **Roboto (titres) / DM Sans (corps) / JetBrains Mono**.
+
+**Le fait payé.** Le 31/08/2026, quatre éditions de **trois lignes** sur des gabarits HTML de la
+bibliothèque ont été bloquées en un seul tour, la police parmi les motifs. Or ce motif ne vient
+d'**aucun détecteur du socle** : ni `check_html.py` ni `check_markdown.py` ne nomment DM Sans.
+Il vient de `reference/new-work.md`, appliqué à un livrable **qui a déjà sa charte**. Les deux
+doctrines ne se contredisaient pas mécaniquement — il manquait une règle de **précédence**, et
+son emplacement. D-41 (b) l'a tranché : **elle vit ici**, et elle est **câblée**.
+
+**Câblage** (loi transverse n° 1 — une affordance non câblée n'existe pas) : gate d'écriture C7,
+`~/.claude/hooks/qo-gate-write.mjs` (source versionnée dans `digit-ai-forge-agents`). La
+précédence s'applique **avant** le partage neufs/préexistants : un constat neutralisé par la
+charte n'est pas « préexistant », il n'avait pas lieu d'être. Le verdict le **dit** et nomme la
+charte reconnue.
+
+**Trois conditions cumulées, et la troisième est la garde.** Un constat n'est écarté que si
+(1) c'est un constat de **police** ou de **fonte**, (2) le fichier **déclare** une charte — un
+marqueur explicite, jamais une devinette —, et (3) **toutes** les fontes nommées dans le constat
+appartiennent à cette charte. Un constat de police qui ne **nomme aucune fonte** n'est **pas**
+neutralisé : « je ne sais pas » ne vaut jamais « c'est bon », même garde que le jugement au delta.
+Une page **sans charte déclarée reste accusée** — sans quoi la précédence serait une
+désactivation déguisée.
+
+**Fixture à double sens** (banc du gate, `node .claude/hooks/qo-gate-write.mjs --self-test`,
+**21/21**, dont **6 cas de précédence dans les deux sens**) : un gabarit charté n'est plus accusé
+sur « DM Sans » ni sur les trois fontes du socle ; une page sans charte l'est toujours ; une fonte
+**hors charte** (« Inter ») dans un fichier charté l'est aussi ; un constat sans fonte nommée
+n'est jamais neutralisé ; et un constat qui n'est pas de police n'est jamais touché.
+
 ## Injection du 02/09/2026 — la page lue par quelqu'un qui n'a pas le brief (TF-0774)
 
 | Domaine | Oracle (invocation) | Type | Statut |

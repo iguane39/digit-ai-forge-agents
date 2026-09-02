@@ -90,5 +90,25 @@
       "Que permet-elle de decider ?",
       "Que signifie chaque en-tete de colonne ?"
     ]
+  },
+  "polices": {
+    "_decision": "D-41 (b) du 02/09/2026 (TF-0732) : UNE CHARTE POSEE PRIME SUR LA LISTE DES FONTES REFLEXES. La regle « DM Sans bannie » vient d un texte destine au CHOIX DE FONTES POUR UN TRAVAIL NEUF ; elle ne s applique pas a un livrable dont la charte declaree prescrit ces fontes. Sans cette precedence, CHAQUE evolution d un gabarit HTML de la bibliotheque paie un peage, et la regle de police accuse tout livrable conforme a la charte maison. Cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans digit-ai-forge-agents), banc 21/21 dont 6 cas de precedence dans les deux sens.",
+    "precedence_charte": true,
+    "chartes": [
+      {
+        "nom": "digit-ai-page-html",
+        "fontes": [
+          "Roboto",
+          "DM Sans",
+          "JetBrains Mono"
+        ],
+        "marqueurs": [
+          "--font-(?:titres?|corps|mono|display|body)s*:",
+          "font-familys*:[^;]{0,120}(?:Roboto|DMs+Sans|JetBrainss+Mono)",
+          "chartes*:s*digit-ai-page-html|socles+digit-ai-page-html|digit-ai-page-html"
+        ]
+      }
+    ],
+    "_bornes": "Un constat de police n est ecarte que si les TROIS conditions sont reunies : c est un constat de POLICE ou de FONTE, le fichier DECLARE une charte (marqueur explicite, jamais une devinette), et TOUTES les fontes nommees dans le constat appartiennent a cette charte. Un constat qui ne nomme AUCUNE fonte n est PAS neutralise. Une page sans charte declaree reste accusee comme avant."
   }
 }

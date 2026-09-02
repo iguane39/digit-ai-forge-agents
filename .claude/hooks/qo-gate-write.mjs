@@ -82,6 +82,55 @@ function motifExemption(cible, contenu) {
   return null;
 }
 
+// ── UNE CHARTE POSÉE PRIME SUR LA LISTE DES FONTES RÉFLEXES (D-41 (b), 02/09/2026) ──────────
+//
+// LE FAIT, mesuré le 31/08 : quatre éditions de trois lignes sur des gabarits HTML de la
+// bibliothèque bloquées en un tour, et l'un des motifs était la POLICE. Or ce motif ne vient
+// d'AUCUN détecteur du socle HTML : ni `check_html.py` ni `check_markdown.py` ne nomment DM Sans.
+// Il vient de `reference/new-work.md`, un texte destiné au CHOIX DE FONTES POUR UN TRAVAIL NEUF,
+// appliqué à un livrable QUI A DÉJÀ SA CHARTE. Les deux doctrines ne se contredisent donc pas
+// mécaniquement : il manquait une règle de PRÉCÉDENCE, et son emplacement.
+//
+// D-41 (b) l'a tranché : la règle vit au REGISTRE DES ORACLES, dans le profil `digit-ai`
+// (`polices.precedence_charte`), et elle est CÂBLÉE ici — sans câblage, une règle de précédence
+// n'est qu'un texte de plus à côté des deux qu'elle devait départager (loi transverse n° 1).
+//
+// CE QUI EST NEUTRALISÉ, ET RIEN D'AUTRE. Un constat n'est écarté que si les TROIS conditions
+// sont réunies : (1) c'est un constat de POLICE ou de FONTE ; (2) le fichier DÉCLARE une charte
+// (un marqueur explicite, jamais une devinette) ; (3) TOUTES les fontes nommées dans le constat
+// appartiennent à cette charte. Un constat de police qui ne nomme AUCUNE fonte n'est PAS
+// neutralisé : « je ne sais pas » ne vaut jamais « c'est bon » — même garde que le jugement au
+// delta, trois lignes plus bas. Et une page SANS charte déclarée reste accusée comme avant.
+const CHARTES = [{
+  nom: 'digit-ai-page-html',
+  fontes: ['roboto', 'dm sans', 'jetbrains mono'],
+  // Ce qui vaut DÉCLARATION de charte : un token de police du socle, une police de la charte
+  // posée en `font-family`, ou la charte nommée en clair.
+  marqueurs: [
+    /--font-(?:titres?|corps|mono|display|body)\s*:/i,
+    /font-family\s*:[^;]{0,120}(?:Roboto|DM\s+Sans|JetBrains\s+Mono)/i,
+    /charte\s*:\s*digit-ai-page-html|socle\s+digit-ai-page-html|digit-ai-page-html/i,
+  ],
+}];
+
+/** Le fichier déclare-t-il l'une des chartes connues ? (nom de la charte, ou null) */
+export function charteDeclaree(contenu, chartes = CHARTES) {
+  for (const c of chartes) if (c.marqueurs.some(m => m.test(contenu || ''))) return c;
+  return null;
+}
+
+/** Ce constat de police est-il NEUTRALISÉ par la charte posée du fichier ?
+ *  Fonction pure — c'est elle que le banc éprouve, dans les deux sens. */
+export function constatDePoliceNeutralise(ligne, contenu, chartes = CHARTES) {
+  const estPolice = /\b(?:polices?|fontes?)\s+r[ée]flexes?\b|\bpolice\s+non\s+chart[ée]e\b|\bfont-family\b|\bS3\b.*\bpolice/i.test(ligne || '');
+  if (!estPolice) return false;
+  const charte = charteDeclaree(contenu, chartes);
+  if (!charte) return false;                       // page sans charte : la règle générique s'applique
+  const nommees = [...String(ligne).matchAll(/[«"'`]\s*([^»"'`]{2,40}?)\s*[»"'`]/g)].map(m => m[1].trim().toLowerCase());
+  if (!nommees.length) return false;               // aucune fonte nommée : on ne neutralise pas ce qu'on ne lit pas
+  return nommees.every(f => charte.fontes.includes(f));
+}
+
 const MAX_ECHECS = 3;                       // §5 : boucle bornée, puis handoff humain
 const COMPTEUR = path.join(os.tmpdir(), 'qo-gate-write-echecs.json');
 
@@ -233,7 +282,19 @@ export function partagerConstats(apres, avant) {
 }
 
 const apresConstats = lignesFautives(r.stdout);
-const { neufs, preexistants, delta } = partagerConstats(apresConstats, constatsAvant(cible));
+// D-41 (b) : la précédence s'applique AVANT le partage neufs/préexistants. Un constat neutralisé
+// par la charte posée du fichier n'est pas « préexistant », il n'a jamais eu lieu d'être.
+const neutralises = apresConstats.filter(l => constatDePoliceNeutralise(l, contenu));
+const { neufs, preexistants, delta } = partagerConstats(
+  apresConstats.filter(l => !neutralises.includes(l)), constatsAvant(cible));
+
+if (!neufs.length && !preexistants.length && neutralises.length) {
+  if (compte[cle]) { delete compte[cle]; ecrire(compte); }
+  sortie(0, `qo-gate-write : « ${path.basename(cible)} » PASSE — ${neutralises.length} constat(s) de POLICE `
+    + `écarté(s) par la règle de PRÉCÉDENCE (D-41 (b), registre des oracles, profil digit-ai) : une charte POSÉE `
+    + `prime sur la liste des fontes réflexes. Ce fichier déclare la charte « ${(charteDeclaree(contenu) || {}).nom} », `
+    + `qui prescrit ces fontes.\n` + neutralises.slice(0, 4).join('\n'));
+}
 
 if (delta && !neufs.length && preexistants.length) {
   if (compte[cle]) { delete compte[cle]; ecrire(compte); }
@@ -322,6 +383,27 @@ function selfTest() {
               return p.delta === false && p.neufs.length === 1 && p.preexistants.length === 0; }],
     ['       la limite de l\'exemption est declaree au non_juge (marqueurs exotiques)',
       () => NON_JUGE.length >= 3 && /exotiques/.test(NON_JUGE[0])],
+    // ── D-41 (b) (02/09/2026) — LA PRECEDENCE, DANS LES DEUX SENS. Une charte POSEE prime sur
+    // la liste des fontes reflexes. Le cas rouge est celui qui compte : une page SANS charte
+    // reste accusee, sans quoi la regle de precedence serait une desactivation deguisee.
+    ['VERTE  gabarit CHARTE : le constat de police est NEUTRALISE (une charte posee prime)',
+      () => constatDePoliceNeutralise('❌ L2 police reflexe : « DM Sans » x 4',
+              ':root { --font-corps: "DM Sans", system-ui, sans-serif; }') === true],
+    ['VERTE  les TROIS fontes de la charte sont couvertes, pas seulement DM Sans',
+      () => constatDePoliceNeutralise('❌ S3 polices reflexes : « Roboto », « JetBrains Mono »',
+              'font-family: Roboto, "DM Sans", sans-serif;') === true],
+    ['ROUGE  page SANS charte declaree : le constat de police TIENT, la regle generique s applique',
+      () => constatDePoliceNeutralise('❌ L2 police reflexe : « DM Sans » x 4',
+              '<style>body { font-family: Arial; }</style>') === false],
+    ['ROUGE  fonte HORS charte dans un fichier charte : le constat TIENT (« Inter » n est pas de la charte)',
+      () => constatDePoliceNeutralise('❌ S3 polices reflexes : « Inter »',
+              ':root { --font-corps: "DM Sans", sans-serif; }') === false],
+    ['ROUGE  constat de police qui ne NOMME aucune fonte : jamais neutralise (« je ne sais pas » ne vaut pas « c est bon »)',
+      () => constatDePoliceNeutralise('❌ L2 police reflexe x 7',
+              ':root { --font-corps: "DM Sans", sans-serif; }') === false],
+    ['ROUGE  un constat qui n est PAS de police n est jamais touche par la precedence',
+      () => constatDePoliceNeutralise('❌ M7 chapitre sans phrase d ouverture : « DM Sans »',
+              ':root { --font-corps: "DM Sans", sans-serif; }') === false],
   ];
   let bons = 0;
   for (const [nom, f] of cas) {
