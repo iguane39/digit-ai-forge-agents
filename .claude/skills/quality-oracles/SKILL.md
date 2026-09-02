@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.9.0"
+  version: "2.10.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -24,9 +24,21 @@ exécuté** — jamais par confiance, jamais en jugeant son propre code. Charge 
 ## 1. Grille des classes de défaut (rien n'y échappe)
 Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
 - **Information** — vraie, à jour, sourcée ; aucune affirmation invérifiée présentée comme un fait.
+  - **Autorité (02/09/2026)** — *une décision n'appartient pas à celui qui la rédige.* Un bloc qui
+    se déclare décision porte un décideur ; un décideur appartenant à l'**émetteur** du livrable en
+    fait une **recommandation**, et le mot doit changer. Toute affirmation de décision cite une
+    trace de **rang décision** qui existe. Oracle : `oracle-autorite-decision.mjs`.
+  - **Effectifs (02/09/2026)** — *un nombre annoncé en prose est une affirmation comme une autre.*
+    « Sept écarts » en tête d'un tableau qui en porte huit est un défaut de calcul, pas de style.
+    Oracle : volet N1/N2 d'`oracle-calculs.mjs`.
 - **Données** — complètes, cohérentes (totaux, unités, formats, doublons), périmètre attendu couvert.
 - **Calculs** — rejoués par exécution, ni estimés ni recopiés ; reproductibles.
 - **Logique & complétude** — enchaînement valide, hypothèses explicites ; répond à *toute* la demande, cas limites (vide / énorme / spéciaux) traités.
+  - **Livrabilité d'une conséquence (02/09/2026)** — *une conséquence qu'aucun responsable
+    n'accepterait de mettre en production n'est pas un repli, c'est une **impasse**, et elle
+    s'écrit comme telle.* Relire chaque état de repli comme s'il fallait le livrer lundi. Une
+    conséquence chiffrée en charge de support **rend le manque invisible au lieu de le
+    révéler**. Oracle : `oracle-livrabilite-consequence.mjs`.
 - **Cohérence** — interne (un même chiffre concorde entre sections), avec les sources, avec les versions.
 - **Process / méthode** — la bonne méthode réellement suivie (références *lues*, étapes non sautées).
 - **Affichage / rendu** — sans débordement, contraste faible ni chevauchement ; jamais jugé depuis le code seul.

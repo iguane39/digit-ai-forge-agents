@@ -1,6 +1,6 @@
 {
   "nom": "generique",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "perf": {
     "poids_warn": 2097152,
     "poids_fail": 5242880,
@@ -62,5 +62,9 @@
     ],
     "tolerance_pixel": 24,
     "_calibration": "bruit de re-rendu mesuré à 0.0000% sur fixtures (chromium sandbox, 2026-07-21) — seuil 0.1% au-dessus du bruit"
+  },
+  "autorite": {
+    "_decision": "TF-0715 (02/09/2026) : profil generique -- aucun emetteur nomme, donc le controle A2 (decideur appartenant a l'emetteur) est DECLARE NON JUGE par l'oracle plutot que devine. Un profil client renseigne emetteur_motifs pour l'activer.",
+    "emetteur_motifs": []
   }
 }
