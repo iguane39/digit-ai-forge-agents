@@ -1158,6 +1158,21 @@ def check_lisibilite(html: str, a: Arbre):
         elif etat == "off" and not (t.att("data-filterable-reason") or "").strip():
             fails.append(f"L4 table « {nom} » exemptée sans data-filterable-reason — "
                          "sans motif, ce n'est pas une exemption.")
+        # TF-0782 (02/09) — MEME DOCTRINE, UN CRAN PLUS BAS. Depuis que CHAQUE colonne reçoit sa
+        # facette (la cardinalité ne décide que de la forme du panneau, G7), la seule sortie est
+        # une exemption DÉCLARÉE par colonne. Une exemption muette est exactement ce qui a coûté
+        # la facette de la colonne clé : la décision était prise par une heuristique, personne ne
+        # l'écrivait, et personne ne pouvait la contester.
+        for th in [x for x in t.descendants() if x.tag == "th"]:
+            if th.att("data-filter-col") != "off":
+                continue
+            if (th.att("data-filter-reason") or "").strip():
+                continue
+            fails.append(
+                f"L4 colonne « {th.texte_propre()[:24] or '(vide)'} » de la table « {nom} » "
+                "exemptée de facette sans data-filter-reason — sans motif, ce n'est pas une "
+                "exemption (G7 : la cardinalité décide de la FORME du panneau, jamais de son "
+                "existence).")
 
     # --- L13 : page à listes = recherche + KPI câblés (standard H, delta n°6 — 14/08) -----
     # Une page qui montre au moins une table de ≥ 8 lignes se PARCOURT : un champ de

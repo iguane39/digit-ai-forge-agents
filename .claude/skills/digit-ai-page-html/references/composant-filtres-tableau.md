@@ -59,8 +59,14 @@ L'ordre se lit donc dans cet ordre de préférence :
 
 Une date ISO (`2025-08`, `2025-08-14`) se compare comme du texte : **c'est déjà son ordre
 chronologique**. C'est la raison pour laquelle le socle ne demande pas d'autre format.
-Oracle : `oracle-filtres-tableau.mjs` — checklist **G1–G9** (câblage) ; le comportement est
-prouvé par les fixtures `tf-tri-milliers.html`, `tf-facettes-ordre.html`, `tf-etat-rejoue.html`.
+**Qui juge quoi, aujourd'hui — et ce qui reste ouvert.** `oracle-filtres-tableau.mjs`
+(skill `quality-oracles`) juge le **câblage G1–G6**. Les trois contrôles ajoutés le 02/09 sont
+tenus ailleurs, et il vaut mieux l'écrire que de le laisser croire : **G7** (exemption de colonne
+motivée) et **G9** (définition d'en-tête) par `check_html.py` — `L4` et `L27` ; **G8** (valeur
+d'ordre) par `L28` ; le **comportement** par les fixtures Playwright du banc
+(`tf-tri-milliers.html`, `tf-facettes-ordre.html`, `tf-etat-rejoue.html`). *Porter G7–G9 dans
+l'oracle lui-même reste à faire, côté `quality-oracles` : un référentiel qui annoncerait neuf
+contrôles pour six exécutés serait exactement l'affordance non câblée que ce socle refuse.*
 
 ## G7 — chaque en-tête porte sa facette ; la cardinalité décide de la FORME (TF-0782, 02/09)
 

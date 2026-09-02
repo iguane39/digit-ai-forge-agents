@@ -144,6 +144,10 @@ CAS = {
     # exactement ce que la regle mesure : le sommaire (L25), la bride de largeur autour du
     # tableau et non autour de la prose (L26), la definition des en-tetes (L27), la valeur
     # d'ordre des mois (L28), le decalage du thead par le token --hh (L29).
+    # G7 un cran plus bas : une exemption de facette PAR COLONNE se motive, comme celle du
+    # tableau entier (TF-0782). Les deux fixtures ne different que par data-filter-reason.
+    "l4-exemption-facette-muette.html": {"L4"},
+    "l4-exemption-facette-motivee.html": set(),
     "l25-chapitres-sans-sommaire.html": {"L25"},
     "l25-sommaire-lateral.html": set(),
     "l26-donnees-colonne-de-lecture.html": {"L26"},
