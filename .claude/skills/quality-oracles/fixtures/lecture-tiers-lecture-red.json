@@ -1,0 +1,10 @@
+{
+  "commentaire": "Lecture ENREGISTREE d'un tiers sans brief ni code, rendue sur la vue V6 du 02/09/2026. Elle prouve la REGLE de T4 : un « je ne sais pas » est un ECHEC, pas une nuance. Aucun appel modele n'est rejoue par la fixture.",
+  "juge": "lecture humaine enregistree",
+  "date": "2026-09-02",
+  "reponses": [
+    {"question": "De quoi parle cette page ?", "reponse": "Il y a quatre lignes qui ont l air d etre des regions et huit colonnes de nombres. Je ne sais pas de quoi parle cette page."},
+    {"question": "Que permet-elle de decider ?", "reponse": "Impossible de savoir : rien n indique ce qu on est cense en faire."},
+    {"question": "Que signifie chaque en-tete de colonne ?", "reponse": "N, ARR, TX, CA, NPS, MRR, LTV : aucune idee, ce ne sont que des sigles."}
+  ]
+}

@@ -91,6 +91,38 @@
 > ses fixtures rouge/verte sont rejouées par le self-test de `quality-oracles`, avec une
 > `--date` figée au manifest pour un rejeu déterministe.
 
+## Injection du 02/09/2026 — la page lue par quelqu'un qui n'a pas le brief (TF-0774)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Lecture d'une page par un tiers sans contexte | `scripts/oracle-lecture-tiers.mjs <page.html> --profil <profil.json> [--juge <cli>] [--reponse <lecture.json>]` — **T1** la page dit ce qu'elle permet de **décider** · **T2** tout en-tête de colonne et tout **sigle** d'en-tête est **glosé de façon atteignable** (`data-definition`, `<abbr title>`, `title=`, glossaire, prose) · **T3** la page offre au moins un **geste**, ou **déclare** être en lecture seule · **T4** *(invocation explicite, coût modèle)* le juge reçoit l'**instantané seul**, sans brief ni code, et répond à trois questions — **un « je ne sais pas » = FAIL** | cli | ✅ |
+
+> **Quatre portes vertes, et « on n'y comprend absolument rien ».** Le 02/09/2026, la vue V6 —
+> huit comptes par marché, aucun mot-clé visible, aucun geste — a passé le contrat de sortie, les
+> filtres, le rendu et les interactions. Puis l'humain a lu la page. **Tous les contrôles la
+> regardaient depuis l'intérieur du projet**, c'est-à-dire depuis quelqu'un qui savait déjà ce
+> qu'elle voulait dire.
+
+- **Invocation explicite** : `ext: []` et **aucun** `content_patterns` — cet oracle n'entre
+  jamais dans le routage par défaut, parce que T4 appelle un modèle et coûte. T1-T3 sont
+  déterministes et gratuits ; **T4 s'arme** par `--juge <cli>`, par `--reponse <lecture.json>`
+  ou par `lecture_tiers.actif: true` au profil (**faux** dans les deux profils livrés).
+- **La règle de T4 est prouvable sans dépense**, et c'est le point de conception : la **lecture**
+  d'un tiers n'est pas reproductible, la **règle** qui l'exploite l'est. `--reponse` applique la
+  règle à une lecture déjà rendue ; deux fixtures la rejouent sur la **même page**, seule la
+  lecture change. Sans juge ni lecture, T4 est **SKIP motivé** — jamais un PASS de complaisance.
+- **Bruit mesuré** (02/09/2026, 7 pages `.html` suivies du dépôt, hors fixtures) : **6 SKIP**
+  (gabarits et boilerplate — *un gabarit n'a pas de lecteur*, exemption **déclarée au verdict**
+  avec sa limite) et **1 FAIL** sur `digit-ai-schemas/assets/exemple-reference.html` (T1, T2),
+  retenu comme **vrai positif**.
+- **Frontière avec `check_html.py` G7** : G7 exige l'**attribut** `data-definition` sur les
+  `th` — c'est une règle de balisage. T2 demande qu'une glose soit **atteignable par le
+  lecteur**, par quelque moyen que ce soit. Les deux se renforcent, aucun ne remplace l'autre.
+- **Câblage côté pilot** (le pilot câble de son côté) : le hook de restitution appelle
+  `node <skills>/quality-oracles/scripts/oracle-lecture-tiers.mjs <page.html> --profil <profil>
+  --juge claude` sur les pages du lot **avant poussée** ; sur FAIL, la restitution s'arrête et
+  **nomme la page**. R-38 reste entier : aucune poussée sans GO humain.
+
 ## Injection du 02/09/2026 — le ledger devient un artefact jugé (TF-0780, TF-0776)
 
 `oracle-etat-forge` accepte désormais `--ledger <run.jsonl>` et y juge deux choses que

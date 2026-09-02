@@ -80,5 +80,15 @@
       "PV\\s+(?:de|du)\\s+comité",
       "délibération\\s+du\\s+\\d"
     ]
+  },
+  "lecture_tiers": {
+    "_decision": "TF-0774 (02/09/2026) : la vue V6 a passe contrat, filtres, rendu et interactions -- quatre portes vertes -- puis l humain a lu la page : « on n y comprend absolument rien ». T4 fait lire la page par un TIERS qui n a ni le brief ni le code ; un « je ne sais pas » est un ECHEC. Il appelle un modele, donc il COUTE : `actif` reste FAUX par defaut et l invocation est explicite (--juge, --reponse, ou actif: true ici).",
+    "actif": false,
+    "juge": "claude",
+    "questions": [
+      "De quoi parle cette page ?",
+      "Que permet-elle de decider ?",
+      "Que signifie chaque en-tete de colonne ?"
+    ]
   }
 }

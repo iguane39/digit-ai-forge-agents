@@ -1,0 +1,10 @@
+{
+  "commentaire": "Lecture ENREGISTREE d'un tiers sans brief ni code, rendue sur la meme page une fois concue pour etre lue. Cas VERT de la regle T4 : les trois questions recoivent une reponse, aucune ignorance declaree.",
+  "juge": "lecture humaine enregistree",
+  "date": "2026-09-02",
+  "reponses": [
+    {"question": "De quoi parle cette page ?", "reponse": "Des quatre marches commerciaux servis par l entreprise, compares sur la demande, la marge et la satisfaction client."},
+    {"question": "Que permet-elle de decider ?", "reponse": "Sur quel marche ouvrir la prochaine offre : celui dont la demande est forte et dont la satisfaction ne baisse pas."},
+    {"question": "Que signifie chaque en-tete de colonne ?", "reponse": "Marche = la zone commerciale servie au contrat ; Sejours = le nombre de sejours vendus sur douze mois ; Marge = la marge brute en euros par sejour hors couts fixes ; Satisfaction = la note moyenne des clients sur 10."}
+  ]
+}

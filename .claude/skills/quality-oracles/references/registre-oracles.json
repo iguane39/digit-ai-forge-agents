@@ -1088,6 +1088,30 @@
    ],
    "provenance": "TF-0758, lot Produit-12 - RETOURS - 20260831e (31/08/2026) — un livrable de consolidation vert a 17 controles de forme sur 17, refuse DEUX FOIS par son lecteur. Quatre griefs, aucun cherche par un controle. La doctrine documents nommait le mal (D6, « conformite mecanique n est pas qualite ») ; rien ne le cherchait.",
    "note": "BRUIT MESURE AVANT ENREGISTREMENT (02/09/2026, 103 documents .md/.html suivis du depot, hors fixtures) : 0 FAIL · 37 PASS · 66 SKIP. Trois bornes anti-bruit sont dans le code et commentees a leur endroit — (1) C1 ne BLOQUE que si les DEUX marques du defaut mesure sont reunies (annonce d un cardinal ET au moins 5 occurrences), une seule marque AVERTIT ; sans cette borne, 35 documents sur 103 etaient accuses ; (2) une ENUMERATION NOMMEE vaut definition du terme de tete ; (3) C4 est un AVERTISSEMENT tant qu AUCUN chapitre du document ne porte son bloc (taux d adoption du parc mesure a 0 %), et devient BLOQUANT des qu UN chapitre le porte — une discipline entamee puis abandonnee n est pas du bruit. Le declenchement par lexique seul (terme de methode repete sans annonce de cardinal) n est pas dans `content_patterns` : il s obtient par invocation explicite."
+  },
+  {
+   "domaine": "Lecture d'une page par un tiers sans contexte",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-lecture-tiers.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "T1 INTENTION la page dit ce qu elle permet de DECIDER · T2 VOCABULAIRE tout en-tete de colonne et tout sigle d en-tete est GLOSE de facon atteignable par le lecteur (data-definition, abbr title, title=, glossaire, prose) · T3 GESTE la page offre au moins un geste, ou DECLARE etre en lecture seule · T4 LECTURE PAR UN TIERS (invocation explicite, cout modele) le juge recoit l INSTANTANE seul, SANS brief ni code, et repond a trois questions -- un « je ne sais pas » = FAIL",
+   "statut": "ok",
+   "non_juge": [
+    "la JUSTESSE de ce que la page affiche (-> oracle-calculs, oracle-claims)",
+    "la charte, l accessibilite et le rendu (-> check_html.py, render_page.py, oracle-a11y)",
+    "T2 : l attribut data-definition en tant que regle de BALISAGE — c est G7 du socle digit-ai-page-html ; T2 accepte toute glose atteignable, G7 exige l attribut",
+    "T4 : le determinisme — la LECTURE d un tiers n est pas reproductible et n est jamais promue en verdict silencieux ; c est la REGLE qui l exploite qui est deterministe et rejouee par fixture",
+    "les GABARITS et boilerplates : exemptes et DECLARES tels au verdict (un gabarit n a pas de lecteur), avec la limite de l exemption dite avec elle",
+    "l epreuve de l etonnement par un lecteur REEL du metier : elle reste humaine"
+   ],
+   "provenance": "TF-0774, Produit-02 - RETOURS - 20260902d + ledger seq 102 + forge/etapes/ANALYSE-CAUSES-console-v2-20260902.md (02/09/2026) — la vue V6 (huit comptes par marche, aucun mot-cle visible, aucun geste) a passe contrat, filtres, rendu et interactions : QUATRE PORTES VERTES. Verdict humain : « on n y comprend absolument rien ». Tous les controles regardaient la page depuis l interieur du projet.",
+   "note": "INVOCATION EXPLICITE : `ext: []` et AUCUN content_patterns — cet oracle n entre jamais dans le routage par defaut, parce que T4 appelle un modele et coute. T1-T3 sont deterministes et gratuits ; T4 s arme par --juge <cli>, par --reponse <lecture.json> (lecture deja rendue : la REGLE se rejoue sans depense) ou par `lecture_tiers.actif: true` au profil (faux dans les deux profils livres). BRUIT MESURE (02/09/2026, 7 pages .html suivies du depot, hors fixtures) : 6 SKIP (gabarits et boilerplate, exemption declaree au verdict) et 1 FAIL sur digit-ai-schemas/assets/exemple-reference.html — T1 et T2, constat retenu comme VRAI. CABLAGE COTE PILOT : le hook de restitution appelle `node <skills>/quality-oracles/scripts/oracle-lecture-tiers.mjs <page.html> --profil <profil> --juge claude` sur les pages du lot avant poussee ; sur FAIL, la restitution s arrete et nomme la page. Le pilot cable de son cote (R-38 : aucune poussee sans GO humain)."
   }
  ]
 }

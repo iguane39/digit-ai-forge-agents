@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Produit-02 — Où ouvrir le prochain marché — 20260902a</title>
+<meta name="description" content="Cette page permet de décider sur quel marché ouvrir la prochaine offre, en comparant la demande constatée, la marge et la satisfaction des quatre marchés couverts.">
+</head>
+<body>
+<h1>Où ouvrir le prochain marché</h1>
+
+<p>Cette page permet de décider sur quel marché ouvrir la prochaine offre. Chaque ligne est un
+marché couvert ; les colonnes comparent ce que le marché demande, ce qu'il rapporte et ce qu'en
+disent ses clients. Les quatre marchés sont tous ceux que l'entreprise sert aujourd'hui.</p>
+
+<h2>Comment lire ce tableau</h2>
+<p>On lit une ligne à la fois. Un marché est candidat à l'ouverture quand la demande est forte
+et que la satisfaction ne baisse pas. Utiliser la recherche pour isoler un marché, et le tri de
+colonne pour classer.</p>
+
+<h2>Glossaire des colonnes</h2>
+<ul>
+  <li>Marché : la zone commerciale servie, telle qu'elle est découpée au contrat.</li>
+  <li>Séjours : le nombre de séjours vendus sur les douze derniers mois.</li>
+  <li>Marge : la marge brute en euros par séjour, hors coûts fixes.</li>
+  <li>Satisfaction : la note moyenne laissée par les clients, sur 10.</li>
+</ul>
+
+<label for="q">Chercher un marché</label>
+<input id="q" type="search" placeholder="Nord, Sud…">
+<button type="button">Classer par demande</button>
+
+<table>
+<thead>
+<tr>
+  <th data-definition="zone commerciale servie, telle qu'elle est découpée au contrat" aria-sort="none">Marché</th>
+  <th data-definition="nombre de séjours vendus sur les douze derniers mois" aria-sort="none">Séjours</th>
+  <th data-definition="marge brute en euros par séjour, hors coûts fixes" aria-sort="none">Marge</th>
+  <th data-definition="note moyenne laissée par les clients, sur 10" aria-sort="none">Satisfaction</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>Nord</td><td>120</td><td>18</td><td>8,4</td></tr>
+<tr><td>Sud</td><td>90</td><td>12</td><td>7,9</td></tr>
+<tr><td>Est</td><td>60</td><td>9</td><td>8,1</td></tr>
+<tr><td>Ouest</td><td>75</td><td>11</td><td>7,6</td></tr>
+</tbody>
+</table>
+
+<p>Base : les quatre marchés couverts au 02/09/2026 ; dénominateur des séjours : 345 séjours
+vendus sur les douze derniers mois.</p>
+</body>
+</html>
