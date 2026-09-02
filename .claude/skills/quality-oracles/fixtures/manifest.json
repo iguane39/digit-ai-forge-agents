@@ -949,6 +949,30 @@
     "LE TIERS NE SAIT PAS"
    ],
    "provenance": "TF-0774 — la LECTURE d un tiers n est pas deterministe, la REGLE qui l exploite l est. Ces deux fixtures rejouent la regle T4 (« un je ne sais pas = FAIL ») sur des lectures ENREGISTREES, SANS aucun appel modele et sans depense : la page jugee est la MEME dans les deux cas (la verte), seule la lecture change."
+  },
+  {
+   "nom": "l99-sortie",
+   "cmd": [
+    "python3",
+    "{skillsroot}/digit-ai-page-html/scripts/check_markdown.py",
+    "{fixture}",
+    "--output",
+    "json"
+   ],
+   "red": "l99-sortie-red.md",
+   "green": "l99-sortie-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "M7 chapitre sans ouverture",
+    "M18 identifiant muet"
+   ],
+   "provenance": "TF-0770, Produit-02 - RETOURS - 20260902b + ledger seq 96 — l analyse ANALYSE-L99-PROMPT-CONSOLE-20260902.md a demande QUATRE iterations de forme (M7, M10, M18, tracabilite) avant CONFORME ; cinq passages au journal .oracles-historique.jsonl, aucune correction sur le FOND. La fixture ROUGE est un chapitre L99 qui ouvre sur un tableau nu et cite un identifiant muet ; la VERTE est la meme analyse ecrite UNE SEULE FOIS, ouverture et mode de lecture compris.",
+   "dependant_outil": "python (check_markdown.py du socle digit-ai-page-html)"
   }
  ]
 }
