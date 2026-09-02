@@ -786,6 +786,8 @@ vrai.
 
 ## L25 — Au-delà de trois chapitres, un sommaire VISIBLE EN PERMANENCE (TF-0772, 02/09/2026)
 
+**Deux exclusions, payées le soir même sur les gabarits de la bibliothèque du pilot** : le `h2` qui titre le sommaire lui-même (à l'intérieur du `nav`) n'est pas un chapitre à lister — un sommaire qui devrait se citer est un faux positif ; et un `h2` marqué `data-toc="hors"` est un chapitre de SERVICE du gabarit (en-tête à renseigner, sections optionnelles, contrat de personnalisation) que le document rendu ne porte pas : le gabarit le déclare, il ne l'oublie pas.
+
 **Le fait payé.** Un livrable servi portait un onglet « Volumes » à cinq vues et un onglet
 « Stratégie » à six blocs sur **4 000 px** de haut. Aucune navigation intra-page, et **aucun
 oracle ne l'avait demandée** — L6 ne se déclenche que si un sommaire est *déjà* là, et se
