@@ -295,7 +295,13 @@ else {
       // l'avoir, faute de quoi rien ne la tient.
       const fragments = fx['attendu_messages_' + side] || [];
       if (fragments.length) {
-        const texte = JSON.stringify(sortie?.findings || []);
+        // TOUS LES PORTEURS DE RAISON, PAS SEULEMENT `findings` (02/09/2026). Les oracles
+        // délégués du socle HTML publient leurs constats dans `fails`/`warns` ; ne regarder que
+        // `findings` rendait `attendu_messages` INAPPLICABLE à ces oracles-là — on croyait tenir
+        // une règle, et le champ ne pouvait structurellement jamais la trouver. Même famille que
+        // TF-0659, corrigée un cran plus bas dans la même passe : un contrôle qui cherche au seul
+        // endroit qu'il connaît ne voit jamais ce qui vit ailleurs.
+        const texte = JSON.stringify([sortie?.findings, sortie?.fails, sortie?.warns].filter(Boolean));
         const absents = fragments.filter(f => !texte.includes(f));
         if (absents.length) {
           ko(`fixture ${fx.nom}/${side} : message(s) attendu(s) ABSENT(S) — ${absents.join(' · ')} `

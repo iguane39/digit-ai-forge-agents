@@ -5,8 +5,8 @@ description: >
 # TF-0475 : le noyau declare ce skill APPELE PAR MOT-CLE (lexique d'invocation RV-6).
 # Le modele ne le charge donc pas de lui-meme ; l'appel direct reste entier.
 metadata:
-  version: "2.2.0"
-  updated: "2026-07-20"
+  version: "2.3.0"
+  updated: "2026-09-02"
 ---
 
 # Prompt Analyzer L99
@@ -30,6 +30,18 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
 3. Les couches **conditionnelles** (2 Chainlogic, 4 Factcheck, 7 Deepthink, lentille robustesse du 6) ne s'ouvrent que si leur condition est remplie ; sinon, une seule ligne le signale.
 4. Chaque chapitre doit être substantiel — pas de réponse creuse ou générique.
 5. Ancrer chaque analyse dans le contenu concret du prompt (citations à l'appui).
+6. **Forme de la sortie — non négociable** (TF-0770) : tout chapitre ouvre par ce que le lecteur
+   va apprendre et jamais par un tableau nu ; tout chapitre à tableau dit **comment le lire** ;
+   tout identifiant (`M7`, `L4`, `Ch3 #10`) porte son sens **en ligne** à sa première
+   occurrence ; tout chiffre repris du prompt porte sa **source**. Quatre itérations de forme ont
+   été payées sur une seule analyse le 02/09 — le détail et le pourquoi sont dans `couches.md`,
+   section « Forme de la sortie L99 ».
+7. **Livrable HTML** (TF-0765) : si le prompt analysé produit une **page HTML**, le Chapitre 8
+   **nomme** les règles de socle applicables dans le prompt réécrit et dans le contrat de sortie —
+   **L4** et le composant de filtres du socle (jamais un tri maison), **G1-G6**, les règles de
+   lisibilité, et l'**oracle** qui les vérifie. Exiger « tri et filtres » sans nommer la règle a
+   coûté un aller-retour humain complet le 02/09. L99 **cite** ces règles, il ne les exécute
+   jamais.
 
 ## Les 8 couches (vue d'ensemble)
 

@@ -32,6 +32,77 @@ Chaque défaut identifié porte un tag :
 Les bloquants et majeurs traversent tout le pipeline jusqu'à correction au Chapitre 8.
 Les mineurs sont listés une fois, sans suivi.
 
+
+## Forme de la sortie L99 — non négociable (TF-0770, 02/09/2026)
+
+**Le fait mesuré.** L'analyse `ANALYSE-L99-PROMPT-CONSOLE-20260902.md` a demandé **quatre
+itérations de forme** (M7, M10, M18, traçabilité) avant d'être déclarée conforme — cinq passages
+au journal d'oracles (`.oracles-historique.jsonl`). Aucune de ces quatre corrections ne portait
+sur le FOND de l'analyse. Une sortie qui doit être reprise quatre fois pour être lisible a coûté
+quatre fois le prix de sa relecture, et ce coût est entièrement évitable : les quatre règles
+tiennent en quatre lignes, et elles s'appliquent **à l'écriture**, pas après.
+
+Ces quatre règles s'appliquent à **tous** les chapitres, en L99 comme en L50.
+
+1. **Ouverture de chapitre (M7).** Un chapitre ne commence **jamais** par un tableau nu. Il ouvre
+   par une à trois phrases qui disent **ce que le lecteur va apprendre** — pas ce que le chapitre
+   contient. « Ce chapitre note l'étalon sur 100 » n'est pas une ouverture : c'est le titre
+   reformulé. « Le prompt perd 38 points sur deux dimensions, et les deux tiennent au même
+   silence : l'audience » en est une.
+2. **Mode de lecture (M10).** Tout chapitre qui porte un **tableau** dit **comment le lire** :
+   ce que vaut une ligne, dans quel ordre les lignes sont classées, et ce qu'on en fait. Une
+   phrase suffit. Un tableau sans mode d'emploi se lit de gauche à droite par quelqu'un qui
+   cherche déjà ce qu'il sait ; le lecteur neuf, lui, ne sait pas par où entrer.
+3. **Glose d'un identifiant à sa première occurrence (M18).** Tout identifiant du vocabulaire de
+   l'analyse — `M7`, `L4`, `G1`, `Ch3 #10`, `D-33`, `RD-23` — porte son sens **en
+   ligne** la première fois qu'il apparaît : `**M18** *(règle de lisibilité 18 : un identifiant
+   porte son sens)*`. Un identifiant muet oblige le lecteur à sortir du document pour le
+   comprendre, et c'est précisément ce que L99 reproche aux prompts qu'il analyse.
+4. **Source de tout chiffre repris du prompt.** Chaque chiffre que l'analyse **reprend du prompt
+   analysé** (un seuil, un volume, une durée, un compte) porte sa provenance : ligne, section, ou
+   citation courte. Un chiffre sans source, dans une analyse, est indistinguable d'un chiffre
+   inventé par l'analyse — et le Ch4 (Factcheck) reproche exactement cela au prompt.
+
+**Ce que ces règles ne disent pas** : elles ne prescrivent ni la longueur, ni le ton, ni le
+nombre de tableaux. Elles ne remplacent pas le fond. Un chapitre parfaitement ouvert et
+parfaitement glosé qui n'apprend rien reste un mauvais chapitre.
+
+**Vérification.** La sortie L99 se juge par l'oracle de lisibilité du Markdown
+(`check_markdown.py` du socle `digit-ai-page-html`, règles M7 / M10 / M14 / M18), enregistré
+au registre `quality-oracles` sous le domaine « Lisibilité d'un document (Markdown) ». Une paire
+de fixtures rouge/verte de sortie L99 est rejouée par le banc de `quality-oracles`.
+
+## Livrable HTML : le Ch8 injecte les règles de socle applicables (TF-0765, 02/09/2026)
+
+**Le fait mesuré.** Un prompt produit du 31/08 exigeait « tri et filtres » **sans nommer** la
+règle de socle ni le composant qui l'implémente. La console livrée portait un tri maison hors
+en-tête, **jugée conforme par ses propres oracles**, et l'humain a dû redemander le 02/09
+« comme demandé par la factory ». Un aller-retour entier pour une règle qui existait, était
+outillée, et que le prompt ne nommait pas.
+
+**Règle.** Dès que le livrable attendu du prompt analysé est une **page HTML** (page, fiche,
+console, tableau de bord, cartographie), le **Chapitre 8** énumère nommément, dans le prompt
+réécrit **et** dans le contrat de sortie, les **règles de socle applicables** — au minimum :
+
+- **L4** *(règle de lisibilité 4 : filtres de colonne sur les tableaux de données)* et le
+  **composant de filtres** du socle, nommé, plutôt qu'un tri maison ;
+- **G1-G6** *(garde-fous 1 à 6 du composant de filtres : marquage ou exemption motivée, asset
+  référencé, initialisation, id + thead, compteur `aria-live`, réaffichage à l'impression)* ;
+- les **règles de lisibilité** applicables au type de page (ouverture, mode d'emploi des
+  tableaux, glose des en-têtes) ;
+- l'**oracle** qui les vérifie, nommé lui aussi, pour que le contrat de sortie soit **exécutable**
+  et pas seulement écrit.
+
+**Pourquoi le nommer et pas seulement l'exiger** : « tri et filtres » est une intention ; « L4 +
+le composant de filtres du socle, vérifié par `oracle-filtres-tableau` » est une instruction
+qu'on peut tenir et une conformité qu'on peut prouver. Un prompt qui exige un résultat sans
+nommer la règle qui le définit délègue au producteur le soin de la redécouvrir — et il la
+redécouvre mal.
+
+**Borne** : L99 **cite** ces règles, il ne les vérifie pas et ne les exécute jamais. La
+vérification appartient au producteur du livrable, par les oracles nommés.
+
+
 ---
 
 ### Chapitre 1 — OODA · Cadrage stratégique + Étalon noté
@@ -168,7 +239,7 @@ Ce chapitre est le livrable principal. Il contient :
    | Type de livrable | Oracles |
    |---|---|
    | Code | Exécution réelle + cas de test (nominal + limite) |
-   | Page / fiche HTML | Script de conformité `digit-ai-page-html` (charte, accessibilité, print) si disponible ; sinon rendu + checklist |
+   | Page / fiche HTML | Script de conformité `digit-ai-page-html` (charte, accessibilité, print) si disponible ; sinon rendu + checklist. **Et les règles de socle nommées** — L4 + composant de filtres, G1-G6, lisibilité — vérifiées par `oracle-filtres-tableau` (cf. « Livrable HTML : le Ch8 injecte les règles de socle applicables ») |
    | Deck / PPTX | Rendu LibreOffice + checklist charte `digit-ai-pptx` si disponible |
    | Document texte | Contrat chiffré : longueur, structure, présence/absence d'éléments nommés |
    | Données / tableau | Contrôles de cohérence sur échantillon (totaux, types, bornes, doublons) |
@@ -178,6 +249,8 @@ Ce chapitre est le livrable principal. Il contient :
    - **Boucle bornée** : générer → tester contre le contrat → corriger. **3 itérations maximum**, critères d'arrêt binaires repris du contrat de sortie. Après 3 passes en échec : **livrer avec la liste des écarts résiduels** — jamais boucler au-delà.
    - **Composition, pas duplication** : si `la-boucle` ou `audite-et-corrige-l-appli` sont présents dans l'environnement d'exécution, le protocole leur délègue l'itération au lieu de la réimplémenter.
    - **Interdits** : aucun critère subjectif (« satisfaction », « exemplaire », « bonne qualité ») — uniquement des critères vérifiables.
+
+7. **Forme de la sortie** *(non négociable)* : les quatre règles de la section « Forme de la sortie L99 » s'appliquent à ce chapitre comme aux sept autres — ouverture avant tout tableau, mode de lecture de tout tableau, glose de tout identifiant à sa première occurrence, source de tout chiffre repris du prompt.
 
 ---
 

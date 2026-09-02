@@ -64,7 +64,8 @@
     "les règles qui dépendent du RENDU (texte tronqué, largeur, surlignage, glyphes, coupure de mot) : la mise en page d'un Markdown appartient au lecteur",
     "L3 (une valeur porte sa légende) et L12 (une énumération n'est pas une phrase) restent une revue de lecture — les mécaniser sur du Markdown produirait plus de bruit que de gain",
     "M18 ne voit que les familles sans homonyme (Q-…, RA-…, RD-…, ADR nnnn) plus celles que le document DÉCLARE en frontmatter (`codes: E,C,H`)"
-   ]
+   ],
+   "note": "TF-0770 (02/09/2026) : cet oracle juge desormais aussi la SORTIE DU SKILL prompt-analyzer-l99. Une analyse L99 reelle avait demande QUATRE iterations de forme (M7, M10, M18, tracabilite) avant d etre conforme -- cinq passages au journal d oracles, aucune sur le FOND. Les quatre regles sont ecrites dans prompt-analyzer-l99/references/couches.md, section « Forme de la sortie L99 », et une paire de fixtures rouge/verte de sortie L99 est rejouee par le banc (fixture `l99-sortie`). C est aussi la premiere paire de fixtures de ce domaine : il etait enregistre ok sans etre prouve."
   },
   {
    "domaine": "Rendu PPTX (structure & compatibilité)",
@@ -287,7 +288,8 @@
    "skill": "prompt-analyzer-l99",
    "checklist": "analyse L99 (8 couches), score /100, contrat de sortie",
    "statut": "ok",
-   "non_juge": []
+   "non_juge": [],
+   "note": "TF-0770/TF-0765 (02/09/2026, skill v2.3.0) : la sortie L99 porte desormais ses regles de forme (ouverture de chapitre, mode de lecture des tableaux, glose d un identifiant a sa premiere occurrence, source de tout chiffre repris du prompt) et, quand le livrable analyse est une page HTML, le Ch8 NOMME les regles de socle applicables (L4 + composant de filtres, G1-G6, lisibilite) et l oracle qui les verifie. Exiger « tri et filtres » sans nommer la regle a coute un aller-retour humain complet le 02/09."
   },
   {
    "domaine": "Versions de dépendances (« version actuelle »)",
