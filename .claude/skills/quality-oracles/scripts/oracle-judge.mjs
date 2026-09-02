@@ -9,8 +9,13 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
-const file = args.find(a => !a.startsWith('--'));
+const file = args.find((a, i) => !a.startsWith('--') && !['--profil', '--model'].includes(args[i - 1]));
 const pArg = args.includes('--profil') ? args[args.indexOf('--profil') + 1] : null;
+// --model / QO_JUGE_MODELE (02/09/2026) : le modèle par défaut hérité de l'environnement peut
+// être refusé par une CLI `claude` plus ancienne que lui (« does not support this model »), et le
+// juge rendait alors un SKIP permanent — un oracle qui ne mesure JAMAIS n'est pas un repli, c'est
+// une porte morte. Le drapeau est OPTIONNEL : sans lui, le comportement est strictement inchangé.
+const MODELE = args.includes('--model') ? args[args.indexOf('--model') + 1] : (process.env.QO_JUGE_MODELE || null);
 const DOM = 'Jugement rédactionnel (LLM-juge externe)';
 const NJ = ['véracité factuelle (oracles déterministes)', 'AVIS OUTILLÉ non déterministe : deux runs peuvent diverger — ne jamais promouvoir en verdict', 'qualité visuelle (render/pptx)'];
 const out = (verdict, findings, nj, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-judge', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
@@ -47,8 +52,8 @@ if (process.platform === 'win32') {
   }
 }
 const prompt = fs.readFileSync(rub, 'utf8') + '\n\n--- LIVRABLE À ÉVALUER ---\n' + fs.readFileSync(file, 'utf8').slice(0, 60000);
-const r = spawnSync(jugeCmd, [...jugePre, '-p', prompt, '--output-format', 'text'], { encoding: 'utf8', timeout: 180000 });
-if (r.error || r.status !== 0) out('SKIP', [], [...NJ, 'appel du juge en échec (' + (r.error?.code || r.status) + ')'], 2);
+const r = spawnSync(jugeCmd, [...jugePre, '-p', prompt, '--output-format', 'text', ...(MODELE ? ['--model', MODELE] : [])], { encoding: 'utf8', timeout: 180000 });
+if (r.error || r.status !== 0) out('SKIP', [], [...NJ, 'appel du juge en échec (' + (r.error?.code || r.status) + ')' + (MODELE ? ' — modèle demandé : ' + MODELE : ' — aucun modèle explicite : réessayer avec --model <alias>')], 2);
 let j = null; try { j = JSON.parse((r.stdout.match(/\{[\s\S]*\}/) || ['{}'])[0]); } catch {}
 if (!j || !['PASS', 'FAIL'].includes(j.verdict)) out('SKIP', [], [...NJ, 'sortie du juge hors contrat — non retenue (P5/R1)'], 2);
 const findings = (Array.isArray(j.findings) ? j.findings.slice(0, 5) : []).map(f => ({ sev: f.sev === 'bloquant' ? 'bloquant' : 'warn', msg: String(f.msg || '').slice(0, 200), where: String(f.where || path.basename(file)) }));

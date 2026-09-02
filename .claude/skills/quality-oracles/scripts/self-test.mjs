@@ -270,7 +270,10 @@ else {
     for (const side of ['red', 'green']) {
       const fxFile = path.join(SKILLDIR, 'fixtures', fx[side]);
       if (!fs.existsSync(fxFile)) { ko(`fixture ${side} absente : ${fx[side]} (${fx.nom})`); continue; }
-      let cmd = fx.cmd.map(s => s.replace('{skilldir}', SKILLDIR).replace('{fixture}', fxFile));
+      // `{skillsroot}` accepté ici comme dans `run-oracles` et dans le contrôle de compilation
+      // ci-dessus (02/09/2026) : un oracle hébergé par un skill VOISIN — cas d'`oracle-angles-vides`,
+      // qui vit dans experts-forge — pouvait être enregistré mais pas prouvé par fixtures.
+      let cmd = fx.cmd.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace('{fixture}', fxFile));
       // « python3 » du manifest est un nom Unix : sur ce poste on substitue l'interpréteur
       // réellement fonctionnel (esquive l'alias Store Windows) — cf. lib/python.mjs.
       if (cmd[0] === 'python3' || cmd[0] === 'python') {

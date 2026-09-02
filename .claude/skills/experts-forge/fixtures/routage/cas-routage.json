@@ -3,5 +3,7 @@
   {"id":"R2","demande":"Cadrer la reprise de données depuis l'ancien CRM : mapping des champs et qualité de la migration","routees_attendues":["data"]},
   {"id":"R3","demande":"Évaluer la dépendance à l'éditeur d'une solution SaaS : API disponibles, webhooks, connecteurs et passerelles","routees_attendues":["interop-archi"]},
   {"id":"R4","demande":"Préparer un support de formation à l'IA générative pour deux cabinets notariaux, avec exercices pratiques","routees_attendues":[]},
-  {"id":"R5","registre_modifie":true,"demande":"Choisir un connecteur et une API pour la passerelle entre nos deux systèmes","routees_attendues":[]}
+  {"id":"R5","registre_modifie":true,"demande":"Choisir un connecteur et une API pour la passerelle entre nos deux systèmes","routees_attendues":[]},
+  {"id":"R6","demande":"Revoir le lotissement du programme de bascule v1 vers v2 : machine d'états, plan de cohabitation sur six mois et décommissionnement du système source","routees_attendues":["migration-plateforme-brownfield"]},
+  {"id":"R7","demande":"Contrôler la qualité de la migration des données du référentiel produits : doublons, valeurs manquantes et cohérence des unités","routees_attendues":["data"]}
 ]
