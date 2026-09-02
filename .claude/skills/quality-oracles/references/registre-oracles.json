@@ -1,5 +1,5 @@
 {
- "version": "2.13.0",
+ "version": "2.14.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel.",
  "oracles": [
   {
@@ -335,12 +335,15 @@
     ".htm"
    ],
    "type": "cli",
-   "checklist": "re-somme exécutée des lignes Total/Somme des tables md/html (milliers fr, virgule/point décimal, €, %, k€) ; tolérance arrondi ; le reste marqué à vérifier",
+   "checklist": "re-somme executee des lignes Total/Somme des tables md/html (milliers fr, virgule/point decimal, EUR, %, kEUR) ; tolerance arrondi ; N1 (TF-0718) effectif annonce en chiffres OU en lettres suivi d'un nom denombrable, en tete de liste/tableau, rapproche du CARDINAL REEL de l'ancre ; N2 compte contradictoire pour le meme nom dans le meme document ; le reste marque a verifier",
    "statut": "partiel",
    "non_juge": [
     "calculs hors tables",
     "formules métier",
-    "chiffres sans total de contrôle"
+    "chiffres sans total de contrôle",
+    "effectifs annonces sans ancre immediate (liste ou tableau juste dessous)",
+    "effectifs de 1 et noms hors liste des denombrables de lib/effectifs.mjs",
+    "effectifs qui n'ouvrent pas leur titre ou leur ligne (borne anti-bruit)"
    ],
    "note": "domaine-spécifique : rejouer le calcul du livrable ; pas d'oracle générique",
    "cmd": [
@@ -971,6 +974,83 @@
    "non_juge": "le TEXTE seul (ni image, ni archive, ni binaire) · les seuls noms du referentiel · la visibilite reelle du depot chez l'hebergeur · les fichiers non suivis ou ignores · les copies deja faites (forks, miroirs, caches)",
    "commande": "scripts/oracle-nom-client-publie.mjs <depot|bundle> [--referentiel=<chemin hors depot>]",
    "note": "Juge un DEPOT sur quatre angles (contenus suivis, noms de fichiers, messages de commit, historique complet). Le referentiel des noms interdits est une DONNEE vivant HORS des depots publies : sans lui l'oracle rend SKIP, jamais PASS."
+  },
+  {
+   "domaine": "Autorité d'une décision affirmée",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-autorite-decision.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "A1 bloc se declarant decision porte un decideur · A2 decideur appartenant a l'EMETTEUR = recommandation, pas decision · A3 trace de RANG DECISION citee, existante et de ce rang (ADR accepte, registre date) · A4 propagation « decide/arbitre/tranche/acte » hors du bloc resolue vers le bloc a sa premiere occurrence",
+   "statut": "ok",
+   "non_juge": [
+    "la REALITE de la decision (qu'un decideur cite ait effectivement decide)",
+    "les decisions enoncees en prose libre, hors bloc ou table se declarant decision",
+    "la pertinence de ce qui est tranche",
+    "A2 si le profil ne porte ni autorite.emetteur_motifs ni nommage.prefixe"
+   ],
+   "content_patterns": [
+    "D[ée]cideur",
+    "clos(?:e)?\\s+par\\s+arbitrage",
+    "^\\s*(?:[-*+>#]\\s*)*\\**\\s*D[ée]cision\\s*\\**\\s*:",
+    "Statut\\s*\\**\\s*:\\s*\\**\\s*(?:tranch[ée]|act[ée])"
+   ],
+   "note": "TF-0715 (02/09/2026) — defaut alle jusqu'au client sur un livrable vert a quatre portes : « Decideur : <prestataire>, pour <client> » et « clos par arbitrage » sur une decision que le client n'avait pas prise. Emetteur lu au profil (autorite.emetteur_motifs, repli nommage.prefixe)."
+  },
+  {
+   "domaine": "Livrabilité d'une conséquence déclarée",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-livrabilite-consequence.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "L1 toute forme decrivant un UTILISATEUR FINAL SUBISSANT LA DECOUVERTE, en contexte de repli (sans reponse, faute de reponse, par defaut, si personne ne tranche), exige soit une reformulation en IMPASSE, soit un element du meme livrable couvrant l'information de cet utilisateur (preavis, notification, communication) · L2 l'absence totale de couverture est dite dans le finding, jamais comptabilisee en charge de support",
+   "statut": "ok",
+   "non_juge": [
+    "le caractere reellement inacceptable d'une consequence (jugement metier)",
+    "les paraphrases hors liste de formes de subissance",
+    "la qualite du preavis trouve (existence verifiee, ni contenu ni delai)",
+    "les consequences hors contexte de repli"
+   ],
+   "content_patterns": [
+    "d[ée]couvrir(?:a|ont|aient|ait)",
+    "d[ée]couvriront",
+    "support\\s+n['\\u2019]aura\\s+pas\\s+de\\s+r[ée]ponse",
+    "vague\\s+d['\\u2019]appels",
+    "s['\\u2019]en\\s+apercevr(?:a|ont)",
+    "sans\\s+(?:les\\s+)?pr[ée]venir"
+   ],
+   "note": "TF-0716 (02/09/2026) — formulation presente dans six versions livrees et validee par quatre portes : « des utilisateurs decouvriront la situation en production, et le support n'aura pas de reponse a leur donner ». En comptabilisant le manque en tickets, le livrable le rendait invisible."
+  },
+  {
+   "domaine": "Angle d'expertise déclaré vide (dette de couverture)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skillsroot}/experts-forge/scripts/oracle-angles-vides.mjs",
+    "{file}"
+   ],
+   "content_patterns": [
+    "^#{1,4}\\s+Angles\\s+d[ée]clar[ée]s\\s+vides"
+   ],
+   "checklist": "G1 six colonnes renseignees · G2 vocabulaire ferme (ouvert/comble/ecarte) · G3 « comble » : artefact cite dont l'existence est verifiee par execution · G4 « ouvert » au-dela de son echeance = ECHEC · G5 « ecarte » : raison ecrite",
+   "statut": "ok",
+   "non_juge": [
+    "la pertinence de l'angle declare",
+    "les angles vides jamais ecrits au registre (l'oracle juge la dette declaree, il ne la decouvre pas)",
+    "la qualite de la fiche qui comble l'angle (-> oracle-judge)"
+   ],
+   "note": "TF-0717 (02/09/2026) — un angle declare vide le 20/08/2026 et non comble a produit onze jours plus tard exactement le defaut qu'il aurait attrape. La table vit dans experts-forge/references/registre-experts.md, section « Angles declares vides — dettes nommees »."
   }
  ]
 }
