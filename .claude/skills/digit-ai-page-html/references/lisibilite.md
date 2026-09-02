@@ -784,13 +784,147 @@ livrables non-HTML : *une seule doctrine, deux portes*.
 décision ait réellement été prise — un contrôle vérifie qu'une cible existe, jamais qu'elle dit
 vrai.
 
+## L25 — Au-delà de trois chapitres, un sommaire VISIBLE EN PERMANENCE (TF-0772, 02/09/2026)
+
+**Le fait payé.** Un livrable servi portait un onglet « Volumes » à cinq vues et un onglet
+« Stratégie » à six blocs sur **4 000 px** de haut. Aucune navigation intra-page, et **aucun
+oracle ne l'avait demandée** — L6 ne se déclenche que si un sommaire est *déjà* là, et se
+contente d'un avertissement quand il manque. Retour humain, mot pour mot : « fournis un menu sur
+la gauche pour les différents chapitres de chaque page ». *Un contrôle qui n'exige jamais rien ne
+fait pas exister ce qu'il décrit* — c'est la loi transverse n° 3 appliquée à la navigation : la
+surface implicite se propose d'office, elle ne s'oublie pas.
+
+**Règle.** Au-delà de **trois chapitres** de premier niveau **ou de deux écrans** de hauteur, la
+page porte un sommaire **visible en permanence** : latéral collant sur bureau, bande repliable
+sur mobile. Il liste **chaque** `h2` — un sommaire partiel est pire qu'aucun sommaire, le lecteur
+croit tenir le plan de la page.
+
+**Contrôle mécanique, en deux moitiés qui ne se remplacent pas.**
+- `L25` (`check_html.py`) — plus de trois `h2` sans `nav.toc` / `nav[aria-label="Sommaire"]`, ou
+  un sommaire qui n'atteint pas tous les chapitres. Le message nomme le **geste complet** : une
+  entrée `<a href="#id">` par chapitre **avec** son annonce `.toc-d` d'au moins 12 caractères
+  (L6), et la position collante.
+- `sommaire_perdu` (`render_page.py`, bloquant) — le sommaire existe, la page fait plus de deux
+  écrans, et il n'est **plus dans la fenêtre** aux 60 % de la page. Un sommaire qui défile avec
+  le texte ne navigue plus rien, et aucun contrôle statique ne peut le voir.
+
+**Le geste, une fois pour toutes** — il consomme le même token que le thead collant (L29) :
+
+```css
+.toc { position: sticky; top: var(--hh); }        /* --hh = hauteur de l'en-tête collant */
+@media (max-width: 900px) { .toc { position: static; } }   /* bande repliable sur mobile */
+```
+
+## L26 — Une page de DONNÉES prend toute la largeur ; la colonne de lecture est pour la prose (TF-0771 + TF-0778, 02/09/2026)
+
+**Le fait payé, deux fois.** Une console de données a été livrée dans une colonne de lecture de
+**1 180 px** : à 1 440 px de fenêtre, ses tableaux mesuraient 1 301, 1 256 et 1 376 px pour
+1 136 disponibles. `render_page` **avait relevé** le débordement ; la revue l'a classé
+« acceptable » parce qu'un conteneur défilait — sans mesurer ce que le lecteur perdait. Retour
+humain : « les pages doivent profiter de toute la largeur de l'écran », et sur le chapô bridé à
+90ch : « répété des dizaines de fois sans être définitivement corrigé ».
+
+**La cause n'est pas un réglage, c'est une contradiction non arbitrée.** Le socle portait deux
+règles de largeur — mesure de lecture pour la prose (L2), pleine largeur pour le conteneur — sans
+dire laquelle s'applique ni où. Chaque auteur tranchait, et retranchait au livrable suivant.
+
+**Règle — l'arbitre est la page elle-même.** Une page de données se **déclare**
+(`data-page="donnees"` sur `<html>`, `<body>` ou le conteneur principal) et vaut alors :
+
+1. **pleine largeur adaptative** — aucune bride de lecture (`max-width` en `ch`, ou < 1 280 px)
+   sur un conteneur qui porte un **tableau** ;
+2. **un bloc de prose occupe la largeur de son conteneur**, ou deux lignes — sous **70 %**, c'est
+   un défaut. Un passage de lecture voulu se **déclare** (`data-mesure-lecture`, plus
+   `data-colonne-ok` s'il est calé à gauche) : c'est le geste complet, pas la moitié ;
+3. **un tableau rogné dans un conteneur défilant** au-delà de 1 280 px de fenêtre est
+   **bloquant**. Un conteneur `overflow-x: auto` rend un tableau *consultable*, il ne le rend pas
+   *lisible*, et sur un grand écran il n'a pas d'excuse : la place existe. Écart voulu →
+   `data-rognage-assume`, **déclaré**, jamais classé « acceptable » en revue.
+
+**Contrôles mécaniques.** `L26` (`check_html.py`, bride autour d'un tableau) ·
+`prose_etroite` et `rognage_donnees` (`render_page.py`, bloquants).
+
+**Corollaire d'écriture — l'étiquette de statut se pose SOUS le champ, jamais dans le libellé
+(TF-0773).** Sur le même livrable, quatre champs d'une même rangée tombaient sur deux hauteurs :
+deux libellés portaient leur statut (« hypothèse à confirmer par le comité du 15/09 ») et
+passaient sur deux lignes. Retour humain : « textbox pas alignés ». `render_page.py` mesure
+désormais l'alignement des **contrôles** d'une même rangée à **2 px près**
+(`controles_desalignes`, bloquant) — V3 juge des séries de blocs, L2 des largeurs de texte, et
+une rangée de formulaire n'est ni l'un ni l'autre.
+
+## L27 — Sur une page de données, une colonne se DÉFINIT (TF-0777, 02/09/2026)
+
+**Le fait payé.** Aucun en-tête de la console livrée n'était défini, et l'infobulle du tri disait
+« Trier par ». Une hypothèse exprimée **en euros par an** était consommée par un calcul
+« séjours × valeur », c'est-à-dire **multipliée par un nombre d'occurrences** : personne ne
+pouvait le voir, et l'oracle Calculs rendait `SKIP` faute de savoir ce que la colonne mesurait.
+*Une unité qui n'est écrite nulle part se fait deviner, et une devinette ne se relit pas.*
+
+**Règle.** Sur une page de données, tout `<th>` porte sa définition : `data-definition` (ou
+`title`, ou un lien vers son entrée de glossaire), et cette définition dit **ce que la colonne
+mesure, dans quelle UNITÉ, et d'où elle vient**. La source unique est un **dictionnaire de
+colonnes** ([`dictionnaire-de-colonnes.md`](dictionnaire-de-colonnes.md)) : en-têtes, infobulles
+et glossaire en **dérivent**, au lieu d'être réécrits trois fois.
+
+**Contrôle mécanique.** `L27` — un `<th>` muet sur une page de données. La règle ne juge que les
+pages déclarées : exiger une définition sur le tableau à deux colonnes d'une note de synthèse
+ferait crier le contrôle là où il n'apprend rien.
+
+## L28 — Le temps s'affiche comme du temps (TF-0783, 02/09/2026)
+
+**Le fait payé.** Une vue de fenêtres rendait ses périodes **par libellé**, sans mois — le
+fichier de données lui-même n'en portait pas, « par principe ». Conséquence mécanique : le tri et
+la facette rangent la colonne par ordre **alphabétique**, et le lecteur lit « août 2025,
+avr. 2026, déc. 2025 ». Aucune frise ne peut sortir de là.
+
+**Règle.** Une colonne temporelle porte une **valeur d'ordre** sur chacune de ses cellules :
+`data-v` en ISO (`2025-08`, `2025-08-14`) ou une balise `<time datetime>`. Le libellé reste
+lisible par un humain, la valeur reste ordonnable par la machine — et une date ISO se compare
+**comme du texte**, ce qui *est* déjà son ordre chronologique.
+
+**Corollaire de forme.** Une vue de **fenêtres** (périodes d'ouverture, jalons, saisons) se rend
+en **frise mensuelle** plutôt qu'en liste : la dimension temporelle est un axe, pas une colonne
+de texte. Le schéma des données porte alors `mois_debut` / `mois_fin` et non un libellé unique.
+
+**Contrôle mécanique.** `L28` — plus de la moitié des cellules d'une colonne temporelle sans
+valeur d'ordre, sur une page de données. C'est le pendant de **G8** du composant de filtres
+([`composant-filtres-tableau.md`](composant-filtres-tableau.md)) : la même valeur sert au tri et
+à l'ordre de la facette.
+
+## L29 — En-tête collant contre thead collant : le socle tranche (TF-0754, 02/09/2026)
+
+**Le fait payé.** B1 (« header sticky », verdict *adapter*) et B6 (« tableau triable, thead
+sticky », verdict *adopter*) se superposent dès qu'une page longue porte un tableau : le thead se
+colle au bord haut **derrière** l'en-tête de document et devient illisible ; on lui donne un
+décalage, et il flotte au-dessus des premières lignes de son propre tableau. **Aucun des deux
+textes ne disait lequel cède**, ni ne fournissait le décalage. Coût mesuré : deux cycles de rendu
+pour découvrir la collision, puis un arbitrage **de socle pris par un produit** — ce qu'un
+produit ne devrait jamais avoir à trancher seul.
+
+**Arbitrage, écrit ici une fois pour toutes.** **B1 l'emporte** : l'en-tête de document garde le
+bord haut, c'est lui qui porte l'identité du livrable. **B6 reçoit son décalage sous forme de
+token** — `--hh`, la hauteur de l'en-tête, posée dans `:root` par le gabarit :
+
+```css
+:root { --hh: 64px; }                     /* hauteur de l'en-tête collant, posée par le gabarit */
+header.doc.colle { position: sticky; top: 0; z-index: 20; background: var(--bg); }
+thead.colle th   { position: sticky; top: var(--hh); z-index: 10; background: var(--surface); }
+```
+
+Le même token décale le sommaire collant (L25) : un seul repère, trois consommateurs.
+
+**Contrôle mécanique.** `L29` — un `thead`/`th` collant à `top: 0` alors qu'un en-tête est
+lui-même collant ; **et** `top: var(--hh)` consommé sans que `--hh` soit déclaré, car un décalage
+qui vaut 0 par défaut ramène exactement la collision qu'il devait éviter (loi transverse n° 1 :
+une affordance est câblée ou n'existe pas).
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L22
-python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L17)
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L29
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L29)
 python scripts/check_html.py page.html --output json
-python scripts/render_page.py page.html                # V1-V7 + L2 mesuré au rendu
+python scripts/render_page.py page.html                # V1-V14 + L2 mesuré au rendu
 python scripts/self_test.py                            # fixtures rouges et vertes du skill
 ```
 

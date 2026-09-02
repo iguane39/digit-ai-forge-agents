@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L28 colonne de mois sans valeur d'ordre — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L28 ROUGE (TF-0783, 02/09).
+
+  LE FAIT : une vue de fenetres rendait ses periodes PAR LIBELLE, sans mois — le fichier de
+  donnees lui-meme n'en portait pas, « par principe ». Consequence mecanique : le tri et la
+  facette rangent la colonne par ordre alphabetique, et le lecteur lit « aout 2025, avr. 2026,
+  dec. 2025 ». Une dimension temporelle sans valeur d'ORDRE n'est ni triable ni ordonnable, et
+  aucune frise ne peut en sortir.
+
+  Attendu : L28 et elle seule.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Fenetres d'ouverture</h1>
+<p>La colonne « Mois » ne porte que son libelle : rien ne dit dans quel ordre ces valeurs se rangent.</p>
+<table>
+<thead><tr>
+<th data-definition="Marche commercial suivi. Source : referentiel interne. Ordre : alphabetique.">Marche</th>
+<th data-definition="Mois d'ouverture de la fenetre. Unite : mois. Source : calendrier evenementiel.">Mois</th>
+<th data-definition="Volume annuel en nombre de sejours. Unite : sejours/an. Source : mesure 2025.">Volume</th>
+</tr></thead>
+<tbody>
+<tr><td>Marche A</td><td>aout 2025</td><td data-v="1000">1 000</td></tr>
+<tr><td>Marche B</td><td>avril 2026</td><td data-v="12500">12 500</td></tr>
+<tr><td>Marche C</td><td>decembre 2025</td><td data-v="250">250</td></tr>
+<tr><td>Marche D</td><td>janvier 2026</td><td data-v="45000">45 000</td></tr>
+</tbody></table>
+</main></body></html>

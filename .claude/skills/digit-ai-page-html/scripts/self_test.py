@@ -139,6 +139,21 @@ CAS = {
     # (data-filterable pose L4 muette, exemple de lecture pose L10 muette).
     "l13-liste-sans-recherche.html": {"L13"},
     "l11-litteral-null.html": {"L11"},
+    # Lot Produit-02 du 02/09 (TF-0772/0771/0778/0777/0783/0754) — cinq regles neuves, cinq
+    # paires. Chaque paire porte la MEME page a une difference pres, et cette difference est
+    # exactement ce que la regle mesure : le sommaire (L25), la bride de largeur autour du
+    # tableau et non autour de la prose (L26), la definition des en-tetes (L27), la valeur
+    # d'ordre des mois (L28), le decalage du thead par le token --hh (L29).
+    "l25-chapitres-sans-sommaire.html": {"L25"},
+    "l25-sommaire-lateral.html": set(),
+    "l26-donnees-colonne-de-lecture.html": {"L26"},
+    "l26-donnees-pleine-largeur.html": set(),
+    "l27-entetes-sans-definition.html": {"L27"},
+    "l27-dictionnaire-de-colonnes.html": set(),
+    "l28-mois-sans-ordre.html": {"L28"},
+    "l28-mois-ordonnes.html": set(),
+    "l29-thead-sous-entete-collant.html": {"L29"},
+    "l29-thead-decale-par-token.html": set(),
     # TF-0227 (lot Produit-10 du 14/08) : 71 marqueurs [c:id] dans un livrable DIFFUSE, PASS
     # a tous les oracles du socle. La rouge porte le defaut reel, mot pour mot.
     "l14-plomberie-affichee.html": {"L14"},
@@ -364,6 +379,19 @@ CAS_RENDU = {
     # un paragraphe hors de l'échelle d'espacement dans la rouge.
     "v7-prose-en-flux.html": ("v7_spacing", 0),   # hauteurs variables, blanc constant
     "v7-rythme-casse.html": ("v7_spacing", 1),    # un paragraphe hors échelle
+    # Lot Produit-02 du 02/09 — quatre familles neuves, quatre paires. Chaque paire porte la
+    # MEME page a une declaration pres, et cette declaration est exactement ce que la famille
+    # mesure : l'etiquette de statut descendue sous le champ (TF-0773), la page qui prend la
+    # largeur de la fenetre au lieu de se brider (TF-0771), le chapo qui remplit son conteneur
+    # (TF-0778), le sommaire colle par `position: sticky; top: var(--hh)` (TF-0772).
+    "ctrl-rangee-desalignee.html": ("controles_desalignes", 1),
+    "ctrl-rangee-alignee.html": ("controles_desalignes", 0),
+    "donnees-tableau-rogne.html": ("rognage_donnees", 1),
+    "donnees-tableau-entier.html": ("rognage_donnees", 0),
+    "donnees-prose-etroite.html": ("prose_etroite", 1),
+    "donnees-prose-pleine.html": ("prose_etroite", 0),
+    "sommaire-perdu-au-defilement.html": ("sommaire_perdu", 1),
+    "sommaire-colle.html": ("sommaire_perdu", 0),
 }
 
 

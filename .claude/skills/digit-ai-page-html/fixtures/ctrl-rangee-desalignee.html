@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — controles d'une rangee sur deux hauteurs — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+h2{font-family:var(--head);font-size:1.1rem;margin:24px 0 8px}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.wrap{max-width:1200px;margin:0 auto;padding:24px}
+.rangee{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
+.champ label{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
+.champ input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit}
+.statut{display:block;margin-top:6px;color:var(--muted);font-size:.75rem}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de la famille `controles_desalignes` (TF-0773, 02/09).
+
+  Le cas paye, reduit a sa forme : quatre champs d'une meme rangee de grille, et DEUX hauteurs.
+  Retour humain sur le livrable servi : « textbox pas alignes ». La cause est dans le libelle —
+  deux etiquettes portent leur STATUT dans leur texte, passent sur deux lignes, et poussent leur
+  champ vers le bas. Aucune famille existante ne pouvait le voir : V3 juge des series de blocs,
+  L2 des largeurs de texte.
+
+  Attendu a 1440 px : au moins 1 constat `controles_desalignes`.
+-->
+<body><main class="wrap"><h1>Hypotheses de la simulation</h1><div class="rangee">
+  <div class="champ"><label for="a">Volume annuel (hypothese a confirmer par le comite du 15/09)</label><input id="a" type="text" value="1 000"></div>
+  <div class="champ"><label for="b">Part de marche</label><input id="b" type="text" value="12 %"></div>
+  <div class="champ"><label for="c">Valeur moyenne (valeur provisoire, source a verifier)</label><input id="c" type="text" value="84 EUR"></div>
+  <div class="champ"><label for="d">Duree</label><input id="d" type="text" value="3,4 nuits"></div>
+</div></main></body></html>

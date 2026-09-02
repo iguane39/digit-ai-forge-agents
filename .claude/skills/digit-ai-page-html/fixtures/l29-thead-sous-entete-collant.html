@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L29 thead collant derriere l'en-tete collant — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+.hdr{position:sticky;top:0;background:var(--surface);border-bottom:2px solid var(--line)}
+thead th{position:sticky;top:0;background:var(--surface)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L29 ROUGE (TF-0754, 02/09).
+
+  B1 « header sticky » (verdict adapter) et B6 « thead sticky » (verdict adopter) se
+  superposent des qu'une page longue porte un tableau : le thead se colle au bord haut DERRIERE
+  l'en-tete de document et devient illisible. Aucun des deux textes ne disait lequel cede, ni
+  ne fournissait le decalage — cout mesure : deux cycles de rendu pour decouvrir la collision,
+  puis un arbitrage de SOCLE pris par un produit.
+
+  Attendu : L29 et elle seule.
+-->
+<body><main class="wrap">
+<header class="hdr"><h1>Rapport a tableaux</h1></header>
+<table><thead><tr><th>Suite</th><th>Statut</th></tr></thead>
+<tbody>
+<tr><td>auth</td><td>livre</td></tr>
+<tr><td>paiement</td><td>en cours</td></tr>
+<tr><td>recherche</td><td>livre</td></tr>
+</tbody></table>
+</main></body></html>

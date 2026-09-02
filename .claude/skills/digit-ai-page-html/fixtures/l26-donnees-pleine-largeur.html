@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L26 console pleine largeur — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+.lecture{max-width:1180px;margin:0 auto}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L26 VERTE (TF-0771 + TF-0778, 02/09).
+
+  MEME page, MEME classe `.lecture` DECLAREE dans la feuille — mais elle habille la PROSE, pas
+  le tableau. C'est tout l'arbitrage : une page de donnees est pleine largeur, la colonne de
+  lecture reste legitime pour un passage de prose. Sans cette jumelle, la regle aurait pu se
+  durcir en « aucune bride nulle part sur une page de donnees », ce qui condamnerait la
+  doctrine de lecture du socle.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Console des volumes</h1>
+<div class="lecture"><p>Ce passage de prose garde sa mesure de lecture : c'est du texte suivi, et il se lit mieux sur une colonne etroite.</p></div>
+<table>
+<thead><tr>
+<th data-definition="Marche commercial suivi. Source : referentiel interne. Ordre : alphabetique.">Marche</th>
+<th data-definition="Volume annuel en nombre de sejours. Unite : sejours/an. Source : mesure 2025.">Volume</th>
+<th data-definition="Part du volume total. Unite : pourcentage. Source : calcul derive du volume.">Part</th>
+</tr></thead>
+<tbody>
+<tr><td>Marche A</td><td data-v="1000">1 000</td><td data-v="2.4">2,4 %</td></tr>
+<tr><td>Marche B</td><td data-v="12500">12 500</td><td data-v="29.8">29,8 %</td></tr>
+<tr><td>Marche C</td><td data-v="250">250</td><td data-v="0.6">0,6 %</td></tr>
+<tr><td>Marche D</td><td data-v="45000">45 000</td><td data-v="13.7">13,7 %</td></tr>
+</tbody></table>
+</main></body></html>
