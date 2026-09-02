@@ -110,6 +110,14 @@ conteneur `overflow-x:auto`**). Le repli en cartes empilées via `data-label` es
 robuste. Un `thead` **sticky** ne se justifie que dans un conteneur à hauteur bornée ; hors de
 ce cas il se peint par-dessus la première ligne — le laisser statique.
 
+**Et s'il colle, il se décale du token `--hh` (TF-0754, 02/09/2026).** L'arbitrage manquait :
+« header sticky » et « thead sticky » se superposaient, aucun des deux textes ne disait lequel
+cède, et un **produit** a dû trancher un arbitrage de socle après deux cycles de rendu. Le socle
+tranche désormais — l'en-tête de document garde le bord haut, le thead prend
+`top: var(--hh)` (`thead.colle th`), et `--hh` vaut la hauteur de l'en-tête, posée dans `:root`
+par le gabarit. Deux lignes de CSS, dans `assets/boilerplate.html` ; `check_html.py` (L29) refuse
+la collision et le token non déclaré.
+
 **Le seuil dépend du CONTENU, pas d'un pixel fixe (RA-2 — la deuxième remarque d'un lot de retours, mesurée sur livrable réel le 13/08)** :
 un tableau de 9 colonnes portant de la prose déborde encore à 1 200 px (V1 mesuré : bord droit
 à 1 173 px pour un viewport de 1 100 px). Règle de calibrage : ~130 px de largeur utile par
