@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.10.0"
+  version: "2.11.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -144,6 +144,24 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   (extraction tables md/html), `claims-extract.mjs` (affirmations labellisées) — source unique consommée par calculs, claims et coherence.
 - **Utilitaires** — `self-test.mjs` (frontmatters, registre, **cohérence registre↔environnement des délégués**, profils et niveaux §6, compilation dont `lib/`, **rejeu des fixtures**) · `bootstrap.mjs
   [--install]` (outils externes, dégradations motivées) · `report-couverture.mjs <racine>` (verdicts, top FAIL/SKIP, exemptions, bilan cumulé).
+
+## Ce que la campagne du 02/09/2026 a ajouté (registre v2.15.0)
+
+Quatre défauts ont en commun d'avoir traversé **toutes** les portes existantes. Les contrôles
+regardaient la forme ; personne ne regardait ce que le livrable **dit à son lecteur**.
+
+| Ce qui manquait | Où c'est désormais | Bruit mesuré (corpus du dépôt) |
+|---|---|---|
+| Aucun oracle ne jugeait la **conception** d'un livrable — 17 contrôles de forme verts, deux refus du lecteur | `oracle-conception-livrable.mjs` (C1 glossaire, C2 cardinal énuméré, C3 liste autoportante, C4 intention de chapitre) | 0 FAIL / 103 documents |
+| Un **pourcentage** publié sans son dénominateur, et des **unités** d'en-tête jamais lues | `oracle-calculs` N3, N4, N5 (`lib/mesure.mjs`) | 0 FAIL / 103 documents ; couverture 1 → 4 PASS |
+| Aucun oracle ne demandait si un **lecteur sans contexte** comprend la page | `oracle-lecture-tiers.mjs` (T1 intention, T2 vocabulaire, T3 geste, T4 lecture par un tiers) — **invocation explicite** | 6 SKIP (gabarits) / 1 FAIL sur 7 pages |
+| Le **ledger** d'un run n'était que journalisé, jamais jugé | `oracle-etat-forge` F6 (maquette validée avant le code) et F7 (l'auteur ne juge pas son propre contrat), via `--ledger` | — (artefact fourni explicitement) |
+
+**La discipline de bruit est la même pour les quatre**, et elle est écrite dans chaque code à
+l'endroit où elle s'applique : un contrôle neuf est **mesuré sur les documents réels du dépôt
+avant d'être rendu bloquant** ; celui qui accuse à côté se publie **en avertissant, avec son taux
+et son seuil**. Un contrôle qui accuse un tiers du parc se fait désactiver dans la semaine, et il
+aurait eu raison (R-33 bis).
 
 ## Gouvernance du registre
 - Registre **versionné**, double vue JSON (machine) ↔ MD (humaine) ; domaine ❌ rencontré → **§4**. Les priorités se lisent dans `report-couverture`, pas à l'intuition.
