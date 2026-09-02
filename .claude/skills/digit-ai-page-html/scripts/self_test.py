@@ -167,6 +167,21 @@ CAS = {
     "l16-onglets-conformes.html": set(),
     "l17-depliant-sans-bouton.html": {"L17"},
     "l17-depliant-conforme.html": set(),
+    # TF-0719 (31/08) — LE BADGE QUI AFFIRME UN RANG QUE RIEN NE VERIFIE. Un `span.badge.acte`,
+    # titre « Decision prise le 22 aout 2026 par la direction... », a ete pose sur une decision
+    # QUI N A JAMAIS ETE PRISE, sur CINQ emplacements d un livrable client — et il est passe :
+    # L3 exige qu un badge porte une LEGENDE, et elle etait la. Le vocabulaire etait bon, la
+    # discipline absente. Mesure du 02/09 : la rouge rendait PASS avant correction, FAIL ×2
+    # apres. TROIS fixtures, parce que la regle a DEUX sorties legitimes et un piege :
+    #   · rouge : un badge nu, et un second dont l `aria-describedby` RESOUT vers une note qui
+    #     ne se declare PAS decision — une description resolue n est pas une trace ;
+    #   · verte 1 : les memes emplacements, l un enveloppe d un lien vers son ADR, l autre
+    #     decrit par un element qui se declare decision ;
+    #   · verte 2 : la SORTIE PAR DEFAUT — sans trace, le badge se degrade en `propose`, jamais
+    #     l inverse. Sans elle, la regle passerait pour un refus des badges.
+    "l24-badge-acte-sans-trace.html": {"L24"},
+    "l24-badge-acte-resolu.html": set(),
+    "l24-badge-propose-degrade.html": set(),
 }
 
 # TF-0435 : L15 est un AVERTISSEMENT — jugé à part, sur les warns. La verte emploie un chevron
@@ -304,6 +319,18 @@ CAS_RENDU = {
     "l2fr-freres-declares.html": ("l2_freres", 0),         # le meme, mais data-mesure-lecture
     "l2g-gouttiere-etiquettes.html": ("l2_gouttiere", 1),   # colonne d'étiquettes
     "l2g-etiquettes-en-tete.html": ("l2_gouttiere", 0),     # étiquette en tête
+    # TF-0694 (27/08) — LA REGLE DECRIVAIT EXACTEMENT CE DEFAUT, AU SEUIL EXACT, ET RENDAIT PASS
+    # DESSUS : son implementation commencait par `if (cs.display !== 'grid') continue`, et une
+    # mise en page « intitule | contenu » en <table> n'y entrait jamais. Elle n'a pas echoue,
+    # ELLE N'A PAS ETE APPELEE, et rien ne le disait. Mesure du 27/08 rejouee le 02/09 sur la
+    # rouge : verdict PASS, l2_gouttiere 0, comme les douze autres familles — le socle rendait
+    # PASS sur le document meme que la regle est faite pour condamner. Cout : deux fiches
+    # livrees et trois regenerations avant qu'un humain ne l'ouvre.
+    # TROIS fixtures, parce que la contre-epreuve porte ici tout le risque : faire entrer les
+    # <table> pouvait condamner TOUS les tableaux a deux colonnes.
+    "l2g-table-gouttiere.html": ("l2_gouttiere", 1),   # intitules a 32 % de la largeur rendue
+    "l2g-table-etroite.html": ("l2_gouttiere", 0),     # les memes, ramenes au seuil exact (20 %)
+    "l2g-table-donnees.html": ("l2_gouttiere", 0),     # vrai tableau : deux valeurs comparables
     # TF-0500 (22/08) : L2-largeur ne pouvait STRUCTURELLEMENT pas voir un texte écrasé en
     # colonne d'un mot — caption absente de sa collecte, écartée par closest('table'), et
     # seuil de 1100 px alors que le défaut n'existe que sous 640 px. L2-filet mesure un rapport
@@ -822,7 +849,16 @@ def run_markdown():
     outil = Path(__file__).resolve().parent / 'check_markdown.py'
     fx = Path(__file__).resolve().parent.parent / 'fixtures'
     out = []
-    attendus = {'m-lisibilite-rouge.md': {'M7', 'M14', 'M18'}, 'm-lisibilite-vert.md': set()}
+    # TF-0720 (31/08) — LE BALISAGE D'EMPHASE EST TRAITE COMME DU TEXTE, deuxieme fois que ca
+    # casse une adjacence. Les deux fixtures portent le MEME document a deux differences pres :
+    # dans la verte, `**RD-23**` porte sa glose en italique juste apres (les quatre marqueurs de
+    # gras rompaient l'adjacence) et `RA-16` porte la sienne A LA LIGNE SUIVANTE (le controle
+    # travaillait ligne par ligne, donc n'avait aucune suite a examiner) ; dans la rouge, les
+    # deux memes jetons sont VRAIMENT muets. Mesure du 02/09 : la verte rendait FAIL sur DEUX
+    # faux positifs avant correction, PASS apres, et la rouge mord toujours sur les deux — sans
+    # la rouge, neutraliser l'emphase aurait pu eteindre la regle en silence.
+    attendus = {'m-lisibilite-rouge.md': {'M7', 'M14', 'M18'}, 'm-lisibilite-vert.md': set(),
+                'm18-emphase-rouge.md': {'M18'}, 'm18-emphase-vert.md': set()}
     for nom, attendu in attendus.items():
         cible = fx / nom
         if not cible.exists():
@@ -843,7 +879,52 @@ def run_markdown():
                     'attendu': ','.join(sorted(attendu)) or '(aucune règle)',
                     'obtenu': ','.join(sorted(obtenus)) or '(aucune)',
                     'regle': 'M (markdown)', 'detail': ''})
+    out += run_emphase_partagee()
     return out
+
+
+def run_emphase_partagee():
+    """TF-0720 — LA FONCTION PARTAGEE, jugee pour elle-meme et dans les deux sens.
+
+    Le retour porte DEUX manifestations d'une seule cause : un jeton en gras refuse par M18, et
+    une cellule `**90**` que l'oracle Calculs ne lisait pas comme un nombre (re-somme a 189 au
+    lieu de 99, signalee le 22/08). Les fixtures ci-dessus jugent la premiere ; cette branche
+    juge la SECONDE ET LES BORNES, qu'aucun document entier ne montre proprement :
+
+      · un nombre en gras est lu comme un nombre, et la re-somme retombe juste ;
+      · les POSITIONS sont preservees — sans quoi lignes et colonnes d'un message d'echec
+        mentiraient, et le correctif couterait plus cher que le defaut ;
+      · une puce `* premier` et un `nom_de_variable` ne sont PAS de l'emphase : le sens rouge
+        est ici, une neutralisation trop large mangerait le document au lieu de son balisage.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from check_markdown import neutraliser_emphase, nombres_de  # noqa: PLC0415
+
+    cas = []
+    ligne = '| total | **90** |'
+    cas.append(('VERT   `**90**` lu comme un nombre (re-somme)', nombres_de(ligne) == ['90'],
+                repr(nombres_de(ligne))))
+    somme = [float(x) for x in nombres_de('| relecture | **40** | correction | **50** |')]
+    cas.append(('VERT   la re-somme retombe juste (40 + 50 = 90)',
+                sum(somme) == 90.0, repr(somme)))
+    src = 'le jeton **RD-23** *(glose)* et un _mot_ en italique'
+    cas.append(('VERT   positions preservees (meme longueur)',
+                len(neutraliser_emphase(src)) == len(src),
+                f'{len(neutraliser_emphase(src))} != {len(src)}'))
+    cas.append(('VERT   les marqueurs disparaissent, le contenu reste',
+                'RD-23' in neutraliser_emphase(src) and '**' not in neutraliser_emphase(src),
+                neutraliser_emphase(src)))
+    cas.append(('ROUGE  une puce `* premier` n est pas de l emphase',
+                neutraliser_emphase('* premier') == '* premier',
+                neutraliser_emphase('* premier')))
+    cas.append(('ROUGE  `nom_de_variable` garde ses tirets bas',
+                neutraliser_emphase('nom_de_variable') == 'nom_de_variable',
+                neutraliser_emphase('nom_de_variable')))
+    return [{'fixture': nom, 'verdict': 'OK' if tenu else 'ECHEC',
+             'attendu': 'emphase neutralisee, positions justes',
+             'obtenu': 'conforme' if tenu else 'ecart',
+             'regle': 'TF-0720 fonction partagee', 'detail': '' if tenu else str(detail)[:200]}
+            for nom, tenu, detail in cas]
 
 def run_matrice_etats():
     """TF-0493 (23/08/2026) — LA MATRICE D'ETATS, et les deux defauts qu'un client a trouves.

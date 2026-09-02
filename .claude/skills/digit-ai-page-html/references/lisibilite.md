@@ -115,8 +115,20 @@ dépasse jamais **15 à 20 %** de la largeur utile.
   première piste ne dépasse pas **20 %** de la largeur. Le seuil est à 20 % et non 25 %
   parce que le défaut constaté mesurait **22 %** : un seuil posé au-dessus du défaut qui l'a
   motivé ne prouve rien. Deux colonnes de contenu (cartes, barèmes) portent deux textes
-  longs et sortent du périmètre ; un vrai tableau de données n'est pas une grille CSS et n'y
-  entre jamais.
+  longs et sortent du périmètre.
+  **Les mises en page `intitulé | contenu` en `<table>` y entrent aussi** (TF-0694,
+  27/08/2026) : la règle décrivait exactement ce défaut, au seuil exact, et rendait PASS
+  dessus — son implémentation commençait par `if (cs.display !== 'grid') continue` et
+  assumait l'exclusion (« un vrai tableau de données n'est pas une grille CSS »). Or *une
+  mise en page en `<table>` n'est pas un tableau de données : c'est la même intention avec
+  l'autre outil*. La règle n'avait pas échoué, **elle n'avait pas été appelée**, et rien ne
+  le disait — mesuré sur une fiche à 32 % : verdict PASS et zéro constat sur les treize
+  familles, après deux fiches livrées et trois régénérations. On mesure alors la largeur
+  **rendue** de la première colonne (un `<table>` n'a pas de piste déclarée), avec les
+  **mêmes** garde-fous : première cellule courte, seconde longue, et la majorité des lignes
+  à deux cellules de ce type (au moins deux). Le seuil de 20 % **ne bouge pas** — le lot en
+  apporte une confirmation indépendante. Un vrai tableau de données à deux colonnes de
+  valeurs comparables reste PASS, et une fixture verte le prouve à chaque recette.
 
 **Revue de lecture.** Que les blocs qui doivent occuper la pleine largeur (synthèse, verdict,
 blocage principal) l'occupent réellement — et que la mesure de lecture retenue serve le
@@ -645,6 +657,28 @@ sur neuf** d'une restitution au gabarit — une forme PRESCRITE, où un bloc qui
 est exactement ce que la consigne demande. Elle ne juge donc que les **tableaux**. *Un contrôle
 qui condamne la forme qu'un gabarit prescrit met le gabarit en défaut, jamais l'auteur.*
 
+**Le balisage d'emphase n'est pas du texte** (TF-0720, 31/08/2026). Deuxième fois qu'il casse
+une adjacence, et c'est ce qui en fait une doctrine plutôt qu'un correctif. `**RD-23**
+*(renvoi de design 23 : …)*` était refusé comme identifiant muet : le contrôle prenait les
+quatre caractères suivant le jeton, y trouvait les deux astérisques de fermeture du gras, et
+l'adjacence tombait — alors que mettre un identifiant en gras est l'écriture la plus naturelle
+d'un tableau ou d'une énumération. Seconde manifestation, trouvée en corrigeant la première :
+le contrôle travaillait **ligne par ligne**, donc un jeton en fin de ligne dont la glose
+commence à la ligne suivante n'avait aucune suite à examiner. Et le lot du 22/08 avait déjà
+signalé la même cause sur un **autre oracle** : une cellule `**90**` n'était pas lue comme un
+nombre, et la re-somme sortait à 189 au lieu de 99.
+
+*Une seule cause, une seule parade.* `check_markdown.py` expose `neutraliser_emphase()`, sur le
+modèle du blanchiment des spans de code : les **marqueurs** (`**`, `__`, `*`, `_`) deviennent
+des espaces, le contenu reste, et **la longueur est rigoureusement préservée** — donc lignes et
+colonnes d'un message d'échec restent justes. La fenêtre de glose se prend ensuite sur le texte
+**reflué du paragraphe** (jusqu'à trois lignes), et non sur la ligne physique : *la coupure à
+95 colonnes est une commodité d'écriture, elle ne porte aucun sens*. `nombres_de()` offre la
+même lecture aux contrôles de chiffres. Bornes déclarées : une emphase ouverte sur une ligne et
+fermée sur la suivante n'est pas reconnue ; une puce `* premier` et un `nom_de_variable` ne
+sont pas de l'emphase, et les fixtures rouges de `self_test.py` le vérifient — *une
+neutralisation trop large mangerait le document au lieu de son balisage*.
+
 ## L21 — Un composant DÉCLARÉ porte son style (TF-0521, 23/08/2026)
 
 *Le fait.* Deux squelettes de la bibliothèque portaient `<nav class="toc">` et des entrées
@@ -704,6 +738,51 @@ ont **signé** (`promesses-verifiees` en tête). Cette adhésion n'est pas de la
 sans signature rendait **un constat vrai sur huit**, et un contrôle bruyant s'apprend à être ignoré.
 Il a trouvé sa première vraie promesse chez `source-reader.js` du socle lui-même — `data-src-format`
 était documenté dans son exemple d'usage et **lu par personne** ; il est désormais lu.
+
+## L24 — Un badge de statut ENGAGEANT est résolvant (TF-0719, 31/08/2026)
+
+*Le fait, payé par un client.* Le socle fournit un vocabulaire de statut juste — `acte`,
+`propose`, `hypothese`, `information` — et les livrables en publient la légende : « acté =
+décision en vigueur ». Un `<span class="badge acte">`, de titre « Décision prise le 22 août 2026
+par la direction… » et de libellé « décidé le 22 août 2026 », a été posé sur une décision **qui
+n'a jamais été prise**, dont la source n'est pas un ADR — sur **cinq emplacements** d'un livrable
+diffusé. Et il est **passé** : L3 exige qu'un badge porte une légende, et elle était là. *Le
+vocabulaire était bon, la discipline absente.* Corrigé seulement après intervention du client.
+
+*Pourquoi celui-là.* Un badge de statut est une **affirmation de rang**, et la plus visible de la
+page : c'est le seul élément qu'un dirigeant lit avant le texte. Il coûtait trois mots à écrire et
+n'engageait à rien. Même doctrine que les renvois d'identifiant : **ce qui affirme se résout**.
+
+**Règle.** Un élément qui cumule une classe de badge (`badge`, `pastille`, `statut`, `status`,
+`chip-val`, `etiquette-statut`) et un statut **engageant** (`acte`, `decide`, `tranche` et leurs
+variantes accentuées) porte la **trace** de sa décision. Trois formes acceptées :
+
+- l'élément **est** un `<a href>`, en contient un, ou est enveloppé par un — une ancre interne
+  doit **exister** et sa cible se **déclarer décision** ;
+- `aria-describedby` résout vers un élément de la page **qui se déclare décision** (≥ 20
+  caractères et un mot de trace : décision, ADR, arbitrage, délibération, tranché) ;
+- `data-decision` porte une référence non vide, quand la trace vit hors de la page.
+
+**Règle de dégradation, à sens unique.** Sans cible, le badge se dégrade en `propose`
+(« recommandation, non tranchée »), **jamais l'inverse**. *Dégrader coûte une nuance, promouvoir
+coûte un mensonge de rang.*
+
+**Contrôle mécanique.** `L24` — FAIL sur tout badge de statut engageant sans trace résolue.
+
+**Bornes déclarées.** La règle ne mord **que** sur la liste fermée des statuts engageants, et
+seulement combinée à une classe de badge : `.badge.propose`, `.badge.hypothese`,
+`.badge.information` n'affirment aucun rang et ne sont jamais jugés. L'**existence** d'une cible
+externe (`href` documentaire, `data-decision`) n'est pas vérifiée — la page ne peut pas ouvrir un
+ADR du dépôt ; seule la **déclaration** est jugée, et cette limite est écrite plutôt que devinée.
+Une description **résolue** n'est pas une trace : la fixture rouge porte exprès un badge dont
+l'`aria-describedby` pointe vers une note qui explique sans rien trancher.
+
+**À rapprocher** du retour jumeau sur `quality-oracles`, qui porte la même doctrine pour les
+livrables non-HTML : *une seule doctrine, deux portes*.
+
+**Revue de lecture.** Que la trace citée soit bien celle de la décision affirmée, et que la
+décision ait réellement été prise — un contrôle vérifie qu'une cible existe, jamais qu'elle dit
+vrai.
 
 ## Lancer le contrôle
 

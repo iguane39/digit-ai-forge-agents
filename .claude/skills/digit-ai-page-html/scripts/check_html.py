@@ -1450,6 +1450,109 @@ def check_lisibilite(html: str, a: Arbre):
                 "composant deviendra un voile transparent qui intercepte les clics (mesuré : page "
                 "entière inutilisable, seize oracles au vert). Ajouter la garde du boilerplate (TF-0733).")
 
+    # --- L24 : un BADGE DE STATUT ENGAGEANT est RÉSOLVANT (TF-0719, 31/08/2026) --------------
+    #
+    # LE FAIT, et il a été payé par un client. Le socle fournit un vocabulaire de statut juste —
+    # `acte`, `propose`, `hypothese`, `information` — et les livrables en publient la légende :
+    # « acté = décision en vigueur ». Un `<span class="badge acte">`, de titre « Décision prise le
+    # 22 août 2026 par la direction… » et de libellé « décidé le 22 août 2026 », a été posé sur
+    # une décision QUI N'A JAMAIS ÉTÉ PRISE, dont la source n'est PAS un ADR — sur CINQ
+    # emplacements d'un livrable diffusé. Et il est passé, comme le badge d'onglet de la même
+    # classe : L3 exige qu'un badge porte une LÉGENDE, et celle-ci était là. Le vocabulaire était
+    # bon, la discipline absente.
+    #
+    # POURQUOI CELUI-LÀ ET PAS UN AUTRE. Un badge de statut est une AFFIRMATION DE RANG, et la
+    # plus visible de la page : c'est le seul élément qu'un dirigeant lit avant le texte.
+    # Aujourd'hui il coûte trois mots à écrire et n'engage à rien. Même doctrine que les renvois
+    # d'identifiant de RD-22 : ce qui affirme se RÉSOUT.
+    #
+    # CE QUI EST EXIGÉ : un badge de statut engageant porte un LIEN ou un `aria-describedby` vers
+    # LA TRACE de la décision, et la cible doit SE DÉCLARER décision. Trois formes acceptées :
+    #   · l'élément est un `<a href>` ou en contient un (ancre interne résolue, ou lien externe) ;
+    #   · `aria-describedby` résout vers un élément de la page qui se déclare décision ;
+    #   · `data-decision` porte une référence non vide (ADR, délibération) — la trace vit alors
+    #     hors de la page, et on ne juge que la DÉCLARATION, pas son existence.
+    #
+    # LA RÈGLE DE DÉGRADATION, écrite et à sens unique : sans cible, le badge se dégrade en
+    # `propose` (« recommandation, non tranchée »), JAMAIS L'INVERSE. C'est le seul sens sûr —
+    # dégrader coûte une nuance, promouvoir coûte un mensonge de rang.
+    #
+    # LA BORNE, délibérée et étroite : la règle ne mord QUE sur un statut ENGAGEANT de la liste
+    # fermée, ET porté par une classe de badge. `.badge.propose`, `.badge.hypothese`,
+    # `.badge.information` ne sont jamais jugés — ils n'affirment aucun rang. Un contrôle qui
+    # déborde de son domaine se fait désactiver.
+    CL_STATUT_ENGAGEANT = {"acte", "actee", "actée", "acté", "decide", "décide", "decidee",
+                           "décidée", "decidée", "tranche", "tranché", "tranchee", "tranchée"}
+    CL_BADGE = {"badge", "pastille", "statut", "status", "chip-val", "etiquette-statut"}
+    RE_TRACE = re.compile(r"(décision|decision|décidé|decide|décide|adr|arbitrage|arbitré|"
+                          r"arbitre|délibér|deliber|tranché|tranche|acté|acte)", re.I)
+
+    def _trace_declaree(n):
+        """La cible se DÉCLARE-t-elle décision ? Un texte de trace, ou `data-decision`."""
+        if n is None:
+            return False
+        if (n.att("data-decision") or "").strip():
+            return True
+        t = n.texte_propre()
+        return len(t) >= 20 and bool(RE_TRACE.search(t))
+
+    def _lien_resolu(n):
+        """Un `href` porté par le badge ou l'un de ses descendants, et qui mène quelque part.
+
+        Une ancre interne doit EXISTER et sa cible se déclarer décision — sinon on aurait
+        remplacé un badge muet par un badge qui pointe dans le vide. Un lien externe ou
+        documentaire est accepté sur DÉCLARATION : la page ne peut pas ouvrir un ADR du dépôt
+        pour le lire, et cette limite est écrite plutôt que devinée.
+        """
+        porteurs = [n] + [e for e in n.descendants()]
+        for e in porteurs:
+            href = (e.att("href") or "").strip()
+            if not href or href == "#":
+                continue
+            if href.startswith("#"):
+                if _trace_declaree(ids.get(href[1:])):
+                    return True
+                continue
+            return True
+        # Le badge peut aussi être ENVELOPPÉ par le lien : `<a href="…"><span class="badge acte">`.
+        for anc in n.ancetres():
+            if anc.tag == "a":
+                href = (anc.att("href") or "").strip()
+                if href.startswith("#"):
+                    if _trace_declaree(ids.get(href[1:])):
+                        return True
+                elif href and href != "#":
+                    return True
+        return False
+
+    badges_muets = []
+    for n in a.racine.descendants():
+        cls = {c.lower() for c in n.classes()}
+        if not (cls & CL_BADGE) or not (cls & CL_STATUT_ENGAGEANT):
+            continue
+        if (n.att("data-decision") or "").strip():
+            continue
+        if _lien_resolu(n):
+            continue
+        if _trace_declaree(ids.get((n.att("aria-describedby") or "").split()[0]
+                                   if n.att("aria-describedby") else "")):
+            continue
+        badges_muets.append(n)
+    for n in badges_muets[:6]:
+        statut = sorted(cls_e for cls_e in {c.lower() for c in n.classes()}
+                        if cls_e in CL_STATUT_ENGAGEANT)
+        fails.append(
+            f"L24 badge de statut non résolvant : « {n.texte_propre()[:40] or n.tag} » porte le "
+            f"statut engageant `{'/'.join(statut)}` ({n.chemin()}) et AUCUNE trace résolue — ni "
+            "lien vers la décision, ni `aria-describedby` vers un élément qui se déclare décision, "
+            "ni `data-decision`. Un badge de statut est l'affirmation de rang la plus visible de la "
+            "page : sans sa trace il coûte trois mots et n'engage à rien (mesuré : posé à tort sur "
+            "CINQ emplacements d'un livrable client, vert à check_html et render_page, corrigé "
+            "après intervention du client). Sortie par défaut : le dégrader en `propose` "
+            "(« recommandation, non tranchée ») — jamais l'inverse.")
+    if len(badges_muets) > 6:
+        fails.append(f"L24 badge de statut non résolvant : {len(badges_muets) - 6} autre(s).")
+
     # --- L22 : une PROMESSE écrite en commentaire est vérifiée (23/08/2026, choix humain) ----
     #
     # LE FAIT, et il a coûté deux fois. Dans les schémas de la bibliothèque, un commentaire

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 gouttiere d'etiquettes en table — 20260827b</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* La MEME intention que la grille etiquette|contenu, exprimee avec l'autre outil.
+   La colonne d'intitules prend 32 % de la largeur : le lecteur voit un tiers de page
+   vide et un contenu tasse a droite. Ce n'est pas un tableau de donnees. */
+.fiche{width:100%;table-layout:fixed;border-collapse:collapse}
+.fiche th,.fiche td{box-sizing:border-box}
+.fiche th{width:32%;text-align:left;vertical-align:top;color:var(--faint);
+ font-family:var(--head);font-size:.7rem;text-transform:uppercase;padding:6px 8px}
+.fiche td{vertical-align:top;padding:6px 8px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L2 — une colonne d'intitules qui mange le tiers de la largeur, en table</h1>
+<p>Chaque ligne porte un intitule court et un contenu long : la mise en page est celle d'une
+fiche, pas celle d'un tableau de donnees.</p>
+<table class="fiche"><tbody>
+<tr><th>Question d'audit</th>
+<td>Les pages cibles repondent-elles au format d'intention dominant de leur requete ?
+Le critere de la grille demande une page par requete commerciale, a deux clics au plus
+de l'accueil, et il n'est rempli sur aucune des deux dimensions mesurees.</td></tr>
+<tr><th>Perimetre mesure</th>
+<td>Les huit fiches remises entre le 20 et le 27 aout, dans leur version diffusee au client,
+en excluant les brouillons internes et les regenerations intermediaires qui n'ont jamais
+quitte le depot de travail.</td></tr>
+<tr><th>Suite donnee</th>
+<td>La colonne d'intitules est ramenee sous le seuil, la mesure est reprise a chaque
+regeneration, et le constat est verse au registre avec la mesure qui l'a rendu visible
+plutot qu'avec la relecture humaine qui l'a trouve.</td></tr>
+</tbody></table>
+</main></body></html>

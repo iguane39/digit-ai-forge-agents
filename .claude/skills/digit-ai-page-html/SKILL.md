@@ -1,19 +1,47 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L22 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L24 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.15.0"
+  version: "1.16.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.16.0 (02/09/2026)** — **trois défauts d'une seule famille : un contrôle qui décrit son cas
+et ne le voit pas.** · **Le balisage d'emphase cesse d'être du texte** (TF-0720) :
+`**RD-23** *(glose)*` était refusé par M18 comme identifiant muet — le contrôle prenait les
+quatre caractères suivant le jeton et y trouvait les astérisques de fermeture du gras. Quatre
+refus à l'écriture d'un seul lot, dont deux sur du contenu conforme ; et la MÊME cause avait
+déjà été signalée le 22/08 sur un autre oracle, une cellule `**90**` non lue comme un nombre
+(re-somme à 189 au lieu de 99). `check_markdown.py` expose désormais `neutraliser_emphase()`,
+qui blanchit les marqueurs **en préservant les positions**, et la fenêtre de glose se prend sur
+le **paragraphe reflué**, plus sur la ligne physique — la coupure à 95 colonnes ne porte aucun
+sens. Mesure : la fixture verte rendait FAIL sur deux faux positifs, elle rend PASS ; la rouge
+mord toujours sur les deux jetons vraiment muets. · **L24** (neuve, BLOQUANTE) : un badge de
+statut engageant est **résolvant** (TF-0719). Un `span.badge.acte` de titre « Décision prise le
+22 août 2026 par la direction… » a été posé sur une décision **jamais prise**, sur cinq
+emplacements d'un livrable client — et il est passé, parce que L3 n'exige d'un badge qu'une
+légende, et elle était là. *Le vocabulaire était bon, la discipline absente.* Un badge de statut
+est l'affirmation de rang la plus visible de la page : il porte désormais un lien, un
+`aria-describedby` ou un `data-decision` vers une trace **qui se déclare décision**. Règle de
+dégradation à sens unique, écrite dans `lisibilite.md` : sans cible, `propose` — jamais
+l'inverse. · **`l2_gouttiere` regarde enfin les `<table>`** (TF-0694) : la règle décrivait ce
+défaut au mot près et au seuil exact, et rendait PASS dessus — elle commençait par
+`if (cs.display !== 'grid') continue`. *Une mise en page `intitulé | contenu` en `<table>` n'est
+pas un tableau de données : c'est la même intention avec l'autre outil.* Elle n'avait pas
+échoué, **elle n'avait pas été appelée**, et rien ne le disait : sur la fiche fautive (intitulés
+à 32 %), verdict PASS et zéro constat sur les treize familles, après deux fiches livrées et
+trois régénérations. On mesure la largeur **rendue** de la première colonne, avec les mêmes
+garde-fous ; seuil 20 % inchangé, et une fixture verte garantit qu'un vrai tableau de données à
+deux colonnes comparables reste PASS. Recette 127 → 141 cas.
 
 **1.15.0 (24/08/2026)** — **quatre frictions d'un lot client, dont deux contradictions du socle avec
 lui-même.** · **L19 n'accuse plus le repli en cartes** : `composants.md` §6 impose

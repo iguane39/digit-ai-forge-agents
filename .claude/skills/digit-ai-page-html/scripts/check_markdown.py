@@ -77,6 +77,95 @@ def sans_code_en_ligne(l: str) -> str:
     return re.sub(r"`[^`\n]+`", lambda m: " " * len(m.group(0)), l)
 
 
+# --- TF-0720 (31/08/2026) : LE BALISAGE D'EMPHASE N'EST PAS DU TEXTE -------------------------
+#
+# LE FAIT, constaté QUATRE fois à l'écriture d'un seul lot, dont deux sur du contenu conforme.
+# `**RD-23** *(renvoi de design 23 : …)*` était refusé par M18 comme « identifiant muet » : le
+# contrôle prenait les quatre caractères suivant le jeton et y trouvait `** (` — les deux
+# astérisques de fermeture du gras rompaient l'adjacence, et le verdict tombait. Or mettre un
+# identifiant en gras est l'écriture la plus naturelle d'un tableau ou d'une énumération, et
+# c'est celle qu'emploient les six lots précédents.
+#
+# CE N'EST PAS UN CAS ISOLÉ, et c'est ce qui justifie une fonction plutôt qu'un rustine : le lot
+# du 22/08 signalait déjà un faux positif de l'oracle Calculs/chiffres — une re-somme à 189 au
+# lieu de 99 — parce qu'une cellule `**90**` N'ÉTAIT PAS LUE COMME UN NOMBRE. Deux oracles, deux
+# familles de jetons, UNE SEULE CAUSE : le balisage d'emphase traité comme du texte.
+#
+# LA PARADE, calquée sur `sans_code_en_ligne` : on blanchit les MARQUEURS et on garde le
+# contenu, en PRÉSERVANT LES POSITIONS — même longueur, donc lignes et colonnes restent justes,
+# et un message d'échec continue de situer le défaut. On ne retire pas l'emphase du document, on
+# la rend transparente à l'analyse.
+#
+# LES BORNES, tenues par les motifs eux-mêmes :
+#   · l'emphase ne traverse jamais un saut de ligne (classes `[^\n]`) — une puce `* premier`
+#     n'a pas de marqueur fermant sur sa ligne et n'est donc jamais touchée ;
+#   · `_` ne se blanchit qu'aux bords de mot, sinon `nom_de_variable` perdrait ses tirets bas ;
+#   · le gras se traite AVANT l'italique : l'ordre inverse laisserait `**` en `* … *`.
+RE_EMPHASE = (
+    re.compile(r"(\*\*|__)(?=\S)([^\n]+?)(?<=\S)\1"),               # gras
+    re.compile(r"(?<![\w*])(\*)(?=\S)([^*\n]+?)(?<=\S)\1(?![\w*])"),  # italique par astérisque
+    re.compile(r"(?<![\w_])(_)(?=\S)([^_\n]+?)(?<=\S)\1(?![\w_])"),   # italique par tiret bas
+)
+
+
+def neutraliser_emphase(texte: str) -> str:
+    """Blanchit les MARQUEURS d'emphase (`**`, `__`, `*`, `_`) en gardant leur contenu.
+
+    La longueur du texte est rigoureusement préservée : `**RD-23**` devient `  RD-23  `, donc
+    tout index calculé sur le résultat désigne le même caractère dans le document d'origine.
+    C'est la fonction partagée demandée par TF-0720 : le contrôle de jetons (M18) et la lecture
+    des nombres (cellule `**90**` d'une re-somme) en dépendent tous deux.
+    """
+    out = texte
+    for rx in RE_EMPHASE:
+        out = rx.sub(lambda m: " " * len(m.group(1)) + m.group(2) + " " * len(m.group(1)), out)
+    return out
+
+
+def texte_de_prose(l: str) -> str:
+    """La ligne telle qu'un ORACLE doit la lire : sans span de code, sans marqueur d'emphase.
+
+    Deux blanchiments, une seule garantie : les positions ne bougent pas.
+    """
+    return neutraliser_emphase(sans_code_en_ligne(l))
+
+
+# Ce que « lire un nombre » veut dire une fois l'emphase neutralisée : le motif est fourni ici
+# pour que le contrôle des chiffres et celui des jetons partagent la MÊME lecture du document.
+RE_NOMBRE = re.compile(r"(?<![\w.,])-?\d{1,3}(?:[   ]\d{3})*(?:[.,]\d+)?(?![\w])")
+
+
+def nombres_de(l: str) -> list[str]:
+    """Les nombres lisibles d'une ligne, emphase neutralisée (`**90**` vaut 90)."""
+    return [m.group(0) for m in RE_NOMBRE.finditer(texte_de_prose(l))]
+
+
+def suite_du_paragraphe(lignes: list[str], i: int, dans_code: set[int], max_lignes: int = 3) -> str:
+    """Le texte du PARAGRAPHE qui continue après la ligne `i`, reflué en une seule chaîne.
+
+    TF-0720, seconde manifestation, trouvée en corrigeant la première : M18 travaillait LIGNE
+    PAR LIGNE. Un jeton en fin de ligne dont la glose commence à la ligne suivante n'avait donc
+    AUCUNE suite à examiner, et tombait — constaté sur RA-16 dans le même paragraphe, à un
+    simple retour à la ligne près. La coupure à 95 colonnes est une commodité d'écriture : elle
+    ne porte aucun sens, et un contrôle qui lui en prête un condamne la mise en forme.
+
+    La continuation s'arrête à ce qui ROMPT vraiment le paragraphe : ligne vide, bloc de code,
+    titre, ligne de tableau, citation, filet, ou nouvel item de liste. Une ligne simplement
+    indentée poursuit son item, elle ne l'interrompt pas.
+    """
+    out: list[str] = []
+    for j in range(i + 1, min(i + 1 + max_lignes, len(lignes))):
+        if j in dans_code:
+            break
+        s = lignes[j].strip()
+        if not s or s.startswith(("#", "|", ">", "```", "---", "===")):
+            break
+        if re.match(r"^\s*(?:[-*+]\s|\d{1,3}[.)]\s)", lignes[j]):
+            break
+        out.append(s)
+    return (" " + " ".join(out)) if out else ""
+
+
 def frontmatter(lignes: list[str]) -> dict:
     if not lignes or lignes[0].strip() != "---":
         return {}
@@ -153,7 +242,7 @@ def juger(texte: str) -> tuple[list[str], list[str]]:
         n = sum(1 for j in corps if lignes[j].lstrip().startswith("|") and j not in dans_code)
         if n <= SEUIL_TABLE:
             continue
-        prose = " ".join(sans_code_en_ligne(lignes[j]) for j in corps if est_prose(lignes[j]))
+        prose = " ".join(texte_de_prose(lignes[j]) for j in corps if est_prose(lignes[j]))
         marqueurs = re.search(r"(comment lire|se lit|trié|trie|classé|classe|colonne|exclu|"
                               r"périmètre|perimetre|source|unité|unite|lecture)", prose, re.I)
         if not marqueurs:
@@ -169,7 +258,7 @@ def juger(texte: str) -> tuple[list[str], list[str]]:
     for i, l in enumerate(lignes):
         if i in dans_code:
             continue
-        t = sans_code_en_ligne(l)
+        t = texte_de_prose(l)
         for m in RE_GABARIT.finditer(t):
             plomberie.append((m.group(1), i + 1))
         for m in RE_MARQUEUR_TRAVAIL.finditer(t):
@@ -200,23 +289,28 @@ def juger(texte: str) -> tuple[list[str], list[str]]:
     for i, l in enumerate(lignes):
         if i in dans_code or not re.match(r"^#{1,6}\s+\S", l):
             continue
-        for m in re_renvoi.finditer(l):
+        for m in re_renvoi.finditer(texte_de_prose(l)):
             definis.add(m.group(0))
 
+    # TF-0720 : la FENÊTRE DE GLOSE se prend sur le texte de prose (emphase neutralisée) REFLUÉ
+    # avec la suite de son paragraphe — plus sur la ligne physique. Ce qui est exigé n'a pas
+    # changé d'un iota : le premier caractère non blanc qui suit le jeton ouvre la glose. Ce qui
+    # change, c'est que ni le gras ni un retour à la ligne ne comptent plus comme ce caractère.
+    OUVREURS = ("(", "—", "–", ":", "«")
     vus: set[str] = set()
     muets: list[tuple[str, int]] = []
     for i, l in enumerate(lignes):
         if i in dans_code or l.lstrip().startswith(">"):
             continue                                  # une citation ne se glose pas
-        t = sans_code_en_ligne(l)
+        t = texte_de_prose(l)
+        queue = suite_du_paragraphe(lignes, i, dans_code)
         for m in re_renvoi.finditer(t):
             jeton = m.group(0)
             if jeton in vus or jeton in definis:
                 continue
             vus.add(jeton)
-            suite = t[m.end():m.end() + 4]
-            glose = suite.lstrip().startswith(("(", "—", "–", ":", "«"))
-            if not glose:
+            suite = (t[m.end():] + neutraliser_emphase(sans_code_en_ligne(queue))).lstrip()
+            if not suite.startswith(OUVREURS):
                 muets.append((jeton, i + 1))
     for jeton, ligne in muets[:6]:
         fails.append(
@@ -242,6 +336,14 @@ NON_JUGE = [
     "la JUSTESSE d'une glose : la présence d'une explication après le jeton, jamais qu'elle "
     "explique vraiment",
     "le seuil de M10 (12 lignes de tableau) est une donnée, pas une vérité",
+    "TF-0720 — la neutralisation d'emphase couvre `**`, `__`, `*` et `_` sur UNE ligne : une "
+    "emphase ouverte sur une ligne et fermée sur la suivante n'est pas reconnue, et le jeton "
+    "qu'elle encadre reste jugé sur son texte brut",
+    "TF-0720 — le reflux du paragraphe s'arrête à 3 lignes : une glose repoussée plus loin que "
+    "trois lignes après son jeton n'est plus une glose adjacente, c'est un autre paragraphe",
+    "la lecture des nombres (`nombres_de`) est OFFERTE ici pour que le contrôle des chiffres "
+    "partage la même normalisation ; sa PORTÉE effective appartient à l'oracle Calculs, qui vit "
+    "hors de ce skill",
 ]
 
 

@@ -710,6 +710,68 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- L2 (rendu, suite) : la gouttiere d'etiquettes en <table> (TF-0694, 27/08) --------
+  //
+  // LA REGLE DECRIVAIT EXACTEMENT CE DEFAUT, AU SEUIL EXACT, ET RENDAIT PASS DESSUS. Son
+  // commentaire disait notre cas au mot pres — « une grille etiquette | contenu ou la colonne
+  // d'etiquettes prend 22 % de la largeur » — et son implementation commencait par
+  // `if (cs.display !== 'grid') continue;`, en assumant l'exclusion : « un vrai tableau de
+  // donnees n'est pas une grille CSS et n'y entre jamais ».
+  //
+  // OR UNE MISE EN PAGE `intitule | contenu` EN <table> N'EST PAS UN TABLEAU DE DONNEES : c'est
+  // la meme intention, exprimee avec l'autre outil. La regle n'a pas echoue, ELLE N'A PAS ETE
+  // APPELEE, et rien ne le disait — le pire des verdicts. Mesure du 27/08 sur la fiche fautive
+  // (colonne d'intitules a 32 %) : verdict PASS, `l2_gouttiere` 0 constat, comme les huit autres
+  // familles. Le defaut a traverse DEUX fiches livrees et TROIS regenerations avant qu'un humain
+  // ne l'ouvre. Gaspillage mesure : 12,6 % a 19,4 % de la largeur de page perdus sur 7 tables/8.
+  //
+  // CE QUI CHANGE, ET CE QUI NE CHANGE PAS. Les garde-fous anti-faux-positifs sont les MEMES
+  // (premiere cellule courte, seconde longue) : ils suffisent a ecarter un vrai tableau de
+  // donnees, ou les deux colonnes portent des valeurs comparables. Le seuil de 20 % NE BOUGE
+  // PAS — le lot en apporte une confirmation independante. Seule la MESURE change : on prend la
+  // largeur RENDUE de la premiere colonne, et non une piste de grille declaree, parce qu'un
+  // tableau n'en a pas.
+  //
+  // BORNE DELIBEREE : il faut que la MAJORITE des lignes a deux cellules soient du type
+  // `etiquette | contenu`, et au moins deux. Une seule ligne conforme dans un tableau de vingt
+  // ne fait pas une mise en page, et juger sur elle rendrait la regle bruyante.
+  if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
+    const vusT = new Set();
+    for (const t of document.querySelectorAll('table')) {
+      if (!visible(t)) continue;
+      const w = t.getBoundingClientRect().width;
+      if (!w) continue;
+      const lignes = [...t.rows].filter((r) => r.cells.length === 2 && visible(r));
+      if (lignes.length < 2) continue;
+      let etiquettes = 0;
+      let large = 0;
+      let exemple = '';
+      let contenu = 0;
+      for (const r of lignes) {
+        const t1 = (r.cells[0].textContent || '').trim();
+        const t2 = (r.cells[1].textContent || '').trim();
+        if (t1.length <= __L2_ETIQUETTE_MAX__ && t2.length >= __L2_MIN_CHARS__) {
+          etiquettes += 1;
+          const l1 = r.cells[0].getBoundingClientRect().width;
+          if (l1 > large) { large = l1; exemple = t1; contenu = t2.length; }
+        }
+      }
+      if (etiquettes < 2 || etiquettes * 2 <= lignes.length) continue;
+      const part = large / w;
+      if (part <= __L2_COL_MAX__) continue;
+      const cle = (t.className || t.tagName) + '|' + Math.round(part * 100);
+      if (vusT.has(cle)) continue;
+      vusT.add(cle);
+      issues.l2_gouttiere.push({ what: label(t), detail:
+        `mise en page « intitule | contenu » en <table> : colonne d'intitules ` +
+        `${Math.round(large)}px sur ${Math.round(w)}px (${Math.round(part * 100)} %, seuil ` +
+        `${Math.round(__L2_COL_MAX__ * 100)} %) sur ${etiquettes} ligne(s) de ${lignes.length} — ` +
+        `intitule « ${exemple.slice(0, 30)} » contre ${contenu} caracteres de contenu. Un <table> ` +
+        `n'est pas exempte : c'est la meme intention avec l'autre outil, et le lecteur voit le ` +
+        `meme tiers de page vide` });
+    }
+  }
+
   // ---- L2 (rendu, suite) : la rupture d'alignement ENTRE FRERES (TF-0491) --------------
   // Les trois mesures L2 ci-dessus comparent un bloc a ce que son CONTENEUR lui offre. Elles
   // sont aveugles au cas le plus visible pour un lecteur : deux blocs EMPILES l'un sur l'autre,
