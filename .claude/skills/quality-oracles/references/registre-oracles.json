@@ -1,5 +1,5 @@
 {
- "version": "2.14.0",
+ "version": "2.15.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel.",
  "oracles": [
   {
@@ -1051,6 +1051,32 @@
     "la qualite de la fiche qui comble l'angle (-> oracle-judge)"
    ],
    "note": "TF-0717 (02/09/2026) — un angle declare vide le 20/08/2026 et non comble a produit onze jours plus tard exactement le defaut qu'il aurait attrape. La table vit dans experts-forge/references/registre-experts.md, section « Angles declares vides — dettes nommees »."
+  },
+  {
+   "domaine": "Conception d'un livrable (glossaire, listes autoportantes, intention de chapitre)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-conception-livrable.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "content_patterns": [
+    "\b(d{1,3}|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|dix-sept|dix-huit|dix-neuf|vingt|trente)s+(dimensions?|axes?|piliers?|volets?|paliers?|briques?|rubriques?|griefs?|strates?|lentilles?)\b",
+    "grilles+des+lecture|niveaus+des+maturit[ée]|scores+des+maturit[ée]"
+   ],
+   "checklist": "C1 GLOSSAIRE : un terme de methode erige en vocabulaire est DEFINI dans le livrable · C2 CARDINAL ENUMERE : un ensemble annonce par son cardinal est enumere quelque part · C3 LISTE AUTOPORTANTE : une entree de liste dont l unique porteur de detail est un renvoi interne est un defaut · C4 INTENTION DE CHAPITRE : tout chapitre de niveau 2 porte le bloc question du lecteur / ce qu il apporte / ce qu il permet de decider",
+   "statut": "ok",
+   "non_juge": [
+    "la QUALITE d une definition trouvee (son existence est verifiee, jamais son exactitude)",
+    "les termes de methode hors lexique et non annonces par un cardinal — le lexique est une donnee du profil (`conception.termes_methode`)",
+    "C2 : les ensembles annonces AVEC une ancre immediate — domaine d oracle-calculs N1, jamais juge deux fois",
+    "C4 : la SINCERITE d un bloc d intention — un bloc qui paraphrase le titre du chapitre est syntaxiquement conforme et reste un defaut de conception"
+   ],
+   "provenance": "TF-0758, lot Produit-12 - RETOURS - 20260831e (31/08/2026) — un livrable de consolidation vert a 17 controles de forme sur 17, refuse DEUX FOIS par son lecteur. Quatre griefs, aucun cherche par un controle. La doctrine documents nommait le mal (D6, « conformite mecanique n est pas qualite ») ; rien ne le cherchait.",
+   "note": "BRUIT MESURE AVANT ENREGISTREMENT (02/09/2026, 103 documents .md/.html suivis du depot, hors fixtures) : 0 FAIL · 37 PASS · 66 SKIP. Trois bornes anti-bruit sont dans le code et commentees a leur endroit — (1) C1 ne BLOQUE que si les DEUX marques du defaut mesure sont reunies (annonce d un cardinal ET au moins 5 occurrences), une seule marque AVERTIT ; sans cette borne, 35 documents sur 103 etaient accuses ; (2) une ENUMERATION NOMMEE vaut definition du terme de tete ; (3) C4 est un AVERTISSEMENT tant qu AUCUN chapitre du document ne porte son bloc (taux d adoption du parc mesure a 0 %), et devient BLOQUANT des qu UN chapitre le porte — une discipline entamee puis abandonnee n est pas du bruit. Le declenchement par lexique seul (terme de methode repete sans annonce de cardinal) n est pas dans `content_patterns` : il s obtient par invocation explicite."
   }
  ]
 }
