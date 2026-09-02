@@ -1,4 +1,4 @@
-# Zéro défaut visuel — checklist canonique V1–V9
+# Zéro défaut visuel — checklist canonique V1–V14
 
 **Liste unique pour toute la forge.** Les skills livrables (`digit-ai-pptx`, `digit-ai-fiches-html`,
 `digit-ai-schemas`, et ce socle) **référencent cette liste sans la redéfinir**. Un défaut ajouté ici
@@ -17,6 +17,10 @@ vaut partout. Aucun livrable visuel ne part avec un défaut V1–V9 ouvert.
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
 | **V9** | **Actif visuel indiscernable de son fond** | Aucun `<img>` ni `<svg>` visible dont AUCUN pixel n'atteint **1,2:1** de contraste contre le fond effectivement peint derrière lui | **Mesuré (bloquant)** — `render_page.py` ; capture de l'élément et mesure au pixel, jamais sur le fichier source. Nomme le meilleur ratio atteint et la couleur dominante de l'actif |
 | **V10** | **Verdict rendu sur un cadre qui ne contient pas le défaut** | Tout verdict visuel PORTANT SUR UNE PAGE s'appuie sur **au moins une capture pleine page**, et la revue **nomme ses captures avec leurs dimensions** | **Mesuré (bloquant)** — `oracle-verdict-visuel.mjs` du pilot (W1–W4) ; les captures par fenêtre jugent la ligne de flottaison et le défilement, **jamais la page** |
+| **V11** | **Contrôles d'une même rangée désalignés** | Les contrôles (`input`, `select`, `textarea`, `button`) d'une même rangée de grille partagent leur bord haut à **2 px près** | **Mesuré (bloquant)** — `render_page.py` ; écart voulu déclaré par `data-alignement-ok`. Cause la plus fréquente, et nommée dans le message : une étiquette qui passe sur deux lignes parce qu'elle porte son statut dans son libellé |
+| **V12** | **Tableau rogné dans un conteneur défilant** | À partir de **1 280 px** de fenêtre, aucun conteneur `overflow-x: auto\|scroll` portant un `<table>` ne rogne son contenu | **Mesuré (bloquant)** — `render_page.py` ; nomme les pixels hors champ. Un conteneur qui défile rend un tableau *consultable*, pas *lisible* — écart assumé déclaré par `data-rognage-assume`, jamais classé « acceptable » en revue |
+| **V13** | **Bloc de texte étriqué sur une page de données** | Sur une page `data-page="donnees"`, tout bloc de texte occupe **≥ 70 %** de la largeur que son conteneur lui offre | **Mesuré (bloquant)** — `render_page.py` ; colonne de lecture voulue déclarée par `data-mesure-lecture`. Complète L2, qui ne regarde que six sélecteurs et manquait `.chapo` |
+| **V14** | **Sommaire perdu au défilement** | Une page de plus de trois chapitres et de plus de deux écrans garde son sommaire **dans la fenêtre** après défilement | **Mesuré (bloquant)** — `render_page.py` (mesure aux 60 % de la page) ; l'existence du sommaire est jugée en amont par `L25` de `check_html.py` |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
 
 ### V9 : un actif visuel se valide dans le CONTEXTE où il est servi, jamais sur son fichier
@@ -110,6 +114,28 @@ hauteur vaut exactement une hauteur de fenêtre usuelle — c'est la signature d
 hauteur, et l'image ne la porte pas. La règle juge une **déclaration** et la met à l'épreuve du
 seul indice disponible. `render_page.py` capture déjà en pleine page par défaut ; le défaut
 fondateur venait de scripts de capture **du produit**, cadrés par fenêtre.
+
+### V11 à V14 : quatre angles morts nommés par un lecteur, pas par un oracle (02/09/2026)
+
+Les quatre familles ajoutées ce jour ont une origine commune, et elle mérite d'être écrite : **ce
+sont des retours humains directs sur un livrable servi**, pas des défauts trouvés par un contrôle.
+Chacune vit dans l'angle mort *déclaré* d'une famille existante :
+
+- **V11** — « textbox pas alignés ». V3 juge des séries de **blocs** et V7 leur espacement ; une
+  rangée de formulaire n'est ni l'un ni l'autre, et le décalage venait d'un **libellé** trop long.
+- **V12** — « les pages doivent profiter de toute la largeur de l'écran ». V1 se tait dès qu'un
+  ancêtre défile — c'est délibéré, le socle prescrit le défilement sous 1 280 px. La revue avait
+  donc classé un rognage mesuré « acceptable » **sans mesure** : c'est le classement qui manquait
+  de preuve, pas la mesure.
+- **V13** — un chapô bridé à 90ch, « répété des dizaines de fois ». L2 ne regarde que
+  `p, dd, li, blockquote, .va, .prose` : un `.chapo` en `<div>` n'en est aucun.
+- **V14** — un sommaire qui existe et qui défile hors de l'écran. Rien n'est faux dans le
+  marquage ; seul le rendu peut le dire.
+
+**Bruit mesuré avant mise en bloquant** : les quatre familles rejouées sur les **153 documents
+HTML du dépôt** (fixtures des skills, gabarits de `digit-ai-schemas`, pages de référence) rendent
+**0 constat** hors de leurs propres fixtures rouges. Un contrôle qui accuserait à côté se
+publierait en avertissant avec son taux ; celui-ci n'accuse personne à tort.
 
 ## Application par type de livrable
 

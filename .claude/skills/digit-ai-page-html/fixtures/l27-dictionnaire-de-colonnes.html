@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L27 dictionnaire de colonnes — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L27 VERTE (TF-0777, 02/09).
+
+  MEME tableau, MEMES valeurs : chaque `<th>` porte sa definition — ce que la colonne mesure,
+  son UNITE, sa source. C'est ce que le dictionnaire de colonnes genere
+  (references/dictionnaire-de-colonnes.md) ; l'en-tete, l'infobulle et le glossaire en
+  DERIVENT, au lieu d'etre reecrits trois fois.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Console des volumes</h1>
+<p>Chaque colonne dit ce qu'elle mesure, dans quelle unite et d'ou elle vient.</p>
+<table>
+<thead><tr>
+<th data-definition="Marche commercial suivi. Source : referentiel interne. Ordre : alphabetique.">Marche</th>
+<th data-definition="Volume annuel en nombre de sejours. Unite : sejours/an. Source : mesure 2025.">Volume</th>
+<th data-definition="Part du volume total. Unite : pourcentage. Source : calcul derive du volume.">Part</th>
+</tr></thead>
+<tbody>
+<tr><td>Marche A</td><td data-v="1000">1 000</td><td data-v="2.4">2,4 %</td></tr>
+<tr><td>Marche B</td><td data-v="12500">12 500</td><td data-v="29.8">29,8 %</td></tr>
+<tr><td>Marche C</td><td data-v="250">250</td><td data-v="0.6">0,6 %</td></tr>
+<tr><td>Marche D</td><td data-v="45000">45 000</td><td data-v="13.7">13,7 %</td></tr>
+</tbody></table>
+</main></body></html>

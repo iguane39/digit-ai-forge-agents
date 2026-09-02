@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — tableau rogne dans un conteneur defilant — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+h2{font-family:var(--head);font-size:1.1rem;margin:24px 0 8px}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.wrap{max-width:1100px;margin:0 auto;padding:24px}
+.table-hote{overflow-x:auto}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de la famille `rognage_donnees` (TF-0771, 02/09).
+
+  Le cas paye : une console de donnees livree dans une colonne de 1 180 px, tableaux rognes
+  (V1 mesure a 1 301 px pour 1 136 disponibles). render_page AVAIT releve le debordement, et la
+  revue l'a classe « acceptable » parce qu'un conteneur defilait — SANS mesurer ce que le lecteur
+  perdait. Retour humain : « les pages doivent profiter de toute la largeur de l'ecran ».
+
+  Un conteneur `overflow-x:auto` rend un tableau CONSULTABLE ; il ne le rend pas LISIBLE, et
+  V1 se tait des qu'un ancetre defile. Au-dela de 1 280 px de fenetre, la place existe : le
+  rognage devient bloquant.
+
+  Attendu a 1440 px : au moins 1 constat `rognage_donnees`.
+-->
+<body><main class="wrap" data-page="donnees"><h1>Volumes par marche</h1><div class="table-hote"><table class=""><thead><tr><th>Marche</th><th>Volume</th><th>Part</th><th>Valeur moyenne</th><th>Duree moyenne</th><th>Fenetre</th><th>Canal principal</th><th>Responsable</th><th>Derniere mesure</th><th>Commentaire de suivi</th></tr></thead><tbody><tr><td>Marche A</td><td>1 000</td><td>2,4 %</td><td>84 EUR par nuit</td><td>3,4 nuits</td><td>aout 2025</td><td>agence locale</td><td>equipe nord</td><td>12 aout 2025</td><td>ouverture confirmee au comite</td></tr><tr><td>Marche B</td><td>12 500</td><td>29,8 %</td><td>112 EUR par nuit</td><td>2,8 nuits</td><td>avril 2026</td><td>vente directe</td><td>equipe centre</td><td>3 avril 2026</td><td>en attente de la grille tarifaire</td></tr><tr><td>Marche C</td><td>250</td><td>0,6 %</td><td>63 EUR par nuit</td><td>4,1 nuits</td><td>decembre 2025</td><td>partenaire</td><td>equipe sud</td><td>18 decembre 2025</td><td>volume marginal, a reevaluer</td></tr><tr><td>Marche D</td><td>45 000</td><td>13,7 %</td><td>97 EUR par nuit</td><td>3,0 nuits</td><td>janvier 2026</td><td>agence locale</td><td>equipe est</td><td>9 janvier 2026</td><td>pic saisonnier attendu</td></tr></tbody></table></div></main></body></html>

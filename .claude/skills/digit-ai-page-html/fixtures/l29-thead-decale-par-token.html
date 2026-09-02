@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L29 thead decale par le token --hh — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px);--hh:64px}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+.hdr{position:sticky;top:0;height:64px;background:var(--surface);border-bottom:2px solid var(--line)}
+thead th{position:sticky;top:var(--hh);background:var(--surface)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L29 VERTE (TF-0754, 02/09).
+
+  MEME page, MEME en-tete collant : le socle a tranche, B1 l'emporte et B6 recoit son decalage
+  SOUS FORME DE TOKEN. `--hh` vaut la hauteur de l'en-tete et se pose dans :root par le
+  gabarit ; le thead s'y colle. Deux lignes de CSS, et le geste est nomme une fois pour toutes
+  au lieu d'etre retranche par chaque produit.
+
+  Le token DECLARE compte autant que le decalage : `top: var(--hh)` sans `--hh` dans :root vaut
+  0 et ramene exactement la collision qu'il devait eviter — L29 le refuse aussi.
+-->
+<body><main class="wrap">
+<header class="hdr"><h1>Rapport a tableaux</h1></header>
+<table><thead><tr><th>Suite</th><th>Statut</th></tr></thead>
+<tbody>
+<tr><td>auth</td><td>livre</td></tr>
+<tr><td>paiement</td><td>en cours</td></tr>
+<tr><td>recherche</td><td>livre</td></tr>
+</tbody></table>
+</main></body></html>

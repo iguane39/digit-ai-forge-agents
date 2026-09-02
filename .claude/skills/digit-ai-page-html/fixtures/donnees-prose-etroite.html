@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — chapo bride sur une page de donnees — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+h2{font-family:var(--head);font-size:1.1rem;margin:24px 0 8px}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.wrap{margin:0;padding:24px}
+.chapo{max-width:90ch;color:var(--muted)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de la famille `prose_etroite` (TF-0778, 02/09).
+
+  `.chapo { max-width: 90ch }` dans une console pleine largeur — le defaut que le lecteur a
+  signale « des dizaines de fois sans qu'il soit definitivement corrige ». L2 ne l'a jamais vu :
+  elle ne regarde que `p, dd, li, blockquote, .va, .prose`, et un `.chapo` en `<div>` n'est aucun
+  des six. La regle mesure ce que le lecteur voit — un bloc de texte sous 70 % de son conteneur,
+  sur une page qui se declare page de donnees.
+
+  Attendu a 1440 px : au moins 1 constat `prose_etroite`.
+-->
+<body><main class="wrap" data-page="donnees"><h1>Volumes par marche</h1><div class="chapo">Cette page rassemble les volumes annuels par marche, la part de chacun dans le total et la valeur moyenne d'une nuit. Les chiffres proviennent de la mesure 2025 et sont arrondis a l'unite ; les paliers d'ouverture sont ceux du comite de juin.</div><table class=""><thead><tr><th>Marche</th><th>Volume</th><th>Part</th><th>Valeur moyenne</th><th>Duree moyenne</th><th>Fenetre</th><th>Canal principal</th><th>Responsable</th><th>Derniere mesure</th><th>Commentaire de suivi</th></tr></thead><tbody><tr><td>Marche A</td><td>1 000</td><td>2,4 %</td><td>84 EUR par nuit</td><td>3,4 nuits</td><td>aout 2025</td><td>agence locale</td><td>equipe nord</td><td>12 aout 2025</td><td>ouverture confirmee au comite</td></tr><tr><td>Marche B</td><td>12 500</td><td>29,8 %</td><td>112 EUR par nuit</td><td>2,8 nuits</td><td>avril 2026</td><td>vente directe</td><td>equipe centre</td><td>3 avril 2026</td><td>en attente de la grille tarifaire</td></tr><tr><td>Marche C</td><td>250</td><td>0,6 %</td><td>63 EUR par nuit</td><td>4,1 nuits</td><td>decembre 2025</td><td>partenaire</td><td>equipe sud</td><td>18 decembre 2025</td><td>volume marginal, a reevaluer</td></tr><tr><td>Marche D</td><td>45 000</td><td>13,7 %</td><td>97 EUR par nuit</td><td>3,0 nuits</td><td>janvier 2026</td><td>agence locale</td><td>equipe est</td><td>9 janvier 2026</td><td>pic saisonnier attendu</td></tr></tbody></table></main></body></html>

@@ -59,7 +59,7 @@ L'ordre se lit donc dans cet ordre de préférence :
 
 Une date ISO (`2025-08`, `2025-08-14`) se compare comme du texte : **c'est déjà son ordre
 chronologique**. C'est la raison pour laquelle le socle ne demande pas d'autre format.
-Oracle : `oracle-filtres-tableau.mjs` — checklist **G1–G8** (câblage) ; le comportement est
+Oracle : `oracle-filtres-tableau.mjs` — checklist **G1–G9** (câblage) ; le comportement est
 prouvé par les fixtures `tf-tri-milliers.html`, `tf-facettes-ordre.html`, `tf-etat-rejoue.html`.
 
 ## G7 — chaque en-tête porte sa facette ; la cardinalité décide de la FORME (TF-0782, 02/09)
@@ -82,6 +82,15 @@ cardinalité ne décide que de la **forme** du panneau, publiée en `data-tf-for
 le `<th>`. Le motif est lisible à l'exécution (`api.exemptions`) et l'oracle refuse une exemption
 muette. Exemple admis : une clé technique à valeur unique par ligne, que la recherche de page
 couvre déjà.
+
+## G9 — un en-tête DÉFINIT sa colonne (TF-0777, 02/09)
+
+Une facette et un tri ne valent que ce que vaut la colonne qu'ils manipulent. Sur le livrable
+fautif, aucun en-tête n'était défini et l'infobulle disait « Trier par » : une hypothèse en
+**euros par an** s'est fait multiplier par un nombre de séjours sans que personne puisse le voir.
+La définition — ce que la colonne mesure, son **unité**, sa source — vit dans un dictionnaire de
+colonnes ([`dictionnaire-de-colonnes.md`](dictionnaire-de-colonnes.md)) dont en-têtes, infobulles
+et glossaire **dérivent**. Contrôle statique : `L27` de `check_html.py`.
 
 ## G8 — une facette temporelle se lit dans l'ordre du temps (TF-0781, 02/09)
 
@@ -211,7 +220,7 @@ CSS : adapter aux tokens du livrable (voir `charte-et-tokens.md`), aucun hex en 
   print` ci-dessus **réaffiche toutes les lignes** : le PDF porte toujours le tableau complet.
   Un filtre n'est jamais un porteur d'information, seulement une aide de lecture à l'écran.
 
-## Checklist de l'oracle — G1 à G6
+## Checklist de l'oracle — G1 à G9
 
 | # | Contrôle | Sévérité |
 |---|---|---|
@@ -223,6 +232,7 @@ CSS : adapter aux tokens du livrable (voir `charte-et-tokens.md`), aucun hex en 
 | **G6** | Une règle `@media print` réaffiche les lignes masquées (`tr[data-tf-hidden]`) | bloquant |
 | **G7** | Chaque `<th>` porte sa facette, ou une exemption `data-filter-col="off"` **avec** `data-filter-reason` — la cardinalité ne décide que de la forme (`data-tf-forme`) | bloquant |
 | **G8** | Toute colonne ordonnée (temps, paliers, montants formatés) porte une valeur d'ordre `data-v` sur ses cellules — sans elle, ni le tri ni la facette ne peuvent être justes | bloquant |
+| **G9** | Sur une page de données, chaque `<th>` porte sa définition (`data-definition`, `title` ou lien de glossaire) — définition, **unité**, source ; source unique : le dictionnaire de colonnes | bloquant |
 
 **Ce que l'oracle de câblage ne juge pas** (`non_juge`, déclaré à chaque exécution) : le
 comportement d'exécution réel (ordre rendu par le tri, ordre des valeurs de facette,

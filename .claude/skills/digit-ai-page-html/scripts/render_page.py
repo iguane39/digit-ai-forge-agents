@@ -9,6 +9,10 @@ Oracle mesuré de la checklist canonique references/zero-defaut-visuel.md :
         sauf superposition déclarée data-overlap-ok, et sauf formes internes
         d'un même <svg> de petite taille — dessin d'icône, pas mise en page)
   - V3/V7  alignements et espacements irréguliers entre frères (avertissements)
+  - contrôles d'une même rangée alignés à 2 px près (bloquant, TF-0773)
+  - tableau rogné dans un conteneur défilant à >= 1280 px (bloquant, TF-0771)
+  - bloc de texte < 70 % de son conteneur sur une page de données (bloquant, TF-0778)
+  - sommaire encore visible après défilement (bloquant, TF-0772)
 
 V5 (croisements de flèches) et V6 (images déformées) restent à l'inspection
 visuelle des PNG produits — ce script ne les juge pas.
@@ -111,6 +115,20 @@ L2_COL_MAX = 0.20
 L2_ETIQUETTE_MAX = 60
 ALIGN_TOLERANCE_PX = 2.0
 OVERLAP_MIN_RATIO = 0.10  # intersection > 10 % du plus petit élément = significative
+# TF-0778 (02/09) — sur une PAGE DE DONNÉES, un bloc de texte qui n'occupe pas au moins ce
+# ratio de son conteneur est un défaut. Seuil à 70 % et non 85 % (celui de L2) : L2 mesure une
+# BRIDE (elle retire max-width et compare), cette règle-ci mesure ce que le lecteur voit, sur
+# n'importe quel élément porteur de texte — `.chapo` n'est ni un `p` ni un `.prose`, et c'est
+# exactement ce qui a échappé à L2 sur le livrable fautif.
+DONNEES_PROSE_MIN_RATIO = 0.70
+# TF-0771 (02/09) — au-delà de cette largeur de fenêtre, un tableau rogné DANS un conteneur
+# défilant est un défaut bloquant, pas un « écart acceptable ». En deçà, le défilement
+# horizontal est la parade prescrite par le socle (composants.md §6).
+ROGNAGE_DONNEES_MIN_VIEWPORT = 1280
+# TF-0772 (02/09) — un sommaire ne se juge qu'au-delà de trois chapitres ET de deux écrans :
+# c'est le seuil de la règle écrite (lisibilite.md L25), et il tient les deux mesures ensemble.
+SOMMAIRE_MIN_CHAPITRES = 3
+SOMMAIRE_MIN_ECRANS = 2
 # Plafond des avertissements V7 détaillés. Au-delà, le reste est agrégé en une ligne :
 # un avertissement qui défile enterre les bloquants V1/V2/V4 au lieu de les servir.
 V7_MAX_DETAILS = 20
@@ -152,7 +170,8 @@ MEASURE_JS = r"""
 () => {
   const issues = { v1_overflow: [], v2_contrast: [], v3_align: [], v4_overlap: [], v7_spacing: [],
                    l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
-                   contenu_rogne: [], unmeasured: [] };
+                   contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
+                   prose_etroite: [], sommaire_perdu: [], unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -914,6 +933,165 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- CONTROLES D'UNE MEME RANGEE, alignes a 2 px pres (TF-0773, 02/09) ---------------
+  //
+  // LE FAIT : sur une capture d'un livrable servi, quatre champs d'hypotheses d'une meme rangee
+  // de grille tombaient sur DEUX hauteurs. Retour humain, mot pour mot : « textbox pas
+  // alignes ». Aucune famille ne mesurait l'alignement des CONTROLES — V3 juge des series de
+  // blocs, L2 des largeurs de texte, et une rangee de formulaire n'est ni l'un ni l'autre.
+  //
+  // LA CAUSE, et c'est elle qu'il faut nommer dans le message : l'etiquette de l'un des champs
+  // portait son etiquette de STATUT dans le libelle, donc passait sur deux lignes, donc
+  // poussait son champ vers le bas. La regle de socle qui en decoule : une etiquette de statut
+  // se pose SOUS le champ, jamais dans le libelle (lisibilite.md L26 bis).
+  //
+  // GARDES : on ne juge qu'une rangee reelle (deux enfants d'une meme grille ou boite flexible
+  // dont les boites se recouvrent verticalement), et l'ecart declare se tait
+  // (`data-alignement-ok`).
+  {
+    const premierControle = (el) => el.matches('input, select, textarea, button')
+      ? el : el.querySelector('input, select, textarea, button');
+    for (const boite of document.body.querySelectorAll('*')) {
+      const cs = getComputedStyle(boite);
+      if (cs.display !== 'grid' && cs.display !== 'flex') continue;
+      if (boite.closest('table, nav, .tf-panel')) continue;
+      const enfants = [...boite.children]
+        .filter((c) => visible(c) && premierControle(c) && visible(premierControle(c)));
+      if (enfants.length < 2) continue;
+      const boites = enfants.map((c) => ({ c, r: c.getBoundingClientRect(),
+                                           ctrl: premierControle(c).getBoundingClientRect() }));
+      const rangees = [];
+      for (const b of boites) {
+        const rang = rangees.find((g) => g.some((x) =>
+          Math.min(x.r.bottom, b.r.bottom) - Math.max(x.r.top, b.r.top) > 4));
+        if (rang) rang.push(b); else rangees.push([b]);
+      }
+      for (const rang of rangees) {
+        if (rang.length < 2) continue;
+        if (rang.some((x) => x.c.closest('[data-alignement-ok]'))) continue;
+        const hauts = rang.map((x) => x.ctrl.top);
+        const ecart = Math.max(...hauts) - Math.min(...hauts);
+        if (ecart <= __ALIGN_TOL__) continue;
+        const bas = rang.find((x) => x.ctrl.top === Math.max(...hauts));
+        issues.controles_desalignes.push({ what: label(boite), detail:
+          `${rang.length} controles d'une meme rangee sur ${new Set(hauts.map(Math.round)).size} ` +
+          `hauteurs — ecart de ${Math.round(ecart)}px (tolerance __ALIGN_TOL__px), le plus bas ` +
+          `etant ${label(bas.c)}. Cause la plus frequente : une etiquette qui passe sur deux ` +
+          `lignes parce qu'elle porte son statut dans son libelle — l'etiquette de statut se ` +
+          `pose SOUS le champ. Ecart voulu : data-alignement-ok` });
+      }
+    }
+  }
+
+  // ---- ROGNAGE d'un tableau DANS un conteneur defilant (TF-0771, 02/09) -----------------
+  //
+  // LE FAIT : une console de donnees livree a 1 440 px rendait V1 a 1 301 px pour 1 136
+  // disponibles, V3 a 1 256, V7 a 1 376. render_page AVAIT releve le debordement ; la revue l'a
+  // classe « acceptable » parce que le conteneur defilait — sans mesurer ce que le lecteur
+  // perdait. Retour humain : « les pages doivent profiter de toute la largeur de l'ecran ».
+  //
+  // CE QUI CHANGE : un conteneur `overflow-x:auto` rend un tableau CONSULTABLE, il ne le rend
+  // pas LISIBLE, et sur un grand ecran il n'a aucune excuse — la place est la. Au-dela de
+  // __ROGNAGE_MIN_VIEWPORT__ px de fenetre, le rognage d'un TABLEAU dans un conteneur defilant
+  // est BLOQUANT. Sous ce seuil, le defilement reste la parade prescrite (composants.md §6).
+  if (window.innerWidth >= __ROGNAGE_MIN_VIEWPORT__) {
+    for (const boite of document.body.querySelectorAll('*')) {
+      const cs = getComputedStyle(boite);
+      if (!(cs.overflowX === 'auto' || cs.overflowX === 'scroll')) continue;
+      const t = boite.querySelector('table');
+      if (!t || !visible(t)) continue;
+      const perdu = boite.scrollWidth - boite.clientWidth;
+      if (perdu <= 1) continue;
+      if (boite.closest('[data-rognage-assume]')) {
+        issues.unmeasured.push({ what: label(boite), detail:
+          `rognage de tableau DECLARE assume (data-rognage-assume) : ${perdu}px hors champ a ` +
+          `${window.innerWidth}px de fenetre — non juge, mais compte` });
+        continue;
+      }
+      issues.rognage_donnees.push({ what: label(boite), detail:
+        `tableau rogne dans un conteneur defilant : ${boite.scrollWidth}px de contenu pour ` +
+        `${boite.clientWidth}px disponibles (${perdu}px hors champ) a ${window.innerWidth}px de ` +
+        `fenetre. Un conteneur qui defile rend le tableau CONSULTABLE, pas LISIBLE : au-dela de ` +
+        `__ROGNAGE_MIN_VIEWPORT__px la place existe, la page doit la prendre (page de donnees = ` +
+        `pleine largeur adaptative). Replier en cartes, reduire les colonnes, ou assumer par ` +
+        `data-rognage-assume — un ecart assume se declare, il ne se classe pas « acceptable » ` +
+        `en revue` });
+    }
+  }
+
+  // ---- PROSE ETROITE sur une page de DONNEES (TF-0778, 02/09) --------------------------
+  //
+  // LE FAIT : `.chapo { max-width: 90ch }` dans une console pleine largeur — « repete des
+  // dizaines de fois sans etre definitivement corrige », dit le retour humain. L2 ne l'a jamais
+  // vu parce qu'elle ne regarde que `p, dd, li, blockquote, .va, .prose` : un `.chapo` en
+  // `<div>` n'est aucun des six. La regle de socle tranche les deux doctrines de largeur : page
+  // de donnees = pleine largeur, la colonne de lecture ne vaut que pour la prose — et un bloc
+  // de texte y occupe la largeur de son conteneur, ou deux lignes.
+  const pageDonnees = !!document.querySelector(
+    '[data-page="donnees"], [data-page="données"], [data-page="data"], [data-page="console"]');
+  if (pageDonnees && window.innerWidth >= __L2_MIN_VIEWPORT__) {
+    const vusP = new Set();
+    for (const el of document.body.querySelectorAll('*')) {
+      if (!visible(el)) continue;
+      if (el.closest('table, nav, .tf-panel, [data-mesure-lecture]')) continue;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'inline' || cs.display === 'none') continue;
+      // Le texte PROPRE de l'element : un conteneur qui herite du texte de ses enfants n'est
+      // pas un bloc de texte, et le juger accuserait la page entiere pour un seul paragraphe.
+      const propre = [...el.childNodes]
+        .filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
+      if (propre.length < __L2_MIN_CHARS__) continue;
+      const par = el.parentElement;
+      if (!par) continue;
+      const w = el.getBoundingClientRect().width, wp = par.getBoundingClientRect().width;
+      if (w <= 0 || wp <= 0) continue;
+      const ratio = w / wp;
+      if (ratio >= __DONNEES_PROSE_MIN__) continue;
+      const cle = el.tagName + '|' + (el.className || '');
+      if (vusP.has(cle)) continue;
+      vusP.add(cle);
+      issues.prose_etroite.push({ what: label(el), detail:
+        `page de donnees : bloc de texte a ${Math.round(w)}px pour ${Math.round(wp)}px offerts ` +
+        `(${Math.round(ratio * 100)} %, plancher ${Math.round(__DONNEES_PROSE_MIN__ * 100)} %) — ` +
+        `sur une page de donnees, un bloc de prose prend la largeur de son conteneur, ou deux ` +
+        `lignes. La colonne de lecture reste legitime pour un passage de prose ASSUME : le ` +
+        `declarer par data-mesure-lecture` });
+    }
+  }
+
+  // ---- SOMMAIRE PERDU AU DEFILEMENT (TF-0772, 02/09) ----------------------------------
+  //
+  // La moitie mesurable de L25 : `check_html` exige que le sommaire EXISTE, cette famille exige
+  // qu'il reste ATTEIGNABLE. Un sommaire pose en tete d'une page de 4 000 px disparait au
+  // premier tiers de la lecture et ne navigue plus rien — c'est le defaut du livrable servi, ou
+  // il n'y avait meme pas de sommaire du tout.
+  //
+  // Mesure : on defile aux 60 % de la page, on regarde si le sommaire est encore dans la
+  // fenetre, on revient. Deux seuils, ceux de la regle ecrite : plus de trois chapitres, plus
+  // de deux ecrans de haut.
+  {
+    const chapitres = [...document.querySelectorAll('h2')].filter(visible);
+    const nav = document.querySelector('nav.toc, nav[aria-label^="Sommaire"], nav[aria-label^="sommaire"]');
+    const hauteur = document.documentElement.scrollHeight;
+    if (chapitres.length > __SOMMAIRE_MIN_CHAP__ && nav
+        && hauteur > window.innerHeight * __SOMMAIRE_MIN_ECRANS__) {
+      const y0 = window.scrollY;
+      window.scrollTo(0, Math.round(hauteur * 0.6));
+      const r = nav.getBoundingClientRect();
+      const visible_apres = r.bottom > 0 && r.top < window.innerHeight
+                            && r.width > 1 && r.height > 1;
+      window.scrollTo(0, y0);
+      if (!visible_apres) {
+        issues.sommaire_perdu.push({ what: label(nav), detail:
+          `sommaire hors de la fenetre apres defilement : ${chapitres.length} chapitres sur ` +
+          `${Math.round(hauteur)}px (${(hauteur / window.innerHeight).toFixed(1)} ecrans), et le ` +
+          `sommaire n'est plus atteignable aux 60 % de la page. Au-dela de trois chapitres ou ` +
+          `deux ecrans, il est VISIBLE EN PERMANENCE : lateral colle sur bureau ` +
+          `(position: sticky; top: var(--hh)), bande repliable sur mobile` });
+      }
+    }
+  }
+
   // ---- Plafond V7 : au-dela d'un certain nombre, ce n'est plus une liste de cas
   // isoles mais un defaut d'echelle d'espacement. On garde les premiers, on agrege
   // le reste en une ligne : un avertissement qui defile sur 288 lignes ne se lit
@@ -1117,6 +1295,17 @@ FAMILLES = [
     # invisible — sur un objet que V2 ne sait pas voir, faute de `color` a mesurer.
     ("v9_actif_invisible", "V9 actif visuel indiscernable de son fond", "bloquant"),
     ("contenu_rogne", "Contenu ROGNE par un debordement masque", "bloquant"),
+    # Lot Produit-02 du 02/09 — quatre familles nees de retours humains directs sur un livrable
+    # servi, chacune sur un angle mort DECLARE des familles existantes :
+    #   · TF-0773 « textbox pas alignes » — V3 juge des series de blocs, pas des controles ;
+    #   · TF-0771 « les pages doivent profiter de toute la largeur » — V1 se tait des qu'un
+    #     conteneur defile, et la revue avait classe le rognage « acceptable » SANS mesure ;
+    #   · TF-0778 prose bridee — L2 ne regarde que six selecteurs, un `.chapo` n'en est aucun ;
+    #   · TF-0772 sommaire — la moitie mesurable de L25.
+    ("controles_desalignes", "Controles d'une meme rangee desalignes", "bloquant"),
+    ("rognage_donnees", "Tableau ROGNE dans un conteneur defilant (page de donnees)", "bloquant"),
+    ("prose_etroite", "Bloc de texte etrique sur une page de donnees", "bloquant"),
+    ("sommaire_perdu", "Sommaire perdu au defilement", "bloquant"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
@@ -1272,7 +1461,11 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
           .replace("__L2F_MIN_RATIO__", str(L2_FRERES_MIN_RATIO))
           .replace("__L2F_MIN_LARGEUR__", str(L2_FRERES_MIN_LARGEUR))
           .replace("__L2_COL_MAX__", str(L2_COL_MAX))
-          .replace("__L2_ETIQUETTE_MAX__", str(L2_ETIQUETTE_MAX)))
+          .replace("__L2_ETIQUETTE_MAX__", str(L2_ETIQUETTE_MAX))
+          .replace("__DONNEES_PROSE_MIN__", str(DONNEES_PROSE_MIN_RATIO))
+          .replace("__ROGNAGE_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
+          .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
+          .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
 
     png_dir = _dossier_captures(html_path, out_dir)
     png_dir.mkdir(parents=True, exist_ok=True)

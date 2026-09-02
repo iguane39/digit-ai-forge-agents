@@ -651,7 +651,76 @@ def _sommaire(a: Arbre):
     return None
 
 
+# TF-0771/0777/0778/0783 (02/09) — LA PAGE DE DONNEES SE DECLARE.
+#
+# Une console de donnees a ete livree dans une colonne de lecture de 1 180 px, tableaux rognes
+# (V1 mesure a 1 301 px pour 1 136 disponibles), et la revue a classe le debordement
+# « acceptable » parce qu'un conteneur defilait. Retour humain : « les pages doivent profiter de
+# toute la largeur de l'ecran ». La cause n'est pas un reglage : c'est que le socle portait DEUX
+# regles de largeur contradictoires — mesure de lecture pour la prose, pleine largeur pour les
+# donnees — sans dire laquelle s'applique ni ou. Une page dit donc desormais ce qu'elle est,
+# `data-page="donnees"` sur `<html>`, `<body>` ou son conteneur principal, et les regles L26 a
+# L28 ne jugent QUE ces pages : une note de synthese en prose n'a rien a y voir.
+VALEURS_PAGE_DONNEES = {"donnees", "données", "data", "console"}
+
+# L28 — le vocabulaire d'une dimension temporelle dans un en-tete de colonne.
+RE_TH_TEMPS = re.compile(
+    r"\b(mois|date|dates|p[ée]riode|periode|fen[êe]tre|fenetre|trimestre|semestre|"
+    r"ann[ée]e|annee|[ée]ch[ée]ance|echeance|jour|semaine|calendrier|horizon)\b", re.I)
+# Une valeur qui porte son ordre en clair : ISO date, mois ISO, ou horodatage.
+RE_VALEUR_ISO = re.compile(r"^\d{4}-\d{2}(?:-\d{2})?(?:[T ].*)?$")
+
 BALISES_CITATION = ("code", "pre", "kbd", "samp")
+
+
+def _page_de_donnees(a: Arbre) -> bool:
+    """La page se DECLARE page de donnees (`data-page="donnees"`), elle ne se devine pas.
+
+    Deviner ferait juger une note de synthese avec les regles d'une console, et l'inverse. La
+    declaration est le seul moyen de tenir les DEUX doctrines de largeur sans qu'elles se
+    contredisent (TF-0778)."""
+    for n in a.racine.descendants():
+        if (n.att("data-page") or "").strip().lower() in VALEURS_PAGE_DONNEES:
+            return True
+    return False
+
+
+def _sujet_du_selecteur(sel: str):
+    """(tag, classes, id) du DERNIER composant d'un selecteur — son SUJET (meme lecture que L1).
+
+    `.wrap .chapo` style le `.chapo`, pas le `.wrap` : juger le premier composant accuserait le
+    mauvais element, defaut deja paye par L1 (TF-0472)."""
+    sel = sel.split(",")[0].strip()
+    sel = re.sub(r"::?[a-z-]+(\([^)]*\))?", "", sel)          # pseudo-classes et elements
+    dernier = re.split(r"[\s>+~]+", sel.strip())[-1] if sel.strip() else ""
+    if not dernier:
+        return None
+    tag = re.match(r"^[a-zA-Z][\w-]*", dernier)
+    return (tag.group(0).lower() if tag else None,
+            set(re.findall(r"\.([\w-]+)", dernier)),
+            (re.findall(r"#([\w-]+)", dernier) or [None])[0])
+
+
+def _noeuds_du_selecteur(a: Arbre, sel: str):
+    """Les noeuds vises par le SUJET d'un selecteur. Approximation assumee et bornee : on ne
+    resout ni la cascade ni les combinateurs — seulement « quel element ce selecteur habille »,
+    ce qui suffit a dire si une bride de largeur tombe sur un conteneur de tableau."""
+    sujet = _sujet_du_selecteur(sel)
+    if not sujet:
+        return []
+    tag, classes, ident = sujet
+    out = []
+    for n in a.racine.descendants():
+        if tag and tag != "*" and n.tag != tag:
+            continue
+        if classes and not classes <= n.classes():
+            continue
+        if ident and n.att("id") != ident:
+            continue
+        if not tag and not classes and not ident:
+            continue
+        out.append(n)
+    return out
 
 
 def _cite(porteur) -> bool:
@@ -1959,6 +2028,185 @@ def check_lisibilite(html: str, a: Arbre):
         fails.append("L17 lignes de détail présentes et aucune règle @media print ne les "
                      "déplie — à l'impression, le détail se lit "
                      "(tr[data-detail][hidden] { display: table-row } sous @media print).")
+
+    # --- L25 : au-delà de trois chapitres, un sommaire (TF-0772, 02/09) ----------------
+    #
+    # LE FAIT PAYÉ. Un livrable servi portait un onglet « Volumes » à 5 vues et un onglet
+    # « Stratégie » à 6 blocs sur 4 000 px de haut : AUCUNE navigation intra-page, et aucun
+    # oracle ne l'avait demandée. Retour humain, mot pour mot : « fournis un menu sur la gauche
+    # pour les différents chapitres de chaque page ». L6 existait — elle ne se déclenche que si
+    # un sommaire est DÉJÀ là, et se contente d'un avertissement quand il manque. Un contrôle
+    # qui n'exige jamais rien ne fait pas exister ce qu'il décrit (loi n° 3 : la surface
+    # implicite se propose d'office, elle ne s'oublie pas).
+    #
+    # SEUIL : plus de TROIS chapitres de premier niveau. En deçà, la page se parcourt d'un
+    # regard et un sommaire est du bruit. La seconde moitié de la règle — « visible en
+    # permanence » — se mesure au rendu (render_page, famille `sommaire_perdu`) : un sommaire
+    # qui défile hors de l'écran au premier tiers de la page ne navigue plus rien.
+    chapitres = [n for n in a.racine.descendants() if n.tag == "h2"]
+    if len(chapitres) > 3:
+        if toc is None:
+            fails.append(
+                f"L25 page à {len(chapitres)} chapitres sans sommaire — au-delà de trois "
+                "chapitres (ou deux écrans), un sommaire est VISIBLE EN PERMANENCE : "
+                "<nav aria-label=\"Sommaire\"> (ou nav.toc) listant chaque h2, latéral sur "
+                "bureau, bande repliable sur mobile. Le geste complet : une entrée <a href=\"#id\"> "
+                "par chapitre AVEC son annonce .toc-d d'au moins 12 caractères (L6), et une "
+                "position collante pour qu'il reste atteignable après défilement (render_page "
+                "`sommaire_perdu`).")
+        else:
+            vises = set()
+            for lien in [n for n in toc.descendants() if n.tag == "a"]:
+                href = (lien.att("href") or "").strip()
+                if href.startswith("#"):
+                    vises.add(href[1:])
+            oublies = []
+            for h in chapitres:
+                ancres = {h.att("id")} | {p.att("id") for p in h.ancetres()
+                                          if p.tag in ("section", "article", "div", "main")}
+                if not (ancres & vises):
+                    oublies.append(h.texte_propre()[:40] or "(titre vide)")
+            if oublies:
+                fails.append(
+                    f"L25 sommaire incomplet : {len(oublies)} chapitre(s) absent(s) — "
+                    f"« {' » · « '.join(oublies[:3])} »"
+                    f"{' …' if len(oublies) > 3 else ''}. Un sommaire partiel est pire qu'aucun : "
+                    "le lecteur croit tenir le plan de la page. Chaque h2 porte un id et son "
+                    "entrée dans le nav.")
+
+    # --- L26 à L28 : les règles de la PAGE DE DONNÉES ---------------------------------
+    if _page_de_donnees(a):
+        tables = [n for n in a.racine.descendants() if n.tag == "table"]
+
+        # L26 (TF-0771/0778) — une page de données occupe toute la largeur ; la colonne de
+        # lecture est réservée à la PROSE. Le défaut mesuré : `.chapo { max-width: 90ch }` dans
+        # une console, et des tableaux rognés à 1 301 px pour 1 136 disponibles. Les deux règles
+        # du socle (mesure de lecture / pleine largeur) se contredisaient sans arbitre ; l'arbitre
+        # est la déclaration de la page.
+        for sel, d in css:
+            brides = [(prop, d[prop]) for prop in ("max-width", "width") if d.get(prop)]
+            for prop, val in brides:
+                bride = None
+                if "ch" in val and re.search(r"\d\s*ch", val):
+                    bride = f"{prop}:{val} (mesure de lecture en ch)"
+                else:
+                    px = re.search(r"(\d+(?:\.\d+)?)px", val)
+                    if px and float(px.group(1)) < 1280:
+                        bride = f"{prop}:{val}"
+                if not bride:
+                    continue
+                for n in _noeuds_du_selecteur(a, sel):
+                    if any(x.tag == "table" for x in n.descendants()):
+                        fails.append(
+                            f"L26 page de données : `{sel.strip()}` bride un conteneur DE TABLEAU "
+                            f"({bride}) — une page de données est PLEINE LARGEUR adaptative, et la "
+                            "colonne de lecture ne vaut que pour la prose. Retirer la bride sur ce "
+                            "conteneur, ou sortir le tableau de la colonne de lecture "
+                            "(data-page=\"donnees\", lisibilite.md L26).")
+                        break
+
+        for t in tables:
+            lignes = _lignes_tbody(t)
+            if lignes < 3:
+                continue
+            entetes = [n for n in t.descendants() if n.tag == "th"]
+
+            # L27 (TF-0777) — LE DICTIONNAIRE DE COLONNES. Un en-tête sans définition laisse le
+            # lecteur deviner l'unité : sur le livrable fautif, une « valeur de séjour » en
+            # euros PAR AN était multipliée par un nombre de séjours, et l'oracle Calculs rendait
+            # SKIP faute de savoir ce que la colonne mesurait. Une colonne se définit une fois —
+            # définition, unité, source, ordre — et l'en-tête, l'infobulle et le glossaire en
+            # DÉRIVENT (format : references/dictionnaire-de-colonnes.md).
+            muets = [th for th in entetes
+                     if not (th.att("data-definition") or th.att("title")
+                             or any(x.tag == "abbr" and x.att("title") for x in th.descendants())
+                             or any(x.tag == "a" and (x.att("href") or "").startswith("#")
+                                    for x in th.descendants()))]
+            if muets:
+                noms = [th.texte_propre()[:24] or "(vide)" for th in muets[:4]]
+                fails.append(
+                    f"L27 page de données : {len(muets)} en-tête(s) sans définition — "
+                    f"« {' » · « '.join(noms)} »"
+                    f"{' …' if len(muets) > 4 else ''}. Sur une page de données, un `<th>` porte "
+                    "`data-definition` (ou `title`, ou un lien vers son entrée de glossaire) : "
+                    "définition, UNITÉ et source. Sans unité déclarée, une valeur « par an » se "
+                    "fait multiplier par un nombre d'occurrences et personne ne le voit.")
+
+            # L28 (TF-0783) — LE TEMPS S'AFFICHE COMME DU TEMPS. Une vue de fenêtres rendait ses
+            # périodes par libellé, sans mois : le fichier de données lui-même n'en portait pas.
+            # Une colonne temporelle sans valeur d'ORDRE n'est ni triable ni ordonnable en
+            # facette (composant-filtres-tableau.md G8) — elle se range alphabétiquement, ce qui
+            # donne « août 2025, avr. 2026, déc. 2025 ».
+            tetes_ligne = [n for n in t.descendants() if n.tag == "tr"]
+            for th in entetes:
+                if not RE_TH_TEMPS.search(th.texte_propre()):
+                    continue
+                freres = [c for c in (th.parent.enfants if th.parent else [])
+                          if isinstance(c, Noeud) and c.tag in ("th", "td")]
+                if th not in freres:
+                    continue
+                idx = freres.index(th)
+                cellules = []
+                for tr in tetes_ligne:
+                    tds = [c for c in tr.enfants if isinstance(c, Noeud) and c.tag == "td"]
+                    if len(tds) > idx:
+                        cellules.append(tds[idx])
+                if not cellules:
+                    continue
+                sans_ordre = [c for c in cellules
+                              if not (c.att("data-v") or c.att("data-sort")
+                                      or RE_VALEUR_ISO.match(c.texte_propre())
+                                      or any(x.tag == "time" and x.att("datetime")
+                                             for x in c.descendants()))]
+                if len(sans_ordre) > len(cellules) // 2:
+                    exemple = next((c.texte_propre()[:24] for c in sans_ordre if c.texte_propre()), "")
+                    fails.append(
+                        f"L28 colonne temporelle « {th.texte_propre()[:24]} » sans valeur "
+                        f"d'ordre : {len(sans_ordre)} cellule(s) sur {len(cellules)} ne portent "
+                        f"que leur libellé (« {exemple} »). Le temps s'affiche comme du temps — "
+                        "poser `data-v` en ISO (`2025-08`, `2025-08-14`) sur chaque cellule, ou "
+                        "une balise <time datetime>. Sans elle, tri et facette rangent les mois "
+                        "par ordre alphabétique, et une vue de fenêtres ne peut pas devenir une "
+                        "frise (lisibilite.md L28).")
+
+    # --- L29 : en-tête collant CONTRE thead collant — le socle tranche (TF-0754) --------
+    #
+    # B1 (« header sticky », verdict adapter) et B6 (« tableau triable, thead sticky », verdict
+    # adopter) se superposaient sur toute page longue à tableaux : le thead se colle au bord haut
+    # DERRIÈRE l'en-tête de document et devient illisible, ou bien on lui donne un décalage et il
+    # flotte au-dessus des premières lignes de son propre tableau. Aucun des deux textes ne disait
+    # lequel cède, et un PRODUIT a dû trancher un arbitrage de socle (deux cycles de rendu).
+    #
+    # ARBITRAGE ÉCRIT : B1 l'emporte — l'en-tête de document reste collant, c'est lui qui porte
+    # l'identité du livrable — et B6 reçoit son décalage sous forme de TOKEN, `--hh`, posé par le
+    # gabarit à la hauteur de l'en-tête. Deux lignes de CSS, et le geste est nommé une fois pour
+    # toutes (assets/boilerplate.html).
+    colle_entete, colle_thead = [], []
+    for sel, d in css:
+        if (d.get("position") or "").strip() != "sticky":
+            continue
+        cible = sel.strip()
+        if re.search(r"(^|[\s,>])(thead|th)\b", cible):
+            colle_thead.append((cible, d))
+        elif re.search(r"(^|[\s,>.#])(header|banner|hdr|topbar|barre-haute)", cible):
+            colle_entete.append((cible, d))
+    if colle_entete and colle_thead:
+        for cible, d in colle_thead:
+            haut = (d.get("top") or "").strip()
+            if not haut or _px(haut) == 0 or haut in ("0", "0px"):
+                fails.append(
+                    f"L29 `{cible}` collant à top:{haut or '(absent)'} sous un en-tête lui-même "
+                    f"collant (`{colle_entete[0][0]}`) : les deux se peignent au même endroit et "
+                    "le thead passe DERRIÈRE l'en-tête. Le socle tranche — l'en-tête garde le "
+                    "bord haut, le thead se décale du token `--hh` : "
+                    "`thead.colle th { position: sticky; top: var(--hh); }` avec `--hh` = hauteur "
+                    "de l'en-tête, posé dans :root par le gabarit (boilerplate.html, "
+                    "charte-et-tokens.md).")
+            elif "var(--hh)" in haut and not re.search(r"--hh\s*:", "\n".join(a.styles)):
+                fails.append(
+                    "L29 `top: var(--hh)` consommé sans que `--hh` soit déclaré dans :root — "
+                    "un décalage qui vaut 0 par défaut ramène exactement la collision qu'il "
+                    "devait éviter (loi n° 1 : une affordance est câblée ou n'existe pas).")
 
     return fails, warns
 

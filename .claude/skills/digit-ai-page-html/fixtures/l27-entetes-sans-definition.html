@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L27 en-tetes sans dictionnaire — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L27 ROUGE (TF-0777, 02/09).
+
+  LE FAIT : aucun en-tete de la console livree n'etait defini, et l'infobulle disait « Trier
+  par ». Une hypothese exprimee EN EUROS PAR AN etait consommee par « sejours x valeur »,
+  c'est-a-dire multipliee par un nombre d'occurrences : personne ne pouvait le voir, et
+  l'oracle Calculs rendait SKIP faute de savoir ce que la colonne mesurait. Une unite qui n'est
+  ecrite nulle part se fait deviner, et une devinette ne se relit pas.
+
+  Attendu : L27 et elle seule.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Console des volumes</h1>
+<p>Trois colonnes, aucune definition : ni unite, ni source, ni ordre.</p>
+<table>
+<thead><tr>
+<th>Marche</th>
+<th>Volume</th>
+<th>Part</th>
+</tr></thead>
+<tbody>
+<tr><td>Marche A</td><td data-v="1000">1 000</td><td data-v="2.4">2,4 %</td></tr>
+<tr><td>Marche B</td><td data-v="12500">12 500</td><td data-v="29.8">29,8 %</td></tr>
+<tr><td>Marche C</td><td data-v="250">250</td><td data-v="0.6">0,6 %</td></tr>
+<tr><td>Marche D</td><td data-v="45000">45 000</td><td data-v="13.7">13,7 %</td></tr>
+</tbody></table>
+</main></body></html>

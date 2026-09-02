@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — sommaire perdu des le premier tiers — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+h2{font-family:var(--head);font-size:1.1rem;margin:24px 0 8px}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.wrap{max-width:1200px;margin:0 auto;padding:24px}
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;
+ margin-bottom:24px}
+.toc a{display:block;padding:4px 0;color:var(--ink)}
+.toc-t{font-family:var(--head);font-weight:700}
+.toc-d{display:block;color:var(--muted);font-size:.85rem}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de la famille `sommaire_perdu` (TF-0772, 02/09).
+
+  La moitie MESURABLE de L25 : le sommaire existe — check_html est vert — mais il defile avec la
+  page. Cinq chapitres, plusieurs ecrans de haut, et des le premier tiers de la lecture il n'est
+  plus atteignable : il ne navigue plus rien. Un controle statique ne peut pas le voir, il n'y a
+  rien de faux dans le marquage.
+
+  Attendu a 1440 px : au moins 1 constat `sommaire_perdu`.
+-->
+<body><main class="wrap"><h1>Console de suivi</h1><nav class="toc" aria-label="Sommaire">
+<a href="#c1"><span class="toc-t">Volumes</span><span class="toc-d">ce que disent les volumes</span></a>
+<a href="#c2"><span class="toc-t">Saisonnalite</span><span class="toc-d">la repartition dans l'annee</span></a>
+<a href="#c3"><span class="toc-t">Strategie</span><span class="toc-d">les paliers retenus</span></a>
+<a href="#c4"><span class="toc-t">Hypotheses</span><span class="toc-d">ce qui reste a confirmer</span></a>
+<a href="#c5"><span class="toc-t">Suivi</span><span class="toc-d">qui mesure quoi, et quand</span></a>
+</nav><section id="c1"><h2>Volumes</h2><p>Corps du chapitre 1. Ce paragraphe est repete pour donner a la page la hauteur de plusieurs ecrans, seule condition dans laquelle un sommaire se juge.</p><p style="height:520px">Suite du chapitre 1.</p></section><section id="c2"><h2>Saisonnalite</h2><p>Corps du chapitre 2. Ce paragraphe est repete pour donner a la page la hauteur de plusieurs ecrans, seule condition dans laquelle un sommaire se juge.</p><p style="height:520px">Suite du chapitre 2.</p></section><section id="c3"><h2>Strategie</h2><p>Corps du chapitre 3. Ce paragraphe est repete pour donner a la page la hauteur de plusieurs ecrans, seule condition dans laquelle un sommaire se juge.</p><p style="height:520px">Suite du chapitre 3.</p></section><section id="c4"><h2>Hypotheses</h2><p>Corps du chapitre 4. Ce paragraphe est repete pour donner a la page la hauteur de plusieurs ecrans, seule condition dans laquelle un sommaire se juge.</p><p style="height:520px">Suite du chapitre 4.</p></section><section id="c5"><h2>Suivi</h2><p>Corps du chapitre 5. Ce paragraphe est repete pour donner a la page la hauteur de plusieurs ecrans, seule condition dans laquelle un sommaire se juge.</p><p style="height:520px">Suite du chapitre 5.</p></section></main></body></html>

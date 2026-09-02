@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L25 quatre chapitres, sommaire permanent — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px}
+.toc a{display:block;padding:4px 0;color:var(--ink)}
+.toc-t{font-family:var(--head);font-weight:700}
+.toc-d{display:block;color:var(--muted);font-size:.85rem}
+.ch-apprend{color:var(--muted)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L25 VERTE (TF-0772, 02/09).
+
+  MEME page, MEMES quatre chapitres : la seule difference est le sommaire, qui liste chaque h2,
+  resout vers son ancre et porte son annonce (L6). Sans cette jumelle, exiger un sommaire aurait
+  pu se satisfaire de n'importe quel <nav> — y compris d'un sommaire PARTIEL, que L25 refuse
+  aussi : un plan incomplet est pire qu'aucun plan, le lecteur croit tenir la page entiere.
+
+  La seconde moitie de la regle — « visible en permanence » — se mesure au rendu
+  (render_page, famille sommaire_perdu) : un sommaire qui defile hors de l'ecran ne navigue
+  plus rien.
+-->
+<body><main class="wrap">
+<h1>Console de suivi</h1>
+<nav class="toc" aria-label="Sommaire">
+<a href="#c1"><span class="toc-t">Volumes</span><span class="toc-d">ce que disent les volumes annuels</span></a>
+<a href="#c2"><span class="toc-t">Saisonnalite</span><span class="toc-d">la repartition dans l'annee</span></a>
+<a href="#c3"><span class="toc-t">Strategie</span><span class="toc-d">les paliers d'ouverture retenus</span></a>
+<a href="#c4"><span class="toc-t">Hypotheses</span><span class="toc-d">ce qui reste a confirmer</span></a>
+</nav>
+<p>Quatre chapitres et leur plan, atteignable a tout moment.</p>
+<section id="c1"><h2>Volumes</h2>
+<p class="ch-apprend">Ce chapitre montre la lecture des volumes annuels, mesure par mesure, et ce qu'il faut en retenir
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : la lecture des volumes annuels. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+
+<section id="c2"><h2>Saisonnalite</h2>
+<p class="ch-apprend">Ce chapitre montre la repartition dans l'annee, mesure par mesure, et ce qu'il faut en retenir
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : la repartition dans l'annee. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+
+<section id="c3"><h2>Strategie</h2>
+<p class="ch-apprend">Ce chapitre montre les paliers d'ouverture retenus, mesure par mesure, et ce qu'il faut en retenir
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : les paliers d'ouverture retenus. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+
+<section id="c4"><h2>Hypotheses</h2>
+<p class="ch-apprend">Ce chapitre montre ce qui reste a confirmer, mesure par mesure, et ce qu'il faut en retenir
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : ce qui reste a confirmer. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+</main></body></html>
