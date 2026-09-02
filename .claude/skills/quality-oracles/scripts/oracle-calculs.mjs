@@ -7,6 +7,10 @@
 //     de données de la table (hors lignes de total) ; deux totaux généraux = structure ambiguë ;
 //   · colonnes de répartition % totalisées : couvertes par la même re-somme (le total affiché,
 //     typiquement 100 %, est jugé contre la somme des parts).
+//   · EFFECTIF ANNONCÉ (v3, TF-0718) : un nombre écrit en chiffres OU en lettres, suivi d'un nom
+//     dénombrable du document, en tête d'une liste ou d'un tableau, est rapproché du CARDINAL
+//     RÉEL de cette ancre — délégué à lib/effectifs.mjs (N1), qui signale aussi les comptes
+//     contradictoires pour un même nom dans le même document (N2).
 // Parsing délégué à lib/num.mjs, extraction des tables à lib/tables.mjs (source unique).
 // Verdicts : FAIL = écart au-delà de la tolérance d'arrondi · PASS = ≥1 total vérifié,
 // 0 écart · SKIP = aucune structure vérifiable. Contrat JSON commun · exit 0/1/2.
@@ -14,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseNum, isTotalLabel, isGrandTotalLabel } from './lib/num.mjs';
 import { extractTables } from './lib/tables.mjs';
+import { verifierEffectifs } from './lib/effectifs.mjs';
 
 const file = process.argv[2];
 const out = (verdict, findings, non_juge, code) => {
@@ -26,7 +31,10 @@ const NON_JUGE_BASE = [
   'colonnes % sans ligne de total (répartition non totalisée)',
   'chiffres sans ligne de total de contrôle (à vérifier à la source)',
   'justesse métier des valeurs unitaires (seule la cohérence arithmétique est jugée)',
-  'ambiguïté séparateur unique + 3 décimales (traité comme milliers)'
+  'ambiguïté séparateur unique + 3 décimales (traité comme milliers)',
+  'effectifs annoncés sans ancre immédiate (liste ou tableau juste dessous) — non rapprochables',
+  'effectifs de 1 (« une question ») et noms hors liste des dénombrables de lib/effectifs.mjs',
+  'listes imbriquées HTML : les <li> de sous-listes sont comptés avec les items de premier niveau'
 ];
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 const ext = path.extname(file).toLowerCase();
@@ -34,10 +42,15 @@ if (!['.md', '.html', '.htm', '.txt'].includes(ext)) out('SKIP', [], ['extension
 const text = fs.readFileSync(file, 'utf8');
 
 const tables = extractTables(text, ext);
-if (!tables.length) out('SKIP', [], [...NON_JUGE_BASE, 'aucune table détectée'], 2);
+
+// ---- TF-0718 : effectifs annoncés vs cardinal réel (indépendant des lignes de total) ---------
+// Ce volet juge AUSSI les documents sans aucune table de total : le décalage « Sept écarts »
+// au-dessus d'un tableau de huit vivait dans un sommaire, pas dans une somme.
+const eff = verifierEffectifs(text, ext, path.basename(file));
+if (!tables.length && !eff.annonces && !eff.findings.length) out('SKIP', [], [...NON_JUGE_BASE, 'aucune table détectée, aucun effectif annoncé ancré'], 2);
 
 // ---- vérification d'une ligne de total contre un jeu de lignes de données -------------------
-const findings = []; let verified = 0, totalsSeen = 0;
+const findings = [...eff.findings]; let verified = eff.verifies, totalsSeen = eff.annonces;
 function verifyRow(t, header, totalRow, data, kind) {
   const width = Math.max(...t.rows.map(x => x.cells.length));
   for (let c = 1; c < width; c++) {
@@ -75,5 +88,5 @@ for (const t of tables) {
   }
 }
 if (findings.length) out('FAIL', findings, NON_JUGE_BASE, 1);
-if (!totalsSeen || !verified) out('SKIP', [], [...NON_JUGE_BASE, totalsSeen ? 'totaux présents mais colonnes non sommables (données < 2 lignes)' : 'tables sans ligne de total de contrôle'], 2);
-out('PASS', [{ sev: 'info', msg: verified + ' total(aux) de colonne vérifié(s) par re-somme, 0 écart', where: path.basename(file) }], NON_JUGE_BASE, 0);
+if (!totalsSeen || !verified) out('SKIP', [], [...NON_JUGE_BASE, totalsSeen ? 'totaux présents mais colonnes non sommables (données < 2 lignes)' : 'tables sans ligne de total de contrôle, aucun effectif annoncé ancré'], 2);
+out('PASS', [{ sev: 'info', msg: (verified - eff.verifies) + ' total(aux) de colonne vérifié(s) par re-somme + ' + eff.verifies + ' effectif(s) annoncé(s) rapproché(s) de leur cardinal réel, 0 écart', where: path.basename(file) }], NON_JUGE_BASE, 0);
