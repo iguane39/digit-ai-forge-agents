@@ -251,7 +251,10 @@ CAS_AUTOPORTANCE = {
     # coupable en soi : les deux jumelles ne diffèrent que par l'ordre de trois lignes.
     "a3-charset-tardif.html": {"A3"},
     "a3-charset-en-tete.html": set(),
-    "a4-titre-sans-marque.html": {"A4"},    # « Écarts Approval V1 » verbatim
+    # Le titre porte un nom de produit INVENTÉ (« Cartavia ») : la forme du défaut est celle
+    # du cas fondateur — un seul bloc, sans marque ni indice daté — le nom, lui, n'est celui
+    # de personne (relecture post-anonymisation du 02/09).
+    "a4-titre-sans-marque.html": {"A4"},
     "a4-titre-sans-version.html": {"A4"},   # marque et objet présents, révision muette
     "a2-favicon-absent.html": {"A2"},
     "a2-favicon-fichier-externe.html": {"A2"},   # déclaré, mais pas embarqué

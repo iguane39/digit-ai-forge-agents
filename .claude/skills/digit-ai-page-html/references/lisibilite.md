@@ -447,7 +447,7 @@ messages du socle ne sont pas fiables — c'est plus coûteux que la règle elle
 
 **Règle.** Une convention de balisage interne n'a **rien à faire dans le texte rendu**. Le
 défaut fondateur (14/08, rapport Produit-10) : un livrable **diffusé** portait 71 occurrences de
-marqueurs `[c:ec-sources]` en clair dans ses phrases — « 85 [c:ec-sources] sources ALX »,
+marqueurs `[c:ec-sources]` en clair dans ses phrases — « 85 [c:ec-sources] sources Veltis »,
 « 258 [c:ec-claims] lignes de tableau ». Il était PASS à `check_html.py`, PASS à
 `render_page.py` sur cinq largeurs, PASS à 24 contrôles d'interactions maison. **Aucun oracle
 ne lisait le texte rendu.** C'est l'humain qui l'a vu, au premier coup d'œil, capture à
