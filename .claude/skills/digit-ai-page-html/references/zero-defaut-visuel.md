@@ -6,6 +6,13 @@ vaut partout. Aucun livrable visuel ne part avec un défaut V1–V9 ouvert.
 
 ## La liste
 
+**Comment lire ce tableau.** Une ligne par défaut, dans l'ordre de leur numérotation — qui est
+celui de leur apparition, jamais celui de leur gravité. La colonne « critère » est **binaire** :
+elle se lit réussi/raté, sans nuance à négocier. La colonne « vérification » dit **qui juge** :
+*Mesuré* quand un script rend un verdict (et le nom du script est donné), *Visuel* quand la
+décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles nées d'un défaut
+**payé sur un livrable servi** ; chacune a son paragraphe plus bas, qui raconte le fait.
+
 | # | Défaut | Critère binaire (réussi/raté) | Vérification |
 |---|---|---|---|
 | V1 | Texte ou élément qui sort de son cadre / de la page | Aucun débordement horizontal du document ; aucun contenu hors de la zone de son conteneur | **Mesuré** — `render_page.py` (scrollWidth vs clientWidth, bounding boxes vs viewport) |
@@ -138,6 +145,11 @@ HTML du dépôt** (fixtures des skills, gabarits de `digit-ai-schemas`, pages de
 publierait en avertissant avec son taux ; celui-ci n'accuse personne à tort.
 
 ## Application par type de livrable
+
+Tous les livrables visuels partagent cette liste, mais pas les mêmes outils pour l'exécuter : ce
+tableau dit, pour chaque type, ce qui est **mesuré par un script** et ce qui reste à lire sur les
+images produites. Une case vide n'existe pas — quand l'outil manque, il est nommé comme
+manquant.
 
 | Livrable | Oracle mesuré (V1/V2/V4 + avertissements V3/V7) | Reste visuel (V5/V6 + composition) |
 |---|---|---|
