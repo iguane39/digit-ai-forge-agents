@@ -127,7 +127,7 @@ RE_RENVOI = re.compile(r"\b(?:Q-[A-Z]{1,3}\d{0,3}|R[AD]-\d{1,3}|ADR\s\d{4})\b")
 # L14 — la PLOMBERIE affichée : une convention de balisage interne qui traverse le rendu.
 #
 # Né d'un défaut livré (Produit-10, 14/08) : un rapport diffusé portait 71 occurrences de
-# marqueurs `[c:ec-sources]` en clair dans ses phrases — « 85 [c:ec-sources] sources ALX ».
+# marqueurs `[c:ec-sources]` en clair dans ses phrases — « 85 [c:ec-sources] sources Veltis ».
 # Il était PASS à check_html, PASS à render_page sur cinq largeurs, PASS à 24 contrôles
 # d'interactions maison. Aucun oracle ne LISAIT le texte rendu ; l'humain l'a vu au premier
 # coup d'œil, capture à l'appui.
@@ -375,7 +375,9 @@ def _non_nul(v):
 # « {Marque} — {Objet} · {Client} — {version} », repère F2 « Client-A — … — V20260715a »).
 #
 # Né d'un défaut livré (lot Produit-01, 17/08) : un rapport d'audit remis à un client
-# s'intitulait « Écarts Approval V1 » — ni marque, ni indice DATÉ. Le titre est la seule
+# s'intitulait, à la forme près, « Écarts Cartavia V1 » — ni marque, ni indice DATÉ. Le nom du
+# produit est INVENTÉ ici, comme dans toutes les fixtures : ce qui se rejoue est la FORME du
+# titre fautif, jamais le nom d'un client. Le titre est la seule
 # métadonnée qui suit le fichier partout (onglet, favori, pied d'impression, pièce jointe
 # d'un courriel) : sans marque le lecteur ne sait pas d'où vient le document, sans date
 # deux révisions du même jour portent le même nom à l'écran.
@@ -526,7 +528,7 @@ def check_charte(html: str):
             fails.append(
                 f"A4 titre sans marque : « {titre[:70]} » — motif attendu "
                 "« {Marque} — {Objet} · {Client} — {version} » : un titre d'un seul bloc "
-                "ne dit pas d'où vient le document (cas Produit-01 : « Écarts Approval V1 »).")
+                "ne dit pas d'où vient le document (cas Produit-01 : « Écarts Cartavia V1 »).")
         if not RE_A4_VERSION.search(titre):
             fails.append(
                 f"A4 titre sans indice de version daté : « {titre[:70]} » — reprendre "
