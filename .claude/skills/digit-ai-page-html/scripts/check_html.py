@@ -2058,7 +2058,16 @@ def check_lisibilite(html: str, a: Arbre):
     # regard et un sommaire est du bruit. La seconde moitié de la règle — « visible en
     # permanence » — se mesure au rendu (render_page, famille `sommaire_perdu`) : un sommaire
     # qui défile hors de l'écran au premier tiers de la page ne navigue plus rien.
-    chapitres = [n for n in a.racine.descendants() if n.tag == "h2"]
+    # DEUX EXCLUSIONS, payées le jour même sur les gabarits de la bibliothèque du pilot : le h2 qui
+    # TITRE le sommaire lui-même (« Sommaire », à l'intérieur du nav) n'est pas un chapitre à
+    # lister — un sommaire qui devrait se citer lui-même est un faux positif ; et un h2 marqué
+    # data-toc="hors" est un chapitre de SERVICE du gabarit (en-tête à renseigner, sections
+    # optionnelles, contrat de personnalisation) que le document rendu ne porte pas — le gabarit le
+    # DÉCLARE, il ne l'oublie pas.
+    def _dans_le_nav(h):
+        return toc is not None and any(p is toc for p in h.ancetres())
+    chapitres = [n for n in a.racine.descendants()
+                 if n.tag == "h2" and not _dans_le_nav(n) and (n.att("data-toc") or "").strip() != "hors"]
     if len(chapitres) > 3:
         if toc is None:
             fails.append(
