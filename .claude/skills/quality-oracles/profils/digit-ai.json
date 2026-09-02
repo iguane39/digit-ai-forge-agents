@@ -1,6 +1,6 @@
 {
   "nom": "digit-ai",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "perf": {
     "poids_warn": 2097152,
     "poids_fail": 5242880,
@@ -66,5 +66,19 @@
     ],
     "tolerance_pixel": 24,
     "_calibration": "bruit de re-rendu mesuré à 0.0000% sur fixtures (chromium sandbox, 2026-07-21) — seuil 0.1% au-dessus du bruit"
+  },
+  "autorite": {
+    "_decision": "TF-0715 (02/09/2026) : l'EMETTEUR du livrable est nomme ici. Un decideur qui lui appartient rend le bloc non conforme -- c'est une recommandation, pas une decision. Repli si la section manque : nommage.prefixe.",
+    "emetteur_motifs": [
+      "Digit-AI"
+    ],
+    "motifs_rang_decision": [
+      "ADR[-\\s_]?\\d+",
+      "[\\/]adr[\\/]",
+      "registre\\s+d(?:es|e)\\s+décisions?",
+      "relevé\\s+de\\s+décisions?",
+      "PV\\s+(?:de|du)\\s+comité",
+      "délibération\\s+du\\s+\\d"
+    ]
   }
 }
