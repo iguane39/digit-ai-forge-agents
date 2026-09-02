@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 vrai tableau de donnees a deux colonnes — 20260827d</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* LA CONTRE-EPREUVE de TF-0694. Deux colonnes, un tableau, une premiere colonne a 40 % —
+   et pourtant AUCUN constat n'est du : les deux colonnes portent des valeurs comparables,
+   donc la mise en page « intitule | contenu » n'est pas celle-la. Sans ce cas, faire entrer
+   les <table> dans l2_gouttiere aurait pu condamner tous les tableaux a deux colonnes. */
+.donnees{width:100%;table-layout:fixed;border-collapse:collapse}
+.donnees th,.donnees td{box-sizing:border-box}
+.donnees th{width:40%;text-align:left;color:var(--faint);font-family:var(--head);
+ font-size:.7rem;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--line)}
+.donnees td{padding:6px 8px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L2 — un vrai tableau de donnees ne devient pas une gouttiere</h1>
+<p>Une ligne par fiche, avec la part de largeur perdue : ce tableau se lit de haut en bas,
+l'ordre etant celui de la remise. Les deux colonnes portent des valeurs comparables, aucune
+n'est un intitule qui introduit l'autre.</p>
+<table class="donnees">
+<thead><tr><th>Fiche remise</th><th>Part de largeur perdue</th></tr></thead>
+<tbody>
+<tr><td>Fiche du 20 aout</td><td>12,6 %</td></tr>
+<tr><td>Fiche du 22 aout</td><td>14,1 %</td></tr>
+<tr><td>Fiche du 24 aout</td><td>17,8 %</td></tr>
+<tr><td>Fiche du 27 aout</td><td>19,4 %</td></tr>
+</tbody></table>
+</main></body></html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L24 badge de statut sans trace — 20260831a</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--vert:#166534;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75rem;font-family:var(--head)}
+.badge.acte{background:#DCFCE7;color:var(--vert)}
+.legende{color:var(--faint);font-size:.8rem}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L24 — le badge qui affirme un rang que rien ne verifie</h1>
+<p>Le vocabulaire de statut du socle est juste : acte, propose, hypothese, information. Ce qui
+manque ici est la discipline — le badge ci-dessous affirme une decision, porte sa legende, et
+ne renvoie a aucune trace.</p>
+<h2>Dimensionnement de la couche d'arbitrage</h2>
+<p><span class="badge acte" title="Decision prise le 22 aout 2026 par la direction technique">decide le 22 aout 2026</span>
+<span class="legende">Le dimensionnement retenu porte sur trois noeuds actifs et un noeud temoin.</span></p>
+<p>Le paragraphe qui suit expose le raisonnement, la charge attendue et les deux options
+ecartees ; il ne cite aucune source, et le badge n'en designe aucune.</p>
+<h2>Rythme de publication du registre</h2>
+<p><span class="badge acte" aria-describedby="note-rythme" title="Decision prise le 24 aout 2026 par le comite de pilotage">decide le 24 aout 2026</span>
+<span class="legende">Une publication par quinzaine, le premier jour ouvre de la periode.</span></p>
+<p id="note-rythme">Le rythme retenu tient compte de la charge de relecture et de la
+disponibilite des relecteurs sur la periode estivale.</p>
+<p>Ce second badge a bien un <code>aria-describedby</code> qui resout : c'est le piege. La cible
+explique le rythme, elle ne se declare pas decision et ne cite aucune trace — une description
+resolue n'est pas une trace, et la regle doit encore mordre.</p>
+</main></body></html>
