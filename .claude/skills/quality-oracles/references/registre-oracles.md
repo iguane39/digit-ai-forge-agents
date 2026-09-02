@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.13.0, alignée sur le JSON le 20/08/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.14.0, alignée sur le JSON le 02/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -41,7 +41,7 @@
 | Skill (audit) | skill `ameliore-un-skill` (grille /5 pondérée) + volet R1–R10 (`regles-oracles.md`) | skill | ✅ |
 | Cohérence inter-documents | `oracle-coherence.mjs <dossier>` — divergences de grandeurs entre livrables (versions antérieures exclues) | cli | ✅ |
 | Régression visuelle (golden diff) | `oracle-visual-diff.py` — captures vs goldens versionnés (masques, `--accepter` hors boucle) | cli | ✅ |
-| Calculs / chiffres | `scripts/oracle-calculs.mjs` — re-somme exécutée des lignes Total des tables md/html (+ déclenchement par contenu) ; hors tables → recompute manuel | cli | ⚙️ |
+| Calculs / chiffres | `scripts/oracle-calculs.mjs` — re-somme exécutée des lignes Total des tables md/html (+ déclenchement par contenu) ; **N1 (TF-0718, 02/09/2026)** effectif annoncé en **chiffres OU en lettres** suivi d'un nom dénombrable, en tête d'une liste ou d'un tableau, rapproché du **cardinal réel** de l'ancre (identifiants distincts si la 1re colonne en porte) ; **N2** compte contradictoire pour le même nom dans le même document ; hors tables → recompute manuel | cli | ⚙️ |
 | Traçabilité des affirmations chiffrées | `scripts/oracle-claims.mjs` — montant € sans source ni « à vérifier » = bloquant ; incohérence intra-document ; actif selon profil | cli | ⚙️ |
 | Nommage / convention de livraison | `scripts/oracle-nommage.mjs` — convention du profil (**Q3-bis, 09/08/2026** : `<Projet> - <Objet> - AAAAMMJJ{a…}` — le nom du projet prime sur l'émetteur, le motif date + indice est le discriminant) ; nom ne se réclamant pas de la convention → SKIP | cli | ✅ |
 | Jugement rédactionnel (LLM-juge externe) | `scripts/oracle-judge.mjs` — rubrique figée 5 axes via CLI claude ; AVIS OUTILLÉ, invocation explicite, jamais promu en verdict | cli | ⚙️ |
@@ -58,6 +58,39 @@
 | Dossier CAB (DOCX, template Client-A) | `scripts/oracle-dossier-cab.mjs <dossier.docx> [--depot AAAA-MM-JJ] [--couleur-titres RRGGBB]` — C1 sections du template, C2 tableau d'en-tête renseigné, C3 zéro placeholder, C4 sections non vides, C5 date du nom == date prévue, C6 règle Easyvista J+5, C7 numérotation Word (numId non partagé), C8 marqueurs [À COMPLÉTER] recensés, C9 couleur de titres de la charte | cli | ✅ |
 | Nom de client dans un dépôt publiable | `scripts/oracle-nom-client-publie.mjs <dépôt|bundle> [--referentiel=<chemin HORS dépôt>]` — C1 contenus des fichiers suivis, C2 noms des fichiers suivis, C3 messages de commit de tout l'historique, C4 noms et contenus dans tout l'historique (fichiers retirés de l'arbre compris). Le référentiel des noms interdits est une **donnée vivant hors des dépôts publiés** — sans lui l'oracle rend SKIP, jamais PASS | cli | ✅ |
 | ↳ *câblage* du contrôle ci-dessus | `scripts/installer-hamecon-publication.mjs <dépôt…> [--retirer] [--verifier]` — pose un `pre-push` qui REFUSE la publication sur FAIL **et sur SKIP** (un oracle qui ne mesure pas ne laisse pas passer) ; contournement explicite par `git push --no-verify`. Prouvé par `scripts/self-test-hamecon-publication.mjs` : 4 cas sur de vrais dépôts et de vrais push (porteur refusé, propre accepté, contournement effectif, référentiel absent refusé) | cli | ✅ |
+## Injection du 02/09/2026 — autorité et livrabilité (TF-0715, TF-0716, v2.14.0)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Autorité d'une décision affirmée | `scripts/oracle-autorite-decision.mjs <fichier.md\|.html> --profil <profil.json>` — **A1** tout bloc se déclarant décision porte un décideur · **A2** un décideur appartenant à l'**ÉMETTEUR** du livrable rend le bloc non conforme (c'est une *recommandation*, pas une décision) · **A3** trace de **rang décision** citée, **existante**, et de ce rang (ADR accepté, registre daté) · **A4** propagation « décidé / arbitré / tranché / acté » hors du bloc résolue vers lui à sa première occurrence | cli | ✅ |
+| Livrabilité d'une conséquence déclarée | `scripts/oracle-livrabilite-consequence.mjs <fichier.md\|.html> --profil <profil.json>` — **L1** toute forme décrivant un **utilisateur final qui subit la découverte** (« découvriront en production », « le support n'aura pas de réponse », « vague d'appels », « sans les prévenir »), énoncée en **contexte de repli**, exige soit une reformulation en **impasse**, soit un élément du même livrable couvrant l'**information de cet utilisateur** · **L2** l'absence totale de couverture est **dite** dans le finding | cli | ✅ |
+
+- **Déclenchement par CONTENU, jamais par extension** : les deux entrées ont `ext: []` et des
+  `content_patterns` (« Décideur », « clos par arbitrage », « découvriront », « vague d'appels »…).
+  Déclarer `.md` ferait juger *tout* document du parc — l'union ext ∪ contenu de `run-oracles`
+  rend `ext` inclusif, pas restrictif.
+- **Bruit mesuré avant enregistrement** (02/09/2026, 467 documents `.md`/`.html` du dépôt) :
+  `autorite-decision` → 0 FAIL, 3 PASS, 464 SKIP ; `livrabilite-consequence` → 0 FAIL, 1 PASS,
+  467 SKIP. Deux bornes anti-bruit sont dans le code et commentées à cet endroit : l'accent
+  **exigé** sur les participes (`acté` ≠ le nom « acte ») et l'exemption d'A3 pour un artefact
+  qui **est** lui-même un relevé/registre de décisions.
+- **Émetteur lu au profil** : `autorite.emetteur_motifs` (repli `nommage.prefixe`). Profil sans
+  émetteur → A2 **déclaré non jugé**, jamais deviné (`profils/generique.json`).
+
+## Injection du 02/09/2026 — dette d'angle d'expertise (TF-0717, v2.14.0)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Angle d'expertise déclaré vide (dette de couverture) | `node {skillsroot}/experts-forge/scripts/oracle-angles-vides.mjs <registre-experts.md> [--date AAAA-MM-JJ]` — **G1** six colonnes renseignées · **G2** vocabulaire fermé (`ouvert` · `comblé` · `écarté`) · **G3** « comblé » : artefact cité dont l'**existence est vérifiée par exécution** · **G4** « ouvert » au-delà de son échéance = **ÉCHEC** · **G5** « écarté » : raison écrite | cli | ✅ |
+
+> **Un angle vide déclaré et non comblé n'est pas neutre.** Un angle nommé le 20/08/2026
+> (« fiche expert migration de plateforme brownfield ») est resté ouvert onze jours sans que
+> rien ne le rappelle, et a produit exactement le défaut qu'il aurait attrapé. La table des
+> dettes vit dans `experts-forge/references/registre-experts.md`, section « Angles déclarés
+> vides — dettes nommées » ; l'oracle vit chez `experts-forge` (invocation `{skillsroot}`) et
+> ses fixtures rouge/verte sont rejouées par le self-test de `quality-oracles`, avec une
+> `--date` figée au manifest pour un rejeu déterministe.
+
 ## Oracles de la forge design (chantier forge-design, 04/08/2026)
 
 Les cinq oracles ci-dessus vivent hors `~/.claude/skills` : leur source est

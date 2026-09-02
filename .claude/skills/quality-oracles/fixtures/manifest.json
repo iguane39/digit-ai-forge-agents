@@ -688,6 +688,118 @@
     "PASS"
    ],
    "commentaire": "Fixtures = BUNDLES git, seul format tenant dans UN fichier commitable tout en portant contenus, noms de fichiers ET messages de commit. Le rouge plante les QUATRE angles : C1 contenu suivi, C2 nom de fichier suivi, C3 message de commit, C4 nom et contenu dans l'historique d'un fichier RETIRE de l'arbre. Le vert a la MEME FORME, pseudonymisee : il prouve que l'oracle juge le nom, pas la structure. Referentiel de jeu d'essai a cote des fixtures (`fixtures/_noms-interdits.json`), aux noms INVENTES — le referentiel reel vit hors de tout depot publie."
+  },
+  {
+   "nom": "autorite-decision",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-autorite-decision.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "autorite-decision-red.md",
+   "green": "autorite-decision-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-0715, chantier Produit-05 du 31/08/2026 — le prestataire enregistrait au nom du client une decision que le client n'avait pas prise ; 4 portes vertes, defaut trouve par le client."
+  },
+  {
+   "nom": "livrabilite-consequence",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-livrabilite-consequence.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "livrabilite-consequence-red.md",
+   "green": "livrabilite-consequence-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-0716, chantier Produit-05 du 31/08/2026 — « des utilisateurs decouvriront la situation en production » livre dans six versions, valide par 4 portes, releve par le client."
+  },
+  {
+   "nom": "autorite-decision-html",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-autorite-decision.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "autorite-decision-html-red.html",
+   "green": "autorite-decision-html-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-0715 — volet HTML : l'affirmation s'etait propagee en CINQ endroits du rapport HTML (titre de chapitre, badge d'onglet, sommaire, enonce de question, ligne de contre-expertise)."
+  },
+  {
+   "nom": "livrabilite-consequence-html",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-livrabilite-consequence.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "livrabilite-consequence-html-red.html",
+   "green": "livrabilite-consequence-html-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-0716 — volet HTML : les memes lignes de repli vivaient dans le rapport HTML livre."
+  },
+  {
+   "nom": "calculs-effectif",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}"
+   ],
+   "red": "calculs-effectif-red.md",
+   "green": "calculs-effectif-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-0718, chantier Produit-05 du 31/08/2026 — « Sept ecarts que la boucle n'a pas pu lever » au-dessus d'un tableau qui en portait HUIT (E1 a E8), dans TROIS versions livrees, vert aux quatre portes ; le badge du meme onglet disait « 8 ecarts residuels »."
+  },
+  {
+   "nom": "angles-vides",
+   "cmd": [
+    "node",
+    "{skillsroot}/experts-forge/scripts/oracle-angles-vides.mjs",
+    "{fixture}",
+    "--date",
+    "2026-09-02"
+   ],
+   "red": "angles-vides-red.md",
+   "green": "angles-vides-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-0717, chantier Produit-05 — angle « fiche expert migration de plateforme brownfield » declare vide le 20/08/2026, jamais ecrit dans la file des candidats, defaut correspondant trouve par le client le 31/08/2026. Date figee au manifest pour un rejeu deterministe."
   }
  ]
 }
