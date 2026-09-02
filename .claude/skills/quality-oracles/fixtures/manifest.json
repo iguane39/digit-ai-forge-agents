@@ -800,6 +800,31 @@
     "PASS"
    ],
    "provenance": "TF-0717, chantier Produit-05 — angle « fiche expert migration de plateforme brownfield » declare vide le 20/08/2026, jamais ecrit dans la file des candidats, defaut correspondant trouve par le client le 31/08/2026. Date figee au manifest pour un rejeu deterministe."
+  },
+  {
+   "nom": "conception-livrable",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-conception-livrable.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "conception-livrable-red.md",
+   "green": "conception-livrable-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "GLOSSAIRE",
+    "CARDINAL NON ÉNUMÉRÉ",
+    "LISTE NON AUTOPORTANTE",
+    "INTENTION DE CHAPITRE ABSENTE"
+   ],
+   "provenance": "TF-0758, lot Produit-12 - RETOURS - 20260831e du 31/08/2026 — livrable de consolidation vert a 17 controles de forme, refuse deux fois par son lecteur : « 17 dimensions » ecrit une trentaine de fois sans definition ni enumeration, une liste de decisions dont chaque ligne renvoyait a un chapitre plus bas, des chapitres sans intention declaree. La fixture VERTE porte le meme document CONCU : dimension definie, 17 dimensions nommees, decisions autoportantes, bloc d intention sur chaque chapitre."
   }
  ]
 }

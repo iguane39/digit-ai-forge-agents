@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.14.0, alignée sur le JSON le 02/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.15.0, alignée sur le JSON le 02/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -90,6 +90,39 @@
 > vides — dettes nommées » ; l'oracle vit chez `experts-forge` (invocation `{skillsroot}`) et
 > ses fixtures rouge/verte sont rejouées par le self-test de `quality-oracles`, avec une
 > `--date` figée au manifest pour un rejeu déterministe.
+
+## Injection du 02/09/2026 — conception d'un livrable (TF-0758, v2.15.0)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Conception d'un livrable (glossaire, listes autoportantes, intention de chapitre) | `scripts/oracle-conception-livrable.mjs <fichier.md|.html> --profil <profil.json>` — **C1** un terme de méthode érigé en vocabulaire est **défini** dans le livrable · **C2** un ensemble annoncé par son cardinal (« 17 dimensions ») est **énuméré quelque part** · **C3** une entrée de liste dont l'**unique porteur de détail est un renvoi interne** est un défaut · **C4** tout chapitre de niveau 2 porte le bloc « question du lecteur / ce que le chapitre apporte / ce qu'il permet de décider » | cli | ✅ |
+
+> **Un livrable intégralement conforme et refusé deux fois.** Le 31/08/2026, un livrable de
+> consolidation passait 17 contrôles de forme sur 17 quand son lecteur l'a refusé pour la
+> deuxième fois. Quatre griefs, aucun cherché par un contrôle : « 17 dimensions » écrit une
+> trentaine de fois sans que le document dise ce qu'est une dimension ni ne les nomme, une liste
+> de décisions dont chaque ligne renvoyait à un chapitre plus bas, un chapitre exact dont on ne
+> savait pas de quoi il parlait, une carte de chaleur juste case par case et fausse dans son
+> ensemble (→ oracle-calculs). La doctrine documents énonçait pourtant D6, « conformité mécanique
+> n'est pas qualité » : **D6 nommait le mal, rien ne le cherchait**.
+
+- **Déclenchement par CONTENU** (`ext: []` + `content_patterns` sur les annonces de cardinal et
+  le vocabulaire de grille) — jamais sur tout `.md` du parc.
+- **Bruit mesuré avant enregistrement** (02/09/2026, 103 documents `.md`/`.html` suivis du dépôt,
+  hors fixtures) : **0 FAIL · 37 PASS · 66 SKIP**. Trois bornes anti-bruit, chacune née d'une
+  mesure et commentée dans le code :
+  1. **C1 ne bloque que sur les DEUX marques** du défaut mesuré — un cardinal annoncé **et** au
+     moins 5 occurrences. Une seule marque **avertit**. Sans cette borne : 35 documents accusés
+     sur 103 (34 %), pour des mots ordinaires (« 5 axes » cité une fois, « gate » six fois).
+  2. **Une énumération nommée vaut définition** du terme de tête — listes, tables, familles
+     d'identifiants (D1…D7) et énumérations en ligne comptent toutes.
+  3. **C4 est un avertissement tant qu'aucun chapitre ne porte son bloc** (taux d'adoption du
+     parc mesuré à 0 %) et devient **bloquant dès qu'un chapitre le porte** : une discipline
+     entamée puis abandonnée en cours de document n'est pas du bruit, c'est un défaut que
+     l'auteur a lui-même déclaré vouloir éviter.
+- **Frontière avec oracle-calculs (N1)** : N1 juge un effectif annoncé contre le cardinal réel de
+  son **ancre immédiate** ; C2 ne juge que les annonces **sans** ancre immédiate. Aucun
+  recouvrement, et c'est écrit des deux côtés.
 
 ## Oracles de la forge design (chantier forge-design, 04/08/2026)
 
