@@ -10,6 +10,9 @@ Assets : [`assets/table-filters.js`](assets/table-filters.js) **et son CSS jumea
 s'inlinent ensemble : le composant livré sans son habillage sort en rendu brut navigateur
 (constaté et refusé sur livrable réel). L'état OUVERT du panneau se juge par
 `render_page.py --etats-ouverts` (V2/V4). Après `initAll()`, appeler-le sur toute page hôte.
+Le comportement d'exécution (tri, ordre des valeurs, existence des facettes, état) se juge
+par les cas Playwright du banc — `self_test.py`, branche `run_filtres_runtime` : aucun
+oracle de marquage ne voit un tri qui range « 1 000 » avant « 250 ».
 
 ## Le `<th>` est POSSÉDÉ par le composant après `init()` (RA-6, Produit-10 14/08)
 
@@ -28,27 +31,113 @@ Preuve attendue de toute extension : un test d'interactions (voir
 [`references/tests-interactions.md`](tests-interactions.md)) — l'oracle statique ne voit pas
 une facette détruite.
 
-## Tri opt-in du composant (RA-5, 14/08)
+## Tri ARMÉ PAR DÉFAUT, et la valeur prime sur le texte (RA-5, 14/08 — revu TF-0768, 02/09)
 
-La règle L4 exige « filtre, tri et recherche » ; le composant fournit désormais le tri en
-option : `DigitAITableFilters.initAll(document, { tri: true })` arme un tri croissant/
-décroissant au clic d'en-tête (numérique quand la colonne se lit en nombre, `aria-sort`,
-clics `.tf-btn`/`.tf-panel` ignorés). Par défaut `tri: false` — aucun changement de
-comportement pour les pages qui ont déjà leur tri (dashboard forge-tests).
-Oracle : `oracle-filtres-tableau.mjs` — checklist **G1–G6**.
+La règle L4 exige « filtre, tri et recherche ». Le tri est donc **armé par défaut** :
+`DigitAITableFilters.initAll(document)` pose un tri croissant/décroissant au clic d'en-tête
+(`aria-sort`, marqueur `.tf-tri`, clics `.tf-btn`/`.tf-panel` ignorés, lignes `[data-detail]`
+qui voyagent avec leur ligne mère). Une page qui arme le sien le **déclare** — `{ tri: false }`
+ou `data-tf-tri="off"` sur la table ; une colonne se soustrait par `data-sort-col="off"`.
+
+**La clé de tri est une VALEUR, jamais un texte rendu.** Le défaut fondateur (TF-0768, remonté
+par un produit) : `parseFloat("1 000")` vaut **1** — l'espace insécable de milliers arrête
+l'analyse au premier caractère non chiffre, et « 1 200 000 » vaut 1 lui aussi. Toute page en
+français triait faux, **en silence**, et le produit a dû réarmer son propre tri pour s'en sortir.
+L'ordre se lit donc dans cet ordre de préférence :
+
+1. `data-v` sur la cellule (ou `data-sort`) — **la seule clé fiable** : c'est elle qui permet
+   d'ordonner ce qui n'a pas d'ordre lisible (mois, statuts, paliers) ;
+2. à défaut, le texte rendu lu comme un nombre **après** retrait des espaces (ordinaire,
+   insécable, insécable étroite, fine), du `%` et des symboles monétaires ;
+3. à défaut, comparaison de texte insensible à la casse et aux accents.
+
+```html
+<!-- La valeur d'ordre voyage avec la donnée, le libellé reste lisible. -->
+<td data-v="1200000">1 200 000</td>
+<td data-v="2025-08">août 2025</td>
+```
+
+Une date ISO (`2025-08`, `2025-08-14`) se compare comme du texte : **c'est déjà son ordre
+chronologique**. C'est la raison pour laquelle le socle ne demande pas d'autre format.
+Oracle : `oracle-filtres-tableau.mjs` — checklist **G1–G8** (câblage) ; le comportement est
+prouvé par les fixtures `tf-tri-milliers.html`, `tf-facettes-ordre.html`, `tf-etat-rejoue.html`.
+
+## G7 — chaque en-tête porte sa facette ; la cardinalité décide de la FORME (TF-0782, 02/09)
+
+L'ancienne heuristique n'ouvrait une facette que si `1 < valeurs distinctes < nombre de lignes`.
+Conséquence mesurée sur un livrable : **huit marchés distincts sur huit lignes, donc aucune
+facette « Marché »** — précisément la colonne clé, celle par laquelle le lecteur entre dans le
+tableau. Une heuristique de commodité décidait de l'EXISTENCE d'une affordance.
+
+**Règle.** Chaque `<th>` d'un tableau `data-filterable` reçoit sa facette et son tri. La
+cardinalité ne décide que de la **forme** du panneau, publiée en `data-tf-forme` :
+
+| Forme | Quand | Ce que voit le lecteur |
+|---|---|---|
+| `liste` | ≤ 15 valeurs distinctes | la liste de cases, telle quelle |
+| `recherche` | > 15 valeurs distinctes | la liste **et** une note « N valeurs distinctes — chercher puis Tous » |
+| `unique` | une seule valeur | la case unique **et** la note qui le dit |
+
+**La seule sortie est déclarée** : `data-filter-col="off"` **avec** `data-filter-reason="…"` sur
+le `<th>`. Le motif est lisible à l'exécution (`api.exemptions`) et l'oracle refuse une exemption
+muette. Exemple admis : une clé technique à valeur unique par ligne, que la recherche de page
+couvre déjà.
+
+## G8 — une facette temporelle se lit dans l'ordre du temps (TF-0781, 02/09)
+
+`Object.keys(valeurs).sort()` rangeait les valeurs par ordre **alphabétique** : le panneau
+« Mois » d'un livrable affichait « août 2025, avr. 2026, déc. 2025, janv. 2026 » — un ordre qui
+n'existe pour personne. Les valeurs d'une facette sont désormais ordonnées **sur leur clé**
+(`data-v` d'abord), avec le même comparateur que le tri : nombres en nombres, dates ISO en ordre
+chronologique, vides en fin de liste.
+
+Corollaire pour l'émetteur : **une colonne temporelle sans `data-v` n'est pas ordonnable**, ni
+pour son tri ni pour sa facette. C'est la règle L28 du socle (« le temps s'affiche comme du
+temps »), et `check_html.py` la juge.
+
+## L'état se lit et se rejoue (TF-0769, 02/09)
+
+`data-tf-ready` faisait rendre `null` à tout second `init`, et la sélection vivait dans une
+fermeture inaccessible. Une page qui **re-rend ses tableaux** perdait donc ses filtres ; la seule
+parade était de relire les cases décochées dans le DOM et de les rejouer par des événements
+`change` — code qu'une console livrée a effectivement dû écrire (`relever` / `restaurer`).
+
+L'instance expose désormais :
+
+| Appel | Effet |
+|---|---|
+| `api.etat()` | `{ version: 1, colonnes: { "<intitulé>": { exclues: [...] } } }` — **les valeurs exclues seulement**, nommées par intitulé de colonne (stable si les colonnes bougent) |
+| `api.restaurer(etat)` | rejoue une sélection sur l'instance en place |
+| `api.rafraichir()` | relit les lignes et les valeurs après un re-rendu, reconstruit les panneaux **sur la sélection conservée** |
+| `api.detruire()` | retire déclencheurs, panneaux, état vide et écouteurs ; la table redevient nue |
+| `init(table)` (2ᵉ appel) | rend **l'instance existante**, plus `null` |
+| `init(table, { etat })` | reconstruit et rejoue l'état fourni |
+
+```js
+var api = DigitAITableFilters.init(t);
+var etat = api.etat();          // avant le re-rendu
+rendreLesLignes();              // la page recalcule son <tbody>
+api.rafraichir();               // les filtres survivent, sans relire le DOM
+```
+
+L'intitulé de colonne est **figé au premier passage** dans `data-col` sur le `<th>` : après
+`init`, le `textContent` d'un en-tête contient le déclencheur et le panneau, et le relire donnerait
+une autre clé (défaut trouvé en écrivant la fixture, pas en la lisant).
 
 ## Périmètre — quand la règle s'applique
 
 **Obligatoire** dès que les deux conditions sont réunies :
 
 1. Le tableau porte **≥ 8 lignes de données** (`<tbody> > <tr>`).
-2. Il possède **au moins une colonne catégorielle** — une colonne dont le nombre de valeurs
-   distinctes est strictement inférieur au nombre de lignes (donc des valeurs qui se répètent).
+2. Il porte un `<thead>` avec au moins un `<th>` — **toutes** ses colonnes reçoivent alors leur
+   facette (G7). La répétition des valeurs ne conditionne plus l'existence d'une facette, seulement
+   sa forme : c'est le défaut TF-0782, où la colonne clé était la seule à ne pas en avoir.
 
 🟡 **Recommandé** en dessous de 8 lignes si le tableau est amené à croître (résultats de run,
 journal, inventaire).
-⚪ **Hors périmètre** : tableaux de mise en page, tableaux de 2 lignes descriptives, tableaux
-dont toutes les colonnes sont à valeurs uniques (identifiants, horodatages).
+⚪ **Hors périmètre** : tableaux de mise en page et tableaux de 2 lignes descriptives. Un tableau
+dont toutes les colonnes sont à valeurs uniques n'est PAS hors périmètre — il se trie, et chaque
+colonne qui ne mérite pas sa facette la refuse **avec son motif** (G7).
 
 **Exemption explicite** : un tableau en périmètre qui ne doit pas être filtré porte
 `data-filterable="off"` **et** `data-filterable-reason="…"`. Sans motif, c'est un échec — pas
@@ -61,10 +150,11 @@ Le composant se construit tout seul à partir du tableau : le HTML ne porte que 
 ```html
 <table id="runs" data-filterable>
   <thead>
-    <tr><th>Suite</th><th>Statut</th><th>Durée</th></tr>
+    <tr><th>Suite</th><th>Statut</th><th>Durée</th>
+        <th data-filter-col="off" data-filter-reason="identifiant unique par ligne : la recherche de page le couvre">Ticket</th></tr>
   </thead>
   <tbody>
-    <tr><td>auth</td><td>Échec</td><td>1,2 s</td></tr>
+    <tr><td>auth</td><td>Échec</td><td data-v="1.2">1,2 s</td><td>T-4412</td></tr>
     <!-- … -->
   </tbody>
 </table>
@@ -74,9 +164,9 @@ Le composant se construit tout seul à partir du tableau : le HTML ne porte que 
 <script>DigitAITableFilters.init(document.getElementById('runs'));</script>
 ```
 
-`init()` détecte les colonnes catégorielles, injecte les déclencheurs dans les `<th>` et
-construit les panneaux. Pour forcer ou exclure une colonne : `data-filter-col` /
-`data-filter-col="off"` sur le `<th>`.
+`init()` injecte un déclencheur dans CHAQUE `<th>` et construit les panneaux ; il arme aussi le
+tri. Pour exclure une colonne : `data-filter-col="off"` **+ `data-filter-reason`** ; pour exclure
+son tri seul : `data-sort-col="off"`. `data-v` sur les cellules porte la valeur d'ordre.
 
 CSS : adapter aux tokens du livrable (voir `charte-et-tokens.md`), aucun hex en dur.
 
@@ -88,7 +178,8 @@ CSS : adapter aux tokens du livrable (voir `charte-et-tokens.md`), aucun hex en 
 .tf-panel[hidden] { display:none; }
 .tf-opts   { max-height:220px; overflow-y:auto; }
 .tf-count  { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
-.tf-count.zero { color:var(--danger); }
+.tf-count.zero { color:var(--red); }
+.tf-forme-note { margin:0 0 8px; color:var(--muted); font-size:.78rem; font-style:italic; }
 @media print { .tf-btn, .tf-panel { display:none !important; }
                tr[data-tf-hidden] { display:table-row !important; } }
 ```
@@ -130,8 +221,15 @@ CSS : adapter aux tokens du livrable (voir `charte-et-tokens.md`), aucun hex en 
 | **G4** | Chaque tableau `data-filterable` a un `id` et un `<thead>` porteur de `<th>` — prérequis du composant | bloquant |
 | **G5** | Un compteur `data-tf-count-for` avec `aria-live` existe pour chaque tableau `data-filterable` | bloquant |
 | **G6** | Une règle `@media print` réaffiche les lignes masquées (`tr[data-tf-hidden]`) | bloquant |
+| **G7** | Chaque `<th>` porte sa facette, ou une exemption `data-filter-col="off"` **avec** `data-filter-reason` — la cardinalité ne décide que de la forme (`data-tf-forme`) | bloquant |
+| **G8** | Toute colonne ordonnée (temps, paliers, montants formatés) porte une valeur d'ordre `data-v` sur ses cellules — sans elle, ni le tri ni la facette ne peuvent être justes | bloquant |
 
-**Ce que l'oracle ne juge pas** (`non_juge`, déclaré à chaque exécution) : le comportement
-d'exécution réel (construction des panneaux, bascules Tous/Aucun, recherche, combinaison ET),
-qui exige un rendu navigateur. Le contrôle porte sur le **câblage**, pas sur le runtime. Pour
-le runtime, passer la page à `render_page.py` (V1–V7) et inspecter les PNG produits.
+**Ce que l'oracle de câblage ne juge pas** (`non_juge`, déclaré à chaque exécution) : le
+comportement d'exécution réel (ordre rendu par le tri, ordre des valeurs de facette,
+construction des panneaux, bascules Tous/Aucun, recherche, combinaison ET, survie de l'état à un
+re-rendu). Il exige un navigateur, et c'est là que vivent les quatre défauts du 02/09 : le
+marquage était juste, le comportement était faux. Deux voies, cumulatives :
+`render_page.py --matrice-etats` pour ce qui se voit (débordement d'un panneau, état vide muet),
+et les cas Playwright du banc (`self_test.py`, `run_filtres_runtime`) pour ce qui se mesure — la
+fixture calcule elle-même l'ordre qu'aurait rendu l'ancienne lecture et le banc exige qu'il
+DIFFÈRE de l'ordre rendu.

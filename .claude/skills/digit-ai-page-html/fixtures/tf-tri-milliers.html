@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — filtres · tri d'une colonne formatée fr-FR — 20260902a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0768, fixture À DOUBLE SENS jouée par self_test (run_filtres_runtime, Playwright).
+
+  LE DÉFAUT, tel qu'il a été payé : `armerTri` faisait `parseFloat(textContent)` sur des nombres
+  écrits à la française. « 1 000 » (espace insécable de milliers) vaut alors 1, « 1 200 000 »
+  vaut 1 aussi, et « 12 500 » vaut 12 — la colonne se range 1 000, 1 200 000, 12 500, 45 000,
+  250, 980. TOUTE page en français triait faux, sans un signal. Le produit a dû armer son propre
+  tri par `data-v` pour s'en sortir.
+
+  LES DEUX SENS, dans la même page — c'est ce qui rend la fixture probante :
+    · sens VERT  — après un clic sur « Volume », l'ordre rendu est l'ordre NUMÉRIQUE ;
+    · sens ROUGE — la même page dit ce que l'ANCIENNE lecture (parseFloat sur le texte brut)
+      aurait donné, et le test exige que les deux ordres DIFFÈRENT. Sans cette contre-épreuve,
+      un tri qui retomberait par hasard sur le bon ordre validerait la règle sans la tenir.
+  La colonne « Débit » porte la même valeur en `data-v` : elle vérifie que la clé déclarée prime
+  sur le texte rendu (« deux » se range bien après « un »).
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --r-sm:8px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { position:relative; font-weight:700; }
+  .tf-btn { font:inherit; font-size:.72rem; color:var(--blue); background:var(--surface);
+            border:1px solid var(--line); border-radius:var(--r-sm); padding:3px 7px;
+            margin-left:6px; cursor:pointer; }
+  .tf-panel { position:absolute; z-index:30; top:calc(100% + 4px); left:0; min-width:230px;
+              background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
+              padding:10px 12px; font-weight:400; }
+  .tf-panel[hidden] { display:none; }
+  .tf-opts { display:flex; flex-direction:column; gap:2px; }
+  .tf-forme-note { margin:0 0 8px; color:var(--muted); font-size:.78rem; font-style:italic; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  [hidden] { display:none !important; }
+  @media print { .tf-btn, .tf-panel { display:none !important; }
+                 tr[data-tf-hidden] { display:table-row !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Volumes par marché</h1>
+  <p>Six marchés, un volume annuel écrit à la française et une part en pourcentage. Cliquer
+     l'en-tête « Volume » doit ranger la colonne par valeur croissante, pas par premier chiffre.</p>
+  <table id="volumes" data-filterable>
+    <caption>Volumes annuels — exemple inventé, aucune donnée réelle.</caption>
+    <thead>
+      <tr><th>Marché</th><th>Volume</th><th>Part</th><th>Débit</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Marché A</td><td>1 000</td><td>2,4 %</td><td data-v="2">deux</td></tr>
+      <tr><td>Marché B</td><td>12 500</td><td>29,8 %</td><td data-v="1">un</td></tr>
+      <tr><td>Marché C</td><td>250</td><td>0,6 %</td><td data-v="4">quatre</td></tr>
+      <tr><td>Marché D</td><td>1 200 000</td><td>51,2 %</td><td data-v="3">trois</td></tr>
+      <tr><td>Marché E</td><td>980</td><td>2,3 %</td><td data-v="6">six</td></tr>
+      <tr><td>Marché F</td><td>45 000</td><td>13,7 %</td><td data-v="5">cinq</td></tr>
+    </tbody>
+  </table>
+  <div class="tf-count" data-tf-count-for="volumes" aria-live="polite"></div>
+</main>
+<script src="../assets/table-filters.js"></script>
+<script>
+  window.__tf = DigitAITableFilters.init(document.getElementById('volumes'));
+  /* L'ordre qu'aurait rendu l'ANCIENNE lecture, calculé par la page elle-même : le test exige
+     qu'il diffère de l'ordre rendu, sinon la fixture ne prouverait rien. */
+  window.__ordreNaif = function (colonne) {
+    var lignes = Array.prototype.slice.call(document.querySelectorAll('#volumes tbody tr'));
+    return lignes.slice().sort(function (a, b) {
+      var va = parseFloat(a.cells[colonne].textContent.replace(',', '.').replace('%', ''));
+      var vb = parseFloat(b.cells[colonne].textContent.replace(',', '.').replace('%', ''));
+      return va - vb;
+    }).map(function (tr) { return tr.cells[1].textContent.trim(); });
+  };
+</script>
+</body>
+</html>
