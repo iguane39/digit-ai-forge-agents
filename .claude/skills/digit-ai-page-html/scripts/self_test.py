@@ -1015,6 +1015,175 @@ def run_matrice_etats():
     return out
 
 
+def run_filtres_runtime():
+    """TF-0768/0769/0781/0782 (02/09/2026) — LE COMPOSANT DE FILTRES, JOUE DANS UN NAVIGATEUR.
+
+    Les quatre defauts remontes par un produit sont des defauts d'EXECUTION : un tri qui range
+    « 1 000 » avant « 250 », une facette de mois rangee par ordre alphabetique, une colonne cle
+    sans facette, un second `init` qui rend `null`. Aucun oracle statique ne peut les voir — le
+    marquage etait juste, c'est le COMPORTEMENT qui etait faux. Ces cas chargent donc l'ASSET
+    REEL (`assets/table-filters.js`) dans Chromium et mesurent ce qu'il fait.
+
+    CHAQUE CAS PORTE SON SENS ROUGE, et deux d'entre eux le portent DANS LA PAGE : la fixture
+    calcule elle-meme l'ordre qu'aurait rendu l'ancienne lecture (parseFloat sur le texte brut,
+    tri alphabetique des valeurs) et le banc EXIGE que l'ordre rendu en differe. Sans cette
+    contre-epreuve, un ordre juste par hasard validerait une regle qui ne tient pas.
+
+    Silencieux si playwright est absent : un comportement se mesure dans un navigateur.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from render_page import ensure_browser_path  # noqa: PLC0415
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001 — l'auto-detection du navigateur est un confort, pas un du
+        pass
+
+    out = []
+
+    def cas(nom, attendu, obtenu, regle):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:120], "obtenu": str(obtenu)[:120],
+                    "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"[:300]})
+
+    def proteger(nom, regle, fn):
+        """Un composant qui LEVE est un composant EN ECHEC, pas un banc casse.
+
+        Mesure du 02/09 : rejoue sur l'asset d'avant correctif, `api.etat()` n'existe pas et
+        l'exception emportait les cas suivants — le banc rendait une trace Playwright au lieu
+        d'un compte. Chaque section porte donc sa garde, et une panne se compte comme un echec
+        nomme."""
+        try:
+            fn()
+        except Exception as erreur:  # noqa: BLE001 — toute panne se compte, aucune n'arrete
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "section jouee",
+                        "obtenu": type(erreur).__name__, "regle": regle,
+                        "detail": str(erreur).splitlines()[0][:300]})
+
+    fichiers = ("tf-tri-milliers.html", "tf-facettes-ordre.html", "tf-etat-rejoue.html")
+    manquantes = [n for n in fichiers if not (FIXTURES / n).exists()]
+    for n in manquantes:
+        out.append({"fixture": n, "verdict": "ABSENTE", "attendu": "fixture présente",
+                    "obtenu": "absente", "regle": "filtres (runtime)", "detail": ""})
+    if manquantes:
+        return out
+
+    with sync_playwright() as pw:
+        navigateur = pw.chromium.launch()
+        page = navigateur.new_page(viewport={"width": 1280, "height": 900})
+
+        # ---- TF-0768 : le tri lit une VALEUR, pas un texte formate ----------------------
+        def section_tri():
+            page.goto((FIXTURES / "tf-tri-milliers.html").resolve().as_uri())
+            page.wait_for_load_state("load")
+            page.evaluate("() => document.querySelectorAll('#volumes thead th')[1].click()")
+            rendu = page.evaluate("() => [...document.querySelectorAll('#volumes tbody tr')]"
+                                  ".map(tr => tr.cells[1].textContent.trim())")
+            attendu = page.evaluate(
+                "() => [...document.querySelectorAll('#volumes tbody tr')]"
+                ".map(tr => tr.cells[1].textContent.trim())"
+                ".sort((a, b) => parseFloat(a.replace(/\\s/g, '')) - parseFloat(b.replace(/\\s/g, '')))")
+            cas("tf-tri-milliers · ordre numerique", attendu, rendu, "TF-0768 tri")
+            naif = page.evaluate("() => window.__ordreNaif(1)")
+            cas("tf-tri-milliers · l'ancienne lecture DIFFERE (sens rouge)", True, naif != rendu,
+                "TF-0768 contre-epreuve")
+            page.evaluate("() => document.querySelectorAll('#volumes thead th')[3].click()")
+            debits = page.evaluate("() => [...document.querySelectorAll('#volumes tbody tr')]"
+                                   ".map(tr => tr.cells[3].textContent.trim())")
+            cas("tf-tri-milliers · data-v prime sur le texte",
+                ["un", "deux", "trois", "quatre", "cinq", "six"], debits, "TF-0768 cle declaree")
+
+        proteger("tf-tri-milliers.html", "TF-0768", section_tri)
+
+        # ---- TF-0781 / TF-0782 : ordre des facettes, et facette de la colonne cle -------
+        def section_facettes():
+            page.goto((FIXTURES / "tf-facettes-ordre.html").resolve().as_uri())
+            page.wait_for_load_state("load")
+            mois = page.evaluate("() => [...document.querySelectorAll('#fenetres thead th')[1]"
+                                 ".querySelectorAll('.tf-opts label')].map(l => l.textContent.trim())")
+            cas("tf-facettes-ordre · mois chronologiques",
+                ["août 2025", "déc. 2025", "janv. 2026", "avr. 2026"], mois, "TF-0781 ordre")
+            alpha = page.evaluate("() => window.__ordreAlphabetique(1)")
+            cas("tf-facettes-ordre · l'ordre alphabetique DIFFERE (sens rouge)", True, alpha != mois,
+                "TF-0781 contre-epreuve")
+            cle = page.evaluate("() => { const th = document.querySelectorAll('#fenetres thead th')[0];"
+                                " const p = th.querySelector('.tf-panel');"
+                                " return { bouton: !!th.querySelector('.tf-btn'),"
+                                "          forme: p && p.getAttribute('data-tf-forme'),"
+                                "          valeurs: p ? p.querySelectorAll('.tf-opt').length : 0 }; }")
+            cas("tf-facettes-ordre · la colonne CLE porte sa facette",
+                {"bouton": True, "forme": "liste", "valeurs": 8}, cle, "TF-0782 existence")
+            exempt = page.evaluate("() => { const th = document.querySelectorAll('#fenetres thead th')[3];"
+                                   " const ex = (window.__tf.exemptions || [])[0] || {};"
+                                   " return { bouton: !!th.querySelector('.tf-btn'),"
+                                   "          motif: (ex.motif || '').length > 20,"
+                                   "          colonne: ex.colonne }; }")
+            cas("tf-facettes-ordre · exemption DECLAREE avec motif",
+                {"bouton": False, "motif": True, "colonne": "Référence"}, exempt, "TF-0782 exemption")
+
+        proteger("tf-facettes-ordre.html", "TF-0781/0782", section_facettes)
+
+        # ---- TF-0769 : l'etat se lit, se rejoue, et survit a un re-rendu ----------------
+        def section_etat():
+            page.goto((FIXTURES / "tf-etat-rejoue.html").resolve().as_uri())
+            page.wait_for_load_state("load")
+            vu = page.evaluate("""() => {
+              const th = document.querySelectorAll('#lots thead th')[1];
+              const cb = [...th.querySelectorAll('.tf-opt')].find(x => x.value === 'livré');
+              cb.checked = false;
+              cb.dispatchEvent(new Event('change', { bubbles: true }));
+              return { etat: window.__tf.etat(),
+                       visibles: [...document.querySelectorAll('#lots tbody tr')]
+                         .filter(tr => !tr.hasAttribute('data-tf-hidden')
+                                    && !tr.hasAttribute('data-tf-empty')).length };
+            }""")
+            cas("tf-etat-rejoue · etat() nomme les valeurs exclues",
+                {"Statut": {"exclues": ["livré"]}}, vu["etat"]["colonnes"], "TF-0769 etat")
+            cas("tf-etat-rejoue · trois lignes visibles apres exclusion", 3, vu["visibles"],
+                "TF-0769 etat")
+            apres = page.evaluate("""() => {
+              document.getElementById('rerendre').click();
+              window.__tf.rafraichir();
+              return { caches: document.querySelectorAll('#lots tbody tr[data-tf-hidden]').length,
+                       restant: [...document.querySelectorAll('#lots tbody tr')]
+                         .filter(tr => !tr.hasAttribute('data-tf-hidden')
+                                    && !tr.hasAttribute('data-tf-empty')).length,
+                       etat: window.__tf.etat().colonnes };
+            }""")
+            cas("tf-etat-rejoue · la selection SURVIT au re-rendu",
+                {"caches": 2, "restant": 4, "exclues": ["livré"]},
+                {"caches": apres["caches"], "restant": apres["restant"],
+                 "exclues": (apres["etat"].get("Statut") or {}).get("exclues")},
+                "TF-0769 rafraichir")
+            meme = page.evaluate(
+                "() => DigitAITableFilters.init(document.getElementById('lots')) === window.__tf")
+            cas("tf-etat-rejoue · un second init rend l'INSTANCE, plus null (sens rouge)", True, meme,
+                "TF-0769 re-init")
+            rejoue = page.evaluate("""() => {
+              const t = document.getElementById('lots');
+              const etat = window.__tf.etat();
+              window.__tf.detruire();
+              const api = DigitAITableFilters.init(t, { etat: etat });
+              return { exclues: (api.etat().colonnes['Statut'] || {}).exclues,
+                       caches: t.querySelectorAll('tbody tr[data-tf-hidden]').length };
+            }""")
+            cas("tf-etat-rejoue · init(table, { etat }) rejoue la selection",
+                {"exclues": ["livré"], "caches": 2}, rejoue, "TF-0769 rejouabilite")
+
+        proteger("tf-etat-rejoue.html", "TF-0769", section_etat)
+
+        page.close()
+        navigateur.close()
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -1038,6 +1207,11 @@ def main():
     matrice = run_matrice_etats()
     if matrice:
         res += matrice
+    # TF-0768/0769/0781/0782 — le composant de filtres joue DANS un navigateur : ses defauts
+    # sont des defauts d'execution, qu'aucun oracle de marquage ne peut voir.
+    filtres = run_filtres_runtime()
+    if filtres:
+        res += filtres
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

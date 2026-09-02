@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — filtres · ordre des facettes et colonne clé — 20260902a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0781 et TF-0782, fixture À DOUBLE SENS jouée par self_test (run_filtres_runtime).
+
+  DEUX DÉFAUTS D'UNE MÊME LIGNE de l'ancien composant :
+    · `Object.keys(distinctes).sort()` rangeait les valeurs de facette par ordre ALPHABÉTIQUE —
+      le panneau « Mois » affichait « août 2025, avr. 2026, déc. 2025, janv. 2026 », un ordre
+      qui n'existe pour personne. Le test compare l'ordre rendu à l'ordre alphabétique et exige
+      qu'ils DIFFÈRENT : c'est le sens rouge, sans lui un tri chronologique fortuit passerait.
+    · `n > 1 && n < lignes.length` privait de facette la colonne CLÉ : huit marchés distincts sur
+      huit lignes, donc aucun filtre là où le lecteur en attendait un. La cardinalité décide
+      désormais de la FORME du panneau (`data-tf-forme`), jamais de son existence.
+
+  La colonne « Référence » porte la SEULE sortie admise : une exemption DÉCLARÉE
+  (`data-filter-col="off"` + `data-filter-reason`). Le test vérifie qu'elle n'a pas de
+  déclencheur ET que son motif est lisible dans `api.exemptions` — une exemption muette serait
+  refusée par l'oracle.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --r-sm:8px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { position:relative; font-weight:700; }
+  .tf-btn { font:inherit; font-size:.72rem; color:var(--blue); background:var(--surface);
+            border:1px solid var(--line); border-radius:var(--r-sm); padding:3px 7px;
+            margin-left:6px; cursor:pointer; }
+  .tf-panel { position:absolute; z-index:30; top:calc(100% + 4px); left:0; min-width:230px;
+              background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
+              padding:10px 12px; font-weight:400; }
+  .tf-panel[hidden] { display:none; }
+  .tf-opts { display:flex; flex-direction:column; gap:2px; }
+  .tf-forme-note { margin:0 0 8px; color:var(--muted); font-size:.78rem; font-style:italic; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  [hidden] { display:none !important; }
+  @media print { .tf-btn, .tf-panel { display:none !important; }
+                 tr[data-tf-hidden] { display:table-row !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Fenêtres d'ouverture par marché</h1>
+  <p>Huit marchés, huit références, quatre mois d'ouverture. Le panneau « Mois » doit se lire
+     dans l'ordre du calendrier, et la colonne « Marché » doit porter sa facette bien que chacune
+     de ses valeurs soit unique.</p>
+  <table id="fenetres" data-filterable>
+    <caption>Exemple inventé — aucune donnée réelle.</caption>
+    <thead>
+      <tr>
+        <th>Marché</th>
+        <th>Mois</th>
+        <th>Statut</th>
+        <th data-filter-col="off" data-filter-reason="clé technique à valeur unique par ligne : une facette n'apprendrait rien au lecteur, la recherche de page la couvre">Référence</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Marché A</td><td data-v="2025-08">août 2025</td><td>ouvert</td><td>REF-001</td></tr>
+      <tr><td>Marché B</td><td data-v="2026-04">avr. 2026</td><td>prévu</td><td>REF-002</td></tr>
+      <tr><td>Marché C</td><td data-v="2025-12">déc. 2025</td><td>ouvert</td><td>REF-003</td></tr>
+      <tr><td>Marché D</td><td data-v="2026-01">janv. 2026</td><td>prévu</td><td>REF-004</td></tr>
+      <tr><td>Marché E</td><td data-v="2025-08">août 2025</td><td>ouvert</td><td>REF-005</td></tr>
+      <tr><td>Marché F</td><td data-v="2026-04">avr. 2026</td><td>prévu</td><td>REF-006</td></tr>
+      <tr><td>Marché G</td><td data-v="2025-12">déc. 2025</td><td>fermé</td><td>REF-007</td></tr>
+      <tr><td>Marché H</td><td data-v="2026-01">janv. 2026</td><td>prévu</td><td>REF-008</td></tr>
+    </tbody>
+  </table>
+  <div class="tf-count" data-tf-count-for="fenetres" aria-live="polite"></div>
+</main>
+<script src="../assets/table-filters.js"></script>
+<script>
+  window.__tf = DigitAITableFilters.init(document.getElementById('fenetres'));
+  /* Ce que l'ANCIEN ordre alphabétique aurait donné, calculé par la page : le test exige que
+     l'ordre rendu en diffère. */
+  window.__ordreAlphabetique = function (colonne) {
+    var vus = {};
+    Array.prototype.forEach.call(document.querySelectorAll('#fenetres tbody tr'), function (tr) {
+      vus[tr.cells[colonne].textContent.trim()] = 1;
+    });
+    return Object.keys(vus).sort();
+  };
+</script>
+</body>
+</html>

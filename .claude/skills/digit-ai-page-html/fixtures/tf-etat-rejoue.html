@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — filtres · état lisible et rejouable — 20260902a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0769, fixture À DOUBLE SENS jouée par self_test (run_filtres_runtime).
+
+  LE DÉFAUT PAYÉ : `data-tf-ready` faisait rendre `null` à tout second `init`, et la sélection
+  vivait dans une fermeture. Une page qui re-rend ses tableaux perdait donc ses filtres, et la
+  seule parade était de RELIRE les cases décochées dans le DOM puis de les rejouer par des
+  événements `change` — c'est exactement ce qu'une console livrée a dû écrire (relever /
+  restaurer).
+
+  LE BOUTON de cette page re-rend le `<tbody>` SANS prévenir le composant : c'est le geste réel
+  d'une page qui recalcule ses lignes. Les trois sens joués par le banc :
+    · `api.etat()` NOMME les valeurs exclues (avant : rien à lire) ;
+    · après re-rendu, `api.rafraichir()` reconstruit les panneaux SUR la sélection conservée ;
+    · un second `init(table)` rend l'INSTANCE, plus `null` — sens rouge : sur l'ancien composant
+      cette assertion échoue, ce qui est tout l'intérêt de l'écrire.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --r-sm:8px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { position:relative; font-weight:700; }
+  .tf-btn { font:inherit; font-size:.72rem; color:var(--blue); background:var(--surface);
+            border:1px solid var(--line); border-radius:var(--r-sm); padding:3px 7px;
+            margin-left:6px; cursor:pointer; }
+  .tf-panel { position:absolute; z-index:30; top:calc(100% + 4px); left:0; min-width:230px;
+              background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
+              padding:10px 12px; font-weight:400; }
+  .tf-panel[hidden] { display:none; }
+  .tf-opts { display:flex; flex-direction:column; gap:2px; }
+  .tf-forme-note { margin:0 0 8px; color:var(--muted); font-size:.78rem; font-style:italic; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  .rejouer { font:inherit; color:var(--blue); background:var(--surface); cursor:pointer;
+             border:1px solid var(--line); border-radius:var(--r-sm); padding:6px 12px; }
+  [hidden] { display:none !important; }
+  @media print { .tf-btn, .tf-panel { display:none !important; }
+                 tr[data-tf-hidden] { display:table-row !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Lots suivis</h1>
+  <p>Le bouton ci-dessous re-rend le corps du tableau, comme le ferait une page qui recalcule
+     ses lignes après un changement de période.</p>
+  <button type="button" class="rejouer" id="rerendre">Re-rendre le tableau</button>
+  <table id="lots" data-filterable>
+    <caption>Exemple inventé — aucune donnée réelle.</caption>
+    <thead>
+      <tr><th>Lot</th><th>Statut</th><th>Volume</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Lot 1</td><td>livré</td><td data-v="1000">1 000</td></tr>
+      <tr><td>Lot 2</td><td>en cours</td><td data-v="250">250</td></tr>
+      <tr><td>Lot 3</td><td>livré</td><td data-v="980">980</td></tr>
+      <tr><td>Lot 4</td><td>bloqué</td><td data-v="45000">45 000</td></tr>
+      <tr><td>Lot 5</td><td>en cours</td><td data-v="12500">12 500</td></tr>
+    </tbody>
+  </table>
+  <div class="tf-count" data-tf-count-for="lots" aria-live="polite"></div>
+</main>
+<script src="../assets/table-filters.js"></script>
+<script>
+  window.__tf = DigitAITableFilters.init(document.getElementById('lots'));
+  document.getElementById('rerendre').addEventListener('click', function () {
+    /* Re-rendu BRUT du corps, sans prévenir le composant : les lignes sont neuves, une valeur
+       de plus est apparue. C'est le cas que la page hôte doit pouvoir rattraper. */
+    document.querySelector('#lots tbody').innerHTML =
+      '<tr><td>Lot 5</td><td>en cours</td><td data-v="12500">12 500</td></tr>' +
+      '<tr><td>Lot 4</td><td>bloqué</td><td data-v="45000">45 000</td></tr>' +
+      '<tr><td>Lot 3</td><td>livré</td><td data-v="980">980</td></tr>' +
+      '<tr><td>Lot 2</td><td>en cours</td><td data-v="250">250</td></tr>' +
+      '<tr><td>Lot 1</td><td>livré</td><td data-v="1000">1 000</td></tr>' +
+      '<tr><td>Lot 6</td><td>archivé</td><td data-v="30">30</td></tr>';
+  });
+</script>
+</body>
+</html>

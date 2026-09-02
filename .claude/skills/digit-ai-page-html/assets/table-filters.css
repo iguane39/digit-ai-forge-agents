@@ -50,6 +50,10 @@
 }
 .tf-opts label:hover { background: var(--bg, #f6f8fc); }
 .tf-opts input[type="checkbox"] { accent-color: var(--blue); }
+/* TF-0782 (02/09) : la cardinalite decide de la FORME du panneau, pas de son existence — et
+   une forme qui change sans le dire est une affordance muette. Le panneau ouvert sur sa
+   recherche (plus de 15 valeurs) ou reduit a une valeur unique porte sa note. */
+.tf-forme-note { margin: 0 0 8px; color: var(--muted); font-size: .78rem; font-style: italic; }
 
 /* TF-0431 : panneau aligne a droite quand la place manque (choisi par le composant) ;
    le conteneur defilant porteur d'un panneau ouvert ne rogne plus (data-tf-ouvert). */
