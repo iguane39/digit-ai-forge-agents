@@ -98,10 +98,16 @@ function ouvrir(artefact) {
 // mot français ordinaire, et la règle rendait vert sans rien juger.
 // TROIS GENRES, ET LE TROISIÈME EST NÉ D'UNE MESURE, pas d'une intuition (27/08, second tour).
 // Verser un SIGLE court au référentiel comme un nom ordinaire produit des faux positifs immédiats :
-// mesuré sur le parc, le sigle « Fournisseur-A » attrapait `candidatsFreres` (4 occurrences) et `resFront`
-// (3), et le nom « Auchan » n'attrapait RIEN D'AUTRE que le mot `chevauchant` — zéro vrai positif,
-// un faux à 100 %. Un contrôle qui crie sur de la prose ordinaire se fait désactiver dans la
-// semaine, et il aura eu raison une fois pour dix fois où il aura menti.
+// mesuré sur le parc, un sigle de trois lettres pris en SOUS-CHAÎNE attrapait deux identifiants de
+// code et rien d'autre, et un nom de marque trop court n'attrapait RIEN D'AUTRE qu'un mot français
+// ordinaire qui le contient — zéro vrai positif, un faux à 100 %. Un contrôle qui crie sur de la
+// prose ordinaire se fait désactiver dans la semaine, et il aura eu raison une fois pour dix fois
+// où il aura menti.
+// LES EXEMPLES SONT INVENTÉS, ET VÉRIFIABLES DANS CE DÉPÔT — aucun nom du parc ne s'écrit ici
+// (loi transverse n° 4, D-37). Le sigle « ZRG » du jeu d'essai (`fixtures/_noms-interdits.json`)
+// pris en sous-chaîne attraperait `azrgue`, `zrgien` et `transzrg` : les trois témoins de la
+// fixture VERTE, qui doivent passer. Et un nom aussi court qu'« Erval » n'attraperait rien
+// d'autre que le mot `intervalle`.
 //   · nom          — insensible à la casse, sous-chaîne. Pour un nom propre assez long pour être
 //                    discriminant (« Zorglub », « Chronopode ») ;
 //   · identifiant  — SENSIBLE à la casse, sous-chaîne. Une chaîne technique n'est pas un mot ;
