@@ -1,4 +1,4 @@
-/* Digit-AI — Onglets accessibles (TF-0425, lot Client-B 20260820a, 21/08).
+/* Digit-AI — Onglets accessibles (TF-0425, lot Produit-05 20260820a, 21/08).
    Contrat de marquage :
      <div class="tabs" data-tabs>
        <div role="tablist" aria-label="…">

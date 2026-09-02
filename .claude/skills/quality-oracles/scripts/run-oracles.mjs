@@ -88,7 +88,7 @@ const today = new Date().toISOString().slice(0, 10);
 const findExempt = (f, domaine) => exemptions.find(e => (path.basename(f) === e.fichier || rel(f).endsWith(e.fichier)) && e.domaine === domaine);
 
 // ---- C5 : cache par hash (contenu + script + profil) — jamais de cache sur FAIL ni SKIP --------
-// TF-0428 (lot Client-B 20260820a, 21/08) — même doctrine que render_page.py (TF-0230) : sous un
+// TF-0428 (lot Produit-05 20260820a, 21/08) — même doctrine que render_page.py (TF-0230) : sous un
 // arbre de LIVRAISON (output/, old/, dist/, build/), aucun journal à côté du livrable — ce que le
 // client reçoit ne contient pas les traces de son audit.
 //

@@ -278,7 +278,7 @@ oracle 13/13) et le dashboard forge-tests (tuiles).
 
 ## 9 — Onglets accessibles 🔴 (dès qu'un rapport se lit par onglets)
 
-Asset : [`assets/tabs.js`](../assets/tabs.js) (TF-0425, lot Client-B 20260820a). Un rapport à
+Asset : [`assets/tabs.js`](../assets/tabs.js) (TF-0425, lot Produit-05 20260820a). Un rapport à
 onglets réécrivait ~50 lignes de JS à chaque livrable ; le composant porte les rôles
 WAI-ARIA, les flèches (cycle), Home/End, le `#hash` qui ouvre le bon onglet (cible = panneau
 **ou** élément dans un panneau — les liens de sommaire inter-onglets marchent), et
@@ -309,7 +309,7 @@ capture chaque panneau.
 
 ## 10 — Ligne de tableau dépliable 🟡 (détail à la demande sans quitter le tableau)
 
-Asset : [`assets/table-detail.js`](../assets/table-detail.js) (TF-0432, lot Client-B
+Asset : [`assets/table-detail.js`](../assets/table-detail.js) (TF-0432, lot Produit-05
 20260820b). La convention `tr[data-detail]` existait côté **consommateur** (`table-filters.js`
 l'exclut du comptage et la fait voyager avec sa ligne mère) sans composant pour la
 **produire** — 99 lignes dépliables écrites à la main sur un seul livrable. Contrat :

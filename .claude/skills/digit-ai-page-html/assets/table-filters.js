@@ -2,7 +2,7 @@
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G6).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
    du livrable doit reafficher tr[data-tf-hidden].
-   Lot Client-B 20260820b (TF-0429/0430/0431, 21/08) : rappel apresFiltrage et instance
+   Lot Produit-05 20260820b (TF-0429/0430/0431, 21/08) : rappel apresFiltrage et instance
    enveloppable, etat vide avec « tout reafficher », panneau qui choisit son cote et
    neutralise le rognage de son conteneur defilant tant qu'il est ouvert. */
 (function (root) {

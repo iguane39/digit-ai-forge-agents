@@ -1,4 +1,4 @@
-/* Digit-AI — Ligne de tableau depliable (TF-0432, lot Client-B 20260820b, 21/08).
+/* Digit-AI — Ligne de tableau depliable (TF-0432, lot Produit-05 20260820b, 21/08).
    La convention data-detail existait cote CONSOMMATEUR (table-filters exclut tr[data-detail]
    du comptage et la fait voyager avec sa ligne mere) ; ce composant la PRODUIT.
    Contrat de marquage :

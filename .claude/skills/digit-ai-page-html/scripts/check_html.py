@@ -84,7 +84,7 @@ RE_PRINT_TABPANEL = re.compile(r"@media\s+print[^{]*\{[\s\S]*?tabpanel", re.I)
 RE_PRINT_DETAIL = re.compile(r"@media\s+print[^{]*\{[\s\S]*?data-detail", re.I)
 
 # Classes qui désignent une valeur mise en avant.
-# TF-0433 (lot Client-B 20260820b) : « note » est AMBIGU — note chiffrée ou remarque (« card note »).
+# TF-0433 (lot Produit-05 20260820b) : « note » est AMBIGU — note chiffrée ou remarque (« card note »).
 # Il n'entre ici que combiné à un chiffre dans le contenu (voir est_score) ; `.card.note` est
 # la classe d'encadré du socle, et le message de L3 nomme désormais ce qui l'a déclenché.
 CL_SCORE = {"sc", "score", "jauge"}                  # → barème lié obligatoire
@@ -1741,7 +1741,7 @@ def check_lisibilite(html: str, a: Arbre):
             if href.startswith("#") and href[1:] in ids:
                 cibles.append((href[1:], ids[href[1:]]))
 
-    # TF-0423 (lot Client-B 20260820a) : L7 et L10 se satisfaisaient d'une conformité MÉCANIQUE —
+    # TF-0423 (lot Produit-05 20260820a) : L7 et L10 se satisfaisaient d'une conformité MÉCANIQUE —
     # 12 chapeaux identiques au mot près posés par un script d'optimisation d'oracle, un
     # « Mode d'emploi » en double. Un chapeau est une phrase ÉCRITE, jamais générée : identique
     # dans deux chapitres, tiré du lexique de remplissage, ou plus long qu'un paragraphe, il
@@ -1813,7 +1813,7 @@ def check_lisibilite(html: str, a: Arbre):
         libelle = lien.texte_propre()
         aide = (lien.att("title") or lien.att("aria-label") or "").strip()
         if len(libelle) < 8 and len(aide) < 12:
-            # TF-0434 (lot Client-B 20260820b) : un libellé qui est un IDENTIFIANT du document
+            # TF-0434 (lot Produit-05 20260820b) : un libellé qui est un IDENTIFIANT du document
             # (H5, E2, 1.5, ADR 0022) n'est pas muet pour son lecteur — il est elliptique pour
             # un lecteur d'écran. La sortie la plus simple se dit en premier : un title court.
             if RE_IDENTIFIANT.match(libelle.strip()):
@@ -1885,7 +1885,7 @@ def check_lisibilite(html: str, a: Arbre):
                      "une liste, avec une ligne qui dit ce qu'il faut y voir.")
 
     # --- L15 : glyphes en content: CSS hors liste blanche (AVERTISSEMENT) ---
-    # TF-0435 (lot Client-B 20260820b) : un chevron écrit content: "\25B6" passait tous les
+    # TF-0435 (lot Produit-05 20260820b) : un chevron écrit content: "\25B6" passait tous les
     # oracles et s'affichait en tofu sur mobile — la pile de repli mono n'a pas ce caractère.
     # Contrôle statique bon marché : tout caractère hors Latin-1 et hors liste blanche de
     # glyphes réputés présents est SIGNALÉ, jamais un échec : « vérifiez ce glyphe sur un
@@ -1904,7 +1904,7 @@ def check_lisibilite(html: str, a: Arbre):
                          "préférez › ‹ • – → ou une icône SVG dessinée.")
 
     # --- L16 : onglets accessibles (composant tabs.js) ------------------------
-    # TF-0425 (lot Client-B 20260820a) : tout role=tab vise un tabpanel résolu, tout tabpanel
+    # TF-0425 (lot Produit-05 20260820a) : tout role=tab vise un tabpanel résolu, tout tabpanel
     # est étiqueté par son onglet, et les panneaux masqués sont réaffichés à l'impression.
     tabs = [n for n in a.racine.descendants() if n.att("role") == "tab"]
     panels = [n for n in a.racine.descendants() if n.att("role") == "tabpanel"]
@@ -1925,7 +1925,7 @@ def check_lisibilite(html: str, a: Arbre):
                      "([role=\"tabpanel\"][hidden] { display: block } sous @media print).")
 
     # --- L17 : ligne de tableau dépliable (composant table-detail.js) ---------
-    # TF-0432 (lot Client-B 20260820b) : toute ligne tr[data-detail] a un id et un bouton qui la
+    # TF-0432 (lot Produit-05 20260820b) : toute ligne tr[data-detail] a un id et un bouton qui la
     # vise, sa cellule couvre toutes les colonnes, et elle s'imprime dépliée.
     details = [n for n in a.racine.descendants() if n.tag == "tr" and "data-detail" in n.attrs]
     boutons_controls = {(n.att("aria-controls") or "").strip()

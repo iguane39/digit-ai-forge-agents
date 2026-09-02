@@ -84,7 +84,7 @@ Si les lignes doivent être courtes, **rétrécir la colonne** — une grille, u
 mesure — et laisser le texte la remplir. Ne jamais laisser un paragraphe flotter dans une
 boîte deux fois plus large que lui.
 
-**Quelle que soit la propriété (TF-0421, lot Client-B 20260820a).** `width: min(75ch, 100%)`
+**Quelle que soit la propriété (TF-0421, lot Produit-05 20260820a).** `width: min(75ch, 100%)`
 contournait la mesure (qui ne regardait que `max-width`) et produisait exactement le défaut :
 texte à 40 % d'un écran de 1 800 px, livré vert, refusé par le client. `render_page.py` L2
 retire `max-width` **et** `width` le temps d'une mesure : toute bride du texte en deçà de
@@ -264,7 +264,7 @@ section, d'au moins 40 caractères.
 **Contrôle mécanique.** `L7` — toute section cible du sommaire sans chapeau d'ouverture
 d'au moins 40 caractères.
 
-**Un chapeau est une phrase ÉCRITE, jamais générée (TF-0423, lot Client-B 20260820a).** Douze
+**Un chapeau est une phrase ÉCRITE, jamais générée (TF-0423, lot Produit-05 20260820a).** Douze
 chapeaux identiques au mot près, posés par un script qui optimisait l'oracle, ont passé L7 sur
 un livrable refusé par le client. Trois formes mécaniques de ce défaut échouent désormais :
 chapeau **identique** dans deux chapitres ; chapeau tiré du **lexique de remplissage** (« ce
@@ -416,7 +416,7 @@ simple observation du tableau.
 | Fidélité des libellés de lien | Le libellé nomme-t-il la cible ou un synonyme approximatif ? |
 | Barème | Les crans sont-ils discriminants et vérifiables ? |
 
-**Trace attendue — OBLIGATOIRE (TF-0422, lot Client-B 20260820a)** : la revue de lecture se
+**Trace attendue — OBLIGATOIRE (TF-0422, lot Produit-05 20260820a)** : la revue de lecture se
 consigne dans `REVUE.md` à côté du livrable, au gabarit
 [gabarit-revue-de-lecture.md](gabarit-revue-de-lecture.md) — captures lues (1920, 1280, 768,
 390 et une par section via `render_page.py --sections`), une ligne par constat (largeur ·
@@ -483,7 +483,7 @@ parce qu'on n'a pas voulu corriger l'émetteur.
 
 **Règle.** Un caractère posé par `content:` s'affiche avec les polices du lecteur, pas les
 vôtres. Un chevron écrit `"\25B6"` passait tous les oracles et sortait en **tofu** sur mobile
-(TF-0435, lot Client-B 20260820b) : la pile de repli mono n'a pas ce caractère ; seul l'œil
+(TF-0435, lot Produit-05 20260820b) : la pile de repli mono n'a pas ce caractère ; seul l'œil
 humain l'a vu sur les captures.
 
 **Contrôle mécanique.** `L15` — tout caractère hors Latin-1 et hors liste blanche (chevrons

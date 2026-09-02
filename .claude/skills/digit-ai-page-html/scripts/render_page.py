@@ -69,7 +69,7 @@ FONT_DIR_CANDIDATES = [
     Path("/mnt/skills/user/digit-ai-schemas/scripts/fonts"),
 ]
 
-# TF-0422 (lot Client-B 20260820a, 21/08) : 1920 entre dans les largeurs par défaut — le défaut de
+# TF-0422 (lot Produit-05 20260820a, 21/08) : 1920 entre dans les largeurs par défaut — le défaut de
 # colonne étroite (texte à 40 % d'un écran de 1 800 px, livré vert, refusé par le client) ne se
 # voit qu'à partir de ~1 600 px ; 1280/768/390 ne le montraient jamais.
 DEFAULT_WIDTHS = [1920, 1280, 768, 390]
@@ -376,7 +376,7 @@ MEASURE_JS = r"""
       const rr = racine.getBoundingClientRect();
       return rr.width > 0 && rr.height > 0 && rr.width < 48 && rr.height < 48;
     })();
-    // TF-0424 (lot Client-B 20260820a) : les formes INTERNES d'un groupe SVG titre (<g><title>…)
+    // TF-0424 (lot Produit-05 20260820a) : les formes INTERNES d'un groupe SVG titre (<g><title>…)
     // se superposent par construction — un rect et son text sont un seul noeud de schema, pas
     // deux elements de mise en page. V4 ne juge que les chevauchements ENTRE noeuds et entre
     // noeud et fleche ; data-overlap-ok n'est plus a poser sur chaque forme d'un noeud.
@@ -581,7 +581,7 @@ MEASURE_JS = r"""
       if (el.closest('table') || el.closest('nav')) continue;
       const cs = getComputedStyle(el);
       if (cs.display === 'inline') continue;
-      // TF-0421 (lot Client-B 20260820a) : la bride se mesure QUELLE QUE SOIT la propriete.
+      // TF-0421 (lot Produit-05 20260820a) : la bride se mesure QUELLE QUE SOIT la propriete.
       // `width: min(75ch, 100%)` passait (maxWidth === 'none') et laissait 60 % de la fenetre
       // vide a 1 800 px — livre vert, refuse par le client. On retire max-width ET width le temps
       // d'une mesure : l'element dit alors la place que son conteneur lui offre. Une colonne de

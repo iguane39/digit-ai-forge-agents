@@ -1,6 +1,6 @@
 # Gabarit — REVUE.md, la revue de lecture (obligatoire avant livraison)
 
-**TF-0422, lot Client-B 20260820a (21/08).** Une page sortie verte à tous les oracles a été
+**TF-0422, lot Produit-05 20260820a (21/08).** Une page sortie verte à tous les oracles a été
 refusée par le client à l'ouverture : colonne de texte à 40 % d'un écran de 1 800 px, chapeaux
 identiques, doublons. Chaque règle mesurait une propriété locale ; aucune étape ne regardait la
 page comme un lecteur. La revue de lecture était déclarée « à la charge de l'orchestrateur »
