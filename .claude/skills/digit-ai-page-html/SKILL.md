@@ -1,19 +1,49 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V7 et les règles de lisibilité L1–L24 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V14 et les règles de lisibilité L1–L29 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.16.0"
+  version: "1.17.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.17.0 (02/09/2026)** — **huit retours d'un lot produit, et une seule famille de cause : le
+socle DÉCRIVAIT sans EXIGER, ou mesurait à côté du défaut.** · **Le composant de filtres lisait un
+TEXTE là où il fallait lire une VALEUR** (TF-0768/0769/0781/0782) : `parseFloat("1 000")` vaut
+**1** — l'espace insécable de milliers arrête l'analyse — donc *toute page en français triait
+faux, en silence*, et le produit a dû réarmer son propre tri. Même lecture naïve pour les
+facettes, rangées par ordre alphabétique (« août 2025, avr. 2026, déc. 2025 »), et une heuristique
+`1 < n < lignes` qui **privait de facette la colonne clé** — huit marchés distincts sur huit
+lignes. Tri et facettes lisent désormais `data-v`/`data-sort`, sinon un nombre **après** retrait
+des espaces ; un même comparateur sert aux deux, donc une date ISO se range chronologiquement
+(G8) ; **chaque** en-tête porte sa facette, la cardinalité ne décide que de la FORME
+(`data-tf-forme`), et la seule sortie est une exemption **déclarée avec motif** (G7). L'état se
+lit et se rejoue — `api.etat()`, `api.rafraichir()`, `init(table, { etat })` — au lieu d'être
+relu dans le DOM par la page hôte. Trois fixtures jouées **dans Chromium** sur l'asset réel : deux
+calculent dans la page l'ordre qu'aurait rendu l'ancienne lecture et exigent qu'il DIFFÈRE.
+· **Cinq règles de lisibilité neuves**, chacune née d'un retour humain direct : **L25** un
+sommaire visible en permanence au-delà de trois chapitres (« fournis un menu sur la gauche ») ;
+**L26** une page de données se DÉCLARE et prend toute la largeur, la colonne de lecture reste pour
+la prose — l'arbitrage manquait, et le même défaut a été signalé « des dizaines de fois » ;
+**L27** un `<th>` définit sa colonne, avec son **unité** (une hypothèse en euros/an était
+multipliée par un nombre de séjours) ; **L28** le temps s'affiche comme du temps, valeur d'ordre
+obligatoire ; **L29** l'arbitrage `header` collant / `thead` collant, tranché au socle par le
+token `--hh` — un **produit** avait dû le trancher seul. · **Quatre familles de rendu**
+(V11–V14) : contrôles d'une même rangée alignés à 2 px (« textbox pas alignés »), tableau rogné
+dans un conteneur défilant **bloquant** au-delà de 1 280 px (le débordement était relevé, puis
+classé « acceptable » sans mesure), bloc de texte sous 70 % de son conteneur, sommaire perdu au
+défilement. **Bruit mesuré avant mise en bloquant : 0 constat sur les 153 documents HTML du
+dépôt.** · **`--red` / `--red-fill` / `--red-line`** entrent à la palette (TF-0755) : le livrable
+conforme de la maison les employait déjà, la documentation ne les portait pas — *une palette dont
+un registre entier n'est écrit nulle part se fait réinventer*. Recette 141 → 171 cas.
 
 **1.16.0 (02/09/2026)** — **trois défauts d'une seule famille : un contrôle qui décrit son cas
 et ne le voit pas.** · **Le balisage d'emphase cesse d'être du texte** (TF-0720) :
@@ -337,12 +367,12 @@ marquage et partage mécanique / revue : [references/lisibilite.md](references/l
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V7 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
-- Règles de lisibilité L1–L14 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
+- Checklist canonique zéro défaut visuel V1–V14 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Règles de lisibilité L1–L29 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants
 
-**Obligatoire** — Filtres de colonne sur les tableaux de données parcourus (≥ 8 lignes et ≥ 1 colonne catégorielle) : [references/composant-filtres-tableau.md](references/composant-filtres-tableau.md) (asset : [assets/table-filters.js](assets/table-filters.js)). Exemption possible via `data-filterable="off"` **et** `data-filterable-reason="…"` — sans motif, c'est un échec.
+**Obligatoire** — Filtres de colonne sur les tableaux de données parcourus (≥ 8 lignes) — **chaque** colonne reçoit sa facette, la cardinalité ne décide que de la forme du panneau (G7) : [references/composant-filtres-tableau.md](references/composant-filtres-tableau.md) (asset : [assets/table-filters.js](assets/table-filters.js)). Exemption possible via `data-filterable="off"` **et** `data-filterable-reason="…"` — sans motif, c'est un échec.
 
 **Optionnel** —
 

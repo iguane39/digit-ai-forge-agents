@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L4 exemption de facette muette — 20260902a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L4 ROUGE (TF-0782, 02/09).
+
+  Depuis que CHAQUE colonne recoit sa facette, la seule sortie est une exemption DECLAREE. Celle-ci
+  est muette : `data-filter-col="off"` sans motif. C'est exactement ce qui avait coute la facette
+  de la colonne cle du livrable — la decision etait prise par une heuristique, personne ne
+  l'ecrivait, et personne ne pouvait la contester.
+
+  Attendu : L4 et elle seule.
+-->
+<body><main class="wrap">
+<h1>Fenetres d'ouverture</h1>
+<p>Huit lignes, trois colonnes. Seule la troisieme se soustrait a sa facette — et elle ne dit pas pourquoi.</p>
+<label for="q">Rechercher</label> <input id="q" type="search" placeholder="Rechercher une ligne">
+<table id="fenetres" data-filterable>
+<thead><tr><th>Marche</th><th>Statut</th><th data-filter-col="off">Reference</th></tr></thead>
+<tbody>
+<tr><td>Marche A</td><td>ouvert</td><td>REF-001</td></tr>
+<tr><td>Marche B</td><td>prevu</td><td>REF-002</td></tr>
+<tr><td>Marche C</td><td>ouvert</td><td>REF-003</td></tr>
+<tr><td>Marche D</td><td>ferme</td><td>REF-004</td></tr>
+<tr><td>Marche E</td><td>prevu</td><td>REF-005</td></tr>
+<tr><td>Marche F</td><td>ouvert</td><td>REF-006</td></tr>
+<tr><td>Marche G</td><td>prevu</td><td>REF-007</td></tr>
+<tr><td>Marche H</td><td>ferme</td><td>REF-008</td></tr>
+</tbody></table>
+</main></body></html>
