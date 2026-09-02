@@ -19,8 +19,11 @@ import path from 'node:path';
 import { parseNum, isTotalLabel, isGrandTotalLabel } from './lib/num.mjs';
 import { extractTables } from './lib/tables.mjs';
 import { verifierEffectifs } from './lib/effectifs.mjs';
+import { verifierMesures, NON_JUGE_MESURE } from './lib/mesure.mjs';
 
-const file = process.argv[2];
+const args = process.argv.slice(2);
+const file = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--profil');
+const pArg = args.includes('--profil') ? args[args.indexOf('--profil') + 1] : null;
 const out = (verdict, findings, non_juge, code) => {
   process.stdout.write(JSON.stringify({ oracle: 'oracle-calculs', domaine: 'Calculs / chiffres', artefact: file || null, verdict, findings, non_juge }));
   process.exit(code);
@@ -34,7 +37,8 @@ const NON_JUGE_BASE = [
   'ambiguïté séparateur unique + 3 décimales (traité comme milliers)',
   'effectifs annoncés sans ancre immédiate (liste ou tableau juste dessous) — non rapprochables',
   'effectifs de 1 (« une question ») et noms hors liste des dénombrables de lib/effectifs.mjs',
-  'listes imbriquées HTML : les <li> de sous-listes sont comptés avec les items de premier niveau'
+  'listes imbriquées HTML : les <li> de sous-listes sont comptés avec les items de premier niveau',
+  ...NON_JUGE_MESURE
 ];
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 const ext = path.extname(file).toLowerCase();
@@ -47,10 +51,18 @@ const tables = extractTables(text, ext);
 // Ce volet juge AUSSI les documents sans aucune table de total : le décalage « Sept écarts »
 // au-dessus d'un tableau de huit vivait dans un sommaire, pas dans une somme.
 const eff = verifierEffectifs(text, ext, path.basename(file));
-if (!tables.length && !eff.annonces && !eff.findings.length) out('SKIP', [], [...NON_JUGE_BASE, 'aucune table détectée, aucun effectif annoncé ancré'], 2);
+
+// ---- TF-0760 / TF-0777 : « un chiffre publié énonce son dénominateur, et une unité se lit » ---
+// N3 pourcentage sans sa formule · N4 unités des en-têtes · N5 hypothèse calculable depuis la
+// source déclarée. Délégué à lib/mesure.mjs — un domaine, un module, la même discipline que N1.
+let PROFIL = {};
+if (pArg && fs.existsSync(pArg)) { try { PROFIL = JSON.parse(fs.readFileSync(pArg, 'utf8')); } catch { /* profil illisible : réglages par défaut */ } }
+const mes = verifierMesures(text, ext, path.basename(file), path.dirname(path.resolve(file)), (PROFIL.calculs && PROFIL.calculs.mesure) || {});
+
+if (!tables.length && !eff.annonces && !eff.findings.length && !mes.juges && !mes.findings.length) out('SKIP', [], [...NON_JUGE_BASE, 'aucune table détectée, aucun effectif annoncé ancré, aucun pourcentage ni unité publiés'], 2);
 
 // ---- vérification d'une ligne de total contre un jeu de lignes de données -------------------
-const findings = [...eff.findings]; let verified = eff.verifies, totalsSeen = eff.annonces;
+const findings = [...eff.findings, ...mes.findings]; let verified = eff.verifies + mes.verifies, totalsSeen = eff.annonces + mes.juges;
 function verifyRow(t, header, totalRow, data, kind) {
   const width = Math.max(...t.rows.map(x => x.cells.length));
   for (let c = 1; c < width; c++) {
@@ -87,6 +99,7 @@ for (const t of tables) {
     segStart = r + 1;                                   // sous-totaux : le segment suivant repart après ce total
   }
 }
-if (findings.length) out('FAIL', findings, NON_JUGE_BASE, 1);
+if (findings.some(f => f.sev === 'bloquant')) out('FAIL', findings, NON_JUGE_BASE, 1);
 if (!totalsSeen || !verified) out('SKIP', [], [...NON_JUGE_BASE, totalsSeen ? 'totaux présents mais colonnes non sommables (données < 2 lignes)' : 'tables sans ligne de total de contrôle, aucun effectif annoncé ancré'], 2);
-out('PASS', [{ sev: 'info', msg: (verified - eff.verifies) + ' total(aux) de colonne vérifié(s) par re-somme + ' + eff.verifies + ' effectif(s) annoncé(s) rapproché(s) de leur cardinal réel, 0 écart', where: path.basename(file) }], NON_JUGE_BASE, 0);
+findings.push({ sev: 'info', msg: (verified - eff.verifies - mes.verifies) + ' total(aux) de colonne vérifié(s) par re-somme + ' + eff.verifies + ' effectif(s) annoncé(s) rapproché(s) de leur cardinal réel + ' + mes.verifies + '/' + mes.juges + ' mesure(s) publiée(s) portant leur dénominateur et leurs unités, 0 écart', where: path.basename(file) });
+out('PASS', findings, NON_JUGE_BASE, 0);

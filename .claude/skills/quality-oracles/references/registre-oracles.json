@@ -335,7 +335,7 @@
     ".htm"
    ],
    "type": "cli",
-   "checklist": "re-somme executee des lignes Total/Somme des tables md/html (milliers fr, virgule/point decimal, EUR, %, kEUR) ; tolerance arrondi ; N1 (TF-0718) effectif annonce en chiffres OU en lettres suivi d'un nom denombrable, en tete de liste/tableau, rapproche du CARDINAL REEL de l'ancre ; N2 compte contradictoire pour le meme nom dans le meme document ; le reste marque a verifier",
+   "checklist": "re-somme executee des lignes Total/Somme des tables md/html (milliers fr, virgule/point decimal, EUR, %, kEUR) ; tolerance arrondi ; N1 (TF-0718) effectif annonce en chiffres OU en lettres suivi d'un nom denombrable, en tete de liste/tableau, rapproche du CARDINAL REEL de l'ancre ; N2 compte contradictoire pour le meme nom dans le meme document ; le reste marque a verifier · N3 (TF-0760, 02/09/2026) un POURCENTAGE MESURE publie sans sa formule ecrite a cote (fraction, colonne de comptes, ou note « base : … » / « denominateur … ») est un defaut — cibles, seuils, poids et bandes exemptes · N4 (TF-0777) les UNITES des en-tetes se lisent : une meme grandeur a deux unites dans le document, une cellule dont l unite contredit son en-tete, une unite de FLUX (€/an) consommee par une multiplication par un COMPTE D EVENEMENTS · N5 (TF-0777, avertissement) une HYPOTHESE portant sur une grandeur que la SOURCE DE DONNEES DECLAREE contient est calculable — on ne suppose pas ce qu on peut compter",
    "statut": "partiel",
    "non_juge": [
     "calculs hors tables",
@@ -343,13 +343,20 @@
     "chiffres sans total de contrôle",
     "effectifs annonces sans ancre immediate (liste ou tableau juste dessous)",
     "effectifs de 1 et noms hors liste des denombrables de lib/effectifs.mjs",
-    "effectifs qui n'ouvrent pas leur titre ou leur ligne (borne anti-bruit)"
+    "effectifs qui n'ouvrent pas leur titre ou leur ligne (borne anti-bruit)",
+    "N3 : la JUSTESSE du denominateur ecrit (sa presence est verifiee, jamais sa pertinence)",
+    "N3 : les pourcentages en pleine prose, hors table et hors titre",
+    "N4 : les unites hors liste connue et celles ecrites en toutes lettres dans la prose",
+    "N5 : le CALCUL lui-meme — l oracle constate que la source declaree contient la grandeur supposee, il ne recalcule rien",
+    "l epreuve de l etonnement (faire lire les resultats a quelqu un qui connait le terrain) : c est elle qui a trouve le defaut du 31/08, et elle n est pas mecanisable"
    ],
-   "note": "domaine-spécifique : rejouer le calcul du livrable ; pas d'oracle générique",
+   "note": "domaine-spécifique : rejouer le calcul du livrable ; pas d'oracle générique TF-0760/TF-0777 (02/09/2026) — BRUIT MESURE sur les 103 documents .md/.html suivis du depot : 0 FAIL. COUVERTURE mesuree sur le meme corpus : 1 PASS / 102 SKIP avant, 4 PASS / 99 SKIP apres — trois documents de plus reellement juges, aucun accuse a tort. Quatre bornes anti-bruit sont dans lib/mesure.mjs et commentees a leur endroit : liste FERMEE des unites (un parenthetique de titre n est pas une unite), exemption des pourcentages CIBLE / SEUIL / POIDS / BANDE (ils bornent, ils ne mesurent pas), « denominateur » ne vaut formule que suivi d un chiffre ou d un deux-points, et le gras Markdown n est pas un signe de multiplication.",
    "cmd": [
     "node",
     "{skilldir}/scripts/oracle-calculs.mjs",
-    "{file}"
+    "{file}",
+    "--profil",
+    "{profil}"
    ],
    "content_patterns": [
     "^\\s*\\|.*\\b(total|totaux|somme|sous-?total)\\b"

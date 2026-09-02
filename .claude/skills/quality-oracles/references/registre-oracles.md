@@ -41,7 +41,7 @@
 | Skill (audit) | skill `ameliore-un-skill` (grille /5 pondérée) + volet R1–R10 (`regles-oracles.md`) | skill | ✅ |
 | Cohérence inter-documents | `oracle-coherence.mjs <dossier>` — divergences de grandeurs entre livrables (versions antérieures exclues) | cli | ✅ |
 | Régression visuelle (golden diff) | `oracle-visual-diff.py` — captures vs goldens versionnés (masques, `--accepter` hors boucle) | cli | ✅ |
-| Calculs / chiffres | `scripts/oracle-calculs.mjs` — re-somme exécutée des lignes Total des tables md/html (+ déclenchement par contenu) ; **N1 (TF-0718, 02/09/2026)** effectif annoncé en **chiffres OU en lettres** suivi d'un nom dénombrable, en tête d'une liste ou d'un tableau, rapproché du **cardinal réel** de l'ancre (identifiants distincts si la 1re colonne en porte) ; **N2** compte contradictoire pour le même nom dans le même document ; hors tables → recompute manuel | cli | ⚙️ |
+| Calculs / chiffres | `scripts/oracle-calculs.mjs` — re-somme exécutée des lignes Total des tables md/html (+ déclenchement par contenu) ; **N1 (TF-0718, 02/09/2026)** effectif annoncé en **chiffres OU en lettres** suivi d'un nom dénombrable, en tête d'une liste ou d'un tableau, rapproché du **cardinal réel** de l'ancre (identifiants distincts si la 1re colonne en porte) ; **N2** compte contradictoire pour le même nom dans le même document ; hors tables → recompute manuel ; **N3 (TF-0760, 02/09/2026)** un **pourcentage mesuré publié sans sa formule** écrite à côté (fraction, colonne de comptes, ou note « base : … » / « dénominateur … ») est un défaut — cibles, seuils, poids et bandes exemptés ; **N4 (TF-0777)** les **unités des en-têtes se lisent** : même grandeur à deux unités, cellule qui contredit son en-tête, unité de **flux** (€/an) consommée par une multiplication par un **compte d'événements** ; **N5 (TF-0777, avertissement)** une **hypothèse portant sur une grandeur que la source de données déclarée contient** est calculable | cli | ⚙️ |
 | Traçabilité des affirmations chiffrées | `scripts/oracle-claims.mjs` — montant € sans source ni « à vérifier » = bloquant ; incohérence intra-document ; actif selon profil | cli | ⚙️ |
 | Nommage / convention de livraison | `scripts/oracle-nommage.mjs` — convention du profil (**Q3-bis, 09/08/2026** : `<Projet> - <Objet> - AAAAMMJJ{a…}` — le nom du projet prime sur l'émetteur, le motif date + indice est le discriminant) ; nom ne se réclamant pas de la convention → SKIP | cli | ✅ |
 | Jugement rédactionnel (LLM-juge externe) | `scripts/oracle-judge.mjs` — rubrique figée 5 axes via CLI claude ; AVIS OUTILLÉ, invocation explicite, jamais promu en verdict | cli | ⚙️ |
@@ -90,6 +90,44 @@
 > vides — dettes nommées » ; l'oracle vit chez `experts-forge` (invocation `{skillsroot}`) et
 > ses fixtures rouge/verte sont rejouées par le self-test de `quality-oracles`, avec une
 > `--date` figée au manifest pour un rejeu déterministe.
+
+## Injection du 02/09/2026 — « un chiffre publié énonce son dénominateur » (TF-0760, TF-0777)
+
+> **Une mesure exacte case par case peut être fausse dans son ensemble.** Le 31/08/2026, une
+> carte de chaleur donnait un produit à **0 % en tests** — ce produit porte une porte de
+> couverture **bloquante**. Deux défauts de conception cumulés, tous deux invisibles à un
+> contrôle de forme : le **dénominateur** était fabriqué par les déclarations des **autres**
+> acteurs (une règle déclarée par un seul mettait les trois autres « en écart » alors qu'ils
+> n'avaient jamais eu à se prononcer), et la règle du produit accusé avait été **routée hors du
+> corpus** parce qu'elle était générique. Le défaut a été trouvé par l'**étonnement du lecteur**,
+> pas par un contrôle. *Un rapport qui surprend son lecteur sur des faits qu'il connaît a perdu
+> sa crédibilité sur ceux qu'il ne connaît pas.*
+
+**Règle de doctrine (six énoncés, un seul mécanisable — les cinq autres restent une revue) :**
+tout chiffre publié énonce son dénominateur et ce qu'il inclut · on ne mesure un acteur que sur
+ce qu'il a eu l'occasion de faire · une absence de déclaration n'est pas un échec et ne se compte
+pas comme un zéro · un objet écarté d'un canal n'est pas retiré de la mesure · préférer un compte
+à un pourcentage quand le dénominateur est petit ou hétérogène · **mécanisable : un pourcentage
+affiché sans sa formule écrite à côté est un défaut** (N3).
+
+**TF-0777 — le dictionnaire de colonnes, volet mesure.** Une hypothèse exprimée **en euros par
+an** était consommée par « séjours × valeur », et `oracle-calculs` rendait **SKIP**. N4 lit
+désormais les unités des en-têtes ; N5 signale, en **avertissement**, une hypothèse portant sur
+une grandeur que la **source de données déclarée par le document** contient — *on ne suppose pas
+ce qu'on peut compter*. **Borne déclarée** : N5 ne fait **pas** le calcul, il nomme le fichier.
+
+- **Bruit mesuré avant enregistrement** (02/09/2026, 103 documents `.md`/`.html` suivis du
+  dépôt, hors fixtures) : **0 FAIL**. **Couverture** sur le même corpus : **1 PASS / 102 SKIP
+  avant → 4 PASS / 99 SKIP après** — trois documents de plus réellement jugés, aucun accusé à
+  tort. Quatre bornes anti-bruit, chacune née d'un faux positif constaté et commentée dans
+  `lib/mesure.mjs` : liste **fermée** des unités (« Oracle (invocation) » n'est pas une unité),
+  exemption des pourcentages **cible / seuil / poids / bande** (ils bornent, ils ne mesurent pas),
+  « dénominateur » ne vaut formule que **suivi d'un chiffre ou d'un deux-points** (une prose qui
+  dit que le dénominateur manque désarmait le contrôle), et le **gras Markdown n'est pas un signe
+  de multiplication** (une page qui décrivait le défaut était elle-même accusée).
+- **Deux fixtures vertes existantes ont été complétées, pas assouplies** : `calculs-green.md` et
+  `calculs-pct-green.md` publiaient des parts sans dénominateur. La doctrine s'applique aussi
+  aux jeux d'essai de la forge — elles portent désormais leur base.
 
 ## Injection du 02/09/2026 — conception d'un livrable (TF-0758, v2.15.0)
 

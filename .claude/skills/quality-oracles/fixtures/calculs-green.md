@@ -13,3 +13,5 @@
 | Build | 50 % |
 | Run | 20 % |
 | Total | 100 % |
+
+Base : 23 jours au total — dénominateur commun aux trois phases ci-dessus.
