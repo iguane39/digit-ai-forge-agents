@@ -23,7 +23,7 @@
 | Sortie LLM / IA générative | `scripts/oracle-llm.mjs` — schéma JSON (auto) + checklist véracité | cli | ⚙️ |
 | Programme de formation (structure pédagogique) | `scripts/oracle-programme-formation.mjs` — C1 sommes de durées, C2 part de pratique déclarée, C3 couverture vs référence, C4 segment ≤ 50 min, C5 évaluation par bloc (.md/.docx) | cli | ✅ |
 | Charte PPTX sémantique (sommaire, kicker, logos, footer) | `scripts/oracle-charte-pptx-semantique.mjs` — S1 bijection sommaire↔intercalaires, S2 kicker, S3 logos hors couverture/interlocuteurs, S4 footer+pagination | cli | ✅ |
-| État de la forge (versions, couverture, fixtures, dormance) | `scripts/oracle-etat-forge.mjs versions-livrees.json [--restitution <fichier>]` — F1 versions montées vs livrées, F2 fixtures présentes, F3 corpus résolus, F4 ligne de couverture, F5 dormance | cli | ✅ |
+| État de la forge (versions, couverture, fixtures, dormance) | `scripts/oracle-etat-forge.mjs versions-livrees.json [--restitution <fichier>] [--ledger <run.jsonl>]` — F1 versions montées vs livrées, F2 fixtures présentes, F3 corpus résolus, F4 ligne de couverture, F5 dormance, **F6 maquette validée avant le code d'une vue**, **F7 l'auteur du contrat de sortie n'est pas son exécutant** | cli | ✅ |
 | Traçabilité exigences AO → réponse | `scripts/oracle-exigences-ao.mjs <réponse.md> --exigences <référentiel>` — X1 exigences tracées, X2 rubriques à l'identique, X3 pièces livrées (invocation explicite par dossier) | cli | ✅ |
 | Simulateur JS (KPI vs modèle de référence) | `scripts/oracle-simulateur-js.mjs <page.html> --attendus <json>` — J1 autoportance des libs, J2 KPI aux valeurs par défaut vs attendus à tolérance déclarée | cli | ✅ |
 | Parité de migration (routes symétriques) | `scripts/oracle-parite-migration.mjs <routes.txt>` — P1 captures, P2 canonical/og normalisés, P3 domaine cible, P4 liens, P5 noindex ; verdict go/no-go | cli | ✅ |
@@ -90,6 +90,45 @@
 > vides — dettes nommées » ; l'oracle vit chez `experts-forge` (invocation `{skillsroot}`) et
 > ses fixtures rouge/verte sont rejouées par le self-test de `quality-oracles`, avec une
 > `--date` figée au manifest pour un rejeu déterministe.
+
+## Injection du 02/09/2026 — le ledger devient un artefact jugé (TF-0780, TF-0776)
+
+`oracle-etat-forge` accepte désormais `--ledger <run.jsonl>` et y juge deux choses que
+personne ne regardait.
+
+**F6 — aucune maquette validée avant le code d'une vue nouvelle.** Le 02/09/2026, sept vues
+d'interface (V1-V7) ont été définies par un tableau *question / dimensions / mesures / action*
+écrit par la session elle-même ; **rien n'a été montré au destinataire avant production**, et le
+compagnon visuel n'a pas été offert, au motif de l'autonomie. Verdict humain sur la vue livrée :
+« on n'y comprend absolument rien ». Le ledger du run (seq 97-98) ne porte **aucune** entrée de
+maquette — il n'y avait rien à contredire. Un run dont le ledger déclare `portee: "interface"`
+doit désormais porter `maquette_validee { fichier, validee_par, date }` **avant** le premier
+événement de production ; une maquette validée après le code ne valide plus rien, elle enregistre.
+
+**F7 — l'auteur d'un brief juge son propre contrat de sortie.** Les 22 critères du contrat de
+sortie du 02/09 (13:00Z) ont été **rédigés et vérifiés par la même session**. Les 22 critères
+étaient **vrais** ; le livrable était **illisible**. Un contrat qu'on s'écrit à soi-même mesure ce
+qu'on a fait, jamais ce qu'on devait faire — il rend vert par construction. Quand le ledger porte
+`contrat_de_sortie { auteur }` et une exécution `{ executant }`, **auteur == exécutant est un
+échec nommé**.
+
+**Format attendu au ledger** (JSON Lines, une entrée par ligne) :
+
+```
+{"type":"run_open","portee":"interface"}
+{"type":"maquette_validee","fichier":"…","validee_par":"…","date":"AAAA-MM-JJ"}
+{"type":"contrat_de_sortie","auteur":"<identité>"}
+{"type":"execution","executant":"<identité>","etape":"development"}
+```
+
+- **Bornes déclarées**, et elles sont au `non_juge` : F6 et F7 ne jugent **que ce que le ledger
+  porte**. Sans `--ledger`, sans portée déclarée, sans contrat de sortie ou sans exécutant, rien
+  n'est jugé — et le verdict le **dit** plutôt que de laisser croire que la séparation est tenue.
+  F7 compare des **chaînes** : deux noms différents pour le même acteur lui échappent.
+- **Fixture à double sens** : le manifeste jugé est le **même** dans les deux cas (la fixture
+  verte d'`etat-forge`) ; **seul le ledger change**. Le rouge n'a pas de maquette et fait rédiger
+  le contrat par son exécutant ; le vert montre sa maquette avant de produire et fait dériver le
+  contrat par un acteur distinct.
 
 ## Injection du 02/09/2026 — « un chiffre publié énonce son dénominateur » (TF-0760, TF-0777)
 
