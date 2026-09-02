@@ -1,0 +1,5 @@
+{"seq":1,"ts":"2026-09-02T08:00:00Z","type":"run_open","projet":"Produit-02","portee":"interface","note":"cas VERT — meme run, maquette montree et contrat derive par un tiers"}
+{"seq":2,"ts":"2026-09-02T09:10:00Z","type":"maquette_validee","fichier":"forge/maquettes/console-v2-V6.html","validee_par":"Sebastien","date":"2026-09-02"}
+{"seq":3,"ts":"2026-09-02T13:00:00Z","type":"contrat_de_sortie","auteur":"agent-contrat","criteres":22,"note":"derive du brief par un acteur distinct de l executant"}
+{"seq":4,"ts":"2026-09-02T13:20:00Z","type":"execution","executant":"session-console-v2","etape":"development","artefact":"console/index.html"}
+{"seq":5,"ts":"2026-09-02T15:40:00Z","type":"run_close","verdict":"livre"}

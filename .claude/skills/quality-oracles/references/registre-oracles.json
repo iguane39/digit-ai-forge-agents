@@ -524,16 +524,20 @@
     "{skilldir}/scripts/oracle-etat-forge.mjs",
     "{file}"
    ],
-   "checklist": "F1-F5 en tête d oracle-etat-forge.mjs (versions montées vs manifeste, fixtures présentes, corpus résolus, ligne de couverture, dormance)",
+   "checklist": "F1-F5 en tête d oracle-etat-forge.mjs (versions montées vs manifeste, fixtures présentes, corpus résolus, ligne de couverture, dormance) · F6 (TF-0780, 02/09/2026) un run dont le ledger declare une PORTEE D INTERFACE doit porter `maquette_validee { fichier, validee_par, date }` AVANT le premier evenement de production · F7 (TF-0776) quand le ledger porte `contrat_de_sortie { auteur }` et une execution `{ executant }`, auteur == executant est un ECHEC nomme « l auteur juge son propre contrat »",
    "statut": "ok",
    "non_juge": [
     "qualité du contenu des skills (→ ameliore-un-skill)",
     "F5 sans dernier_usage renseigné",
-    "F4 sans --restitution"
+    "F4 sans --restitution",
+    "F6/F7 : uniquement si --ledger <run.jsonl> est fourni ; un ledger sans portee declaree, sans contrat de sortie ou sans executant n est pas juge, et c est DIT au non_juge",
+    "F6 : la QUALITE de la maquette validee et la realite de la validation — l existence de l evenement, ses trois champs et son anteriorite sont verifies, rien d autre",
+    "F7 : les identites reelles derriere `auteur` et `executant` — l oracle compare des chaines, il ne sait pas si deux noms differents designent le meme acteur"
    ],
    "trigger_files": [
     "versions-livrees.json"
-   ]
+   ],
+   "note": "F6/F7 (02/09/2026) : le ledger devient un artefact JUGE, pas seulement journalise. Format documente en tete d oracle-etat-forge.mjs. Cas reels : ledger seq 97-98 du 02/09 sans aucune entree de maquette (vue livree jugee « on n y comprend absolument rien »), et contrat de sortie v2 du 02/09 13:00Z dont les 22 criteres ont ete rediges ET verifies par la session qui executait -- tous vrais, livrable illisible."
   },
   {
    "domaine": "Traçabilité exigences AO → réponse",

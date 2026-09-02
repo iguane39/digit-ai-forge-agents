@@ -1,0 +1,4 @@
+{"seq":1,"ts":"2026-09-02T08:00:00Z","type":"run_open","projet":"Produit-02","portee":"interface","note":"cas ROUGE — run de version d interface"}
+{"seq":2,"ts":"2026-09-02T13:00:00Z","type":"contrat_de_sortie","auteur":"session-console-v2","criteres":22,"note":"22 criteres rediges par la session qui execute"}
+{"seq":3,"ts":"2026-09-02T13:20:00Z","type":"execution","executant":"session-console-v2","etape":"development","artefact":"console/index.html"}
+{"seq":4,"ts":"2026-09-02T15:40:00Z","type":"run_close","verdict":"livre"}

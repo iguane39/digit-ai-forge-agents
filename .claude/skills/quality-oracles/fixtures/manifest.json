@@ -874,6 +874,31 @@
     "CALCULABLE"
    ],
    "provenance": "TF-0777, Produit-02 - RETOURS - 20260902d du 02/09/2026 — aucun en-tete defini, et une hypothese exprimee EN EUROS PAR AN consommee par « sejours × valeur ». oracle-calculs rendait SKIP. La source de donnees declaree (fixtures/calculs-unites-sources/data.mjs, donnees INVENTEES) rend la valeur d une nuit calculable : l hypothese n avait pas lieu d etre."
+  },
+  {
+   "nom": "etat-forge-ledger",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{skilldir}/fixtures/etat-forge-green.json",
+    "--ledger",
+    "{fixture}"
+   ],
+   "red": "etat-forge-ledger-red.jsonl",
+   "green": "etat-forge-ledger-green.jsonl",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "F6",
+    "SANS MAQUETTE VALIDÉE",
+    "F7",
+    "JUGE SON PROPRE CONTRAT"
+   ],
+   "provenance": "TF-0780 + TF-0776, Produit-02 - RETOURS - 20260902d. F6 : ledger seq 97-98 du 02/09 -- V1 a V7 definies par un tableau ecrit par la session, rien montre au destinataire avant production, AUCUNE entree de maquette au ledger ; verdict humain sur la vue livree : « on n y comprend absolument rien ». F7 : contrat de sortie du brief v2, 02/09 13:00Z -- 22 criteres rediges ET verifies par la meme session, tous vrais, livrable illisible. Le manifeste jugé est la fixture VERTE d etat-forge : seul le ledger change entre le cas rouge et le cas vert."
   }
  ]
 }

@@ -11,7 +11,32 @@
 //   F4 ligne de couverture présente dans la restitution d'audit fournie via --restitution
 //      (format D1 : « domaines jugés : N · hors registre : M → M candidats écrits ») ;
 //   F5 dormance : entrées de registre portant un dernier_usage plus vieux que 6 mois → proposer
-//      la transition dormant (jamais appliquée par l'oracle — édition explicite du registre).
+//      la transition dormant (jamais appliquée par l'oracle — édition explicite du registre) ;
+//   F6 maquette validée avant le code d'une vue (TF-0780) — un run dont la PORTÉE est l'interface
+//      doit porter au ledger un événement `maquette_validee { fichier, validee_par, date }`
+//      AVANT le premier événement de production ;
+//   F7 séparation auteur/exécutant du contrat de sortie (TF-0776) — quand le ledger porte un
+//      `contrat_de_sortie { auteur }` et une exécution `{ executant }`, auteur == exécutant est
+//      un ÉCHEC nommé « l'auteur juge son propre contrat ».
+//
+// F6 — POURQUOI (Produit-02, 02/09/2026, ledger seq 97-98). Sept vues d'interface (V1-V7) ont été
+// définies par un tableau question/dimensions/mesures/action écrit par la session elle-même, et
+// RIEN n'a été montré au destinataire avant production ; le compagnon visuel n'a pas été offert,
+// au motif de l'autonomie. Verdict humain sur la vue livrée : « on n'y comprend absolument rien ».
+// Le ledger de ce run ne porte AUCUNE entrée de maquette — il n'y avait rien à contredire.
+//
+// F7 — POURQUOI (Produit-02, 02/09/2026, brief v2, contrat de sortie 13:00Z). Les 22 critères du
+// contrat de sortie ont été RÉDIGÉS ET VÉRIFIÉS par la même session. Les 22 critères étaient
+// vrais ; le livrable était illisible. Un contrat qu'on s'écrit à soi-même mesure ce qu'on a fait,
+// jamais ce qu'on devait faire — et il rend vert par construction.
+//
+// FORMAT ATTENDU AU LEDGER (JSON Lines, une entrée par ligne, cf. forge-agents/scripts/ledger.mjs)
+//   {"type":"run_open","portee":"interface"}                        ← déclenche F6
+//   {"type":"maquette_validee","fichier":"…","validee_par":"…","date":"AAAA-MM-JJ"}
+//   {"type":"contrat_de_sortie","auteur":"<identité>"}              ← déclenche F7
+//   {"type":"execution","executant":"<identité>","etape":"development"}
+// BORNE DÉCLARÉE : F6 et F7 ne jugent QUE ce que le ledger porte. Un ledger sans portée déclarée,
+// sans contrat de sortie ou sans exécutant n'est pas jugé — et c'est DIT au non_juge, jamais tu.
 // Champ optionnel du manifeste : skills_root (relatif au manifeste ; défaut .claude/skills).
 // Provenance : experts-forge v1.3.0 livrée le 21/07/2026 non installée (registre monté v0.3.0,
 // fixture accessibilite absente) — cas réel constaté note P1 §3, invisible sans comparaison.
@@ -143,6 +168,61 @@ if (fs.existsSync(regPath)) {
   } catch { /* registre illisible déjà couvert par self-test */ }
 }
 
+// ---- F6 / F7 — le ledger du run (TF-0780, TF-0776) -------------------------------------------
+const ledgerPath = opt('ledger');
+if (!ledgerPath) non_juge.push('F6/F7 : aucun ledger fourni (--ledger <run.jsonl>) — maquette validée et séparation auteur/exécutant non jugées');
+else if (!fs.existsSync(ledgerPath)) findings.push({ sev: 'bloquant', msg: `F6/F7 — ledger introuvable : ${ledgerPath}. Un ledger annoncé et absent n'est pas « rien à juger », c'est une trace manquante`, where: path.basename(ledgerPath) });
+else {
+  const entrees = [];
+  let ligne = 0, illisibles = 0;
+  for (const l of fs.readFileSync(ledgerPath, 'utf8').split('\n')) {
+    ligne++;
+    if (!l.trim()) continue;
+    try { entrees.push({ ...JSON.parse(l), _ligne: ligne }); } catch { illisibles++; }
+  }
+  const lb = path.basename(ledgerPath);
+  if (illisibles) findings.push({ sev: 'bloquant', msg: `F6/F7 — ${illisibles} ligne(s) de ledger illisible(s) : un ledger qu'on ne peut pas lire ne prouve rien`, where: lb });
+  const typeDe = e => String(e.type || e.evenement || '').toLowerCase();
+
+  // F6 — maquette validée avant la production, sur un run de portée INTERFACE
+  const PORTEE_INTERFACE = /\b(interface|ui|vue|ecran|écran|front|ihm)\b/i;
+  const estInterface = entrees.some(e => PORTEE_INTERFACE.test(String(e.portee || e.perimetre || e.nature || '')));
+  const PRODUCTION = /^(execution|development|build|vue_produite|code_ecrit|implementation|run_step)$/;
+  const production = entrees.filter(e => PRODUCTION.test(typeDe(e)) || /^development$/i.test(String(e.etape || '')));
+  if (!estInterface) non_juge.push('F6 : aucun événement du ledger ne déclare une portée d\'interface (`portee: "interface"`) — un run d\'interface non déclaré comme tel est invisible à ce contrôle');
+  else {
+    const maquettes = entrees.filter(e => typeDe(e) === 'maquette_validee');
+    if (!maquettes.length) {
+      findings.push({ sev: 'bloquant', msg: 'F6 — RUN DE VERSION D\'INTERFACE SANS MAQUETTE VALIDÉE : le ledger déclare une portée d\'interface et ne porte aucun événement '
+        + '`maquette_validee { fichier, validee_par, date }`. Rien n\'a été montré au destinataire avant production — c\'est le run du 02/09, dont la vue livrée a reçu « on n\'y comprend absolument rien »', where: lb });
+    } else {
+      for (const m of maquettes) {
+        const manquants = ['fichier', 'validee_par', 'date'].filter(k => !m[k] || !String(m[k]).trim());
+        if (manquants.length) findings.push({ sev: 'bloquant', msg: `F6 — maquette validée INCOMPLÈTE : champ(s) manquant(s) ${manquants.join(', ')}. Une validation qui ne dit pas QUI a validé, QUOI et QUAND n'est pas une validation`, where: lb + ':' + m._ligne });
+      }
+      const premiereProd = production.length ? Math.min(...production.map(e => e._ligne)) : Infinity;
+      const premiereMaquette = Math.min(...maquettes.map(m => m._ligne));
+      if (premiereMaquette > premiereProd) findings.push({ sev: 'bloquant', msg: `F6 — maquette validée APRÈS le début de la production (ledger ligne ${premiereMaquette} contre ligne ${premiereProd}) : une maquette validée après le code ne valide plus rien, elle enregistre`, where: lb + ':' + premiereMaquette });
+    }
+  }
+
+  // F7 — l'auteur du contrat de sortie n'est pas son exécutant
+  const contrats = entrees.filter(e => typeDe(e) === 'contrat_de_sortie' && e.auteur);
+  const executants = [...new Set(entrees.map(e => e.executant).filter(Boolean).map(String))];
+  if (!contrats.length || !executants.length) {
+    non_juge.push(`F7 : le ledger doit porter LES DEUX — un \`contrat_de_sortie { auteur }\` (${contrats.length} trouvé(s)) et un \`executant\` (${executants.length} trouvé(s)). L'un des deux manque : la séparation n'est pas jugée, elle n'est pas non plus déclarée tenue`);
+  } else {
+    for (const c of contrats) {
+      const auteur = String(c.auteur);
+      if (executants.includes(auteur)) {
+        findings.push({ sev: 'bloquant', msg: `F7 — L'AUTEUR JUGE SON PROPRE CONTRAT : « ${auteur} » a rédigé le contrat de sortie et figure parmi les exécutants du run. `
+          + `Le 02/09, 22 critères rédigés et vérifiés par la même session étaient tous VRAIS et le livrable était illisible : un contrat qu'on s'écrit à soi-même mesure ce qu'on a fait, jamais ce qu'on devait faire. `
+          + `Le contrat se dérive du brief par un acteur DISTINCT de l'exécutant, et le juge de lecture ne le reçoit jamais`, where: lb + ':' + c._ligne });
+      }
+    }
+  }
+}
+
 if (findings.some(f => f.sev === 'bloquant')) out('FAIL', 1);
-findings.push({ sev: 'info', msg: `conforme : ${Object.keys(man.skills).length} skill(s) au manifeste, F1-F3${resti ? '/F4' : ''} vérifiés`, where: base });
+findings.push({ sev: 'info', msg: `conforme : ${Object.keys(man.skills).length} skill(s) au manifeste, F1-F3${resti ? '/F4' : ''}${ledgerPath ? '/F6-F7' : ''} vérifiés`, where: base });
 out('PASS', 0);
