@@ -101,11 +101,16 @@ schedules:
 avaient fait passer un DOM de 7 000 à plus de 25 000 nœuds, au-delà du seuil d'échec de l'oracle
 de performance.</p>
 
-<script>
-/* Le composant est COLLE dans la page : une page autoportante n'a pas de fichier
-   voisin (regle A1 du socle). La source de verite reste assets/source-reader.js — ce bloc en est
-   une copie, et c'est le prix de l'autoportance. */
+<!-- COMPOSANT-EMBARQUE:DEBUT source-reader.js — copie du socle digit-ai-page-html/assets/source-reader.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="source-reader.js" data-empreinte="sha256:0a572ea2848cba6f7f37e478b696071f2dad827f849536b20aee346dc10e24bf">
 /* source-reader — le LECTEUR DE SOURCE d'une page autoportante (TF-0489, 23/08/2026).
+ *
+ * promesses-verifiees — ce fichier ADHÈRE au contrôle des promesses de commentaire
+ * (`oracle-promesses` du pilot) : une classe ou un attribut nommé ici doit exister dans le code.
+ * C'est ce contrôle qui a trouvé la première promesse non tenue de ce composant — `data-src-format`
+ * était annoncé dans l'exemple d'usage ci-dessous et lu par personne.
  *
  * NOTE D'ECRITURE, et elle a ete payee : ce fichier est destine a etre COLLE dans une page
  * autoportante (regle A1 : aucun fichier voisin). Toute sequence de fermeture de script, MEME EN
@@ -261,6 +266,12 @@ de performance.</p>
     var brut = bloc.querySelector('.src-brut');
     if (!brut || bloc.querySelector('.src-vue')) return;
     var source = brut.textContent || '';
+    // `data-src-format` est désormais LU. Il était annoncé dans l'exemple d'usage en tête de ce
+    // fichier — et lu par personne : une promesse de commentaire, exactement le défaut que ce
+    // composant décrit ailleurs, trouvé chez lui. Ce qui est promis est donc tenu : tout format
+    // autre que markdown s'affiche en TEXTE BRUT, seule vue honnête d'un contenu qu'on ne sait
+    // pas rendre — le convertisseur est borné, et rendre au hasard mentirait davantage.
+    var markdown = (bloc.getAttribute('data-src-format') || 'markdown').toLowerCase() === 'markdown';
     var vue = document.createElement('div');
     vue.className = 'src-vue';
     var barre = document.createElement('div');
@@ -272,10 +283,10 @@ de performance.</p>
     bouton.textContent = 'texte brut';
     var corps = document.createElement('div');
     corps.className = 'src-corps';
-    corps.innerHTML = convertir(source);
+    corps.innerHTML = markdown ? convertir(source) : '';
     var pre = document.createElement('pre');
     pre.className = 'src-texte';
-    pre.hidden = true;
+    pre.hidden = markdown;
     pre.textContent = source;
     bouton.addEventListener('click', function () {
       var brutVisible = pre.hidden;
@@ -284,9 +295,9 @@ de performance.</p>
       bouton.setAttribute('aria-pressed', brutVisible ? 'true' : 'false');
       bouton.textContent = brutVisible ? 'mis en forme' : 'texte brut';
     });
-    barre.appendChild(bouton);
+    if (markdown) barre.appendChild(bouton);
     vue.appendChild(barre);
-    vue.appendChild(corps);
+    if (markdown) vue.appendChild(corps);
     vue.appendChild(pre);
     bloc.appendChild(vue);
     bloc.setAttribute('data-src-rendu', 'oui');
@@ -309,7 +320,9 @@ de performance.</p>
 
   global.DigitAISourceReader = { init: init, convertir: convertir };
 })(typeof window !== 'undefined' ? window : this);
-
-DigitAISourceReader.init();
 </script>
+<!-- COMPOSANT-EMBARQUE:FIN source-reader.js -->
+<!-- Le cablage de la page, HORS du bloc embarque : ce qui appartient a la PAGE ne
+     doit jamais vivre dans la copie du composant, sans quoi la parite est impossible. -->
+<script>DigitAISourceReader.init();</script>
 </main></body></html>

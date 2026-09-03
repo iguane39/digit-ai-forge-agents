@@ -7,7 +7,7 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.17.0"
+  version: "1.18.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
@@ -380,6 +380,42 @@ marquage et partage mécanique / revue : [references/lisibilite.md](references/l
 - Recherche dans le document + compteur d'occurrences (pour catalogues/référentiels parcourus,
   insensible aux accents, viewer-only) : [references/composant-recherche.md](references/composant-recherche.md)
   (asset : [assets/find-in-page.js](assets/find-in-page.js)).
+
+### Une copie d'un composant se POSE, elle ne se colle pas (TF-0784, 03/09/2026)
+
+La règle A1 impose une page **autoportante** : un livrable qui charge un fichier voisin perd son
+composant dès qu'il part par courriel. **Inliner un composant du socle est donc la règle**, pas
+l'exception — et c'est exactement là qu'une copie se détache de sa source.
+
+**Le fait payé.** `digit-ai-schemas/assets/exemple-reference.html` portait une copie **manuelle**
+de `assets/table-filters.js`, collée un jour où elle était juste. Le composant a été corrigé
+**sept fois** (TF-0429/0430/0431 le 21/08 ; TF-0768/0769/0781/0782 le 02/09) : la copie n'a pas
+bougé d'un octet. Elle triait encore « 1 000 » comme 1, rangeait les mois par ordre alphabétique
+et privait de facette la colonne clé — **dans le même dépôt que les correctifs**. Un correctif ne
+voyage pas tout seul, et rien ne disait qu'une copie existait.
+
+**Le geste.** On entoure le bloc de ses marqueurs, puis on le laisse être posé :
+
+```bash
+node .claude/skills/digit-ai-page-html/scripts/embarquer-composants.mjs --constat   # écart ? exit 1
+node .claude/skills/digit-ai-page-html/scripts/embarquer-composants.mjs --ecrire    # (re)pose les blocs
+```
+
+```html
+<!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js -->
+<script data-composant="table-filters.js" data-empreinte="sha256:…">…</script>
+<!-- COMPOSANT-EMBARQUE:FIN table-filters.js -->
+```
+
+Le script ne touche **que** les blocs déjà marqués — adopter une copie manuelle reste un geste
+explicite. Seule transformation admise entre source et copie : l'échappement `</script` (RA-1).
+La contrepartie CSS se pose de la même façon (`table-filters.css` dans un `<style>` marqué) ; la
+page hôte n'a qu'à **aliaser** les jetons du socle qu'elle ne nomme pas comme lui.
+
+**Le contrôle.** `quality-oracles/scripts/oracle-parite-assets.mjs` balaie l'arborescence des
+skills sans rien écrire (P1 déclaration · P2 empreinte · P3 parité octet · P4 exemption datée et
+motivée) ; le self-test de `quality-oracles` le rejoue **sur le dépôt réel**, pour que le
+troisième skill qui recopie un composant rougisse le banc au lieu de dériver en silence.
 
 ## Langue
 

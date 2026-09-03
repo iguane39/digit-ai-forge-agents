@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — parite d'un asset embarque, cas vert — 20260903a</title>
+</head>
+<!--
+  Fixture VERTE de l'oracle-parite-assets (TF-0784, 03/09/2026).
+
+  LE FAIT PAYE. digit-ai-schemas embarquait une copie MANUELLE de table-filters.js ; le composant
+  a ete corrige sept fois le meme mois, la copie zero. Meme depot, deux dossiers d'ecart, et rien
+  ne disait qu'une copie existait.
+
+  Les deux fixtures embarquent LES MEMES TROIS composants du meme socle de jeu d'essai
+  (fixtures/parite-assets-socle/, noms INVENTES) : seule leur DECLARATION et leur PARITE
+  changent d'un cas a l'autre.
+
+  Les deux premieres copies sont DECLAREES, scellees par l'empreinte de leur source et a la
+  parite octet pour octet. La troisieme est GELEE sous exemption datee ET motivee : l'oracle
+  l'accepte en la COMPTANT au verdict — un PASS qui tait ses exemptions ment sur ce qu'il a vu.
+-->
+<body>
+<h1>Journal des lots</h1>
+<!-- COMPOSANT-EMBARQUE:DEBUT badge-etat.js socle=quality-oracles/fixtures/parite-assets-socle — copie du socle quality-oracles/fixtures/parite-assets-socle/badge-etat.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="badge-etat.js" data-empreinte="sha256:0569335169e8367e0680aec49dacd934aec385a68a3ac2ddf2eb731068cc3493">
+/* Digit-AI (jeu d'essai) — Badge d'etat pose sur une ligne de tableau.
+   Composant INVENTE, qui n'existe que pour prouver l'oracle de parite : aucune page reelle
+   ne le charge. Deux fixtures l'embarquent, l'une a la parite et l'autre derivee. */
+(function (root) {
+  'use strict';
+  var LIBELLES = { ok: 'conforme', ko: 'a reprendre', na: 'non juge' };
+  function poser(tr, etat) {
+    var span = document.createElement('span');
+    span.className = 'badge-etat badge-' + etat;
+    span.textContent = LIBELLES[etat] || LIBELLES.na;
+    tr.appendChild(span);
+    return span;
+  }
+  root.DigitAIBadgeEtat = { poser: poser, LIBELLES: LIBELLES };
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN badge-etat.js -->
+
+<!-- COMPOSANT-EMBARQUE:DEBUT compteur-lignes.js socle=quality-oracles/fixtures/parite-assets-socle — copie du socle quality-oracles/fixtures/parite-assets-socle/compteur-lignes.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="compteur-lignes.js" data-empreinte="sha256:06dafa16e40695dd3dd91f92638d6db68e7736c2fbca09a6abe64cbef5d9de82">
+/* Digit-AI (jeu d'essai) — Compteur de lignes visibles sous un tableau.
+   Composant INVENTE, second temoin du jeu d'essai : la fixture verte le gele SOUS EXEMPTION
+   datee et motivee, ce que l'oracle doit accepter en le DISANT au verdict. */
+(function (root) {
+  'use strict';
+  function compter(table) {
+    var n = 0, lignes = table.tBodies[0] ? table.tBodies[0].rows : [];
+    for (var i = 0; i < lignes.length; i++) if (!lignes[i].hidden) n += 1;
+    return n;
+  }
+  root.DigitAICompteurLignes = { compter: compter };
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN compteur-lignes.js -->
+
+<!-- COMPOSANT-EMBARQUE:EXEMPTION libelle-vide.js 2026-09-03 — copie GELEE a dessein :
+     cette page est la fixture d'un autre controle, dont le sujet EST l'etat anterieur du
+     composant ; la rafraichir detruirait ce qu elle prouve. A revoir a la prochaine reprise. -->
+<script>
+/* Digit-AI (jeu d'essai) — Libelle d'etat vide d'une liste filtree.
+   Composant INVENTE, troisieme temoin du jeu d'essai : il ne sert qu'a exercer la regle
+   d'EXEMPTION (P4), datee et motivee du cote vert, muette du cote rouge. */
+(function (root) {
+  'use strict';
+  var TEXTE = 'Rien a afficher.';
+  function poser(hote) { hote.textContent = TEXTE; return hote; }
+  root.DigitAILibelleVide = { poser: poser, TEXTE: TEXTE };
+})(typeof window !== 'undefined' ? window : this);
+</script>
+</body></html>

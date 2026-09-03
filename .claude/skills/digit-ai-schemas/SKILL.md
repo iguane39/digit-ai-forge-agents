@@ -84,6 +84,44 @@ exécution). Tout le reste reste jugé : réseau A1, thème G1, police interdite
 Un gabarit ajouté à `assets/` **échoue** tant qu'il n'est pas soit conforme, soit déclaré —
 une exemption se décide, elle ne se devine pas (R-30 §3).
 
+### Les composants du socle sont EMBARQUÉS, jamais recopiés (TF-0784, 03/09/2026)
+
+`assets/exemple-reference.html` porte trois composants du socle `digit-ai-page-html` —
+`table-filters.js`, `table-filters.css`, `find-in-page.js`. Ils y vivent **inlinés** (règle A1 :
+une page autoportante ne charge rien), mais **posés à la construction**, jamais collés à la main :
+
+```bash
+node ../digit-ai-page-html/scripts/embarquer-composants.mjs --constat   # écart ? exit 1
+node ../digit-ai-page-html/scripts/embarquer-composants.mjs --ecrire    # (re)pose les blocs marqués
+```
+
+**Pourquoi cette règle existe, et elle a été payée ici.** La copie de `table-filters.js` de cet
+asset datait du jour où elle avait été collée. Le composant a été corrigé **sept fois** depuis
+(TF-0429/0430/0431 le 21/08 ; TF-0768/0769/0781/0782 le 02/09) — la copie, **zéro fois**. Elle
+triait encore « 1 000 » comme 1, rangeait les mois par ordre alphabétique et privait de facette la
+colonne clé, à deux dossiers des correctifs. Un skill qui embarque une COPIE d'un composant d'un
+autre skill s'en détache dès le correctif suivant, et personne ne le sait.
+
+Les jetons du socle que cette page ne nomme pas comme lui (`--surface`, `--muted`, `--blue`,
+`--r-sm`, `--sans`, `--hh`) sont **aliasés** dans son `:root` : c'est ce qui permet d'embarquer le
+CSS du socle **sans l'éditer**, donc de le garder à la parité de sa source.
+
+Le contrôle qui l'empêche de recommencer : `quality-oracles/scripts/oracle-parite-assets.mjs`
+(P1 déclaration · P2 empreinte · P3 parité octet · P4 exemption datée et motivée), rejoué sur le
+dépôt réel par le self-test de `quality-oracles`.
+
+### Le sommaire de l'exemple de référence (L25)
+
+Neuf chapitres : au-delà de trois, le socle exige un sommaire **visible en permanence** (L25). Il
+est **collant à toutes les largeurs** (`nav.toc.colle`, `top: var(--hh)`) : colonne latérale sur
+bureau, **bande compacte** sous 1100 px (les annonces cèdent la place, la barre défile en interne
+et ne dépasse jamais 32 % de l'écran — mesuré à 390, 768 et 1280 px). Le piège, payé ici même le
+03/09 : rendre le sommaire **statique** sur mobile le fait disparaître au premier écran, et
+`render_page` le compte en `sommaire_perdu` **à chaque largeur rendue**, pas seulement sur bureau.
+Chaque entrée porte son annonce `.toc-d` (L6). Conséquences assumées, et écrites dans la page :
+chaque chapitre porte son chapeau `.ch-apprend` (L7) et chaque chapitre à tableau long son
+`.exemple-lecture` (L10) — un sommaire rend les chapitres **atteignables**, donc lisibles seuls.
+
 ## Workflow d'exécution
 
 1. **Identifier le canevas** via la grille ci-dessus ; si ambigu, poser une question fermée (canevas A ou B).

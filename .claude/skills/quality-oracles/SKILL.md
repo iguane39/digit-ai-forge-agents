@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.11.0"
+  version: "2.12.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -162,6 +162,24 @@ l'endroit où elle s'applique : un contrôle neuf est **mesuré sur les document
 avant d'être rendu bloquant** ; celui qui accuse à côté se publie **en avertissant, avec son taux
 et son seuil**. Un contrôle qui accuse un tiers du parc se fait désactiver dans la semaine, et il
 aurait eu raison (R-33 bis).
+
+## Ce que la campagne du 03/09/2026 a ajouté (registre v2.16.0)
+
+| Ce qui manquait | Où c'est désormais | Bruit mesuré (corpus du dépôt) |
+|---|---|---|
+| Rien ne surveillait la **copie** d'un composant d'un skill dans un autre — sept correctifs, une copie qui n'en a reçu aucun | `oracle-parite-assets.mjs` (P1 déclaration, P2 empreinte, P3 parité octet, P4 exemption datée et motivée) | **6 détections / 6 vraies / 0 faux positif** sur 178 pages `.html` |
+
+**Le fait.** `digit-ai-schemas/assets/exemple-reference.html` embarquait une copie **manuelle** de
+`digit-ai-page-html/assets/table-filters.js`. Le composant a été corrigé sept fois
+(TF-0429/0430/0431 le 21/08 ; TF-0768/0769/0781/0782 le 02/09) ; la copie n'a pas bougé d'un octet
+— **même dépôt, deux dossiers d'écart**. Classe TF-0761 / RT-39 (*un générateur réécrit hors
+d'atteinte des corrections*), transposée **entre deux skills**.
+
+**Ce que cet oracle change de méthode** : il ne juge pas un fichier, il juge une **arborescence**,
+et le self-test le rejoue **sur le dépôt réel** — c'est le seul angle qui arrête le *troisième*
+skill. Les fixtures rouge/verte prouvent la règle sur un socle de jeu d'essai aux noms inventés ;
+le cas réel, lui, prouve que la règle est **branchée sur ce qui existe**. Le poseur associé
+(`digit-ai-page-html/scripts/embarquer-composants.mjs`) écrit, l'oracle ne fait que juger.
 
 ## Gouvernance du registre
 - Registre **versionné**, double vue JSON (machine) ↔ MD (humaine) ; domaine ❌ rencontré → **§4**. Les priorités se lisent dans `report-couverture`, pas à l'intuition.

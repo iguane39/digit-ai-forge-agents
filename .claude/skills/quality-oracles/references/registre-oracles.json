@@ -1,5 +1,5 @@
 {
- "version": "2.15.0",
+ "version": "2.16.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ».",
  "oracles": [
   {
@@ -1114,6 +1114,22 @@
    ],
    "provenance": "TF-0774, Produit-02 - RETOURS - 20260902d + ledger seq 102 + forge/etapes/ANALYSE-CAUSES-console-v2-20260902.md (02/09/2026) — la vue V6 (huit comptes par marche, aucun mot-cle visible, aucun geste) a passe contrat, filtres, rendu et interactions : QUATRE PORTES VERTES. Verdict humain : « on n y comprend absolument rien ». Tous les controles regardaient la page depuis l interieur du projet.",
    "note": "INVOCATION EXPLICITE : `ext: []` et AUCUN content_patterns — cet oracle n entre jamais dans le routage par defaut, parce que T4 appelle un modele et coute. T1-T3 sont deterministes et gratuits ; T4 s arme par --juge <cli>, par --reponse <lecture.json> (lecture deja rendue : la REGLE se rejoue sans depense) ou par `lecture_tiers.actif: true` au profil (faux dans les deux profils livres). BRUIT MESURE (02/09/2026, 7 pages .html suivies du depot, hors fixtures) : 6 SKIP (gabarits et boilerplate, exemption declaree au verdict) et 1 FAIL sur digit-ai-schemas/assets/exemple-reference.html — T1 et T2, constat retenu comme VRAI. CABLAGE COTE PILOT : le hook de restitution appelle `node <skills>/quality-oracles/scripts/oracle-lecture-tiers.mjs <page.html> --profil <profil> --juge claude` sur les pages du lot avant poussee ; sur FAIL, la restitution s arrete et nomme la page. Le pilot cable de son cote (R-38 : aucune poussee sans GO humain)."
+  },
+  {
+   "domaine": "Parite d'une copie embarquee d'un asset du socle",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-parite-assets.mjs",
+    "{file}"
+   ],
+   "checklist": "P1 DECLARATION toute copie d'un asset du socle trouvee dans une page se declare (data-composant) ou porte une exemption ecrite · P2 EMPREINTE la declaration scelle l'empreinte de la source (data-empreinte=\"sha256:...\") et cette empreinte est celle du jour · P3 PARITE le texte embarque est celui de la source octet pour octet, au seul echappement `</script` pres (RA-1) · P4 EXEMPTION une exemption porte une DATE et un motif d'au moins 20 caracteres",
+   "statut": "ok",
+   "non_juge": "les copies TEXTUELLES dans des .html seulement (ni .js, ni .md, ni archive) · une copie dont la banniere d'en-tete a ete retiree devient invisible · la LEGITIMITE d'une copie (c'est l'exemption ecrite qui la dit) · les composants copies depuis un autre skill que le socle declare · le COMPORTEMENT de la copie chez son hote (-> check_html, render_page)",
+   "commande": "scripts/oracle-parite-assets.mjs [<dossier|page.html>] [--socle=<dossier d assets>]",
+   "provenance": "TF-0784 (03/09/2026) — digit-ai-schemas/assets/exemple-reference.html embarquait une copie MANUELLE de digit-ai-page-html/assets/table-filters.js. Le composant a ete corrige SEPT fois (TF-0429/0430/0431 le 21/08, TF-0768/0769/0781/0782 le 02/09) ; la copie n'a pas bouge d'un octet : elle triait encore « 1 000 » comme 1, rangeait les mois par ordre alphabetique et privait de facette la colonne cle — dans le MEME depot que les correctifs. Classe TF-0761/RT-39 (un generateur reecrit hors d'atteinte des corrections), transposee ENTRE DEUX SKILLS.",
+   "note": "Juge une ARBORESCENCE (defaut : la racine des skills), pas un fichier isole ; SKIP si le socle est introuvable, jamais PASS. BRUIT MESURE le 03/09/2026 sur les 178 pages .html du depot forge-agents : 6 detections, 6 vraies (2 copies dans digit-ai-schemas/assets/exemple-reference.html, 3 copies de source-reader.js dans les fixtures du socle, 1 CSS), ZERO faux positif — le detecteur reconnait une copie a la premiere ligne de la source, signal qu'un copier-coller conserve et qu'aucune prose ne reproduit. Poseur associe : digit-ai-page-html/scripts/embarquer-composants.mjs (--constat / --ecrire)."
   }
  ]
 }
