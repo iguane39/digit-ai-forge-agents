@@ -84,6 +84,27 @@ exécution). Tout le reste reste jugé : réseau A1, thème G1, police interdite
 Un gabarit ajouté à `assets/` **échoue** tant qu'il n'est pas soit conforme, soit déclaré —
 une exemption se décide, elle ne se devine pas (R-30 §3).
 
+### L'exemple de référence tient ses propres règles, mobile et lecture tierce comprises (TF-0789, 03/09/2026)
+
+`assets/exemple-reference.html` est jugé par **les mêmes oracles que ce qu'il enseigne**, à toutes
+les largeurs : `render_page.py` (défaut 1920/1280/768/390 px) et `oracle-lecture-tiers` en plus
+de `check_html.py`. Mesuré le 03/09 avant correction : **16 débordements bloquants V1 à 390 px**
+(13 tableaux, 3 blocs de code — un conteneur défilant n'exonère pas, `render_page` mesure le bord
+droit de chaque élément) et **T1/T2 en défaut** (aucune intention déclarée, 46 en-têtes sur 67
+sans glose). Après : 0 débordement, `render_page` PASS aux quatre largeurs, `oracle-lecture-tiers`
+PASS (67 en-têtes glosés). Ce que l'exemple porte désormais, et que tout schéma produit reprend :
+
+- **repli en cartes sous 640 px** (motif du socle, `composants.md` §6) : `table.repli-cartes`,
+  chaque `td` porte `data-label="<en-tête de sa colonne>"`, le `thead` disparaît, chaque ligne
+  devient une carte ; les blocs de code se replient (`white-space: pre-wrap`) au lieu de défiler ;
+- **intention déclarée** dans le chapeau (« cette page permet de décider… ») et dans
+  `<meta name="description">` (T1) ;
+- **chaque `th` porte `data-definition`** (T2, et G7 du socle sur une page de données) ; les
+  sigles des en-têtes sont glosés une fois en prose, juste après les métadonnées du chapeau.
+
+Un gabarit ou un exemple qui ne tient pas ses propres règles enseigne le défaut : la recette du
+skill les rejoue avant toute livraison.
+
 ### Les composants du socle sont EMBARQUÉS, jamais recopiés (TF-0784, 03/09/2026)
 
 `assets/exemple-reference.html` porte trois composants du socle `digit-ai-page-html` —

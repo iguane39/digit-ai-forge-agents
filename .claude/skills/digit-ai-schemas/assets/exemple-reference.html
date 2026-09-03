@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Digit-AI — Architecture détaillée · Workflow IA POC-to-Prod — 20260817a</title>
+<meta name="description" content="Brief d'architecture détaillée du parcours POC-to-Prod Digit-AI : cette page permet de décider, composant par composant, qui le porte, quels droits il exige et à quel palier il entre.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
 <!-- Aucune police distante (A1/D-10) : cet exemple de référence est un livrable
      autonome, il ne téléphone pas au chargement. Les familles Roboto / DM Sans /
@@ -432,6 +433,25 @@
   tr:hover td { background: var(--bg-softer); }
   table code { font-size: 0.82em; }
 
+    /* ===== REPLI EN CARTES ET CODE REPLIÉ SOUS 640 px (TF-0789, 03/09/2026) =====
+     LE FAIT : cet exemple de référence rendait 16 débordements bloquants V1 à 390 px (13 tableaux,
+     3 blocs de code) — render_page mesure le bord droit de CHAQUE élément, un conteneur défilant
+     ne l'exonère pas (composants.md §6). Le motif est celui du socle : sous 640 px, chaque ligne
+     devient une carte, chaque cellule affiche l'en-tête de sa colonne depuis `data-label` ; les
+     blocs de code se replient (white-space: pre-wrap) au lieu de défiler. `overflow-wrap: anywhere`
+     ne vit que sur les cellules repliées et le code (L19). */
+  @media (max-width: 640px) {
+    table.repli-cartes thead { display: none; }
+    table.repli-cartes tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 12px; break-inside: avoid; }
+    table.repli-cartes tr:last-child td { border-bottom: none; }
+    table.repli-cartes td { display: grid; grid-template-columns: minmax(9ch, 38%) 1fr; gap: 8px; border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+    table.repli-cartes td::before { content: attr(data-label); font-weight: 700; color: var(--ink-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    table.repli-cartes td:not([data-label])::before { content: none; }
+    pre, pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+  }
+
+  p.sigles { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin: 12px 0 0; }
+
   /* ===== CALLOUT ===== */
   .callout {
     background: var(--c-purple-bg);
@@ -678,12 +698,13 @@ tr[data-tf-empty] td {
   <header class="header">
     <div class="eyebrow">Brief d'architecture · Avant-projet détaillé · Workflow IA POC-to-Prod</div>
     <h1>Comment <span class="accent">construire</span> l'Agent IA POC-to-Prod. Composants, flux et droits.</h1>
-    <p class="lede">Architecture technique cible du parcours POC-to-Prod Digit-AI : composants Azure, orchestration Azure DevOps, identités et droits, observabilité, sécurité, FinOps. Ce document décline le <em>comment</em> de la vision DSI (brief V2k du 20 mai 2026). Niveau APD : suffisamment précis pour engager la conception fine, sans descendre dans le YAML des pipelines ni le HCL des modules.</p>
+    <p class="lede">Cette page permet de décider, pour chaque composant du parcours POC-to-Prod, qui le porte, quels droits il exige et à quel palier il entre. Architecture technique cible du parcours POC-to-Prod Digit-AI : composants Azure, orchestration Azure DevOps, identités et droits, observabilité, sécurité, FinOps. Ce document décline le <em>comment</em> de la vision DSI (brief V2k du 20 mai 2026). Niveau APD : suffisamment précis pour engager la conception fine, sans descendre dans le YAML des pipelines ni le HCL des modules.</p>
     <div class="meta">
       <span><b>Version</b> V0d · 27 mai 2026</span>
       <span><b>Type de livrable</b> Brief d'architecture détaillée · APD</span>
       <span><b>Périmètre</b> Composants · orchestration · droits · trajectoire</span>
     </div>
+<p class="sigles"><b>Sigles des en-têtes</b> — RBAC (Role-Based Access Control : contrôle d'accès par rôle) · SLA (Service Level Agreement : engagement de niveau de service) · DEV (environnement de développement) · POC (Proof of Concept : preuve de concept) · MVP (Minimum Viable Product : produit minimum viable) · PROD (production) · RG (Resource Group : groupe de ressources Azure) · ID (identifiant) · MI (Managed Identity : identité managée) · SP (Service Principal) · WIF (Workload Identity Federation) · TF (Terraform) · KV (Key Vault) · CAB (Change Advisory Board) · DA (Design Authority) · DSI (direction des systèmes d'information) · ACR (Azure Container Registry) · SLI (Service Level Indicator).</p>
   </header>
 
   <!-- ============ RECHERCHE DANS LA PAGE (L13 · standard H2) ============
@@ -724,23 +745,23 @@ tr[data-tf-empty] td {
     <p class="section-intro ch-apprend">Hypothèses structurantes de cette architecture détaillée. Celles issues du brief V2k sont rappelées, celles ajoutées ici sont explicitement marquées <span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span>.</p>
     <p class="legende-badges"><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span> <span id="leg-nouveau">Hypothèse posée par cette architecture détaillée : elle ne figure pas au brief V2k et reste à confirmer avec la DSI.</span></p>
 
-    <table id="tbl-01" data-filterable>
+    <table id="tbl-01" data-filterable class="repli-cartes">
       <thead>
-        <tr><th>Domaine</th><th>Hypothèse</th><th>Origine</th></tr>
+        <tr><th data-definition="Sujet de l&#x27;hypothèse : le pan de l&#x27;architecture qu&#x27;elle engage (réseau, identité, pipeline, coût…).">Domaine</th><th data-definition="Ce que le document tient pour acquis sans l&#x27;avoir vérifié ; à confirmer avant la conception fine.">Hypothèse</th><th data-definition="D&#x27;où vient l&#x27;hypothèse : brief V2k, entretien, standard DSI ou choix de l&#x27;auteur.">Origine</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>CI/CD</strong></td><td>Azure DevOps Pipelines, deux organisations distinctes : <code>digitai-squad-innov</code> et <code>digitai-dsi-lz</code></td><td>V2k §08</td></tr>
-        <tr><td><strong>Runtime applicatif</strong></td><td>Azure Container Apps comme runtime par défaut. AKS réservé à un POC justifiant un orchestrateur Kubernetes complet</td><td><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
-        <tr><td><strong>IaC</strong></td><td>Terraform unique, state distant sur Storage Account, lock via blob lease, modules versionnés sur un registry inner-source</td><td><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
-        <tr><td><strong>Registry image</strong></td><td>Un ACR par organisation : <code>acrdigitaisquad</code> côté Squad et <code>acrdigitaidsi</code> côté Landing Zone DSI. Promotion explicite entre les deux</td><td>V2k §08</td></tr>
-        <tr><td><strong>Signature artefacts</strong></td><td>Cosign / sigstore avec OIDC Workload Identity Federation. Pas de clé longue durée</td><td>V2k §08</td></tr>
-        <tr><td><strong>Identité</strong></td><td>Entra ID tenant unique Digit-AI. Workload Identity Federation pour toutes les authentifications pipelines → Azure et pipelines → Cosign</td><td><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
-        <tr><td><strong>Réseau</strong></td><td>Hub Azure existant, spokes branchés via peering. Private Endpoints obligatoires sur PaaS exposant des données ou des secrets</td><td><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
-        <tr><td><strong>Observabilité</strong></td><td>Application Insights par RG, Log Analytics workspace centralisé par environnement, Elastic Cloud déjà en place pour l'agrégation cross-app, Sentinel pour la sécurité, Defender for Cloud pour la posture</td><td><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
-        <tr><td><strong>ITSM</strong></td><td>EasyVista comme ITSM unique. CMDB Digit-AI comme source de vérité des applications en PROD</td><td>V2k</td></tr>
-        <tr><td><strong>Evals IA</strong></td><td>Promptfoo pour les tests fonctionnels (jeux d'évaluation versionnés), RAGAS pour les seuils bloquants (qualité de récupération RAG, fidélité, pertinence)</td><td>V2k §08</td></tr>
-        <tr><td><strong>Bascule production</strong></td><td>Container Apps revisions natives au Palier 2 (split de trafic intégré). Front Door Premium multi-régions au Palier 3 si HA inter-régions requise</td><td>V2k §08</td></tr>
-        <tr><td><strong>Brique générative IA</strong></td><td>Azure AI Foundry au Palier 3, déploiement modèle Claude ou GPT-4 selon contrat. POC au Palier 2 pour la Mission 4 (remédiation)</td><td>V2k §08</td></tr>
+        <tr><td data-label="Domaine"><strong>CI/CD</strong></td><td data-label="Hypothèse">Azure DevOps Pipelines, deux organisations distinctes : <code>digitai-squad-innov</code> et <code>digitai-dsi-lz</code></td><td data-label="Origine">V2k §08</td></tr>
+        <tr><td data-label="Domaine"><strong>Runtime applicatif</strong></td><td data-label="Hypothèse">Azure Container Apps comme runtime par défaut. AKS réservé à un POC justifiant un orchestrateur Kubernetes complet</td><td data-label="Origine"><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
+        <tr><td data-label="Domaine"><strong>IaC</strong></td><td data-label="Hypothèse">Terraform unique, state distant sur Storage Account, lock via blob lease, modules versionnés sur un registry inner-source</td><td data-label="Origine"><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
+        <tr><td data-label="Domaine"><strong>Registry image</strong></td><td data-label="Hypothèse">Un ACR par organisation : <code>acrdigitaisquad</code> côté Squad et <code>acrdigitaidsi</code> côté Landing Zone DSI. Promotion explicite entre les deux</td><td data-label="Origine">V2k §08</td></tr>
+        <tr><td data-label="Domaine"><strong>Signature artefacts</strong></td><td data-label="Hypothèse">Cosign / sigstore avec OIDC Workload Identity Federation. Pas de clé longue durée</td><td data-label="Origine">V2k §08</td></tr>
+        <tr><td data-label="Domaine"><strong>Identité</strong></td><td data-label="Hypothèse">Entra ID tenant unique Digit-AI. Workload Identity Federation pour toutes les authentifications pipelines → Azure et pipelines → Cosign</td><td data-label="Origine"><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
+        <tr><td data-label="Domaine"><strong>Réseau</strong></td><td data-label="Hypothèse">Hub Azure existant, spokes branchés via peering. Private Endpoints obligatoires sur PaaS exposant des données ou des secrets</td><td data-label="Origine"><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
+        <tr><td data-label="Domaine"><strong>Observabilité</strong></td><td data-label="Hypothèse">Application Insights par RG, Log Analytics workspace centralisé par environnement, Elastic Cloud déjà en place pour l'agrégation cross-app, Sentinel pour la sécurité, Defender for Cloud pour la posture</td><td data-label="Origine"><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span></td></tr>
+        <tr><td data-label="Domaine"><strong>ITSM</strong></td><td data-label="Hypothèse">EasyVista comme ITSM unique. CMDB Digit-AI comme source de vérité des applications en PROD</td><td data-label="Origine">V2k</td></tr>
+        <tr><td data-label="Domaine"><strong>Evals IA</strong></td><td data-label="Hypothèse">Promptfoo pour les tests fonctionnels (jeux d'évaluation versionnés), RAGAS pour les seuils bloquants (qualité de récupération RAG, fidélité, pertinence)</td><td data-label="Origine">V2k §08</td></tr>
+        <tr><td data-label="Domaine"><strong>Bascule production</strong></td><td data-label="Hypothèse">Container Apps revisions natives au Palier 2 (split de trafic intégré). Front Door Premium multi-régions au Palier 3 si HA inter-régions requise</td><td data-label="Origine">V2k §08</td></tr>
+        <tr><td data-label="Domaine"><strong>Brique générative IA</strong></td><td data-label="Hypothèse">Azure AI Foundry au Palier 3, déploiement modèle Claude ou GPT-4 selon contrat. POC au Palier 2 pour la Mission 4 (remédiation)</td><td data-label="Origine">V2k §08</td></tr>
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-01" aria-live="polite"></p>
@@ -1503,64 +1524,64 @@ tr[data-tf-empty] td {
     <p class="section-intro ch-apprend">Allocation effective des ressources sur la hiérarchie Azure de Digit-AI : management groups, subscriptions, resource groups, isolation réseau. Une architecture <strong>hub-and-spoke</strong> classique, déclinée par environnement, avec deux subscriptions distinctes pour Squad et DSI afin de matérialiser la frontière de responsabilité.</p>
 
     <h3>Hiérarchie Azure</h3>
-    <table id="tbl-02" data-filterable>
+    <table id="tbl-02" data-filterable class="repli-cartes">
       <thead>
-        <tr><th>Niveau</th><th>Nom</th><th>Rôle</th><th>Policies appliquées</th></tr>
+        <tr><th data-definition="Rang du groupe de gestion (management group) dans la hiérarchie Azure : racine, enfant, ou subscription.">Niveau</th><th data-definition="Identifiant du groupe de gestion ou de la ressource tel qu&#x27;il apparaît dans le portail Azure.">Nom</th><th data-definition="Ce que porte cet élément dans le parcours : ce qu&#x27;il héberge, décide ou exécute.">Rôle</th><th data-definition="Azure Policies (règles de conformité imposées par la plateforme) attachées à ce niveau et héritées en dessous.">Policies appliquées</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>Tenant</strong></td>
-          <td><code>digitai.onmicrosoft.com</code></td>
-          <td>Tenant Entra ID unique Digit-AI</td>
-          <td>Conditional Access (MFA obligatoire), PIM sur rôles privilégiés</td>
+          <td data-label="Niveau"><strong>Tenant</strong></td>
+          <td data-label="Nom"><code>digitai.onmicrosoft.com</code></td>
+          <td data-label="Rôle">Tenant Entra ID unique Digit-AI</td>
+          <td data-label="Policies appliquées">Conditional Access (MFA obligatoire), PIM sur rôles privilégiés</td>
         </tr>
         <tr>
-          <td><strong>MG racine</strong></td>
-          <td><code>mg-digitai</code></td>
-          <td>Management group racine</td>
-          <td>Tags FinOps obligatoires, deny ressources non-conformes naming</td>
+          <td data-label="Niveau"><strong>MG racine</strong></td>
+          <td data-label="Nom"><code>mg-digitai</code></td>
+          <td data-label="Rôle">Management group racine</td>
+          <td data-label="Policies appliquées">Tags FinOps obligatoires, deny ressources non-conformes naming</td>
         </tr>
         <tr>
-          <td><strong>MG enfant</strong></td>
-          <td><code>mg-digitai-innov</code></td>
-          <td>Squad Innovation</td>
-          <td>Quotas stricts, deny public IP, auto-shutdown</td>
+          <td data-label="Niveau"><strong>MG enfant</strong></td>
+          <td data-label="Nom"><code>mg-digitai-innov</code></td>
+          <td data-label="Rôle">Squad Innovation</td>
+          <td data-label="Policies appliquées">Quotas stricts, deny public IP, auto-shutdown</td>
         </tr>
         <tr>
-          <td><strong>MG enfant</strong></td>
-          <td><code>mg-digitai-dsi</code></td>
-          <td>Landing Zone DSI</td>
-          <td>Standard Complet, Private Endpoints requis, Defender activé</td>
+          <td data-label="Niveau"><strong>MG enfant</strong></td>
+          <td data-label="Nom"><code>mg-digitai-dsi</code></td>
+          <td data-label="Rôle">Landing Zone DSI</td>
+          <td data-label="Policies appliquées">Standard Complet, Private Endpoints requis, Defender activé</td>
         </tr>
         <tr>
-          <td><strong>Subscription</strong></td>
-          <td><code>sub-digitai-squad-sandbox</code></td>
-          <td>RG Sandbox + RG DEV POC</td>
-          <td>Quotas Squad Innovation</td>
+          <td data-label="Niveau"><strong>Subscription</strong></td>
+          <td data-label="Nom"><code>sub-digitai-squad-sandbox</code></td>
+          <td data-label="Rôle">RG Sandbox + RG DEV POC</td>
+          <td data-label="Policies appliquées">Quotas Squad Innovation</td>
         </tr>
         <tr>
-          <td><strong>Subscription</strong></td>
-          <td><code>sub-digitai-dsi-dev</code></td>
-          <td>RG DEV MVP (un par POC)</td>
-          <td>Standard Complet, peering hub DEV</td>
+          <td data-label="Niveau"><strong>Subscription</strong></td>
+          <td data-label="Nom"><code>sub-digitai-dsi-dev</code></td>
+          <td data-label="Rôle">RG DEV MVP (un par POC)</td>
+          <td data-label="Policies appliquées">Standard Complet, peering hub DEV</td>
         </tr>
         <tr>
-          <td><strong>Subscription</strong></td>
-          <td><code>sub-digitai-dsi-staging</code></td>
-          <td>RG STAGING (un par POC)</td>
-          <td>Iso-prod, peering hub PROD (côté STAGING)</td>
+          <td data-label="Niveau"><strong>Subscription</strong></td>
+          <td data-label="Nom"><code>sub-digitai-dsi-staging</code></td>
+          <td data-label="Rôle">RG STAGING (un par POC)</td>
+          <td data-label="Policies appliquées">Iso-prod, peering hub PROD (côté STAGING)</td>
         </tr>
         <tr>
-          <td><strong>Subscription</strong></td>
-          <td><code>sub-digitai-dsi-prod</code></td>
-          <td>RG PROD (un par application)</td>
-          <td>SLA, peering hub PROD, Defender plans complets</td>
+          <td data-label="Niveau"><strong>Subscription</strong></td>
+          <td data-label="Nom"><code>sub-digitai-dsi-prod</code></td>
+          <td data-label="Rôle">RG PROD (un par application)</td>
+          <td data-label="Policies appliquées">SLA, peering hub PROD, Defender plans complets</td>
         </tr>
         <tr>
-          <td><strong>Subscription</strong></td>
-          <td><code>sub-digitai-platform</code></td>
-          <td>ACR, hub, Log Analytics, Sentinel, dashboard portfolio</td>
-          <td>Ressources transverses partagées</td>
+          <td data-label="Niveau"><strong>Subscription</strong></td>
+          <td data-label="Nom"><code>sub-digitai-platform</code></td>
+          <td data-label="Rôle">ACR, hub, Log Analytics, Sentinel, dashboard portfolio</td>
+          <td data-label="Policies appliquées">Ressources transverses partagées</td>
         </tr>
       </tbody>
     </table>
@@ -1570,16 +1591,16 @@ tr[data-tf-empty] td {
     <h3>Convention de naming des RG</h3>
     <p>Reprise du référentiel de naming Digit-AI (cf. document de conventions). Format : <code>rg-{env}-{appcode}-{seq}</code> où <code>env</code> ∈ {sbx, dpc, dmv, stg, prd}, <code>appcode</code> est le code court de l'application (3 à 8 caractères), <code>seq</code> est un index optionnel pour les apps multi-RG.</p>
 
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Environnement</th><th>Nom RG</th><th>Subscription</th><th>Allocation</th></tr>
+        <tr><th data-definition="Étape du parcours d&#x27;industrialisation : Sandbox, DEV POC, DEV MVP, STAGING ou PROD.">Environnement</th><th data-definition="Nom du Resource Group (RG, groupe de ressources Azure) qui héberge l&#x27;environnement, selon la convention de nommage.">Nom RG</th><th data-definition="Abonnement Azure (unité de facturation et de droits) dans lequel vit le Resource Group.">Subscription</th><th data-definition="Qui paie et qui administre : équipe propriétaire de l&#x27;environnement et centre de coût.">Allocation</th></tr>
       </thead>
       <tbody>
-        <tr><td>Sandbox</td><td><code>rg-sbx-{appcode}</code></td><td><code>sub-digitai-squad-sandbox</code></td><td>1 par dev qui en demande, vie courte</td></tr>
-        <tr><td>DEV POC</td><td><code>rg-dpc-{appcode}</code></td><td><code>sub-digitai-squad-sandbox</code></td><td>1 par POC actif (Squad)</td></tr>
-        <tr><td>DEV MVP</td><td><code>rg-dmv-{appcode}</code></td><td><code>sub-digitai-dsi-dev</code></td><td>1 par POC en industrialisation</td></tr>
-        <tr><td>STAGING</td><td><code>rg-stg-{appcode}</code></td><td><code>sub-digitai-dsi-staging</code></td><td>1 par POC en phase MEP</td></tr>
-        <tr><td>PROD</td><td><code>rg-prd-{appcode}</code></td><td><code>sub-digitai-dsi-prod</code></td><td>1 par application en exploitation</td></tr>
+        <tr><td data-label="Environnement">Sandbox</td><td data-label="Nom RG"><code>rg-sbx-{appcode}</code></td><td data-label="Subscription"><code>sub-digitai-squad-sandbox</code></td><td data-label="Allocation">1 par dev qui en demande, vie courte</td></tr>
+        <tr><td data-label="Environnement">DEV POC</td><td data-label="Nom RG"><code>rg-dpc-{appcode}</code></td><td data-label="Subscription"><code>sub-digitai-squad-sandbox</code></td><td data-label="Allocation">1 par POC actif (Squad)</td></tr>
+        <tr><td data-label="Environnement">DEV MVP</td><td data-label="Nom RG"><code>rg-dmv-{appcode}</code></td><td data-label="Subscription"><code>sub-digitai-dsi-dev</code></td><td data-label="Allocation">1 par POC en industrialisation</td></tr>
+        <tr><td data-label="Environnement">STAGING</td><td data-label="Nom RG"><code>rg-stg-{appcode}</code></td><td data-label="Subscription"><code>sub-digitai-dsi-staging</code></td><td data-label="Allocation">1 par POC en phase MEP</td></tr>
+        <tr><td data-label="Environnement">PROD</td><td data-label="Nom RG"><code>rg-prd-{appcode}</code></td><td data-label="Subscription"><code>sub-digitai-dsi-prod</code></td><td data-label="Allocation">1 par application en exploitation</td></tr>
       </tbody>
     </table>
 
@@ -1804,17 +1825,17 @@ tr[data-tf-empty] td {
 
 
     <h3>Politiques Azure Policy clés</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Initiative</th><th>Scope</th><th>Règles</th><th>Mode</th></tr>
+        <tr><th data-definition="Ensemble nommé d&#x27;Azure Policies (initiative) appliqué comme un tout à un périmètre.">Initiative</th><th data-definition="Périmètre d&#x27;application : groupe de gestion, subscription, Resource Group ou ressource.">Scope</th><th data-definition="Contrôles concrets que l&#x27;initiative ou la politique impose (SKU autorisés, IP publiques interdites…).">Règles</th><th data-definition="Effet de la règle : Audit (constate), Deny (refuse) ou Enforce (impose) ; ou mode de consommation d&#x27;un service.">Mode</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Naming &amp; tags</strong></td><td>MG racine</td><td>Tags FinOps obligatoires (<code>owner</code>, <code>costcenter</code>, <code>env</code>, <code>app</code>, <code>criticity</code>). Naming conforme au référentiel Digit-AI</td><td>Deny</td></tr>
-        <tr><td><strong>Réseau public</strong></td><td>MG DSI</td><td>Deny public IP sur Container Apps, Storage, ACR, Key Vault. Private Endpoint obligatoire</td><td>Deny</td></tr>
-        <tr><td><strong>Defender</strong></td><td>Subs DSI</td><td>Defender for Containers + Defender for Servers activés. Plans complets sur PROD, plans réduits sur DEV/STAGING</td><td>DeployIfNotExists</td></tr>
-        <tr><td><strong>Chiffrement</strong></td><td>MG racine</td><td>Chiffrement at-rest CMK obligatoire sur Storage et Key Vault de production</td><td>Audit puis Deny après période de remédiation</td></tr>
-        <tr><td><strong>Signature image</strong></td><td>MG DSI</td><td>Container Apps n'accepte que des images signées Cosign vérifiées par l'admission policy</td><td>Deny</td></tr>
-        <tr><td><strong>Sandbox quotas</strong></td><td>Sub Sandbox</td><td>SKU max contraint (B2s pour VM, S pour Container Apps), quota CPU/RAM par RG, auto-shutdown 19h</td><td>Deny + DeployIfNotExists</td></tr>
+        <tr><td data-label="Initiative"><strong>Naming &amp; tags</strong></td><td data-label="Scope">MG racine</td><td data-label="Règles">Tags FinOps obligatoires (<code>owner</code>, <code>costcenter</code>, <code>env</code>, <code>app</code>, <code>criticity</code>). Naming conforme au référentiel Digit-AI</td><td data-label="Mode">Deny</td></tr>
+        <tr><td data-label="Initiative"><strong>Réseau public</strong></td><td data-label="Scope">MG DSI</td><td data-label="Règles">Deny public IP sur Container Apps, Storage, ACR, Key Vault. Private Endpoint obligatoire</td><td data-label="Mode">Deny</td></tr>
+        <tr><td data-label="Initiative"><strong>Defender</strong></td><td data-label="Scope">Subs DSI</td><td data-label="Règles">Defender for Containers + Defender for Servers activés. Plans complets sur PROD, plans réduits sur DEV/STAGING</td><td data-label="Mode">DeployIfNotExists</td></tr>
+        <tr><td data-label="Initiative"><strong>Chiffrement</strong></td><td data-label="Scope">MG racine</td><td data-label="Règles">Chiffrement at-rest CMK obligatoire sur Storage et Key Vault de production</td><td data-label="Mode">Audit puis Deny après période de remédiation</td></tr>
+        <tr><td data-label="Initiative"><strong>Signature image</strong></td><td data-label="Scope">MG DSI</td><td data-label="Règles">Container Apps n'accepte que des images signées Cosign vérifiées par l'admission policy</td><td data-label="Mode">Deny</td></tr>
+        <tr><td data-label="Initiative"><strong>Sandbox quotas</strong></td><td data-label="Scope">Sub Sandbox</td><td data-label="Règles">SKU max contraint (B2s pour VM, S pour Container Apps), quota CPU/RAM par RG, auto-shutdown 19h</td><td data-label="Mode">Deny + DeployIfNotExists</td></tr>
       </tbody>
     </table>
   </section>
@@ -1829,24 +1850,24 @@ tr[data-tf-empty] td {
       <span class="badge b-palier3" aria-describedby="leg-palier3">Palier 3</span> <span id="leg-palier3">Run, horizon 18 mois : chaîne 0-touch cible, arrivée de la trajectoire.</span></p>
 
     <h3>Mini-lexique Azure utilisé dans cette section</h3>
-    <table id="tbl-03" data-filterable="off" data-filterable-reason="lexique : chaque terme et chaque définition sont uniques, aucune colonne catégorielle à filtrer — la recherche du navigateur y répond mieux">
+    <table id="tbl-03" data-filterable="off" data-filterable-reason="lexique : chaque terme et chaque définition sont uniques, aucune colonne catégorielle à filtrer — la recherche du navigateur y répond mieux" class="repli-cartes">
       <thead>
-        <tr><th>Terme</th><th>Définition</th></tr>
+        <tr><th data-definition="Mot du lexique employé dans ce document.">Terme</th><th data-definition="Sens du terme dans le contexte du parcours POC-to-Prod.">Définition</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Container App</strong></td><td>Service Azure qui exécute un conteneur Docker. Équivalent simplifié de Kubernetes pour les usages standards. C'est ce qui fait tourner les applications IA en production.</td></tr>
-        <tr><td><strong>ACR (Azure Container Registry)</strong></td><td>Bibliothèque privée d'images Docker. Comme Docker Hub, mais privé Digit-AI. Les pipelines y poussent les images, les Container Apps les pull pour démarrer.</td></tr>
-        <tr><td><strong>Resource Group (RG)</strong></td><td>Boîte logique qui regroupe des ressources Azure (un Container App, sa base de données, ses secrets, ses logs). Permet de tout déployer ou supprimer ensemble.</td></tr>
-        <tr><td><strong>Managed Identity (MI)</strong></td><td>Identité automatique attribuée à une ressource Azure pour s'authentifier auprès d'autres ressources sans mot de passe. Ex. : un Container App utilise sa MI pour lire un secret dans Key Vault.</td></tr>
-        <tr><td><strong>Service Principal (SP)</strong></td><td>Compte applicatif Azure non-humain. Utilisé par les pipelines Azure DevOps pour agir sur les ressources Azure.</td></tr>
-        <tr><td><strong>WIF (Workload Identity Federation)</strong></td><td>Mécanisme qui permet à un pipeline de prouver son identité sans stocker de mot de passe : Azure DevOps émet un token OIDC qu'Azure accepte. Pas de secret long-terme à gérer.</td></tr>
-        <tr><td><strong>Terraform (TF)</strong></td><td>Outil qui décrit l'infrastructure Azure dans du code texte. Permet de provisionner reproductiblement les RG, les Container Apps, les Key Vault, etc.</td></tr>
-        <tr><td><strong>Cosign</strong></td><td>Outil qui signe cryptographiquement une image Docker pour prouver qu'elle a été buildée par un pipeline autorisé et non modifiée après coup.</td></tr>
-        <tr><td><strong>SBOM (Software Bill of Materials)</strong></td><td>Liste exhaustive des bibliothèques contenues dans une image. Permet de tracer rapidement les applications affectées par une vulnérabilité d'une dépendance.</td></tr>
-        <tr><td><strong>Application Insights</strong></td><td>Service Azure qui collecte la télémétrie d'une application : nombre de requêtes, latence, erreurs, traces, métriques métier.</td></tr>
-        <tr><td><strong>Log Analytics workspace</strong></td><td>Base de logs centralisée où aboutissent les traces d'Application Insights et d'autres ressources Azure. Requêtable en KQL.</td></tr>
-        <tr><td><strong>Key Vault</strong></td><td>Coffre-fort Azure pour les secrets (mots de passe, clés API, certificats TLS). Accédé via Managed Identity, jamais en clair dans le code.</td></tr>
-        <tr><td><strong>SLI / SLO</strong></td><td>Service Level Indicator (métrique observée : latence P95, taux d'erreur) et Service Level Objective (objectif cible : P95 &lt; 500 ms). La baseline SLI est l'enregistrement de ces métriques pendant la phase DEV MVP.</td></tr>
+        <tr><td data-label="Terme"><strong>Container App</strong></td><td data-label="Définition">Service Azure qui exécute un conteneur Docker. Équivalent simplifié de Kubernetes pour les usages standards. C'est ce qui fait tourner les applications IA en production.</td></tr>
+        <tr><td data-label="Terme"><strong>ACR (Azure Container Registry)</strong></td><td data-label="Définition">Bibliothèque privée d'images Docker. Comme Docker Hub, mais privé Digit-AI. Les pipelines y poussent les images, les Container Apps les pull pour démarrer.</td></tr>
+        <tr><td data-label="Terme"><strong>Resource Group (RG)</strong></td><td data-label="Définition">Boîte logique qui regroupe des ressources Azure (un Container App, sa base de données, ses secrets, ses logs). Permet de tout déployer ou supprimer ensemble.</td></tr>
+        <tr><td data-label="Terme"><strong>Managed Identity (MI)</strong></td><td data-label="Définition">Identité automatique attribuée à une ressource Azure pour s'authentifier auprès d'autres ressources sans mot de passe. Ex. : un Container App utilise sa MI pour lire un secret dans Key Vault.</td></tr>
+        <tr><td data-label="Terme"><strong>Service Principal (SP)</strong></td><td data-label="Définition">Compte applicatif Azure non-humain. Utilisé par les pipelines Azure DevOps pour agir sur les ressources Azure.</td></tr>
+        <tr><td data-label="Terme"><strong>WIF (Workload Identity Federation)</strong></td><td data-label="Définition">Mécanisme qui permet à un pipeline de prouver son identité sans stocker de mot de passe : Azure DevOps émet un token OIDC qu'Azure accepte. Pas de secret long-terme à gérer.</td></tr>
+        <tr><td data-label="Terme"><strong>Terraform (TF)</strong></td><td data-label="Définition">Outil qui décrit l'infrastructure Azure dans du code texte. Permet de provisionner reproductiblement les RG, les Container Apps, les Key Vault, etc.</td></tr>
+        <tr><td data-label="Terme"><strong>Cosign</strong></td><td data-label="Définition">Outil qui signe cryptographiquement une image Docker pour prouver qu'elle a été buildée par un pipeline autorisé et non modifiée après coup.</td></tr>
+        <tr><td data-label="Terme"><strong>SBOM (Software Bill of Materials)</strong></td><td data-label="Définition">Liste exhaustive des bibliothèques contenues dans une image. Permet de tracer rapidement les applications affectées par une vulnérabilité d'une dépendance.</td></tr>
+        <tr><td data-label="Terme"><strong>Application Insights</strong></td><td data-label="Définition">Service Azure qui collecte la télémétrie d'une application : nombre de requêtes, latence, erreurs, traces, métriques métier.</td></tr>
+        <tr><td data-label="Terme"><strong>Log Analytics workspace</strong></td><td data-label="Définition">Base de logs centralisée où aboutissent les traces d'Application Insights et d'autres ressources Azure. Requêtable en KQL.</td></tr>
+        <tr><td data-label="Terme"><strong>Key Vault</strong></td><td data-label="Définition">Coffre-fort Azure pour les secrets (mots de passe, clés API, certificats TLS). Accédé via Managed Identity, jamais en clair dans le code.</td></tr>
+        <tr><td data-label="Terme"><strong>SLI / SLO</strong></td><td data-label="Définition">Service Level Indicator (métrique observée : latence P95, taux d'erreur) et Service Level Objective (objectif cible : P95 &lt; 500 ms). La baseline SLI est l'enregistrement de ces métriques pendant la phase DEV MVP.</td></tr>
       </tbody>
     </table>
     <p class="exemple-lecture">Lire une ligne : ce lexique sert la lecture des sept fiches de mission ci-dessous. Y chercher d'abord tout sigle croisé dans une fiche — un sigle absent d'ici vient du brief V2k, pas de cette architecture détaillée.</p>
@@ -2243,18 +2264,18 @@ stages:
     </div>
 
     <h3>Vue synthétique · taux d'automatisation par mission et par palier</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Mission</th><th>Palier 1 Crawl</th><th>Palier 2 Walk</th><th>Palier 3 Run (cible)</th></tr>
+        <tr><th data-definition="Pipeline numéroté M1 à M7 : une étape automatisée du parcours, du POC récupéré jusqu&#x27;à la production.">Mission</th><th data-definition="Premier niveau de maturité : le parcours fonctionne de bout en bout avec des contrôles minimaux.">Palier 1 Crawl</th><th data-definition="Deuxième niveau de maturité : contrôles complets, remédiation déterministe, observabilité en place.">Palier 2 Walk</th><th data-definition="Niveau cible : remédiation assistée par IA, canary automatique, SLA tenus en production.">Palier 3 Run (cible)</th></tr>
       </thead>
       <tbody>
-        <tr><td>M1 Récupère</td><td>Manuel scripté</td><td>100% auto</td><td>100% auto</td></tr>
-        <tr><td>M2 Audite</td><td>Light scripté</td><td>Complet scripté</td><td>100% auto</td></tr>
-        <tr><td>M3 Déploie DEV MVP</td><td>TF manuel</td><td>Pipeline complet</td><td>95% auto</td></tr>
-        <tr><td>M4 Remédie</td><td>Templates manuels</td><td>Règles déterministes</td><td>LLM 90% auto</td></tr>
-        <tr><td>M5 Livrables DA</td><td>Templates manuels</td><td>Génération auto</td><td>100% auto</td></tr>
-        <tr><td>M6 Qualifie STAGING</td><td>Tests manuels</td><td>DAST + charge auto</td><td>85% auto + PRA réel</td></tr>
-        <tr><td>M7 Déploie PROD</td><td>Bascule manuelle</td><td>Blue-green auto</td><td>90% auto + rollback auto</td></tr>
+        <tr><td data-label="Mission">M1 Récupère</td><td data-label="Palier 1 Crawl">Manuel scripté</td><td data-label="Palier 2 Walk">100% auto</td><td data-label="Palier 3 Run (cible)">100% auto</td></tr>
+        <tr><td data-label="Mission">M2 Audite</td><td data-label="Palier 1 Crawl">Light scripté</td><td data-label="Palier 2 Walk">Complet scripté</td><td data-label="Palier 3 Run (cible)">100% auto</td></tr>
+        <tr><td data-label="Mission">M3 Déploie DEV MVP</td><td data-label="Palier 1 Crawl">TF manuel</td><td data-label="Palier 2 Walk">Pipeline complet</td><td data-label="Palier 3 Run (cible)">95% auto</td></tr>
+        <tr><td data-label="Mission">M4 Remédie</td><td data-label="Palier 1 Crawl">Templates manuels</td><td data-label="Palier 2 Walk">Règles déterministes</td><td data-label="Palier 3 Run (cible)">LLM 90% auto</td></tr>
+        <tr><td data-label="Mission">M5 Livrables DA</td><td data-label="Palier 1 Crawl">Templates manuels</td><td data-label="Palier 2 Walk">Génération auto</td><td data-label="Palier 3 Run (cible)">100% auto</td></tr>
+        <tr><td data-label="Mission">M6 Qualifie STAGING</td><td data-label="Palier 1 Crawl">Tests manuels</td><td data-label="Palier 2 Walk">DAST + charge auto</td><td data-label="Palier 3 Run (cible)">85% auto + PRA réel</td></tr>
+        <tr><td data-label="Mission">M7 Déploie PROD</td><td data-label="Palier 1 Crawl">Bascule manuelle</td><td data-label="Palier 2 Walk">Blue-green auto</td><td data-label="Palier 3 Run (cible)">90% auto + rollback auto</td></tr>
       </tbody>
     </table>
   </section>
@@ -2265,73 +2286,73 @@ stages:
     <p class="section-intro ch-apprend">L'Agent IA en réalité, ce sont des <strong>identités non-humaines</strong> (Service Principals, Managed Identities, federated identities) auxquelles on accorde des droits minimaux. Aucun PAT, aucun secret long terme dans les pipelines. Workload Identity Federation OIDC pour toutes les authentifications, PIM pour les humains privilégiés.</p>
 
     <h3>Personas humaines et leurs droits</h3>
-    <table id="tbl-04" data-filterable>
+    <table id="tbl-04" data-filterable class="repli-cartes">
       <thead>
-        <tr><th>Persona</th><th>Groupe Entra ID</th><th>Droits Azure</th><th>Droits Azure DevOps</th><th>Mode</th></tr>
+        <tr><th data-definition="Rôle humain dans le parcours (Squad, Design Authority, sponsor, CAB, Run engineer).">Persona</th><th data-definition="Groupe de sécurité Microsoft Entra ID (annuaire Azure) qui porte les droits de ce persona.">Groupe Entra ID</th><th data-definition="Rôles RBAC (contrôle d&#x27;accès par rôle) accordés sur les ressources Azure, et à quel périmètre.">Droits Azure</th><th data-definition="Permissions dans l&#x27;organisation Azure DevOps : dépôts, pipelines, environments, approbations.">Droits Azure DevOps</th><th data-definition="Effet de la règle : Audit (constate), Deny (refuse) ou Enforce (impose) ; ou mode de consommation d&#x27;un service.">Mode</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>PO Squad</strong></td>
-          <td><code>grp-digitai-squad-po</code></td>
-          <td>Reader sur sub Sandbox</td>
-          <td>Contributor sur projet Squad, peut poser des tags</td>
-          <td>Permanent</td>
+          <td data-label="Persona"><strong>PO Squad</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-squad-po</code></td>
+          <td data-label="Droits Azure">Reader sur sub Sandbox</td>
+          <td data-label="Droits Azure DevOps">Contributor sur projet Squad, peut poser des tags</td>
+          <td data-label="Mode">Permanent</td>
         </tr>
         <tr>
-          <td><strong>Dev Squad</strong></td>
-          <td><code>grp-digitai-squad-dev</code></td>
-          <td>Contributor sur RG Sandbox + DEV POC</td>
-          <td>Contributor projet Squad, reviewer PR DEV MVP</td>
-          <td>Permanent</td>
+          <td data-label="Persona"><strong>Dev Squad</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-squad-dev</code></td>
+          <td data-label="Droits Azure">Contributor sur RG Sandbox + DEV POC</td>
+          <td data-label="Droits Azure DevOps">Contributor projet Squad, reviewer PR DEV MVP</td>
+          <td data-label="Mode">Permanent</td>
         </tr>
         <tr>
-          <td><strong>Architecte référent</strong></td>
-          <td><code>grp-digitai-architect</code></td>
-          <td>Reader cross-sub</td>
-          <td>Reader cross-org, accès dossiers DA</td>
-          <td>Permanent</td>
+          <td data-label="Persona"><strong>Architecte référent</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-architect</code></td>
+          <td data-label="Droits Azure">Reader cross-sub</td>
+          <td data-label="Droits Azure DevOps">Reader cross-org, accès dossiers DA</td>
+          <td data-label="Mode">Permanent</td>
         </tr>
         <tr>
-          <td><strong>Design Authority</strong></td>
-          <td><code>grp-digitai-da</code></td>
-          <td>Reader cross-sub DSI</td>
-          <td>Approver sur environment <code>da-approval</code></td>
-          <td>Permanent</td>
+          <td data-label="Persona"><strong>Design Authority</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-da</code></td>
+          <td data-label="Droits Azure">Reader cross-sub DSI</td>
+          <td data-label="Droits Azure DevOps">Approver sur environment <code>da-approval</code></td>
+          <td data-label="Mode">Permanent</td>
         </tr>
         <tr>
-          <td><strong>Sponsor métier</strong></td>
-          <td><code>grp-digitai-sponsor-{poc}</code></td>
-          <td>Aucun</td>
-          <td>Aucun (signature via EasyVista)</td>
-          <td>Permanent</td>
+          <td data-label="Persona"><strong>Sponsor métier</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-sponsor-{poc}</code></td>
+          <td data-label="Droits Azure">Aucun</td>
+          <td data-label="Droits Azure DevOps">Aucun (signature via EasyVista)</td>
+          <td data-label="Mode">Permanent</td>
         </tr>
         <tr>
-          <td><strong>CAB DPMSI</strong></td>
-          <td><code>grp-digitai-cab</code></td>
-          <td>Aucun</td>
-          <td>Aucun (approbation via EasyVista)</td>
-          <td>Permanent</td>
+          <td data-label="Persona"><strong>CAB DPMSI</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-cab</code></td>
+          <td data-label="Droits Azure">Aucun</td>
+          <td data-label="Droits Azure DevOps">Aucun (approbation via EasyVista)</td>
+          <td data-label="Mode">Permanent</td>
         </tr>
         <tr>
-          <td><strong>Exploitation</strong></td>
-          <td><code>grp-digitai-exploit</code></td>
-          <td>Reader sub PROD</td>
-          <td>Reader projet DSI</td>
-          <td>Permanent</td>
+          <td data-label="Persona"><strong>Exploitation</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-exploit</code></td>
+          <td data-label="Droits Azure">Reader sub PROD</td>
+          <td data-label="Droits Azure DevOps">Reader projet DSI</td>
+          <td data-label="Mode">Permanent</td>
         </tr>
         <tr>
-          <td><strong>Run engineer</strong></td>
-          <td><code>grp-digitai-run</code></td>
-          <td>Contributor RG PROD via PIM</td>
-          <td>Reviewer obligatoire PR DEV MVP, Approver environment <code>prod-approval</code></td>
-          <td>PIM 4h JIT</td>
+          <td data-label="Persona"><strong>Run engineer</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-run</code></td>
+          <td data-label="Droits Azure">Contributor RG PROD via PIM</td>
+          <td data-label="Droits Azure DevOps">Reviewer obligatoire PR DEV MVP, Approver environment <code>prod-approval</code></td>
+          <td data-label="Mode">PIM 4h JIT</td>
         </tr>
         <tr>
-          <td><strong>Astreinte L2/L3</strong></td>
-          <td><code>grp-digitai-oncall</code></td>
-          <td>Owner sub PROD via PIM avec break-glass</td>
-          <td>Reader projet DSI</td>
-          <td>PIM 8h JIT + audit</td>
+          <td data-label="Persona"><strong>Astreinte L2/L3</strong></td>
+          <td data-label="Groupe Entra ID"><code>grp-digitai-oncall</code></td>
+          <td data-label="Droits Azure">Owner sub PROD via PIM avec break-glass</td>
+          <td data-label="Droits Azure DevOps">Reader projet DSI</td>
+          <td data-label="Mode">PIM 8h JIT + audit</td>
         </tr>
       </tbody>
     </table>
@@ -2339,80 +2360,80 @@ stages:
     <p class="exemple-lecture">Lire une ligne : la colonne Mode sépare l'accès PERMANENT de l'accès élevé à la demande. Un persona en PIM ne détient rien tant qu'il n'a pas activé son rôle — ses droits décrivent ce qu'il PEUT obtenir, pas ce qu'il a.</p>
 
     <h3>Identités non-humaines · l'Agent IA en réalité</h3>
-    <table id="tbl-05" data-filterable>
+    <table id="tbl-05" data-filterable class="repli-cartes">
       <thead>
-        <tr><th>Identité</th><th>Type</th><th>Portée</th><th>Rôles Azure RBAC</th><th>Authentification</th></tr>
+        <tr><th data-definition="Identité technique (Service Principal ou Managed Identity) qui s&#x27;authentifie à la place d&#x27;un humain.">Identité</th><th data-definition="Nature de l&#x27;identité (Service Principal, Managed Identity) ou de l&#x27;élément décrit.">Type</th><th data-definition="Périmètre Azure sur lequel l&#x27;identité a des droits : subscription, Resource Group ou ressource.">Portée</th><th data-definition="Rôles RBAC (Role-Based Access Control, contrôle d&#x27;accès par rôle) attribués à l&#x27;identité.">Rôles Azure RBAC</th><th data-definition="Comment l&#x27;identité prouve qui elle est : fédération OIDC (WIF), Managed Identity, secret.">Authentification</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td><code>sp-azp-squad</code></td>
-          <td>SP federated</td>
-          <td>Org Squad → sub Sandbox</td>
-          <td>Contributor sur RG Sandbox + DEV POC, Reader sub Sandbox</td>
-          <td>WIF OIDC depuis Azure DevOps</td>
+          <td data-label="Identité"><code>sp-azp-squad</code></td>
+          <td data-label="Type">SP federated</td>
+          <td data-label="Portée">Org Squad → sub Sandbox</td>
+          <td data-label="Rôles Azure RBAC">Contributor sur RG Sandbox + DEV POC, Reader sub Sandbox</td>
+          <td data-label="Authentification">WIF OIDC depuis Azure DevOps</td>
         </tr>
         <tr>
-          <td><code>sp-azp-dsi-build</code></td>
-          <td>SP federated</td>
-          <td>Org DSI → sub DSI dev/staging/prod</td>
-          <td>Contributor sur RG DEV MVP, Reader STAGING, Reader PROD. Push image sur ACR DSI</td>
-          <td>WIF OIDC depuis Azure DevOps</td>
+          <td data-label="Identité"><code>sp-azp-dsi-build</code></td>
+          <td data-label="Type">SP federated</td>
+          <td data-label="Portée">Org DSI → sub DSI dev/staging/prod</td>
+          <td data-label="Rôles Azure RBAC">Contributor sur RG DEV MVP, Reader STAGING, Reader PROD. Push image sur ACR DSI</td>
+          <td data-label="Authentification">WIF OIDC depuis Azure DevOps</td>
         </tr>
         <tr>
-          <td><code>sp-azp-dsi-deploy-staging</code></td>
-          <td>SP federated</td>
-          <td>Sub DSI staging</td>
-          <td>Contributor RG STAGING, Pull ACR DSI</td>
-          <td>WIF OIDC + Approver gate Azure DevOps</td>
+          <td data-label="Identité"><code>sp-azp-dsi-deploy-staging</code></td>
+          <td data-label="Type">SP federated</td>
+          <td data-label="Portée">Sub DSI staging</td>
+          <td data-label="Rôles Azure RBAC">Contributor RG STAGING, Pull ACR DSI</td>
+          <td data-label="Authentification">WIF OIDC + Approver gate Azure DevOps</td>
         </tr>
         <tr>
-          <td><code>sp-azp-dsi-deploy-prod</code></td>
-          <td>SP federated</td>
-          <td>Sub DSI prod</td>
-          <td>Contributor RG PROD (rôle custom <code>RG-deployer</code>), Pull ACR DSI</td>
-          <td>WIF OIDC + Triple Approver gate</td>
+          <td data-label="Identité"><code>sp-azp-dsi-deploy-prod</code></td>
+          <td data-label="Type">SP federated</td>
+          <td data-label="Portée">Sub DSI prod</td>
+          <td data-label="Rôles Azure RBAC">Contributor RG PROD (rôle custom <code>RG-deployer</code>), Pull ACR DSI</td>
+          <td data-label="Authentification">WIF OIDC + Triple Approver gate</td>
         </tr>
         <tr>
-          <td><code>mi-containerapp-{appcode}-{env}</code></td>
-          <td>System-assigned MI</td>
-          <td>Ressource Container App</td>
-          <td>Key Vault Secrets User sur KV du RG, AcrPull sur ACR DSI, AI Foundry User si applicable</td>
-          <td>Auto Azure</td>
+          <td data-label="Identité"><code>mi-containerapp-{appcode}-{env}</code></td>
+          <td data-label="Type">System-assigned MI</td>
+          <td data-label="Portée">Ressource Container App</td>
+          <td data-label="Rôles Azure RBAC">Key Vault Secrets User sur KV du RG, AcrPull sur ACR DSI, AI Foundry User si applicable</td>
+          <td data-label="Authentification">Auto Azure</td>
         </tr>
         <tr>
-          <td><code>mi-tf-state</code></td>
-          <td>User-assigned MI</td>
-          <td>Storage Account TF state · RG Platform</td>
-          <td>Storage Blob Data Contributor</td>
-          <td>Federated avec sp-azp-dsi-*</td>
+          <td data-label="Identité"><code>mi-tf-state</code></td>
+          <td data-label="Type">User-assigned MI</td>
+          <td data-label="Portée">Storage Account TF state · RG Platform</td>
+          <td data-label="Rôles Azure RBAC">Storage Blob Data Contributor</td>
+          <td data-label="Authentification">Federated avec sp-azp-dsi-*</td>
         </tr>
         <tr>
-          <td><code>mi-easyvista-integration</code></td>
-          <td>User-assigned MI</td>
-          <td>Pipeline M6</td>
-          <td>Key Vault Secrets User (lecture token EasyVista)</td>
-          <td>Federated avec sp-azp-dsi-build</td>
+          <td data-label="Identité"><code>mi-easyvista-integration</code></td>
+          <td data-label="Type">User-assigned MI</td>
+          <td data-label="Portée">Pipeline M6</td>
+          <td data-label="Rôles Azure RBAC">Key Vault Secrets User (lecture token EasyVista)</td>
+          <td data-label="Authentification">Federated avec sp-azp-dsi-build</td>
         </tr>
         <tr>
-          <td><code>mi-cmdb-integration</code></td>
-          <td>User-assigned MI</td>
-          <td>Pipeline M7</td>
-          <td>Key Vault Secrets User (lecture token CMDB)</td>
-          <td>Federated avec sp-azp-dsi-deploy-prod</td>
+          <td data-label="Identité"><code>mi-cmdb-integration</code></td>
+          <td data-label="Type">User-assigned MI</td>
+          <td data-label="Portée">Pipeline M7</td>
+          <td data-label="Rôles Azure RBAC">Key Vault Secrets User (lecture token CMDB)</td>
+          <td data-label="Authentification">Federated avec sp-azp-dsi-deploy-prod</td>
         </tr>
         <tr>
-          <td><code>mi-aifoundry-remediate</code></td>
-          <td>User-assigned MI</td>
-          <td>Pipeline M4 (Palier 3)</td>
-          <td>Cognitive Services User sur AI Foundry workspace</td>
-          <td>Federated avec sp-azp-dsi-build</td>
+          <td data-label="Identité"><code>mi-aifoundry-remediate</code></td>
+          <td data-label="Type">User-assigned MI</td>
+          <td data-label="Portée">Pipeline M4 (Palier 3)</td>
+          <td data-label="Rôles Azure RBAC">Cognitive Services User sur AI Foundry workspace</td>
+          <td data-label="Authentification">Federated avec sp-azp-dsi-build</td>
         </tr>
         <tr>
-          <td><code>mi-dashboard-ingest</code></td>
-          <td>User-assigned MI</td>
-          <td>Ingestion ADX dashboard</td>
-          <td>Database Ingestor sur cluster Kusto</td>
-          <td>Auto Azure</td>
+          <td data-label="Identité"><code>mi-dashboard-ingest</code></td>
+          <td data-label="Type">User-assigned MI</td>
+          <td data-label="Portée">Ingestion ADX dashboard</td>
+          <td data-label="Rôles Azure RBAC">Database Ingestor sur cluster Kusto</td>
+          <td data-label="Authentification">Auto Azure</td>
         </tr>
       </tbody>
     </table>
@@ -2471,15 +2492,15 @@ stages:
     </div>
 
     <h3>Gestion des secrets · Key Vault par RG</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Key Vault</th><th>Scope</th><th>Secrets typiques</th><th>Accès</th></tr>
+        <tr><th data-definition="Coffre de secrets Azure Key Vault concerné, nommé selon la convention par environnement.">Key Vault</th><th data-definition="Périmètre d&#x27;application : groupe de gestion, subscription, Resource Group ou ressource.">Scope</th><th data-definition="Exemples de secrets, clés ou certificats que ce coffre conserve.">Secrets typiques</th><th data-definition="Qui lit ou écrit dans le coffre, et par quel mécanisme (Managed Identity, pipeline, humain via PIM).">Accès</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>kv-dmv-{appcode}</code></td><td>RG DEV MVP</td><td>Connection strings DB DEV, clés API tierces test</td><td>MI Container App (Secrets User), pipeline build (Secrets Officer)</td></tr>
-        <tr><td><code>kv-stg-{appcode}</code></td><td>RG STAGING</td><td>Idem DEV MVP, données anonymisées</td><td>MI Container App, pipeline M6</td></tr>
-        <tr><td><code>kv-prd-{appcode}</code></td><td>RG PROD</td><td>Secrets PROD, clés API prod, certificats TLS</td><td>MI Container App, pipeline M7 (PIM)</td></tr>
-        <tr><td><code>kv-platform</code></td><td>RG Platform</td><td>Token EasyVista, token CMDB, GPG key signature TF modules</td><td>MI pipeline DSI uniquement</td></tr>
+        <tr><td data-label="Key Vault"><code>kv-dmv-{appcode}</code></td><td data-label="Scope">RG DEV MVP</td><td data-label="Secrets typiques">Connection strings DB DEV, clés API tierces test</td><td data-label="Accès">MI Container App (Secrets User), pipeline build (Secrets Officer)</td></tr>
+        <tr><td data-label="Key Vault"><code>kv-stg-{appcode}</code></td><td data-label="Scope">RG STAGING</td><td data-label="Secrets typiques">Idem DEV MVP, données anonymisées</td><td data-label="Accès">MI Container App, pipeline M6</td></tr>
+        <tr><td data-label="Key Vault"><code>kv-prd-{appcode}</code></td><td data-label="Scope">RG PROD</td><td data-label="Secrets typiques">Secrets PROD, clés API prod, certificats TLS</td><td data-label="Accès">MI Container App, pipeline M7 (PIM)</td></tr>
+        <tr><td data-label="Key Vault"><code>kv-platform</code></td><td data-label="Scope">RG Platform</td><td data-label="Secrets typiques">Token EasyVista, token CMDB, GPG key signature TF modules</td><td data-label="Accès">MI pipeline DSI uniquement</td></tr>
       </tbody>
     </table>
 
@@ -2753,19 +2774,19 @@ stages:
     <p class="caption">Figure 3 — Orchestration des pipelines. Frontière Squad / DSI matérialisée par la promotion d'artefact entre les deux organisations Azure DevOps. Aucun rebuild entre <code>-mvp</code>, <code>-rc</code> et la version PROD : la même image binaire signée parcourt la chaîne.</p>
 
     <h3>Synthèse des pipelines</h3>
-    <table id="tbl-06" data-filterable>
+    <table id="tbl-06" data-filterable class="repli-cartes">
       <thead>
-        <tr><th>Pipeline</th><th>Repo / Org</th><th>Déclencheur</th><th>Service Connection</th><th>Artefact produit</th></tr>
+        <tr><th data-definition="Nom du fichier de pipeline Azure DevOps (YAML) qui réalise la mission.">Pipeline</th><th data-definition="Dépôt git et organisation Azure DevOps qui hébergent le pipeline.">Repo / Org</th><th data-definition="Événement qui lance le pipeline : tag git, succès d&#x27;une étape, approbation, planification.">Déclencheur</th><th data-definition="Connexion de service Azure DevOps (identité que le pipeline emprunte pour agir sur Azure).">Service Connection</th><th data-definition="Ce que le pipeline laisse derrière lui : image, rapport, dossier, ticket, ressource provisionnée.">Artefact produit</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>azp-m1.yml</code></td><td>poc-{nom} / Squad</td><td>Tag <code>vX.Y.Z-poc</code></td><td>sp-azp-squad</td><td>contexte.json</td></tr>
-        <tr><td><code>azp-m2-audit.yml</code></td><td>poc-{nom} / Squad</td><td>Fin M1</td><td>sp-azp-squad</td><td>rapport.html + audit.json</td></tr>
-        <tr><td><code>azp-m3.yml</code></td><td>prod-{nom} / DSI</td><td>Go DA Light (cross-org)</td><td>sp-azp-dsi-build</td><td>Image <code>vX.Y.Z-mvp</code> + RG DEV MVP</td></tr>
-        <tr><td><code>azp-m4-remediate.yml</code></td><td>prod-{nom} / DSI</td><td>Fin baseline SLI 7j</td><td>sp-azp-dsi-build + mi-aifoundry-remediate (P3)</td><td>PRs étiquetées par chapitre</td></tr>
-        <tr><td><code>azp-m5-deliv.yml</code></td><td>prod-{nom} / DSI</td><td>Merge dernière PR M4</td><td>sp-azp-dsi-build</td><td>Dossier Conformité Finale (HTML + PDF)</td></tr>
-        <tr><td><code>azp-m6-staging.yml</code></td><td>prod-{nom} / DSI</td><td>Go DA Finale</td><td>sp-azp-dsi-deploy-staging + mi-easyvista-integration</td><td>Image <code>vX.Y.Z-rc</code> + RG STAGING + ticket EasyVista</td></tr>
-        <tr><td><code>azp-m7-prod.yml</code></td><td>prod-{nom} / DSI</td><td>Webhook EasyVista Approved</td><td>sp-azp-dsi-deploy-prod + mi-cmdb-integration</td><td>Image <code>vX.Y.Z</code> + déploiement PROD + inscription CMDB</td></tr>
-        <tr><td><code>azp-rollback.yml</code></td><td>prod-{nom} / DSI</td><td>Alerte SLI breach M7</td><td>sp-azp-dsi-deploy-prod</td><td>Bascule retour revision bleue</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-m1.yml</code></td><td data-label="Repo / Org">poc-{nom} / Squad</td><td data-label="Déclencheur">Tag <code>vX.Y.Z-poc</code></td><td data-label="Service Connection">sp-azp-squad</td><td data-label="Artefact produit">contexte.json</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-m2-audit.yml</code></td><td data-label="Repo / Org">poc-{nom} / Squad</td><td data-label="Déclencheur">Fin M1</td><td data-label="Service Connection">sp-azp-squad</td><td data-label="Artefact produit">rapport.html + audit.json</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-m3.yml</code></td><td data-label="Repo / Org">prod-{nom} / DSI</td><td data-label="Déclencheur">Go DA Light (cross-org)</td><td data-label="Service Connection">sp-azp-dsi-build</td><td data-label="Artefact produit">Image <code>vX.Y.Z-mvp</code> + RG DEV MVP</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-m4-remediate.yml</code></td><td data-label="Repo / Org">prod-{nom} / DSI</td><td data-label="Déclencheur">Fin baseline SLI 7j</td><td data-label="Service Connection">sp-azp-dsi-build + mi-aifoundry-remediate (P3)</td><td data-label="Artefact produit">PRs étiquetées par chapitre</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-m5-deliv.yml</code></td><td data-label="Repo / Org">prod-{nom} / DSI</td><td data-label="Déclencheur">Merge dernière PR M4</td><td data-label="Service Connection">sp-azp-dsi-build</td><td data-label="Artefact produit">Dossier Conformité Finale (HTML + PDF)</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-m6-staging.yml</code></td><td data-label="Repo / Org">prod-{nom} / DSI</td><td data-label="Déclencheur">Go DA Finale</td><td data-label="Service Connection">sp-azp-dsi-deploy-staging + mi-easyvista-integration</td><td data-label="Artefact produit">Image <code>vX.Y.Z-rc</code> + RG STAGING + ticket EasyVista</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-m7-prod.yml</code></td><td data-label="Repo / Org">prod-{nom} / DSI</td><td data-label="Déclencheur">Webhook EasyVista Approved</td><td data-label="Service Connection">sp-azp-dsi-deploy-prod + mi-cmdb-integration</td><td data-label="Artefact produit">Image <code>vX.Y.Z</code> + déploiement PROD + inscription CMDB</td></tr>
+        <tr><td data-label="Pipeline"><code>azp-rollback.yml</code></td><td data-label="Repo / Org">prod-{nom} / DSI</td><td data-label="Déclencheur">Alerte SLI breach M7</td><td data-label="Service Connection">sp-azp-dsi-deploy-prod</td><td data-label="Artefact produit">Bascule retour revision bleue</td></tr>
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-06" aria-live="polite"></p>
@@ -2791,20 +2812,20 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     <p class="section-intro ch-apprend">Trois plans d'observabilité co-existent : la <strong>télémétrie applicative</strong> par Container App (Application Insights), l'<strong>agrégation cross-app</strong> sur Elastic Cloud, et le <strong>dashboard portfolio DSI</strong> qui agrège métriques métier et conformité dans une vue unifiée. Routage des alertes différencié par persona (Squad, Run, exploitation, sécurité).</p>
 
     <h3>Sources de télémétrie et leur ingestion</h3>
-    <table id="tbl-07" data-filterable>
+    <table id="tbl-07" data-filterable class="repli-cartes">
       <thead>
-        <tr><th>Source</th><th>Type de signal</th><th>Cible d'ingestion</th><th>Rétention</th></tr>
+        <tr><th data-definition="Composant ou environnement qui émet le signal de télémétrie.">Source</th><th data-definition="Nature de la télémétrie : traces, métriques, journaux, événements de sécurité.">Type de signal</th><th data-definition="Service qui reçoit et stocke le signal (Application Insights, Log Analytics, Elastic, Sentinel).">Cible d'ingestion</th><th data-definition="Durée de conservation du signal dans la cible d&#x27;ingestion.">Rétention</th></tr>
       </thead>
       <tbody>
-        <tr><td>Container App stdout / stderr</td><td>Logs applicatifs</td><td>Application Insights → Log Analytics workspace de l'env</td><td>30j hot, 1 an archive</td></tr>
-        <tr><td>Container App SDK (traces, métriques custom)</td><td>Traces distribuées, métriques métier</td><td>Application Insights via instrumentation key</td><td>30j hot, 1 an archive</td></tr>
-        <tr><td>Elastic Agent embarqué</td><td>Logs structurés, métriques host</td><td>Elastic Cloud (cluster Digit-AI existant)</td><td>90j hot, 2 ans cold</td></tr>
-        <tr><td>Azure Activity Log</td><td>Événements plan de contrôle (déploiements, RBAC)</td><td>Log Analytics + Sentinel</td><td>1 an Log Analytics, 7 ans Sentinel</td></tr>
-        <tr><td>Defender for Cloud</td><td>Recommandations sécurité, alertes vuln</td><td>Defender → Sentinel + Action Group</td><td>7 ans Sentinel</td></tr>
-        <tr><td>Entra ID sign-ins</td><td>Authentifications, échecs MFA</td><td>Entra ID logs → Sentinel</td><td>7 ans</td></tr>
-        <tr><td>Audit pipeline Azure DevOps</td><td>Déclenchements pipelines, approbations</td><td>Azure DevOps Audit Log → Sentinel</td><td>7 ans (conformité audit)</td></tr>
-        <tr><td>Audit M2 (rapports d'audit Standards)</td><td>JSON structuré conformité</td><td>Event Hub → ADX (cluster dashboard)</td><td>18 mois</td></tr>
-        <tr><td>Métriques SLI applicatives</td><td>Latence P95, taux erreur, throughput</td><td>App Insights métriques → ADX (vue temps réel dashboard)</td><td>18 mois</td></tr>
+        <tr><td data-label="Source">Container App stdout / stderr</td><td data-label="Type de signal">Logs applicatifs</td><td data-label="Cible d&#x27;ingestion">Application Insights → Log Analytics workspace de l'env</td><td data-label="Rétention">30j hot, 1 an archive</td></tr>
+        <tr><td data-label="Source">Container App SDK (traces, métriques custom)</td><td data-label="Type de signal">Traces distribuées, métriques métier</td><td data-label="Cible d&#x27;ingestion">Application Insights via instrumentation key</td><td data-label="Rétention">30j hot, 1 an archive</td></tr>
+        <tr><td data-label="Source">Elastic Agent embarqué</td><td data-label="Type de signal">Logs structurés, métriques host</td><td data-label="Cible d&#x27;ingestion">Elastic Cloud (cluster Digit-AI existant)</td><td data-label="Rétention">90j hot, 2 ans cold</td></tr>
+        <tr><td data-label="Source">Azure Activity Log</td><td data-label="Type de signal">Événements plan de contrôle (déploiements, RBAC)</td><td data-label="Cible d&#x27;ingestion">Log Analytics + Sentinel</td><td data-label="Rétention">1 an Log Analytics, 7 ans Sentinel</td></tr>
+        <tr><td data-label="Source">Defender for Cloud</td><td data-label="Type de signal">Recommandations sécurité, alertes vuln</td><td data-label="Cible d&#x27;ingestion">Defender → Sentinel + Action Group</td><td data-label="Rétention">7 ans Sentinel</td></tr>
+        <tr><td data-label="Source">Entra ID sign-ins</td><td data-label="Type de signal">Authentifications, échecs MFA</td><td data-label="Cible d&#x27;ingestion">Entra ID logs → Sentinel</td><td data-label="Rétention">7 ans</td></tr>
+        <tr><td data-label="Source">Audit pipeline Azure DevOps</td><td data-label="Type de signal">Déclenchements pipelines, approbations</td><td data-label="Cible d&#x27;ingestion">Azure DevOps Audit Log → Sentinel</td><td data-label="Rétention">7 ans (conformité audit)</td></tr>
+        <tr><td data-label="Source">Audit M2 (rapports d'audit Standards)</td><td data-label="Type de signal">JSON structuré conformité</td><td data-label="Cible d&#x27;ingestion">Event Hub → ADX (cluster dashboard)</td><td data-label="Rétention">18 mois</td></tr>
+        <tr><td data-label="Source">Métriques SLI applicatives</td><td data-label="Type de signal">Latence P95, taux erreur, throughput</td><td data-label="Cible d&#x27;ingestion">App Insights métriques → ADX (vue temps réel dashboard)</td><td data-label="Rétention">18 mois</td></tr>
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-07" aria-live="polite"></p>
@@ -2829,52 +2850,52 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     </div>
 
     <h3>Stratégie d'alerting · routage par persona</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Signal</th><th>Seuil</th><th>Action Group cible</th><th>Délai SLA réponse</th></tr>
+        <tr><th data-definition="Mesure surveillée qui déclenche une alerte (erreurs, latence, coût, sécurité).">Signal</th><th data-definition="Valeur à partir de laquelle le signal déclenche l&#x27;alerte.">Seuil</th><th data-definition="Azure Monitor Action Group (groupe de routage d&#x27;alertes) qui reçoit la notification.">Action Group cible</th><th data-definition="Délai maximal de prise en charge engagé par l&#x27;astreinte (SLA : Service Level Agreement).">Délai SLA réponse</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td>SLI breach Container App PROD pendant bascule M7</td>
-          <td>Taux erreur &gt; 1% ou P95 &gt; 2× baseline pendant 2 min consécutives</td>
-          <td><code>ag-rollback-auto</code> (déclenche azp-rollback.yml)</td>
-          <td>Automatique &lt; 5 min</td>
+          <td data-label="Signal">SLI breach Container App PROD pendant bascule M7</td>
+          <td data-label="Seuil">Taux erreur &gt; 1% ou P95 &gt; 2× baseline pendant 2 min consécutives</td>
+          <td data-label="Action Group cible"><code>ag-rollback-auto</code> (déclenche azp-rollback.yml)</td>
+          <td data-label="Délai SLA réponse">Automatique &lt; 5 min</td>
         </tr>
         <tr>
-          <td>SLI breach Container App PROD hors bascule</td>
-          <td>Taux erreur &gt; 0.5% sur 5 min</td>
-          <td><code>ag-run-oncall</code> (Run engineer astreinte L2)</td>
-          <td>15 min</td>
+          <td data-label="Signal">SLI breach Container App PROD hors bascule</td>
+          <td data-label="Seuil">Taux erreur &gt; 0.5% sur 5 min</td>
+          <td data-label="Action Group cible"><code>ag-run-oncall</code> (Run engineer astreinte L2)</td>
+          <td data-label="Délai SLA réponse">15 min</td>
         </tr>
         <tr>
-          <td>Incident applicatif (exception fréquente)</td>
-          <td>&gt; 10 exceptions/min même type</td>
-          <td><code>ag-squad-app-{appcode}</code> (Squad propriétaire)</td>
-          <td>4h heures ouvrées</td>
+          <td data-label="Signal">Incident applicatif (exception fréquente)</td>
+          <td data-label="Seuil">&gt; 10 exceptions/min même type</td>
+          <td data-label="Action Group cible"><code>ag-squad-app-{appcode}</code> (Squad propriétaire)</td>
+          <td data-label="Délai SLA réponse">4h heures ouvrées</td>
         </tr>
         <tr>
-          <td>Drift evals RAGAS (Palier 3)</td>
-          <td>Score moyen 24h &lt; 0.80</td>
-          <td><code>ag-squad-ai-{appcode}</code> + <code>ag-da-info</code></td>
-          <td>1 jour ouvré</td>
+          <td data-label="Signal">Drift evals RAGAS (Palier 3)</td>
+          <td data-label="Seuil">Score moyen 24h &lt; 0.80</td>
+          <td data-label="Action Group cible"><code>ag-squad-ai-{appcode}</code> + <code>ag-da-info</code></td>
+          <td data-label="Délai SLA réponse">1 jour ouvré</td>
         </tr>
         <tr>
-          <td>Vuln critique Defender</td>
-          <td>Severity High ou Critical</td>
-          <td><code>ag-secops</code></td>
-          <td>4h</td>
+          <td data-label="Signal">Vuln critique Defender</td>
+          <td data-label="Seuil">Severity High ou Critical</td>
+          <td data-label="Action Group cible"><code>ag-secops</code></td>
+          <td data-label="Délai SLA réponse">4h</td>
         </tr>
         <tr>
-          <td>Échec Triple Approbation MEP</td>
-          <td>Webhook EasyVista Rejected</td>
-          <td><code>ag-da-info</code> + Squad demandeur</td>
-          <td>1 jour ouvré</td>
+          <td data-label="Signal">Échec Triple Approbation MEP</td>
+          <td data-label="Seuil">Webhook EasyVista Rejected</td>
+          <td data-label="Action Group cible"><code>ag-da-info</code> + Squad demandeur</td>
+          <td data-label="Délai SLA réponse">1 jour ouvré</td>
         </tr>
         <tr>
-          <td>Coût mensuel RG &gt; budget alert</td>
-          <td>80% budget atteint</td>
-          <td><code>ag-finops</code> + Squad propriétaire</td>
-          <td>1 semaine</td>
+          <td data-label="Signal">Coût mensuel RG &gt; budget alert</td>
+          <td data-label="Seuil">80% budget atteint</td>
+          <td data-label="Action Group cible"><code>ag-finops</code> + Squad propriétaire</td>
+          <td data-label="Délai SLA réponse">1 semaine</td>
         </tr>
       </tbody>
     </table>
@@ -2891,85 +2912,85 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     <p class="section-intro ch-apprend">Lecture transverse de l'architecture : modèle de menace synthétique, plans Defender par environnement, politiques de tagging FinOps, mécanismes de chargeback et stratégies d'optimisation des coûts. Conséquences architecturales des arbitrages tranchés au V2k §08.</p>
 
     <h3>Modèle de menace · synthèse</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Menace</th><th>Vecteur</th><th>Impact</th><th>Mitigation architecturale</th></tr>
+        <tr><th data-definition="Risque de sécurité considéré dans le modèle de menaces.">Menace</th><th data-definition="Chemin par lequel la menace se réalise.">Vecteur</th><th data-definition="Conséquence si la menace se réalise : données, disponibilité, coût, conformité.">Impact</th><th data-definition="Choix d&#x27;architecture qui réduit ou supprime la menace.">Mitigation architecturale</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>Compromission pipeline</strong></td>
-          <td>Token PAT volé, secret pipeline exfiltré</td>
-          <td>Déploiement code malveillant en PROD</td>
-          <td>WIF OIDC obligatoire (pas de PAT), federated credentials scope-limited, branch policy obligatoire 2 reviewers, signature Cosign vérifiée à l'admission</td>
+          <td data-label="Menace"><strong>Compromission pipeline</strong></td>
+          <td data-label="Vecteur">Token PAT volé, secret pipeline exfiltré</td>
+          <td data-label="Impact">Déploiement code malveillant en PROD</td>
+          <td data-label="Mitigation architecturale">WIF OIDC obligatoire (pas de PAT), federated credentials scope-limited, branch policy obligatoire 2 reviewers, signature Cosign vérifiée à l'admission</td>
         </tr>
         <tr>
-          <td><strong>Image conteneur falsifiée</strong></td>
-          <td>ACR compromise, registry tiers</td>
-          <td>Exécution code non audité en PROD</td>
-          <td>Cosign verify obligatoire en admission, ACR privée avec Private Endpoint, scan continu Defender for Containers, deny pull depuis registries externes</td>
+          <td data-label="Menace"><strong>Image conteneur falsifiée</strong></td>
+          <td data-label="Vecteur">ACR compromise, registry tiers</td>
+          <td data-label="Impact">Exécution code non audité en PROD</td>
+          <td data-label="Mitigation architecturale">Cosign verify obligatoire en admission, ACR privée avec Private Endpoint, scan continu Defender for Containers, deny pull depuis registries externes</td>
         </tr>
         <tr>
-          <td><strong>Exfiltration de secrets</strong></td>
-          <td>Secret logué, secret en code, MI surprivilégiée</td>
-          <td>Accès non autorisé aux ressources backend</td>
-          <td>Key Vault par RG avec PE, MI scope minimum, rotation auto secrets long-terme, scan SAST avec règles secrets, audit Defender for Key Vault</td>
+          <td data-label="Menace"><strong>Exfiltration de secrets</strong></td>
+          <td data-label="Vecteur">Secret logué, secret en code, MI surprivilégiée</td>
+          <td data-label="Impact">Accès non autorisé aux ressources backend</td>
+          <td data-label="Mitigation architecturale">Key Vault par RG avec PE, MI scope minimum, rotation auto secrets long-terme, scan SAST avec règles secrets, audit Defender for Key Vault</td>
         </tr>
         <tr>
-          <td><strong>Élévation de privilèges</strong></td>
-          <td>Rôle Owner accordé largement, persistance via federated credentials</td>
-          <td>Compromission complète subscription</td>
-          <td>Rôle custom <code>RG-deployer</code> minimal, PIM JIT pour rôles privilégiés, audit RBAC mensuel automatique, Sentinel rule sur changement rôle Owner</td>
+          <td data-label="Menace"><strong>Élévation de privilèges</strong></td>
+          <td data-label="Vecteur">Rôle Owner accordé largement, persistance via federated credentials</td>
+          <td data-label="Impact">Compromission complète subscription</td>
+          <td data-label="Mitigation architecturale">Rôle custom <code>RG-deployer</code> minimal, PIM JIT pour rôles privilégiés, audit RBAC mensuel automatique, Sentinel rule sur changement rôle Owner</td>
         </tr>
         <tr>
-          <td><strong>Injection prompt LLM (Palier 3)</strong></td>
-          <td>Patch de remédiation contenant code malveillant généré par LLM</td>
-          <td>Backdoor introduite via PR auto-générée</td>
-          <td>Content safety AI Foundry activé, PR review humaine obligatoire (2 reviewers), SAST sur les patches, tests automatiques avant merge, audit trail des appels LLM</td>
+          <td data-label="Menace"><strong>Injection prompt LLM (Palier 3)</strong></td>
+          <td data-label="Vecteur">Patch de remédiation contenant code malveillant généré par LLM</td>
+          <td data-label="Impact">Backdoor introduite via PR auto-générée</td>
+          <td data-label="Mitigation architecturale">Content safety AI Foundry activé, PR review humaine obligatoire (2 reviewers), SAST sur les patches, tests automatiques avant merge, audit trail des appels LLM</td>
         </tr>
         <tr>
-          <td><strong>Dérive evals (drift)</strong></td>
-          <td>Modèle externe dégradé, prompt empoisonné, données changées</td>
-          <td>Régressions silencieuses en production IA</td>
-          <td>Evals RAGAS continues en PROD avec seuils, alerte drift &lt; 0.80, comparaison glissante 7j, capacité de rollback rapide vers revision précédente</td>
+          <td data-label="Menace"><strong>Dérive evals (drift)</strong></td>
+          <td data-label="Vecteur">Modèle externe dégradé, prompt empoisonné, données changées</td>
+          <td data-label="Impact">Régressions silencieuses en production IA</td>
+          <td data-label="Mitigation architecturale">Evals RAGAS continues en PROD avec seuils, alerte drift &lt; 0.80, comparaison glissante 7j, capacité de rollback rapide vers revision précédente</td>
         </tr>
         <tr>
-          <td><strong>Bypass Triple Approbation</strong></td>
-          <td>Pipeline qui contourne la gate manuelle</td>
-          <td>MEP non autorisée en PROD</td>
-          <td>Environment Azure DevOps avec approvers stricts, audit log inviolable, Sentinel rule sur deployment PROD sans gate, séparation org Squad / org DSI</td>
+          <td data-label="Menace"><strong>Bypass Triple Approbation</strong></td>
+          <td data-label="Vecteur">Pipeline qui contourne la gate manuelle</td>
+          <td data-label="Impact">MEP non autorisée en PROD</td>
+          <td data-label="Mitigation architecturale">Environment Azure DevOps avec approvers stricts, audit log inviolable, Sentinel rule sur deployment PROD sans gate, séparation org Squad / org DSI</td>
         </tr>
       </tbody>
     </table>
 
     <h3>Plans Defender par environnement</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Plan</th><th>Sandbox</th><th>DEV POC</th><th>DEV MVP</th><th>STAGING</th><th>PROD</th></tr>
+        <tr><th data-definition="Plan Microsoft Defender for Cloud (offre de protection par type de ressource).">Plan</th><th data-definition="Bac à sable de la Squad : environnement libre, isolé, sans standard imposé.">Sandbox</th><th data-definition="Environnement de développement (DEV) du POC (Proof of Concept), sous Standard Light.">DEV POC</th><th data-definition="Environnement de développement (DEV) du MVP (Minimum Viable Product), premier environnement iso-DSI.">DEV MVP</th><th data-definition="Environnement de qualification, copie conforme de la production, pour les tests lourds et la recette.">STAGING</th><th data-definition="Environnement de production, sous SLA, avec astreinte et inscription en CMDB.">PROD</th></tr>
       </thead>
       <tbody>
-        <tr><td>Defender CSPM (gratuit)</td><td>Activé</td><td>Activé</td><td>Activé</td><td>Activé</td><td>Activé</td></tr>
-        <tr><td>Defender for Servers Plan 1</td><td>—</td><td>—</td><td>Activé</td><td>Activé</td><td>Activé</td></tr>
-        <tr><td>Defender for Servers Plan 2 (avec EDR)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Activé</td></tr>
-        <tr><td>Defender for Containers</td><td>—</td><td>—</td><td>Activé</td><td>Activé</td><td>Activé</td></tr>
-        <tr><td>Defender for Key Vault</td><td>—</td><td>—</td><td>Activé</td><td>Activé</td><td>Activé</td></tr>
-        <tr><td>Defender for Storage</td><td>—</td><td>—</td><td>Activé</td><td>Activé</td><td>Activé</td></tr>
-        <tr><td>Defender CSPM Premium (attack paths)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Activé</td></tr>
+        <tr><td data-label="Plan">Defender CSPM (gratuit)</td><td data-label="Sandbox">Activé</td><td data-label="DEV POC">Activé</td><td data-label="DEV MVP">Activé</td><td data-label="STAGING">Activé</td><td data-label="PROD">Activé</td></tr>
+        <tr><td data-label="Plan">Defender for Servers Plan 1</td><td data-label="Sandbox">—</td><td data-label="DEV POC">—</td><td data-label="DEV MVP">Activé</td><td data-label="STAGING">Activé</td><td data-label="PROD">Activé</td></tr>
+        <tr><td data-label="Plan">Defender for Servers Plan 2 (avec EDR)</td><td data-label="Sandbox">—</td><td data-label="DEV POC">—</td><td data-label="DEV MVP">—</td><td data-label="STAGING">—</td><td data-label="PROD">Activé</td></tr>
+        <tr><td data-label="Plan">Defender for Containers</td><td data-label="Sandbox">—</td><td data-label="DEV POC">—</td><td data-label="DEV MVP">Activé</td><td data-label="STAGING">Activé</td><td data-label="PROD">Activé</td></tr>
+        <tr><td data-label="Plan">Defender for Key Vault</td><td data-label="Sandbox">—</td><td data-label="DEV POC">—</td><td data-label="DEV MVP">Activé</td><td data-label="STAGING">Activé</td><td data-label="PROD">Activé</td></tr>
+        <tr><td data-label="Plan">Defender for Storage</td><td data-label="Sandbox">—</td><td data-label="DEV POC">—</td><td data-label="DEV MVP">Activé</td><td data-label="STAGING">Activé</td><td data-label="PROD">Activé</td></tr>
+        <tr><td data-label="Plan">Defender CSPM Premium (attack paths)</td><td data-label="Sandbox">—</td><td data-label="DEV POC">—</td><td data-label="DEV MVP">—</td><td data-label="STAGING">—</td><td data-label="PROD">Activé</td></tr>
       </tbody>
     </table>
 
     <h3>Tags FinOps obligatoires</h3>
     <p>Politique <code>deny</code> au niveau du MG racine : aucune ressource ne peut être créée sans les 5 tags suivants. Hérités automatiquement du RG aux ressources enfants via Azure Policy <code>Inherit a tag from the resource group</code>.</p>
 
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Tag</th><th>Valeurs autorisées</th><th>Usage</th></tr>
+        <tr><th data-definition="Étiquette Azure (clé posée sur une ressource) exigée par la convention de nommage et de suivi des coûts.">Tag</th><th data-definition="Valeurs que le tag peut prendre ; toute autre valeur est refusée par Azure Policy.">Valeurs autorisées</th><th data-definition="À quoi sert le tag : facturation, propriété, criticité, cycle de vie.">Usage</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>owner</code></td><td>UPN d'un utilisateur ou groupe Entra ID</td><td>Responsable opérationnel du RG, destinataire alertes coût</td></tr>
-        <tr><td><code>costcenter</code></td><td>Code centre de coût Digit-AI (4 chiffres)</td><td>Refacturation interne, showback mensuel</td></tr>
-        <tr><td><code>env</code></td><td><code>sbx</code> · <code>dpc</code> · <code>dmv</code> · <code>stg</code> · <code>prd</code></td><td>Routage alertes par environnement, application policies différenciées</td></tr>
-        <tr><td><code>app</code></td><td>Code court application (3-8 caractères)</td><td>Regroupement coûts par application sur l'ensemble de son cycle de vie</td></tr>
-        <tr><td><code>criticity</code></td><td><code>low</code> · <code>medium</code> · <code>high</code> · <code>critical</code></td><td>Détermine SLA et plans Defender appliqués</td></tr>
+        <tr><td data-label="Tag"><code>owner</code></td><td data-label="Valeurs autorisées">UPN d'un utilisateur ou groupe Entra ID</td><td data-label="Usage">Responsable opérationnel du RG, destinataire alertes coût</td></tr>
+        <tr><td data-label="Tag"><code>costcenter</code></td><td data-label="Valeurs autorisées">Code centre de coût Digit-AI (4 chiffres)</td><td data-label="Usage">Refacturation interne, showback mensuel</td></tr>
+        <tr><td data-label="Tag"><code>env</code></td><td data-label="Valeurs autorisées"><code>sbx</code> · <code>dpc</code> · <code>dmv</code> · <code>stg</code> · <code>prd</code></td><td data-label="Usage">Routage alertes par environnement, application policies différenciées</td></tr>
+        <tr><td data-label="Tag"><code>app</code></td><td data-label="Valeurs autorisées">Code court application (3-8 caractères)</td><td data-label="Usage">Regroupement coûts par application sur l'ensemble de son cycle de vie</td></tr>
+        <tr><td data-label="Tag"><code>criticity</code></td><td data-label="Valeurs autorisées"><code>low</code> · <code>medium</code> · <code>high</code> · <code>critical</code></td><td data-label="Usage">Détermine SLA et plans Defender appliqués</td></tr>
       </tbody>
     </table>
 
@@ -3002,17 +3023,17 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     </div>
 
     <h3>Conséquences architecturales des arbitrages V2k §08</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Arbitrage</th><th>Décision V2k</th><th>Conséquence architecturale</th></tr>
+        <tr><th data-definition="Question d&#x27;architecture qui admettait plusieurs réponses.">Arbitrage</th><th data-definition="Réponse retenue par le brief V2k (vision DSI du 20 mai 2026).">Décision V2k</th><th data-definition="Ce que la décision impose ou interdit dans l&#x27;architecture décrite ici.">Conséquence architecturale</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Plateforme CI/CD</strong></td><td>Azure DevOps Pipelines</td><td>Service Connections WIF par org, pas de GitHub Actions, intégration native Azure Boards pour les work items de chapitres Standard</td></tr>
-        <tr><td><strong>Registry image</strong></td><td>ACR par équipe (Squad, DSI)</td><td>Promotion par <code>az acr import</code>, signature Cosign attachée au digest préservée, RBAC distinct par org Azure DevOps</td></tr>
-        <tr><td><strong>Signature artefacts</strong></td><td>Cosign + WIF OIDC</td><td>Aucune clé long-terme à gérer, vérification policy à l'admission Container Apps, audit trail OIDC complet</td></tr>
-        <tr><td><strong>Evals IA</strong></td><td>Promptfoo + RAGAS</td><td>Container Apps Job pour exécution, seuils stockés dans le repo prod-{nom}, intégration directe dans azp-m6 et azp-m7 pour drift continu</td></tr>
-        <tr><td><strong>Mécanisme bascule</strong></td><td>Container Apps revisions (P2) puis Front Door (P3)</td><td>Pas d'AKS pour la majorité des POCs, Front Door Premium activé uniquement quand HA multi-régions justifiée, simplification du modèle de bascule</td></tr>
-        <tr><td><strong>Brique générative IA</strong></td><td>Azure AI Foundry (P3)</td><td>Tenant Digit-AI unique pour le LLM, content safety natif, MI scoped par use case, quota par projet, alternative aux APIs publiques OpenAI/Anthropic</td></tr>
+        <tr><td data-label="Arbitrage"><strong>Plateforme CI/CD</strong></td><td data-label="Décision V2k">Azure DevOps Pipelines</td><td data-label="Conséquence architecturale">Service Connections WIF par org, pas de GitHub Actions, intégration native Azure Boards pour les work items de chapitres Standard</td></tr>
+        <tr><td data-label="Arbitrage"><strong>Registry image</strong></td><td data-label="Décision V2k">ACR par équipe (Squad, DSI)</td><td data-label="Conséquence architecturale">Promotion par <code>az acr import</code>, signature Cosign attachée au digest préservée, RBAC distinct par org Azure DevOps</td></tr>
+        <tr><td data-label="Arbitrage"><strong>Signature artefacts</strong></td><td data-label="Décision V2k">Cosign + WIF OIDC</td><td data-label="Conséquence architecturale">Aucune clé long-terme à gérer, vérification policy à l'admission Container Apps, audit trail OIDC complet</td></tr>
+        <tr><td data-label="Arbitrage"><strong>Evals IA</strong></td><td data-label="Décision V2k">Promptfoo + RAGAS</td><td data-label="Conséquence architecturale">Container Apps Job pour exécution, seuils stockés dans le repo prod-{nom}, intégration directe dans azp-m6 et azp-m7 pour drift continu</td></tr>
+        <tr><td data-label="Arbitrage"><strong>Mécanisme bascule</strong></td><td data-label="Décision V2k">Container Apps revisions (P2) puis Front Door (P3)</td><td data-label="Conséquence architecturale">Pas d'AKS pour la majorité des POCs, Front Door Premium activé uniquement quand HA multi-régions justifiée, simplification du modèle de bascule</td></tr>
+        <tr><td data-label="Arbitrage"><strong>Brique générative IA</strong></td><td data-label="Décision V2k">Azure AI Foundry (P3)</td><td data-label="Conséquence architecturale">Tenant Digit-AI unique pour le LLM, content safety natif, MI scoped par use case, quota par projet, alternative aux APIs publiques OpenAI/Anthropic</td></tr>
       </tbody>
     </table>
   </section>
@@ -3076,21 +3097,21 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     </div>
 
     <h3>Critères de passage Palier N → Palier N+1</h3>
-    <table>
+    <table class="repli-cartes">
       <thead>
-        <tr><th>Passage</th><th>Critères techniques</th><th>Critères organisationnels</th></tr>
+        <tr><th data-definition="Transition d&#x27;un palier de maturité au suivant.">Passage</th><th data-definition="Conditions mesurables sur le système pour autoriser le passage.">Critères techniques</th><th data-definition="Conditions sur l&#x27;équipe, les rôles et les processus pour autoriser le passage.">Critères organisationnels</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>P1 → P2</strong></td>
-          <td>
+          <td data-label="Passage"><strong>P1 → P2</strong></td>
+          <td data-label="Critères techniques">
             <ul style="padding-left:14px;margin:0;">
               <li>3 POCs passés en M3 sans incident pipeline</li>
               <li>Promotion manifest copy validée techniquement</li>
               <li>Standard Light stabilisé (pas de modif depuis 1 mois)</li>
             </ul>
           </td>
-          <td>
+          <td data-label="Critères organisationnels">
             <ul style="padding-left:14px;margin:0;">
               <li>Squad + DSI alignés sur la frontière de promotion</li>
               <li>Design Authority opérationnelle (4 revues/mois minimum)</li>
@@ -3099,8 +3120,8 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
           </td>
         </tr>
         <tr>
-          <td><strong>P2 → P3</strong></td>
-          <td>
+          <td data-label="Passage"><strong>P2 → P3</strong></td>
+          <td data-label="Critères techniques">
             <ul style="padding-left:14px;margin:0;">
               <li>5 applications en PROD via le parcours complet</li>
               <li>MTTR rollback &lt; 10 min sur bascule manuelle observée</li>
@@ -3108,7 +3129,7 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
               <li>Evals RAGAS opérationnelles (seuils tenus 95% du temps)</li>
             </ul>
           </td>
-          <td>
+          <td data-label="Critères organisationnels">
             <ul style="padding-left:14px;margin:0;">
               <li>Run engineer formé et en astreinte effective</li>
               <li>Triple Approbation MEP routinière (≤ 5j de cycle)</li>
