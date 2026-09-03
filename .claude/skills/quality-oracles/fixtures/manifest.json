@@ -973,6 +973,31 @@
    ],
    "provenance": "TF-0770, Produit-02 - RETOURS - 20260902b + ledger seq 96 — l analyse ANALYSE-L99-PROMPT-CONSOLE-20260902.md a demande QUATRE iterations de forme (M7, M10, M18, tracabilite) avant CONFORME ; cinq passages au journal .oracles-historique.jsonl, aucune correction sur le FOND. La fixture ROUGE est un chapitre L99 qui ouvre sur un tableau nu et cite un identifiant muet ; la VERTE est la meme analyse ecrite UNE SEULE FOIS, ouverture et mode de lecture compris.",
    "dependant_outil": "python (check_markdown.py du socle digit-ai-page-html)"
+  },
+  {
+   "nom": "parite-assets",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-parite-assets.mjs",
+    "{fixture}",
+    "--socle={skilldir}/fixtures/parite-assets-socle"
+   ],
+   "red": "parite-assets-red.html",
+   "green": "parite-assets-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "copie NON DÉCLARÉE",
+    "empreinte PÉRIMÉE",
+    "contenu DÉRIVÉ",
+    "exemption SANS DATE",
+    "exemption SANS MOTIF"
+   ],
+   "provenance": "TF-0784 (03/09/2026) — digit-ai-schemas/assets/exemple-reference.html embarquait une copie MANUELLE de digit-ai-page-html/assets/table-filters.js, corrige SEPT fois depuis (TF-0429/0430/0431 le 21/08, TF-0768/0769/0781/0782 le 02/09) sans qu un seul correctif atteigne la copie : meme depot, deux dossiers d ecart. Les deux fixtures embarquent LES MEMES TROIS composants d un socle de jeu d essai aux noms INVENTES ; seules leur declaration et leur parite changent. La rouge exerce les quatre regles a la fois (P1 copie muette, P2 empreinte perimee, P3 contenu derive, P4 exemption sans date ni motif), la verte les tient toutes et porte une exemption datee et motivee que l oracle compte au verdict."
   }
  ]
 }

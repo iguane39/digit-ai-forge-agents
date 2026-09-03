@@ -112,6 +112,20 @@
     --line-strong: #cbd5e1;
     --accent: #2563eb;
 
+    /* Alias vers les jetons du socle digit-ai-page-html : le CSS des composants
+       embarqués ci-dessous ne connaît QUE ces noms-là. Les aliaser ici est ce qui
+       permet d'embarquer le CSS du socle SANS l'éditer — donc de le garder à la parité
+       de sa source (embarquer-composants.mjs). --hh vaut 0 : cette page n'a pas
+       d'en-tête collant, le sommaire colle donc au bord haut. */
+    --surface: var(--bg);
+    --muted: var(--ink-muted);
+    --blue: var(--accent);
+    --red: var(--c-coral-fg);
+    --r-sm: 6px;
+    --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --head: 'Roboto', system-ui, sans-serif;
+    --hh: 0px;
+
     --c-purple-bg: #ede9fe;   --c-purple-fg: #5b21b6;   --c-purple-stroke: #c4b5fd;
     --c-purple-deep: #4c1d95;
     --c-blue-bg:   #dbeafe;   --c-blue-fg:   #1d4ed8;   --c-blue-stroke:   #93c5fd;
@@ -163,6 +177,52 @@
     font-size: 11.5px; color: var(--ink-muted);
   }
   .meta span b { color: var(--ink); font-weight: 700; }
+
+  /* ===== CHAPEAU DE CHAPITRE ET EXEMPLE DE LECTURE (L7 / L10) ===== */
+  /* Le chapeau ouvre le chapitre (ce que le lecteur y apprend) ; l'exemple de lecture dit
+     comment lire UN tableau long — les deux sont du texte de service, pas du corps. */
+  .ch-apprend { color: var(--ink-soft); }
+  .exemple-lecture {
+    margin: 10px 0 0; padding: 10px 14px;
+    background: var(--bg-soft); border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    color: var(--ink-soft); font-size: 13.5px; line-height: 1.6;
+  }
+
+  /* ===== SOMMAIRE LATERAL (L25 / L6) ===== */
+  /* Neuf chapitres : le plan de la page ne se devine pas au defilement. Sur bureau, deux
+     colonnes et un sommaire COLLANT (top: var(--hh), le meme jeton que le thead collant du
+     socle, TF-0754) ; sous 1100px, il redevient un bloc normal en tete de document. */
+  .corps { display: block; }
+  nav.toc { background: var(--bg-soft); border: 1px solid var(--line);
+            border-radius: 10px; padding: 14px 16px; margin-bottom: 40px; }
+  .toc-titre { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 12px;
+               letter-spacing: 0.12em; text-transform: uppercase;
+               color: var(--ink-muted); margin-bottom: 10px; }
+  nav.toc a { display: block; text-decoration: none; color: var(--ink);
+              padding: 6px 0; border-top: 1px solid var(--line-soft); }
+  nav.toc a:first-of-type { border-top: 0; }
+  nav.toc a:hover .toc-t { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toc-t { display: block; font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 13.5px; }
+  .toc-d { display: block; color: var(--ink-muted); font-size: 12px; line-height: 1.45; }
+  /* COLLANT A TOUTES LES LARGEURS, et ce n'est pas un detail de gout : la famille
+     `sommaire_perdu` de render_page mesure la visibilite du sommaire APRES defilement, a CHAQUE
+     largeur rendue. Un sommaire lateral colle sur bureau et statique sur mobile disparaissait des
+     le premier ecran sous 1100 px — mesure ici meme le 03/09 : 1 constat a 390 px et 1 a 768 px.
+     Sur mobile il devient donc une BANDE compacte (les annonces .toc-d cedent la place, la barre
+     defile en interne et ne prend jamais plus du tiers de l'ecran). */
+  nav.toc.colle { position: sticky; top: var(--hh); z-index: 20;
+                  max-height: 32vh; overflow-y: auto; }
+  @media (max-width: 1099px) {
+    nav.toc.colle .toc-d { display: none; }
+    nav.toc.colle a { padding: 4px 0; }
+  }
+  @media (min-width: 1100px) {
+    .corps { display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 44px; }
+    nav.toc.colle { max-height: calc(100vh - 32px); margin-bottom: 0; }
+  }
+  @media print { nav.toc { break-inside: avoid; } }
 
   /* ===== SECTIONS ===== */
   section { margin-bottom: 56px; }
@@ -492,13 +552,10 @@
   p.legende-badges { color: var(--ink-soft); font-size: 13px; line-height: 1.9;
                     background: var(--bg-soft); border: 1px solid var(--line);
                     border-radius: 8px; padding: 10px 14px; margin: 0 0 24px; }
-  /* Filtres de colonne (socle digit-ai-page-html, assets/table-filters.js) */
-  .tf-btn   { border: 0; background: none; cursor: pointer; font: inherit; color: var(--ink-muted); }
-  .tf-btn[aria-expanded="true"], .tf-btn.tf-on { color: var(--accent); }
-  .tf-panel { position: absolute; z-index: 10; background: var(--bg); border: 1px solid var(--line);
-              border-radius: 8px; padding: 8px; box-shadow: 0 6px 20px rgba(15,23,42,.12); }
+  /* Filtres de colonne : l'habillage du composant est EMBARQUÉ depuis le socle
+     (assets/table-filters.css), plus bas, dans son bloc COMPOSANT-EMBARQUE. Ne restent ici que
+     les règles qui appartiennent à CETTE page — le compteur, que le socle ne stylise pas. */
   .tf-panel[hidden] { display: none; }
-  .tf-opts  { max-height: 220px; overflow-y: auto; }
   .tf-count { margin: 4px 0 0; font-size: 12px; color: var(--ink-muted); min-height: 1em; }
   .tf-count.zero { color: var(--c-coral-fg); }
 
@@ -530,6 +587,89 @@
   mark.find-hit { background: #fde9c8; color: inherit; display: inline; padding: 0; margin: 0; }
   @media print { .toolbar { display: none; } }
 </style>
+<!-- COMPOSANT-EMBARQUE:DEBUT table-filters.css — copie du socle digit-ai-page-html/assets/table-filters.css,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<style data-composant="table-filters.css" data-empreinte="sha256:62a4ed4ce94409b65d0afadafdde619f2fd18f625011c93841bebd02eef0a8f9">
+/* table-filters.css — habillage charté du composant de filtres de colonne (D-12).
+   TF-0176 (13/08) : un composant se livre AVEC son CSS — livré nu, il sort en rendu brut
+   navigateur chez tous ses hôtes (constaté sur le dashboard forge-tests du 13/08, refusé
+   par son destinataire). À inliner dans le bloc de style de la page, à côté du script du
+   composant — JAMAIS de balise écrite en toutes lettres dans ce commentaire (même famille
+   de piège que RA-1 : un « script » ouvrant en commentaire fausse toute lecture paresseuse
+   du document). Ne consomme que les tokens :root du socle (--surface, --ink, --muted,
+   --line, --blue, --r-sm) : aucune couleur en dur, les deux thèmes sont servis. */
+
+.tf-btn {
+  font: inherit; font-size: .72rem; line-height: 1;
+  color: var(--blue); background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 3px 7px; margin-left: 6px; cursor: pointer; vertical-align: middle;
+}
+.tf-btn:hover { border-color: var(--blue); }
+.tf-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+/* filtre ACTIF : l'état se voit sans ouvrir le panneau */
+.tf-btn.tf-on { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+.tf-panel {
+  position: absolute; z-index: 30; top: calc(100% + 4px); left: 0;
+  min-width: 230px; max-width: 320px; max-height: 320px; overflow: auto;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
+  padding: 10px 12px; text-align: left; text-transform: none;
+  font-family: var(--sans); font-size: .85rem; font-weight: 400;
+  letter-spacing: normal; cursor: default;
+}
+.tf-search {
+  width: 100%; font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 6px 10px; margin: 0 0 8px;
+}
+.tf-search:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-actions {
+  display: flex; gap: 14px; border-bottom: 1px solid var(--line);
+  padding-bottom: 8px; margin-bottom: 8px;
+}
+.tf-actions button {
+  font: inherit; font-weight: 600; color: var(--blue);
+  background: none; border: none; cursor: pointer; padding: 2px 4px;
+}
+.tf-actions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-opts { display: flex; flex-direction: column; gap: 2px; }
+.tf-opts label {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 2px; border-radius: 4px; cursor: pointer;
+}
+.tf-opts label:hover { background: var(--bg, #f6f8fc); }
+.tf-opts input[type="checkbox"] { accent-color: var(--blue); }
+/* TF-0782 (02/09) : la cardinalite decide de la FORME du panneau, pas de son existence — et
+   une forme qui change sans le dire est une affordance muette. Le panneau ouvert sur sa
+   recherche (plus de 15 valeurs) ou reduit a une valeur unique porte sa note. */
+.tf-forme-note { margin: 0 0 8px; color: var(--muted); font-size: .78rem; font-style: italic; }
+
+/* TF-0431 : panneau aligne a droite quand la place manque (choisi par le composant) ;
+   le conteneur defilant porteur d'un panneau ouvert ne rogne plus (data-tf-ouvert). */
+.tf-panel.tf-droite { left: auto; right: 0; }
+[data-tf-ouvert] { overflow: visible !important; }
+
+/* TF-0430 : etat vide — un filtre qui ne laisse rien le DIT dans le tableau, et offre la
+   seule action utile a ce moment. */
+tr[data-tf-empty] td {
+  padding: 18px 12px; text-align: center; color: var(--muted);
+  font-style: italic; border-bottom: 1px solid var(--line);
+}
+.tf-reset {
+  font: inherit; font-style: normal; font-weight: 600; color: var(--blue);
+  background: none; border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 4px 10px; margin-left: 10px; cursor: pointer;
+}
+.tf-reset:hover { border-color: var(--blue); }
+.tf-reset:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+@media print { .tf-btn, .tf-panel, tr[data-tf-empty] { display: none; } }
+</style>
+<!-- COMPOSANT-EMBARQUE:FIN table-filters.css -->
 </head>
 <body>
 <div class="page">
@@ -560,9 +700,28 @@
   </div>
 
   <!-- ============ HYPOTHÈSES ============ -->
-  <section>
+  <!-- ============ SOMMAIRE (L25) ============
+       Neuf chapitres : au-delà de trois, le plan de la page est VISIBLE EN PERMANENCE.
+       Latéral et collant sur bureau (top: var(--hh)), bande normale sur mobile. -->
+  <div class="corps">
+    <nav class="toc colle" aria-label="Sommaire">
+      <p class="toc-titre">Plan du document</p>
+      <a href="#sec-00"><span class="toc-t">00 · Hypothèses prises</span><span class="toc-d">douze hypothèses structurantes, et leur origine</span></a>
+      <a href="#sec-01"><span class="toc-t">01 · Vue d'ensemble</span><span class="toc-d">les 7 missions projetées sur les composants Azure</span></a>
+      <a href="#sec-02"><span class="toc-t">02 · Topologie Azure</span><span class="toc-d">management groups, subscriptions, RG, hub-and-spoke</span></a>
+      <a href="#sec-03"><span class="toc-t">03 · Composants par mission</span><span class="toc-d">ce que fait chaque mission, et avec quoi</span></a>
+      <a href="#sec-04"><span class="toc-t">04 · Identités et droits</span><span class="toc-d">identités non-humaines, fédération OIDC, secrets</span></a>
+      <a href="#sec-05"><span class="toc-t">05 · Orchestration</span><span class="toc-d">les sept pipelines, leurs déclencheurs, leurs artefacts</span></a>
+      <a href="#sec-06"><span class="toc-t">06 · Observabilité</span><span class="toc-d">télémétrie, agrégation, dashboard portfolio, alertes</span></a>
+      <a href="#sec-07"><span class="toc-t">07 · Sécurité et FinOps</span><span class="toc-d">menaces, plans Defender, tagging, chargeback</span></a>
+      <a href="#sec-08"><span class="toc-t">08 · Plan de mise en œuvre</span><span class="toc-d">quel composant à quel palier, et dans quel ordre</span></a>
+    </nav>
+
+    <div class="colonne-doc">
+
+    <section id="sec-00">
     <h2><span class="num">00</span> Hypothèses prises</h2>
-    <p class="section-intro">Hypothèses structurantes de cette architecture détaillée. Celles issues du brief V2k sont rappelées, celles ajoutées ici sont explicitement marquées <span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span>.</p>
+    <p class="section-intro ch-apprend">Hypothèses structurantes de cette architecture détaillée. Celles issues du brief V2k sont rappelées, celles ajoutées ici sont explicitement marquées <span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span>.</p>
     <p class="legende-badges"><span class="badge b-info" aria-describedby="leg-nouveau">Nouveau</span> <span id="leg-nouveau">Hypothèse posée par cette architecture détaillée : elle ne figure pas au brief V2k et reste à confirmer avec la DSI.</span></p>
 
     <table id="tbl-01" data-filterable>
@@ -585,12 +744,13 @@
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-01" aria-live="polite"></p>
+    <p class="exemple-lecture">Lire une ligne : « Runtime applicatif · Container Apps par défaut » porte le badge Nouveau — cette hypothèse est POSÉE par la présente architecture et reste à confirmer avec la DSI, contrairement à « CI/CD », qui vient du brief V2k §08.</p>
   </section>
 
   <!-- ============ SECTION 01 — VUE D'ENSEMBLE ============ -->
-  <section>
+  <section id="sec-01">
     <h2><span class="num">01</span> Vue d'ensemble de l'architecture cible</h2>
-    <p class="section-intro">Schéma d'ensemble de l'architecture cible : les 7 missions de l'Agent IA (brief V2k §03) projetées sur les composants Azure concrets qui les portent. Les bandes horizontales rendent lisibles les <strong>5 plans</strong> de l'architecture : entrées et supervision humaine (haut), orchestration pipelines (centre), composants applicatifs et données (milieu-bas), supervision (bas), intégrations externes (très bas).</p>
+    <p class="section-intro ch-apprend">Schéma d'ensemble de l'architecture cible : les 7 missions de l'Agent IA (brief V2k §03) projetées sur les composants Azure concrets qui les portent. Les bandes horizontales rendent lisibles les <strong>5 plans</strong> de l'architecture : entrées et supervision humaine (haut), orchestration pipelines (centre), composants applicatifs et données (milieu-bas), supervision (bas), intégrations externes (très bas).</p>
 
     <div class="diagram-wrap">
       <svg viewBox="0 0 1500 1180" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diag1-title diag1-desc">
@@ -1338,9 +1498,9 @@
   </section>
 
   <!-- ============ SECTION 02 — TOPOLOGIE AZURE ============ -->
-  <section>
+  <section id="sec-02">
     <h2><span class="num">02</span> Topologie Azure · subscriptions, RG, réseau</h2>
-    <p class="section-intro">Allocation effective des ressources sur la hiérarchie Azure de Digit-AI : management groups, subscriptions, resource groups, isolation réseau. Une architecture <strong>hub-and-spoke</strong> classique, déclinée par environnement, avec deux subscriptions distinctes pour Squad et DSI afin de matérialiser la frontière de responsabilité.</p>
+    <p class="section-intro ch-apprend">Allocation effective des ressources sur la hiérarchie Azure de Digit-AI : management groups, subscriptions, resource groups, isolation réseau. Une architecture <strong>hub-and-spoke</strong> classique, déclinée par environnement, avec deux subscriptions distinctes pour Squad et DSI afin de matérialiser la frontière de responsabilité.</p>
 
     <h3>Hiérarchie Azure</h3>
     <table id="tbl-02" data-filterable>
@@ -1405,6 +1565,7 @@
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-02" aria-live="polite"></p>
+    <p class="exemple-lecture">Lire une ligne : la colonne Policies dit ce qui est REFUSÉ à ce niveau. Une ressource créée sous un management group hérite de ses policies EN PLUS des siennes — les interdits se cumulent en descendant, ils ne se remplacent jamais.</p>
 
     <h3>Convention de naming des RG</h3>
     <p>Reprise du référentiel de naming Digit-AI (cf. document de conventions). Format : <code>rg-{env}-{appcode}-{seq}</code> où <code>env</code> ∈ {sbx, dpc, dmv, stg, prd}, <code>appcode</code> est le code court de l'application (3 à 8 caractères), <code>seq</code> est un index optionnel pour les apps multi-RG.</p>
@@ -1659,9 +1820,9 @@
   </section>
 
   <!-- ============ SECTION 03 — COMPOSANTS PAR MISSION ============ -->
-  <section>
+  <section id="sec-03">
     <h2><span class="num">03</span> Composants détaillés mission par mission</h2>
-    <p class="section-intro">Pour chacune des 7 missions du brief V2k §03, nous décrivons d'abord <strong>l'objectif et le fonctionnement de la mission</strong> en termes accessibles à un lecteur non-spécialiste Azure, puis nous détaillons les composants Azure mis en œuvre et leur rôle. Lecture en parallèle avec la Figure 1 ci-dessus.</p>
+    <p class="section-intro ch-apprend">Pour chacune des 7 missions du brief V2k §03, nous décrivons d'abord <strong>l'objectif et le fonctionnement de la mission</strong> en termes accessibles à un lecteur non-spécialiste Azure, puis nous détaillons les composants Azure mis en œuvre et leur rôle. Lecture en parallèle avec la Figure 1 ci-dessus.</p>
     <p class="legende-badges">Les modules portent le palier de la trajectoire Crawl / Walk / Run du brief V2k §04, qui dit à quel horizon le composant doit exister.<br>
       <span class="badge b-palier1" aria-describedby="leg-palier1">Palier 1</span> <span id="leg-palier1">Crawl, horizon 3 mois : socle minimal livrant de la valeur sans engager toute la chaîne.</span><br>
       <span class="badge b-palier2" aria-describedby="leg-palier2">Palier 2</span> <span id="leg-palier2">Walk, horizon 9 mois : automatisation étendue, capitalisée sur le palier précédent sans rien jeter.</span><br>
@@ -1688,6 +1849,7 @@
         <tr><td><strong>SLI / SLO</strong></td><td>Service Level Indicator (métrique observée : latence P95, taux d'erreur) et Service Level Objective (objectif cible : P95 &lt; 500 ms). La baseline SLI est l'enregistrement de ces métriques pendant la phase DEV MVP.</td></tr>
       </tbody>
     </table>
+    <p class="exemple-lecture">Lire une ligne : ce lexique sert la lecture des sept fiches de mission ci-dessous. Y chercher d'abord tout sigle croisé dans une fiche — un sigle absent d'ici vient du brief V2k, pas de cette architecture détaillée.</p>
 
     <h3>Pourquoi des agent pools Linux et pas Windows ?</h3>
     <p>Les pipelines Azure DevOps de l'orchestrateur tournent sur des <strong>agent pools auto-hébergés Linux</strong> (Ubuntu LTS). Ce choix se justifie par trois raisons :</p>
@@ -2098,9 +2260,9 @@ stages:
   </section>
 
   <!-- ============ SECTION 04 — IDENTITÉS, DROITS, SECRETS ============ -->
-  <section>
+  <section id="sec-04">
     <h2><span class="num">04</span> Identités, droits et secrets</h2>
-    <p class="section-intro">L'Agent IA en réalité, ce sont des <strong>identités non-humaines</strong> (Service Principals, Managed Identities, federated identities) auxquelles on accorde des droits minimaux. Aucun PAT, aucun secret long terme dans les pipelines. Workload Identity Federation OIDC pour toutes les authentifications, PIM pour les humains privilégiés.</p>
+    <p class="section-intro ch-apprend">L'Agent IA en réalité, ce sont des <strong>identités non-humaines</strong> (Service Principals, Managed Identities, federated identities) auxquelles on accorde des droits minimaux. Aucun PAT, aucun secret long terme dans les pipelines. Workload Identity Federation OIDC pour toutes les authentifications, PIM pour les humains privilégiés.</p>
 
     <h3>Personas humaines et leurs droits</h3>
     <table id="tbl-04" data-filterable>
@@ -2174,6 +2336,7 @@ stages:
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-04" aria-live="polite"></p>
+    <p class="exemple-lecture">Lire une ligne : la colonne Mode sépare l'accès PERMANENT de l'accès élevé à la demande. Un persona en PIM ne détient rien tant qu'il n'a pas activé son rôle — ses droits décrivent ce qu'il PEUT obtenir, pas ce qu'il a.</p>
 
     <h3>Identités non-humaines · l'Agent IA en réalité</h3>
     <table id="tbl-05" data-filterable>
@@ -2254,6 +2417,7 @@ stages:
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-05" aria-live="polite"></p>
+    <p class="exemple-lecture">Lire une ligne : aucune identité de ce tableau ne porte de secret long terme. La colonne Authentification dit par quelle fédération elle prouve son identité — si elle nomme un secret, c'est une exception, et elle se justifie.</p>
 
     <h3>Rôle custom Digit-AI · RG-deployer</h3>
     <p>Rôle RBAC custom limité au strict nécessaire pour qu'un pipeline puisse provisionner et déployer dans un RG, sans pouvoir modifier la souscription ni les ressources transverses. Évite l'attribution du rôle <code>Contributor</code> qui est trop large.</p>
@@ -2326,9 +2490,9 @@ stages:
   </section>
 
   <!-- ============ SECTION 05 — PIPELINES AZURE DEVOPS ============ -->
-  <section>
+  <section id="sec-05">
     <h2><span class="num">05</span> Orchestration · pipelines Azure DevOps</h2>
-    <p class="section-intro">Vue détaillée des pipelines : qui déclenche quoi, qui produit quel artefact, qui dépend de qui. Deux organisations Azure DevOps distinctes (<code>digitai-squad-innov</code> et <code>digitai-dsi-lz</code>) avec une frontière de promotion explicite par manifest copy ACR.</p>
+    <p class="section-intro ch-apprend">Vue détaillée des pipelines : qui déclenche quoi, qui produit quel artefact, qui dépend de qui. Deux organisations Azure DevOps distinctes (<code>digitai-squad-innov</code> et <code>digitai-dsi-lz</code>) avec une frontière de promotion explicite par manifest copy ACR.</p>
 
     <h3>Schéma d'orchestration des pipelines</h3>
 
@@ -2605,6 +2769,7 @@ stages:
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-06" aria-live="polite"></p>
+    <p class="exemple-lecture">Lire une ligne : la colonne Artefact produit dit ce que le pipeline DÉPOSE, la colonne Déclencheur ce qui le réveille. Chaîner les deux de haut en bas donne l'ordre réel d'exécution, sans lire le détail des pipelines.</p>
 
     <h3>Promotion d'artefact sans rebuild · principe</h3>
     <p>Pour garantir que l'image testée en STAGING est <strong>binairement identique</strong> à celle déployée en PROD, aucun rebuild n'a lieu entre les environnements. La promotion s'effectue par <code>manifest copy</code> dans le même ACR avec changement de tag uniquement.</p>
@@ -2621,9 +2786,9 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
   </section>
 
   <!-- ============ SECTION 06 — OBSERVABILITÉ ============ -->
-  <section>
+  <section id="sec-06">
     <h2><span class="num">06</span> Observabilité, alerting et dashboard portfolio</h2>
-    <p class="section-intro">Trois plans d'observabilité co-existent : la <strong>télémétrie applicative</strong> par Container App (Application Insights), l'<strong>agrégation cross-app</strong> sur Elastic Cloud, et le <strong>dashboard portfolio DSI</strong> qui agrège métriques métier et conformité dans une vue unifiée. Routage des alertes différencié par persona (Squad, Run, exploitation, sécurité).</p>
+    <p class="section-intro ch-apprend">Trois plans d'observabilité co-existent : la <strong>télémétrie applicative</strong> par Container App (Application Insights), l'<strong>agrégation cross-app</strong> sur Elastic Cloud, et le <strong>dashboard portfolio DSI</strong> qui agrège métriques métier et conformité dans une vue unifiée. Routage des alertes différencié par persona (Squad, Run, exploitation, sécurité).</p>
 
     <h3>Sources de télémétrie et leur ingestion</h3>
     <table id="tbl-07" data-filterable>
@@ -2643,6 +2808,7 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
       </tbody>
     </table>
     <p class="tf-count" data-tf-count-for="tbl-07" aria-live="polite"></p>
+    <p class="exemple-lecture">Lire une ligne : la colonne Rétention est celle qui coûte. Un signal à 90 jours sur Log Analytics et le même signal à 30 jours sur Elastic ne sont pas un doublon — c'est le même événement conservé pour deux usages distincts.</p>
 
     <h3>Dashboard portfolio DSI · architecture</h3>
     <p>Backend <strong>Azure Data Explorer (ADX)</strong> hébergé dans le RG Platform, ingérant les JSON M2 et les métriques Application Insights. Frontend HTML autonome conforme charte Digit-AI hébergé sur <strong>Static Web Apps</strong>, requêtant ADX en lecture via une API minimaliste (Function App).</p>
@@ -2720,9 +2886,9 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
   </section>
 
   <!-- ============ SECTION 07 — SÉCURITÉ TRANSVERSE ET FINOPS ============ -->
-  <section>
+  <section id="sec-07">
     <h2><span class="num">07</span> Sécurité transverse, FinOps et politiques</h2>
-    <p class="section-intro">Lecture transverse de l'architecture : modèle de menace synthétique, plans Defender par environnement, politiques de tagging FinOps, mécanismes de chargeback et stratégies d'optimisation des coûts. Conséquences architecturales des arbitrages tranchés au V2k §08.</p>
+    <p class="section-intro ch-apprend">Lecture transverse de l'architecture : modèle de menace synthétique, plans Defender par environnement, politiques de tagging FinOps, mécanismes de chargeback et stratégies d'optimisation des coûts. Conséquences architecturales des arbitrages tranchés au V2k §08.</p>
 
     <h3>Modèle de menace · synthèse</h3>
     <table>
@@ -2852,9 +3018,9 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
   </section>
 
   <!-- ============ SECTION 08 — PLAN DE MISE EN ŒUVRE ============ -->
-  <section>
+  <section id="sec-08">
     <h2><span class="num">08</span> Plan de mise en œuvre · aligné sur les 3 paliers</h2>
-    <p class="section-intro">Quels composants au quel palier. Les paliers Crawl, Walk, Run du brief V2k (§04) déterminent ce qui doit exister à chaque horizon. L'objectif est de livrer de la valeur dès le Palier 1 sans engager toute la chaîne, puis de capitaliser au fur et à mesure.</p>
+    <p class="section-intro ch-apprend">Quels composants au quel palier. Les paliers Crawl, Walk, Run du brief V2k (§04) déterminent ce qui doit exister à chaque horizon. L'objectif est de livrer de la valeur dès le Palier 1 sans engager toute la chaîne, puis de capitaliser au fur et à mesure.</p>
 
     <div class="trajectory">
       <div class="palier palier-1">
@@ -2971,6 +3137,8 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
       L'architecture cible peut être assemblée pièce par pièce sans rupture entre paliers. Aucune composante du Palier 1 n'est jetable au Palier 2 ni au Palier 3. La trajectoire 3-mois / 9-mois / 18-mois protège l'investissement et permet d'apporter de la valeur dès les premiers POCs traités tout en construisant progressivement la chaîne 0-touch cible.
     </div>
   </section>
+    </div>
+  </div>
 
   <!-- ============ FOOTER ============ -->
   <footer class="footer">
@@ -3088,49 +3256,152 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
 })();
 </script>
 
-<!-- Filtres de colonne : asset du socle digit-ai-page-html, inliné pour
-     garder la page autonome (aucune requête réseau). -->
-<script>
+<!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="table-filters.js" data-empreinte="sha256:891c28fe08c731c5f9ce16fc5ea5fa82f1fa283845833fa2bbdc70d58e71e184">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
-   Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G6).
+   Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
-   du livrable doit reafficher tr[data-tf-hidden]. */
+   du livrable doit reafficher tr[data-tf-hidden].
+   Lot Produit-05 20260820b (TF-0429/0430/0431, 21/08) : rappel apresFiltrage et instance
+   enveloppable, etat vide avec « tout reafficher », panneau qui choisit son cote et
+   neutralise le rognage de son conteneur defilant tant qu'il est ouvert.
+
+   Lot Produit-02 20260902b/d (TF-0768/0769/0781/0782, 02/09) — L'ORDRE ET L'EXISTENCE.
+   Quatre defauts d'une meme famille : le composant lisait le TEXTE RENDU la ou il fallait lire
+   une VALEUR, et decidait de l'existence d'une facette la ou il ne devait decider que de sa
+   forme. Une console de donnees livree a du rearmer son propre tri et relire ses cases dans le
+   DOM pour compenser :
+     · TF-0768 — `parseFloat` sur « 1 000 » vaut 1 : les separateurs de milliers fr-FR (espace,
+       insecable, insecable etroite) arretent l'analyse au premier caractere non chiffre, et
+       TOUTE page en francais triait faux, en silence. Le tri et l'ordre des facettes lisent
+       desormais `data-v` / `data-sort` quand la cellule en porte, sinon le nombre se lit APRES
+       retrait des espaces et des signes.
+     · TF-0781 — `Object.keys(valeurs).sort()` rangeait les mois par ordre alphabetique
+       (« aout 2025, avr. 2026, dec. 2025 »). Une facette s'ordonne sur sa CLE, donc
+       chronologiquement des que la cellule porte un `data-v` ISO.
+     · TF-0782 — l'heuristique `1 < n < lignes` privait de facette la colonne CLE (huit marches
+       distincts sur huit lignes : aucun filtre la ou le lecteur en attendait un). La
+       cardinalite decide desormais de la FORME du panneau, jamais de son EXISTENCE ; la seule
+       sortie est une exemption DECLAREE (`data-filter-col="off"` + `data-filter-reason`).
+     · TF-0769 — `data-tf-ready` bloquait tout second `init` en rendant `null`, et la selection
+       vivait dans une fermeture inaccessible : une page qui re-rend ses tableaux perdait ses
+       filtres et devait les relire dans le DOM. L'etat est desormais LISIBLE et REJOUABLE —
+       `api.etat()`, `init(table, { etat })`, `api.rafraichir()`. */
 (function (root) {
   'use strict';
 
   var SEUIL_LIGNES = 8;
+  /* Au-dela de ce nombre de valeurs distinctes, la liste de cases n'est plus parcourable a
+     l'oeil : le panneau s'ouvre SUR SA RECHERCHE et le dit. C'est la FORME qui change — la
+     facette, elle, existe toujours (TF-0782). */
+  var SEUIL_RECHERCHE = 15;
+  var LIBELLE_VIDE = 'Aucune ligne ne correspond aux filtres.';
+  var LIBELLE_TOUT = 'Tout réafficher';
+
+  /* Les espaces qui separent les milliers en fr-FR : espace, insecable (U+00A0), insecable
+     etroite (U+202F), fine (U+2009), figure (U+2007). parseFloat s'arrete au premier. */
+  var RE_ESPACES = /\s/g;   /* \s couvre l'insecable U+00A0 et l'insecable etroite U+202F */
+  var RE_SIGNES = /[%€$£]/g;
+  var RE_NOMBRE = /^[+-]?\d+(?:[.,]\d+)?$/;
 
   function norm(s) {
     return String(s == null ? '' : s)
       .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   }
 
-  function corps(table) {
-    var tb = table.tBodies && table.tBodies[0];
-    return tb ? Array.prototype.slice.call(tb.rows) : [];
+  /* TF-0768 : un nombre affiche a un habillage (milliers, unite, pourcentage). On le retire
+     AVANT l'analyse, et on n'accepte que ce qui est ENTIEREMENT numerique — « 12 mars » n'est
+     pas 12, et le laisser passer trierait une colonne de dates comme une colonne de nombres. */
+  function nombre(v) {
+    var s = String(v == null ? '' : v).replace(RE_ESPACES, '').replace(RE_SIGNES, '');
+    if (s.indexOf(',') !== -1 && s.indexOf('.') === -1) s = s.replace(',', '.');
+    return RE_NOMBRE.test(s) ? parseFloat(s) : NaN;
   }
 
+  function corps(table) {
+    var tb = table.tBodies && table.tBodies[0];
+    /* TF-0175 : une ligne [data-detail] est le DÉPLIANT pleine largeur de la ligne qui la
+       précède — elle ne porte pas de données de colonnes et ne compte ni ne se filtre.
+       TF-0430 : la ligne d'état vide [data-tf-empty] est un message du composant, pas une donnée. */
+    return tb ? Array.prototype.slice.call(tb.rows).filter(function (tr) {
+      return !tr.hasAttribute('data-detail') && !tr.hasAttribute('data-tf-empty');
+    }) : [];
+  }
+
+  /* Le LIBELLE d'une cellule : ce que le lecteur voit, et ce qu'il coche. */
   function valeur(tr, i) {
     var td = tr.cells[i];
     return td ? td.textContent.trim() : '';
   }
 
-  /* Une colonne est categorielle si ses valeurs se repetent : cardinalite < nb lignes.
-     Un th peut forcer (data-filter-col) ou exclure (data-filter-col="off"). */
-  function colonnesFiltrables(table, lignes) {
+  /* La CLE D'ORDRE d'une cellule (TF-0768/0781) : `data-v`, sinon `data-sort`, sinon le texte
+     rendu. C'est la seule facon de dire « aout 2025 se range avant avr. 2026 » — un libelle de
+     mois n'a aucun ordre lisible, et une valeur formatee n'a pas d'ordre numerique. */
+  function cle(tr, i) {
+    var td = tr.cells[i];
+    if (!td) return '';
+    var d = td.getAttribute('data-v');
+    if (d === null) d = td.getAttribute('data-sort');
+    return d === null ? td.textContent.trim() : String(d).trim();
+  }
+
+  /* Comparateur unique du composant — tri de lignes ET ordre des valeurs de facette.
+     Deux nombres se comparent en nombres ; une date ISO (`2025-08`, `2025-08-14`) se compare en
+     texte, ce qui EST son ordre chronologique ; le vide passe en fin de liste. */
+  function comparer(a, b) {
+    var na = nombre(a), nb = nombre(b);
+    if (!isNaN(na) && !isNaN(nb)) return na < nb ? -1 : (na > nb ? 1 : 0);
+    if (a === '') return b === '' ? 0 : 1;
+    if (b === '') return -1;
+    var xa = norm(a), xb = norm(b);
+    return xa < xb ? -1 : (xa > xb ? 1 : 0);
+  }
+
+  function nbColonnes(table) {
     var ths = table.tHead ? Array.prototype.slice.call(table.tHead.rows[0].cells) : [];
-    var out = [];
+    var n = 0;
+    ths.forEach(function (th) { n += th.colSpan || 1; });
+    if (!n) { var l = corps(table)[0]; n = l ? l.cells.length : 1; }
+    return n;
+  }
+
+  /* TF-0782 — CHAQUE en-tete recoit sa facette. L'heuristique de cardinalite ne decide plus que
+     de la FORME du panneau (`liste`, `recherche` quand les valeurs sont trop nombreuses pour
+     etre parcourues, `unique` quand la colonne n'en porte qu'une). La seule sortie est une
+     exemption DECLAREE sur le `<th>` : `data-filter-col="off"` + `data-filter-reason="…"`.
+     Sans motif, l'exemption est rendue au journal (`api.exemptions`) et l'oracle la refuse. */
+  function colonnes(table, lignes) {
+    var ths = table.tHead ? Array.prototype.slice.call(table.tHead.rows[0].cells) : [];
+    var cols = [], exemptions = [];
     ths.forEach(function (th, i) {
-      var forcee = th.getAttribute('data-filter-col');
-      if (forcee === 'off') return;
-      var distinctes = {}, n = 0;
+      /* L'INTITULE SE FIGE AU PREMIER PASSAGE (TF-0769). Apres `init`, le `<th>` contient le
+         declencheur ET le panneau : son `textContent` vaut alors « Statut›TousAucun livre en
+         cours… ». Relire l'intitule apres coup donnait une AUTRE cle de colonne, et la
+         selection conservee se retrouvait rangee sous un nom que plus personne ne demandait —
+         le rafraichissement perdait les filtres qu'il devait sauver. `data-col` rend
+         l'identite de la colonne stable, et lisible par un oracle. */
+      var libelle = (th.getAttribute('data-col') || th.textContent || '').trim();
+      if (!th.hasAttribute('data-col')) th.setAttribute('data-col', libelle);
+      if (th.getAttribute('data-filter-col') === 'off') {
+        exemptions.push({ colonne: libelle, index: i,
+                          motif: (th.getAttribute('data-filter-reason') || '').trim() });
+        return;
+      }
+      var ordres = {}, n = 0;
       lignes.forEach(function (tr) {
         var v = valeur(tr, i);
-        if (!(v in distinctes)) { distinctes[v] = 1; n++; }
+        if (!(v in ordres)) { ordres[v] = cle(tr, i); n++; }
       });
-      if (forcee !== null || (n > 1 && n < lignes.length)) out.push({ th: th, index: i, valeurs: Object.keys(distinctes).sort() });
+      var valeurs = Object.keys(ordres).sort(function (x, y) {
+        return comparer(ordres[x], ordres[y]);
+      });
+      var forme = n <= 1 ? 'unique' : (n > SEUIL_RECHERCHE ? 'recherche' : 'liste');
+      cols.push({ th: th, index: i, libelle: libelle, valeurs: valeurs,
+                  ordres: ordres, forme: forme });
     });
-    return out;
+    return { cols: cols, exemptions: exemptions };
   }
 
   function bouton(col, id) {
@@ -3139,8 +3410,8 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     b.className = 'tf-btn';
     b.setAttribute('aria-expanded', 'false');
     b.setAttribute('aria-controls', id);
-    b.setAttribute('aria-label', 'Filtrer ' + col.th.textContent.trim());
-    b.textContent = '▾';
+    b.setAttribute('aria-label', 'Filtrer ' + col.libelle);
+    b.textContent = '›';               /* chevron simple (TF-0435) : present dans toute pile de repli */
     return b;
   }
 
@@ -3150,7 +3421,10 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     p.id = id;
     p.hidden = true;
     p.setAttribute('role', 'group');
-    p.setAttribute('aria-label', 'Filtrer ' + col.th.textContent.trim());
+    p.setAttribute('aria-label', 'Filtrer ' + col.libelle);
+    /* La forme est LISIBLE dans le marquage : un oracle de rendu et un test d'interactions
+       peuvent dire laquelle a ete choisie, et pourquoi (TF-0782). */
+    p.setAttribute('data-tf-forme', col.forme);
 
     var rech = document.createElement('input');
     rech.type = 'search';
@@ -3181,30 +3455,169 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
     });
 
     p.appendChild(rech); p.appendChild(actions); p.appendChild(opts);
+    /* Une forme qui change sans le dire est une affordance muette (loi n° 3) : le panneau
+       ANNONCE pourquoi il s'ouvre sur sa recherche, ou pourquoi il n'offre qu'une valeur. */
+    if (col.forme !== 'liste') {
+      var note = document.createElement('p');
+      note.className = 'tf-forme-note';
+      note.textContent = col.forme === 'recherche'
+        ? col.valeurs.length + ' valeurs distinctes — chercher puis « Tous ».'
+        : 'Une seule valeur dans cette colonne.';
+      p.insertBefore(note, opts);
+    }
     return { panneau: p, recherche: rech, tous: tous, aucun: aucun, options: opts };
   }
 
-  function init(table) {
-    if (!table || table.getAttribute('data-tf-ready') === '1') return null;
+  /* TF-0431 : le conteneur defilant le plus proche (overflow-x auto|scroll) rogne un panneau
+     absolu et gagne un ascenseur horizontal des qu'il s'ouvre. Tant qu'un panneau est ouvert,
+     son rognage est neutralise ; a la fermeture, l'etat inline d'origine est retabli. */
+  function conteneurDefilant(el) {
+    var p = el.parentElement;
+    while (p && p !== document.body) {
+      var o = getComputedStyle(p).overflowX;
+      if (o === 'auto' || o === 'scroll') return p;
+      p = p.parentElement;
+    }
+    return null;
+  }
+
+  /* RA-5 (14/08, revu TF-0768/0782 le 02/09) : le tri est ARME PAR DEFAUT — la règle L4 exige
+     « filtre, tri et recherche », et une page qui arme le sien le declare (`{ tri: false }` ou
+     `data-tf-tri="off"` sur la table). La cle de tri est celle de `cle()` : `data-v`/`data-sort`
+     d'abord, sinon le texte, lu comme un nombre APRES retrait des espaces de milliers. Les clics
+     sur .tf-btn/.tf-panel sont ignores, les lignes [data-detail] voyagent avec leur ligne mere.
+     Rend une fonction de DESARMEMENT : sans elle, un second init empilerait ses ecouteurs. */
+  function armerTri(table) {
+    var ths = table.tHead ? Array.prototype.slice.call(table.tHead.rows[0].cells) : [];
+    corps(table).forEach(function (tr) {
+      var d = tr.nextElementSibling;
+      tr.__tfDetail = (d && d.hasAttribute('data-detail')) ? d : null;
+    });
+    var poses = [];
+    ths.forEach(function (th, i) {
+      if (th.getAttribute('data-sort-col') === 'off') return;
+      if (!th.style.cursor) th.style.cursor = 'pointer';
+      var handler = function (ev) {
+        if (ev.target.closest && ev.target.closest('.tf-btn, .tf-panel')) return;
+        var sens = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
+        ths.forEach(function (t) {
+          t.removeAttribute('aria-sort');
+          var m = t.querySelector('.tf-tri'); if (m) m.remove();
+        });
+        th.setAttribute('aria-sort', sens === 1 ? 'ascending' : 'descending');
+        var marque = document.createElement('span');
+        marque.className = 'tf-tri';
+        marque.textContent = sens === 1 ? ' ↑' : ' ↓';
+        th.appendChild(marque);
+        var tb = table.tBodies[0];
+        var tris = corps(table).slice();
+        tris.forEach(function (tr) {
+          var d = tr.nextElementSibling;
+          tr.__tfDetail = (d && d.hasAttribute('data-detail')) ? d : tr.__tfDetail;
+        });
+        tris.sort(function (a, b) { return comparer(cle(a, i), cle(b, i)) * sens; });
+        tris.forEach(function (tr) {
+          tb.appendChild(tr);
+          if (tr.__tfDetail) tb.appendChild(tr.__tfDetail);
+        });
+      };
+      th.addEventListener('click', handler);
+      poses.push({ th: th, handler: handler });
+    });
+    return function desarmer() {
+      poses.forEach(function (p) {
+        p.th.removeEventListener('click', p.handler);
+        var m = p.th.querySelector('.tf-tri'); if (m) m.remove();
+        p.th.removeAttribute('aria-sort');
+      });
+    };
+  }
+
+  /* init(table, opts) — opts.tri (bool, defaut VRAI) · opts.etat (etat rendu par api.etat())
+     · opts.reinit (bool) · opts.apresFiltrage(table, visibles, total) : rappel appele a la fin
+     de CHAQUE filtrage, y compris ceux declenches par les cases, Tous/Aucun et la recherche
+     (TF-0429 : avant, seul l'appel manuel a instance.appliquer etait observable, envelopper
+     l'instance etait silencieusement sans effet). Les gestionnaires internes passent par
+     api.appliquer : remplacer instance.appliquer est desormais honore.
+
+     TF-0769 — un second appel n'est plus un NON-EVENEMENT : sans `etat` ni `reinit`, il rend
+     l'instance deja construite (l'appelant peut donc la piloter sans l'avoir gardee) ; avec, il
+     detruit l'ancienne et reconstruit. */
+  function init(table, opts) {
+    opts = opts || {};
+    if (!table) return null;
     if (table.getAttribute('data-filterable') === 'off') return null;
+    if (table.getAttribute('data-tf-ready') === '1') {
+      var deja = table.__tfApi || null;
+      if (!opts.etat && !opts.reinit) return deja;
+      if (deja && deja.detruire) deja.detruire();
+    }
 
     var lignes = corps(table);
-    var cols = colonnesFiltrables(table, lignes);
+    var scan = colonnes(table, lignes);
+    var cols = scan.cols;
     if (!cols.length) return null;
 
     var id = table.id || ('tf-' + Math.random().toString(36).slice(2, 8));
     table.id = id;
     var compteur = document.querySelector('[data-tf-count-for="' + id + '"]');
     var etats = [];
+    var api = {};
+    var defilant = conteneurDefilant(table);
+    var overflowOrigine = null;
+    /* La selection vit HORS des fermetures de colonne (TF-0769) : elle survit a un
+       rafraichissement, se lit par api.etat() et se rejoue par init(table, { etat }). */
+    var selections = {};
+    var desarmerTri = null;
+    var surDocument = function (ev) { if (!table.contains(ev.target)) fermerTout(); };
+
+    /* TF-0430 : etat vide — une ligne de message pleine largeur et la seule action utile a ce
+       moment, « tout reafficher ». Libelle surchargeable par data-tf-vide sur la table. */
+    function ligneVide() {
+      var tb = table.tBodies[0];
+      var tr = tb.querySelector('tr[data-tf-empty]');
+      if (tr) return tr;
+      tr = document.createElement('tr');
+      tr.setAttribute('data-tf-empty', '');
+      tr.className = 'tf-vide';
+      var td = document.createElement('td');
+      td.colSpan = nbColonnes(table);
+      var msg = document.createElement('span');
+      msg.className = 'tf-vide-msg';
+      msg.textContent = table.getAttribute('data-tf-vide') || LIBELLE_VIDE;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tf-reset';
+      b.textContent = LIBELLE_TOUT;
+      b.addEventListener('click', function () { toutReafficher(); });
+      td.appendChild(msg); td.appendChild(document.createTextNode(' ')); td.appendChild(b);
+      tr.appendChild(td);
+      tb.appendChild(tr);
+      return tr;
+    }
+
+    function toutReafficher() {
+      etats.forEach(function (e) {
+        Object.keys(e.selection).forEach(function (k) { e.selection[k] = true; });
+        var p = document.getElementById(e.bouton.getAttribute('aria-controls'));
+        if (p) Array.prototype.forEach.call(p.querySelectorAll('.tf-opt'), function (cb) { cb.checked = true; });
+      });
+      api.appliquer();
+    }
 
     function appliquer() {
       var visibles = 0;
       lignes.forEach(function (tr) {
         var ok = etats.every(function (e) {
-          return e.selection[valeur(tr, e.col.index)] === true;
+          return e.selection[valeur(tr, e.col.index)] !== false;
         });
         if (ok) { tr.removeAttribute('data-tf-hidden'); tr.style.display = ''; visibles++; }
-        else { tr.setAttribute('data-tf-hidden', ''); tr.style.display = 'none'; }
+        else {
+          tr.setAttribute('data-tf-hidden', ''); tr.style.display = 'none';
+          /* la ligne de détail suit le sort de sa ligne mère : masquée ET repliée */
+          var det = tr.nextElementSibling;
+          if (det && det.hasAttribute('data-detail')) { det.hidden = true; }
+        }
       });
       etats.forEach(function (e) {
         var actif = Object.keys(e.selection).some(function (k) { return !e.selection[k]; });
@@ -3215,92 +3628,212 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
           ' sur ' + lignes.length;
         compteur.classList.toggle('zero', visibles === 0);
       }
+      var vide = table.tBodies[0].querySelector('tr[data-tf-empty]');
+      if (visibles === 0 && lignes.length) { ligneVide().hidden = false; }
+      else if (vide) { vide.hidden = true; }
+      if (typeof opts.apresFiltrage === 'function') opts.apresFiltrage(table, visibles, lignes.length);
     }
 
-    cols.forEach(function (col, k) {
-      var pid = id + '-tf-' + k;
-      var b = bouton(col, pid);
-      var ui = panneau(col, pid);
-      var selection = {};
-      col.valeurs.forEach(function (v) { selection[v] = true; });
-      var etat = { col: col, bouton: b, selection: selection };
-      etats.push(etat);
-
-      col.th.style.position = col.th.style.position || 'relative';
-      col.th.appendChild(b);
-      col.th.appendChild(ui.panneau);
-
-      b.addEventListener('click', function () {
-        var ouvert = b.getAttribute('aria-expanded') === 'true';
-        fermerTout();
-        if (!ouvert) { b.setAttribute('aria-expanded', 'true'); ui.panneau.hidden = false; ui.recherche.focus(); }
-      });
-
-      ui.recherche.addEventListener('input', function () {
-        var q = norm(ui.recherche.value);
-        Array.prototype.forEach.call(ui.options.children, function (lab) {
-          lab.hidden = q !== '' && norm(lab.textContent).indexOf(q) === -1;
-        });
-      });
-
-      /* Tous / Aucun portent sur les valeurs actuellement visibles dans la liste. */
-      function masse(valeurCible) {
-        Array.prototype.forEach.call(ui.options.children, function (lab) {
-          if (lab.hidden) return;
-          var cb = lab.querySelector('.tf-opt');
-          cb.checked = valeurCible;
-          selection[cb.value] = valeurCible;
-        });
-        appliquer();
+    function placer(b, p) {
+      /* TF-0431 : cote d'ouverture selon la place mesuree — a droite du bouton par defaut,
+         aligne sur le bord droit quand le panneau sortirait de la fenetre ou du conteneur. */
+      p.classList.remove('tf-droite');
+      var limite = defilant ? defilant.getBoundingClientRect().right : (window.innerWidth || document.documentElement.clientWidth);
+      var r = b.getBoundingClientRect();
+      var largeur = p.offsetWidth || 240;
+      if (r.left + largeur > limite - 8) p.classList.add('tf-droite');
+      if (defilant && overflowOrigine === null) {
+        overflowOrigine = defilant.style.overflow || '';
+        defilant.setAttribute('data-tf-ouvert', '');
+        defilant.style.overflow = 'visible';
       }
-      ui.tous.addEventListener('click', function () { masse(true); });
-      ui.aucun.addEventListener('click', function () { masse(false); });
+    }
 
-      ui.options.addEventListener('change', function (ev) {
-        var cb = ev.target;
-        if (!cb.classList.contains('tf-opt')) return;
-        selection[cb.value] = cb.checked;
-        appliquer();
+    function retirerUI() {
+      etats.forEach(function (e) {
+        if (e.bouton && e.bouton.parentNode) e.bouton.parentNode.removeChild(e.bouton);
+        var p = document.getElementById(e.bouton.getAttribute('aria-controls'));
+        if (p && p.parentNode) p.parentNode.removeChild(p);
       });
+      etats.length = 0;
+    }
 
-      ui.panneau.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Escape') { fermerTout(); b.focus(); }
+    function construireColonnes() {
+      cols.forEach(function (col, k) {
+        var pid = id + '-tf-' + k;
+        var b = bouton(col, pid);
+        var ui = panneau(col, pid);
+        var selection = selections[col.libelle] || (selections[col.libelle] = {});
+        /* une valeur neuve entre COCHEE (aucun filtre implicite) ; une valeur disparue du
+           tableau sort de la selection, sinon elle masquerait des lignes sans etre visible. */
+        col.valeurs.forEach(function (v) { if (!(v in selection)) selection[v] = true; });
+        Object.keys(selection).forEach(function (v) {
+          if (col.valeurs.indexOf(v) === -1) delete selection[v];
+        });
+        var etat = { col: col, bouton: b, selection: selection };
+        etats.push(etat);
+
+        col.th.style.position = col.th.style.position || 'relative';
+        col.th.appendChild(b);
+        col.th.appendChild(ui.panneau);
+        Array.prototype.forEach.call(ui.options.querySelectorAll('.tf-opt'), function (cb) {
+          cb.checked = selection[cb.value] !== false;
+        });
+
+        b.addEventListener('click', function () {
+          var ouvert = b.getAttribute('aria-expanded') === 'true';
+          fermerTout();
+          if (!ouvert) {
+            b.setAttribute('aria-expanded', 'true'); ui.panneau.hidden = false;
+            placer(b, ui.panneau);
+            ui.recherche.focus();
+          }
+        });
+
+        ui.recherche.addEventListener('input', function () {
+          var q = norm(ui.recherche.value);
+          Array.prototype.forEach.call(ui.options.children, function (lab) {
+            lab.hidden = q !== '' && norm(lab.textContent).indexOf(q) === -1;
+          });
+        });
+
+        /* Tous / Aucun portent sur les valeurs actuellement visibles dans la liste. */
+        function masse(valeurCible) {
+          Array.prototype.forEach.call(ui.options.children, function (lab) {
+            if (lab.hidden) return;
+            var cb = lab.querySelector('.tf-opt');
+            cb.checked = valeurCible;
+            selection[cb.value] = valeurCible;
+          });
+          api.appliquer();
+        }
+        ui.tous.addEventListener('click', function () { masse(true); });
+        ui.aucun.addEventListener('click', function () { masse(false); });
+
+        ui.options.addEventListener('change', function (ev) {
+          var cb = ev.target;
+          if (!cb.classList.contains('tf-opt')) return;
+          selection[cb.value] = cb.checked;
+          api.appliquer();
+        });
+
+        ui.panneau.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Escape') { fermerTout(); b.focus(); }
+        });
       });
-    });
+    }
 
     function fermerTout() {
       etats.forEach(function (e) {
         e.bouton.setAttribute('aria-expanded', 'false');
         var p = document.getElementById(e.bouton.getAttribute('aria-controls'));
-        if (p) p.hidden = true;
+        if (p) { p.hidden = true; p.classList.remove('tf-droite'); }
       });
+      if (defilant && overflowOrigine !== null) {
+        defilant.style.overflow = overflowOrigine;
+        defilant.removeAttribute('data-tf-ouvert');
+        overflowOrigine = null;
+      }
     }
 
-    document.addEventListener('click', function (ev) {
-      if (!table.contains(ev.target)) fermerTout();
-    });
+    if (opts.tri !== false && table.getAttribute('data-tf-tri') !== 'off') {
+      desarmerTri = armerTri(table);
+    }
+    construireColonnes();
+    document.addEventListener('click', surDocument);
 
     table.setAttribute('data-tf-ready', '1');
-    appliquer();
-    return { appliquer: appliquer, fermerTout: fermerTout };
+    table.__tfApi = api;
+    api.table = table;
+    api.appliquer = appliquer;
+    api.fermerTout = fermerTout;
+    api.toutReafficher = toutReafficher;
+    api.exemptions = scan.exemptions;
+
+    /* TF-0769 — L'ETAT SE LIT ET SE REJOUE. Il est nomme par LIBELLE de colonne, pas par
+       index : une colonne peut se deplacer entre deux rendus, son intitule reste le meme.
+       Ne sont listees que les valeurs EXCLUES — un etat vide veut dire « aucun filtre », ce
+       qui reste vrai si le tableau gagne des valeurs entre deux rendus. */
+    api.etat = function () {
+      var out = { version: 1, colonnes: {} };
+      etats.forEach(function (e) {
+        var exclues = Object.keys(e.selection).filter(function (v) { return e.selection[v] === false; });
+        if (exclues.length) out.colonnes[e.col.libelle] = { exclues: exclues };
+      });
+      return out;
+    };
+
+    api.restaurer = function (etat) {
+      if (!etat || !etat.colonnes) return api;
+      etats.forEach(function (e) {
+        var voulu = etat.colonnes[e.col.libelle];
+        var exclues = (voulu && voulu.exclues) || [];
+        Object.keys(e.selection).forEach(function (v) {
+          e.selection[v] = exclues.indexOf(v) === -1;
+        });
+        var p = document.getElementById(e.bouton.getAttribute('aria-controls'));
+        if (p) Array.prototype.forEach.call(p.querySelectorAll('.tf-opt'), function (cb) {
+          cb.checked = e.selection[cb.value] !== false;
+        });
+      });
+      api.appliquer();
+      return api;
+    };
+
+    /* La page a re-rendu son tableau : on relit ses lignes et ses valeurs, on retire les
+       panneaux devenus faux et on reconstruit SUR LA SELECTION CONSERVEE. Sans cette
+       fonction, la seule voie etait de relire les cases dans le DOM et de les rejouer par
+       des evenements `change` — ce qu'une console livree a effectivement du ecrire. */
+    api.rafraichir = function () {
+      /* Les panneaux partent AVANT le re-balayage : sans cela, le scan relirait ses propres
+         injections comme du contenu de colonne. */
+      retirerUI();
+      lignes = corps(table);
+      var neuf = colonnes(table, lignes);
+      cols = neuf.cols;
+      api.exemptions = neuf.exemptions;
+      construireColonnes();
+      api.appliquer();
+      return api;
+    };
+
+    api.detruire = function () {
+      retirerUI();
+      document.removeEventListener('click', surDocument);
+      if (desarmerTri) { desarmerTri(); desarmerTri = null; }
+      var vide = table.tBodies[0] && table.tBodies[0].querySelector('tr[data-tf-empty]');
+      if (vide && vide.parentNode) vide.parentNode.removeChild(vide);
+      lignes.forEach(function (tr) { tr.removeAttribute('data-tf-hidden'); tr.style.display = ''; });
+      table.removeAttribute('data-tf-ready');
+      try { delete table.__tfApi; } catch (e) { table.__tfApi = null; }
+    };
+
+    if (opts.etat) api.restaurer(opts.etat);
+    else api.appliquer();
+    return api;
   }
 
-  function initAll(racine) {
+  function initAll(racine, opts) {
     var scope = racine || document;
     return Array.prototype.map.call(
       scope.querySelectorAll('table[data-filterable]'),
-      function (t) { return init(t); }
+      function (t) { return init(t, opts); }
     );
   }
 
-  root.DigitAITableFilters = { init: init, initAll: initAll, SEUIL_LIGNES: SEUIL_LIGNES };
+  root.DigitAITableFilters = { init: init, initAll: initAll, SEUIL_LIGNES: SEUIL_LIGNES,
+                               SEUIL_RECHERCHE: SEUIL_RECHERCHE, nombre: nombre,
+                               comparer: comparer };
 })(typeof window !== 'undefined' ? window : this);
 </script>
+<!-- COMPOSANT-EMBARQUE:FIN table-filters.js -->
 <script>DigitAITableFilters.initAll(document);</script>
 
 
-<!-- find-in-page.js du socle, INLINÉ : cette page est autonome (A1), elle ne charge rien. -->
-<script>
+<!-- COMPOSANT-EMBARQUE:DEBUT find-in-page.js — copie du socle digit-ai-page-html/assets/find-in-page.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="find-in-page.js" data-empreinte="sha256:0edcd61228b3cb2a71ee02c2d82c87084436f9532be938a4dc2551a05d7c46a8">
 /* find-in-page.js — Recherche dans un conteneur + compteur d'occurrences · socle Digit-AI
  *
  * Surligne les correspondances (<mark class="find-hit">) dans un conteneur et affiche
@@ -3414,8 +3947,8 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
 
   global.DigitAIFindInPage = { init: init, buildRegex: buildRegex, highlight: highlight };
 })(window);
-
 </script>
+<!-- COMPOSANT-EMBARQUE:FIN find-in-page.js -->
 <script>
   (function () {
     var champ = document.getElementById('find');

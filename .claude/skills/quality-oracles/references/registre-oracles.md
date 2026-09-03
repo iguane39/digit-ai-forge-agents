@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.15.0, alignée sur le JSON le 02/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.16.0, alignée sur le JSON le 03/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -58,6 +58,37 @@
 | Dossier CAB (DOCX, template Client-A) | `scripts/oracle-dossier-cab.mjs <dossier.docx> [--depot AAAA-MM-JJ] [--couleur-titres RRGGBB]` — C1 sections du template, C2 tableau d'en-tête renseigné, C3 zéro placeholder, C4 sections non vides, C5 date du nom == date prévue, C6 règle Easyvista J+5, C7 numérotation Word (numId non partagé), C8 marqueurs [À COMPLÉTER] recensés, C9 couleur de titres de la charte | cli | ✅ |
 | Nom de client dans un dépôt publiable | `scripts/oracle-nom-client-publie.mjs <dépôt|bundle> [--referentiel=<chemin HORS dépôt>]` — C1 contenus des fichiers suivis, C2 noms des fichiers suivis, C3 messages de commit de tout l'historique, C4 noms et contenus dans tout l'historique (fichiers retirés de l'arbre compris). Le référentiel des noms interdits est une **donnée vivant hors des dépôts publiés** — sans lui l'oracle rend SKIP, jamais PASS | cli | ✅ |
 | ↳ *câblage* du contrôle ci-dessus | `scripts/installer-hamecon-publication.mjs <dépôt…> [--retirer] [--verifier]` — pose un `pre-push` qui REFUSE la publication sur FAIL **et sur SKIP** (un oracle qui ne mesure pas ne laisse pas passer) ; contournement explicite par `git push --no-verify`. Prouvé par `scripts/self-test-hamecon-publication.mjs` : 4 cas sur de vrais dépôts et de vrais push (porteur refusé, propre accepté, contournement effectif, référentiel absent refusé) | cli | ✅ |
+## Injection du 03/09/2026 — une COPIE d'un composant ne reçoit aucun correctif (TF-0784)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Parité d'une copie embarquée d'un asset du socle | `scripts/oracle-parite-assets.mjs [<dossier|page.html>] [--socle=<dossier d'assets>]` — **P1** toute copie d'un asset du socle trouvée dans une page se **déclare** (`data-composant`) ou porte une **exemption écrite** · **P2** la déclaration scelle l'**empreinte** de la source (`data-empreinte="sha256:…"`) et cette empreinte est celle du **jour** · **P3** le texte embarqué est celui de la source **octet pour octet**, au seul échappement `</script` près (RA-1) · **P4** une exemption porte une **date** et un **motif** | cli | ✅ |
+
+> **Sept correctifs, et une copie qui n'en a reçu aucun.** `digit-ai-schemas/assets/exemple-reference.html`
+> embarquait une copie **manuelle** de `digit-ai-page-html/assets/table-filters.js`, collée un jour
+> où elle était juste. Le composant a été corrigé sept fois (TF-0429/0430/0431 le 21/08 ;
+> TF-0768/0769/0781/0782 le 02/09) : la copie n'a pas bougé d'un octet. Elle triait encore
+> « 1 000 » comme 1, rangeait les mois par ordre alphabétique et privait de facette la colonne
+> clé — **dans le même dépôt que les correctifs, à deux dossiers de distance**. Classe TF-0761 /
+> RT-39 (*un générateur réécrit hors d'atteinte des corrections*), transposée **entre deux skills**.
+
+- **La copie n'est pas le défaut ; la copie MANUELLE l'est.** La règle A1 du socle exige une page
+  autoportante : un livrable qui charge un fichier voisin perd son composant dès qu'il part par
+  courriel. La copie est le prix de l'autoportance. Ce qui se corrige, c'est qu'elle soit posée
+  **à la construction** et **scellée** : `digit-ai-page-html/scripts/embarquer-composants.mjs`
+  (`--constat` / `--ecrire`) pose les blocs marqués, l'oracle les juge **sans rien écrire**.
+- **Une exemption reste comptée.** Une fixture dont le sujet **est** une copie figée se déclare,
+  datée et motivée ; l'oracle l'accepte et la **nomme au `non_juge`** — un PASS qui tait ses
+  exemptions ment sur ce qu'il a vu.
+- **Bruit mesuré** (03/09/2026, **178 pages `.html`** du dépôt forge-agents, fixtures comprises) :
+  **6 détections, 6 vraies, zéro faux positif**. Le détecteur reconnaît une copie à la **première
+  ligne** de sa source — un signal qu'un copier-coller conserve et qu'aucune prose ne reproduit.
+  Contrepartie **déclarée** : une copie dont on a retiré l'en-tête devient invisible, et c'est P1
+  (la déclaration) qui rend ce contournement visible à la revue.
+- **Frontière** : cet oracle ne juge **pas** le comportement de la copie chez son hôte — une copie
+  à la parité peut échouer faute des jetons CSS qu'elle consomme, et c'est `check_html.py` et
+  `render_page.py` qui le voient.
+
 ## Injection du 02/09/2026 — autorité et livrabilité (TF-0715, TF-0716, v2.14.0)
 
 | Domaine | Oracle (invocation) | Type | Statut |

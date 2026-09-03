@@ -515,6 +515,26 @@ else {
 }
 
 
+// TF-0784 (03/09/2026) — LE DÉPÔT LUI-MÊME EST L'ARTEFACT JUGÉ, et c'est le seul angle qui
+// arrête le TROISIÈME skill. Les fixtures rouge/verte prouvent la RÈGLE de parité sur un socle de
+// jeu d'essai ; elles ne diraient rien du jour où un skill de plus recopie un composant du socle
+// réel. Le fait payé : `digit-ai-schemas` embarquait une copie manuelle de `table-filters.js`,
+// corrigée sept fois sans qu'un seul correctif l'atteigne — dans CE dépôt, à deux dossiers des
+// correctifs. Ce cas-ci rejoue l'oracle sur l'arborescence réelle des skills : toute copie neuve
+// non déclarée, périmée ou retouchée fait rougir le banc, ici, à la passe suivante.
+{
+  const r = spawnSync(process.execPath,
+    [path.join(SKILLDIR, 'scripts', 'oracle-parite-assets.mjs'), SKILLSROOT],
+    { encoding: 'utf8', timeout: 180000 });
+  let j = null;
+  try { j = JSON.parse((r.stdout || '').trim()); } catch { /* rendu plus bas */ }
+  if (!j) ko('TF-0784 : oracle-parite-assets inexploitable sur l arborescence des skills');
+  else if (j.verdict === 'SKIP') ko('TF-0784 : oracle-parite-assets rend SKIP sur le dépôt — le socle digit-ai-page-html/assets est introuvable, rien n est mesuré');
+  else if (j.verdict !== 'PASS') {
+    for (const f of j.findings) ko(`TF-0784 parité d une copie du socle · ${f.regle} ${f.where} : ${f.msg.slice(0, 140)}`);
+  } else ok('TF-0784 : toutes les copies d assets du socle embarquées dans les skills sont déclarées, scellées et à la parité — ' + j.findings[0].msg.slice(0, 120));
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));
