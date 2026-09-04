@@ -19,7 +19,7 @@ Format pour représenter une topologie où la **structure spatiale** prime : hub
 
 ### Bande 1 · Zones isolées (y: 8 → 220)
 
-Pour les zones réseau qui **ne sont pas peerées au hub** (Sandbox, DEV POC). Cadre englobant en pointillé gris (`svg-frame stroke #94a3b8`).
+Pour les zones réseau qui **ne sont pas peerées au hub** (Sandbox, DEV POC). Cadre englobant en pointillé gris (`svg-frame stroke var(--c-slate-stroke)`).
 
 À l'intérieur du cadre, les RG isolés en boxes côte à côte (200px × 114px chacun). Couleurs sémantiques : gray pour Sandbox, blue pour DEV POC.
 
@@ -69,12 +69,12 @@ Ces quatre points sont sous la boxe du hub mais à des x différents, ce qui fai
 
 ```svg
 <!-- DEV MVP → Hub : couloir gauche -->
-<path d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+<path d="M192,418 L192,370 L580,370 L580,352" fill="none" style="stroke:var(--c-slate-fg)" stroke-width="1.5" marker-end="url(#arrNet)">
   <title>Peering VNet bidirectionnel RG DEV MVP ↔ hub | ...</title>
 </path>
 
 <!-- PROD → Hub : couloir centre-droit (note : le x du couloir est 378, qui est x_centre_PROD_décalé pour éviter STAGING) -->
-<path d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+<path d="M838,418 L838,378 L740,378 L740,352" fill="none" style="stroke:var(--c-slate-fg)" stroke-width="1.5" marker-end="url(#arrNet)">
   <title>Peering VNet bidirectionnel RG PROD ↔ hub | ...</title>
 </path>
 ```

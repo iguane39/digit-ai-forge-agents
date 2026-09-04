@@ -116,17 +116,23 @@
   --c-coral-bg:#fee2e2;  --c-coral-fg:#b91c1c;  --c-coral-stroke:#fca5a5;
   --c-amber-bg:#fef3c7;  --c-amber-fg:#92400e;  --c-amber-stroke:#fcd34d;
   --c-gray-bg:#f1f3f7;   --c-gray-fg:#374151;   --c-gray-stroke:#cbd2dd;
+  /* Jetons de police (oracle-tokens T2, TF-0791). */
+  --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --head: 'Roboto', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Jeton nomme par TF-0791 : voile clair sur fond sombre (infobulle). */
+  --bg-overlay: rgba(255,255,255,.14);
 }
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--ink); font-family:'DM Sans',sans-serif; font-size:16px; line-height:1.55; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family: var(--sans); font-size:16px; line-height:1.55; }
 .page { max-width: clamp(75vw, 1680px, 92vw); margin:0 auto; padding:48px 32px; } /* L2 socle */
 .eyebrow { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-muted); font-weight:700; }
-h1 { font-family:'Roboto',sans-serif; font-weight:800; font-size:42px; letter-spacing:-.02em; margin:.3em 0 .25em; }
+h1 { font-family: var(--head); font-weight:800; font-size:42px; letter-spacing:-.02em; margin:.3em 0 .25em; }
 .subtitle { font-size:18px; color:var(--ink-soft); max-width:720px; margin:0 0 20px; }
 .meta { display:flex; flex-wrap:wrap; gap:8px 28px; font-size:13px; color:var(--ink-muted); }
 .meta b { color:var(--ink-soft); }
 header.doc { border-bottom:1px solid var(--line); padding-bottom:32px; margin-bottom:48px; }
-h2 { font-family:'Roboto',sans-serif; font-weight:800; font-size:26px; margin:0 0 18px; }
+h2 { font-family: var(--head); font-weight:800; font-size:26px; margin:0 0 18px; }
 h2 .num { color:var(--accent); font-size:13px; letter-spacing:.1em; margin-right:10px; vertical-align:2px; }
 section { margin-bottom:56px; }
 
@@ -141,31 +147,31 @@ section { margin-bottom:56px; }
 
 /* --- Titres de bande : pastilles encadrées (convention Digit-AI) --- */
 .db-bandtitle { position:absolute; top:6px; display:flex; justify-content:center; }
-.db-bandtitle span { background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px 14px;
-  font-family:'Roboto',sans-serif; font-weight:700; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); white-space:nowrap; }
+.db-bandtitle span { background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:3px 14px;
+  font-family: var(--head); font-weight:700; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); white-space:nowrap; }
 
 /* --- Cartes-entités --- */
-.db-card { position:absolute; background:#fff; border:1px solid var(--line); border-radius:8px;
+.db-card { position:absolute; background:var(--bg); border:1px solid var(--line); border-radius:8px;
   box-shadow:0 1px 3px rgba(0,0,0,.06); font-size:12px; overflow:hidden; cursor:help; }
 .db-card.s-gray  { border-top:3px solid var(--c-gray-fg); }
 .db-card.s-blue  { border-top:3px solid var(--c-blue-fg); }
 .db-card.s-coral { border-top:3px solid var(--c-coral-fg); }
 .db-card.s-teal  { border-top:3px solid var(--c-teal-fg); }
 .db-card.s-dashed { border:1px dashed var(--c-gray-stroke); background:var(--bg-soft); }
-.db-card-head { font-family:'JetBrains Mono',monospace; font-weight:600; font-size:12px; padding:6px 10px;
+.db-card-head { font-family: var(--mono); font-weight:600; font-size:12px; padding:6px 10px;
   border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
-.db-role { font-family:'DM Sans',sans-serif; font-weight:400; color:var(--ink-muted); font-size:10px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:48%; flex:0 1 auto; }
+.db-role { font-family: var(--sans); font-weight:400; color:var(--ink-muted); font-size:10px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:48%; flex:0 1 auto; }
 .dbf-row { display:flex; align-items:center; gap:6px; padding:0 10px; height:19px; border-bottom:1px solid var(--line-soft); }
 .dbf-row:last-child { border-bottom:none; }
-.dbf-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace; font-size:11px; }
+.dbf-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family: var(--mono); font-size:11px; }
 .dbf-name.pii { color:var(--c-coral-fg); font-weight:700; }
-.dbf-type { color:var(--ink-muted); margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10px; white-space:nowrap; }
-.dbf-badge { font-size:9px; padding:0 4px; border-radius:3px; font-weight:700; line-height:1.6; font-family:'JetBrains Mono',monospace; }
-.b-pk { background:var(--ink); color:#fff; }
-.b-uk { background:var(--c-purple-fg); color:#fff; }
-.b-fk { background:var(--c-blue-fg); color:#fff; }
+.dbf-type { color:var(--ink-muted); margin-left:auto; font-family: var(--mono); font-size:10px; white-space:nowrap; }
+.dbf-badge { font-size:9px; padding:0 4px; border-radius:3px; font-weight:700; line-height:1.6; font-family: var(--mono); }
+.b-pk { background:var(--ink); color:var(--bg); }
+.b-uk { background:var(--c-purple-fg); color:var(--bg); }
+.b-fk { background:var(--c-blue-fg); color:var(--bg); }
 .b-nn { background:var(--line-soft); color:var(--ink-soft); }
-.db-card-rel { font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; paint-order:stroke; stroke:var(--bg-soft); stroke-width:3px; }
+.db-card-rel { font-family: var(--mono); font-size:9.5px; font-weight:600; paint-order:stroke; stroke:var(--bg-soft); stroke-width:3px; }
 
 /* --- Légende (couleur + style de trait + libellé : jamais couleur seule) --- */
 .db-legend { display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:16px; font-size:13px; color:var(--ink-soft); }
@@ -175,38 +181,38 @@ section { margin-bottom:56px; }
 
 /* --- Dictionnaire de données --- */
 .dd-list { display:flex; flex-direction:column; gap:14px; }
-.dd-card { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff; }
-.dd-card.s-gray{border-left:4px solid var(--c-gray-fg);} .dd-card.s-blue{border-left:4px solid var(--c-blue-fg);}
-.dd-card.s-coral{border-left:4px solid var(--c-coral-fg);} .dd-card.s-teal{border-left:4px solid var(--c-teal-fg);}
-.dd-card.s-dashed{border-left:4px dashed var(--c-gray-stroke);}
+.dd-card { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--bg); }
+.dd-card.s-gray{border: 1px solid var(--c-gray-fg);} .dd-card.s-blue{border: 1px solid var(--c-blue-fg);}
+.dd-card.s-coral{border: 1px solid var(--c-coral-fg);} .dd-card.s-teal{border: 1px solid var(--c-teal-fg);}
+.dd-card.s-dashed{border: 1px dashed var(--c-gray-stroke);}
 .dd-head { display:flex; align-items:baseline; gap:12px; padding:10px 14px; background:var(--bg-soft); border-bottom:1px solid var(--line-soft); flex-wrap:wrap; }
-.dd-name { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; }
+.dd-name { font-family: var(--mono); font-weight:700; font-size:14px; }
 .dd-role { color:var(--ink-muted); font-size:13px; }
 .dd-class { margin-left:auto; font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;
   background:var(--c-amber-bg); color:var(--c-amber-fg); padding:2px 9px; border-radius:999px; }
 table.dd-table { width:100%; border-collapse:collapse; font-size:13px; }
-.dd-table th { text-align:left; font-family:'Roboto',sans-serif; font-weight:700; font-size:11px; letter-spacing:.06em;
+.dd-table th { text-align:left; font-family: var(--head); font-weight:700; font-size:11px; letter-spacing:.06em;
   text-transform:uppercase; color:var(--ink-muted); padding:8px 14px; border-bottom:1px solid var(--line-soft); }
 .dd-table td { padding:6px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
-.dd-col { font-family:'JetBrains Mono',monospace; white-space:nowrap; font-weight:500; }
+.dd-col { font-family: var(--mono); white-space:nowrap; font-weight:500; }
 .dd-col.pii { color:var(--c-coral-fg); font-weight:700; }
-.dd-type { font-family:'JetBrains Mono',monospace; color:var(--ink-muted); font-size:12px; white-space:nowrap; }
+.dd-type { font-family: var(--mono); color:var(--ink-muted); font-size:12px; white-space:nowrap; }
 .dd-note { color:var(--ink-soft); }
 
 /* --- Tooltip HTML carré (standard Digit-AI : Titre | puces) --- */
-#diagTooltip { position:fixed; z-index:50; max-width:340px; background:var(--ink); color:#fff; border-radius:8px;
+#diagTooltip { position:fixed; z-index:50; max-width:340px; background:var(--ink); color:var(--bg); border-radius:8px;
   padding:10px 13px; font-size:12.5px; line-height:1.45; display:none; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25); }
-#diagTooltip .tt-title { font-family:'Roboto',sans-serif; font-weight:700; margin-bottom:4px; }
+#diagTooltip .tt-title { font-family: var(--head); font-weight:700; margin-bottom:4px; }
 #diagTooltip ul { margin:0; padding-left:16px; }
-#diagTooltip code { font-family:'JetBrains Mono',monospace; background:rgba(255,255,255,.14); padding:0 4px; border-radius:3px; font-size:11.5px; }
+#diagTooltip code { font-family: var(--mono); background:var(--bg-overlay); padding:0 4px; border-radius:3px; font-size:11.5px; }
 
 footer.doc { border-top:1px solid var(--line); padding-top:24px; margin-top:80px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--ink-muted); }
-footer.doc .brand { font-family:'Roboto',sans-serif; font-weight:700; letter-spacing:.08em; }
+footer.doc .brand { font-family: var(--head); font-weight:700; letter-spacing:.08em; }
 
 @media (max-width:720px) { .page{padding:32px 20px;} h1{font-size:30px;} h2{font-size:22px;} .subtitle{font-size:16px;} }
 @media print {
   .diagram-wrap, .dd-card { break-inside:avoid; }
-  .diagram-wrap { overflow:visible; background:#fff; }
+  .diagram-wrap { overflow:visible; background:var(--bg); }
   body { font-size:11pt; }
   #diagTooltip { display:none !important; }
 }
@@ -430,7 +436,7 @@ function renderDbLegend() {
     + `<span class="lg">${sw('--c-gray-fg')}Référentiel</span>`
     + `<span class="lg">${sw('--c-blue-fg')}Transactionnel</span>`
     + `<span class="lg">${sw('--c-coral-fg')}🔒 Contient des données personnelles</span>`
-    + `<span class="lg"><span class="sw" style="border:1px dashed var(--c-gray-stroke);background:#fff"></span>Table externe / autre schéma</span>`
+    + `<span class="lg"><span class="sw" style="border:1px dashed var(--c-gray-stroke);background:var(--bg)"></span>Table externe / autre schéma</span>`
     + `<span class="lg">${line(false,'--c-blue-fg')}FK contrainte</span>`
     + `<span class="lg">${line(true,'--c-amber-fg')}Référence logique (pas de FK)</span>`
     + `</div>`;

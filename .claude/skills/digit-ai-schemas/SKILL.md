@@ -84,6 +84,38 @@ exécution). Tout le reste reste jugé : réseau A1, thème G1, police interdite
 Un gabarit ajouté à `assets/` **échoue** tant qu'il n'est pas soit conforme, soit déclaré —
 une exemption se décide, elle ne se devine pas (R-30 §3).
 
+### Le skill émet des JETONS, jamais des couleurs ni des polices en dur (TF-0791, 04/09/2026)
+
+Mesuré le 03/09 par la critique d'implémentation de forge-design sur l'exemple de référence :
+**239 couleurs littérales** (`oracle-tokens` T1, dont 173 dans des `style=""` de textes SVG),
+**3 bandeaux latéraux** de 3 px (`oracle-slop` S1, red flag RF3), aucune règle de mouvement
+réduit (`oracle-mobile` M6) — et les cinq gabarits comme les canevas de `references/`
+prescrivaient les mêmes hexadécimaux. La cause n'était pas une page : c'était la doctrine.
+
+Ce qui vaut désormais pour tout schéma produit par ce skill, et que gabarits, exemple et canevas
+appliquent (transformation déterministe rejouée sur les douze fichiers) :
+
+- **une couleur est un jeton** : `fill`, `stroke`, `color`, `background`, `border` prennent
+  `var(--…)` ; les attributs de présentation SVG (`fill="#…"`) deviennent `style="fill:var(--…)"`.
+  Neuf jetons ont reçu un nom (`--c-purple-mid`, `--c-purple-deep`, `--c-purple-ink`,
+  `--c-slate-fg`, `--c-slate-mid`, `--c-slate-stroke`, `--c-amber-mid`, `--ink-strong`,
+  `--bg-soft-2`) : ils sont déclarés dans le `:root` de `conventions-communes.md`, des pages et de
+  l'exemple. Les fragments (topologie, flux temporel, tableau de bord) héritent du `:root` de
+  `template-multi-bandes.html` qui les accueille ;
+- **une police est un jeton** : `var(--head)`, `var(--sans)`, `var(--mono)` (`oracle-tokens` T2) ;
+- **pas de bandeau latéral** : `border-left` de 3 ou 4 px remplacé par une bordure fine complète de
+  la même couleur (`pre`, encadrés, exemples de lecture, cartes du modèle de données, KPI) — S1 est
+  un ban d'impeccable, l'identité de couleur passe par la bordure et la teinte de fond ;
+- **mouvement réduit** : bloc `prefers-reduced-motion` du socle dès qu'une transition existe.
+
+Résultat sur l'exemple : T1 239 → 2 (les deux restants vivent dans la copie embarquée de
+`table-filters.css`, composant du socle, à corriger chez lui), S1 3 → 0, M6 levé ; `check_html`,
+`render_page` (quatre largeurs), `oracle-lecture-tiers` et `oracle-parite-assets` restent PASS.
+Ce qui reste et se décide ailleurs (candidat au registre du pilot) : `S3` (« DM Sans » est une
+police réflexe pour impeccable mais LA police de corps de la charte Digit-AI), `M4` (le `thead`
+masqué par le repli en cartes est le motif prescrit par le socle), `T3` (échelle d'espacement 4 pt),
+et les défauts préexistants des gabarits (`render_page` V4/C, `check_html` sur les fragments).
+
 ### L'exemple de référence tient ses propres règles, mobile et lecture tierce comprises (TF-0789, 03/09/2026)
 
 `assets/exemple-reference.html` est jugé par **les mêmes oracles que ce qu'il enseigne**, à toutes

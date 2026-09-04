@@ -38,7 +38,7 @@ Zone libre traversée par les flèches d'action humaine (`svg-arr-manual` orange
 Le cœur du schéma. Cadre englobant en pointillé violet (`svg-frame`).
 
 Chaque pipeline est une box de **195px × 320px** avec son détail technique exhaustif :
-- Titre (M1, M2, …) en `svg-th 13px fill #4c1d95`
+- Titre (M1, M2, …) en `svg-th 13px fill var(--c-purple-deep)`
 - Identifiant pipeline (`prod-{nom}/azp-m3.yml`) en `svg-tlabel` 10px
 - Séparateur horizontal `<line>` léger
 - Attributs Azure DevOps détaillés : Trigger, Agent pool, Service Connection, Managed Identity, Branch policy, Étapes, Artefact, Aval
@@ -83,8 +83,8 @@ Format de chaque intégration :
 ```svg
 <g class="svg-c-amber">
   <title>Intégration 1 · Cosign / sigstore | ...</title>
-  <circle cx="50" cy="945" r="14" fill="#fef3c7" stroke="#92400e" stroke-width="1.5"/>
-  <text x="50" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:#92400e">1</text>
+  <circle cx="50" cy="945" r="14" style="fill:var(--c-amber-bg)" style="stroke:var(--c-amber-fg)" stroke-width="1.5"/>
+  <text x="50" y="950" text-anchor="middle" class="svg-th" style="font-size:13px;fill:var(--c-amber-fg)">1</text>
   <rect x="74" y="918" width="170" height="54" rx="8"/>
   <text x="159" y="938" text-anchor="middle" class="svg-th" style="font-size:11.5px">Cosign / sigstore</text>
   <text x="159" y="954" text-anchor="middle" class="svg-ts">Signature OIDC · WIF</text>

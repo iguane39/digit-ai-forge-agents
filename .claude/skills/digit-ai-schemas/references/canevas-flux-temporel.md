@@ -32,11 +32,11 @@ Ligne horizontale en haut du SVG (y = 50) avec un titre en `svg-tband` à gauche
 
 ### Swimlane 1 · Org Squad (x: 32 → 412)
 
-Cadre englobant en pointillé gris (`svg-frame stroke #94a3b8`). Titre en `svg-tband` placé en haut à gauche : `Org digitai-squad-innov`. Contient les étapes qui se déroulent côté Squad : tag git, pipeline M1, pipeline M2, gate DA Light.
+Cadre englobant en pointillé gris (`svg-frame stroke var(--c-slate-stroke)`). Titre en `svg-tband` placé en haut à gauche : `Org digitai-squad-innov`. Contient les étapes qui se déroulent côté Squad : tag git, pipeline M1, pipeline M2, gate DA Light.
 
 ### Swimlane 2 · Org DSI (x: 438 → 1288)
 
-Cadre englobant en pointillé violet (`svg-frame stroke #5b21b6`). Titre `Org digitai-dsi-lz`. Plus large car contient le gros du parcours : M3, M4, M5, gate DA Finale, M6, triple approbation, M7.
+Cadre englobant en pointillé violet (`svg-frame stroke var(--c-purple-fg)`). Titre `Org digitai-dsi-lz`. Plus large car contient le gros du parcours : M3, M4, M5, gate DA Finale, M6, triple approbation, M7.
 
 À l'intérieur de cette swimlane, on peut sous-grouper en colonnes :
 - Colonne centrale : les pipelines DSI (M3 à M7)
@@ -59,10 +59,10 @@ Couleurs sémantiques :
 <g class="svg-agent-mission">
   <title>Pipeline M3 · Déploiement DEV MVP | Trigger : Go DA Light cross-org | ...</title>
   <rect x="456" y="184" width="350" height="80" rx="8"/>
-  <text x="631" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:#4c1d95">Pipeline M3 · Déploiement DEV MVP</text>
-  <text x="631" y="223" text-anchor="middle" class="svg-ts" style="fill:#5b21b6">prod-{nom}/azp-m3.yml · agent dsi-linux</text>
-  <text x="631" y="240" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ image vX.Y.Z-mvp (ACR DSI, signée Cosign)</text>
-  <text x="631" y="256" text-anchor="middle" class="svg-tlabel" style="fill:#7c3aed">→ RG dmv-{appcode} déployé · baseline SLI 7j</text>
+  <text x="631" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:var(--c-purple-deep)">Pipeline M3 · Déploiement DEV MVP</text>
+  <text x="631" y="223" text-anchor="middle" class="svg-ts" style="fill:var(--c-purple-fg)">prod-{nom}/azp-m3.yml · agent dsi-linux</text>
+  <text x="631" y="240" text-anchor="middle" class="svg-tlabel" style="fill:var(--c-purple-mid)">→ image vX.Y.Z-mvp (ACR DSI, signée Cosign)</text>
+  <text x="631" y="256" text-anchor="middle" class="svg-tlabel" style="fill:var(--c-purple-mid)">→ RG dmv-{appcode} déployé · baseline SLI 7j</text>
 </g>
 ```
 

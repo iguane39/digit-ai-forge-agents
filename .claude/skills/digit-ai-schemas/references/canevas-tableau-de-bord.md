@@ -55,7 +55,7 @@ CSS associé :
   margin: 24px 0 8px;
 }
 .kpi {
-  background: #fff;
+  background: var(--bg);
   border: 1px solid var(--line);
   border-left: 3px solid var(--c-purple-fg);
   border-radius: 8px;

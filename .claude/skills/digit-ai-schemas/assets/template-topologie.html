@@ -17,19 +17,19 @@
 
     <defs>
       <marker id="arrNet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-        <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+        <path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-slate-fg)"/>
       </marker>
       <marker id="arrNetStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-        <path d="M10,0 L0,5 L10,10 z" fill="#475569"/>
+        <path d="M10,0 L0,5 L10,10 z" style="fill:var(--c-slate-fg)"/>
       </marker>
     </defs>
 
     <!-- ===== BANDE 1 · ZONES ISOLÉES (y: 8 → 220) ===== -->
-    <rect x="20" y="8" width="430" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-    <text x="32" y="24" class="svg-tband" style="fill:#475569;font-size:9.5px">1 · {{NOM_BANDE_ISOLEE}}</text>
+    <rect x="20" y="8" width="430" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
+    <text x="32" y="24" class="svg-tband" style="fill:var(--c-slate-fg);font-size:9.5px">1 · {{NOM_BANDE_ISOLEE}}</text>
 
     <!-- Cadre englobant des zones isolées -->
-    <rect x="40" y="50" width="470" height="160" rx="14" class="svg-frame" stroke="#94a3b8"/>
+    <rect x="40" y="50" width="470" height="160" rx="14" class="svg-frame" style="stroke:var(--c-slate-stroke)"/>
 
     <!-- Zone isolée 1 (gray) -->
     <g class="svg-c-gray">
@@ -52,8 +52,8 @@
     </g>
 
     <!-- ===== BANDE 2 · HUB CENTRAL (y: 240 → 360) ===== -->
-    <rect x="20" y="240" width="320" height="22" rx="6" fill="#ffffff" stroke="#5b21b6" stroke-width="0.6"/>
-    <text x="32" y="256" class="svg-tband" style="fill:#5b21b6;font-size:9.5px">2 · {{NOM_BANDE_HUB}}</text>
+    <rect x="20" y="240" width="320" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
+    <text x="32" y="256" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · {{NOM_BANDE_HUB}}</text>
 
     <!-- Hub central (purple) -->
     <g class="svg-c-purple">
@@ -80,8 +80,8 @@
     </line>
 
     <!-- ===== BANDE 3 · SPOKES PEERÉS (y: 380 → 660) ===== -->
-    <rect x="20" y="380" width="380" height="22" rx="6" fill="#ffffff" stroke="#475569" stroke-width="0.6"/>
-    <text x="32" y="396" class="svg-tband" style="fill:#475569;font-size:9.5px">3 · {{NOM_BANDE_SPOKES}}</text>
+    <rect x="20" y="380" width="380" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
+    <text x="32" y="396" class="svg-tband" style="fill:var(--c-slate-fg);font-size:9.5px">3 · {{NOM_BANDE_SPOKES}}</text>
 
     <!--
       Quatre spokes alignés, centres aux x : 192, 515, 838, 1161
@@ -97,17 +97,17 @@
       <text x="192" y="460" text-anchor="middle" class="svg-tlabel" style="font-size:10px">{{VNET_INFO_1}}</text>
 
       <!-- Subnet Container Apps -->
-      <rect x="60" y="476" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+      <rect x="60" y="476" width="265" height="42" rx="6" style="fill:var(--bg);stroke:var(--c-blue-stroke)"/>
       <text x="192" y="494" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Container Apps</text>
       <text x="192" y="509" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{SUBNET_CA_1}}</text>
 
       <!-- Subnet Private Endpoints -->
-      <rect x="60" y="528" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+      <rect x="60" y="528" width="265" height="42" rx="6" style="fill:var(--bg);stroke:var(--c-blue-stroke)"/>
       <text x="192" y="546" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Private Endpoints</text>
       <text x="192" y="561" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{SUBNET_PE_1}}</text>
 
       <!-- Subnet Management -->
-      <rect x="60" y="580" width="265" height="42" rx="6" fill="#fff" stroke="#93c5fd"/>
+      <rect x="60" y="580" width="265" height="42" rx="6" style="fill:var(--bg);stroke:var(--c-blue-stroke)"/>
       <text x="192" y="598" text-anchor="middle" class="svg-ts" style="font-size:11px">Subnet Management</text>
       <text x="192" y="613" text-anchor="middle" class="svg-tlabel" style="font-size:9.5px">{{SUBNET_MGMT_1}}</text>
 
@@ -132,25 +132,25 @@
       Spoke 4 (centre 1161) → arrivée hub à x=820
     -->
 
-    <path d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+    <path d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
       <title>Peering VNet bidirectionnel {{SPOKE_1}} ↔ hub | {{DETAIL_PEERING_1}}</title>
     </path>
-    <path d="M515,418 L515,378 L660,378 L660,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+    <path d="M515,418 L515,378 L660,378 L660,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
       <title>Peering VNet bidirectionnel {{SPOKE_2}} ↔ hub | {{DETAIL_PEERING_2}}</title>
     </path>
-    <path d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+    <path d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
       <title>Peering VNet bidirectionnel {{SPOKE_3}} ↔ hub | {{DETAIL_PEERING_3}}</title>
     </path>
-    <path d="M1161,418 L1161,370 L820,370 L820,352" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)">
+    <path d="M1161,418 L1161,370 L820,370 L820,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
       <title>Peering VNet bidirectionnel {{SPOKE_4}} ↔ hub | {{DETAIL_PEERING_4}}</title>
     </path>
 
     <!-- ===== LÉGENDE (y: 680) ===== -->
     <g transform="translate(40, 690)">
-      <line x1="0" y1="7" x2="40" y2="7" stroke="#475569" stroke-width="1.5" marker-end="url(#arrNet)"/>
+      <line x1="0" y1="7" x2="40" y2="7" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)"/>
       <text x="48" y="11" class="svg-ts" style="font-size:11px">Peering VNet bidirectionnel</text>
 
-      <rect x="240" y="0" width="14" height="14" rx="3" fill="#fff" stroke="#94a3b8" stroke-dasharray="4 4"/>
+      <rect x="240" y="0" width="14" height="14" rx="3" stroke-dasharray="4 4" style="fill:var(--bg);stroke:var(--c-slate-stroke)"/>
       <text x="262" y="11" class="svg-ts" style="font-size:11px">Spoke isolé (sans peering hub)</text>
 
       <text x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage) sont exposés via Private Endpoint dans le subnet PE dédié de chaque spoke</text>

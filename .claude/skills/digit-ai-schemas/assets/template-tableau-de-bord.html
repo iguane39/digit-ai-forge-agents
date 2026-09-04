@@ -23,9 +23,9 @@
     margin: 24px 0 8px;
   }
   .kpi {
-    background: #fff;
+    background: var(--bg);
     border: 1px solid var(--line);
-    border-left: 3px solid var(--c-purple-fg);
+    border: 1px solid var(--c-purple-fg);
     border-radius: 8px;
     padding: 18px 20px;
   }
@@ -36,7 +36,7 @@
   .kpi.kpi-amber { border-left-color: var(--c-amber-fg); }
   .kpi.kpi-amber .kpi-value { color: var(--c-amber-fg); }
   .kpi-value {
-    font-family: 'Roboto', sans-serif;
+    font-family: var(--head);
     font-weight: 800;
     font-size: 28px;
     color: var(--c-purple-fg);
@@ -44,7 +44,7 @@
     margin-bottom: 6px;
   }
   .kpi-label {
-    font-family: 'DM Sans', sans-serif;
+    font-family: var(--sans);
     font-size: 13px;
     color: var(--ink-soft);
     line-height: 1.35;
@@ -58,18 +58,18 @@
     margin: 20px 0;
   }
   .palier {
-    background: #fff;
+    background: var(--bg);
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 22px 22px;
     position: relative;
   }
-  .palier-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--ink-muted); margin-bottom: 6px; }
-  .palier-title { font-family: 'Roboto', sans-serif; font-weight: 800; font-size: 18px; margin-bottom: 10px; }
+  .palier-num { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--ink-muted); margin-bottom: 6px; }
+  .palier-title { font-family: var(--head); font-weight: 800; font-size: 18px; margin-bottom: 10px; }
   .palier-1 .palier-title { color: var(--c-gray-fg); }
   .palier-2 .palier-title { color: var(--c-amber-fg); }
   .palier-3 .palier-title { color: var(--c-purple-fg); }
-  .palier-horizon { font-size: 12px; color: var(--ink-muted); margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+  .palier-horizon { font-size: 12px; color: var(--ink-muted); margin-bottom: 12px; font-family: var(--mono); }
   .palier ul { padding-left: 18px; }
   .palier ul li { font-size: 13px; margin-bottom: 5px; }
 
@@ -81,14 +81,14 @@
     margin: 16px 0;
   }
   .poc-card {
-    background: #fff;
+    background: var(--bg);
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 16px 18px;
   }
   .poc-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .poc-name { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 16px; color: var(--ink); }
-  .poc-score { font-family: 'Roboto', sans-serif; font-weight: 800; font-size: 24px; }
+  .poc-name { font-family: var(--head); font-weight: 700; font-size: 16px; color: var(--ink); }
+  .poc-score { font-family: var(--head); font-weight: 800; font-size: 24px; }
   .poc-score.score-good { color: var(--c-teal-fg); }
   .poc-score.score-warn { color: var(--c-amber-fg); }
   .poc-score.score-bad { color: var(--c-coral-fg); }
@@ -97,7 +97,7 @@
   /* Pilule de palier dans une card */
   .palier-pill {
     display: inline-block;
-    font-family: 'Roboto', sans-serif;
+    font-family: var(--head);
     font-weight: 700;
     font-size: 11px;
     letter-spacing: 0.05em;

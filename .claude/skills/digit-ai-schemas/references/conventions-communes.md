@@ -39,31 +39,31 @@ Réutiliser ces classes telles quelles, ne pas en inventer d'autres pour la mêm
 
 ### Classes textuelles
 ```css
-.svg-th { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 12.5px; fill: var(--ink); }
-.svg-ts { font-family: 'DM Sans', sans-serif; font-size: 10.5px; fill: var(--ink-soft); }
-.svg-tm { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; fill: var(--ink-muted); letter-spacing: 0.06em; }
-.svg-tlabel { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; fill: var(--ink-muted); letter-spacing: 0.04em; }
-.svg-tband { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+.svg-th { font-family: var(--head); font-weight: 700; font-size: 12.5px; fill: var(--ink); }
+.svg-ts { font-family: var(--sans); font-size: 10.5px; fill: var(--ink-soft); }
+.svg-tm { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-muted); letter-spacing: 0.06em; }
+.svg-tlabel { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-muted); letter-spacing: 0.04em; }
+.svg-tband { font-family: var(--mono); font-weight: 700; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; }
 ```
 
 ### Classes de flèches
 ```css
-.svg-arr { fill: none; stroke: #475569; stroke-width: 1.5; }
+.svg-arr { fill: none; stroke: var(--c-slate-fg); stroke-width: 1.5; }
 .svg-arr-strong { fill: none; stroke: var(--ink); stroke-width: 2; }
-.svg-arr-dashed { fill: none; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 5 3; }
-.svg-arr-ai { fill: none; stroke: #5b21b6; stroke-width: 2; }       /* Chaîne Agent IA */
-.svg-arr-auto { fill: none; stroke: #1d4ed8; stroke-width: 1.6; }   /* Provisioning automatique */
-.svg-arr-manual { fill: none; stroke: #b45309; stroke-width: 1.8; stroke-dasharray: 5 3; }  /* Action humaine */
-.svg-arr-deliv { fill: none; stroke: #64748b; stroke-width: 1.3; stroke-dasharray: 2 3; }   /* Livrable / intégration */
+.svg-arr-dashed { fill: none; stroke: var(--c-slate-stroke); stroke-width: 1.4; stroke-dasharray: 5 3; }
+.svg-arr-ai { fill: none; stroke: var(--c-purple-fg); stroke-width: 2; }       /* Chaîne Agent IA */
+.svg-arr-auto { fill: none; stroke: var(--c-blue-fg); stroke-width: 1.6; }   /* Provisioning automatique */
+.svg-arr-manual { fill: none; stroke: var(--c-amber-mid); stroke-width: 1.8; stroke-dasharray: 5 3; }  /* Action humaine */
+.svg-arr-deliv { fill: none; stroke: var(--c-slate-mid); stroke-width: 1.3; stroke-dasharray: 2 3; }   /* Livrable / intégration */
 ```
 
 ### Classes de nœuds par ramp
 Une classe par couleur sémantique, à appliquer sur un `<g>` qui contient `<rect>` + `<text>` :
 ```css
-.svg-c-purple rect { fill: #ede9fe; stroke: #c4b5fd; stroke-width: 1.4; }
-.svg-c-purple text { fill: #5b21b6; }
-.svg-c-blue rect   { fill: #dbeafe; stroke: #93c5fd; stroke-width: 1.4; }
-.svg-c-blue text   { fill: #1d4ed8; }
+.svg-c-purple rect { fill: var(--c-purple-bg); stroke: var(--c-purple-stroke); stroke-width: 1.4; }
+.svg-c-purple text { fill: var(--c-purple-fg); }
+.svg-c-blue rect   { fill: var(--c-blue-bg); stroke: var(--c-blue-stroke); stroke-width: 1.4; }
+.svg-c-blue text   { fill: var(--c-blue-fg); }
 /* ...etc pour teal, coral, amber, gray */
 ```
 
@@ -91,16 +91,16 @@ Toujours définir les markers dans `<defs>` au début du SVG, avec `refX=9` (poi
 ```svg
 <defs>
   <marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    <path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-slate-fg)"/>
   </marker>
   <marker id="arrAI" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0,0 L10,5 L0,10 z" fill="#5b21b6"/>
+    <path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-purple-fg)"/>
   </marker>
   <marker id="arrAuto" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
+    <path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-blue-fg)"/>
   </marker>
   <marker id="arrMan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-    <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    <path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-amber-mid)"/>
   </marker>
 </defs>
 ```
@@ -132,8 +132,8 @@ Quand plusieurs flèches descendent en parallèle d'une bande supérieure vers u
 **Toujours dans une pastille blanche encadrée**, placée hors du couloir des flèches descendantes. Format type :
 
 ```svg
-<rect x="20" y="195" width="290" height="22" rx="6" fill="#ffffff" stroke="#5b21b6" stroke-width="0.8"/>
-<text x="32" y="211" class="svg-tband" style="fill:#5b21b6;font-size:9.5px">2 · Orchestration · pipelines Azure DevOps</text>
+<rect x="20" y="195" width="290" height="22" rx="6" style="fill:var(--bg)" style="stroke:var(--c-purple-fg)" stroke-width="0.8"/>
+<text x="32" y="211" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · Orchestration · pipelines Azure DevOps</text>
 ```
 
 La pastille a :
@@ -200,8 +200,22 @@ Toujours déclarer ces variables dans `:root` de la page hôte pour permettre le
   --c-blue-bg:   #dbeafe;   --c-blue-fg:   #1d4ed8;   --c-blue-stroke:   #93c5fd;
   --c-teal-bg:   #ccfbf1;   --c-teal-fg:   #0f766e;   --c-teal-stroke:   #5eead4;
   --c-coral-bg:  #fee2e2;   --c-coral-fg:  #b91c1c;   --c-coral-stroke:  #fca5a5;
-  --c-amber-bg:  #fef3c7;   --c-amber-fg:  #92400e;   --c-amber-stroke:  #fcd34d;
-  --c-gray-bg:   #f1f3f7;   --c-gray-fg:   #374151;   --c-gray-stroke:   #cbd5e1;
+  --c-amber-bg:  var(--c-amber-bg);   --c-amber-fg:  var(--c-amber-fg);   --c-amber-stroke:  var(--c-amber-stroke);
+  --c-gray-bg:   var(--c-gray-bg);   --c-gray-fg:   var(--c-gray-fg);   --c-gray-stroke:   var(--line-strong);
+  /* Jetons nommes par TF-0791 (04/09/2026) : ces valeurs vivaient en dur dans les canevas. */
+  --c-purple-mid: #7c3aed;
+  --c-purple-deep: #4c1d95;
+  --c-purple-ink: #2e1065;
+  --c-slate-fg: #475569;
+  --c-slate-mid: #64748b;
+  --c-slate-stroke: #94a3b8;
+  --c-amber-mid: #b45309;
+  --ink-strong: #1e293b;
+  --bg-soft-2: #f1f5f9;
+  /* Jetons de police (oracle-tokens T2, TF-0791). */
+  --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --head: 'Roboto', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 ```
 
@@ -245,7 +259,7 @@ Le SVG utilise **toujours `viewBox`**, jamais `width` / `height` fixes en pixels
   /* SVG en scroll horizontal sur petit écran via overflow-x du wrapper */
 }
 @media print {
-  .diagram-wrap { background: #fff; break-inside: avoid; }
+  .diagram-wrap { background: var(--bg); break-inside: avoid; }
   body { font-size: 11pt; }
 }
 ```
@@ -262,7 +276,7 @@ Toujours présente en bas du SVG (ou à la fin de la page si plusieurs schémas)
 Format des items de légende :
 ```svg
 <g transform="translate(40, 1108)">
-  <rect x="0" y="0" width="14" height="14" rx="3" fill="#ede9fe" stroke="#5b21b6"/>
+  <rect x="0" y="0" width="14" height="14" rx="3" style="fill:var(--c-purple-bg)" style="stroke:var(--c-purple-fg)"/>
   <text x="22" y="11" class="svg-ts" style="font-size:11px">Pipelines Agent IA</text>
   <!-- ...autres items espacés de ~180px... -->
 </g>
@@ -306,5 +320,5 @@ CSS du footer :
   flex-wrap: wrap; gap: 12px;
   font-size: 12px; color: var(--ink-muted);
 }
-.footer .brand { font-family: 'Roboto', sans-serif; font-weight: 700; letter-spacing: 0.06em; }
+.footer .brand { font-family: var(--head); font-weight: 700; letter-spacing: 0.06em; }
 ```
