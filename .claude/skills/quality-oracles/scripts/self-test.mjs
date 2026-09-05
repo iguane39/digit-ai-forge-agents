@@ -535,6 +535,100 @@ else {
   } else ok('TF-0784 : toutes les copies d assets du socle embarquées dans les skills sont déclarées, scellées et à la parité — ' + j.findings[0].msg.slice(0, 120));
 }
 
+// TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
+//
+// LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables
+// hors dépôt — a modifié deux fichiers de l'arbre courant d'une forge publique, alors que
+// `oracle-nom-client-publie` rendait PASS sur la même branche. C1-C4 ne lisent que le référentiel
+// des CLIENTS ; ce qu'une porte ne juge pas passe par construction.
+//
+// POURQUOI UN DÉPÔT JETABLE ET PAS UN BUNDLE COMMITÉ, comme les fixtures C1-C4 : une fixture
+// commitée porterait un nom de produit — fût-il inventé — dans le dépôt que cette porte garde, et
+// le premier lecteur ne saurait pas qu'il est inventé. Le dépôt se fabrique donc à la volée, la
+// table de pseudonymes est jetable, et le nom qu'elle porte est INVENTÉ : aucun nom du parc ne
+// s'écrit ici (même règle que le référentiel de jeu d'essai des fixtures C1-C4).
+//
+// TROIS CAS, ET LE TROISIÈME EST LA REPRODUCTION DU DÉFAUT : sans la table, le même dépôt porteur
+// rend PASS — et l'oracle doit alors DIRE que C5 n'a pas été jouée. Un angle muet se lit comme un
+// angle vert, et c'est exactement l'état dans lequel la porte a laissé passer les mentions du 05/09.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c5-'));
+  try {
+    // NOM DE PRODUIT INVENTÉ, et c'est une règle : deux mots, assez long pour que ses VARIANTES de
+    // graphie se dérivent (au moins 2 mots et 8 lettres, comme `todo/anonymiser-entrant.mjs`).
+    const NOM = 'PortailBidule-Machin';
+    const PSEUDO = 'Produit-99';
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const tProduits = path.join(tables, '_produits-pseudonymes.json');
+    const tClients = path.join(tables, '_noms-interdits.json');
+    // La clé de CHEMIN est là exprès : elle doit être ignorée, un chemin de disque n'est pas un nom.
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { [NOM]: PSEUDO, 'C:/dev/un-chemin-de-disque': 'Produit-98' } }), 'utf8');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+
+    // Les dépôts vivent SOUS UN AUTRE PARENT que les tables : sans cela, la résolution par voisinage
+    // (`<dossier>/..`) retrouverait la table même quand le cas veut l'absence, et le cas rouge de
+    // l'absence mesurerait le contraire de ce qu'il croit.
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const batir = (nom, lignes) => {
+      const r = path.join(depots, nom);
+      fs.mkdirSync(r);
+      fs.writeFileSync(path.join(r, 'outil.py'), lignes.join('\n') + '\n', 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q');
+      g('config', 'user.email', 'banc@local');
+      g('config', 'user.name', 'banc');
+      g('add', '-A');
+      g('commit', '-q', '-m', 'outil du connecteur');
+      return r;
+    };
+    // Le rouge porte la clé TELLE QUELLE **et** une variante de graphie (espaces, minuscules) :
+    // une table qui n'énumère qu'une graphie ne protège que cette graphie (TF-0742).
+    const rouge = batir('rouge', [
+      `# TODO : brancher le connecteur de ${NOM}`,
+      '# egalement ecrit « portail bidule machin » en toutes lettres dans cette docstring',
+    ]);
+    const vert = batir('vert', [
+      `# TODO : brancher le connecteur de ${PSEUDO}`,
+      '# egalement ecrit « le produit » en toutes lettres dans cette docstring',
+    ]);
+
+    // L'ENVIRONNEMENT EST NEUTRALISÉ : une variable héritée du poste ferait lire la table RÉELLE, et
+    // le banc mesurerait le parc au lieu de mesurer la règle.
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    delete envNu.FORGE_ROOT;
+    const jouer = (repo, avecTable) => {
+      const a = [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo, '--referentiel=' + tClients];
+      if (avecTable) a.push('--produits=' + tProduits);
+      const r = spawnSync(process.execPath, a, { encoding: 'utf8', timeout: 180000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+
+    const jr = jouer(rouge, true);
+    const c5 = jr ? (jr.findings || []).filter(f => f.regle === 'C5') : [];
+    if (!jr) ko('TF-0820 C5 rouge : sortie de l oracle inexploitable');
+    else if (jr.verdict !== 'FAIL') ko(`TF-0820 C5 rouge : un nom de produit en commentaire ne fait pas échouer la porte (${jr.verdict})`);
+    else if (c5.length < 2) ko(`TF-0820 C5 rouge : ${c5.length} constat(s) C5 — la graphie littérale et sa VARIANTE espacée devaient être vues toutes les deux`);
+    else if (!c5.every(f => f.sev && f.msg && f.where)) ko('TF-0820 C5 rouge : un constat C5 ne porte pas le contrat findings[] (sev, msg, where)');
+    else ok(`TF-0820 C5 rouge : nom de produit en commentaire → FAIL, ${c5.length} constat(s) C5 localisés (graphie littérale + variante espacée)`);
+
+    const jv = jouer(vert, true);
+    if (!jv) ko('TF-0820 C5 verte : sortie de l oracle inexploitable');
+    else if (jv.verdict !== 'PASS') ko(`TF-0820 C5 verte : le PSEUDONYME seul fait échouer la porte (${jv.verdict}) — ${(jv.findings || []).map(f => f.regle + ' ' + f.where).join(', ')}`);
+    else if (!/table des produits employée/.test((jv.non_juge || []).join(' '))) ko('TF-0820 C5 verte : la table employée n est pas déclarée au non_juge');
+    else ok('TF-0820 C5 verte : le pseudonyme seul → PASS, et la table employée est nommée au non_juge (C5 jouée, pas devinée)');
+
+    const jsans = jouer(rouge, false);
+    if (!jsans) ko('TF-0820 C5 absente : sortie de l oracle inexploitable');
+    else if (jsans.verdict !== 'PASS') ko(`TF-0820 C5 absente : l oracle ne rend plus PASS sur C1-C4 faute de la SECONDE table (${jsans.verdict}) — une table de produits absente ne doit pas éteindre la porte entière`);
+    else if (!/C5 NON JOUÉE : table absente/.test((jsans.non_juge || []).join(' '))) ko('TF-0820 C5 absente : l angle est ÉTEINT EN SILENCE — un angle muet se lit comme un angle vert, et c est le défaut du 05/09');
+    else ok('TF-0820 C5 absente : le même dépôt porteur rend PASS sur C1-C4, et l oracle DÉCLARE « C5 non jouée : table absente » — jamais tue');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

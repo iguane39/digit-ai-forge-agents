@@ -208,6 +208,58 @@ export function motifSansDelta(etat) {
   return motifs[etat] || null;
 }
 
+// ── LA MOITIÉ IMPURE DU GATE EST DÉFINIE ICI, AU-DESSUS DU DISPATCH (TF-0821, 05/09/2026) ────
+//
+// LE FAIT, mesuré le 05/09 : `constatsAvant()` — la seule fonction du hook qui interroge git et
+// rejoue les oracles sur la version HEAD — n'était éprouvée par AUCUN des 34 cas du banc, et ne
+// POUVAIT pas l'être. Elle vivait sous le dispatch `--self-test`, et ses dépendances (`runner`,
+// `lignesFautives`) sont des `const` du corps du hook : l'appeler depuis le banc levait une erreur
+// de ZONE MORTE TEMPORELLE, que le `try/catch` du banc convertissait en échec MUET — le coût déjà
+// payé le 01/09, cinq cas sur six. Les TROIS défauts corrigés en deux jours (TF-0806, TF-0815,
+// TF-0816) vivaient TOUS dans cette fonction. Une fonction où trois défauts consécutifs ont vécu et
+// qu'aucun cas n'éprouve reproduira le quatrième sans qu'un banc le voie.
+//
+// CE QUI EST FAIT, et c'est le minimum qui la rende JOUABLE plutôt que RÉÉCRITE : sa définition et
+// celle de `lignesFautives` remontent au-dessus du dispatch, et le lanceur d'oracles s'INJECTE
+// (`opts.runner`). L'injection court-circuite le `??` : quand l'appelant fournit le lanceur, la
+// `const runner` du corps du hook n'est jamais lue, donc jamais en zone morte. Le contrat
+// `{ constats, motif }` ne bouge pas d'un caractère — c'est une fonction rendue ÉPROUVABLE, pas une
+// fonction changée. Le banc l'appelle sur un dépôt jetable : `git init`, un fichier commis, une
+// édition qui n'ajoute aucun constat, et un lanceur de jeu d'essai qui rend une ligne d'oracle.
+export const lignesFautives = (sortie) => (sortie || '').split('\n')
+  .filter(l => l.includes('❌') || l.includes('NON CONFORME') || l.includes('FAIL'));
+
+/** Les constats de la version HEAD du même fichier : `{ constats, motif }`. `constats` à null =
+ *  delta non calculable, et `motif` DIT alors pourquoi (TF-0816) — jamais un abandon muet.
+ *  `opts.runner` injecte le lanceur d'oracles (TF-0821) ; sans injection, c'est celui que le corps
+ *  du hook résout plus bas. */
+export function constatsAvant(chemin, opts = {}) {
+  const lanceur = opts.runner ?? runner;       // `??` court-circuite : injecté ⇒ `runner` jamais lu
+  const abs = cibleResolue(chemin);            // TF-0816 : ce qui part vers git est toujours absolu
+  const rendre = (etat, constats = null) => ({ constats, motif: motifSansDelta(etat) });
+  const dir = path.dirname(abs);
+  const g = (...a) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf8', timeout: 30000 });
+  const racine = g('rev-parse', '--show-toplevel');
+  if (racine.status !== 0 || !racine.stdout.trim()) return rendre('hors-depot');
+  const rel = g('ls-files', '--full-name', '--error-unmatch', '--', abs);
+  if (rel.status !== 0 || !rel.stdout.trim()) return rendre('non-resolu');
+  const avant = spawnSync('git', ['-C', racine.stdout.trim(), 'show', `HEAD:${rel.stdout.trim()}`],
+    { encoding: 'utf8', timeout: 30000, maxBuffer: 32 * 1024 * 1024 });
+  if (avant.status !== 0) return rendre('absent-de-head');
+  let temporaire = null;
+  try {
+    temporaire = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-delta-'));
+    const copie = path.join(temporaire, path.basename(abs));
+    fs.writeFileSync(copie, avant.stdout, 'utf8');
+    const passe = spawnSync(process.execPath, [lanceur, copie, '--profil', 'digit-ai', '--niveau', 'note'], {
+      encoding: 'utf8', timeout: 120000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+    });
+    if (passe.error) return rendre('seconde-passe-injouable');
+    return rendre(null, lignesFautives(passe.stdout));
+  } catch { return rendre('seconde-passe-injouable'); }
+  finally { if (temporaire) { try { fs.rmSync(temporaire, { recursive: true, force: true }); } catch { /* best effort */ } } }
+}
+
 const MAX_ECHECS = 3;                       // §5 : boucle bornée, puis handoff humain
 const COMPTEUR = path.join(os.tmpdir(), 'qo-gate-write-echecs.json');
 
@@ -307,37 +359,8 @@ if (r.status === 0) {                        // PASS : on repart de zéro sur ce
 // haut —, et une zone morte temporelle y transformait cinq cas en échecs MUETS, avalés par le
 // `try/catch` du banc. Mesuré le 01/09 : 5 cas sur 6 rouges pour cette seule raison. Un banc qui
 // échoue pour la mauvaise cause est pire qu'un banc absent : il fait chercher le défaut là où il
-// n'est pas.
-const lignesFautives = (sortie) => (sortie || '').split('\n')
-  .filter(l => l.includes('❌') || l.includes('NON CONFORME') || l.includes('FAIL'));
-
-/** Les constats de la version HEAD du même fichier : `{ constats, motif }`. `constats` à null =
- *  delta non calculable, et `motif` DIT alors pourquoi (TF-0816) — jamais un abandon muet. */
-function constatsAvant(chemin) {
-  const abs = cibleResolue(chemin);            // TF-0816 : ce qui part vers git est toujours absolu
-  const rendre = (etat, constats = null) => ({ constats, motif: motifSansDelta(etat) });
-  const dir = path.dirname(abs);
-  const g = (...a) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf8', timeout: 30000 });
-  const racine = g('rev-parse', '--show-toplevel');
-  if (racine.status !== 0 || !racine.stdout.trim()) return rendre('hors-depot');
-  const rel = g('ls-files', '--full-name', '--error-unmatch', '--', abs);
-  if (rel.status !== 0 || !rel.stdout.trim()) return rendre('non-resolu');
-  const avant = spawnSync('git', ['-C', racine.stdout.trim(), 'show', `HEAD:${rel.stdout.trim()}`],
-    { encoding: 'utf8', timeout: 30000, maxBuffer: 32 * 1024 * 1024 });
-  if (avant.status !== 0) return rendre('absent-de-head');
-  let temporaire = null;
-  try {
-    temporaire = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-delta-'));
-    const copie = path.join(temporaire, path.basename(abs));
-    fs.writeFileSync(copie, avant.stdout, 'utf8');
-    const passe = spawnSync(process.execPath, [runner, copie, '--profil', 'digit-ai', '--niveau', 'note'], {
-      encoding: 'utf8', timeout: 120000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
-    });
-    if (passe.error) return rendre('seconde-passe-injouable');
-    return rendre(null, lignesFautives(passe.stdout));
-  } catch { return rendre('seconde-passe-injouable'); }
-  finally { if (temporaire) { try { fs.rmSync(temporaire, { recursive: true, force: true }); } catch { /* best effort */ } } }
-}
+// n'est pas. Depuis TF-0821 (05/09), `lignesFautives` et `constatsAvant` sont définies EN HAUT du
+// fichier, au-dessus du dispatch, pour cette raison exacte — et le banc les éprouve.
 
 /** Partage les constats d'aujourd'hui en { neufs, preexistants }. `avant` à null → tout est neuf. */
 export function partagerConstats(apres, avant) {
@@ -473,6 +496,59 @@ function selfTest() {
   const M7_DEUX_AILLEURS = "  ❌ [Lisibilite d'un document (Markdown)] ..\\Temp\\qo-delta-a1b2c3\\note.md — 2 constat(s) · M7 chapitre sans ouverture : « Chapitre A » (ligne 4) commence directement par des donnees. ; M7 chapitre sans ouverture : « Chapitre B » (ligne 11) commence directement par des donnees.";
   const NON_CONFORME = "❌ NON CONFORME — 1 oracle(s) en echec (2 PASS, 4 SKIP). Corriger la source puis relancer.";
 
+  // ── TF-0821 (05/09/2026) — LA MOITIE IMPURE, EPROUVEE SUR DEPOT JETABLE ────────────────────
+  //
+  // `constatsAvant()` va chercher la version HEAD et rejoue les oracles dessus. Trois defauts y ont
+  // vecu en deux jours (TF-0806, TF-0815, TF-0816) sans qu un seul cas la touche : elle vivait sous
+  // le dispatch, et l appeler d ici levait une zone morte temporelle avalee en ECHEC MUET. Elle est
+  // desormais definie en haut du fichier et prend son lanceur en parametre — ce banc l appelle donc
+  // pour de vrai, sur un depot fabrique a la volee.
+  //
+  // LE LANCEUR EST UN JEU D ESSAI, PAS LE VRAI : le vrai lanceur d oracles met des dizaines de
+  // secondes et depend de python ; un banc qui en depend ne se joue plus. Le jouet rend UNE ligne
+  // d oracle au format que `lignesFautives` reconnait et que `partagerConstats` sait masquer, ce
+  // qui est exactement le contrat que `constatsAvant` consomme.
+  const bancConstatsAvant = () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-banc-ca-'));
+    const lanceur = path.join(tmp, 'lanceur-jouet.mjs');
+    fs.writeFileSync(lanceur,
+      "import fs from 'node:fs';\n"
+      + "const cible = process.argv[2];\n"
+      + "const ou = [];\n"
+      + "fs.readFileSync(cible, 'utf8').split('\\n').forEach((l, i) => { if (l.includes('MARQUEUR-JOUET')) ou.push(i + 1); });\n"
+      + "if (!ou.length) process.exit(0);\n"
+      + "console.log('  ❌ [Oracle jouet] ' + cible + ' — ' + ou.length + ' constat(s) · J1 marqueur jouet (ligne ' + ou[0] + ').');\n"
+      + "process.exit(1);\n", 'utf8');
+
+    const depot = path.join(tmp, 'depot');
+    fs.mkdirSync(depot);
+    const note = path.join(depot, 'note.md');
+    // La version COMMISE porte deja le constat : c est la dette heritee.
+    fs.writeFileSync(note, '# Note\n\nParagraphe MARQUEUR-JOUET.\n', 'utf8');
+    const g = (...a) => spawnSync('git', ['-C', depot, ...a], { encoding: 'utf8' });
+    g('init', '-q');
+    g('config', 'user.email', 'banc@local');
+    g('config', 'user.name', 'banc');
+    g('add', '-A');
+    g('commit', '-q', '-m', 'note initiale');
+    // L EDITION N AJOUTE AUCUN CONSTAT — elle insere trois lignes, ce qui DECALE les numeros : le
+    // cas exact du 31/08 qui a fait naitre D-33.
+    fs.writeFileSync(note, '# Note\n\nAjout un\nAjout deux\nAjout trois\n\nParagraphe MARQUEUR-JOUET.\n', 'utf8');
+
+    const av = constatsAvant(note, { runner: lanceur });
+    const passe = spawnSync(process.execPath, [lanceur, note], { encoding: 'utf8' });
+    const apres = lignesFautives(passe.stdout);
+    // Une cible HORS DEPOT : le dossier temporaire lui-meme n est pas un depot git.
+    const hors = path.join(tmp, 'hors');
+    fs.mkdirSync(hors);
+    const noteHors = path.join(hors, 'note.md');
+    fs.writeFileSync(noteHors, '# Note\n\nParagraphe MARQUEUR-JOUET.\n', 'utf8');
+    const avHors = constatsAvant(noteHors, { runner: lanceur });
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* zone temporaire */ }
+    return { av, apres, avHors };
+  };
+  const BANC_CA = bancConstatsAvant();
+
   const cas = [
     ['VERTE  fragment Jinja (bloc {% %}) — exempte',
       () => /^fragment de moteur de templates/.test(motifExemption('/p/templates/base.html', FRAGMENT_JINJA))],
@@ -588,13 +664,37 @@ function selfTest() {
               return m.every(x => typeof x === 'string' && x.length > 10) && new Set(m).size === 4; }],
     ['VERTE  un delta CALCULABLE ne fabrique aucun motif (on ne declare pas un repli qui n a pas eu lieu)',
       () => motifSansDelta(null) === null && motifSansDelta('calculable') === null],
+    // ── TF-0821 — `constatsAvant` EPROUVEE POUR DE VRAI, sur le depot jetable fabrique plus haut.
+    ['VERTE  constatsAvant sur depot jetable : version HEAD retrouvee, delta calculable, 0 neuf / 1 preexistant',
+      () => { const { av, apres } = BANC_CA;
+              if (av.motif !== null || !Array.isArray(av.constats) || av.constats.length !== 1) return false;
+              if (apres.length !== 1) return false;
+              const p = partagerConstats(apres, av.constats);
+              return p.delta === true && p.neufs.length === 0 && p.preexistants.length === 1; }],
+    ['ROUGE  constatsAvant sur cible HORS DEPOT : constats a null ET motif PORTE, jamais un null muet',
+      () => { const { avHors } = BANC_CA;
+              return avHors.constats === null && typeof avHors.motif === 'string'
+                && /hors d[ée]p[oô]t/i.test(avHors.motif); }],
+    // ── TF-0821 (3) — LE BANC NE PEUT PLUS AVALER UNE ERREUR. Le 01/09, cinq cas sur six etaient
+    // rouges pour une zone morte temporelle, et le banc n en disait RIEN : `catch { tenu = false }`
+    // jetait le message. Un banc qui echoue pour la mauvaise cause fait chercher le defaut la ou il
+    // n est pas. Ce cas-ci eprouve le BANC LUI-MEME : une erreur levee hors de l assertion doit
+    // compter FAIL **et** porter son message.
+    ['ROUGE  une erreur levee hors de l assertion compte FAIL AVEC son message (le banc ne l avale plus)',
+      () => { const r = jouer(['temoin', () => { throw new Error('BOUM-TEMOIN'); }]);
+              return r.tenu === false && /BOUM-TEMOIN/.test(String(r.erreur)); }],
   ];
+  // Le resultat d un cas porte l ERREUR quand il en leve une : c est la seule difference entre un
+  // banc qui juge et un banc qui rassure.
+  const jouer = ([nom, f]) => {
+    try { return { nom, tenu: f() === true, erreur: null }; }
+    catch (e) { return { nom, tenu: false, erreur: (e && e.message) || String(e) }; }
+  };
   let bons = 0;
-  for (const [nom, f] of cas) {
-    let tenu = false;
-    try { tenu = f() === true; } catch (e) { tenu = false; }
-    console.log(`  [${tenu ? 'OK    ' : 'ECHEC '}] ${nom}`);
-    if (tenu) bons += 1;
+  for (const c of cas) {
+    const r = jouer(c);
+    console.log(`  [${r.tenu ? 'OK    ' : 'ECHEC '}] ${r.nom}${r.erreur ? `\n           ERREUR LEVEE : ${r.erreur}` : ''}`);
+    if (r.tenu) bons += 1;
   }
   console.log(`Self-test qo-gate-write (C7) : ${bons}/${cas.length}`);
   return bons === cas.length ? 0 : 1;
