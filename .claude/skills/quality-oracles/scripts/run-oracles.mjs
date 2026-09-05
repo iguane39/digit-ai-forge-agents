@@ -228,7 +228,22 @@ function runCli(o, file) {
         : (obj && Array.isArray(obj.fails) && obj.fails.length ? obj.fails.map(texteDe) : []);
       const nWarn = obj && Array.isArray(obj.findings) ? obj.findings.filter(f => f && f.sev === 'warn').length
         : (obj && Array.isArray(obj.warns) ? obj.warns.length : 0);
-      let detail = raisons.filter(Boolean).slice(0, 2).join(' ; ')
+      // ---- TF-0815 : UNE LIGNE QUI RESUME DEUX CONSTATS SUR TROIS NE DIT PAS QU'ELLE EN CACHE UN.
+      //
+      // LE FAIT, mesure le 05/09 : ce `detail` ne portait que les DEUX premieres raisons. Le hook
+      // d'ecriture C7 identifie un constat par la ligne ainsi construite (chemin normalise, chiffres
+      // masques) ; deux versions d'un meme fichier portant 2 puis 3 constats du MEME oracle rendaient
+      // donc une ligne identique mot pour mot — meme cle, aucun compteur qui bouge, « 0 neuf ». Le
+      // gate s'ouvrait sur du travail NEUF, c'est-a-dire le seul defaut des deux qui laisse passer un
+      // defaut reel. La troncature est GARDEE (une ligne de verdict n'est pas un rapport), mais elle
+      // ANNONCE desormais ce qu'elle tronque : le nombre de constats de l'oracle vient en tete.
+      //
+      // CHANGEMENT DE CONTRAT, declare le 05/09 au pilot : le champ `detail` d'un verdict FAIL
+      // commence par « <n> constat(s) · » quand l'oracle a rendu au moins une raison. Tout lecteur
+      // qui comparait ce champ mot pour mot voit desormais la ligne bouger avec le nombre — c'est
+      // exactement ce qui est voulu. La borne est ce compte : rien d'autre n'est ajoute.
+      const listees = raisons.filter(Boolean);
+      let detail = (listees.length ? listees.length + ' constat(s) · ' + listees.slice(0, 2).join(' ; ') : '')
         || (!obj && status === 0 ? 'contrat JSON non émis — verdict non retenu (P5/R1)' : (error && error.killed ? 'timeout oracle (' + (o.timeout_ms || 120000) + ' ms)' : (status === null ? 'oracle non exécutable' : '')));
       // LE GARDE-FOU QUI RESTE UTILE QUOI QU'IL ARRIVE : un FAIL sans raison le DIT, et donne la
       // commande a rejouer — elle est deja connue du registre. Un echec muet est le pire des trois
