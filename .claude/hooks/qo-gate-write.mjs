@@ -131,6 +131,48 @@ export function constatDePoliceNeutralise(ligne, contenu, chartes = CHARTES) {
   return nommees.every(f => charte.fontes.includes(f));
 }
 
+// ── LE CHEMIN N'EST PAS L'IDENTITÉ D'UN CONSTAT (TF-0806 + TF-0812, 05/09/2026) ──────────────
+//
+// LE FAIT, mesuré le 05/09 par trois forges le même jour : le partage neufs/préexistants de
+// `partagerConstats` (D-33, plus bas) ne partageait rien. La version `HEAD` est jugée dans une
+// COPIE TEMPORAIRE, donc sous un AUTRE CHEMIN ; or le runner écrit ce chemin DANS la ligne de
+// constat (« ❌ [domaine] <chemin> — détail »). Le masque d'identité repliait les espaces et
+// masquait les chiffres, jamais le chemin : aucune clé ne coïncidait entre les deux passes, et
+// TOUT constat préexistant comptait comme neuf. Le coût, le même jour : une forge a réécrit deux
+// chapitres sans rapport pour livrer, une deuxième a été bloquée deux fois sur un fichier dont la
+// version précédente portait déjà les deux constats, une troisième a corrigé des défauts
+// préexistants dans six fichiers pour pouvoir écrire — c'est-à-dire exactement le péage que
+// D-33 (a) avait supprimé, revenu par la porte de l'identité. Récidive de la classe close par
+// TF-0732 : une règle juste dont la CLÉ est fausse est une règle morte qui croit vivre.
+//
+// CE QUI EST FAIT : la ligne est NORMALISÉE avant masquage — tout chemin de fichier y devient un
+// JETON FIXE. Ce qui reste est ce qui identifie vraiment un constat : la règle, le message, et la
+// position (masquée ensuite avec les chiffres). La même ligne obtenue sur la copie temporaire et
+// sur le fichier réel produit alors la même clé.
+//
+// CE QUI N'EST PAS NORMALISÉ, et c'est voulu : un mot ne devient le jeton que s'il PORTE une
+// extension de fichier, seul ou au bout d'un chemin. « 2/3 », « ligne 36 » ou « niveau 4 » ne sont
+// pas des chemins et ne le deviennent pas — sur-normaliser confondrait deux constats distincts, et
+// un gate qui s'ouvre par erreur est pire qu'un gate absent (même garde que partout ailleurs ici).
+// Limite déclarée : deux constats qui ne diffèrent QUE par le nom du fichier se confondent ; sans
+// effet à cet endroit, le gate ne juge jamais qu'un seul fichier à la fois.
+//
+// POURQUOI ICI, au-dessus du dispatch `--self-test` : le banc appelle ces fonctions avant que les
+// `const` du corps du hook ne soient évaluées. Une zone morte temporelle y a déjà transformé cinq
+// cas en échecs MUETS le 01/09 — le jeton et ses motifs sont donc déclarés avant ce point.
+export const JETON_CHEMIN = '<fichier>';
+
+// Un chemin : au moins un séparateur, et une extension au bout. Puis un nom de fichier NU, pour le
+// cas où le runner rend la cible relative à son propre dossier (« note.md », sans dossier devant).
+const RE_CHEMIN = /[^\s"'`«»(),;]*[\\/][^\s"'`«»(),;]*\.[A-Za-z0-9]{1,6}\b/g;
+const RE_FICHIER_NU = /[^\s\\/"'`«»(),;]+\.(?:html?|md|markdown|pptx|xlsx|docx|pdf|svg|csv|json|jsonl|txt|py|mjs|cjs|js|css|ya?ml)\b/gi;
+
+/** La ligne de constat privée de tout chemin de fichier — règle, message et position seulement.
+ *  Fonction pure : c'est elle que le banc éprouve, dans les deux sens (TF-0806). */
+export function normaliserChemin(ligne) {
+  return String(ligne ?? '').replace(RE_CHEMIN, JETON_CHEMIN).replace(RE_FICHIER_NU, JETON_CHEMIN);
+}
+
 const MAX_ECHECS = 3;                       // §5 : boucle bornée, puis handoff humain
 const COMPTEUR = path.join(os.tmpdir(), 'qo-gate-write-echecs.json');
 
@@ -209,8 +251,9 @@ if (r.status === 0) {                        // PASS : on repart de zéro sur ce
 //
 // L'IDENTITÉ D'UN CONSTAT, et c'est le point délicat. Comparer les lignes telles quelles
 // produirait des faux « neufs » au premier décalage de numéro de ligne — or ajouter trois
-// lignes en décale forcément. L'identité est donc la ligne CHIFFRES MASQUÉS. Le comptage, lui,
-// n'est pas jeté : si le premier nombre de la ligne AUGMENTE, le constat est traité comme neuf
+// lignes en décale forcément. L'identité est donc la ligne CHEMIN NORMALISÉ (TF-0806 : sans cela
+// la clé ne coïncidait jamais, cf. `normaliserChemin` plus haut) puis CHIFFRES MASQUÉS.
+// Le comptage, lui, n'est pas jeté : si le premier nombre de la ligne AUGMENTE, le constat est neuf
 // (une occurrence de plus est une occurrence introduite). Limite assumée et déclarée : deux
 // constats de même classe dont aucun compteur ne bouge se confondent.
 //
@@ -256,7 +299,9 @@ function constatsAvant(chemin) {
 
 /** Partage les constats d'aujourd'hui en { neufs, preexistants }. `avant` à null → tout est neuf. */
 export function partagerConstats(apres, avant) {
-  const masque = (l) => l.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim().toLowerCase();
+  // Le CHEMIN tombe d'abord (TF-0806), les chiffres ensuite : masquer les chiffres d'un chemin ne
+  // le rend pas égal à un autre chemin, il le rend seulement méconnaissable.
+  const masque = (l) => normaliserChemin(l).replace(/\d+/g, '#').replace(/\s+/g, ' ').trim().toLowerCase();
   // LE COMPTEUR N'EST PAS « LE PREMIER NOMBRE DE LA LIGNE », et le banc l'a prouvé en une passe :
   // dans « L2 police réflexe × 7 », le premier nombre est le 2 de « L2 ». Une occurrence de plus
   // passait donc pour une occurrence identique — la règle était morte en croyant vivre.
@@ -264,7 +309,8 @@ export function partagerConstats(apres, avant) {
   // Un nombre nu ne l'est jamais, et c'est voulu : les numéros de ligne montent d'eux-mêmes dès
   // qu'on insère trois lignes, et les comparer ferait de chaque décalage un faux constat neuf —
   // c'est-à-dire exactement le péage que cette correction supprime.
-  const compteur = (l) => {
+  const compteur = (ligne) => {
+    const l = normaliserChemin(ligne);   // un « v2 » dans un nom de dossier n'est pas une multiplicité
     const m = l.match(/[×x]\s*(\d+)\b/i) || l.match(/\b(\d+)\s*(?:occurrences?|[ée]l[ée]ments?|fois|cas)\b/i);
     return m ? Number(m[1]) : null;
   };
@@ -316,9 +362,15 @@ if (n > MAX_ECHECS) {
 
 // Le verdict SÉPARE ce que cette édition introduit de ce qu'elle hérite : mélanger les deux
 // fait chercher la cause au mauvais endroit, et c'est le coût mesuré le 31/08.
+// Les préexistants sont CITÉS sous leur forme NORMALISÉE (TF-0806) : c'est cette ligne-là qui a
+// servi de clé, et la montrer est le seul moyen, pour un lecteur, de voir POURQUOI un constat a
+// été reconnu des deux côtés — un partage invérifiable se croit sur parole.
 const details = (delta ? neufs : apresConstats).slice(0, 8).join('\n')
   + (delta && preexistants.length
-      ? `\n(+ ${preexistants.length} constat(s) PRÉEXISTANT(S), non imputés à cette édition)`
+      ? `\n(+ ${preexistants.length} constat(s) PRÉEXISTANT(S) sur ce fichier, non imputé(s) à cette `
+        + `édition — reconnus sur la ligne NORMALISÉE, chemin remplacé par « ${JETON_CHEMIN} » :\n`
+        + preexistants.slice(0, 4).map(l => '   · ' + normaliserChemin(l).trim()).join('\n')
+        + (preexistants.length > 4 ? `\n   · (+ ${preexistants.length - 4} autre(s))` : '') + ')'
       : '');
 sortie(2, `BLOQUÉ (hook C7) : oracles en échec ou inconclusifs sur « ${path.basename(cible)} » après écriture — passe ${n}/${MAX_ECHECS}. Corriger le fichier puis réécrire (loi qualité §5 : jamais de suite sur FAIL/INCONCLUSIF).\n${details}`);
 
@@ -342,6 +394,14 @@ function selfTest() {
     '<style>body { color: #333; font-family: Arial; }</style></head>',
     '<body><h1>Note client</h1><p>Contenu.</p></body></html>',
   ].join('\n');
+
+  // ── TF-0806 + TF-0812 (05/09/2026) — LA MEME LIGNE, VUE DES DEUX COTES DU PARTAGE. La version
+  // HEAD est jugee dans une COPIE TEMPORAIRE : le runner ecrit son chemin DANS la ligne, donc la
+  // meme constatation y porte un autre chemin (et un autre numero de ligne). Ces trois lignes sont
+  // celles observees le 05/09, chemins reels raccourcis.
+  const M7_REEL = "  ❌ [Lisibilite d'un document (Markdown)] docs\\run-playbook.md — M7 chapitre sans ouverture : « Discipline du run » (ligne 118) commence directement par des donnees.";
+  const M7_HEAD = "  ❌ [Lisibilite d'un document (Markdown)] ..\\..\\Local\\Temp\\qo-delta-a1b2c3\\run-playbook.md — M7 chapitre sans ouverture : « Discipline du run » (ligne 112) commence directement par des donnees.";
+  const M10_NEUF = "  ❌ [Lisibilite d'un document (Markdown)] docs\\run-playbook.md — M10 chapitre de plus de 12 lignes de tableau sans mode de lecture (ligne 140).";
 
   const cas = [
     ['VERTE  fragment Jinja (bloc {% %}) — exempte',
@@ -381,6 +441,26 @@ function selfTest() {
     ['ROUGE  delta NON CALCULABLE (fichier hors depot ou absent de HEAD) : TOUT est neuf, on bloque comme avant',
       () => { const p = partagerConstats(['❌ L2 police reflexe x 4'], null);
               return p.delta === false && p.neufs.length === 1 && p.preexistants.length === 0; }],
+    // ── TF-0806 + TF-0812 (05/09/2026) — LE CHEMIN N'EST PAS L'IDENTITE, DANS LES DEUX SENS.
+    // Le premier cas est celui qui etait ROUGE le 05/09 : une edition qui n'ajoutait AUCUN constat
+    // etait refusee, parce que la copie temporaire de HEAD vit sous un autre chemin que le fichier
+    // reel et qu'aucune cle ne coincidait. Les suivants gardent la porte fermee : ajouter un
+    // constat bloque toujours, il est NOMME, et normaliser ne confond pas deux regles distinctes.
+    ['VERTE  meme constat des DEUX COTES malgre deux chemins differents : PREEXISTANT, 0 neuf',
+      () => { const p = partagerConstats([M7_REEL], [M7_HEAD]);
+              return p.neufs.length === 0 && p.preexistants.length === 1 && p.delta === true; }],
+    ['ROUGE  la meme edition qui AJOUTE un constat : 1 NEUF, nomme, le preexistant reste non impute',
+      () => { const p = partagerConstats([M7_REEL, M10_NEUF], [M7_HEAD]);
+              return p.neufs.length === 1 && p.neufs[0] === M10_NEUF && p.preexistants.length === 1; }],
+    ['ROUGE  normaliser le chemin ne CONFOND pas deux regles differentes (M10 n est pas M7)',
+      () => { const p = partagerConstats([M10_NEUF], [M7_HEAD]);
+              return p.neufs.length === 1 && p.preexistants.length === 0; }],
+    ['VERTE  le chemin devient un JETON FIXE des deux cotes, et rien du chemin ne survit',
+      () => normaliserChemin(M7_REEL).includes(JETON_CHEMIN) && normaliserChemin(M7_HEAD).includes(JETON_CHEMIN)
+            && !/docs|qo-delta|run-playbook/.test(normaliserChemin(M7_REEL) + normaliserChemin(M7_HEAD))],
+    ['ROUGE  ce qui n est PAS un chemin reste intact (sur-normaliser confondrait deux constats)',
+      () => normaliserChemin('❌ L4 ratio 2/3 des colonnes sans filtre (ligne 12)')
+              === '❌ L4 ratio 2/3 des colonnes sans filtre (ligne 12)'],
     ['       la limite de l\'exemption est declaree au non_juge (marqueurs exotiques)',
       () => NON_JUGE.length >= 3 && /exotiques/.test(NON_JUGE[0])],
     // ── D-41 (b) (02/09/2026) — LA PRECEDENCE, DANS LES DEUX SENS. Une charte POSEE prime sur
