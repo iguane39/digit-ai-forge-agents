@@ -173,6 +173,41 @@ export function normaliserChemin(ligne) {
   return String(ligne ?? '').replace(RE_CHEMIN, JETON_CHEMIN).replace(RE_FICHIER_NU, JETON_CHEMIN);
 }
 
+// ── LE DELTA NE SE REND PLUS NON CALCULABLE EN SILENCE (TF-0816, 05/09/2026) ─────────────────
+//
+// LE FAIT, mesuré le 05/09 : `constatsAvant` interrogeait
+// `git -C <dossier de la cible> ls-files --full-name --error-unmatch -- <la cible telle que reçue>`.
+// Git réinterprète la cible relativement au dossier passé à `-C` : un chemin RELATIF ne s'y résout
+// donc JAMAIS. La fonction rendait `null`, tout comptait comme neuf, et le gate bloquait comme
+// avant D-33 — sans dire que le delta avait été abandonné. Un verdict qui bloque sans dire que le
+// delta n'a pas été calculable est indistinguable d'un verdict qui a calculé le delta et n'a trouvé
+// aucun préexistant : le lecteur cherche la cause au mauvais endroit, et il la cherche chez lui.
+//
+// CE QUI EST FAIT : (1) la cible est RÉSOLUE en entrée — ce qui part vers git est toujours absolu ;
+// (2) le repli est DÉCLARÉ, comme le hook déclare déjà ses exemptions. Ce que le contrôle ne sait
+// pas, il le dit ; il ne le laisse pas ressembler à ce qu'il sait.
+//
+// POURQUOI ICI, au-dessus du dispatch `--self-test` : même raison qu'au bloc précédent — le banc
+// appelle ces deux fonctions avant que les `const` du corps du hook ne soient évaluées.
+
+/** La cible telle qu'on l'interroge : TOUJOURS absolue. Fonction pure — c'est elle que le banc
+ *  éprouve, dans les deux sens (un relatif et l'absolu du même fichier donnent la même cible). */
+export function cibleResolue(chemin, base = process.cwd()) {
+  return path.resolve(base, String(chemin ?? ''));
+}
+
+/** Pourquoi le delta n'est PAS calculable, en clair — ou null quand il l'est. Fonction pure.
+ *  Les quatre états sont exhaustifs : chaque sortie anticipée de `constatsAvant` en nomme un. */
+export function motifSansDelta(etat) {
+  const motifs = {
+    'hors-depot': "hors dépôt — aucun dépôt git au-dessus de ce fichier, il n'a pas de version HEAD",
+    'non-resolu': "chemin non résolu ou fichier non suivi par git — `git ls-files` ne reconnaît pas cette cible",
+    'absent-de-head': "absent de HEAD — fichier neuf, aucune version antérieure à laquelle le comparer",
+    'seconde-passe-injouable': "seconde passe injouable — les oracles n'ont pas pu être rejoués sur la version HEAD",
+  };
+  return motifs[etat] || null;
+}
+
 const MAX_ECHECS = 3;                       // §5 : boucle bornée, puis handoff humain
 const COMPTEUR = path.join(os.tmpdir(), 'qo-gate-write-echecs.json');
 
@@ -253,13 +288,17 @@ if (r.status === 0) {                        // PASS : on repart de zéro sur ce
 // produirait des faux « neufs » au premier décalage de numéro de ligne — or ajouter trois
 // lignes en décale forcément. L'identité est donc la ligne CHEMIN NORMALISÉ (TF-0806 : sans cela
 // la clé ne coïncidait jamais, cf. `normaliserChemin` plus haut) puis CHIFFRES MASQUÉS.
-// Le comptage, lui, n'est pas jeté : si le premier nombre de la ligne AUGMENTE, le constat est neuf
-// (une occurrence de plus est une occurrence introduite). Limite assumée et déclarée : deux
-// constats de même classe dont aucun compteur ne bouge se confondent.
+// Le comptage, lui, n'est pas jeté : si le compteur de la ligne AUGMENTE, le constat est neuf
+// (une occurrence de plus est une occurrence introduite). Ce compteur est d'abord le NOMBRE DE
+// CONSTATS que la ligne annonce (TF-0815 : sans lui, la ligne ne bougeait pas d'un caractère du
+// deuxième au troisième constat d'un même oracle, et le gate s'ouvrait sur du travail neuf).
+// Limite assumée et déclarée : deux constats de même classe dont aucun compteur ne bouge se
+// confondent — le nombre bouge désormais, la nature d'un constat de rang égal, non.
 //
 // TROIS GARDES, parce qu'un gate qui s'ouvre par erreur est pire qu'un gate absent :
 //   · fichier NON SUIVI par git, hors dépôt, ou `HEAD` illisible → aucun delta calculable, on
-//     bloque comme avant. « Je ne sais pas » ne vaut jamais « c'est bon » ;
+//     bloque comme avant, et le verdict DÉCLARE ce repli avec son motif (TF-0816). « Je ne sais
+//     pas » ne vaut jamais « c'est bon », et ne se tait jamais non plus ;
 //   · la seconde passe est bornée dans le temps comme la première ; un dépassement retombe sur
 //     le comportement d'avant ;
 //   · le plafond de passes et le handoff humain restent inchangés.
@@ -272,28 +311,31 @@ if (r.status === 0) {                        // PASS : on repart de zéro sur ce
 const lignesFautives = (sortie) => (sortie || '').split('\n')
   .filter(l => l.includes('❌') || l.includes('NON CONFORME') || l.includes('FAIL'));
 
-/** Les constats de la version HEAD du même fichier, ou null si le delta n'est pas calculable. */
+/** Les constats de la version HEAD du même fichier : `{ constats, motif }`. `constats` à null =
+ *  delta non calculable, et `motif` DIT alors pourquoi (TF-0816) — jamais un abandon muet. */
 function constatsAvant(chemin) {
-  const dir = path.dirname(chemin);
+  const abs = cibleResolue(chemin);            // TF-0816 : ce qui part vers git est toujours absolu
+  const rendre = (etat, constats = null) => ({ constats, motif: motifSansDelta(etat) });
+  const dir = path.dirname(abs);
   const g = (...a) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf8', timeout: 30000 });
   const racine = g('rev-parse', '--show-toplevel');
-  if (racine.status !== 0 || !racine.stdout.trim()) return null;          // hors dépôt
-  const rel = g('ls-files', '--full-name', '--error-unmatch', '--', chemin);
-  if (rel.status !== 0 || !rel.stdout.trim()) return null;                // fichier non suivi
+  if (racine.status !== 0 || !racine.stdout.trim()) return rendre('hors-depot');
+  const rel = g('ls-files', '--full-name', '--error-unmatch', '--', abs);
+  if (rel.status !== 0 || !rel.stdout.trim()) return rendre('non-resolu');
   const avant = spawnSync('git', ['-C', racine.stdout.trim(), 'show', `HEAD:${rel.stdout.trim()}`],
     { encoding: 'utf8', timeout: 30000, maxBuffer: 32 * 1024 * 1024 });
-  if (avant.status !== 0) return null;                                    // pas dans HEAD (fichier neuf)
+  if (avant.status !== 0) return rendre('absent-de-head');
   let temporaire = null;
   try {
     temporaire = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-delta-'));
-    const copie = path.join(temporaire, path.basename(chemin));
+    const copie = path.join(temporaire, path.basename(abs));
     fs.writeFileSync(copie, avant.stdout, 'utf8');
     const passe = spawnSync(process.execPath, [runner, copie, '--profil', 'digit-ai', '--niveau', 'note'], {
       encoding: 'utf8', timeout: 120000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
     });
-    if (passe.error) return null;                                         // seconde passe injouable
-    return lignesFautives(passe.stdout);
-  } catch { return null; }
+    if (passe.error) return rendre('seconde-passe-injouable');
+    return rendre(null, lignesFautives(passe.stdout));
+  } catch { return rendre('seconde-passe-injouable'); }
   finally { if (temporaire) { try { fs.rmSync(temporaire, { recursive: true, force: true }); } catch { /* best effort */ } } }
 }
 
@@ -309,9 +351,16 @@ export function partagerConstats(apres, avant) {
   // Un nombre nu ne l'est jamais, et c'est voulu : les numéros de ligne montent d'eux-mêmes dès
   // qu'on insère trois lignes, et les comparer ferait de chaque décalage un faux constat neuf —
   // c'est-à-dire exactement le péage que cette correction supprime.
+  // TF-0815 : le COMPTE ANNONCÉ PAR LE RUNNER passe en premier. La ligne d'un oracle ne portait
+  // que ses DEUX premiers messages : de 2 à 3 constats de la même règle, elle ne bougeait pas d'un
+  // caractère, et le troisième passait pour un préexistant. Le runner écrit désormais « n
+  // constat(s) · … » en tête ; c'est le seul compte qui vaut pour la ligne ENTIÈRE, donc il prime
+  // sur un « × n » qui, lui, ne compte qu'à l'intérieur d'un message.
   const compteur = (ligne) => {
     const l = normaliserChemin(ligne);   // un « v2 » dans un nom de dossier n'est pas une multiplicité
-    const m = l.match(/[×x]\s*(\d+)\b/i) || l.match(/\b(\d+)\s*(?:occurrences?|[ée]l[ée]ments?|fois|cas)\b/i);
+    const m = l.match(/\b(\d+)\s*constats?(?:\(s\))?/i)
+      || l.match(/[×x]\s*(\d+)\b/i)
+      || l.match(/\b(\d+)\s*(?:occurrences?|[ée]l[ée]ments?|fois|cas)\b/i);
     return m ? Number(m[1]) : null;
   };
   if (avant === null) return { neufs: apres, preexistants: [], delta: false };
@@ -331,8 +380,9 @@ const apresConstats = lignesFautives(r.stdout);
 // D-41 (b) : la précédence s'applique AVANT le partage neufs/préexistants. Un constat neutralisé
 // par la charte posée du fichier n'est pas « préexistant », il n'a jamais eu lieu d'être.
 const neutralises = apresConstats.filter(l => constatDePoliceNeutralise(l, contenu));
+const versionHead = constatsAvant(cible);
 const { neufs, preexistants, delta } = partagerConstats(
-  apresConstats.filter(l => !neutralises.includes(l)), constatsAvant(cible));
+  apresConstats.filter(l => !neutralises.includes(l)), versionHead.constats);
 
 if (!neufs.length && !preexistants.length && neutralises.length) {
   if (compte[cle]) { delete compte[cle]; ecrire(compte); }
@@ -349,7 +399,9 @@ if (delta && !neufs.length && preexistants.length) {
     + `neuf. Le gate juge le DELTA depuis le 01/09 (décision D-33) : un défaut historique n'est plus `
     + `un péage sur chaque édition future. La dette reste due et reste nommée :\n`
     + preexistants.slice(0, 8).join('\n')
-    + `\nLimite déclarée : deux constats de même classe dont aucun compteur ne bouge se confondent.`);
+    + `\nLimite déclarée : deux constats de même classe dont aucun compteur ne bouge se confondent — `
+    + `depuis TF-0815 la ligne porte le NOMBRE de constats de son oracle, donc une occurrence de plus `
+    + `est vue ; deux constats distincts de même rang, non.`);
 }
 
 const n = (compte[cle] || 0) + 1;
@@ -366,6 +418,14 @@ if (n > MAX_ECHECS) {
 // servi de clé, et la montrer est le seul moyen, pour un lecteur, de voir POURQUOI un constat a
 // été reconnu des deux côtés — un partage invérifiable se croit sur parole.
 const details = (delta ? neufs : apresConstats).slice(0, 8).join('\n')
+  // TF-0816 : quand le delta n'a PAS été calculable, le verdict le DIT et dit pourquoi. Sans cette
+  // ligne, un refus faute de delta ressemble trait pour trait à un refus après un delta calculé
+  // sans aucun préexistant, et la cause se cherche là où elle n'est pas.
+  + (!delta
+      ? `\n(DELTA NON CALCULABLE — ${versionHead.motif || 'motif indéterminé'}. Aucun partage `
+        + `neufs/préexistants n'a donc eu lieu : TOUT constat ci-dessus compte comme neuf, et le gate `
+        + `bloque comme avant D-33. « Je ne sais pas » ne vaut jamais « c'est bon ».)`
+      : '')
   + (delta && preexistants.length
       ? `\n(+ ${preexistants.length} constat(s) PRÉEXISTANT(S) sur ce fichier, non imputé(s) à cette `
         + `édition — reconnus sur la ligne NORMALISÉE, chemin remplacé par « ${JETON_CHEMIN} » :\n`
@@ -402,6 +462,16 @@ function selfTest() {
   const M7_REEL = "  ❌ [Lisibilite d'un document (Markdown)] docs\\run-playbook.md — M7 chapitre sans ouverture : « Discipline du run » (ligne 118) commence directement par des donnees.";
   const M7_HEAD = "  ❌ [Lisibilite d'un document (Markdown)] ..\\..\\Local\\Temp\\qo-delta-a1b2c3\\run-playbook.md — M7 chapitre sans ouverture : « Discipline du run » (ligne 112) commence directement par des donnees.";
   const M10_NEUF = "  ❌ [Lisibilite d'un document (Markdown)] docs\\run-playbook.md — M10 chapitre de plus de 12 lignes de tableau sans mode de lecture (ligne 140).";
+
+  // ── TF-0815 (05/09/2026) — LES TROIS ETATS D UNE MEME LIGNE D ORACLE. Ces lignes sont celles
+  // mesurees le 05/09 sur deux notes identiques a un chapitre pres, au format que le runner rend
+  // depuis ce jour : le COMPTE en tete, puis les deux premiers messages. Sans le compte, les deux
+  // premieres etaient identiques mot pour mot — c est tout le defaut.
+  const M7_DEUX = "  ❌ [Lisibilite d'un document (Markdown)] notes\\note.md — 2 constat(s) · M7 chapitre sans ouverture : « Chapitre A » (ligne 6) commence directement par des donnees. ; M7 chapitre sans ouverture : « Chapitre B » (ligne 13) commence directement par des donnees.";
+  const M7_TROIS = "  ❌ [Lisibilite d'un document (Markdown)] notes\\note.md — 3 constat(s) · M7 chapitre sans ouverture : « Chapitre A » (ligne 6) commence directement par des donnees. ; M7 chapitre sans ouverture : « Chapitre B » (ligne 13) commence directement par des donnees.";
+  // La MEME ligne vue du cote HEAD : autre chemin (copie temporaire) et autres numeros de ligne.
+  const M7_DEUX_AILLEURS = "  ❌ [Lisibilite d'un document (Markdown)] ..\\Temp\\qo-delta-a1b2c3\\note.md — 2 constat(s) · M7 chapitre sans ouverture : « Chapitre A » (ligne 4) commence directement par des donnees. ; M7 chapitre sans ouverture : « Chapitre B » (ligne 11) commence directement par des donnees.";
+  const NON_CONFORME = "❌ NON CONFORME — 1 oracle(s) en echec (2 PASS, 4 SKIP). Corriger la source puis relancer.";
 
   const cas = [
     ['VERTE  fragment Jinja (bloc {% %}) — exempte',
@@ -484,6 +554,40 @@ function selfTest() {
     ['ROUGE  un constat qui n est PAS de police n est jamais touche par la precedence',
       () => constatDePoliceNeutralise('❌ M7 chapitre sans phrase d ouverture : « DM Sans »',
               ':root { --font-corps: "DM Sans", sans-serif; }') === false],
+    // ── TF-0815 (05/09/2026) — LA LIGNE DIT COMBIEN DE CONSTATS ELLE RESUME. Le runner ne
+    // rendait que les DEUX PREMIERS messages d un oracle : deux versions d un meme fichier
+    // portant 2 puis 3 constats de la MEME regle rendaient une ligne identique mot pour mot,
+    // donc la meme cle, donc « 0 neuf » — le gate s ouvrait sur du travail NEUF, le seul des
+    // deux defauts possibles qui laisse passer un defaut reel. Le premier cas est celui qui
+    // etait ROUGE le 05/09 ; le second garde la porte OUVERTE quand rien n a ete ajoute, sans
+    // quoi le correctif redeviendrait le peage que D-33 a supprime.
+    ['ROUGE  un TROISIEME constat du meme oracle est NEUF, nomme, et l ecriture est refusee',
+      () => { const p = partagerConstats([M7_TROIS, NON_CONFORME], [M7_DEUX, NON_CONFORME]);
+              return p.neufs.length === 1 && p.neufs[0] === M7_TROIS && p.preexistants.length === 1; }],
+    ['VERTE  meme HEAD, edition SANS constat neuf : 0 neuf, 2 preexistants, l ecriture passe',
+      () => { const p = partagerConstats([M7_DEUX_AILLEURS, NON_CONFORME], [M7_DEUX, NON_CONFORME]);
+              return p.neufs.length === 0 && p.preexistants.length === 2 && p.delta === true; }],
+    ['ROUGE  un constat de MOINS du meme oracle reste PREEXISTANT (solder une part de la dette ne bloque pas)',
+      () => { const p = partagerConstats([M7_DEUX], [M7_TROIS]);
+              return p.neufs.length === 0 && p.preexistants.length === 1; }],
+    // ── TF-0816 (05/09/2026) — LE DELTA NE SE REND PLUS NON CALCULABLE EN SILENCE. `constatsAvant`
+    // interrogeait `git -C <dossier de la cible> ls-files -- <cible telle que recue>` : la cible y
+    // est reinterpretee relativement au dossier passe a -C, donc un chemin RELATIF ne s y resolvait
+    // jamais. La fonction rendait null, tout comptait comme neuf, et le verdict ne disait pas que
+    // le delta avait ete abandonne — indistinguable d un delta calcule sans aucun preexistant.
+    ['VERTE  chemin RELATIF et chemin ABSOLU du meme fichier : MEME cible interrogee, donc meme partage',
+      () => cibleResolue('run/rapport-jouet.md', '/depot')
+              === cibleResolue('/depot/run/rapport-jouet.md', '/depot')],
+    ['ROUGE  la cible interrogee est TOUJOURS absolue — plus rien ne part relatif vers git -C',
+      () => path.isAbsolute(cibleResolue('run/rapport-jouet.md', '/depot'))],
+    ['ROUGE  cible HORS DEPOT : le repli est DECLARE, le motif est ecrit et jamais null',
+      () => /hors d[ée]p[oô]t/i.test(String(motifSansDelta('hors-depot')))],
+    ['ROUGE  les etats sans delta ont chacun leur motif, et deux motifs ne se confondent pas',
+      () => { const m = ['hors-depot', 'non-resolu', 'absent-de-head', 'seconde-passe-injouable']
+                .map(motifSansDelta);
+              return m.every(x => typeof x === 'string' && x.length > 10) && new Set(m).size === 4; }],
+    ['VERTE  un delta CALCULABLE ne fabrique aucun motif (on ne declare pas un repli qui n a pas eu lieu)',
+      () => motifSansDelta(null) === null && motifSansDelta('calculable') === null],
   ];
   let bons = 0;
   for (const [nom, f] of cas) {
