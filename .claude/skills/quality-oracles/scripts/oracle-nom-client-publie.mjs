@@ -15,7 +15,11 @@
 //   C3 MESSAGES de commit de tout l'historique — l'angle qui avait été oublié le 27/08, et qui
 //      a fait découvrir un neuvième dépôt porteur APRÈS que huit aient été déclarés propres ;
 //   C4 CONTENUS et NOMS de fichiers dans tout l'historique — retirer un fichier de l'arbre ne le
-//      retire pas des commits, et l'hébergeur sert encore ce qu'un commit ancien contient.
+//      retire pas des commits, et l'hébergeur sert encore ce qu'un commit ancien contient ;
+//   C5 NOMS DE PRODUITS de la table des pseudonymes, dans les contenus, les noms de fichiers et les
+//      messages de commit — l'angle ouvert le 05/09 par une réécriture d'historique qui a trouvé
+//      des noms de produits là où C1-C4 rendaient PASS (TF-0820). C1-C4 ne lisent que le
+//      référentiel des CLIENTS ; la règle du parc dit « aucun nom de client NI DE PRODUIT ».
 //
 // LE RÉFÉRENTIEL DES NOMS EST UNE DONNÉE, ET IL VIT HORS DES DÉPÔTS PUBLIÉS (loi transverse n° 4).
 // Un contrôle qui embarquerait la liste des noms interdits PUBLIERAIT EXACTEMENT CE QU'IL PROTÈGE :
@@ -34,6 +38,7 @@ const DOM = 'Nom de client dans un depot publiable';
 const args = process.argv.slice(2);
 const cible = args.find((a) => !a.startsWith('--'));
 const optRef = (args.find((a) => a.startsWith('--referentiel=')) || '').split('=')[1];
+const optProduits = (args.find((a) => a.startsWith('--produits=')) || '').split('=')[1];
 
 const out = (verdict, findings, nj, code, artefact) => {
   process.stdout.write(JSON.stringify({
@@ -68,6 +73,79 @@ function resoudreReferentiel(artefact) {
   if (process.env.FORGE_ROOT) pistes.push(path.join(process.env.FORGE_ROOT, '_noms-interdits.json'));
   for (const p of pistes) if (p && fs.existsSync(p)) return { chemin: p, pistes };
   return { chemin: null, pistes };
+}
+
+// ---------------------------------------------------------------------------
+// C5 · LA TABLE DES PSEUDONYMES DE PRODUITS — la SECONDE donnée hors dépôt (TF-0820).
+//
+// LE FAIT, daté du 05/09/2026 : la passe de réécriture d'historique du pilot, dérivée des DEUX
+// tables hors dépôt, a modifié deux fichiers de l'arbre courant d'une forge publique — un nom de
+// produit réel, en commentaire et en docstring — alors que CET oracle rendait PASS sur la même
+// branche. Mesuré en écrivant cette règle, sur un clone de cette forge : DEUX mentions dans l'arbre
+// courant et TROIS dans des messages de commit, portant deux noms de produits distincts. C1-C4 ne
+// lisent que le référentiel des CLIENTS. Ce qu'une porte ne juge pas passe par construction, et ce
+// trou-là s'est découvert par le geste le plus cher du parc : une réécriture d'historique.
+//
+// LA TABLE NE SE COPIE JAMAIS DANS UN DÉPÔT, pour la raison exacte du référentiel des clients :
+// elle EST la liste des produits. Elle se désigne par `--produits=<chemin>` ou par la variable
+// FORGE_PRODUITS_PSEUDO, et son ABSENCE SE DÉCLARE — « C5 non jouée : table absente », au non_juge —
+// plutôt que de rendre vert un angle qui n'a pas été regardé. Une table absente ne fait PAS SKIP de
+// l'oracle entier : C1-C4 gardent leur valeur, et le lecteur sait exactement ce qui a été mesuré.
+//
+// LES VARIANTES SONT CELLES DE `todo/anonymiser-entrant.mjs`, ET C'EST UNE RÈGLE, pas une
+// coïncidence : deux contrôles du même sujet qui ne s'accordent pas sur les graphies donnent le
+// pire des deux mondes — le nettoyage se croit fini, et le refus tombe à la publication, là où il
+// coûte le plus cher à comprendre (leçon payée le 01/09 sur la casse des sigles). Une clé de la
+// table est donc cherchée (a) TELLE QUELLE, littéralement, sensible à la casse — comme la
+// substitution de l'anonymiseur et comme la règle littérale de la réécriture ; (b) dans ses
+// VARIANTES de graphie dès qu'elle porte au moins deux mots et huit lettres : ses mots séparés par
+// rien, une espace, un tiret ou un souligné, en toute casse, bornés par des non-alphanumériques.
+// Une clé qui porte un POINT est une graphie de domaine et se prend telle quelle — la dériver
+// attraperait des liens légitimes. Une clé qui est un CHEMIN (`C:\…`) n'est pas un nom : ignorée,
+// et le nombre d'ignorées est DIT.
+// ---------------------------------------------------------------------------
+function resoudreProduits(artefact) {
+  const pistes = [];
+  if (optProduits) pistes.push(optProduits);
+  if (process.env.FORGE_PRODUITS_PSEUDO) pistes.push(process.env.FORGE_PRODUITS_PSEUDO);
+  const base = fs.existsSync(artefact) && fs.statSync(artefact).isDirectory() ? artefact : path.dirname(artefact);
+  pistes.push(path.join(base, '_produits-pseudonymes.json'));
+  pistes.push(path.join(base, '..', '_produits-pseudonymes.json'));
+  if (process.env.FORGE_ROOT) pistes.push(path.join(process.env.FORGE_ROOT, '_produits-pseudonymes.json'));
+  for (const p of pistes) if (p && fs.existsSync(p)) return { chemin: p, pistes };
+  return { chemin: null, pistes };
+}
+
+/** Les variantes de graphie d'une clé, ou `null` quand il n'y a rien à dériver. Même règle, mot
+ *  pour mot, que `variantes()` de `todo/anonymiser-entrant.mjs` (TF-0742) — SANS le drapeau `g`,
+ *  qui rendrait `test()` dépendant de l'appel précédent : un contrôle qui répond oui une fois sur
+ *  deux est pire qu'un contrôle absent. */
+function variantesProduit(nom) {
+  if (typeof nom !== 'string' || nom.includes('.')) return null;
+  const mots = nom.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .split(/[\s\-_]+/).filter(Boolean);
+  if (mots.length < 2 || mots.join('').length < 8) return null;
+  const corps = mots.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s\\-_]*');
+  return new RegExp(`(?<![A-Za-z0-9])${corps}(?![A-Za-z0-9])`, 'i');
+}
+
+// Une clé de table qui est un CHEMIN de disque n'est pas un nom de produit — même écart que
+// `scripts/generer-remplacements-historique.mjs` du pilot, qui les saute pour la même raison.
+const CLE_CHEMIN = /^[A-Za-z]:[\\/]/;
+
+function termesProduits(table) {
+  const termes = [];
+  let ignorees = 0;
+  for (const cle of Object.keys((table || {}).produits || {})) {
+    if (CLE_CHEMIN.test(cle)) { ignorees += 1; continue; }
+    termes.push({ cle, re: variantesProduit(cle) });
+  }
+  return { termes, ignorees };
+}
+
+/** Une clé de produit dans un texte : littéralement, ou dans une de ses variantes de graphie. */
+function porteProduit(hay, p) {
+  return hay.includes(p.cle) || (p.re ? p.re.test(hay) : false);
 }
 
 // ---------------------------------------------------------------------------
@@ -147,7 +225,7 @@ function lots(tab, n) {
 }
 
 // --- exécution --------------------------------------------------------------
-if (!cible) out('SKIP', [], ['aucun artefact — usage : node oracle-nom-client-publie.mjs <depot|fixture.bundle> [--referentiel=<chemin>]'], 2);
+if (!cible) out('SKIP', [], ['aucun artefact — usage : node oracle-nom-client-publie.mjs <depot|fixture.bundle> [--referentiel=<chemin>] [--produits=<chemin>]'], 2);
 
 const { chemin: refPath, pistes } = resoudreReferentiel(cible);
 if (!refPath) {
@@ -163,6 +241,30 @@ try { ref = JSON.parse(fs.readFileSync(refPath, 'utf8')); }
 catch (e) { out('SKIP', [], ['référentiel illisible (' + refPath + ') : ' + e.message], 2); }
 const T = termes(ref);
 if (!T.length) out('SKIP', [], ['référentiel vide (' + refPath + ') : ni `noms`, ni `identifiants`, ni `sigles` — rien à chercher'], 2);
+
+// C5 : la table des produits. SON ABSENCE NE FAIT PAS SKIP DE L'ORACLE ENTIER — elle éteint C5 et
+// le DIT. Un oracle qui refuserait de mesurer C1-C4 faute de la seconde table rendrait la porte
+// inutilisable là où elle vaut déjà quelque chose ; un oracle qui se tairait rendrait vert un angle
+// qu'il n'a pas regardé. Entre les deux, il reste à parler.
+const { chemin: prodPath, pistes: pistesProd } = resoudreProduits(cible);
+let P = [], prodIgnorees = 0, prodMotif = null;
+if (!prodPath) {
+  prodMotif = "C5 NON JOUÉE : table absente — les NOMS DE PRODUITS n'ont PAS été cherchés (contenus, "
+    + "noms de fichiers, messages de commit). Un PASS ne dirait donc rien des produits. "
+    + "REMÈDE : désigner la table des pseudonymes par `--produits=<chemin>` ou par la variable "
+    + "d'environnement FORGE_PRODUITS_PSEUDO — elle vit HORS de tout dépôt publié, comme le "
+    + "référentiel des clients. Pistes explorées, dans l'ordre : " + pistesProd.join(" · ");
+} else {
+  try {
+    const r = termesProduits(JSON.parse(fs.readFileSync(prodPath, 'utf8')));
+    P = r.termes; prodIgnorees = r.ignorees;
+    if (!P.length) prodMotif = "C5 NON JOUÉE : table sans aucun nom de produit exploitable (" + prodPath
+      + ") — " + prodIgnorees + " clé(s) de chemin ignorée(s), et rien d'autre à chercher";
+  } catch (e) {
+    prodMotif = "C5 NON JOUÉE : table des produits illisible (" + prodPath + ") : " + e.message
+      + " — les noms de produits n'ont PAS été cherchés";
+  }
+}
 
 const { repo, temporaire, erreur } = ouvrir(cible);
 if (erreur) out('SKIP', [], [erreur], 2);
@@ -188,6 +290,16 @@ try {
         });
       });
     }
+    // C5 · le même contenu, jugé sur les NOMS DE PRODUITS (TF-0820).
+    for (const pr of P) {
+      lignes.forEach((l, i) => {
+        if (porteProduit(l, pr)) findings.push({
+          sev: 'bloquant', regle: 'C5',
+          msg: `nom de produit interdit « ${pr.cle} » dans le contenu d'un fichier suivi`,
+          where: `${rel}:${i + 1}`,
+        });
+      });
+    }
   }
 
   // --- C2 · NOMS des fichiers suivis de l'arbre courant ---------------------
@@ -195,6 +307,15 @@ try {
     if (chercheTexte(rel, t)) findings.push({
       sev: 'bloquant', regle: 'C2',
       msg: `${t.genre} interdit « ${t.mot} » dans le NOM d'un fichier suivi`,
+      where: rel,
+    });
+  }
+  // C5 · les mêmes noms, jugés sur les NOMS DE PRODUITS. Un lot de retours déposé sous son nom de
+  // produit se lit dans l'arborescence sans qu'on ouvre un seul fichier.
+  for (const rel of suivis) for (const pr of P) {
+    if (porteProduit(rel, pr)) findings.push({
+      sev: 'bloquant', regle: 'C5',
+      msg: `nom de produit interdit « ${pr.cle} » dans le NOM d'un fichier suivi`,
       where: rel,
     });
   }
@@ -211,6 +332,13 @@ try {
     for (const t of T) if (chercheTexte(corps, t)) findings.push({
       sev: 'bloquant', regle: 'C3',
       msg: `${t.genre} interdit « ${t.mot} » dans un MESSAGE de commit`,
+      where: sha.slice(0, 12),
+    });
+    // C5 · le même message, jugé sur les NOMS DE PRODUITS. Un message de commit est publié aussi
+    // sûrement qu'un fichier, et il ne se corrige pas sans réécrire l'historique.
+    for (const pr of P) if (porteProduit(corps, pr)) findings.push({
+      sev: 'bloquant', regle: 'C5',
+      msg: `nom de produit interdit « ${pr.cle} » dans un MESSAGE de commit`,
       where: sha.slice(0, 12),
     });
   }
@@ -265,6 +393,16 @@ try {
 } finally { nettoyer(); }
 
 const nj = NON_JUGE.concat(['référentiel employé : ' + refPath + ' (' + T.length + ' terme(s))']);
+// C5 parle TOUJOURS : jouée, elle dit sur quoi ; non jouée, elle dit pourquoi. Un angle muet se lit
+// comme un angle vert, et c'est précisément l'état dans lequel la porte a laissé passer trois
+// mentions d'un nom de produit le 05/09.
+nj.push(prodMotif || ('table des produits employée : ' + prodPath + ' (' + P.length
+  + ' nom(s) de produit jugé(s) par C5, ' + prodIgnorees + ' clé(s) de CHEMIN ignorée(s) — un chemin '
+  + "de disque n'est pas un nom)"));
+if (P.length) nj.push("C5 ne balaie PAS le CONTENU de l'historique (ce que C4 fait pour les clients) : "
+  + 'elle juge les CONTENUS et les NOMS des fichiers SUIVIS de l’arbre courant, et les MESSAGES de '
+  + "commit de tout l'historique. Un nom de produit vivant seulement dans un blob ancien, sur un "
+  + "fichier retiré de l'arbre, n'est donc pas vu ici — limite mesurée et déclarée, pas un oubli.");
 if (findings.length) {
   // Une sortie qui déroulerait 648 occurrences ne se lit pas : on borne, ET ON DIT qu'on borne —
   // un plafond silencieux se lit comme « tout est là », ce qui est le contraire d'un contrôle.
@@ -273,7 +411,11 @@ if (findings.length) {
   if (total > montres.length) nj.push(`${total} constat(s) au total, ${montres.length} listés ici — sortie bornée, le reste existe`);
   out('FAIL', montres, nj, 1, cible);
 }
-out('PASS', [{ sev: 'info', regle: 'C1-C4', msg: `aucun des ${T.length} terme(s) du référentiel dans les contenus, les noms de fichiers ni les messages de commit`, where: path.basename(cible) }], nj, 0, cible);
+out('PASS', [{ sev: 'info', regle: P.length ? 'C1-C5' : 'C1-C4',
+  msg: `aucun des ${T.length} terme(s) du référentiel`
+    + (P.length ? `, ni des ${P.length} nom(s) de produit de la table,` : ' (C5 non jouée)')
+    + ' dans les contenus, les noms de fichiers ni les messages de commit',
+  where: path.basename(cible) }], nj, 0, cible);
 
 // NOTE, ET ELLE EST LA MEILLEURE PREUVE QUE CET ORACLE JUGE : sa PREMIÈRE exécution sur le dépôt
 // qui le porte a rendu FAIL — sur CE fichier, ligne 94, où un commentaire illustrait la règle de
