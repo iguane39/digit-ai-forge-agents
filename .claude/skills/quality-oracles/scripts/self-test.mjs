@@ -629,6 +629,70 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-0824 (06/09/2026) — LE CONTRAT DE SORTIE DU LANCEUR EST ÉPROUVÉ, PAS SEULEMENT ÉCRIT.
+//
+// LE FAIT PAYÉ : le champ `detail` d'une ligne de résultat a changé DEUX FOIS en dix jours — sa
+// source de raisons le 26/08 (TF-0659), son en-tête « <n> constat(s) · » le 05/09 (TF-0815) — sans
+// qu'aucun document ne dise ce qu'il contient ni ne porte de version qu'un lecteur puisse
+// surveiller. Le lanceur est hérité par toutes les forges, et le hook d'écriture identifie un
+// constat PAR CETTE LIGNE : une troisième mutation silencieuse se découvrirait en bloquant.
+//
+// CE QUE CE CAS ÉPROUVE, et pourquoi il ne recopie pas la forme : l'expression opposable est LUE
+// dans `references/contrat-sortie-runner.md` (§2.4), jamais dupliquée ici. Une forme changée d'un
+// côté seulement fait rougir le banc, quel que soit le côté. Trois contrôles :
+//   (1) le document existe, porte une VERSION et les DEUX changements datés ;
+//   (2) VERT — la ligne réellement rendue par le lanceur sur une fixture fautive passe la forme ;
+//   (3) ROUGE — la MÊME ligne privée de son en-tête de compte, c'est-à-dire la ligne telle qu'elle
+//       se rendait avant le 05/09, est REFUSÉE. Sans ce troisième contrôle, la forme pourrait être
+//       vraie et sans dents : une expression qui accepte tout ne prouve rien.
+{
+  const docPath = path.join(SKILLDIR, 'references', 'contrat-sortie-runner.md');
+  let formeSrc = null;
+  if (!fs.existsSync(docPath)) ko('TF-0824 : references/contrat-sortie-runner.md absent — le contrat de SORTIE du lanceur n a pas de domicile');
+  else {
+    const doc = fs.readFileSync(docPath, 'utf8');
+    const ver = doc.match(/Version du contrat\s*:\s*(\d+\.\d+\.\d+)/);
+    const datees = ['2026-08-26', '2026-09-05'].filter(d => doc.includes(d));
+    const mf = doc.match(/^ligne-fail = (.+)$/m);
+    if (!ver) ko('TF-0824 : le contrat de sortie ne porte AUCUNE version — un lecteur n a rien a surveiller');
+    else if (datees.length < 2) ko('TF-0824 : le contrat de sortie ne consigne pas les DEUX changements dates (trouves : ' + (datees.join(' ') || 'aucun') + ')');
+    else if (!mf) ko('TF-0824 : le contrat de sortie ne porte pas sa forme opposable (`ligne-fail = <expression>`) — la recette n aurait qu une copie a comparer');
+    else { formeSrc = mf[1].trim(); ok('TF-0824 : contrat de sortie v' + ver[1] + ' present, forme opposable declaree, changements du ' + datees.join(' et du ') + ' consignes'); }
+  }
+
+  if (formeSrc) {
+    let forme = null;
+    try { forme = new RegExp(formeSrc); } catch (e) { ko('TF-0824 : la forme documentee n est pas une expression valide : ' + e.message); }
+    if (forme) {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-contrat-sortie-'));
+      try {
+        // Même fixture que le cas TF-0659 : un chapitre qui ouvre directement sur un tableau fait
+        // échouer l'oracle de lisibilité, donc rendre une ligne ❌ porteuse de raisons.
+        const doc = path.join(tmp, 'fixture.md');
+        fs.writeFileSync(doc,
+          '# Doc\n\nUne phrase d ouverture correcte et assez longue pour dire ce que le lecteur va '
+          + 'apprendre ici.\n\n## Chapitre\n\n| a | b |\n|---|---|\n| 1 | 2 |\n', 'utf8');
+        const r = spawnSync(process.execPath,
+          [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), doc, '--no-cache'],
+          { encoding: 'utf8', timeout: 180000 });
+        const lignes = (r.stdout || '').split(/\r?\n/);
+        const ligne = lignes.find(l => l.startsWith('  ❌ '));
+        if (!ligne) ko('TF-0824 vert : le lanceur n a rendu AUCUNE ligne de resultat en echec sur la fixture — le cas ne mesure rien');
+        else if (!forme.test(ligne)) ko('TF-0824 vert : la ligne rendue ne suit PAS la forme documentee — contrat et code ont divergé. Rendue : ' + ligne.slice(0, 160));
+        else {
+          ok('TF-0824 vert : la ligne rendue suit la forme documentee (§2.4) — ' + ligne.slice(0, 90));
+          // ROUGE — la ligne d'AVANT le 05/09 : même ligne, en-tête de compte retiré. C'est
+          // exactement la forme qui rendait deux versions d'un fichier indiscernables.
+          const avant = ligne.replace(/ — \d+ constat\(s\) · /, ' — ');
+          if (avant === ligne) ko('TF-0824 rouge : l en-tete de compte n a pas pu etre retire de la ligne — le cas rouge ne reproduit rien');
+          else if (forme.test(avant)) ko('TF-0824 rouge : une ligne SANS en-tete de compte passe la forme documentee — l expression est sans dents, elle aurait accepte la sortie d avant le 05/09');
+          else ok('TF-0824 rouge : la ligne d avant le 05/09 (sans « <n> constat(s) · ») est REFUSEE par la forme documentee');
+        }
+      } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+    }
+  }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

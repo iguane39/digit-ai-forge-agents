@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.12.0"
+  version: "2.13.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -130,7 +130,15 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
 - **Profils** — `profils/digit-ai.json` · `generique.json` (défaut : digit-ai, env `QO_PROFIL`) : budgets perf,
   politique pptx, convention de nommage, marqueurs de sources et motifs additionnels (claims : `motifs_bloquants` / `motifs_warn`),
   niveaux d'exigence (§6), seuils `visual_diff` (seuil_ratio, breakpoints, tolerance_pixel), rubrique du juge, `ignore_patterns`. Un contexte client = un JSON, zéro code.
-- **Oracles CLI** (contrat JSON `{oracle,domaine,artefact,verdict,findings[],non_juge[]}`, exit 0/1/2) :
+- **Contrat de SORTIE du lanceur** — ce que `run-oracles.mjs` REND à son appelant (forme de chaque
+  ligne rendue, en-tête `<n> constat(s) · ` du champ `detail`, codes de sortie, modes `--json` et
+  `--verifier-empreinte`) est écrit et **versionné** dans
+  [`references/contrat-sortie-runner.md`](references/contrat-sortie-runner.md) — **v1.2.0**, avec
+  l'historique daté de ses changements. Le lanceur est hérité par toutes les forges et le hook
+  d'écriture identifie un constat par cette ligne : tout changement de la sortie **incrémente la
+  version** du contrat et se déclare au registre. La forme y est **opposable** — `self-test.mjs`
+  la lit dans le document et la confronte à la ligne réellement rendue (TF-0824).
+- **Oracles CLI** (contrat d'ENTRÉE, JSON `{oracle,domaine,artefact,verdict,findings[],non_juge[]}`, exit 0/1/2) :
   format (UTF-8, zip, placeholders) · code (compilation) · perf (budgets du profil) · **calculs** (re-somme exécutée des
   lignes Total, **sous-totaux et Total général**, répartitions % totalisées — tables md/html) · **claims** (montant, **TJM ou charge
   j.h en contexte d'engagement** sans source ni « à vérifier » = FAIL ; dates d'échéance = warn ; incohérence intra-document, unités €/%/j/j.h) ·
