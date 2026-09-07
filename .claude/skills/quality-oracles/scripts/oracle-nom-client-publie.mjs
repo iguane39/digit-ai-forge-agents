@@ -133,19 +133,49 @@ function variantesProduit(nom) {
 // `scripts/generer-remplacements-historique.mjs` du pilot, qui les saute pour la même raison.
 const CLE_CHEMIN = /^[A-Za-z]:[\\/]/;
 
+/** La graphie LITTÉRALE d'une clé, BORNÉE aux deux bouts par un non-alphanumérique (TF-0880).
+ *
+ *  LE FAIT, ET IL EST DATÉ — 06/09/2026. Cette graphie se cherchait par `hay.includes(cle)`, sans
+ *  aucune frontière, alors que les variantes en portaient une DEUX LIGNES PLUS HAUT dans ce même
+ *  fichier. Mesuré sur la forge des outils avec les deux tables du canal : TROIS des HUIT constats
+ *  C5 tombaient sur la même sous-chaîne d'un blob base64 de police woff2, où la clé vivait entre
+ *  deux lettres. 37,5 % de bruit — et un lecteur qui voit trois constats faux décide que les cinq
+ *  autres le sont aussi ; le vrai constat se perd dans celui qui ne l'est pas.
+ *
+ *  POURQUOI LE DÉFAUT NE SE VOYAIT PAS : une clé d'au moins deux mots et huit lettres dérive des
+ *  variantes, donc gagnait une frontière PAR LA BANDE. Une clé COURTE d'un seul mot n'en a jamais
+ *  eu — et la table venait d'en recevoir une de trois lettres. La règle ne protégeait donc que les
+ *  clés qui n'en avaient pas besoin.
+ *
+ *  L'ARBITRAGE, tranché par le pilot le 07/09 : une clé purement alphanumérique SE BORNE ; une clé
+ *  qui porte déjà un séparateur (point, tiret, espace) se cherche TELLE QUELLE — ses séparateurs
+ *  restent littéraux, on ne la dérive pas en variantes — mais bornée aux deux bouts de la même
+ *  façon. Les deux cas tiennent donc dans UNE seule expression : la clé échappée, encadrée des
+ *  deux gardes. Le comportement des VARIANTES ne change pas, et le contrat `findings[]` non plus.
+ *
+ *  SENSIBLE À LA CASSE, comme l'était `includes` et comme l'est la substitution de
+ *  `todo/anonymiser-entrant.mjs` : c'est la graphie littérale, pas une recherche de nom. Et SANS
+ *  le drapeau `g`, pour la raison exacte des variantes — `test()` d'un motif global dépend de
+ *  l'appel précédent, et un contrôle qui répond oui une fois sur deux est pire qu'un absent. */
+function litteralProduit(nom) {
+  const corps = String(nom).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![A-Za-z0-9])${corps}(?![A-Za-z0-9])`);
+}
+
 function termesProduits(table) {
   const termes = [];
   let ignorees = 0;
   for (const cle of Object.keys((table || {}).produits || {})) {
     if (CLE_CHEMIN.test(cle)) { ignorees += 1; continue; }
-    termes.push({ cle, re: variantesProduit(cle) });
+    termes.push({ cle, litt: litteralProduit(cle), re: variantesProduit(cle) });
   }
   return { termes, ignorees };
 }
 
-/** Une clé de produit dans un texte : littéralement, ou dans une de ses variantes de graphie. */
+/** Une clé de produit dans un texte : dans sa graphie littérale BORNÉE, ou dans une de ses
+ *  variantes de graphie. Seule la frontière a changé le 07/09 — la forme d'un constat, non. */
 function porteProduit(hay, p) {
-  return hay.includes(p.cle) || (p.re ? p.re.test(hay) : false);
+  return p.litt.test(hay) || (p.re ? p.re.test(hay) : false);
 }
 
 // ---------------------------------------------------------------------------

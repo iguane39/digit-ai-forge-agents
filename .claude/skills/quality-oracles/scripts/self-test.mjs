@@ -693,6 +693,101 @@ else {
   }
 }
 
+// TF-0880 (07/09/2026) — LA GRAPHIE LITTÉRALE D'UNE CLÉ EST BORNÉE, COMME SES VARIANTES.
+//
+// LE FAIT PAYÉ, ET IL EST MESURÉ : le 06/09, la porte jouée sur la forge des outils avec les deux
+// tables du canal a rendu HUIT constats C5. TROIS d'entre eux — 37,5 % — tombaient sur la même
+// sous-chaîne d'un blob base64 de police woff2, où une clé de trois lettres vivait ENTRE DEUX
+// LETTRES. `porteProduit()` cherchait la graphie littérale par `hay.includes(cle)`, sans frontière,
+// alors que les VARIANTES en portaient une deux lignes plus haut dans le même fichier. Le trou ne
+// se voyait pas tant que la table n'avait que des noms longs : une clé de deux mots et huit lettres
+// dérive des variantes, donc gagnait sa frontière par la bande. Une clé COURTE n'en avait aucune.
+//
+// POURQUOI CE BRUIT-LÀ COÛTE PLUS QU'IL N'EN A L'AIR : un lecteur qui voit trois constats faux
+// décide que les cinq autres le sont aussi, et la porte se fait désactiver dans la semaine. Un
+// contrôle qui crie sur un blob binaire n'est pas « prudent », il est en train de se disqualifier.
+//
+// TROIS CAS, DEUX SENS, ET LE MILIEU EST LE GARDE-FOU : borner ne doit pas rendre la règle aveugle.
+//   (1) VERT   — la clé au milieu d'un blob base64, entre deux lettres : plus de constat ;
+//   (2) ROUGE  — la même clé en MOT ENTIER dans une phrase : la porte échoue toujours. Sans ce cas,
+//                une frontière trop large passerait pour un progrès tout en éteignant l'angle ;
+//   (3) VERT   — la clé COLLÉE à des lettres (« MDXKRP » pour la clé « KRP ») : plus de constat.
+// Le dépôt est jetable et la clé est INVENTÉE, pour la raison exacte du cas TF-0820 : une fixture
+// commitée porterait un nom de produit dans le dépôt même que cette porte garde.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c5-frontiere-'));
+  try {
+    // CLÉ COURTE INVENTÉE : trois lettres, un seul mot, purement alphanumérique — donc AUCUNE
+    // variante dérivée (il en faut deux mots et huit lettres). C'est exactement le profil qui
+    // n'avait jamais de frontière avant le 07/09.
+    const CLE = 'KRP';
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const tProduits = path.join(tables, 'produits.json');
+    const tClients = path.join(tables, 'clients.json');
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { [CLE]: 'Produit-97' } }), 'utf8');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const batir = (nom, fichier, contenu) => {
+      const r = path.join(depots, nom);
+      fs.mkdirSync(r);
+      fs.writeFileSync(path.join(r, fichier), contenu, 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q');
+      g('config', 'user.email', 'banc@local');
+      g('config', 'user.name', 'banc');
+      g('add', '-A');
+      g('commit', '-q', '-m', 'depot jetable du banc');
+      return r;
+    };
+
+    // (1) Le blob : la clé entre un « N » et un « J », comme dans la police woff2 réellement
+    // rencontrée le 06/09. Une longue ligne de base64, et rien d'autre de lisible.
+    const blob = batir('blob', 'assets.html',
+      '<style>@font-face{src:url(data:font/woff2;base64,d09GMgABAAAAAEQ4ABEAAAAAmN'
+      + CLE + 'JBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA)}</style>');
+    // (2) Le mot entier : la clé bornée d'espaces dans une phrase ordinaire.
+    const mot = batir('mot', 'notes.md', 'Le connecteur de ' + CLE + ' reste a brancher cette semaine.');
+    // (3) Le collage : la clé en fin d'un identifiant de code, sans aucune frontière.
+    const colle = batir('colle', 'outil.py', 'MDX' + CLE + ' = 1  # identifiant interne, pas un produit');
+
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    delete envNu.FORGE_ROOT;
+    const jouer = (repo) => {
+      const r = spawnSync(process.execPath, [
+        path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits,
+      ], { encoding: 'utf8', timeout: 180000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const c5de = (j) => (j ? (j.findings || []).filter(f => f.regle === 'C5') : []);
+
+    const jb = jouer(blob);
+    if (!jb) ko('TF-0880 blob : sortie de l oracle inexploitable');
+    else if (c5de(jb).length) ko('TF-0880 blob : la cle au milieu d un blob base64 fait ENCORE un constat C5 (' + c5de(jb).length + ') — la graphie litterale n est pas bornee');
+    else if (jb.verdict !== 'PASS') ko('TF-0880 blob : le depot au seul blob ne rend pas PASS (' + jb.verdict + ')');
+    else ok('TF-0880 blob : une cle courte au milieu d un blob base64 (entre deux lettres) ne fait plus AUCUN constat C5 — le bruit du 06/09 est eteint');
+
+    const jm = jouer(mot);
+    const c5m = c5de(jm);
+    if (!jm) ko('TF-0880 mot entier : sortie de l oracle inexploitable');
+    else if (jm.verdict !== 'FAIL') ko('TF-0880 mot entier : la cle en MOT ENTIER ne fait plus echouer la porte (' + jm.verdict + ') — borner a rendu l angle aveugle');
+    else if (!c5m.length) ko('TF-0880 mot entier : aucun constat C5 sur une mention franche — la frontiere est trop large');
+    else if (!c5m.every(f => f.sev && f.msg && f.where)) ko('TF-0880 mot entier : un constat C5 ne porte pas le contrat findings[] (sev, msg, where) — le contrat de sortie devait etre inchange');
+    else ok('TF-0880 mot entier : la cle bornee d espaces fait toujours FAIL, ' + c5m.length + ' constat(s) C5 au contrat findings[] inchange');
+
+    const jc = jouer(colle);
+    if (!jc) ko('TF-0880 collee : sortie de l oracle inexploitable');
+    else if (c5de(jc).length) ko('TF-0880 collee : la cle COLLEE a des lettres fait encore un constat C5 (' + c5de(jc).length + ') — un identifiant de code n est pas un nom de produit');
+    else if (jc.verdict !== 'PASS') ko('TF-0880 collee : le depot au seul identifiant ne rend pas PASS (' + jc.verdict + ')');
+    else ok('TF-0880 collee : la cle collee a des lettres (« MDX' + CLE + ' » pour « ' + CLE + ' ») ne fait plus AUCUN constat C5');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));
