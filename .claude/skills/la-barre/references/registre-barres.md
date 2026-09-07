@@ -255,3 +255,90 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
     protocole. L'humain a vu la référence, sa dimension et sa frontière avant de trancher ;
     la barre n'est PAS auto-validée, mais elle n'a pas eu son tour propre — dit, pas tu.)
     barre rédigée sous mandat TF-0198, elle ne s'auto-valide pas)
+
+# ---- Lot L2 de l'étude d'opportunité du 07/09/2026 (TF-0859, mandat D-5 a) : quatre barres
+# ---- pour une mission data Silver/Gold sur Databricks puis rapports Power BI. Pas 1 à 4 et 6
+# ---- joués le 07/09/2026 (test d'existence : 12/12 candidats atteignables, HTTP 200, exécuté
+# ---- par scripts/test_existence.py --liste) ; le pas 5 — validation humaine en un tour, non
+# ---- sautable — est soumis au pilot : chaque entrée reste `todo` tant qu'il n'a pas eu lieu.
+# ---- La référence RECOMMANDÉE est celle de l'entrée ; les candidats survivants sont nommés.
+
+- cible: forge/discipline data — verbe modéliser (modèle dimensionnel de la couche Gold)
+  reference: Kimball Group — Dimensional Modeling Techniques (les 34 techniques, dont bus matrix, grain, dimensions conformes, clés de substitution, dimension date, changements lents)
+  localisateur: https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/
+  candidats_survivants: >
+    (1) la page ci-dessus (recommandée : c'est la source primaire, structurée technique par
+    technique) ; (2) https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/
+    (page mère, plus large) ; (3) https://learn.microsoft.com/en-us/power-bi/guidance/star-schema
+    (transposition au modèle sémantique Power BI — utile en complément, pas en barre : elle
+    dérive de Kimball et ne le remplace pas)
+  test_existence: PASS — HTTP 200, text/html, 65 536+ octets sur les trois candidats (exécuté le 07/09/2026)
+  niveaux:
+    structure: chaque table de faits déclare son GRAIN en une phrase avant toute mesure ; les dimensions sont CONFORMES (une dimension partagée = une seule définition) ; une matrice en bus (processus métier × dimensions) précède le modèle
+    vocabulaire: clé de substitution par dimension, distincte de la clé naturelle ; type de changement lent (1, 2, 3…) déclaré par dimension ; dimension date contiguë au grain jour, jamais dérivée à la volée
+    artefacts: le modèle est un artefact déclaratif inspectable (faits, dimensions, grains, relations) dont le dessin se génère — jamais un dessin seul
+    comportement: un fait sans grain, une dimension partagée définie deux fois, une dimension date trouée = défaut détectable à verdict binaire
+  frontiere: fixe le NIVEAU de rigueur dimensionnelle de la couche Gold ; n'impose ni n'importe l'outillage Kimball, ne copie aucun texte — on mesure le format `forge-data/modele-dimensionnel@1` à ses techniques
+  justification: STANDARDS-DATA.md de forge-data retient Kimball comme référence de modélisation depuis le 11/08/2026 « sans oracle » ; ADR0801 de forge-audit (invariante) exige un modèle sémantique gouverné en étoile — la barre nomme la source que les deux citent
+  statut: todo (pas 5 à jouer — soumis au pilot le 07/09/2026, décision D-6)
+
+- cible: forge/discipline data — verbe transformer (projet de transformation Silver/Gold sous tests)
+  reference: dbt-core (dbt-labs) — discipline ref/source, tests attachés aux modèles, documentation générée
+  localisateur: https://github.com/dbt-labs/dbt-core
+  candidats_survivants: >
+    (1) dbt-core (recommandée : déjà barre du verbe restituer au registre, même référence pour
+    une autre cible et d'autres niveaux — la forme d'un projet de transformation est stable de
+    dbt Core 1.10 à dbt Fusion, cf. feuille de route 2025-05) ;
+    (2) https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview (structure
+    staging → intermediate → marts, complément de niveau, pas une barre à part) ;
+    (3) https://github.com/TobikoData/sqlmesh (alternative crédible ; écartée comme barre
+    parce que moins répandue et que sa discipline recoupe celle de dbt)
+  test_existence: PASS — HTTP 200 sur les trois candidats (exécuté le 07/09/2026)
+  niveaux:
+    structure: un projet = des modèles SQL/déclaratifs organisés par couche (source brute → conformée → métier), chaque modèle déclarant ses dépendances par `ref`/`source` — le DAG se déduit, il ne se dessine pas
+    vocabulaire: chaque modèle porte une description et au moins un test (unicité, non-nullité, valeurs acceptées, relation) ; les sources sont nommées et datées
+    artefacts: documentation et graphe GÉNÉRÉS depuis les déclarations ; sortie de tests archivée machine-lisible
+    comportement: un modèle sans test, une dépendance non déclarée, une documentation écrite à la main = défaut détectable
+  frontiere: fixe le NIVEAU de discipline d'un projet de transformation ; n'importe pas dbt dans la forge, n'impose pas son moteur — la forme est exigée, l'outil est celui du projet (dbt, SQL Delta, notebooks)
+  justification: seule discipline de transformation à la fois ouverte, inspectable et devenue lingua franca (dbt Core 1.10 du 2025-06-16, Fusion en préversion depuis 2025-08-20) ; ADR0803 de forge-audit exige la logique « testée et versionnée au plus près de la source »
+  statut: todo (pas 5 à jouer — soumis au pilot le 07/09/2026, décision D-6)
+
+- cible: modèle sémantique Power BI — règles de bonnes pratiques (jugement sur fichiers)
+  reference: TabularEditor/BestPracticeRules — collection officielle de règles du Best Practice Analyzer (JSON)
+  localisateur: https://github.com/TabularEditor/BestPracticeRules
+  candidats_survivants: >
+    (1) TabularEditor/BestPracticeRules (recommandée : règles en JSON, inspectables une à une,
+    exécutables en ligne de commande — `TabularEditor.exe -A` ou `te bpa run`) ;
+    (2) https://github.com/microsoft/Analysis-Services/tree/master/BestPracticeRules (collection
+    Microsoft, même format, complément) ;
+    (3) https://docs.tabulareditor.com/te2/Best-Practice-Analyzer.html (documentation du
+    mécanisme, pas une collection de règles — écartée comme barre)
+  test_existence: PASS — HTTP 200 sur les trois candidats (exécuté le 07/09/2026)
+  niveaux:
+    structure: relations actives et non ambiguës, une seule table de dates marquée, pas de colonne de clé visible, pas de table isolée
+    vocabulaire: chaque mesure a un format et une description ; aucune mesure dupliquée ; noms sans préfixe technique ; une mesure n'est jamais une colonne calculée quand une mesure suffit
+    artefacts: le modèle est lu depuis ses fichiers (TMDL) ; chaque règle a un identifiant, une sévérité, une expression vérifiable
+    comportement: une violation de sévérité erreur bloque la publication ; le verdict est rendu à chaque commit, pas à la revue
+  frontiere: fixe le NIVEAU de qualité d'un modèle sémantique ; n'importe pas Tabular Editor dans la forge (le point de terminaison XMLA et la version payante restent au projet) — l'oracle de forge-audit lit les fichiers et rejoue les règles qu'il peut, en déclarant celles qu'il ne rejoue pas
+  justification: le profil `powerbi` de forge-audit cite déjà « les règles Best Practice Analyzer (Tabular Editor) » comme moyen de vérification (CTL-D16-02) ; la collection est la seule liste de règles ouverte et maintenue du domaine
+  statut: todo (pas 5 à jouer — soumis au pilot le 07/09/2026, décision D-6)
+
+- cible: projet Power BI en formats texte versionnables (PBIP / TMDL) — format de dépôt du modèle sémantique et des rapports
+  reference: Microsoft Learn — Power BI Desktop projects (PBIP), vue d'ensemble et dossier du modèle sémantique
+  localisateur: https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview
+  candidats_survivants: >
+    (1) projects-overview (recommandée : définit le format de projet, ses dossiers et ce qui est
+    versionnable) ; (2) https://learn.microsoft.com/en-us/analysis-services/tmdl/tmdl-overview
+    (spécification du langage TMDL, complément indispensable — retenue comme second
+    localisateur de la même barre, pas comme barre séparée) ;
+    (3) https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-dataset (dossier
+    du modèle sémantique dans un projet, détail)
+  test_existence: PASS — HTTP 200 sur les trois candidats (exécuté le 07/09/2026)
+  niveaux:
+    structure: un projet = un dossier `.SemanticModel` (définition TMDL : tables, relations, mesures, rôles, un fichier par table) et un dossier `.Report` (définition PBIR), sans binaire ; chaque objet est un fichier texte diffable
+    vocabulaire: TMDL est le format par défaut du modèle depuis sa disponibilité générale (2025-09) ; les propriétés d'un objet sont déclaratives et nommées
+    artefacts: le dépôt git porte le projet entier ; aucune définition ne vit seulement dans l'application
+    comportement: un modèle qui n'existe qu'en PBIX (binaire) n'est pas versionnable ni jugeable par un agent — défaut détectable
+  frontiere: fixe le NIVEAU « le modèle sémantique est du texte versionné » ; n'impose aucune version de Power BI Desktop, ne copie aucun contenu de la documentation
+  justification: condition posée par l'analyse L99 du 07/09/2026 pour qu'un verbe soit exerçable par un agent (formats texte, lignes de commande, API) ; sans ce format, les oracles M4 et M6 de l'étude n'ont rien à lire
+  statut: todo (pas 5 à jouer — soumis au pilot le 07/09/2026, décision D-6)
