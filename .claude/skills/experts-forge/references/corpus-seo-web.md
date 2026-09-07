@@ -1,6 +1,6 @@
 # Corpus propre — SEO et hygiène de migration web (checklist)
 
-Constitué le 23/07/2026 pour la fiche `expert-seo-web` (inventaire P2 §5 E8). Ancré dans les chantiers Produit-09 Vendôme (canonical/og en dur détectés au fetch du 21/07), digit-ai.fr (400 URLs / 10 indexées), landing APDLB. Complémentaire de l'oracle `parite-migration` : **l'oracle mesure, la fiche explique et priorise.**
+Constitué le 23/07/2026 pour la fiche `expert-seo-web` (inventaire P2 §5 E8). Ancré dans les chantiers Produit-09 Montbrelle (canonical/og en dur détectés au fetch du 21/07), digit-ai.fr (400 URLs / 10 indexées), landing APDLB. Complémentaire de l'oracle `parite-migration` : **l'oracle mesure, la fiche explique et priorise.**
 
 1. **Canonical et og:url : le piège des URL en dur** — un canonical absolu recopié de la prod sur l'environnement migré dit aux moteurs « la vraie page est ailleurs » ; générer les canonicals depuis l'hôte courant ou en relatif au build, et vérifier après CHAQUE build (cas Vendôme : en dur des deux côtés).
 2. **Indexabilité de l'environnement de recette** — un env de recette indexable crée du duplicate content contre sa propre prod : noindex ou authentification sur la recette, MAIS vérifier que le noindex ne part pas en prod à la bascule (les deux sens du même défaut).

@@ -1,4 +1,4 @@
-# Recette de migration — cas rouge (provenance : constat Produit-09 Vendôme du 21/07/2026)
+# Recette de migration — cas rouge (provenance : constat Produit-09 Montbrelle du 21/07/2026)
 source: parite-src-red
 migre: parite-mig-red
 domaine-cible: app-recette.azurewebsites.net

@@ -3,7 +3,7 @@
 Version 1.0.0 — 24/07/2026 — Statut registre : **ok** — admise le 24/07/2026 (verdict MATERIEL, oracle-judge en session S′ ; dossier A/B : `fixtures/fixture-seo-web.md`).
 
 ## 0. Mérite un expert (3 conditions, renseignées à la création)
-1. Récurrence : 3 chantiers (Produit-09 Vendôme canonical/og en dur + indexabilité env Azure, digit-ai.fr 400 URLs / 10 indexées, landing APDLB)
+1. Récurrence : 3 chantiers (Produit-09 Montbrelle canonical/og en dur + indexabilité env Azure, digit-ai.fr 400 URLs / 10 indexées, landing APDLB)
 2. Corpus disponible : checklist propre constituée (canonicals, indexabilité recette, redirections, sitemap/robots, GSC, duplicate, mesure post-bascule)
 3. Non-recouvrement : l'oracle parite-migration mesure la parité mécanique — la fiche explique et priorise, et page-html porte le rendu jamais le référencement
 

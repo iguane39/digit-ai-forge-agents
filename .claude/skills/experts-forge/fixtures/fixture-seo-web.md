@@ -6,7 +6,7 @@
 
 ## Baseline (A) — figée le 23/07/2026, AVANT rédaction de la fiche et de sa checklist
 
-> **Baseline reconstituée (fil d'origine inaccessible)** — la baseline citée par l'inventaire P2 §5 (recette Produit-09 Vendôme : « diff brut ») vit dans un fil claude.ai non accessible depuis le repo ; produite à neuf sans lecture de la fiche ni du corpus (règle transverse du brief §4).
+> **Baseline reconstituée (fil d'origine inaccessible)** — la baseline citée par l'inventaire P2 §5 (recette Produit-09 Montbrelle : « diff brut ») vit dans un fil claude.ai non accessible depuis le repo ; produite à neuf sans lecture de la fiche ni du corpus (règle transverse du brief §4).
 
 Recette sans expertise SEO outillée :
 
