@@ -84,7 +84,7 @@ exécution). Tout le reste reste jugé : réseau A1, thème G1, police interdite
 Un gabarit ajouté à `assets/` **échoue** tant qu'il n'est pas soit conforme, soit déclaré —
 une exemption se décide, elle ne se devine pas (R-30 §3).
 
-### Le skill émet des JETONS, jamais des couleurs ni des polices en dur (TF-0791, 04/09/2026)
+### Le skill émet des JETONS, jamais des couleurs ni des polices en dur (TF-0856, 04/09/2026)
 
 Mesuré le 03/09 par la critique d'implémentation de forge-design sur l'exemple de référence :
 **239 couleurs littérales** (`oracle-tokens` T1, dont 173 dans des `style=""` de textes SVG),

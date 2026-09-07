@@ -202,7 +202,7 @@ Toujours déclarer ces variables dans `:root` de la page hôte pour permettre le
   --c-coral-bg:  #fee2e2;   --c-coral-fg:  #b91c1c;   --c-coral-stroke:  #fca5a5;
   --c-amber-bg:  var(--c-amber-bg);   --c-amber-fg:  var(--c-amber-fg);   --c-amber-stroke:  var(--c-amber-stroke);
   --c-gray-bg:   var(--c-gray-bg);   --c-gray-fg:   var(--c-gray-fg);   --c-gray-stroke:   var(--line-strong);
-  /* Jetons nommes par TF-0791 (04/09/2026) : ces valeurs vivaient en dur dans les canevas. */
+  /* Jetons nommes par TF-0856 (04/09/2026) : ces valeurs vivaient en dur dans les canevas. */
   --c-purple-mid: #7c3aed;
   --c-purple-deep: #4c1d95;
   --c-purple-ink: #2e1065;
@@ -212,7 +212,7 @@ Toujours déclarer ces variables dans `:root` de la page hôte pour permettre le
   --c-amber-mid: #b45309;
   --ink-strong: #1e293b;
   --bg-soft-2: #f1f5f9;
-  /* Jetons de police (oracle-tokens T2, TF-0791). */
+  /* Jetons de police (oracle-tokens T2, TF-0856). */
   --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
   --head: 'Roboto', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
