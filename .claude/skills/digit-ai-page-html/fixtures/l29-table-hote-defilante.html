@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L29 · conteneur de tableau défilant — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0900, sens ROUGE, jouée dans Chromium par self_test (run_thead_colle).
+
+  L ÉTAT D AVANT CORRECTIF, reproduit à la ligne près : `.table-hote { overflow-x: auto }` posé
+  à TOUTES les largeurs. Un ancêtre dont l `overflow` n est pas `visible` devient la boîte de
+  défilement de tout `position: sticky` de son sous-arbre : le thead se fige alors sous le haut
+  de SON TABLEAU, jamais sous l en-tête de page, et il quitte l écran avec lui. Mesure du
+  07/09/2026 sur quatre tableaux sans filtres : th à 404 px au repos pour 337 attendus (+67),
+  une ligne recouverte en permanence, -96 px après 200 px de défilement.
+
+  Ce que le banc exige ici : le tableau amené 300 px au-dessus du bord haut de la fenêtre, le bord
+  haut du premier `<th>` NE vaut PAS `--hh` et passe au-dessus de la fenêtre — sinon la mesure ne discriminerait rien et la fixture verte ne prouverait rien.
+  Cette page ne diffère de `l29-table-hote-socle.html` que par la seule ligne
+  `.table-hote { overflow-x: … }`.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --hh:104px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  .wrap { max-width:1080px; margin:0 auto; padding:0 24px 64px; }
+  header.doc.colle { position:sticky; top:0; z-index:20; height:104px; box-sizing:border-box;
+                     padding:24px; background:var(--bg); border-bottom:2px solid var(--blue); }
+  /* AVANT TF-0900 — le conteneur défile à toutes les largeurs, et devient la boîte de
+     défilement du thead collant. C est le défaut que cette fixture porte. */
+  .table-hote { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { font-weight:700; }
+  thead.colle th { position:sticky; top:var(--hh); z-index:10; background:var(--surface); }
+  .haut { height:600px; }
+  .bas  { height:1400px; }
+</style>
+</head>
+<body>
+<header class="doc colle"><strong>Digit-AI</strong> — en-tête de document collant (L29, B1)</header>
+<main class="wrap">
+  <h1>En-tête de tableau collant sous un en-tête de page collant</h1>
+  <p class="haut">Bloc de hauteur fixe, pour qu il y ait de quoi défiler avant le tableau.</p>
+  <div class="table-hote">
+    <table id="lots">
+      <caption>Lots suivis — exemple inventé, aucune donnée réelle.</caption>
+      <thead class="colle">
+        <tr><th>Lot</th><th>Statut</th><th>Palier</th><th>Commentaire de suivi</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Lot A</td><td>ouvert</td><td>MVP</td><td>ouverture confirmée au comité</td></tr>
+        <tr><td>Lot B</td><td>livré</td><td>V1</td><td>en attente de la grille de recette</td></tr>
+        <tr><td>Lot C</td><td>ouvert</td><td>V1</td><td>volume marginal, à réévaluer</td></tr>
+        <tr><td>Lot D</td><td>en cours</td><td>MVP</td><td>pic saisonnier attendu</td></tr>
+        <tr><td>Lot E</td><td>livré</td><td>V2</td><td>clôturé sans reste</td></tr>
+        <tr><td>Lot F</td><td>en cours</td><td>V2</td><td>dépendance externe levée</td></tr>
+        <tr><td>Lot G</td><td>ouvert</td><td>MVP</td><td>cadrage à reprendre</td></tr>
+        <tr><td>Lot H</td><td>livré</td><td>V1</td><td>recette signée</td></tr>
+        <tr><td>Lot I</td><td>ouvert</td><td>V2</td><td>arbitrage de périmètre en cours</td></tr>
+        <tr><td>Lot J</td><td>livré</td><td>MVP</td><td>mise en service faite</td></tr>
+        <tr><td>Lot K</td><td>en cours</td><td>V1</td><td>reprise de données planifiée</td></tr>
+        <tr><td>Lot L</td><td>ouvert</td><td>V2</td><td>estimation à confirmer</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="bas">Bloc de hauteur fixe, pour que le tableau reste à l écran pendant le défilement.</p>
+</main>
+</body>
+</html>

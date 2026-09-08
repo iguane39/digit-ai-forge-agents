@@ -170,7 +170,25 @@
 
        Chaque `<td>` porte `data-label="<en-tete de sa colonne>"`. Un tableau qui n'en porte
        pas ne se replie pas — c'est voulu : le repli sans etiquette rendrait des valeurs nues. */
-    .table-hote { overflow-x: auto; }
+    /* ── TF-0900 (08/09/2026) : LE CONTENEUR DEFILANT NE VIT QUE SOUS 900 px ────────────
+       Un ancetre dont l'`overflow` n'est pas `visible` DEVIENT la boite de defilement de tout
+       `position: sticky` de son sous-arbre. `.table-hote { overflow-x: auto }` pose partout
+       DEFAISAIT donc, a lui seul, le geste L29 pose vingt lignes plus bas : le thead se figeait
+       sous le haut de SON TABLEAU au lieu de l'en-tete de page. Mesure du 07/09 sur quatre
+       tableaux sans filtres : th a 404 px au repos pour 337 attendus (+67), une ligne recouverte
+       en permanence, -96 px apres 200 px de defilement — le thead quittait l'ecran avec son
+       tableau. Deux lignes du MEME gabarit se contredisaient, et un produit a du trancher seul.
+
+       ARBITRAGE : au-dessus de 900 px le conteneur ne defile PAS. Il n'y servait a rien — la
+       regle « tableau rogne » (render_page, famille rognage_donnees) refuse deja qu'un tableau
+       soit coupe dans un conteneur defilant sur une page de donnees, et V1 ne regarde pas si un
+       ancetre defile. Sous 900 px il reprend son role : c'est la que le repli en cartes masque
+       le thead (`table.repli-cartes thead { display: none }`), donc plus aucun sticky a casser,
+       et qu'un tableau NON repliable a besoin d'etre consultable a defaut d'etre lisible.
+       Reste declare : un tableau sans `data-label` (donc sans repli) ET porteur de `thead.colle`
+       perd son collage sous 900 px — c'est la seule largeur ou le socle prefere la consultation
+       au collage, et lisibilite.md L29 le dit. */
+    .table-hote { overflow-x: visible; }
     table { width: 100%; border-collapse: collapse; }
     caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 8px 0; }
     /* TF-0724 D1 (31/08, lot produit) — `overflow-wrap: anywhere` NE VIT PLUS sur `th, td` :
@@ -186,7 +204,10 @@
     th { font-family: var(--head); font-weight: 700; }
     td.cellule-code, th.cellule-code { font-family: var(--mono); overflow-wrap: anywhere; }
     @media (max-width: 900px) {
-      .table-hote { overflow-x: visible; }
+      /* TF-0900 : c'est ICI que le conteneur defilant sert — le thead est masque par le repli
+         en cartes (ligne suivante), donc aucun sticky ne peut etre casse, et un tableau non
+         repliable reste consultable au doigt. */
+      .table-hote { overflow-x: auto; }
       table.repli-cartes thead { display: none; }
       table.repli-cartes tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 12px; break-inside: avoid; }
       table.repli-cartes td { display: grid; grid-template-columns: minmax(9ch, 38%) 1fr; gap: 8px; border: 0; padding: 4px 0; }

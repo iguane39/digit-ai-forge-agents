@@ -1250,6 +1250,99 @@ def run_filtres_runtime():
     return out
 
 
+def run_thead_colle():
+    """TF-0900 — LE CONTENEUR DE TABLEAU CONTRE LE THEAD COLLANT, mesure d'execution.
+
+    Un ancetre dont l'`overflow` n'est pas `visible` devient la boite de defilement de tout
+    `position: sticky` de son sous-arbre. `.table-hote { overflow-x: auto }`, pose a toutes les
+    largeurs par le socle, DEFAISAIT donc a lui seul le geste L29 pose vingt lignes plus bas
+    dans le meme gabarit : le thead se figeait sous le haut de SON TABLEAU (+67 px au repos,
+    une ligne recouverte en permanence) et quittait l'ecran avec lui (-96 px apres 200 px de
+    defilement, mesure du 07/09/2026 sur quatre tableaux).
+
+    Aucun oracle statique ne pouvait le voir : la feuille DECLARE bien `position: sticky` et
+    `top: var(--hh)`, et L29 juge des declarations. Ce qui est faux, c'est le REFERENTIEL de ce
+    top — et un referentiel ne se lit qu'apres defilement, dans un navigateur.
+
+    Les deux fixtures ne different QUE par la ligne `.table-hote { overflow-x: … }` :
+      · VERTE — apres 400 px de defilement, le bord haut du premier `<th>` vaut `--hh` (104 px)
+        a 4 px pres : le thead est colle sous l'en-tete de page, comme L29 le prescrit ;
+      · ROUGE — le meme document avec le conteneur defilant : le banc EXIGE que la mesure en
+        differe. Sans ce sens rouge, une page qui n'aurait jamais colle passerait pour verte.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from render_page import ensure_browser_path  # noqa: PLC0415
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001 — l'auto-detection du navigateur est un confort, pas un du
+        pass
+
+    out = []
+    fichiers = ("l29-table-hote-socle.html", "l29-table-hote-defilante.html")
+    manquantes = [n for n in fichiers if not (FIXTURES / n).exists()]
+    for n in manquantes:
+        out.append({"fixture": n, "verdict": "ABSENTE", "attendu": "fixture présente",
+                    "obtenu": "absente", "regle": "L29 (runtime)", "detail": ""})
+    if manquantes:
+        return out
+
+    HH = 104          # valeur du token --hh dans les deux fixtures
+    TOLERANCE = 4     # px — l'arrondi de peinture, pas un assouplissement
+
+    def mesurer(nom):
+        """Le tableau est amene 300 px AU-DESSUS du bord haut de la fenetre, son corps restant
+        a l'ecran : c'est exactement la situation ou un thead collant doit etre visible."""
+        page.goto((FIXTURES / nom).resolve().as_uri())
+        page.wait_for_load_state("load")
+        return page.evaluate("""() => {
+          const t = document.getElementById('lots');
+          window.scrollTo(0, t.getBoundingClientRect().top + window.scrollY + 300);
+          const th = document.querySelector('#lots thead th');
+          const r = th.getBoundingClientRect();
+          const tr = t.getBoundingClientRect();
+          return { top: Math.round(r.top),
+                   tableau_a_l_ecran: tr.bottom > 0 && tr.top < window.innerHeight };
+        }""")
+
+    with sync_playwright() as pw:
+        navigateur = pw.chromium.launch()
+        page = navigateur.new_page(viewport={"width": 1280, "height": 800})
+        try:
+            vert = mesurer("l29-table-hote-socle.html")
+            rouge = mesurer("l29-table-hote-defilante.html")
+        except Exception as erreur:  # noqa: BLE001 — une panne se compte, elle n'arrete pas
+            out.append({"fixture": "l29-table-hote-*.html", "verdict": "ECHEC",
+                        "attendu": "section jouee", "obtenu": type(erreur).__name__,
+                        "regle": "TF-0900", "detail": str(erreur).splitlines()[0][:300]})
+            navigateur.close()
+            return out
+        page.close()
+        navigateur.close()
+
+    ok_vert = vert["tableau_a_l_ecran"] and abs(vert["top"] - HH) <= TOLERANCE
+    out.append({"fixture": "l29-table-hote-socle.html", "verdict": "OK" if ok_vert else "ECHEC",
+                "attendu": f"th colle a --hh ({HH} px ± {TOLERANCE})", "obtenu": f"{vert['top']} px",
+                "regle": "TF-0900 collage",
+                "detail": "" if ok_vert else
+                          f"le thead ne se colle pas sous l'en-tete de page : {vert['top']} px "
+                          f"au lieu de {HH}, tableau a l'ecran = {vert['tableau_a_l_ecran']}"})
+    ok_rouge = (rouge["tableau_a_l_ecran"] and abs(rouge["top"] - HH) > TOLERANCE
+                and rouge["top"] < 0)
+    out.append({"fixture": "l29-table-hote-defilante.html", "verdict": "OK" if ok_rouge else "ECHEC",
+                "attendu": f"th HORS de l'ecran (sens rouge, ni {HH} px, ni >= 0)",
+                "obtenu": f"{rouge['top']} px", "regle": "TF-0900 contre-epreuve",
+                "detail": "" if ok_rouge else
+                          "le conteneur defilant ne casse plus le collage : la mesure ne "
+                          "discrimine plus rien, la fixture verte ne prouve plus rien"})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -1278,6 +1371,11 @@ def main():
     filtres = run_filtres_runtime()
     if filtres:
         res += filtres
+    # TF-0900 — le conteneur de tableau contre le thead collant : un referentiel de `top` ne se
+    # lit qu'APRES defilement, dans un navigateur. La feuille, elle, declarait juste.
+    colle = run_thead_colle()
+    if colle:
+        res += colle
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

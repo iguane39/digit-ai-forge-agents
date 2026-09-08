@@ -920,6 +920,47 @@ lui-même collant ; **et** `top: var(--hh)` consommé sans que `--hh` soit décl
 qui vaut 0 par défaut ramène exactement la collision qu'il devait éviter (loi transverse n° 1 :
 une affordance est câblée ou n'existe pas).
 
+### L29 bis — un `thead` collant ne vit pas dans un conteneur défilant (TF-0900, 07/09/2026)
+
+**Le fait payé.** Le socle se contredisait lui-même à vingt lignes d'écart : `.table-hote
+{ overflow-x: auto }` posé à toutes les largeurs, et `thead.colle th { top: var(--hh) }` juste
+en dessous. **Un ancêtre dont l'`overflow` n'est pas `visible` devient la boîte de défilement
+de tout `position: sticky` de son sous-arbre** : le `top` cesse alors de se compter depuis la
+fenêtre, et le thead se fige sous le haut de **son propre tableau**. Mesure du 07/09 sur quatre
+tableaux sans filtres : th à 404 px au repos pour 337 attendus (+67), **une ligne recouverte en
+permanence**, puis **-96 px** après 200 px de défilement — l'en-tête quittait l'écran avec son
+tableau. Le geste L29, correctement déclaré, était défait par une autre ligne du même gabarit,
+sur le cas d'usage **prescrit** (un tableau dans `.table-hote`). Quatre tableaux sur huit d'un
+livrable, cette seule cause.
+
+**Arbitrage, au socle.** Le conteneur défilant **ne vit que sous 900 px** :
+
+```css
+.table-hote { overflow-x: visible; }                     /* au-dessus de 900 px : ne défile pas */
+@media (max-width: 900px) { .table-hote { overflow-x: auto; } }
+```
+
+Au-dessus de 900 px il ne servait à rien : la famille `rognage_donnees` de `render_page.py`
+refuse déjà qu'un tableau soit **coupé** dans un conteneur défilant sur une page de données, et
+V1 ne regarde pas si un ancêtre défile. Sous 900 px il reprend son rôle — c'est là que le repli
+en cartes masque le thead (`table.repli-cartes thead { display: none }`), donc plus aucun sticky
+à casser, et qu'un tableau non repliable a besoin d'être consultable à défaut d'être lisible.
+
+**Reste déclaré, à sens unique.** Un tableau sans `data-label` (donc non repliable) **et**
+porteur de `thead.colle` perd son collage sous 900 px : c'est la seule largeur où le socle
+préfère la consultation au collage. Au-dessus, le collage est garanti.
+
+**Corollaire.** Une page hôte n'a plus besoin du contournement `thead.colle th { position:
+sticky !important }` : elle peut le retirer.
+
+**Ce qui le mesure.** Aucun contrôle statique ne peut le voir — la feuille **déclare** juste, et
+c'est le *référentiel* du `top` qui est faux. Il ne se lit qu'après défilement, dans un
+navigateur : `self_test.py` (`run_thead_colle`) amène le tableau 300 px au-dessus du bord haut
+de la fenêtre et exige que le th vaille `--hh` ± 4 px. Fixtures à double sens
+`l29-table-hote-socle.html` (104 px, collé) et `l29-table-hote-defilante.html` (**-196 px**,
+hors écran alors que son tableau est à l'écran) — elles ne diffèrent que par la ligne
+`.table-hote { overflow-x: … }`.
+
 ## Lancer le contrôle
 
 ```bash
