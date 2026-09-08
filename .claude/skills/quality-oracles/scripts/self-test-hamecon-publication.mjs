@@ -9,7 +9,7 @@
 // mal lu. Un garde-fou qu'on n'a pas vu refuser un push n'est pas un garde-fou, c'est une
 // intention. Ce test fait donc le geste réel, contre un dépôt distant réel (local et jetable).
 //
-// CINQ CAS, et les cinq comptent :
+// SEPT CAS, et les sept comptent :
 //   1. dépôt PORTEUR      → push REFUSÉ, exit non nul, constats imprimés ;
 //   2. dépôt PROPRE       → push ACCEPTÉ ;
 //   3. dépôt PORTEUR avec --no-verify → push ACCEPTÉ (le contournement explicite fonctionne :
@@ -17,7 +17,13 @@
 //   4. référentiel ABSENT → push REFUSÉ, ET LE MOTIF DU SKIP EST RÉPÉTÉ EN CLAIR (un oracle qui
 //      ne peut pas mesurer ne laisse pas passer — mais un refus muet se contourne à l'aveugle) ;
 //   5. TABLES DANS LE CANAL, AUCUNE VARIABLE D'ENVIRONNEMENT (TF-0887) → le dépôt propre passe et
-//      le dépôt porteur est refusé, la porte ayant trouvé les deux tables toute seule.
+//      le dépôt porteur est refusé, la porte ayant trouvé les deux tables toute seule ;
+//   6. LE HAMEÇON DE COMMIT (TF-0980) → il CORRIGE l'index au lieu de refuser, il travaille sur
+//      LE DÉPÔT QUI COMMITE et sur lui seul, il journalise, et il ne refuse que sur un NOM de
+//      fichier porteur, une chaîne en échec ou un lanceur introuvable. Un hameçon qui corrige ne
+//      se prouve pas en constatant que le commit passe : il faut LIRE CE QUI A ÉTÉ COMMITÉ ;
+//   7. LE RACCORD avec la chaîne d'anonymisation RÉELLE du pilot — un contrat d'appel entre DEUX
+//      dépôts dérive sans que personne ne le voie. Absent de la machine, le cas le DIT.
 //
 // DEUX RÈGLES D'HYGIÈNE DU BANC, ET ELLES SONT NÉES D'UN DÉFAUT MESURÉ LE 08/09 (TF-0887) :
 //
@@ -43,11 +49,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 const INSTALLEUR = path.join(ICI, 'installer-hamecon-publication.mjs');
 const ORACLE_SOURCE = path.join(ICI, 'oracle-nom-client-publie.mjs');
+// TF-0980 — le lanceur du hameçon de COMMIT, et la racine du parc telle que ce dépôt la voit.
+// `<forge>/.claude/skills/quality-oracles/scripts` → `<forge>` → la racine du parc.
+const LANCEUR_SOURCE = path.join(ICI, 'pre-commit-anonymiser.mjs');
+const RACINE_PARC = process.env.FORGE_ROOT || path.resolve(ICI, '..', '..', '..', '..', '..');
 const oks = [], kos = [];
 
 // L'environnement d'un push du banc : jamais les variables du poste, qui feraient lire les tables
@@ -71,6 +81,18 @@ function poserOracleSource(racine) {
   const d = path.join(racine, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles', 'scripts');
   fs.mkdirSync(d, { recursive: true });
   fs.copyFileSync(ORACLE_SOURCE, path.join(d, 'oracle-nom-client-publie.mjs'));
+  return d;
+}
+
+/** Le pendant de `poserOracleSource` pour le hameçon de COMMIT (TF-0980) : une copie de la SOURCE
+ *  du lanceur à l'emplacement de repli du hook, sous une racine jetable. Même raison, mot pour
+ *  mot : sans elle le banc jugerait la copie MONTÉE sur le poste, c'est-à-dire, juste après une
+ *  modification, la version d'AVANT. Le lanceur n'importe que des modules du cœur de Node et
+ *  résout sa chaîne à l'exécution : un seul fichier suffit. */
+function poserLanceurSource(racine) {
+  const d = path.join(racine, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles', 'scripts');
+  fs.mkdirSync(d, { recursive: true });
+  fs.copyFileSync(LANCEUR_SOURCE, path.join(d, 'pre-commit-anonymiser.mjs'));
   return d;
 }
 
@@ -192,6 +214,196 @@ try {
   const p6 = sh(d6, 'git', ['push', 'origin', 'main'], ENV_SANS_VARIABLE);
   if (p6.status === 0) oks.push('cas 5 — tables dans le CANAL et AUCUNE variable : dépôt PROPRE ACCEPTÉ — la porte mesure, elle ne bloque pas par défaut');
   else kos.push('cas 5 — dépôt PROPRE REFUSÉ alors que les tables sont dans le canal : ' + (p6.stderr || '').trim().slice(0, 300));
+
+  // --- cas 6 : LE HAMEÇON DE COMMIT (TF-0980) --------------------------------
+  //
+  // POURQUOI CES CAS EXISTENT. Le `pre-push` arrive après : quand il parle, le nom est déjà dans
+  // un objet git, et le corriger demande de modifier un commit existant. Le `pre-commit`, lui,
+  // CORRIGE l'index avant que le commit n'existe. Un hameçon qui corrige se prouve autrement
+  // qu'un hameçon qui refuse : il ne suffit pas de constater que le commit passe — il faut LIRE
+  // CE QUI A ÉTÉ COMMITÉ. Un hook posé, exécuté, et qui n'écrit rien laisse exactement la même
+  // trace qu'un hook qui travaille.
+  //
+  // LA CHAÎNE D'ANONYMISATION DE CES CAS EST JETABLE, ET C'EST UN CHOIX DÉCLARÉ. Les règles de
+  // substitution réelles (graphies, variantes, casse, garde des identifiants de code) vivent chez
+  // le pilot et y sont éprouvées par ses propres bancs. Ce qui se prouve ICI est le CÂBLAGE, qui
+  // est le travail de ce dépôt : le hook s'exécute, il trouve son lanceur, le lanceur travaille
+  // sur LE DÉPÔT QUI COMMITE, il ré-indexe, il journalise, et il refuse dans les deux cas prévus.
+  // Une chaîne jetable rend ces sept sens déterministes ; la chaîne RÉELLE est éprouvée à part,
+  // au cas 7, sur son seul contrat d'appel.
+  const cc = fs.mkdtempSync(path.join(os.tmpdir(), 'hamecon-commit-'));
+  try {
+    poserLanceurSource(cc);
+    // La chaîne jetable : le MÊME contrat que celle du pilot — `passer({ fichiers, racine,
+    // ecrire })` rendant `{ corriges, nomsPorteurs }` — et rien de plus. Elle lève quand on le lui
+    // demande, ce qui est le seul moyen d'éprouver la branche « tables illisibles ».
+    const chaine = path.join(cc, 'chaine-jetable.mjs');
+    fs.writeFileSync(chaine, [
+      "import { readFileSync, writeFileSync, existsSync } from 'node:fs';",
+      "import { join } from 'node:path';",
+      "import { execFileSync } from 'node:child_process';",
+      "const NOM = 'Zorglub', PSEUDO = 'Client-A';",
+      'export function passer({ fichiers, racine, ecrire = true } = {}) {',
+      "  if (process.env.BANC_TABLES_ILLISIBLES) throw new Error('référentiel des clients introuvable (table jetable du banc)');",
+      '  const corriges = [], nomsPorteurs = [];',
+      '  for (const f of fichiers) {',
+      '    const abs = join(racine, f);',
+      '    if (!existsSync(abs)) continue;',
+      '    if (f.includes(NOM)) nomsPorteurs.push({ fichier: f, propose: f.split(NOM).join(PSEUDO) });',
+      "    const brut = readFileSync(abs, 'utf8');",
+      '    if (!brut.includes(NOM)) continue;',
+      '    if (ecrire) {',
+      "      writeFileSync(abs, brut.split(NOM).join(PSEUDO), 'utf8');",
+      "      execFileSync('git', ['add', '--', f], { cwd: racine });",
+      '    }',
+      '    corriges.push({ fichier: f, termes: 1 });',
+      '  }',
+      '  return { corriges, nomsPorteurs };',
+      '}',
+    ].join('\n'), 'utf8');
+
+    const ENV_COMMIT = { HOME: cc, USERPROFILE: cc, FORGE_ROOT: cc, FORGE_ANONYMISEUR: chaine };
+    /** Un dépôt jetable vide, prêt à recevoir un premier commit sous hameçon. */
+    const nu = (nom) => {
+      const d = path.join(cc, nom);
+      fs.mkdirSync(d, { recursive: true });
+      git(d, 'init', '-q', '-b', 'main', '.');
+      git(d, 'config', 'user.email', 'o@o');
+      git(d, 'config', 'user.name', 'o');
+      return d;
+    };
+    const lireCommite = (d, f) => (sh(d, 'git', ['show', 'HEAD:' + f], ENV_COMMIT).stdout || '');
+
+    // --- (6a) LE SENS ROUGE, D'ABORD : le MÊME dépôt SANS hameçon --------------------------
+    // Sans lui, « le commit porte le pseudonyme » ne prouverait rien : peut-être que rien n'a
+    // jamais porté le nom. Ce cas montre le défaut vivant, et c'est ce défaut que le suivant tue.
+    const sansHook = nu('sans-hamecon');
+    fs.writeFileSync(path.join(sansHook, 'note.md'), 'Compte rendu remis a Zorglub ce matin.\n');
+    git(sansHook, 'add', '-A');
+    const c6r = sh(sansHook, 'git', ['commit', '-q', '-m', 'note du banc'], ENV_COMMIT);
+    if (c6r.status === 0 && /Zorglub/.test(lireCommite(sansHook, 'note.md')))
+      oks.push('cas 6a (sens rouge) — SANS hameçon de commit, le nom entre dans un objet git : c\'est le défaut, et c\'est ce que le pre-push ne peut plus que constater');
+    else kos.push('cas 6a — le témoin du défaut ne reproduit rien (exit ' + c6r.status + ') : le cas 6b ne prouvera donc pas grand-chose');
+
+    // --- (6b) LE SENS VERT : le même dépôt AVEC hameçon ------------------------------------
+    const avecHook = nu('avec-hamecon');
+    const pose6 = sh(cc, 'node', [INSTALLEUR, avecHook]);
+    (pose6.stdout || '').includes('pre-commit') ? oks.push('cas 6b — l\'installeur pose AUSSI le pre-commit, pas seulement le pre-push')
+      : kos.push('cas 6b — l\'installeur ne pose pas de pre-commit : ' + (pose6.stdout || pose6.stderr || '').trim().slice(0, 200));
+    fs.writeFileSync(path.join(avecHook, 'note.md'), 'Compte rendu remis a Zorglub ce matin.\n');
+    git(avecHook, 'add', '-A');
+    const c6v = sh(avecHook, 'git', ['commit', '-q', '-m', 'note du banc'], ENV_COMMIT);
+    const commite = lireCommite(avecHook, 'note.md');
+    if (c6v.status !== 0) kos.push('cas 6b — le commit est REFUSÉ alors que le hameçon devait CORRIGER (exit ' + c6v.status + ') : ' + (c6v.stderr || '').trim().slice(0, 300));
+    else if (/Zorglub/.test(commite)) kos.push('cas 6b — le commit passe mais le nom est TOUJOURS dans l\'objet git : le hook s\'exécute sans rien corriger, ou ne s\'exécute pas. Commité : ' + commite.trim().slice(0, 120));
+    else if (!/Client-A/.test(commite)) kos.push('cas 6b — le nom a disparu du commit sans que le pseudonyme y soit : le contenu a été perdu, pas pseudonymisé. Commité : ' + commite.trim().slice(0, 120));
+    else oks.push('cas 6b — dépôt PORTEUR : le commit PASSE et l\'objet git porte le PSEUDONYME, pas le nom — le hameçon corrige au lieu de refuser');
+    // Le fichier de travail suit l'index : sans cela, le prochain `git add` réintroduirait le nom.
+    if (c6v.status === 0 && /Client-A/.test(fs.readFileSync(path.join(avecHook, 'note.md'), 'utf8')))
+      oks.push('cas 6b — le fichier de TRAVAIL est corrigé lui aussi : le prochain `git add` ne réintroduira pas le nom');
+    else if (c6v.status === 0) kos.push('cas 6b — l\'index est corrigé mais pas le fichier de travail : le nom revient au prochain `git add`');
+    // La correction est TRACÉE : une réécriture silencieuse est indiscernable d'une corruption.
+    const journal = path.join(avecHook, '.claude', 'anonymisation-au-commit.jsonl');
+    if (fs.existsSync(journal) && /note\.md/.test(fs.readFileSync(journal, 'utf8')))
+      oks.push('cas 6b — la substitution est JOURNALISÉE dans le dépôt qui commite : qui relit son diff peut savoir pourquoi son fichier a changé');
+    else kos.push('cas 6b — aucun journal de substitution : une correction silencieuse et non tracée est indiscernable d\'une corruption');
+
+    // --- (6c) LE DÉPÔT QUI COMMITE, ET LUI SEUL -------------------------------------------
+    // C'EST LE CAS QUI JUSTIFIE CE FICHIER. Le script du pilot calcule sa racine depuis son
+    // propre emplacement : posé ailleurs, il anonymiserait l'index DU PILOT pendant qu'on commite
+    // dans un autre dépôt — travailler sur le mauvais dépôt tout en paraissant travailler.
+    const voisin = nu('voisin');
+    fs.writeFileSync(path.join(voisin, 'a-lui.md'), 'Note du voisin, remise a Zorglub.\n');
+    git(voisin, 'add', '-A');
+    const avantVoisin = fs.readFileSync(path.join(voisin, 'a-lui.md'), 'utf8');
+    const encore = nu('encore-un');
+    sh(cc, 'node', [INSTALLEUR, encore]);
+    fs.writeFileSync(path.join(encore, 'note.md'), 'Autre note remise a Zorglub.\n');
+    git(encore, 'add', '-A');
+    sh(encore, 'git', ['commit', '-q', '-m', 'note du banc'], ENV_COMMIT);
+    const apresVoisin = fs.readFileSync(path.join(voisin, 'a-lui.md'), 'utf8');
+    if (apresVoisin !== avantVoisin) kos.push('cas 6c — commiter dans UN dépôt a modifié l\'index d\'un AUTRE : le lanceur travaille sur la mauvaise racine');
+    else if (!/Client-A/.test(lireCommite(encore, 'note.md'))) kos.push('cas 6c — le dépôt qui commite n\'a PAS été corrigé : le lanceur ne travaille sur aucun des deux');
+    else oks.push('cas 6c — le lanceur travaille sur LE DÉPÔT QUI COMMITE et sur lui seul : le voisin, indexé et porteur, est intact');
+
+    // --- (6d) NOM DE FICHIER PORTEUR → REFUS, avec la commande exacte ---------------------
+    const nomPorteur = nu('nom-porteur');
+    sh(cc, 'node', [INSTALLEUR, nomPorteur]);
+    fs.writeFileSync(path.join(nomPorteur, 'rapport-Zorglub.md'), 'Rien de particulier ici.\n');
+    git(nomPorteur, 'add', '-A');
+    const c6d = sh(nomPorteur, 'git', ['commit', '-q', '-m', 'rapport'], ENV_COMMIT);
+    const e6d = c6d.stderr || '';
+    if (c6d.status === 0) kos.push('cas 6d — un fichier dont le NOM porte un nom réel est commité sans un mot : le nom se lit dans l\'arborescence sans ouvrir un fichier');
+    else if (!/COMMIT REFUSÉ/.test(e6d) || !/git mv/.test(e6d)) kos.push('cas 6d — refus SANS la commande exacte de renommage : un refus qu\'on ne sait pas lever se contourne. Rendu : ' + e6d.trim().slice(0, 300));
+    else oks.push('cas 6d — NOM de fichier porteur : commit REFUSÉ (exit ' + c6d.status + ') et la commande `git mv` est donnée — le seul geste que le hameçon ne fait pas à votre place');
+
+    // --- (6e) LE CONTOURNEMENT EXPLICITE RESTE POSSIBLE -----------------------------------
+    const c6e = sh(nomPorteur, 'git', ['commit', '-q', '--no-verify', '-m', 'rapport'], ENV_COMMIT);
+    if (c6e.status === 0) oks.push('cas 6e — contournement --no-verify : commit ACCEPTÉ, le garde-fou reste levable en connaissance de cause');
+    else kos.push('cas 6e — --no-verify ne passe PAS : un garde-fou inlevable se fait arracher au lieu d\'être discuté');
+
+    // --- (6f) TABLES ILLISIBLES → REFUS ---------------------------------------------------
+    // Un anonymiseur qui ne peut pas anonymiser arrête le convoi : anonymiser à moitié serait
+    // pire que ne pas anonymiser, parce que l'outil afficherait quand même « corrigé ».
+    const c6f = sh(avecHook, 'git', ['commit', '-q', '--allow-empty', '-m', 'commit vide'],
+      { ...ENV_COMMIT, BANC_TABLES_ILLISIBLES: '1' });
+    const e6f = c6f.stderr || '';
+    if (c6f.status !== 0 && /ne peut pas travailler|ne peut pas anonymiser/.test(e6f))
+      oks.push('cas 6f — chaîne en échec (tables illisibles) : commit REFUSÉ et le motif est dit — anonymiser à moitié serait pire que ne pas anonymiser');
+    else kos.push('cas 6f — une chaîne qui ne peut pas travailler laisse passer le commit (exit ' + c6f.status + ') : ' + e6f.trim().slice(0, 300));
+
+    // --- (6g) LANCEUR INTROUVABLE → REFUS, pistes dites -----------------------------------
+    // Un garde-fou absent ne se remplace pas par un passage en force silencieux ; et un refus
+    // sans pistes ne se répare pas.
+    const desert = fs.mkdtempSync(path.join(os.tmpdir(), 'hamecon-desert-'));
+    try {
+      const d6g = nu('sans-lanceur');
+      sh(cc, 'node', [INSTALLEUR, d6g]);
+      fs.writeFileSync(path.join(d6g, 'note.md'), 'Une note ordinaire.\n');
+      git(d6g, 'add', '-A');
+      const c6g = sh(d6g, 'git', ['commit', '-q', '-m', 'note'],
+        { HOME: desert, USERPROFILE: desert, FORGE_ROOT: desert, FORGE_ANONYMISEUR: undefined });
+      const e6g = c6g.stderr || '';
+      if (c6g.status !== 0 && /introuvable/.test(e6g)) oks.push('cas 6g — lanceur INTROUVABLE : commit REFUSÉ, un garde-fou absent ne se remplace pas par un passage en force silencieux');
+      else kos.push('cas 6g — lanceur introuvable et le commit passe (exit ' + c6g.status + ') : ' + e6g.trim().slice(0, 300));
+    } finally { try { fs.rmSync(desert, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
+
+    // --- (6h) UN pre-commit ÉTRANGER N'EST PAS ÉCRASÉ -------------------------------------
+    const etranger = nu('pre-commit-etranger');
+    const cible = path.join(etranger, '.git', 'hooks', 'pre-commit');
+    fs.writeFileSync(cible, '#!/bin/sh\n# le hook de quelqu un d autre\nexit 0\n', { mode: 0o755 });
+    const p6h = sh(cc, 'node', [INSTALLEUR, etranger]);
+    if (/CONFLIT/.test(p6h.stdout || '') && /quelqu un d autre/.test(fs.readFileSync(cible, 'utf8')))
+      oks.push('cas 6h — un pre-commit ÉTRANGER est signalé en CONFLIT et laissé intact : écraser le travail de quelqu\'un d\'autre en silence se découvre trois semaines plus tard');
+    else kos.push('cas 6h — un pre-commit étranger a été écrasé ou le conflit n\'est pas dit : ' + (p6h.stdout || '').trim().slice(0, 200));
+
+    // --- (6i) LE RETRAIT VAUT POUR LES DEUX HAMEÇONS --------------------------------------
+    const ret6 = sh(cc, 'node', [INSTALLEUR, avecHook, '--retirer']);
+    const resteCommit = fs.existsSync(path.join(avecHook, '.git', 'hooks', 'pre-commit'));
+    const restePush = fs.existsSync(path.join(avecHook, '.git', 'hooks', 'pre-push'));
+    if (!resteCommit && !restePush && /RETIRE/.test(ret6.stdout || '')) oks.push('cas 6i — le retrait emporte les DEUX hameçons : ce qui se pose se dépose');
+    else kos.push('cas 6i — le retrait laisse un hameçon derrière lui (pre-commit : ' + resteCommit + ', pre-push : ' + restePush + ')');
+
+    // --- cas 7 : LE RACCORD AVEC LA CHAÎNE RÉELLE DU PILOT --------------------------------
+    // Les cas 6a-6i prouvent le câblage contre une chaîne jetable. Ils ne diraient RIEN du jour
+    // où la chaîne réelle change de contrat d'appel — et c'est un contrat entre DEUX dépôts, donc
+    // exactement le genre qui dérive sans que personne ne le voie. Ce cas-ci ne rejoue pas les
+    // règles de substitution (elles sont éprouvées chez le pilot) : il vérifie que la chaîne
+    // réelle est résolvable et qu'elle expose bien `passer`. Quand le pilot n'est pas sur la
+    // machine, le cas le DIT au lieu de se taire : un banc muet se lit comme un banc vert.
+    const pilotChaine = [
+      path.join(RACINE_PARC, 'digit-ai-factory', 'todo', 'pre-commit-anonymise.mjs'),
+    ].find((p) => fs.existsSync(p));
+    if (!pilotChaine) {
+      oks.push('cas 7 — NON JOUÉ : la chaîne d\'anonymisation du pilot est absente de cette machine (' + path.join(RACINE_PARC, 'digit-ai-factory', 'todo', 'pre-commit-anonymise.mjs') + '). Le raccord entre les deux dépôts n\'est donc pas mesuré ici — dit, jamais tu');
+    } else {
+      const sonde = spawnSync(process.execPath, ['--input-type=module', '-e',
+        'const m = await import(process.argv[1]); process.stdout.write(typeof m.passer);'.replace('process.argv[1]', JSON.stringify(pathToFileURL(pilotChaine).href)),
+      ], { encoding: 'utf8', env: envBanc({}) });
+      if ((sonde.stdout || '').trim() === 'function') oks.push('cas 7 — la chaîne RÉELLE du pilot est résolvable et expose `passer` : le contrat d\'appel entre les deux dépôts tient');
+      else kos.push('cas 7 — la chaîne réelle du pilot n\'expose pas `passer` (' + pilotChaine + ') : le contrat d\'appel entre les deux dépôts a dérivé. ' + ((sonde.stderr || '').trim().slice(0, 300) || (sonde.stdout || '').trim()));
+    }
+  } finally { try { fs.rmSync(cc, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
 
   // --- retrait propre ---------------------------------------------------------
   const ret = sh(racine, 'node', [INSTALLEUR, d1, d2, d4, d5, d6, '--retirer']);

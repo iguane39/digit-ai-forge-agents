@@ -1,6 +1,22 @@
 #!/usr/bin/env node
-// installer-hamecon-publication — pose (ou retire) le hameçon `pre-push` qui refuse une
-// publication portant un nom de client.
+// installer-hamecon-publication — pose (ou retire) les DEUX hameçons du parc : le `pre-push` qui
+// REFUSE une publication portant un nom de client, et le `pre-commit` qui RETIRE le nom avant que
+// le commit n'existe.
+//
+// DEUX HAMEÇONS ET PAS UN, PARCE QU'UN SEUL ARRIVE TOUJOURS TROP TARD (TF-0980, 08/09/2026).
+// Mesuré sur le dépôt du pilot : il ne portait QUE le `pre-push`. Conséquence mécanique — quand
+// la porte parle, le nom est DÉJÀ dans un objet git, et le corriger demande de modifier un commit
+// existant. Que ce soit un `--amend` local ou une réécriture complète, c'est la même opération :
+// seule l'ampleur diffère. Le dépôt du pilot compte une vingtaine de mentions de réécriture
+// d'historique, et TROIS réécritures en douze jours. Une porte de sortie ne peut pas empêcher ce
+// qu'elle constate : elle arrive après.
+//
+// LES DEUX NE FONT PAS LE MÊME GESTE, ET C'EST VOULU. Le `pre-push` REFUSE : il juge tout
+// l'historique, coûte trois à cinq minutes sur le plus gros dépôt du parc, et se rencontre
+// quelques fois par jour. Le `pre-commit` CORRIGE : il ne juge que l'INDEX, coûte quelques
+// millisecondes, et se rencontre dix fois par jour. Un contrôle bloquant qu'on rencontre dix fois
+// par jour finit contourné — l'option existe et elle est documentée dans le hameçon lui-même. Un
+// contrôle qui CORRIGE ne se contourne pas, parce qu'il n'y a rien à contourner.
 //
 // POURQUOI UN HAMEÇON ET PAS UNE CONSIGNE. Le 27/08/2026, l'oracle a été écrit, joué à la main,
 // et il a trouvé deux dépôts qu'un balayage manuel venait de déclarer propres. Un contrôle exact
@@ -27,6 +43,7 @@
 // est un geste EXPLICITE, pas un défaut.
 //
 // Usage : node installer-hamecon-publication.mjs <depot…> [--retirer] [--verifier]
+//         [--seul=pre-push|pre-commit] pour n'agir que sur l'un des deux.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -34,8 +51,13 @@ const args = process.argv.slice(2);
 const depots = args.filter((a) => !a.startsWith('--'));
 const retirer = args.includes('--retirer');
 const verifier = args.includes('--verifier');
+const seul = (args.find((a) => a.startsWith('--seul=')) || '').split('=')[1] || null;
 
 const MARQUE = 'oracle-nom-client-publie';
+// La marque du SECOND hameçon est le nom de son lanceur, pour la raison exacte qui a fait choisir
+// celle du premier : elle sert à reconnaître NOTRE hameçon d'un `pre-commit` étranger, et un texte
+// qui n'apparaît nulle part ailleurs est le seul repère qui ne mente pas.
+const MARQUE_COMMIT = 'pre-commit-anonymiser';
 
 const HAMECON = `#!/bin/sh
 # pre-push — refuse une publication portant un nom de client (${MARQUE}).
@@ -102,37 +124,88 @@ echo "  Corrigez, ou contournez EXPLICITEMENT : git push --no-verify" >&2
 exit 1
 `;
 
+// LE HAMEÇON DE COMMIT — il CORRIGE, il ne refuse pas (TF-0980).
+//
+// Le lanceur est CHERCHÉ, jamais gravé, pour la raison exacte du `pre-push` : un chemin résolu à
+// l'installation est vrai le jour de la pose et périme en silence, et le même geste se rejoue sur
+// un poste où la racine n'est pas au même endroit. La copie INSTALLÉE passe d'abord, parce que
+// c'est elle qui s'exécute ; la source de la forge des outils sert de repli.
+const HAMECON_COMMIT = `#!/bin/sh
+# pre-commit — le nom est retire AVANT que le commit n'existe (${MARQUE_COMMIT}).
+# Pose par installer-hamecon-publication.mjs. Contournement explicite : git commit --no-verify.
+#
+# Il CORRIGE le contenu indexe et le RE-INDEXE : dans le cas normal, aucun refus, aucune
+# interruption. Il ne refuse que dans deux cas -- tables illisibles, ou NOM de fichier porteur --
+# et le dit alors avec la commande exacte. Il ne juge que l'INDEX, jamais l'histoire : son cout est
+# de quelques millisecondes, la ou la porte de publication prend trois a cinq minutes.
+RACINE="\${FORGE_ROOT:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
+LANCEUR=""
+for CANDIDAT in \\
+  "$HOME/.claude/skills/quality-oracles/scripts/${MARQUE_COMMIT}.mjs" \\
+  "$RACINE/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/${MARQUE_COMMIT}.mjs"
+do
+  [ -f "$CANDIDAT" ] && LANCEUR="$CANDIDAT" && break
+done
+
+if [ -z "$LANCEUR" ]; then
+  echo "COMMIT REFUSE — le lanceur d'anonymisation est introuvable." >&2
+  echo "  cherche dans : ~/.claude/skills/... puis \\$RACINE/digit-ai-forge-agents/..." >&2
+  echo "  Un anonymiseur qui ne peut pas anonymiser ne doit pas laisser passer." >&2
+  echo "  Contournement explicite si vous savez ce que vous faites : git commit --no-verify" >&2
+  exit 1
+fi
+
+exec node "$LANCEUR"
+`;
+
+// LES DEUX HAMEÇONS PASSENT PAR LE MÊME GESTE, et c'est ce qui garantit qu'ils se posent, se
+// reposent, se vérifient et se retirent de la même façon. Un second hameçon traité par un second
+// bloc de code recopié dériverait du premier au premier correctif.
+const HAMECONS = [
+  { nom: 'pre-push', marque: MARQUE, contenu: HAMECON },
+  { nom: 'pre-commit', marque: MARQUE_COMMIT, contenu: HAMECON_COMMIT },
+];
+const choisis = seul ? HAMECONS.filter((h) => h.nom === seul) : HAMECONS;
+if (!choisis.length) {
+  console.error(`--seul=${seul} : hameçon inconnu. Attendu : ` + HAMECONS.map((h) => h.nom).join(' ou '));
+  process.exit(2);
+}
+
 let poses = 0, retires = 0, absents = 0, deja = 0;
 for (const d of depots) {
   const hooks = path.join(d, '.git', 'hooks');
   if (!fs.existsSync(hooks)) { console.log(`  ABSENT   ${d} — pas de dépôt git ici`); absents++; continue; }
-  const cible = path.join(hooks, 'pre-push');
 
-  if (verifier) {
-    const present = fs.existsSync(cible) && fs.readFileSync(cible, 'utf8').includes(MARQUE);
-    console.log(`  ${present ? 'POSE    ' : 'MANQUANT'} ${d}`);
-    present ? poses++ : absents++;
-    continue;
-  }
+  for (const h of choisis) {
+    const cible = path.join(hooks, h.nom);
+    const etiquette = `${h.nom.padEnd(10)} ${d}`;
 
-  if (retirer) {
-    if (fs.existsSync(cible) && fs.readFileSync(cible, 'utf8').includes(MARQUE)) { fs.rmSync(cible); console.log(`  RETIRE   ${d}`); retires++; }
-    else console.log(`  RIEN     ${d} — aucun hameçon de ce contrôle`);
-    continue;
-  }
+    if (verifier) {
+      const present = fs.existsSync(cible) && fs.readFileSync(cible, 'utf8').includes(h.marque);
+      console.log(`  ${present ? 'POSE    ' : 'MANQUANT'} ${etiquette}`);
+      present ? poses++ : absents++;
+      continue;
+    }
 
-  // JAMAIS écraser un hameçon qui n'est pas le nôtre : un `pre-push` étranger porte le travail
-  // de quelqu'un d'autre, et l'écraser en silence est le genre de geste qu'on découvre trois
-  // semaines plus tard. Le conflit se DIT, il ne se résout pas tout seul.
-  if (fs.existsSync(cible)) {
-    const txt = fs.readFileSync(cible, 'utf8');
-    if (!txt.includes(MARQUE)) { console.log(`  CONFLIT  ${d} — un pre-push ÉTRANGER existe déjà, rien touché`); absents++; continue; }
-    fs.writeFileSync(cible, HAMECON, { mode: 0o755 });
-    console.log(`  REPOSE   ${d}`); deja++; continue;
+    if (retirer) {
+      if (fs.existsSync(cible) && fs.readFileSync(cible, 'utf8').includes(h.marque)) { fs.rmSync(cible); console.log(`  RETIRE   ${etiquette}`); retires++; }
+      else console.log(`  RIEN     ${etiquette} — aucun hameçon de ce contrôle`);
+      continue;
+    }
+
+    // JAMAIS écraser un hameçon qui n'est pas le nôtre : un hook étranger porte le travail
+    // de quelqu'un d'autre, et l'écraser en silence est le genre de geste qu'on découvre trois
+    // semaines plus tard. Le conflit se DIT, il ne se résout pas tout seul.
+    if (fs.existsSync(cible)) {
+      const txt = fs.readFileSync(cible, 'utf8');
+      if (!txt.includes(h.marque)) { console.log(`  CONFLIT  ${etiquette} — un ${h.nom} ÉTRANGER existe déjà, rien touché`); absents++; continue; }
+      fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
+      console.log(`  REPOSE   ${etiquette}`); deja++; continue;
+    }
+    fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
+    console.log(`  POSE     ${etiquette}`);
+    poses++;
   }
-  fs.writeFileSync(cible, HAMECON, { mode: 0o755 });
-  console.log(`  POSE     ${d}`);
-  poses++;
 }
 console.log(verifier ? `\n${poses} posé(s), ${absents} manquant(s)`
   : retirer ? `\n${retires} retiré(s)`
