@@ -1278,6 +1278,194 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-0982 (08/09/2026) — LA BORNE DE DATE DES TABLES, ET CE QU'ELLE N'EXCUSE PAS.
+//
+// LE FAIT PAYÉ, ET IL EST MESURÉ. Le 08/09, cette porte rendait FAIL sur le dépôt du pilot avec
+// 939 constats, TOUS de la règle C5, TOUS dans le CONTENU de l'historique — zéro dans l'arbre
+// courant, zéro en message de commit. Aucune de ces occurrences n'avait bougé d'un octet : c'est
+// la TABLE qui venait de passer de 64 à 65 clés. Chaque extension rendait donc le passé fautif
+// RÉTROACTIVEMENT, et c'est la cause directe de TROIS réécritures d'historique en douze jours.
+//
+// CE QUE CES CAS ÉPROUVENT, et pourquoi il en faut QUATRE :
+//   (A) LE DOUBLE SENS DE LA BORNE dans l'histoire — la MÊME occurrence, au MÊME endroit, ne
+//       bloque pas sous une borne postérieure à elle et bloque sous une borne antérieure. Une
+//       fixture qui ne montrerait que le premier sens prouverait une porte muette, pas une borne ;
+//   (B) L'ARBRE COURANT ET LES MESSAGES DE COMMIT NE SONT PAS BORNÉS — c'est le point à ne pas
+//       rater, et il se prouve dans UN SEUL dépôt, avec UN SEUL terme et UNE SEULE borne posée
+//       si loin dans l'avenir que TOUT lui est antérieur : la mention de l'arbre bloque, celle du
+//       message de commit bloque, celle du blob ancien ne bloque pas. Sans ce cas, une borne
+//       appliquée partout passerait le banc en désarmant la porte entière ;
+//   (C) UN TERME SANS DATE N'EST PAS EXEMPTÉ — bloc `depuis` présent mais muet sur ce terme-là.
+//       L'absence de donnée doit rendre la porte plus sévère, jamais plus douce ;
+//   (D) UNE DATE MALFORMÉE N'EST PAS UNE DATE — même direction sûre que l'absence. Sans ce cas,
+//       une coquille dans la table amnistierait un terme en silence.
+//
+// LA DATE D'AUTEUR EST LA SEULE LUE, ET LE BANC LE FORCE : les commits de ces dépôts portent une
+// date d'AUTEUR de 2020 et une date de VALIDATION d'aujourd'hui — c'est exactement l'état que
+// laisse une réécriture d'historique. Un banc qui laisserait les deux dates égales ne verrait pas
+// la différence, et la porte pourrait lire la mauvaise sans que rien ne le dise.
+//
+// LES NOMS SONT INVENTÉS, comme partout dans ce dépôt : aucun nom du parc ne s'écrit ici.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-borne-'));
+  try {
+    const CLIENT = 'Farfadec';              // nom de client INVENTÉ
+    const PRODUIT = 'MachinTruc-Bidule';    // nom de produit INVENTÉ (2 mots, ≥ 8 lettres)
+    const VIEUX = '2020-03-04T10:00:00+01:00';   // date d'AUTEUR des commits anciens
+
+    // Les tables vivent sous un parent SÉPARÉ des dépôts : sans cela la résolution par voisinage
+    // retrouverait une table quand le cas veut une table précise (même raison qu'au cas TF-0820).
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const ecrireTable = (nom, obj) => {
+      const p = path.join(tables, nom);
+      fs.writeFileSync(p, JSON.stringify(obj), 'utf8');
+      return p;
+    };
+    // Le référentiel « nu » n'est pas VIDE, et c'est une nécessité, pas une décoration : un
+    // référentiel sans aucun terme fait rendre SKIP à la porte (elle refuse de rendre PASS quand
+    // elle n'a rien à chercher), et le cas mesurerait alors l'absence de table au lieu de la
+    // borne. Il porte donc UN nom inventé, absent de tous les dépôts de ce banc.
+    const tClientsNu = ecrireTable('_clients-nu.json', { noms: ['Grenouillat'], identifiants: [], sigles: [] });
+    const tProduitsNu = ecrireTable('_produits-nu.json', { produits: {} });
+
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const g = (r, env, ...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8', env });
+    /** Un dépôt jetable dont les commits portent une date d'AUTEUR imposée. */
+    const batir = (nom, commits) => {
+      const r = path.join(depots, nom);
+      fs.mkdirSync(r);
+      const base = { ...process.env };
+      g(r, base, 'init', '-q');
+      g(r, base, 'config', 'user.email', 'banc@local');
+      g(r, base, 'config', 'user.name', 'banc');
+      for (const c of commits) {
+        for (const [f, txt] of Object.entries(c.ecrire || {})) fs.writeFileSync(path.join(r, f), txt, 'utf8');
+        for (const f of c.retirer || []) fs.rmSync(path.join(r, f), { force: true });
+        g(r, base, 'add', '-A');
+        // La date de VALIDATION reste celle d'aujourd'hui : c'est l'état d'après une réécriture.
+        g(r, { ...base, GIT_AUTHOR_DATE: c.date }, 'commit', '-q', '-m', c.message);
+      }
+      return r;
+    };
+
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const jouer = (repo, tClients, tProduits) => {
+      const r = spawnSync(process.execPath, [
+        path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits,
+      ], { encoding: 'utf8', timeout: 300000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const bloq = (j) => (j ? (j.findings || []) : []).filter(f => f.sev === 'bloquant');
+    const ante = (j) => (j ? (j.findings || []) : []).filter(f => f.sev === 'anteriorite');
+
+    // ---------------------------------------------------------------------------------------
+    // (A) LE DOUBLE SENS DE LA BORNE — un fichier créé en 2020 sous un nom porteur, au contenu
+    //     porteur, puis RETIRÉ de l'arbre. Il ne reste que dans l'histoire : contenu de blob et
+    //     nom de fichier disparu. Deux angles, une seule occurrence, deux bornes.
+    // ---------------------------------------------------------------------------------------
+    const histoire = batir('histoire', [
+      { date: VIEUX, message: 'premier depot du banc',
+        ecrire: { ['note-' + CLIENT + '.md']: 'Compte rendu remis a ' + CLIENT + ' ce matin.\n',
+                  'garde.md': 'Ce fichier reste, et ne porte aucun nom.\n' } },
+      { date: '2020-03-05T10:00:00+01:00', message: 'retrait du compte rendu',
+        retirer: ['note-' + CLIENT + '.md'] },
+    ]);
+    const borneApres = ecrireTable('_clients-apres.json',
+      { noms: [CLIENT], identifiants: [], sigles: [], depuis: { [CLIENT]: '2025-01-01' } });
+    const borneAvant = ecrireTable('_clients-avant.json',
+      { noms: [CLIENT], identifiants: [], sigles: [], depuis: { [CLIENT]: '2019-01-01' } });
+
+    const jA1 = jouer(histoire, borneApres, tProduitsNu);
+    const a1 = ante(jA1), b1 = bloq(jA1);
+    const njA1 = jA1 ? (jA1.non_juge || []).join(' ') : '';
+    if (!jA1) ko('TF-0982 (A) sens 1 : sortie de l oracle inexploitable');
+    else if (jA1.verdict !== 'PASS') ko('TF-0982 (A) sens 1 : une occurrence de 2020, ANTERIEURE a l inscription du terme (2025-01-01), fait encore echouer la porte (' + jA1.verdict + ') — ' + b1.map(f => f.regle + ' ' + f.where).join(', ') + '. C est exactement le mecanisme qui a rendu le passe fautif retroactivement');
+    else if (a1.length < 2) ko('TF-0982 (A) sens 1 : ' + a1.length + ' anteriorite(s) declaree(s) — attendu au moins 2 (le CONTENU du blob et le NOM du fichier disparu). Une occurrence qui cesse de bloquer sans etre nommee est effacee, pas bornee');
+    else if (!a1.every(f => f.sev && f.msg && f.where && /ANTÉRIORITÉ/.test(f.msg))) ko('TF-0982 (A) sens 1 : une anteriorite ne porte pas le contrat findings[] ou ne DIT pas pourquoi elle ne bloque pas');
+    else if (!/PASSIF D’ANTÉRIORITÉ : 2 occurrence/.test(njA1)) ko('TF-0982 (A) sens 1 : le passif n est pas COMPTE au non_juge — un passif qui grossit doit rester visible, sinon la borne est une amnistie. non_juge : ' + njA1.slice(-300));
+    else ok('TF-0982 (A) sens 1 : occurrence de 2020 sous une borne au 2025-01-01 → PASS, ' + a1.length + ' anteriorite(s) NOMMEES (contenu du blob + nom du fichier disparu) et COMPTEES au non_juge');
+
+    const jA2 = jouer(histoire, borneAvant, tProduitsNu);
+    const a2 = ante(jA2), b2 = bloq(jA2);
+    if (!jA2) ko('TF-0982 (A) sens 2 : sortie de l oracle inexploitable');
+    else if (jA2.verdict !== 'FAIL') ko('TF-0982 (A) sens 2 : la MEME occurrence de 2020, POSTERIEURE a l inscription du terme (2019-01-01), ne fait plus echouer la porte (' + jA2.verdict + ') — la borne est devenue une amnistie generale');
+    else if (b2.length < 2) ko('TF-0982 (A) sens 2 : ' + b2.length + ' constat(s) bloquant(s) — attendu au moins 2, les memes deux angles que le sens 1');
+    else if (a2.length) ko('TF-0982 (A) sens 2 : ' + a2.length + ' anteriorite(s) declaree(s) alors que la revision est POSTERIEURE a la borne — la comparaison de dates est inversee');
+    else ok('TF-0982 (A) sens 2 : la MEME occurrence sous une borne au 2019-01-01 → FAIL, ' + b2.length + ' bloquant(s), zero anteriorite. La borne mord dans les DEUX sens');
+
+    // ---------------------------------------------------------------------------------------
+    // (B) L'ARBRE COURANT ET LES MESSAGES DE COMMIT NE SONT PAS BORNÉS — un seul dépôt, un seul
+    //     terme, une borne au 2099-01-01 : TOUTE révision lui est antérieure. Si la borne
+    //     s'appliquait partout, ce dépôt rendrait PASS alors qu'il porte le nom dans un fichier
+    //     SUIVI et dans un MESSAGE de commit — deux choses qu'une édition corrige.
+    // ---------------------------------------------------------------------------------------
+    const arbre = batir('arbre', [
+      { date: VIEUX, message: 'premier depot du banc',
+        ecrire: { 'ancien.md': 'Note interne sur ' + PRODUIT + ', a archiver.\n' } },
+      { date: '2020-03-05T10:00:00+01:00', message: 'mise en place du connecteur de ' + PRODUIT,
+        retirer: ['ancien.md'], ecrire: { 'outil.py': '# TODO : brancher le connecteur de ' + PRODUIT + '\n' } },
+    ]);
+    const tProduitsLoin = ecrireTable('_produits-loin.json',
+      { produits: { [PRODUIT]: 'Produit-99' }, depuis: { [PRODUIT]: '2099-01-01' } });
+
+    const jB = jouer(arbre, tClientsNu, tProduitsLoin);
+    const bB = bloq(jB), aB = ante(jB);
+    const dansArbre = bB.filter(f => /contenu d'un fichier suivi/.test(f.msg));
+    const dansMessage = bB.filter(f => /MESSAGE de commit/.test(f.msg));
+    const dansHisto = aB.filter(f => /CONTENU d'un fichier de l'historique/.test(f.msg));
+    if (!jB) ko('TF-0982 (B) : sortie de l oracle inexploitable');
+    else if (jB.verdict !== 'FAIL') ko('TF-0982 (B) : une borne au 2099-01-01 desarme la porte ENTIERE (' + jB.verdict + ') — l arbre courant et les messages de commit ont ete bornes eux aussi, alors qu ils se corrigent par une edition');
+    else if (!dansArbre.length) ko('TF-0982 (B) : le nom present dans un fichier SUIVI ne bloque plus — l arbre courant a ete borne');
+    else if (!dansMessage.length) ko('TF-0982 (B) : le nom present dans un MESSAGE de commit ne bloque plus — les messages ont ete bornes');
+    else if (!dansHisto.length) ko('TF-0982 (B) : aucune anteriorite sur le blob ancien du MEME depot — le temoin manque, et le cas ne prouve pas que la borne s applique bien QUELQUE PART');
+    else ok('TF-0982 (B) : sous une borne au 2099-01-01, dans UN SEUL depot — le fichier SUIVI bloque (' + dansArbre.length + '), le MESSAGE de commit bloque (' + dansMessage.length + '), et le blob ancien du meme terme est une anteriorite (' + dansHisto.length + '). L arbre et les messages ne sont pas bornes');
+
+    // ---------------------------------------------------------------------------------------
+    // (C) UN TERME SANS DATE N'EST PAS EXEMPTÉ — le bloc `depuis` existe, il date un AUTRE terme.
+    //     Sans ce cas, une table incomplète amnistierait ses termes non datés en silence, ce qui
+    //     est la panne exactement inverse de celle qu'on répare.
+    // ---------------------------------------------------------------------------------------
+    const sansDate = ecrireTable('_clients-sans-date.json',
+      { noms: [CLIENT], identifiants: [], sigles: [], depuis: { 'UnAutreTerme': '2099-01-01' } });
+    const jC = jouer(histoire, sansDate, tProduitsNu);
+    const njC = jC ? (jC.non_juge || []).join(' ') : '';
+    if (!jC) ko('TF-0982 (C) : sortie de l oracle inexploitable');
+    else if (jC.verdict !== 'FAIL') ko('TF-0982 (C) : un terme ABSENT du bloc `depuis` est exempte (' + jC.verdict + ') — l absence de date vaut amnistie, et une table incomplete desarme la porte');
+    else if (ante(jC).length) ko('TF-0982 (C) : ' + ante(jC).length + ' anteriorite(s) sur un terme non date — la borne d un AUTRE terme a deborde');
+    else if (!/Termes datés : 0\/1/.test(njC)) ko('TF-0982 (C) : le non_juge ne DIT pas combien de termes portent une date — une table a moitie datee juge a moitie sans borne, et le lecteur doit le savoir. non_juge : ' + njC.slice(-300));
+    else ok('TF-0982 (C) : un terme absent du bloc `depuis` reste BLOQUANT (' + bloq(jC).length + ' constat(s)), et le non_juge declare « Termes dates : 0/1 »');
+
+    // ---------------------------------------------------------------------------------------
+    // (D) UNE DATE MALFORMÉE N'EST PAS UNE DATE — même direction sûre que l'absence.
+    // ---------------------------------------------------------------------------------------
+    const malformee = ecrireTable('_clients-malformee.json',
+      { noms: [CLIENT], identifiants: [], sigles: [], depuis: { [CLIENT]: 'depuis toujours' } });
+    const jD = jouer(histoire, malformee, tProduitsNu);
+    if (!jD) ko('TF-0982 (D) : sortie de l oracle inexploitable');
+    else if (jD.verdict !== 'FAIL') ko('TF-0982 (D) : une date MALFORMEE vaut exemption (' + jD.verdict + ') — une coquille dans la table amnistie un terme en silence');
+    else if (ante(jD).length) ko('TF-0982 (D) : ' + ante(jD).length + ' anteriorite(s) sur une borne illisible');
+    else ok('TF-0982 (D) : une date malformee au bloc `depuis` ne borne rien — le terme reste BLOQUANT (' + bloq(jD).length + ' constat(s))');
+
+    // ---------------------------------------------------------------------------------------
+    // (E) LE TÉMOIN DE LA DATE LUE — les commits de ces dépôts portent une date de VALIDATION
+    //     d'aujourd'hui et une date d'AUTEUR de 2020. Si la porte lisait la date de validation,
+    //     le cas (A) sens 1 aurait rendu FAIL : c'est donc la date d'AUTEUR qui est lue, et
+    //     c'est ce qui rend la borne survivable à une réécriture d'historique.
+    // ---------------------------------------------------------------------------------------
+    const dValid = spawnSync('git', ['-C', histoire, 'log', '-1', '--format=%cI %aI'], { encoding: 'utf8' }).stdout.trim();
+    const [dc, da] = dValid.split(' ');
+    if (!dc || !da) ko('TF-0982 (E) : les dates du dernier commit du depot jetable sont illisibles — le temoin ne mesure rien');
+    else if (dc.slice(0, 4) === da.slice(0, 4)) ko('TF-0982 (E) : la date de VALIDATION (' + dc.slice(0, 10) + ') et la date d AUTEUR (' + da.slice(0, 10) + ') tombent la meme annee — le banc ne distingue plus les deux, et le cas (A) passerait meme si la porte lisait la mauvaise');
+    else ok('TF-0982 (E) : les commits du banc portent une date d AUTEUR de ' + da.slice(0, 10) + ' et une date de VALIDATION du ' + dc.slice(0, 10) + ' — l etat d apres une reecriture. Le cas (A) sens 1 ne rend PASS que si la porte lit la date d AUTEUR');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

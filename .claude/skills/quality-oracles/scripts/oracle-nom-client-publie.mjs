@@ -21,6 +21,13 @@
 //      des noms de produits là où C1-C4 rendaient PASS (TF-0820). C1-C4 ne lisent que le
 //      référentiel des CLIENTS ; la règle du parc dit « aucun nom de client NI DE PRODUIT ».
 //
+// ET DEPUIS QUAND — LA BORNE DE DATE (TF-0982, 08/09/2026). Les deux tables portent un bloc
+// `depuis` qui dit à quelle date chaque terme a été INSCRIT. Une occurrence de l'HISTOIRE
+// antérieure à cette date est une ANTÉRIORITÉ : déclarée, comptée, NON bloquante. L'ARBRE COURANT
+// et les MESSAGES DE COMMIT restent jugés SANS borne. Motif mesuré : sans borne, chaque ligne
+// ajoutée à une table rendait tout le passé fautif RÉTROACTIVEMENT — trois réécritures
+// d'historique en douze jours. Détail et arbitrages : le bloc TF-0982 plus bas.
+//
 // LE RÉFÉRENTIEL DES NOMS EST UNE DONNÉE, ET IL VIT HORS DES DÉPÔTS PUBLIÉS (loi transverse n° 4).
 // Un contrôle qui embarquerait la liste des noms interdits PUBLIERAIT EXACTEMENT CE QU'IL PROTÈGE :
 // il suffirait de lire l'oracle pour connaître les clients. Le référentiel est donc résolu à
@@ -226,6 +233,73 @@ function litteralProduit(nom) {
  *  taire un terme court qui bruite est de le retirer de la table — c'est-à-dire d'éteindre
  *  l'angle. Avec lui, on RESSERRE ce qu'on cherche au lieu d'abandonner ce qu'on garde. Et
  *  c'est un choix DÉCLARÉ, terme par terme, lisible dans la table, jamais une heuristique. */
+/* TF-0982 (08/09/2026) — LA BORNE DE DATE : DEPUIS QUAND UN TERME EST-IL INTERDIT.
+ *
+ * LE FAIT, ET IL EST MESURÉ. Le 08/09, cette porte rendait FAIL sur le dépôt du pilot avec 939
+ * constats, TOUS de la règle C5, TOUS dans le CONTENU de l'historique — zéro dans l'arbre courant,
+ * zéro en message de commit. Ces occurrences n'avaient pas bougé d'un octet : c'est la TABLE qui
+ * venait de grandir de 64 à 65 clés. Chaque extension de table rendait donc le passé fautif
+ * RÉTROACTIVEMENT, et c'est la cause directe de TROIS réécritures d'historique en douze jours.
+ * Une porte qui condamne un passé qu'on ne peut plus corriger sans réécrire l'histoire ne protège
+ * plus rien : elle fabrique le geste le plus cher du parc, à chaque ligne ajoutée à une table.
+ *
+ * LA BORNE. Les deux tables portent depuis le 08/09 un bloc `depuis` — `{ "<clé>": "AAAA-MM-JJ" }`,
+ * la date à laquelle le terme a été INSCRIT. Une occurrence trouvée dans l'HISTOIRE, dans une
+ * révision STRICTEMENT antérieure à cette date, est déclarée ANTÉRIORITÉ : nommée, comptée à part,
+ * NON bloquante. Une occurrence postérieure — ou de la date même de l'inscription — reste
+ * bloquante : ce jour-là, le terme était connu.
+ *
+ * CE QUE LA BORNE NE COUVRE PAS, ET C'EST LE POINT CENTRAL :
+ *   · L'ARBRE COURANT (C1, C2, et les angles d'arbre de C5) est jugé SANS BORNE. Un fichier suivi
+ *     se corrige par une ÉDITION : rien ne justifie de l'épargner, quelle que soit l'ancienneté du
+ *     terme. C'est là que la porte garde toutes ses dents ;
+ *   · les MESSAGES DE COMMIT (C3, et l'angle des messages de C5) sont jugés SANS BORNE AUSSI.
+ *     Objection possible : un message ancien ne se corrige qu'en réécrivant. Réponse : le message
+ *     du commit qu'on est en train de POUSSER en fait partie, et c'est le seul angle où la porte
+ *     attrape encore ce qu'on ajoute — l'exempter reviendrait à ne plus juger les messages du tout ;
+ *   · un terme ABSENT du bloc `depuis`, ou dont la date est malformée, est jugé SANS BORNE.
+ *     L'absence de date ne vaut JAMAIS exemption : une table incomplète doit rendre la porte plus
+ *     sévère, jamais plus douce. C'est la seule direction sûre quand la donnée manque.
+ *
+ * LA DATE D'UNE OCCURRENCE, et le choix est déclaré :
+ *   · pour un CONTENU d'historique, la date d'AUTEUR (`%aI`) de la révision où le blob a mordu ;
+ *   · pour un NOM de fichier d'historique, la date d'auteur de la DERNIÈRE révision où le chemin
+ *     était PRÉSENT (`--diff-filter=ACMRT` : ajouts, modifications, renommages — jamais la
+ *     suppression, qui « touche » le chemin sans que le fichier existe après elle).
+ * La date d'AUTEUR plutôt que celle de validation, parce qu'une réécriture d'historique remet les
+ * seconde à zéro : borner sur elle rendrait tout postérieur au lendemain de chaque réécriture,
+ * c'est-à-dire exactement la boucle qu'on est en train de couper. Une date illisible ne donne
+ * AUCUNE exemption — même direction sûre que l'absence de borne.
+ *
+ * LE PASSIF SE COMPTE, ET IL SE DIT. Les antériorités sont listées dans `findings[]` avec la
+ * sévérité `anteriorite`, et leur nombre est déclaré au `non_juge`, terme par terme. Une dette
+ * qu'on cesse de bloquer et qu'on cesse de compter est une dette qu'on a effacée sans la payer :
+ * un passif qui grossit doit rester VISIBLE au verdict, sinon la borne devient une amnistie. */
+const DATE_BORNE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** La date d'inscription d'une clé au bloc `depuis`, ou `null` — clé absente, bloc absent, ou date
+ *  malformée. `null` signifie « jugé SANS borne », jamais « exempté ». */
+function borneDe(depuis, cle) {
+  const v = depuis && typeof depuis === 'object' ? depuis[cle] : undefined;
+  return typeof v === 'string' && DATE_BORNE.test(v.trim()) ? v.trim() : null;
+}
+
+/** L'occurrence est-elle une ANTÉRIORITÉ ? Seulement si le terme porte une borne ET que la date de
+ *  l'occurrence est connue ET STRICTEMENT antérieure. Les trois conditions sont nécessaires : sans
+ *  borne, sans date, ou le jour même de l'inscription, l'occurrence reste bloquante. */
+function estAnteriorite(borne, dateOcc) {
+  return Boolean(borne && dateOcc && dateOcc < borne);
+}
+
+/** La sévérité d'un constat d'HISTOIRE — et de l'histoire SEULE : l'arbre courant et les messages
+ *  de commit n'appellent jamais cette fonction. */
+const sevHisto = (borne, dateOcc) => (estAnteriorite(borne, dateOcc) ? 'anteriorite' : 'bloquant');
+
+/** Le suffixe qui NOMME l'antériorité dans le constat : sans lui, un lecteur voit une occurrence
+ *  non bloquante sans savoir pourquoi elle ne bloque pas. */
+const ditAnteriorite = (borne, dateOcc) => ` — ANTÉRIORITÉ : révision du ${dateOcc}, antérieure à `
+  + `l'inscription du terme au référentiel le ${borne} — non bloquante, comptée au passif`;
+
 function formesDeclarees(valeur) {
   if (!valeur || typeof valeur !== 'object' || Array.isArray(valeur)) return null;
   const f = Array.isArray(valeur.formes) ? valeur.formes.filter(x => typeof x === 'string' && x.trim()) : [];
@@ -236,6 +310,9 @@ function termesProduits(table) {
   const termes = [];
   let ignorees = 0;
   const produits = (table || {}).produits || {};
+  // La borne de date vit dans un bloc SÉPARÉ des entrées (TF-0982) : un lecteur qui ne connaît
+  // pas `depuis` continue de lire `produits` sans rien voir changer.
+  const depuis = (table || {}).depuis;
   for (const cle of Object.keys(produits)) {
     if (CLE_CHEMIN.test(cle)) { ignorees += 1; continue; }
     const formes = formesDeclarees(produits[cle]);
@@ -243,10 +320,11 @@ function termesProduits(table) {
       // Les formes déclarées REMPLACENT la clé nue. Chacune est bornée comme la clé l'aurait
       // été : une forme qui vivrait au milieu d'un mot n'est pas une mention, c'est un blob.
       termes.push({ cle, formes, litt: null, re: null,
-                    bornees: formes.map(litteralProduit) });
+                    bornees: formes.map(litteralProduit), depuis: borneDe(depuis, cle) });
       continue;
     }
-    termes.push({ cle, formes: null, litt: litteralProduit(cle), re: variantesProduit(cle) });
+    termes.push({ cle, formes: null, litt: litteralProduit(cle), re: variantesProduit(cle),
+                  depuis: borneDe(depuis, cle) });
   }
   return { termes, ignorees };
 }
@@ -305,9 +383,12 @@ function ouvrir(artefact) {
 // points et accents, et `\b` place une frontière au milieu de « Client-A ».
 function termes(ref) {
   const t = [];
-  for (const n of ref.noms || []) t.push({ mot: n, casse: false, genre: 'nom', motEntier: false });
-  for (const i of ref.identifiants || []) t.push({ mot: i, casse: true, genre: 'identifiant', motEntier: false });
-  for (const g of ref.sigles || []) t.push({ mot: g, casse: false, genre: 'sigle', motEntier: true });
+  // La borne de date (TF-0982) vit dans un bloc `depuis` SÉPARÉ des trois listes : les lecteurs
+  // qui ne la connaissent pas continuent de lire `noms`/`identifiants`/`sigles` à l'identique.
+  const d = ref.depuis;
+  for (const n of ref.noms || []) t.push({ mot: n, casse: false, genre: 'nom', motEntier: false, depuis: borneDe(d, n) });
+  for (const i of ref.identifiants || []) t.push({ mot: i, casse: true, genre: 'identifiant', motEntier: false, depuis: borneDe(d, i) });
+  for (const g of ref.sigles || []) t.push({ mot: g, casse: false, genre: 'sigle', motEntier: true, depuis: borneDe(d, g) });
   return t;
 }
 
@@ -464,18 +545,53 @@ try {
   const revs = (git(repo, 'rev-list', '--all').stdout || '').split('\n').filter(Boolean);
   const cheminsHisto = new Set((git(repo, 'log', '--all', '--name-only', '--format=').stdout || '')
     .split('\n').map((x) => x.trim()).filter(Boolean));
+
+  // TF-0982 — LA DATE DE CHAQUE RÉVISION, en UNE invocation. Une par révision aurait coûté 909
+  // appels sur le dépôt du pilot, sur un angle qui en coûte déjà 21 : la borne aurait payé sa
+  // propre lenteur, et une porte lente se contourne.
+  // La date d'AUTEUR (`%aI`), jamais celle de validation — voir le bloc TF-0982 plus haut.
+  const dateDeRev = new Map();
+  for (const l of (git(repo, 'log', '--all', '--format=%H %aI').stdout || '').split('\n')) {
+    const m = l.match(/^([0-9a-f]{7,64}) (\d{4}-\d{2}-\d{2})/);
+    if (m) dateDeRev.set(m[1], m[2]);
+  }
+  // LA DERNIÈRE PRÉSENCE D'UN CHEMIN, et le filtre n'est pas cosmétique : `--diff-filter=ACMRT`
+  // retient les révisions où le chemin EXISTE APRÈS le changement (ajout, modification,
+  // renommage, changement de type). La SUPPRESSION « touche » le chemin sans que le fichier
+  // existe ensuite : la compter daterait la dernière présence du nom au jour où on l'a retiré,
+  // c'est-à-dire au plus tard — soit l'inverse exact de ce qu'on mesure.
+  // Un chemin sans date connue reste jugé SANS borne : la direction sûre.
+  const dernierePresence = new Map();
+  for (const bloc of (git(repo, 'log', '--all', '--diff-filter=ACMRT', '--name-only', '--format=%x00%aI').stdout || '').split('\0')) {
+    const lignes = bloc.split('\n').map((x) => x.trim()).filter(Boolean);
+    const d = lignes.length ? (lignes[0].match(/^(\d{4}-\d{2}-\d{2})/) || [])[1] : null;
+    if (!d) continue;
+    for (const rel of lignes.slice(1)) {
+      const prec = dernierePresence.get(rel);
+      if (!prec || d > prec) dernierePresence.set(rel, d);
+    }
+  }
+
   for (const rel of cheminsHisto) if (!suivis.includes(rel)) for (const t of T) {
-    if (chercheTexte(rel, t)) findings.push({
-      sev: 'bloquant', regle: 'C4',
-      msg: `${t.genre} interdit « ${t.mot} » dans le NOM d'un fichier ayant existé dans l'historique`,
+    if (!chercheTexte(rel, t)) continue;
+    const dOcc = dernierePresence.get(rel) || null;
+    const sev = sevHisto(t.depuis, dOcc);
+    findings.push({
+      sev, regle: 'C4',
+      msg: `${t.genre} interdit « ${t.mot} » dans le NOM d'un fichier ayant existé dans l'historique`
+        + (sev === 'anteriorite' ? ditAnteriorite(t.depuis, dOcc) : ''),
       where: rel + ' (historique)',
     });
   }
   // TF-0828 (05/09) — C5 REJOUE L'ANGLE C4 : le NOM d'un fichier disparu de l'arbre.
   for (const rel of cheminsHisto) if (!suivis.includes(rel)) for (const pr of P) {
-    if (porteProduit(rel, pr)) findings.push({
-      sev: 'bloquant', regle: 'C5',
-      msg: `nom de produit interdit « ${pr.cle} » dans le NOM d'un fichier ayant existé dans l'historique`,
+    if (!porteProduit(rel, pr)) continue;
+    const dOcc = dernierePresence.get(rel) || null;
+    const sev = sevHisto(pr.depuis, dOcc);
+    findings.push({
+      sev, regle: 'C5',
+      msg: `nom de produit interdit « ${pr.cle} » dans le NOM d'un fichier ayant existé dans l'historique`
+        + (sev === 'anteriorite' ? ditAnteriorite(pr.depuis, dOcc) : ''),
       where: rel + ' (historique)',
     });
   }
@@ -545,9 +661,12 @@ try {
           const rt = git(repo, ...argsGrep, '-e', t.mot, rev, '--', ':(literal)' + rel);
           affinagesC4 += 1;
           if (!(rt.stdout || '').trim()) continue;
+          const dOcc = dateDeRev.get(rev) || null;
+          const sev = sevHisto(t.depuis, dOcc);
           findings.push({
-            sev: 'bloquant', regle: 'C4',
-            msg: `${t.genre} interdit « ${t.mot} » dans le CONTENU d'un fichier de l'historique`,
+            sev, regle: 'C4',
+            msg: `${t.genre} interdit « ${t.mot} » dans le CONTENU d'un fichier de l'historique`
+              + (sev === 'anteriorite' ? ditAnteriorite(t.depuis, dOcc) : ''),
             where: `${rev.slice(0, 12)}:${rel}`,
           });
         }
@@ -597,8 +716,18 @@ try {
   // la passe groupee sert de FILTRE, et l'aiguille n'est identifiee que sur les couples
   // (revision, fichier) qui ont mordu — c'est-a-dire presque jamais, puisque le cas nominal
   // d'une porte est de ne rien trouver. Le contrat `findings[]` est inchange.
+  // TF-0982 — chaque aiguille porte la BORNE de la clé dont elle vient. Deux clés qui partagent une
+  // même forme déclarée gardent la borne la PLUS ANCIENNE : l'aiguille est interdite dès la
+  // première inscription, et retenir la plus récente exempterait davantage — la mauvaise direction.
+  // Une clé SANS borne impose l'absence de borne à ses aiguilles : rien n'exempte par défaut.
+  const borneDAiguille = new Map();
   const aiguilles = [];
-  for (const pr of P) for (const a of (pr.formes || [pr.cle])) if (!aiguilles.includes(a)) aiguilles.push(a);
+  for (const pr of P) for (const a of (pr.formes || [pr.cle])) {
+    if (!aiguilles.includes(a)) { aiguilles.push(a); borneDAiguille.set(a, pr.depuis); continue; }
+    const prec = borneDAiguille.get(a);
+    if (!pr.depuis || !prec) borneDAiguille.set(a, null);
+    else if (pr.depuis < prec) borneDAiguille.set(a, pr.depuis);
+  }
   if (aiguilles.length) {
     const eGroupe = [];
     for (const a of aiguilles) eGroupe.push('-e', a);
@@ -614,9 +743,13 @@ try {
         const blob = git(repo, 'show', `${rev}:${rel}`).stdout || '';
         for (const a of aiguilles) {
           if (!litteralProduit(a).test(blob)) continue;
+          const borne = borneDAiguille.get(a) || null;
+          const dOcc = dateDeRev.get(rev) || null;
+          const sev = sevHisto(borne, dOcc);
           findings.push({
-            sev: 'bloquant', regle: 'C5',
-            msg: `nom de produit interdit « ${a} » dans le CONTENU d'un fichier de l'historique`,
+            sev, regle: 'C5',
+            msg: `nom de produit interdit « ${a} » dans le CONTENU d'un fichier de l'historique`
+              + (sev === 'anteriorite' ? ditAnteriorite(borne, dOcc) : ''),
             where: `${rev.slice(0, 12)}:${rel}`,
           });
         }
@@ -681,19 +814,56 @@ if (P.length) nj.push('C5 balaie les QUATRE angles depuis le 08/09 (TF-0828) : c
   + 'copie maison) — c’est le défaut de cohérence entre angles déjà payé le 27/08 sur `-w` et '
   + '`-I`. Un nom de produit vivant dans un blob ancien SOUS UNE VARIANTE DE GRAPHIE seulement '
   + "n'est donc pas vu : limite mesurée et déclarée, pas un oubli.");
-if (findings.length) {
+// TF-0982 — LA BORNE DE DATE SE DÉCLARE, ET LE PASSIF SE COMPTE.
+//
+// Trois choses doivent tenir dans le verdict, sinon la borne devient une amnistie silencieuse :
+// COMBIEN de termes portent une date (une table à moitié datée juge à moitié sans borne),
+// COMBIEN d'occurrences ont été déclarées antériorités (le passif, qui doit rester visible même
+// quand il ne bloque plus), et SUR QUELS termes (un passif anonyme ne se traite pas).
+const bloquants = findings.filter((f) => f.sev === 'bloquant');
+const anteriorites = findings.filter((f) => f.sev === 'anteriorite');
+const bornesT = T.filter((t) => t.depuis).length;
+const bornesP = P.filter((p) => p.depuis).length;
+nj.push('BORNE DE DATE (TF-0982) : une occurrence de l’HISTOIRE antérieure à la date d’inscription '
+  + 'de son terme est déclarée ANTÉRIORITÉ — nommée, comptée, NON bloquante. L’ARBRE COURANT et les '
+  + 'MESSAGES DE COMMIT sont jugés SANS borne : ils se corrigent par une édition. Un terme SANS date '
+  + 'au bloc `depuis` est jugé SANS borne — l’absence de date ne vaut jamais exemption. Termes datés : '
+  + bornesT + '/' + T.length + ' au référentiel des clients'
+  + (P.length ? ', ' + bornesP + '/' + P.length + ' à la table des produits' : '')
+  + '. La date d’une occurrence est celle d’AUTEUR de sa révision (une réécriture d’historique remet '
+  + 'les dates de validation à zéro, et borner sur elles rendrait tout postérieur).');
+if (anteriorites.length) {
+  const parTerme = new Map();
+  for (const f of anteriorites) {
+    const m = (f.msg.match(/« (.+?) »/) || [])[1] || '(terme non nommé)';
+    parTerme.set(m, (parTerme.get(m) || 0) + 1);
+  }
+  const detail = [...parTerme.entries()].sort((a, b) => b[1] - a[1])
+    .map(([m, n]) => `« ${m} » ×${n}`).join(' · ');
+  nj.push('PASSIF D’ANTÉRIORITÉ : ' + anteriorites.length + ' occurrence(s) de l’historique '
+    + 'antérieure(s) à l’inscription de leur terme — non bloquantes, et comptées ICI pour qu’un '
+    + 'passif qui grossit reste visible au lieu de disparaître. Par terme : ' + detail
+    + '. Ce passif ne se solde que par une réécriture d’historique — geste humain, jamais un hameçon.');
+} else nj.push('PASSIF D’ANTÉRIORITÉ : aucune occurrence de l’historique n’a été déclarée antérieure '
+  + 'à l’inscription de son terme.');
+
+if (bloquants.length) {
   // Une sortie qui déroulerait 648 occurrences ne se lit pas : on borne, ET ON DIT qu'on borne —
   // un plafond silencieux se lit comme « tout est là », ce qui est le contraire d'un contrôle.
-  const total = findings.length;
-  const montres = findings.slice(0, 200);
-  if (total > montres.length) nj.push(`${total} constat(s) au total, ${montres.length} listés ici — sortie bornée, le reste existe`);
-  out('FAIL', montres, nj, 1, cible);
+  const montres = bloquants.slice(0, 200);
+  if (bloquants.length > montres.length) nj.push(`${bloquants.length} constat(s) BLOQUANT(S) au total, ${montres.length} listés ici — sortie bornée, le reste existe`);
+  // Les antériorités suivent les bloquants, bornées à leur tour : elles ne doivent ni noyer les
+  // constats qui refusent la publication, ni disparaître de la sortie.
+  const anterMontrees = anteriorites.slice(0, 50);
+  if (anteriorites.length > anterMontrees.length) nj.push(`${anteriorites.length} antériorité(s) au total, ${anterMontrees.length} listée(s) ici — sortie bornée, le reste existe`);
+  out('FAIL', montres.concat(anterMontrees), nj, 1, cible);
 }
 out('PASS', [{ sev: 'info', regle: P.length ? 'C1-C5' : 'C1-C4',
   msg: `aucun des ${T.length} terme(s) du référentiel`
     + (P.length ? `, ni des ${P.length} nom(s) de produit de la table,` : ' (C5 non jouée)')
-    + ' dans les contenus, les noms de fichiers ni les messages de commit',
-  where: path.basename(cible) }], nj, 0, cible);
+    + ' dans les contenus, les noms de fichiers ni les messages de commit'
+    + (anteriorites.length ? ` — hors ${anteriorites.length} antériorité(s) de l'historique, déclarée(s) et non bloquante(s)` : ''),
+  where: path.basename(cible) }].concat(anteriorites.slice(0, 50)), nj, 0, cible);
 
 // NOTE, ET ELLE EST LA MEILLEURE PREUVE QUE CET ORACLE JUGE : sa PREMIÈRE exécution sur le dépôt
 // qui le porte a rendu FAIL — sur CE fichier, ligne 94, où un commentaire illustrait la règle de
