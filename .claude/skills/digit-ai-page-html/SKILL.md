@@ -7,13 +7,45 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.19.0"
+  version: "1.20.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.20.0 (08/09/2026, soir)** — **six items d'une seconde campagne, et une seule leçon : ce que
+personne ne RENDAIT, personne ne le mesurait.** · **Deux gabarits du parc échouaient aux quatre
+largeurs sans que rien ne le dise**, parce qu'ils sont des fragments ou des pages que la recette
+ne rendait pas : le canevas de schéma différentiel (1 bloquant V2 à chacune des quatre largeurs —
+l'ambre du socle à **3,08:1** sur un glyphe de légende, sous les 4,5:1 d'un texte) et le canevas
+ERD (**11, 12, 12 et 18** bloquants). Les deux sont désormais POSÉS par la recette dans une page
+hôte **générée depuis eux**, jamais recopiée ; après correction, **0 bloquant aux quatre
+largeurs**, et le sens rouge en rend 4 et 47. Le canevas ERD pose lui-même ses déclarations
+(`data-overlap-ok` sur les **arêtes seules**, `data-rognage-assume` sur son point de montage,
+repli du dictionnaire sous 900 px, `.dd-mono`) au lieu de les faire repayer à chaque
+instanciation, et ses points de montage deviennent des **paramètres** — deux schémas sur une page
+étaient impossibles. · **La visibilité d'une ligne se calcule enfin à UN SEUL endroit**
+(`assets/visibilite-lignes.js`) : elle est la **disjonction** des attributs déclarés par tous les
+mécanismes. Avant, chaque composant la recalculait depuis sa seule liste et écrasait les autres
+sans un mot — un produit avait dû poser un `MutationObserver` sur `hidden` puis déplier tout son
+arbre à chaque changement de filtre. · **Le socle sait plier une hiérarchie** (`table-arbre.js` +
+`.css`, **L31**) : mesuré sur 48 lignes et 3 niveaux, **3 visibles à l'arrivée** au lieu de 48, et
+le pliage **survit** au passage des filtres. · **Deux règles ferment la porte à l'explication qui
+n'explique rien** : L3 bis lit désormais `data-definition` et juge aussi la définition d'un
+`<th>` qui répète son propre libellé ; **L18 bis** exige la légende d'un SYSTÈME d'identifiants
+avant son premier tableau — la page fondatrice était **verte à L18**, glosée jeton par jeton, et
+son lecteur ne savait toujours pas ce qu'est un repère S. · **Le socle dit où s'arrête son
+périmètre** : un tableau, avant le quick start, renvoie les schémas de base de données, ERD et
+schémas différentiels vers `digit-ai-schemas` — leur absence de renvoi avait fait écrire puis
+jeter un composant de 40 cartes.
+**Version MINEURE, et c'est mesuré, pas supposé** : tout est ajout compatible. Les trois règles
+neuves ont été jouées contre les dépôts qui CONSOMMENT le socle avant d'être posées —
+**357 à 362 pages HTML suivies de huit dépôts du parc, zéro constat nouveau** à chaque fois. Le
+seul changement de comportement d'un composant existant (le composant de filtres cesse de forcer
+`display:''` sur une ligne qu'un autre mécanisme masque encore) est sans effet quand l'arbitrage
+n'est pas chargé, et les deux composants gardent leur repli à l'identique.
 
 **1.19.0 (08/09/2026)** — **huit items d'une campagne, et une seule leçon : le socle se
 contredisait lui-même, ou mesurait à côté du défaut que l'humain voyait à la première
