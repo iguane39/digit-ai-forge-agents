@@ -2044,6 +2044,84 @@ def _page_hote_du_canevas(legende_en_glyphes=False):
     return page[:j] + "\n" + corps + "\n" + page[j:]
 
 
+def run_canevas_modele_donnees():
+    """TF-0941 (08/09/2026) — LE CANEVAS ERD POSE SES PROPRES DECLARATIONS, ET C'EST MESURE.
+
+    LE FAIT. Insere dans une page de donnees, le canevas « modele de donnees » declenchait une
+    volee de constats du socle, que le produit levait A LA MAIN, chez lui, a chaque
+    instanciation. Personne ne les avait jamais mesures sur le GABARIT lui-meme : c'est une page
+    complete, mais aucune recette ne la rendait. Mesure du 08/09, aux quatre largeurs :
+    **11, 12, 12 et 18 bloquants** — 11 chevauchements V4 (une etiquette de cardinalite sur son
+    arete, et deux aretes qui se croisent), 1 a 5 « contenu rogne » sur le conteneur mis a
+    l'echelle par `fitSchema`, 2 debordements V1 du dictionnaire a 390 px.
+
+    CE QUI A CHANGE, ET AUCUN N'EST UN ASSOUPLISSEMENT :
+      · l'etiquette de cardinalite chevauche SON arete par construction du dessin, et deux aretes
+        d'un graphe relationnel peuvent devoir passer par le meme couloir — `data-overlap-ok` est
+        pose sur les ARETES ET LEURS ETIQUETTES SEULES ; les cartes, elles, restent jugees ;
+      · `fitSchema` met le schema a l'echelle et fixe la hauteur du conteneur a la hauteur mise a
+        l'echelle : le socle lit un contenu plus haut que sa boite. Rien n'est masque —
+        `data-rognage-assume` le declare, DANS le gabarit ;
+      · le dictionnaire se REPLIE sous 900 px (une ligne devient un bloc etiquete, comme le repli
+        en cartes du socle) au lieu de deborder, et la coupure des noms techniques porte une
+        classe qui DIT son usage (`.dd-mono`), jamais la colonne de note qui est de la prose.
+
+    DEUX SENS : le gabarit LIVRE rend 0 bloquant aux quatre largeurs ; le MEME gabarit prive de
+    ses deux declarations les fait revenir. Sans le second, une page qui aurait cesse de dessiner
+    ses aretes passerait pour corrigee.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    canevas = (Path(__file__).resolve().parents[2] / "digit-ai-schemas" / "assets"
+               / "template-modele-donnees.html")
+    if not canevas.exists():
+        return [{"fixture": "canevas modele de donnees", "verdict": "ECHEC",
+                 "attendu": "gabarit present", "obtenu": "absent", "regle": "TF-0941",
+                 "detail": str(canevas)}]
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    tmp = Path(tempfile.mkdtemp(prefix="self-test-erd-"))
+    livre = canevas.read_text(encoding="utf-8")
+    # Le sens ROUGE ne reecrit pas le gabarit : il lui RETIRE ses deux declarations. La page
+    # reste la meme a l'octet pres par ailleurs, donc ce qui revient vient bien de leur absence.
+    sans = livre.replace(" data-overlap-ok", "")
+    sans = re.sub(r' data-rognage-assume="[^"]*"', "", sans)
+    out = []
+    for nom, contenu, attendu in (("canevas modele de donnees · livre", livre, 0),
+                                  ("canevas modele de donnees · sans ses declarations (sens rouge)",
+                                   sans, 1)):
+        cible = tmp / ("erd-%s.html" % ("livre" if attendu == 0 else "nu"))
+        cible.write_text(contenu, encoding="utf-8")
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(cible), "--output", "json",
+                            "--out", str(tmp)], capture_output=True, text=True, encoding="utf-8")
+        try:
+            bps = json.loads(r.stdout)["breakpoints"]
+        except Exception:
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "rendu lisible",
+                        "obtenu": "illisible", "regle": "TF-0941",
+                        "detail": (r.stderr or r.stdout or "")[:160]})
+            continue
+        bloquants = sum(int(b.get("blocking") or 0) for b in bps.values())
+        largeurs = len(bps)
+        if attendu == 0:
+            ok = bloquants == 0
+            out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                        "attendu": "0 bloquant sur %d largeurs" % largeurs,
+                        "obtenu": "%d bloquant(s)" % bloquants, "regle": "TF-0941 gabarit livre",
+                        "detail": "" if ok else "largeurs %s" % ",".join(sorted(bps))})
+        else:
+            ok = bloquants >= largeurs
+            out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                        "attendu": "au moins 1 bloquant par largeur (%d)" % largeurs,
+                        "obtenu": "%d bloquant(s)" % bloquants, "regle": "TF-0941 sens rouge",
+                        "detail": "" if ok else "retirer les declarations ne fait plus rien "
+                                                "revenir : la mesure est devenue muette"})
+    return out
+
+
 def run_canevas_differentiel():
     """TF-0938 (08/09/2026) — LE CANEVAS DIFFERENTIEL TIENT SES PROPRES REGLES, MESURE.
 
@@ -2189,6 +2267,11 @@ def main():
     visibilite = run_visibilite_lignes()
     if visibilite:
         res += visibilite
+    # TF-0941 — le canevas ERD est une page COMPLETE que rien ne rendait : ses declarations se
+    # posaient chez chaque consommateur, a la main, a chaque instanciation.
+    erd = run_canevas_modele_donnees()
+    if erd:
+        res += erd
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

@@ -139,7 +139,7 @@ section { margin-bottom:56px; }
 /* --- Diagramme : conteneur --- */
 .diagram-wrap { background:var(--bg-soft); border:1px solid var(--line); border-radius:12px; padding:28px 20px; overflow:hidden; }
 #dbSchemaMount { overflow:hidden; }
-#dbScaler { transform-origin:top left; }
+.db-scaler { transform-origin:top left; }
 .db-schema { position:relative; }
 .db-edges { position:absolute; left:0; top:0; pointer-events:none; }
 .db-edges path[data-tip] { pointer-events:stroke; cursor:help; }
@@ -210,6 +210,36 @@ footer.doc { border-top:1px solid var(--line); padding-top:24px; margin-top:80px
 footer.doc .brand { font-family: var(--head); font-weight:700; letter-spacing:.08em; }
 
 @media (max-width:720px) { .page{padding:32px 20px;} h1{font-size:30px;} h2{font-size:22px;} .subtitle{font-size:16px;} }
+/* LE DICTIONNAIRE SE REPLIE, ET C'EST LE CANEVAS QUI LE FAIT (TF-0941, 08/09/2026).
+   Mesure du gabarit LIVRE, aux quatre largeurs : a 390 px, 2 debordements V1 (une table de
+   dictionnaire a 516 px pour un viewport de 390) et 4 cartes dont `overflow:hidden` MASQUE le
+   debordement — un contenu coupe sans que rien ne le dise. Cause : les colonnes techniques
+   etaient en `nowrap`, et une table a quatre colonnes ne tient pas dans un telephone.
+   Sous 900 px, chaque ligne du dictionnaire devient un bloc etiquete (meme geste que le repli en
+   cartes du socle), et les noms techniques coupent OU IL FAUT — `anywhere` reste reserve aux
+   noms techniques (L19), jamais a la note en prose. */
+@media (max-width:900px) {
+  /* Le `thead` est MASQUE, pas seulement deporte hors de l'ecran : une entete rendue invisible
+     par positionnement reste, pour le socle, une entete posee SUR ses lignes (6 constats V15
+     mesures a 768 et 390 px). Le socle replie ses propres tableaux de la meme facon
+     — `table.repli-cartes thead { display: none }` — et l'information de l'entete n'est pas
+     perdue : chaque cellule la porte dans son `data-label`, rendue par `::before`. */
+  .dd-table thead { display:none; }
+  .dd-table, .dd-table tbody, .dd-table tr, .dd-table td { display:block; width:auto; }
+  .dd-table tr { border-bottom:1px solid var(--line-soft); padding:6px 0; }
+  .dd-table td { border:0; padding:2px 14px; }
+  .dd-table td:empty { display:none; }
+  .dd-table td::before { content:attr(data-label) " : "; font-family:var(--head); font-weight:700;
+    font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); }
+  .dd-col, .dd-type { white-space:normal; }
+  /* LA COUPURE PORTE UN NOM QUI DIT SON USAGE (L19). `overflow-wrap: anywhere` est necessaire
+     sur un nom de colonne ou un type SQL, et RAVAGEUR sur de la prose : L19 refuse la coupure
+     partout ou le selecteur ne dit pas l'usage technique — et « .dd-col », « .dd-type »,
+     « .dd-name » ne le disaient pas (3 constats mesures). La classe `.dd-mono`, elle, le dit,
+     et elle n'est posee QUE sur les cellules d'identifiants : la colonne de NOTE, qui est de la
+     prose, ne la porte pas et ne se coupe donc jamais au milieu d'un mot. */
+  .dd-mono { overflow-wrap:anywhere; }
+}
 @media print {
   .diagram-wrap, .dd-card { break-inside:avoid; }
   .diagram-wrap { overflow:visible; background:var(--bg); }
@@ -234,7 +264,14 @@ footer.doc .brand { font-family: var(--head); font-weight:700; letter-spacing:.0
 
 <section>
   <h2><span class="num">01</span> Modèle de données</h2>
-  <div class="diagram-wrap"><div id="dbSchemaMount"></div></div>
+  <!-- LES DECLARATIONS DU CANEVAS SE POSENT ICI, PAS CHEZ CELUI QUI L'INSTANCIE (TF-0941).
+       `data-rognage-assume` : `fitSchema` met le schema a l'echelle par une transformation CSS
+       et fixe la hauteur du conteneur a la hauteur MISE A L'ECHELLE. Le socle lit alors un
+       contenu plus haut que sa boite et l'appelle « contenu rogne » — mesure du 08/09 : 1 constat
+       a 1280 px, 1 a 768 px, 5 a 390 px. Rien n'est masque : c'est une mise a l'echelle, et elle
+       est le geste meme du canevas. Sans cette declaration POSEE ICI, chaque page qui instancie
+       le gabarit la repaie a la main — c'est ce que le produit du 08/09 a du faire. -->
+  <div class="diagram-wrap"><div id="dbSchemaMount" data-rognage-assume="mise a l echelle par fitSchema : la hauteur du conteneur suit le facteur applique, aucun contenu n est masque"></div></div>
   <p class="diagram-caption">Figure 1 — {Description courte : N tables, moteur, schémas couverts.}</p>
   <div id="dbLegendMount"></div>
 </section>
@@ -418,8 +455,17 @@ function renderDbSchema(data) {
       lx=(c1+c2)/2; ly=laneY-5;
     }
     const tip=esc(r.tip||`${r.from}.${r.fromCol} → ${r.to}.${r.toCol}`);
-    return `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" ${dash} marker-end="url(#${marker})" data-tip="${tip}"></path>`
-         + `<text x="${lx}" y="${ly}" class="db-card-rel" fill="${col}" text-anchor="${db===0?'start':'middle'}">${esc(r.card||'')}</text>`;
+    /* DEUX ARETES QUI SE CROISENT NE SONT PAS UN DEFAUT DE MISE EN PAGE (TF-0941, 08/09/2026).
+       Dans un graphe relationnel, deux liens peuvent devoir passer par le meme couloir : le
+       croisement est une propriete du GRAPHE, pas du placement — aucune disposition ne
+       l'evite en general. Le socle juge V4 sur les freres d'un meme parent, et il offre
+       precisement `data-overlap-ok` pour ce cas ; il l'applique deja aux formes internes d'un
+       groupe SVG titre (TF-0424), qui est la meme situation un cran plus bas. La declaration
+       est posee sur les ARETES SEULES : les cartes, elles, ne doivent jamais se recouvrir, et
+       V4 continue de le mesurer. Mesure du 08/09 sur le gabarit livre : 3 croisements
+       arete-arete a chacune des quatre largeurs. */
+    return `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" ${dash} marker-end="url(#${marker})" data-overlap-ok data-tip="${tip}"></path>`
+         + `<text x="${lx}" y="${ly}" class="db-card-rel" data-overlap-ok fill="${col}" text-anchor="${db===0?'start':'middle'}">${esc(r.card||'')}</text>`;
   }).join('');
 
   const mk=(id,c)=>`<marker id="${id}" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="${c}"></path></marker>`;
@@ -445,15 +491,25 @@ function renderDbLegend() {
 function renderDbDictionary(data) {
   const cards=data.tables.map(t=>{
     const rows=t.columns.map(c=>
-      `<tr><td class="dd-col${c.pii?' pii':''}">${c.pii?'🔒 ':''}${esc(c.n)}</td><td class="dd-type">${esc(c.t)}</td><td>${c.k?esc(c.k):''}${c.nn?(c.k?' · ':'')+'NN':''}</td><td class="dd-note">${esc(c.note||'')}</td></tr>`).join('');
-    return `<div class="dd-card s-${t.style}"><div class="dd-head"><span class="dd-name">${esc(t.name)}</span><span class="dd-role">${esc(t.role)}</span><span class="dd-class">${esc(DB_CLASS[t.style]||'Interne')}</span></div><table class="dd-table"><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      `<tr><td class="dd-mono dd-col${c.pii?' pii':''}" data-label="Colonne">${c.pii?'🔒 ':''}${esc(c.n)}</td><td class="dd-mono dd-type" data-label="Type">${esc(c.t)}</td><td data-label="Clé">${c.k?esc(c.k):''}${c.nn?(c.k?' · ':'')+'NN':''}</td><td class="dd-note" data-label="Note">${esc(c.note||'')}</td></tr>`).join('');
+    return `<div class="dd-card s-${t.style}"><div class="dd-head"><span class="dd-mono dd-name">${esc(t.name)}</span><span class="dd-role">${esc(t.role)}</span><span class="dd-class">${esc(DB_CLASS[t.style]||'Interne')}</span></div><table class="dd-table"><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }).join('');
   return `<div class="dd-list">${cards}</div>`;
 }
 
-/* Ajustement : le schéma tient toujours dans la largeur disponible (aucune barre de défilement) */
-function fitSchema(forceWidth){
-  const mount=document.getElementById('dbSchemaMount'), scaler=document.getElementById('dbScaler');
+/* Ajustement : le schéma tient toujours dans la largeur disponible (aucune barre de défilement)
+
+   L'IDENTIFIANT DE MONTAGE EST UN PARAMÈTRE (TF-0941, 08/09/2026), et ce n'est pas du confort :
+   les trois points de montage étaient figés (`dbSchemaMount`, `dbLegendMount`, `dbDicoMount`) et
+   le calque d'échelle portait l'id `dbScaler`. Une page qui devait montrer DEUX schémas — la
+   source et la cible, l'existant et le projeté — ne le pouvait pas : deux montages auraient
+   partagé le même id, et `fitSchema` aurait mis à l'échelle le premier venu. Le produit du 08/09
+   a dû envelopper le canevas pour contourner. Les identifiants gardent leurs valeurs d'avant par
+   défaut, donc une page déjà écrite ne change pas d'un octet ; le scaler dérive du montage, donc
+   deux schémas ne se marchent plus dessus. */
+function fitSchema(forceWidth, mountId){
+  const mount=document.getElementById(mountId||'dbSchemaMount');
+  const scaler=mount?mount.querySelector('.db-scaler'):null;
   if(!mount||!scaler) return;
   const inner=scaler.querySelector('.db-schema');
   const W=parseFloat(inner.style.width), H=parseFloat(inner.style.height);
@@ -465,13 +521,30 @@ function fitSchema(forceWidth){
   mount.style.height=(H*sc)+'px';
 }
 
+/* Monte UN schéma sur SES points de montage. Appelée autant de fois qu'il y a de schémas sur
+   la page ; sans argument, elle monte celui du gabarit, exactement comme avant. */
+function monterSchema(opts){
+  opts=opts||{};
+  const data=opts.data||DB_SCHEMA_DATA;
+  const idSchema=opts.schema||'dbSchemaMount';
+  const mount=document.getElementById(idSchema);
+  if(mount){
+    mount.innerHTML=`<div class="db-scaler">${renderDbSchema(data)}</div>`;
+    fitSchema(undefined,idSchema);
+    window.addEventListener('resize',()=>fitSchema(undefined,idSchema));
+    window.addEventListener('beforeprint',()=>fitSchema(700,idSchema));
+    window.addEventListener('afterprint',()=>fitSchema(undefined,idSchema));
+  }
+  const leg=document.getElementById(opts.legende||'dbLegendMount');
+  if(leg) leg.innerHTML=renderDbLegend();
+  const dico=document.getElementById(opts.dico||'dbDicoMount');
+  if(dico) dico.innerHTML=renderDbDictionary(data);
+  return mount;
+}
+
 /* Tooltip HTML carré — format "Titre | puce | puce" */
 (function initTooltip(){
-  document.getElementById('dbSchemaMount').innerHTML=`<div id="dbScaler">${renderDbSchema(DB_SCHEMA_DATA)}</div>`;
-  fitSchema(); window.addEventListener('resize',()=>fitSchema());
-  window.addEventListener('beforeprint',()=>fitSchema(700)); window.addEventListener('afterprint',()=>fitSchema());
-  document.getElementById('dbLegendMount').innerHTML=renderDbLegend();
-  document.getElementById('dbDicoMount').innerHTML=renderDbDictionary(DB_SCHEMA_DATA);
+  monterSchema();
   const tip=document.getElementById('diagTooltip'), tt=tip.querySelector('.tt-title'), ul=tip.querySelector('ul');
   document.querySelectorAll('[data-tip]').forEach(el=>{
     el.addEventListener('mousemove',e=>{

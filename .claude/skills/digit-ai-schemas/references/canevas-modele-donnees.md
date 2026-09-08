@@ -36,6 +36,61 @@ sort : **le lecteur d'un rapport d'audit doit savoir qu'il regarde l'ancien rend
 déclaration n'est donc pas la correction, c'est le garde-fou en attendant qu'elle soit faite du
 côté propriétaire du rapport.
 
+## Ce que le canevas déclare LUI-MÊME, et pourquoi (TF-0941, 08/09/2026)
+
+**Le fait, et il est mesuré.** Le gabarit est une page complète, mais **aucune recette ne la
+rendait** : personne n'avait donc jamais mesuré ce qu'il produit. Mesure du 08/09, aux quatre
+largeurs (1920, 1280, 768, 390) : **11, 12, 12 et 18 constats bloquants**. Chaque produit qui
+instanciait le canevas les levait *à la main, chez lui, à chaque fois*. Le canevas les déclare
+désormais, une fois pour toutes :
+
+| Constat | Ce qui le produit | Déclaration posée |
+| --- | --- | --- |
+| V4 · une étiquette de cardinalité sur son arête | le dessin lui-même : l'étiquette se pose SUR le trait qu'elle nomme | `data-overlap-ok` sur l'étiquette |
+| V4 · deux arêtes qui se croisent | une propriété du GRAPHE, pas du placement : deux liens peuvent devoir passer par le même couloir | `data-overlap-ok` sur les arêtes **seules** |
+| « contenu rogné » sur le conteneur du schéma | `fitSchema` met à l'échelle et fixe la hauteur du conteneur à la hauteur mise à l'échelle | `data-rognage-assume` sur le point de montage |
+| V1 · le dictionnaire déborde à 390 px | quatre colonnes en `nowrap` ne tiennent pas dans un téléphone | repli en blocs étiquetés sous 900 px |
+| L19 · coupure de mot en prose | `anywhere` posé sur des sélecteurs dont le nom ne dit pas l'usage | classe `.dd-mono`, **jamais** sur la colonne de note |
+
+**Les cartes, elles, restent jugées.** `data-overlap-ok` ne vit que sur les arêtes et leurs
+étiquettes : deux tables qui se recouvrent restent un défaut, et V4 continue de le mesurer.
+Une déclaration qui couvrirait tout le schéma serait un assouplissement déguisé.
+
+**Recette.** Le gabarit livré rend **0 bloquant aux quatre largeurs** ; privé de ses deux
+déclarations, il en rend **47**. Les deux sens sont joués par `self_test.py` du socle des pages
+HTML — un gabarit que rien ne rend est un gabarit dont personne ne connaît les défauts.
+
+## Deux schémas sur une page : les points de montage sont des paramètres (TF-0941)
+
+Les trois points de montage étaient **figés** (`dbSchemaMount`, `dbLegendMount`, `dbDicoMount`)
+et le calque d'échelle portait l'id `dbScaler`. Une page qui devait montrer **deux** schémas —
+la source et la cible, l'existant et le projeté — ne le pouvait pas : deux montages auraient
+partagé le même id, et `fitSchema` aurait mis à l'échelle le premier venu.
+
+```js
+monterSchema();                                             // le gabarit, inchangé
+monterSchema({ schema:'srcMount', legende:'srcLegende',     // un second schéma sur la même page
+               dico:'srcDico',   data: DB_SOURCE });
+```
+
+Les valeurs par défaut sont celles d'avant : **une page déjà écrite ne change pas d'un octet**.
+Le calque d'échelle est désormais une **classe** (`.db-scaler`) portée par le point de montage,
+donc deux schémas ne se marchent plus dessus.
+
+## L'axe ÉVOLUTION ne vit pas ici, et c'est un arbitrage
+
+La demande d'origine voulait un axe *évolution* (créée / étendue / corrigée / reprise) **dans ce
+modèle**, parce qu'un produit avait détourné la classification (`blue` = créée, `teal` =
+complétée, `coral` = à corriger…) faute de mieux. Détourner la classification est un vrai défaut :
+la couleur y désigne la **sensibilité de la donnée**, et un lecteur qui connaît la convention lit
+alors « confidentiel · PII » là où l'auteur voulait dire « à corriger ».
+
+Le remède n'est pas d'ajouter un second sens aux mêmes couleurs, c'est un **canevas dédié** :
+`assets/template-schema-differentiel.html` porte trois états de table et trois états de colonne,
+chacun avec sa teinte **et** son glyphe. Ce canevas-ci montre un schéma **à un instant**, avec sa
+classification ; l'autre montre ce qui **change**. Mélanger les deux axes dans un seul modèle
+rendrait chaque schéma ambigu, et aucune légende ne rattraperait cela.
+
 ## Architecture technique
 
 Contrairement aux autres canevas (SVG pur), ce canevas est **hybride** : cartes-entités en HTML positionné absolument (texte sélectionnable, ellipsis natif) + calque SVG `.db-edges` superposé pour les arêtes. Le rendu est piloté par un **modèle déclaratif** `DB_SCHEMA_DATA` et un moteur JS embarqué — on n'écrit jamais les coordonnées à la main, on remplit le modèle.
