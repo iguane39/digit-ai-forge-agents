@@ -1,0 +1,24 @@
+{
+  "format": "digit-ai-page-html/jargon-a-gloser@1",
+  "version": "1.0.0",
+  "date": "2026-09-08",
+  "source": "TF-0932 — retour humain du 08/09/2026 sur une page HTML servie : « explique chaque chapitre, avec ce qu'il contient ou décrit, et si un terme technique est utilisé, comme DAX, explique-le en début de chapitre ». Treize chapitres ont dû être réécrits en tête après coup. Le pilot tenait déjà `gabarits/JARGON-A-GLOSER.json` pour ses synthèses (S23) ; rien d'équivalent n'existait pour les pages HTML, où le lecteur est le même.",
+  "pourquoi_une_donnee_et_pas_du_code": "Loi transverse n° 4 — une donnée volatile est une donnée, pas du code. Un référentiel de jargon se remplit à l'usage : chaque terme qu'un lecteur a dû faire expliquer entre ici, daté et sourcé. Le mettre en dur dans check_html.py obligerait à publier une version de l'oracle pour ajouter un mot.",
+  "pourquoi_une_liste_FERMEE_et_pas_une_heuristique_sur_les_SIGLES": "Question déjà arbitrée par le pilot dans `gabarits/JARGON-A-GLOSER.json`, et l'arbitrage vaut ici mot pour mot : une heuristique « tout sigle de 2 à 5 capitales doit être glosé » a un taux de faux positifs rédhibitoire dans un corpus où la MAJUSCULE sert l'emphase, et un oracle qui crie sur l'emphase se fait désactiver dans la semaine. Une page HTML en porte en outre des dizaines qui ne sont pas du jargon : PDF, CSS, KPI, ID, TTC, SQL. La liste fermée n'attrape que ce qui a réellement coûté un aller-retour, et elle grossit par les retours.",
+  "regle": "Dans un chapitre atteint par le sommaire, un terme de cette liste employé dans le texte porte sa glose DANS CE CHAPITRE : un <dfn> qui le nomme, ou une entrée de glossaire (.termes, .glossaire) qui le nomme. Sans glose, c'est un défaut L30. La glose se pose une fois par chapitre où le terme est employé, pas une fois pour la page : un lecteur qui entre par le sommaire n'a pas lu le chapitre précédent.",
+  "termes": [
+    { "terme": "DAX", "depuis": "2026-09-08", "vu_dans": "page de mapping du 08/09 — nommé par le retour humain, mot pour mot : « si un terme technique est utilisé, comme DAX, explique-le en début de chapitre »" },
+    { "terme": "Unity Catalog", "depuis": "2026-09-08", "vu_dans": "même page — nom d'un catalogue de métadonnées employé sans glose dans deux chapitres" },
+    { "terme": "requête M", "depuis": "2026-09-08", "vu_dans": "même page — libellé de colonne « Source legacy (requête M) », jamais expliqué" },
+    { "terme": "PBIX", "depuis": "2026-09-08", "vu_dans": "même page — format de fichier cité comme s'il allait de soi" },
+    { "terme": "grain", "depuis": "2026-09-08", "vu_dans": "même page et sa correction — « grain » employé au sens de niveau de détail d'une table, jamais glosé" },
+    { "terme": "clé de substitution", "depuis": "2026-09-08", "vu_dans": "schéma différentiel du 08/09 — traduction interne de « surrogate key », opaque hors de l'équipe" },
+    { "terme": "sidecar", "depuis": "2026-09-08", "vu_dans": "repris du référentiel du pilot — même lecteur, même dette" },
+    { "terme": "gate", "depuis": "2026-09-08", "vu_dans": "repris du référentiel du pilot — vocabulaire de gouvernance qui passe pour transparent et ne l'est pas" }
+  ],
+  "non_juge": [
+    "la JUSTESSE d'une glose — le contrôle tient la présence d'un <dfn> ou d'une entrée de glossaire nommant le terme dans le chapitre, jamais qu'elle explique vraiment.",
+    "le jargon HORS liste : un terme qui n'a encore coûté aucun aller-retour n'est pas détecté, et c'est le prix assumé du zéro faux positif. Le canal de croissance est le retour humain, pas la devinette.",
+    "les sigles en majuscules non listés — voir l'arbitrage ci-dessus. Une page qui veut les juger tous le déclare elle-même en ajoutant les siens à ce fichier."
+  ]
+}

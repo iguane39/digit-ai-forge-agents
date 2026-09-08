@@ -899,6 +899,49 @@ celui du parent. Un sous-chapitre qui recopie le chapeau de son parent échoue t
 (fixture `l7-sommaire-deux-niveaux-chapeau-repete.html`) : la correction change ce que la règle
 regarde, elle n'éteint rien.
 
+## L30 — Un chapitre dit ce qu'il CONTIENT, et glose son jargon (TF-0932, 08/09/2026)
+
+**Le fait payé.** Retour humain sur une page servie : « explique chaque chapitre, avec ce qu'il
+contient ou décrit, et si un terme technique est utilisé, comme DAX, explique-le en début de
+chapitre » ; puis « le chapitre Mapping doit expliquer sa différence avec le chapitre suivant ».
+**Treize chapitres réécrits en tête**, 44 termes glosés après coup. L7 portait déjà sur *ce que
+le chapitre APPREND* — la promesse ; personne n'exigeait *ce qu'il CONTIENT* — l'inventaire, qui
+est précisément ce qu'un lecteur entré par le sommaire vient chercher. Et le jargon n'était jugé
+**nulle part** en HTML, alors que le pilot tient `gabarits/JARGON-A-GLOSER.json` et S23 pour ses
+synthèses : même lecteur, même dette.
+
+**Règle, en deux moitiés.**
+1. Chaque cible du sommaire porte un `.contenu` d'au moins **40 caractères**, **avant** son
+   premier tableau ou sa première liste — placé après, ce n'est plus une entrée en matière. Il
+   dit ce que le chapitre porte **et ce qui le distingue du chapitre voisin**.
+2. Un terme du référentiel employé dans le texte d'un chapitre y porte sa glose : un `<dfn>` qui
+   le nomme, ou une entrée de glossaire (`.termes`, `.glossaire`) **dans CE chapitre**. Une fois
+   par chapitre où le terme sert, pas une fois pour la page : *un lecteur entré par le sommaire
+   n'a pas lu le chapitre précédent*.
+
+**Le référentiel est une DONNÉE** (loi transverse n° 4) : `references/jargon-a-gloser.json`, daté,
+sourcé, éditable — chaque terme qu'un lecteur a dû faire expliquer y entre. Le mettre en dur dans
+l'oracle obligerait à publier une version de l'oracle pour ajouter un mot.
+
+**Liste fermée, pas d'heuristique sur les sigles.** La question a déjà été arbitrée par le pilot,
+et l'arbitrage vaut ici mot pour mot : « tout sigle de 2 à 5 capitales doit être glosé » a un taux
+de faux positifs rédhibitoire — une page HTML porte des dizaines de PDF, CSS, KPI, ID, SQL qui ne
+sont pas du jargon, et un oracle qui crie sur l'évidence se fait désactiver dans la semaine. La
+liste n'attrape que ce qui a réellement coûté un aller-retour, et elle grossit par les retours.
+
+**Le geste, fourni par le gabarit** :
+
+```html
+<section id="mapping"><h2>Mapping</h2>
+  <p class="contenu">Ce chapitre contient …, et se distingue de … en ce qu'il ….</p>
+  <p class="termes">Termes employés — <dfn>DAX</dfn> : le langage de formules du rapport.</p>
+  <p class="ch-apprend">Vous repartez d'ici en sachant ….</p>
+```
+
+**Contrôle mécanique.** `L30` (`check_html.py`) — les deux moitiés, jugées **par cible du
+sommaire** et sur les descendants **directs** : ce qui vit sous un sous-chapitre lui-même ciblé
+appartient à ce sous-chapitre, jamais à son parent (même partage que L7 depuis TF-0931).
+
 ## L26 — Une page de DONNÉES prend toute la largeur ; la colonne de lecture est pour la prose (TF-0771 + TF-0778, 02/09/2026)
 
 **Le fait payé, deux fois.** Une console de données a été livrée dans une colonne de lecture de

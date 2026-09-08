@@ -155,6 +155,10 @@
        Controle : famille `conteneur_bride_donnees` de render_page.py (>= 96 % a >= 1 280 px). */
     [data-page="donnees"] .wrap,
     .wrap[data-page="donnees"] { max-width: none; padding: 20px 28px 48px; }
+    /* TF-0932 — l'entrée en matière d'un chapitre : ce qu'il contient, puis ses termes. */
+    .contenu { margin: .2em 0 .8em; color: var(--muted, #475569); }
+    .termes { margin: 0 0 1em; font-size: .92em; color: var(--muted, #475569); }
+    .termes dfn { font-style: normal; font-weight: 600; color: var(--ink, #0f172a); }
     .chap.lire { max-width: 1080px; margin-left: auto; margin-right: auto; }
     .chap.duo { display: grid; grid-template-columns: 7fr 5fr; gap: 32px; align-items: start; }
     @media (max-width: 1100px) { .chap.duo { grid-template-columns: 1fr; } }
@@ -335,6 +339,16 @@
     <main>
       <section>
         <h2>{Section}</h2>
+        <!-- TF-0932 (retour humain du 08/09) — L30 : un chapitre dit CE QU'IL CONTIENT, et
+             glose son jargon. `.ch-apprend` dit ce que le chapitre APPREND (la promesse) ;
+             `.contenu` dit ce qu'il PORTE (l'inventaire) et ce qui le distingue du chapitre
+             voisin — c'est ce qu'un lecteur entré par le sommaire vient chercher. `.termes`
+             glose sur place les termes techniques employés ICI : un lecteur entré par le
+             sommaire n'a pas lu le chapitre précédent. Référentiel des termes qui ont coûté
+             un aller-retour : references/jargon-a-gloser.json (daté, sourcé, éditable). -->
+        <p class="contenu">Ce chapitre contient {l'inventaire de ce qui suit}, et se distingue
+           de {le chapitre voisin} en ce qu'il {la différence, en une proposition}.</p>
+        <p class="termes">Termes employés — <dfn>{Terme}</dfn> : {la glose, en une phrase}.</p>
         <p>{Contenu en balises sémantiques. Décliner les couleurs via les tokens
            <code>:root</code> uniquement, jamais en dur.}</p>
 

@@ -35,6 +35,7 @@ Code de sortie : 0 si aucun FAIL, 1 sinon.
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 
@@ -47,6 +48,37 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from html.parser import HTMLParser
+
+# ---------------------------------------------------------------------------
+# Le JARGON À GLOSER (TF-0932) — une DONNÉE, pas du code (loi transverse n° 4).
+#
+# `references/jargon-a-gloser.json` est daté, sourcé, et grossit par les retours humains :
+# chaque terme qu'un lecteur a dû faire expliquer y entre. Le mettre en dur ici obligerait à
+# publier une version de l'oracle pour ajouter un mot. Le fichier absent n'éteint pas L30 en
+# silence : sa moitié « ce que le chapitre contient » continue de juger, et l'absence est dite.
+_JARGON_CACHE = None
+
+
+def jargon_a_gloser():
+    """Les termes du référentiel, en minuscules. Liste vide si le fichier manque."""
+    global _JARGON_CACHE  # noqa: PLW0603 — chargement unique, lecture seule ensuite
+    if _JARGON_CACHE is not None:
+        return _JARGON_CACHE
+    chemin = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          os.pardir, "references", "jargon-a-gloser.json")
+    termes = []
+    try:
+        with open(chemin, encoding="utf-8") as fh:
+            donnees = json.load(fh)
+        for entree in donnees.get("termes", []):
+            t = (entree.get("terme") or "").strip()
+            if t:
+                termes.append(t)
+    except (OSError, ValueError):
+        termes = []
+    _JARGON_CACHE = termes
+    return termes
+
 
 # ---------------------------------------------------------------------------
 # Échantillon intégré (conforme) — permet de lancer le script sans fichier.
@@ -2011,11 +2043,15 @@ def check_lisibilite(html: str, a: Arbre):
     # sous une AUTRE cible appartient à cette cible), et on dédoublonne par ÉLÉMENT.
     elements_cibles = {id(sec) for _, sec in cibles}
 
-    def _chapeaux_propres(sec):
-        """Chapeaux de CETTE cible : ceux d'une cible imbriquée appartiennent à celle-ci."""
+    def _propres_a_la_cible(sec, retenir):
+        """Éléments de CETTE cible : ce qui vit sous une cible imbriquée appartient à celle-ci.
+
+        Le même partage vaut pour le chapeau (L7) et pour le bloc de contenu (L30) : sans lui,
+        un chapitre qui enveloppe un sous-chapitre hérite de ce que le sous-chapitre a écrit,
+        et se croit en règle — ou s'accuse lui-même de répéter son propre enfant."""
         out = []
         for e in sec.descendants():
-            if not (e.classes() & {"ch-apprend", "ch-st"}):
+            if not retenir(e):
                 continue
             porteur = e.parent
             imbrique = False
@@ -2031,7 +2067,7 @@ def check_lisibilite(html: str, a: Arbre):
     chapeaux_vus: dict = {}
     elements_vus: set = set()
     for ident, sec in cibles:
-        chapeaux = _chapeaux_propres(sec)
+        chapeaux = _propres_a_la_cible(sec, lambda e: bool(e.classes() & {"ch-apprend", "ch-st"}))
         if not chapeaux or max(len(e.texte_propre()) for e in chapeaux) < 40:
             fails.append(f"L7 chapitre #{ident} sans chapeau d'ouverture — un élément "
                          ".ch-apprend d'au moins 40 caractères (« ce que ce chapitre "
@@ -2074,6 +2110,79 @@ def check_lisibilite(html: str, a: Arbre):
                 fails.append(f"L10 exemple de lecture en DOUBLE dans #{ident} : « {t[:60]}… » — "
                              "le second est du remplissage ; un exemple par tableau, "
                              "chacun disant ce qu'il faut voir dans LE sien.")
+
+    # --- L30 : un chapitre dit CE QU'IL CONTIENT, et glose son jargon (TF-0932, 08/09) ---
+    #
+    # LE FAIT. Retour humain sur une page servie : « explique chaque chapitre, avec ce qu'il
+    # contient ou decrit, et si un terme technique est utilise, comme DAX, explique-le en debut
+    # de chapitre » ; « le chapitre Mapping doit expliquer sa difference avec le chapitre
+    # suivant ». Treize chapitres ont ete reecrits en tete apres coup. L7 porte sur « ce que ce
+    # chapitre APPREND » — la promesse ; personne n'exigeait « ce que ce chapitre CONTIENT » —
+    # l'inventaire, qui est ce qu'un lecteur entre par le sommaire vient chercher. Et le jargon
+    # n'etait juge NULLE PART en HTML, alors que le pilot tient JARGON-A-GLOSER.json et S23
+    # pour ses syntheses : meme lecteur, meme dette.
+    #
+    # LA MESURE, en deux moities.
+    #   (a) chaque cible du sommaire porte un `.contenu` d'au moins 40 caracteres, AVANT son
+    #       premier tableau ou sa premiere liste — apres, ce n'est plus une entree en matiere ;
+    #   (b) un terme du referentiel employe dans le texte du chapitre porte sa glose DANS CE
+    #       chapitre : un <dfn> qui le nomme, ou une entree de glossaire (.termes, .glossaire).
+    #       Une fois par chapitre ou le terme sert, pas une fois pour la page — un lecteur qui
+    #       entre par le sommaire n'a pas lu le chapitre precedent.
+    L30_MIN_CONTENU = 40
+    termes_jargon = jargon_a_gloser()
+    for ident, sec in cibles:
+        contenus = _propres_a_la_cible(sec, lambda e: "contenu" in e.classes())
+        # AVANT le premier tableau ou la premiere liste : on compare les positions dans le
+        # parcours du chapitre, seule mesure d'ordre dont dispose ce modele d'arbre.
+        ordre = list(sec.descendants())
+        i_bloc = next((k for k, e in enumerate(ordre)
+                       if e.tag in ("table", "ul", "ol", "dl")), len(ordre))
+        avant = [e for e in contenus
+                 if ordre.index(e) < i_bloc and len(e.texte_propre()) >= L30_MIN_CONTENU]
+        if not avant:
+            tardif = any(len(e.texte_propre()) >= L30_MIN_CONTENU for e in contenus)
+            # AVERTISSEMENT et non echec : mesure du 08/09 sur les pages GENEREES du pilot,
+            # tenues pour conformes — 40 constats sur todo/TODO.html, 47 sur TODO-ARCHIVE.html,
+            # tous sur cette moitie. `.contenu` est une obligation redactionnelle NEUVE : la
+            # rendre bloquante d'un commit ferait rougir tout le parc sans migration, et c'est
+            # exactement le cout qu'un oracle ne doit pas imposer (voir TF-0933, ou une regle a
+            # force le produit a troquer ses liens contre des boutons). L'avertissement PROPOSE
+            # le geste d'office — loi transverse n° 3 — et se decline explicitement en l'ecrivant.
+            # La seconde moitie (le jargon), elle, reste bloquante : liste fermee, zero faux
+            # positif par construction.
+            warns.append(
+                f"L30 chapitre #{ident} ne dit pas CE QU'IL CONTIENT — un element .contenu "
+                f"d'au moins {L30_MIN_CONTENU} caracteres est attendu"
+                + (" AVANT son premier tableau ou sa premiere liste : place apres, ce n'est "
+                   "plus une entree en matiere." if tardif else
+                   " (« Ce chapitre contient … »). Le chapeau .ch-apprend dit ce que le "
+                   "chapitre APPREND — la promesse ; .contenu dit ce qu'il PORTE — "
+                   "l'inventaire, et ce qui le distingue du chapitre voisin."))
+        if not termes_jargon:
+            continue
+        # TF-0436, doctrine de L12 : un oracle de forme ne juge pas un texte que la page n'a
+        # PAS ECRIT. Mesure du 08/09 : todo/TODO.html rend le contenu de 324 candidatures en
+        # zones `data-cite`, dont celles qui parlent de « DAX » et de « sidecar » — le jargon
+        # y est celui de l'auteur de la candidature, pas celui de la page.
+        texte_chapitre = " ".join(
+            t for e in [sec, *sec.descendants()]
+            if not _contenu_cite(e)
+            for t in e.enfants if isinstance(t, str))
+        gloses = " ".join(e.texte_propre() for e in sec.descendants()
+                          if e.tag == "dfn" or (e.classes() & {"termes", "glossaire"}))
+        for terme in termes_jargon:
+            if terme.lower() not in texte_chapitre.lower():
+                continue
+            if terme.lower() in gloses.lower():
+                continue
+            fails.append(
+                f"L30 terme technique non glose dans #{ident} : « {terme} » — un terme du "
+                "referentiel employe dans un chapitre y porte sa glose : un <dfn> qui le "
+                "nomme, ou une entree de glossaire (.termes, .glossaire) dans CE chapitre. "
+                "Un lecteur entre par le sommaire : il n'a pas lu le chapitre precedent. "
+                "Referentiel : references/jargon-a-gloser.json (date, source, il grossit par "
+                "les retours).")
 
     # --- L8 : liens internes ---------------------------------------------
     dans_toc = set(id(n) for n in toc.descendants()) if toc is not None else set()

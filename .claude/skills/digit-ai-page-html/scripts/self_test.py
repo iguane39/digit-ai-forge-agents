@@ -148,6 +148,17 @@ CAS = {
     # tableau entier (TF-0782). Les deux fixtures ne different que par data-filter-reason.
     "l4-exemption-facette-muette.html": {"L4"},
     "l4-exemption-facette-motivee.html": set(),
+    # TF-0932 (lot Produit-10 20260908b) — L30 : un chapitre dit CE QU'IL CONTIENT, et glose
+    # son jargon. L7 porte sur ce que le chapitre APPREND — la promesse ; personne n'exigeait
+    # l'INVENTAIRE, ni la difference avec le chapitre voisin, ni la glose d'un terme technique.
+    # Treize chapitres reecrits en tete apres coup. Le triplet porte la MEME page : la verte
+    # complete, la premiere rouge sans son .contenu (le chapeau L7 reste, et reste satisfait),
+    # la seconde sans sa glose alors que le chapitre suivant garde la sienne — ce qui prouve
+    # que la regle juge CHAPITRE PAR CHAPITRE et non une fois pour la page.
+    # La verte est jugee DEUX FOIS : ici sur les echecs, et dans CAS_AVERT sur les
+    # avertissements — un chapitre annonce ne doit declencher ni l'un ni l'autre.
+    "l30-chapitre-annonce.html": set(),
+    "l30-terme-non-glose.html": {"L30"},
     "l25-chapitres-sans-sommaire.html": {"L25"},
     "l25-sommaire-lateral.html": set(),
     "l26-donnees-colonne-de-lecture.html": {"L26"},
@@ -240,6 +251,14 @@ CAS = {
 CAS_AVERT = {
     "l15-glyphe-hors-liste.html": {"L15"},
     "l15-glyphe-sur.html": set(),
+    # TF-0932 — la moitie « ce que le chapitre CONTIENT » de L30 est un AVERTISSEMENT, pas un
+    # echec : mesure du 08/09 sur les pages generees du pilot, tenues pour conformes, 40
+    # constats sur TODO.html et 47 sur TODO-ARCHIVE.html, tous sur cette moitie. `.contenu` est
+    # une obligation redactionnelle neuve ; la rendre bloquante d'un commit ferait rougir tout
+    # le parc sans migration. L'avertissement propose le geste d'office et se decline en
+    # l'ecrivant. La seconde moitie (le jargon) reste un echec, et a sa fixture dans CAS.
+    "l30-chapitre-sans-contenu.html": {"L30"},
+    "l30-chapitre-annonce.html": set(),
 }
 
 RE_CODE = re.compile(r"^(L\d+)\b")
@@ -612,9 +631,13 @@ def run():
                               "obtenu": [], "detail": "fixture manquante"})
             continue
         fails, warns = check(chemin.read_text(encoding="utf-8"), regles="L")
-        # Seul L15 est en cause : l'avertissement L6 « aucun sommaire » d'une page minimale
-        # n'est pas l'objet de ces deux jumelles, qui ne diffèrent que par le glyphe.
-        obtenu = codes(warns) & {"L15"}
+        # Seule la famille de la fixture est en cause : l'avertissement L6 « aucun sommaire »
+        # d'une page minimale n'est pas l'objet de deux jumelles qui ne diffèrent que par le
+        # glyphe. La famille se lit dans le NOM de la fixture — `l15-…` juge L15, `l30-…` juge
+        # L30 — plutôt que d'être écrite en dur : une famille en dur a valu, en ajoutant L30,
+        # une fixture verte par défaut d'extraction.
+        famille = {re.match(r"^(l\d+)", nom).group(1).upper()}
+        obtenu = codes(warns) & famille
         # un avertissement ne doit jamais s'accompagner d'un ÉCHEC L parasite : la fixture est
         # verte par ailleurs, seul le glyphe la distingue de sa jumelle.
         ok = obtenu == attendu and not codes(fails)
