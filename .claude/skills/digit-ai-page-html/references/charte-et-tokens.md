@@ -40,6 +40,13 @@ Séparation volontaire entre **principes** (règles stables) et **valeurs param�
   --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;   /* succès */
   --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;   /* refus / non déclaré */
 
+  /* Fonds PLEINS des badges d'état, à encre BLANCHE (TF-0910). Les `-fill` ci-dessus sont des
+     fonds de CARTE : tous entre L* 93 et 97, ils ne se distinguent pas les uns des autres dès
+     qu'on les met côte à côte sur des bulles de statut. Ces six-là gardent au moins 23 d'écart
+     de couleur deux à deux et 6,4:1 de contraste avec le blanc. */
+  --green-solid: #166534; --teal-solid:  #0F5F8F; --amber-solid: #92400E;
+  --red-solid:   #B91C1C; --slate-solid: #4B5563; --violet-solid: #7E22CE;
+
   /* Hauteur de l'en-tête collant — consommée par le thead collant et par le sommaire
      latéral (L29, L25). Un décalage qui vaut 0 par défaut ramène la collision qu'il
      devait éviter : ce token se pose, il ne se devine pas. */
@@ -64,6 +71,17 @@ Séparation volontaire entre **principes** (règles stables) et **valeurs param�
   (≥ 4.5:1 texte normal, ≥ 3:1 texte large) avant de les figer sur un livrable critique.
 - **Accents sémantiques.** La couleur ne porte jamais seule l'information : un statut
   alerte/info/succès/refus s'accompagne toujours d'un libellé ou d'une icône.
+- **Un `-fill` est un fond de CARTE, jamais un badge d'état (TF-0910, 08/09/2026).** Les cinq
+  teintes pastel du socle vivent toutes entre **L\* 93 et 97** : le texte encré dessus tient
+  4,5:1, donc l'oracle de contraste rendait PASS sur chaque badge pris **un par un**, et le
+  lecteur humain a répondu « les bulles des statuts ne sont pas suffisamment différentes pour
+  être différenciées ». Le défaut ne vit pas dans un badge, il vit **entre deux badges** : c'est
+  une distance, pas un ratio. Un produit a dû refaire la palette **hors socle**. Pour un jeu de
+  badges d'état, employer les `*-solid` ci-dessus (encre blanche) **et** un indice non
+  colorimétrique — un glyphe par palier, pris dans la liste blanche du socle (`✓ ↔ → ✗ –`), plus
+  une légende qui donne **couleur + forme + libellé** (WCAG 1.4.1). Mesuré par
+  `render_page.py` **V16** ; fixtures `v16-etats-pastel.html` (5 paires indiscernables, 0
+  constat de contraste) et `v16-etats-pleins.html` (0 / 0).
 - **Le quatrième registre était employé et non documenté (TF-0755, 02/09/2026).** Un rapport de
   conformité a eu besoin d'un registre « refus / non déclaré » — bas d'échelle d'une carte de
   chaleur — ne l'a pas trouvé dans le socle, et l'a **inventé** comme extension locale. Or le

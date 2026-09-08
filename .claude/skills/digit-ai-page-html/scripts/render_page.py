@@ -171,7 +171,8 @@ MEASURE_JS = r"""
   const issues = { v1_overflow: [], v2_contrast: [], v3_align: [], v4_overlap: [], v7_spacing: [],
                    l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
                    contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
-                   prose_etroite: [], sommaire_perdu: [], unmeasured: [] };
+                   prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
+                   unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -1104,6 +1105,94 @@ MEASURE_JS = r"""
               `d'espacement du gabarit plutot que les series une a une` });
   }
 
+  // ---- V16 : DEUX ETATS QUI SE RESSEMBLENT NE SONT PAS DEUX ETATS (TF-0910, 08/09/2026) ---
+  //
+  // LE FAIT PAYE. Les cinq teintes d'etat du socle — --green-fill #DCFCE7, --teal-fill,
+  // --amber-fill #FEF3C7, --red-fill #FEE2E2 — et --surface vivent toutes autour de L* 93-97 :
+  // des pastels de meme clarte, distingues par une pointe de teinte. Le texte encre dessus tient
+  // 4,5:1, donc V2 rendait PASS sur chacun, un par un. Retour humain sur le livrable servi :
+  // « les bulles des statuts ne sont pas suffisamment differentes pour etre differenciees ». Le
+  // produit a refait la palette hors socle — fonds pleins, encre blanche, un glyphe par palier.
+  //
+  // POURQUOI V2 NE POUVAIT PAS LE VOIR. V2 mesure un badge CONTRE SON FOND. Le defaut vit ENTRE
+  // deux badges : c'est une distance, pas un ratio, et aucune mesure d'un badge seul ne la porte.
+  //
+  // CE QUI EST MESURE. Pour tout jeu d'au moins trois badges d'une meme classe de base portant au
+  // moins trois fonds distincts, la distance de chaque PAIRE de fonds : Delta-E CIE76 (Lab) et
+  // ecart de luminance relative WCAG. Une paire sous LES DEUX seuils (dE 20 et dL 0,25) est un
+  // constat. Les seuils sont cumulatifs a dessein : deux teintes eloignees en teinte MAIS de meme
+  // clarte restent separables, et deux clartes eloignees aussi — il faut les deux pour perdre le
+  // lecteur. Le cas paye tenait 0 sur les deux.
+  const V16_BASES = ['badge', 'statut', 'etat', 'pill', 'chip', 'tag', 'state'];
+  const V16_DE = 20, V16_DL = 0.25;
+  {
+    const lab = ({ r, g, b }) => {
+      const f = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      const [R, G, B] = [f(r), f(g), f(b)];
+      // sRGB -> XYZ (D65), puis XYZ -> L*a*b* (blanc de reference D65)
+      const X = (R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047;
+      const Y = (R * 0.2126 + G * 0.7152 + B * 0.0722);
+      const Z = (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883;
+      const g2 = (t) => t > 0.008856 ? Math.cbrt(t) : (7.787 * t + 16 / 116);
+      const [fx, fy, fz] = [g2(X), g2(Y), g2(Z)];
+      return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+    };
+    const deltaE = (c1, c2) => {
+      const p = lab(c1), q = lab(c2);
+      return Math.sqrt((p.L - q.L) ** 2 + (p.a - q.a) ** 2 + (p.b - q.b) ** 2);
+    };
+    const groupes = new Map();
+    for (const el of document.querySelectorAll('[class]')) {
+      if (!visible(el)) continue;
+      const base = [...el.classList].find((c) => V16_BASES.includes(c));
+      if (!base) continue;
+      const bg = effectiveBg(el);
+      if (bg.image) continue;
+      const cle = `${Math.round(bg.color.r)},${Math.round(bg.color.g)},${Math.round(bg.color.b)}`;
+      if (!groupes.has(base)) groupes.set(base, new Map());
+      const variantes = groupes.get(base);
+      if (!variantes.has(cle)) {
+        variantes.set(cle, { couleur: bg.color, exemple: el,
+                             texte: (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 24),
+                             membres: 0 });
+      }
+      variantes.get(cle).membres += 1;
+    }
+    for (const [base, variantes] of groupes) {
+      // Moins de trois teintes distinctes : ce n'est pas un CODAGE par couleur, c'est un badge
+      // et son accent. Accuser ce cas ferait crier la sonde sur toute page a deux badges.
+      if (variantes.size < 3) continue;
+      const liste = [...variantes.values()];
+      const total = liste.reduce((n, v) => n + v.membres, 0);
+      if (total < 3) continue;
+      for (let i = 0; i < liste.length; i += 1) {
+        for (let j = i + 1; j < liste.length; j += 1) {
+          const dE = deltaE(liste[i].couleur, liste[j].couleur);
+          const dL = Math.abs(lum(liste[i].couleur) - lum(liste[j].couleur));
+          if (dE >= V16_DE || dL >= V16_DL) continue;
+          const rgb = (c) => `rgb(${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)})`;
+          const memeTexte = liste[i].texte === liste[j].texte;
+          issues.etats_indiscernables.push({
+            what: `.${base} — « ${liste[i].texte || '(sans libellé)'} » et « ${liste[j].texte || '(sans libellé)'} »`,
+            detail: `fonds ${rgb(liste[i].couleur)} et ${rgb(liste[j].couleur)} : `
+              + `ecart de couleur (Delta-E CIE76) ${dE.toFixed(1)} < ${V16_DE} ET `
+              + `ecart de luminance ${dL.toFixed(3)} < ${V16_DL} — `
+              + `${variantes.size} états codés par la couleur, deux d'entre eux indiscernables. `
+              + (memeTexte
+                  ? `Les deux badges portent le MÊME libellé : la couleur est le SEUL porteur de `
+                    + `l'information (WCAG 1.4.1). `
+                  : ``)
+              + `Les jetons \`*-fill\` du socle sont des fonds de CARTE (L* 93-97, tous voisins) : `
+              + `pour un badge d'état, employer un fond PLEIN à encre blanche (\`*-solid\`) et `
+              + `ajouter un indice non colorimétrique — un glyphe par palier, et une légende qui `
+              + `donne couleur + forme + libellé (charte-et-tokens.md, zero-defaut-visuel.md V16)` });
+          if (issues.etats_indiscernables.length >= 12) break;
+        }
+        if (issues.etats_indiscernables.length >= 12) break;
+      }
+    }
+  }
+
   // ---- V9 : un ACTIF VISUEL se juge dans le CONTEXTE ou il est servi (TF-0633, 25/08) -----
   //
   // LE FAIT, remonte par un produit et paye en production. Un logo blanc devenu bleu fonce avait
@@ -1306,6 +1395,12 @@ FAMILLES = [
     ("rognage_donnees", "Tableau ROGNE dans un conteneur defilant (page de donnees)", "bloquant"),
     ("prose_etroite", "Bloc de texte etrique sur une page de donnees", "bloquant"),
     ("sommaire_perdu", "Sommaire perdu au defilement", "bloquant"),
+    # TF-0910 (lot Produit-10 20260908a) : cinq teintes d'etat pastel du socle, toutes autour de
+    # L* 93-97. Chaque badge tenait 4,5:1 contre son fond, donc V2 rendait PASS sur chacun ; le
+    # defaut vit ENTRE deux badges — une distance, pas un ratio. Retour humain sur le livrable
+    # servi : « les bulles des statuts ne sont pas suffisamment differentes pour etre
+    # differenciees ». Bloquant : un etat qu'on ne distingue pas n'est pas un etat.
+    ("etats_indiscernables", "V16 etats indiscernables entre eux", "bloquant"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),

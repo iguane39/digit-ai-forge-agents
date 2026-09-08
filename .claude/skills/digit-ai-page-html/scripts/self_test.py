@@ -406,6 +406,17 @@ CAS_RENDU = {
     "donnees-prose-pleine.html": ("prose_etroite", 0),
     "sommaire-perdu-au-defilement.html": ("sommaire_perdu", 1),
     "sommaire-colle.html": ("sommaire_perdu", 0),
+    # TF-0910 (lot Produit-10 20260908a) — V16 : deux etats qui se ressemblent ne sont pas deux
+    # etats. Les cinq teintes pastel du socle vivent entre L* 93 et 97 ; le texte encre dessus
+    # tient 4,5:1, donc V2 rendait PASS sur CHAQUE badge pris un par un. Le defaut vit ENTRE deux
+    # badges — une distance, pas un ratio. La fixture rouge porte donc DEUX attentes : zero
+    # constat V2 (c'est ce qui prouve que V16 mesure autre chose) et au moins cinq paires sous les
+    # deux seuils. Mesures : vert/turquoise dE 7,3 · vert/ambre 19,5 · vert/gris 16,3 ·
+    # turquoise/gris 16,5 · rouge/gris 12,5.
+    "v16-etats-pastel.html": [("etats_indiscernables", 5), ("v2_contrast", 0)],
+    # les MEMES cinq etats en fonds pleins a encre blanche : dE de 23,8 a 98,2, contraste de
+    # 6,47:1 a 7,56:1, et un glyphe par palier — l'indice non colorimetrique de WCAG 1.4.1.
+    "v16-etats-pleins.html": [("etats_indiscernables", 0), ("v2_contrast", 0)],
 }
 
 
@@ -655,11 +666,17 @@ def run_rendu():
     # Les captures partent dans un dossier jetable (--out, TF-0058) : le dossier des
     # fixtures n'a pas à héberger les PNG de son propre auto-test.
     captures = tempfile.mkdtemp(prefix="self-test-render-")
-    for nom, (cle, attendu) in CAS_RENDU.items():
+    # TF-0910 : une fixture peut porter PLUSIEURS attentes de familles (liste de couples). Le cas
+    # fondateur l'exige — la fixture pastel doit rendre 0 constat V2 ET au moins 5 constats V16 :
+    # c'est le fait que V2 reste VERT qui prouve que V16 mesure autre chose qu'un ratio.
+    for nom, spec in CAS_RENDU.items():
+        paires = spec if isinstance(spec, list) else [spec]
         chemin = FIXTURES / nom
+        etiquette = (lambda cle: nom if len(paires) == 1 else f"{nom} · {cle}")
         if not chemin.exists():
-            out.append({"fixture": nom, "verdict": "ABSENTE", "attendu": attendu,
-                        "obtenu": 0, "detail": "fixture manquante"})
+            for cle, attendu in paires:
+                out.append({"fixture": etiquette(cle), "verdict": "ABSENTE", "attendu": attendu,
+                            "obtenu": 0, "detail": "fixture manquante"})
             continue
         r = subprocess.run(
             [sys.executable, "-X", "utf8",
@@ -668,15 +685,17 @@ def run_rendu():
             capture_output=True, text=True, encoding="utf-8")
         try:
             d = _json.loads(r.stdout)
-            n = len(d["breakpoints"]["1440"]["issues"][cle])
         except Exception:
-            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": attendu,
-                        "obtenu": 0, "detail": "render_page illisible"})
+            for cle, attendu in paires:
+                out.append({"fixture": etiquette(cle), "verdict": "ECHEC", "attendu": attendu,
+                            "obtenu": 0, "detail": "render_page illisible"})
             continue
-        ok = (n >= attendu) if attendu else (n == 0)
-        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
-                    "attendu": attendu, "obtenu": n, "regle": cle,
-                    "detail": "" if ok else f"{n} constat(s) {cle} au rendu"})
+        for cle, attendu in paires:
+            n = len(d["breakpoints"]["1440"]["issues"][cle])
+            ok = (n >= attendu) if attendu else (n == 0)
+            out.append({"fixture": etiquette(cle), "verdict": "OK" if ok else "ECHEC",
+                        "attendu": attendu, "obtenu": n, "regle": cle,
+                        "detail": "" if ok else f"{n} constat(s) {cle} au rendu"})
     shutil.rmtree(captures, ignore_errors=True)
     return out
 

@@ -28,6 +28,7 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | **V12** | **Tableau rogné dans un conteneur défilant** | À partir de **1 280 px** de fenêtre, aucun conteneur `overflow-x: auto\|scroll` portant un `<table>` ne rogne son contenu | **Mesuré (bloquant)** — `render_page.py` ; nomme les pixels hors champ. Un conteneur qui défile rend un tableau *consultable*, pas *lisible* — écart assumé déclaré par `data-rognage-assume`, jamais classé « acceptable » en revue |
 | **V13** | **Bloc de texte étriqué sur une page de données** | Sur une page `data-page="donnees"`, tout bloc de texte occupe **≥ 70 %** de la largeur que son conteneur lui offre | **Mesuré (bloquant)** — `render_page.py` ; colonne de lecture voulue déclarée par `data-mesure-lecture`. Complète L2, qui ne regarde que six sélecteurs et manquait `.chapo` |
 | **V14** | **Sommaire perdu au défilement** | Une page de plus de trois chapitres et de plus de deux écrans garde son sommaire **dans la fenêtre** après défilement | **Mesuré (bloquant)** — `render_page.py` (mesure aux 60 % de la page) ; l'existence du sommaire est jugée en amont par `L25` de `check_html.py` |
+| **V16** | **Deux états indiscernables l'un de l'autre** | Dans un jeu d'au moins **trois** badges d'une même classe de base portant au moins trois fonds distincts, aucune paire de fonds n'est à la fois sous **20** d'écart de couleur (Delta-E CIE76) **et** sous **0,25** d'écart de luminance relative | **Mesuré (bloquant)** — `render_page.py` ; nomme les deux libellés, les deux fonds et les deux écarts. Un jeu d'états exige en outre un **indice non colorimétrique** (WCAG 1.4.1) : la sonde le signale quand deux badges indiscernables portent le **même** libellé — la couleur est alors le seul porteur |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
 
 ### V9 : un actif visuel se valide dans le CONTEXTE où il est servi, jamais sur son fichier
@@ -121,6 +122,28 @@ hauteur vaut exactement une hauteur de fenêtre usuelle — c'est la signature d
 hauteur, et l'image ne la porte pas. La règle juge une **déclaration** et la met à l'épreuve du
 seul indice disponible. `render_page.py` capture déjà en pleine page par défaut ; le défaut
 fondateur venait de scripts de capture **du produit**, cadrés par fenêtre.
+
+### V16 — le défaut vit ENTRE deux mesures, pas dans une mesure (TF-0910, 08/09/2026)
+
+Les cinq teintes d'état du socle — `--green-fill` #DCFCE7, `--teal-fill`, `--amber-fill`
+#FEF3C7, `--red-fill` #FEE2E2, plus `--surface` — vivent toutes entre **L\* 93 et 97** : des
+pastels de même clarté séparés par une pointe de teinte. Le texte encré dessus tient 4,5:1, donc
+**V2 rendait PASS sur chaque badge pris un par un**. Retour humain sur le livrable servi : « les
+bulles des statuts ne sont pas suffisamment différentes pour être différenciées ». Le produit a
+refait la palette **hors socle**.
+
+*Ce que cette famille ajoute au catalogue :* V1 à V14 jugent une **propriété d'un élément** —
+un ratio, un débordement, une intersection, une largeur. V16 juge une **distance entre deux
+éléments**. Aucune somme de mesures individuelles justes ne la porte, et c'est pourquoi trois
+oracles verts laissaient passer un codage de couleur illisible. *Une palette dont deux registres
+ne se distinguent pas n'a pas deux registres.*
+
+Seuils **cumulatifs** à dessein : deux teintes éloignées en teinte mais de même clarté restent
+séparables, et deux clartés éloignées aussi — il faut perdre **les deux** pour perdre le lecteur.
+Le cas payé tenait 0 sur les deux axes (jusqu'à 7,3 d'écart de couleur entre le vert et le
+turquoise). Bruit mesuré avant mise en bloquant : **0 constat sur les 155 documents HTML du
+skill**. Le geste de sortie est écrit dans `charte-et-tokens.md` : les `*-solid` à encre blanche,
+un glyphe par palier, une légende couleur + forme + libellé.
 
 ### Une capture qui échoue est un CONSTAT, jamais une panne (TF-0897, 07/09/2026)
 

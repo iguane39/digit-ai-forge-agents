@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V16 · cinq états pastel indiscernables — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0910, sens ROUGE. Les cinq teintes d'état du socle, telles qu'elles étaient servies :
+  --green-fill #DCFCE7, --teal-fill #CCFBF1, --amber-fill #FEF3C7, --red-fill #FEE2E2 et un
+  gris de surface #F1F5F9. Toutes vivent entre L* 93 et 97 — des pastels de MÊME CLARTÉ,
+  séparés par une pointe de teinte.
+
+  CE QUI REND LA FIXTURE PROBANTE : le texte encré tient 4,5:1 sur chacun de ces fonds, donc
+  V2 rend PASS sur chaque badge pris un par un. C'est exactement l'état du livrable servi le
+  07/09/2026, et le retour humain qui l'a suivi : « les bulles des statuts ne sont pas
+  suffisamment différentes pour être différenciées ». Le défaut vit ENTRE deux badges — une
+  distance, pas un ratio — et aucune mesure d'un badge seul ne peut le porter.
+
+  Attendu : ZÉRO constat V2, et au moins cinq paires V16 sous les deux seuils (écart de couleur 20 et
+  écart de luminance 0,25) — mesurés : vert/turquoise 7,3 · vert/ambre 19,5 · vert/gris 16,3 ·
+  turquoise/gris 16,5 · rouge/gris 12,5.
+  Sa jumelle verte `v16-etats-pleins.html` porte les mêmes cinq états en fonds pleins.
+-->
+<style>
+  :root {
+    --ink:#0F172A; --muted:#475569; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FFFFFF;
+    --sans:"DM Sans",system-ui,sans-serif;
+    --green-fill:#DCFCE7; --teal-fill:#CCFBF1; --amber-fill:#FEF3C7;
+    --red-fill:#FEE2E2; --slate-fill:#F1F5F9;
+  }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  main { max-width:1080px; margin:0 auto; padding:32px 24px 64px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.8rem;
+           font-weight:700; color:var(--ink); }
+  .badge.livre   { background:var(--green-fill); }
+  .badge.recette { background:var(--teal-fill); }
+  .badge.cours   { background:var(--amber-fill); }
+  .badge.bloque  { background:var(--red-fill); }
+  .badge.gele    { background:var(--slate-fill); }
+  @media print { body { background:#fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Suivi des lots par état</h1>
+<p>Cinq états, cinq teintes pastel du socle. Chaque libellé est encré en foncé et tient le
+seuil de contraste ; c'est entre les fonds que la distinction se perd.</p>
+<table>
+  <caption>Lots suivis — exemple inventé, aucune donnée réelle.</caption>
+  <thead><tr><th>Lot</th><th>État</th><th>Responsable</th></tr></thead>
+  <tbody>
+    <tr><td>Lot A</td><td><span class="badge livre">livré</span></td><td>équipe nord</td></tr>
+    <tr><td>Lot B</td><td><span class="badge recette">en recette</span></td><td>équipe centre</td></tr>
+    <tr><td>Lot C</td><td><span class="badge cours">en cours</span></td><td>équipe sud</td></tr>
+    <tr><td>Lot D</td><td><span class="badge bloque">bloqué</span></td><td>équipe est</td></tr>
+    <tr><td>Lot E</td><td><span class="badge gele">gelé</span></td><td>équipe ouest</td></tr>
+    <tr><td>Lot F</td><td><span class="badge livre">livré</span></td><td>équipe nord</td></tr>
+  </tbody>
+</table>
+</main>
+</body>
+</html>
