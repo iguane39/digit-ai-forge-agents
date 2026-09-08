@@ -79,6 +79,28 @@
   .tbl-legende { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0; font-size: .8rem; }
   .tbl-legende span { display: inline-flex; align-items: center; gap: 6px; }
   .tbl-legende b { font-family: var(--mono); font-weight: 600; }
+  /* LA PASTILLE D'ÉTAT DE TABLE N'EST PAS UN CARACTÈRE, ET LA MESURE L'A IMPOSÉ (TF-0938,
+     08/09/2026). La légende rendait les trois états de table par le glyphe « ▭ » teinté. Mesure
+     `render_page` du canevas inséré dans une page hôte, 40 cartes et 274 puces, AUX QUATRE
+     LARGEURS : 1 bloquant V2 à chacune — l'ambre `--amber` (#D97706) sur le fond du socle donne
+     3,08:1, sous les 4,5:1 qu'un TEXTE doit tenir (WCAG 1.4.3). Le bleu, le rouge et le gris
+     passaient ; l'ambre seul échouait, et il échouait DANS LE CANEVAS, pas chez le produit.
+     La pastille reprend donc la forme de ce qu'elle légende — une CARTE, c'est-à-dire un cadre
+     dont la BORDURE porte l'état — au lieu d'un caractère teinté. Elle cesse d'être du texte
+     (V2 ne la juge plus à 4,5:1) et devient un objet graphique, jugé à 3:1 par WCAG 1.4.11,
+     seuil que l'ambre tient. Rien n'est assoupli : la même couleur, jugée par la bonne règle.
+     Les glyphes de COLONNE (＋ ✎ ●) restent des caractères — ils tiennent 4,5:1, et ce sont eux
+     qui portent l'information sans la couleur. */
+  .tbl-pastille {
+    flex: 0 0 auto;
+    display: inline-block;
+    width: 1.1em; height: .72em;
+    border: 2px solid var(--line);
+    border-radius: 2px;
+  }
+  .tbl-pastille.est-creee    { border-color: var(--blue); }
+  .tbl-pastille.est-modifiee { border-color: var(--amber); }
+  .tbl-pastille.est-reprise  { border-color: var(--line); }
 
   @media (max-width: 640px) { .tbl-grid { grid-template-columns: 1fr; } }
   @media print { .tbl-card { break-inside: avoid; } }
@@ -87,9 +109,9 @@
 <!-- La LÉGENDE d'abord : elle donne la teinte ET le glyphe. Un lecteur qui ne distingue pas
      les couleurs lit les glyphes ; un lecteur qui imprime en noir et blanc aussi. -->
 <p class="tbl-legende">
-  <span><b style="color:var(--blue)">▭</b> table créée</span>
-  <span><b style="color:var(--amber)">▭</b> table étendue</span>
-  <span><b style="color:var(--muted)">▭</b> table reprise sans changement</span>
+  <span><b class="tbl-pastille est-creee" aria-hidden="true"></b> table créée</span>
+  <span><b class="tbl-pastille est-modifiee" aria-hidden="true"></b> table étendue</span>
+  <span><b class="tbl-pastille est-reprise" aria-hidden="true"></b> table reprise sans changement</span>
   <span><b style="color:var(--blue)">＋</b> colonne ajoutée</span>
   <span><b style="color:var(--red)">✎</b> colonne corrigée</span>
   <span><b style="color:var(--muted)">●</b> colonne reprise</span>

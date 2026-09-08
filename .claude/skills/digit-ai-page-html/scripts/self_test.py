@@ -1853,6 +1853,154 @@ def run_infobulle_runtime():
     return out
 
 
+def _page_hote_du_canevas(legende_en_glyphes=False):
+    """Fabrique une page hote portant le canevas differentiel, 40 cartes et 274 puces.
+
+    La page est GENEREE depuis le canevas, jamais recopiee : une fixture figee derive de sa
+    source le jour ou le canevas change, et c'est le defaut que le controle de parite des
+    composants embarques (TF-0784) existe deja pour attraper ailleurs. Ici, la seule facon de
+    ne pas le payer est de ne pas creer la copie.
+
+    `legende_en_glyphes=True` rend la LEGENDE telle qu'elle etait avant TF-0938 — trois glyphes
+    « caractere teinte » a la place des trois pastilles. C'est le sens rouge : la meme page, la
+    meme couleur, un porteur different.
+    """
+    socle = Path(__file__).resolve().parents[2] / "digit-ai-page-html" / "assets" / "boilerplate.html"
+    canevas = (Path(__file__).resolve().parents[2] / "digit-ai-schemas" / "assets"
+               / "template-schema-differentiel.html")
+    if not socle.exists() or not canevas.exists():
+        return None
+    bp = socle.read_text(encoding="utf-8")
+    frag = canevas.read_text(encoding="utf-8")
+    # Le VRAI <style> du canevas est seul sur sa ligne ; celui du commentaire d'en-tete est suivi
+    # d'un espace. Prendre la premiere occurrence brute embarquerait la fin du commentaire.
+    i = frag.index("\n<style>\n")
+    sty = frag[i:frag.index("</style>") + len("</style>")]
+    corps = frag[frag.index("<!-- La LÉGENDE"):]
+    if legende_en_glyphes:
+        corps = re.sub(r'<b class="tbl-pastille (est-[a-z]+)" aria-hidden="true"></b>',
+                       lambda m: '<b style="color:var(--%s)">▭</b>' % {
+                           "est-creee": "blue", "est-modifiee": "amber",
+                           "est-reprise": "muted"}[m.group(1)], corps)
+    etats = ["est-creee", "est-modifiee", "est-reprise"]
+    libelles = {"est-creee": "creee", "est-modifiee": "etendue",
+                "est-reprise": "reprise sans changement"}
+    noms = ["dim_client", "fait_contrat_mois", "dim_batiment", "fait_loyer_quotidien",
+            "dim_calendrier", "stg_avenant_locatif", "dim_unite_locative",
+            "fait_charge_recuperable", "dim_bail", "ref_indice_revision"]
+    cols = ["identifiant_technique_de_la_ligne", "date_de_debut_avenant_actif",
+            "montant_hors_taxes_annuel", "code_postal_du_batiment",
+            "libelle_long_du_type_de_bail", "cle_de_substitution_du_contrat",
+            "horodatage_de_chargement_source", "indicateur_de_renouvellement_automatique"]
+    glyphes = {"est-ajoutee": "＋", "est-corrigee": "✎", "est-reprise": "●"}
+    cartes = []
+    for k in range(40):
+        etat, nom = etats[k % 3], "%s_%d" % (noms[k % len(noms)], k)
+        puces = []
+        for j in range((k % 9) + 3):
+            col = cols[(k + j) % len(cols)]
+            cl = ["est-ajoutee", "est-corrigee", "est-reprise"][(k + j) % 3]
+            puces.append(
+                '<li class="col %s"><span class="col-g" aria-hidden="true">%s</span>'
+                '<span class="col-n" title="%s\n  type : varchar(64)\n'
+                '  source : systeme amont, champ homonyme">%s</span></li>'
+                % (cl, glyphes[cl], col, col))
+        cartes.append(
+            '<article class="tbl-card %s"><p class="tbl-nom">silver.%s</p>'
+            '<p class="tbl-etat">%s — une ligne par contrat et par mois</p><ul>%s</ul>'
+            '<p class="tbl-cle">cle de substitution : sk_%s — hachage stable des cles '
+            'naturelles</p></article>'
+            % (etat, nom, libelles[etat], "".join(puces), nom))
+    corps = re.sub(r'<div class="tbl-grid">.*?</div>\s*$',
+                   '<div class="tbl-grid">%s</div>' % "".join(cartes), corps, flags=re.S)
+    page = bp.replace("</head>", sty + "\n</head>")
+    ancre = "<h1>{Titre du livrable}</h1>"
+    j = page.index(ancre) + len(ancre)
+    return page[:j] + "\n" + corps + "\n" + page[j:]
+
+
+def run_canevas_differentiel():
+    """TF-0938 (08/09/2026) — LE CANEVAS DIFFERENTIEL TIENT SES PROPRES REGLES, MESURE.
+
+    CE QUE L'ITEM DEMANDAIT, ET CE QUE LA MESURE A REPONDU. La demande etait d'EXCLURE de V4
+    les enfants d'une meme `.tbl-card`, comme le sont deja les formes d'un groupe SVG titre.
+    Mesure faite ici, canevas insere dans une page hote de 40 cartes et 274 puces, AUX QUATRE
+    LARGEURS (1920, 1280, 768, 390) : **zero constat V4**, a chacune. Deuxieme mesure
+    concordante apres celle de la campagne precedente. Aucune exclusion n'est donc posee — un
+    oracle ne s'assouplit pas sur une hypothese, et une exclusion posee « au cas ou » rendrait
+    aveugle un jour ou une carte se cassera vraiment.
+
+    CE QUE LA MEME MESURE A TROUVE, ET QUE PERSONNE NE CHERCHAIT : **1 bloquant V2 a chacune des
+    quatre largeurs**, dans le canevas lui-meme. La legende rendait ses trois etats de table par
+    un glyphe « ▭ » teinte ; l'ambre du socle (#D97706) sur le fond du socle donne 3,08:1, sous
+    les 4,5:1 qu'un TEXTE doit tenir. Le bleu, le rouge et le gris passaient — l'ambre seul
+    echouait. Le canevas est passe a une PASTILLE (un cadre dont la bordure porte l'etat, comme
+    la carte qu'elle legende) : la meme couleur, jugee par la regle qui lui convient (WCAG
+    1.4.11, 3:1, tenu), et non plus par celle du texte.
+
+    POURQUOI CE CAS EXISTE PLUTOT QU'UN SIMPLE CORRECTIF : le canevas est un FRAGMENT. Aucune
+    recette ne le rendait, donc aucune ne mesurait ce qu'il produit une fois pose. Le trou n'est
+    pas la couleur, c'est qu'un gabarit du parc pouvait echouer aux quatre largeurs sans que
+    rien ne le dise.
+
+    DEUX SENS :
+      (1) VERT  — le canevas TEL QU'IL EST LIVRE, pose dans une page hote : zero bloquant aux
+                  quatre largeurs. Avant le correctif, ce sens rend 1 bloquant a chacune ;
+      (2) ROUGE — la MEME page, la MEME couleur, la legende rendue par le glyphe teinte d'avant :
+                  V2 crie. Sans lui, on ne saurait pas si le vert vient du correctif ou d'une
+                  mesure devenue muette.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    page = _page_hote_du_canevas()
+    if page is None:
+        return [{"fixture": "canevas differentiel", "verdict": "ECHEC",
+                 "attendu": "canevas et socle presents", "obtenu": "absents",
+                 "regle": "TF-0938", "detail": "template-schema-differentiel.html introuvable"}]
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    tmp = Path(tempfile.mkdtemp(prefix="self-test-canevas-"))
+    out = []
+    for nom, glyphes, attendu in (("canevas differentiel · livre", False, 0),
+                                  ("canevas differentiel · legende en glyphes (sens rouge)", True, 1)):
+        cible = tmp / ("canevas-%s.html" % ("glyphes" if glyphes else "livre"))
+        cible.write_text(_page_hote_du_canevas(glyphes), encoding="utf-8")
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(cible), "--output", "json",
+                            "--out", str(tmp)], capture_output=True, text=True, encoding="utf-8")
+        try:
+            bps = json.loads(r.stdout)["breakpoints"]
+        except Exception:
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "rendu lisible",
+                        "obtenu": "illisible", "regle": "TF-0938",
+                        "detail": (r.stderr or r.stdout or "")[:160]})
+            continue
+        v4 = sum(len(b["issues"]["v4_overlap"]) for b in bps.values())
+        v2 = sum(len(b["issues"]["v2_contrast"]) for b in bps.values())
+        bloquants = sum(int(b.get("blocking") or 0) for b in bps.values())
+        largeurs = len(bps)
+        if not glyphes:
+            # Le sens VERT porte AUSSI le constat de la demande initiale : V4 doit rester a zero,
+            # sinon l'exclusion refusee ci-dessus deviendrait justifiee et il faudrait le savoir.
+            ok = bloquants == 0 and v4 == 0
+            out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                        "attendu": "0 bloquant · 0 V4 sur %d largeurs" % largeurs,
+                        "obtenu": "%d bloquant(s) · %d V4" % (bloquants, v4),
+                        "regle": "TF-0938 canevas pose",
+                        "detail": "" if ok else "40 cartes / 274 puces, largeurs %s"
+                                                % ",".join(sorted(bps))})
+        else:
+            ok = v2 >= largeurs
+            out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                        "attendu": "au moins 1 V2 par largeur (%d)" % largeurs,
+                        "obtenu": "%d V2" % v2, "regle": "TF-0938 sens rouge",
+                        "detail": "" if ok else "le glyphe teinte ne fait plus crier V2 : la "
+                                                "mesure est devenue muette, le vert ne prouve rien"})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -1903,6 +2051,12 @@ def main():
     infobulle = run_infobulle_runtime()
     if infobulle:
         res += infobulle
+    # TF-0938 — le canevas differentiel POSE dans une page hote : un fragment que rien ne rendait
+    # pouvait echouer aux quatre largeurs sans que rien ne le dise. Le cas porte AUSSI le constat
+    # qui refuse d'exclure `.tbl-card` de V4 : zero chevauchement mesure, donc rien a assouplir.
+    canevas = run_canevas_differentiel()
+    if canevas:
+        res += canevas
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":
