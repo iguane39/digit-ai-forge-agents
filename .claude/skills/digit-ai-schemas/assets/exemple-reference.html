@@ -3296,7 +3296,7 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="table-filters.js" data-empreinte="sha256:891c28fe08c731c5f9ce16fc5ea5fa82f1fa283845833fa2bbdc70d58e71e184">
+<script data-composant="table-filters.js" data-empreinte="sha256:0336d186e19dfbfb7e3abc2e416406974f81af51efb0a028659634023196228e">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
@@ -3710,7 +3710,20 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
         var etat = { col: col, bouton: b, selection: selection };
         etats.push(etat);
 
-        col.th.style.position = col.th.style.position || 'relative';
+        /* TF-0899 (08/09/2026) — LE PANNEAU A BESOIN D UN ANCETRE POSITIONNE, PAS DE `relative`.
+           `.tf-panel` est un `position:absolute` : il lui faut un ancetre positionne, et le
+           `<th>` est le bon. Mais poser `relative` EN LIGNE ecrasait le geste L29 du socle
+           (`thead.colle th { position: sticky; top: var(--hh) }`) : le `top` restait, applique
+           a un `relative` — donc un DECALAGE PERMANENT de --hh. Mesure Playwright du 07/09 sur
+           quatre tableaux filtrables : `<th>` a 441 px pour 337 attendus (+104 = --hh), une a
+           deux lignes recouvertes a tout defilement, `<th>` a -59 px apres 200 px de
+           defilement — l en-tete ne collait JAMAIS. Un `<th>` deja positionne (sticky, relative,
+           absolute, fixed) ancre DEJA un absolu : on ne pose donc que sur un `<th>` `static`. */
+        var posThCalculee = 'static';
+        try {
+          posThCalculee = (window.getComputedStyle(col.th).position || 'static');
+        } catch (e) { posThCalculee = col.th.style.position || 'static'; }
+        if (posThCalculee === 'static') col.th.style.position = 'relative';
         col.th.appendChild(b);
         col.th.appendChild(ui.panneau);
         Array.prototype.forEach.call(ui.options.querySelectorAll('.tf-opt'), function (cb) {
