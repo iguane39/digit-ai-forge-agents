@@ -468,6 +468,14 @@ try {
       where: rel + ' (historique)',
     });
   }
+  // TF-0828 (05/09) — C5 REJOUE L'ANGLE C4 : le NOM d'un fichier disparu de l'arbre.
+  for (const rel of cheminsHisto) if (!suivis.includes(rel)) for (const pr of P) {
+    if (porteProduit(rel, pr)) findings.push({
+      sev: 'bloquant', regle: 'C5',
+      msg: `nom de produit interdit « ${pr.cle} » dans le NOM d'un fichier ayant existé dans l'historique`,
+      where: rel + ' (historique)',
+    });
+  }
   // Les révisions se passent par LOTS : une ligne de commande portant des milliers d'empreintes
   // se fait tronquer en silence sur ce poste, et un contrôle tronqué rend vert par accident.
   for (const t of T) {
@@ -502,6 +510,54 @@ try {
       }
     }
   }
+
+  // --- C5 · le CONTENU de l'historique, quatrième angle (TF-0828, 05/09) ------------------
+  //
+  // LE TROU, ET IL EST DE MÊME NATURE QUE CELUI DU 27/08 CÔTÉ CLIENTS. C5 jugeait trois angles
+  // sur les quatre que C1-C4 couvrent : contenus et noms des fichiers SUIVIS de l'arbre courant,
+  // et messages de commit de tout l'historique. Elle ne rejouait pas C4 — le CONTENU des
+  // fichiers de tout l'historique, y compris ceux RETIRÉS de l'arbre. Or retirer un fichier de
+  // l'arbre ne le retire pas des commits, et l'hébergeur sert encore par empreinte ce qu'un
+  // commit ancien contient. C'est ce même trou qui avait fait découvrir un neuvième dépôt
+  // porteur après que huit aient été déclarés propres. L'écart était DÉCLARÉ au non_juge — mais
+  // un écart déclaré reste un écart, et une porte verte se lit comme un dépôt propre.
+  //
+  // MESURE DU 05/09, sur un clone jetable au commit 00097b6 : la porte avec C5 rendait FAIL,
+  // 5 constats (2 dans l'arbre courant, 3 dans des messages de commit). Le même balayage étendu
+  // au CONTENU de l'historique, joué à la main avec `git grep -l -I -F` sur les 151 révisions,
+  // rendait 12 couples (révision, fichier) sur 2 fichiers — douze constats que la porte ne
+  // voyait pas.
+  //
+  // L'ARBITRAGE, ET IL EST BORNÉ. Les clés LITTÉRALES se branchent directement sur le passage
+  // par `git grep` déjà écrit pour les clients : `-F` littéral, `-I` pour exclure les binaires,
+  // `-w` pour la frontière de mot — confiée à git, jamais réimplémentée (règle R3 : l'outil qui
+  // fait foi, jamais une copie maison). Les VARIANTES de graphie, elles, demanderaient un motif
+  // que `git grep` sache lire : le lookbehind `(?<![A-Za-z0-9])` de la graphie littérale n'est
+  // PAS exprimable en ERE, et le traduire à la main serait exactement la copie maison que R3
+  // interdit — c'est le défaut de cohérence entre angles déjà payé le 27/08 sur `-w` et `-I`.
+  // Elles restent donc hors de cet angle, et c'est DÉCLARÉ au non_juge, terme à terme.
+  //
+  // Une clé portant des `formes` déclarées (TF-0825) fait chercher SES FORMES, jamais la clé
+  // nue : le garde-fou du terme court vaut dans l'historique comme dans l'arbre.
+  for (const pr of P) {
+    for (const aiguille of (pr.formes || [pr.cle])) {
+      const argsGrep = ['grep', '-l', '-I', '-F', '-w', '-e', aiguille];
+      for (const lot of lots(revs, 150)) {
+        const r = git(repo, ...argsGrep, ...lot);
+        for (const ligne of (r.stdout || '').split('\n').filter(Boolean)) {
+          const [rev, ...reste] = ligne.split(':');
+          const rel = reste.join(':');
+          // Déjà dit par C5 sur l'arbre courant : ne pas compter deux fois le même fichier.
+          if (suivis.includes(rel) && findings.some((f) => f.regle === 'C5' && f.where.startsWith(rel + ':'))) continue;
+          findings.push({
+            sev: 'bloquant', regle: 'C5',
+            msg: `nom de produit interdit « ${aiguille} » dans le CONTENU d'un fichier de l'historique`,
+            where: `${rev.slice(0, 12)}:${rel}`,
+          });
+        }
+      }
+    }
+  }
 } finally { nettoyer(); }
 
 // LA PISTE RETENUE SE NOMME, TOUJOURS (TF-0887). Depuis que la porte sait chercher toute seule
@@ -533,10 +589,17 @@ if (P.length) nj.push('PORTÉE ASSUMÉE de C5 sur l’arbre courant : les fichie
   + 'DÉPÔT, pas de la règle — un `vendor/` SUIVI ramènerait le bruit. Le remède est alors la '
   + 'FORME BORNÉE déclarée dans la table (`"formes": ["<nom>-FR", "<nom>.FR"]`), qui remplace la '
   + 'sous-chaîne nue, jamais le retrait du terme, qui éteindrait l’angle.');
-if (P.length) nj.push("C5 ne balaie PAS le CONTENU de l'historique (ce que C4 fait pour les clients) : "
-  + 'elle juge les CONTENUS et les NOMS des fichiers SUIVIS de l’arbre courant, et les MESSAGES de '
-  + "commit de tout l'historique. Un nom de produit vivant seulement dans un blob ancien, sur un "
-  + "fichier retiré de l'arbre, n'est donc pas vu ici — limite mesurée et déclarée, pas un oubli.");
+if (P.length) nj.push('C5 balaie les QUATRE angles depuis le 08/09 (TF-0828) : contenus et noms '
+  + 'des fichiers SUIVIS de l’arbre courant, messages de commit de tout l’historique, et — c’est '
+  + "l'angle ajouté — CONTENUS et NOMS des fichiers de tout l'historique, y compris ceux RETIRÉS "
+  + "de l'arbre. LIMITE QUI SUBSISTE, et elle est bornée : dans l'HISTORIQUE, seules la graphie "
+  + 'LITTÉRALE de la clé (ou ses `formes` déclarées) sont cherchées, par `git grep -l -I -F -w` ; '
+  + 'les VARIANTES de graphie ne le sont pas. Motif : le lookbehind `(?<![A-Za-z0-9])` de la '
+  + "graphie littérale n'est pas exprimable en ERE, et le traduire à la main serait la copie "
+  + "maison d'une frontière de mot que la règle R3 interdit (l'outil qui fait foi, jamais une "
+  + 'copie maison) — c’est le défaut de cohérence entre angles déjà payé le 27/08 sur `-w` et '
+  + '`-I`. Un nom de produit vivant dans un blob ancien SOUS UNE VARIANTE DE GRAPHIE seulement '
+  + "n'est donc pas vu : limite mesurée et déclarée, pas un oubli.");
 if (findings.length) {
   // Une sortie qui déroulerait 648 occurrences ne se lit pas : on borne, ET ON DIT qu'on borne —
   // un plafond silencieux se lit comme « tout est là », ce qui est le contraire d'un contrôle.

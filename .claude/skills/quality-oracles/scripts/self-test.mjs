@@ -702,6 +702,103 @@ else {
   }
 }
 
+// TF-0828 (05/09/2026) — C5 REJOUE L'ANGLE C4 : LE CONTENU DE L'HISTORIQUE.
+//
+// LE TROU. C5 jugeait trois angles sur les quatre que C1-C4 couvrent : contenus et noms des
+// fichiers SUIVIS de l'arbre courant, et messages de commit de tout l'historique. Elle ne
+// rejouait pas C4 — le CONTENU des fichiers de tout l'historique, y compris ceux RETIRÉS de
+// l'arbre. Retirer un fichier de l'arbre ne le retire pas des commits, et l'hébergeur sert
+// encore par empreinte ce qu'un commit ancien contient : c'est ce même trou qui avait fait
+// découvrir un neuvième dépôt porteur après que huit aient été déclarés propres.
+//
+// MESURE DU 05/09 sur un clone jetable au commit 00097b6 : la porte rendait FAIL avec 5 constats
+// (2 dans l'arbre, 3 dans des messages de commit) ; le même balayage étendu au CONTENU de
+// l'historique, joué à la main, rendait 12 couples (révision, fichier) sur 2 fichiers — douze
+// constats invisibles à la porte.
+//
+// TROIS CAS :
+//   (1) ROUGE — un nom de produit qui ne vit QUE dans un blob ancien, sur un fichier RETIRÉ de
+//               l'arbre : la porte échoue, et le constat porte « CONTENU d'un fichier de
+//               l'historique ». C'est le cas que la porte ne voyait pas ;
+//   (2) le TÉMOIN du (1) — le MÊME dépôt, dont l'arbre courant et les messages de commit sont
+//               propres : sans lui, on ne saurait pas si le FAIL vient de l'angle ajouté ou
+//               d'un des trois anciens ;
+//   (3) VERT  — un dépôt dont aucune révision ne porte le nom : PASS, et le non_juge DÉCLARE
+//               la limite qui subsiste (les VARIANTES de graphie ne sont pas cherchées dans
+//               l'historique, et pourquoi). Un angle étendu qui tairait sa limite se lirait
+//               comme un angle complet.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c5-histo-'));
+  try {
+    const CLE = 'Zorgonaute-Machin';   // clé INVENTÉE, longue : la graphie littérale suffit
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const tClients = path.join(tables, 'clients.json');
+    const tProduits = path.join(tables, 'produits.json');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { [CLE]: 'Produit-96' } }), 'utf8');
+
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const g = (r) => (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+    // Le dépôt ROUGE : le nom entre au premier commit dans un fichier, puis le fichier est
+    // SUPPRIMÉ au second. L'arbre courant est propre, les deux messages de commit aussi — seul
+    // le blob du premier commit porte encore le nom.
+    const rouge = path.join(depots, 'blob-ancien');
+    fs.mkdirSync(rouge);
+    const gr = g(rouge);
+    gr('init', '-q'); gr('config', 'user.email', 'banc@local'); gr('config', 'user.name', 'banc');
+    fs.writeFileSync(path.join(rouge, 'note.md'), 'Compte rendu de la reunion ' + CLE + '.', 'utf8');
+    fs.writeFileSync(path.join(rouge, 'garde.md'), 'Ce fichier reste, et ne porte aucun nom.', 'utf8');
+    gr('add', '-A'); gr('commit', '-q', '-m', 'premier depot du banc');
+    fs.rmSync(path.join(rouge, 'note.md'));
+    gr('add', '-A'); gr('commit', '-q', '-m', 'retrait du compte rendu');
+    // Le dépôt VERT : la MÊME forme, aucun nom de la table nulle part.
+    const vert = path.join(depots, 'propre');
+    fs.mkdirSync(vert);
+    const gv = g(vert);
+    gv('init', '-q'); gv('config', 'user.email', 'banc@local'); gv('config', 'user.name', 'banc');
+    fs.writeFileSync(path.join(vert, 'note.md'), 'Compte rendu de la reunion hebdomadaire.', 'utf8');
+    fs.writeFileSync(path.join(vert, 'garde.md'), 'Ce fichier reste, et ne porte aucun nom.', 'utf8');
+    gv('add', '-A'); gv('commit', '-q', '-m', 'premier depot du banc');
+    fs.rmSync(path.join(vert, 'note.md'));
+    gv('add', '-A'); gv('commit', '-q', '-m', 'retrait du compte rendu');
+
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const jouer = (repo) => {
+      const r = spawnSync(process.execPath, [
+        path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits,
+      ], { encoding: 'utf8', timeout: 300000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const c5de = (j) => (j ? (j.findings || []).filter(f => f.regle === 'C5') : []);
+
+    const jr = jouer(rouge);
+    const histo = c5de(jr).filter(f => /historique/.test(f.msg));
+    const arbre = c5de(jr).filter(f => !/historique/.test(f.msg));
+    if (!jr) ko('TF-0828 blob ancien : sortie de l oracle inexploitable');
+    else if (jr.verdict !== 'FAIL') ko('TF-0828 blob ancien : un nom de produit vivant SEULEMENT dans un blob ancien ne fait pas echouer la porte (' + jr.verdict + ') — l angle C4 n est pas rejoue par C5');
+    else if (!histo.length) ko('TF-0828 blob ancien : aucun constat C5 portant sur le CONTENU de l historique');
+    else if (!histo.every(f => f.sev && f.msg && f.where)) ko('TF-0828 blob ancien : un constat C5 d historique ne porte pas le contrat findings[] (sev, msg, where)');
+    else ok('TF-0828 blob ancien : le nom retire de l arbre mais present dans un blob -> FAIL, ' + histo.length + ' constat(s) C5 sur le CONTENU de l historique, au contrat findings[]');
+    // TÉMOIN : le FAIL vient bien de l'angle AJOUTÉ, pas d'un des trois anciens.
+    if (jr && arbre.length) ko('TF-0828 temoin : ' + arbre.length + ' constat(s) C5 hors historique — l arbre courant ou les messages de commit portaient deja le nom, le cas rouge ne prouve donc pas l angle ajoute');
+    else if (jr) ok('TF-0828 temoin : ZERO constat C5 sur l arbre courant et les messages de commit — le FAIL vient bien de l angle ajoute, et de lui seul');
+
+    const jv = jouer(vert);
+    const njv = (jv ? (jv.non_juge || []) : []).join(' ');
+    if (!jv) ko('TF-0828 depot propre : sortie de l oracle inexploitable');
+    else if (jv.verdict !== 'PASS') ko('TF-0828 depot propre : la MEME forme sans aucun nom de la table ne rend pas PASS (' + jv.verdict + ') — l angle ajoute crie sur la structure');
+    else if (!/C5 balaie les QUATRE angles/.test(njv)) ko('TF-0828 depot propre : le non_juge ne DECLARE pas que C5 couvre desormais les quatre angles');
+    else if (!/VARIANTES de graphie ne le sont pas/.test(njv)) ko('TF-0828 depot propre : la LIMITE qui subsiste (variantes non cherchees dans l historique) n est pas declaree — un angle etendu qui tait sa limite se lit comme un angle complet');
+    else ok('TF-0828 depot propre : PASS, et le non_juge declare les quatre angles ET la limite qui subsiste (variantes de graphie hors historique, motif R3)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0825 (05/09/2026) — LA FORME BORNÉE D'UN TERME COURT, ET SA FIXTURE DOUBLE SENS.
 //
 // LE FAIT. Un nom de client est long et distinctif ; un nom de produit est souvent une
