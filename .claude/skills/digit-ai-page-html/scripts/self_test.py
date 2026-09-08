@@ -93,6 +93,10 @@ CAS = {
     "l18bis-systeme-non-explique.html": {"L18"},
     "l18bis-systeme-explique.html": set(),
     "l18bis-legende-apres-le-tableau.html": {"L18"},
+    # TF-0952 (08/09) — L31 : une hierarchie longue rendue en tableau se PLIE. Les deux fixtures
+    # portent la MEME donnee ; seule la table de la verte porte `data-arbre`.
+    "l31-hierarchie-non-pliable.html": {"L31"},
+    "l31-hierarchie-pliable.html": set(),
     # TF-0492 (22/08) — `overflow-wrap: anywhere` est necessaire sur un chemin, ravageur sur de
     # la prose. La verte le reserve a `code`, `pre` et aux classes qui disent leur usage technique.
     "l19-coupure-en-prose.html": {"L19"},
@@ -1866,6 +1870,109 @@ def run_infobulle_runtime():
     return out
 
 
+def run_table_arbre_runtime():
+    """TF-0952 (08/09/2026) — UNE HIERARCHIE RENDUE EN TABLEAU SE PLIE, ET LE SOCLE SAIT LE FAIRE.
+
+    LE FAIT PAYE, ET IL EST MESURE. Un livrable rendait deux hierarchies (schema > table >
+    colonne) dans des tableaux. Les lignes portaient DEJA `data-niveau`, et l'indentation etait
+    faite d'espaces insecables. Mesure a l'ouverture : 134 lignes visibles d'un coup sur la
+    premiere, 296 sur la seconde — aucun pliage, aucun compte d'enfants sur la ligne parente. Le
+    destinataire a du citer un composant EXTERNE pour se faire comprendre. Le socle n'avait aucun
+    composant de tableau arborescent : chaque livrable qui en avait besoin le reecrivait, ou
+    renoncait.
+
+    POURQUOI UN BANC D'EXECUTION : le defaut n'est pas dans le HTML — la page est conforme, avec
+    ou sans pliage. Il est dans ce que le lecteur RECOIT a l'ouverture. Seul un navigateur le dit.
+
+    QUATRE CAS, ET LE DERNIER EST CELUI QUI JUSTIFIE L'ARBITRAGE DE TF-0953 :
+      · a l'arrivee, seules les RACINES sont visibles (3 sur 48) — c'est tout l'interet ;
+      · « tout deplier » rend les 48, « tout replier » ramene a 3 ;
+      · deplier UNE racine n'ouvre qu'ELLE : ses tables paraissent, pas les colonnes de ses
+        tables. Sans ce cas, un composant qui deplierait tout au premier clic passerait ;
+      · le pliage SURVIT au passage du composant de filtres. C'est la cohabitation qui etait
+        impossible avant l'arbitrage partage, et qui obligeait un produit a poser un
+        MutationObserver sur `hidden`.
+
+    SENS ROUGE : la MEME page avec `data-arbre="off"` — le composant ne s'initialise pas, et le
+    lecteur recoit les 48 lignes d'un coup, sans un chevron. C'est l'etat du livrable d'origine.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from render_page import ensure_browser_path  # noqa: PLC0415
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001
+        pass
+    fixture = FIXTURES / "tf-table-arbre.html"
+    if not fixture.exists():
+        return [{"fixture": fixture.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-0952", "detail": ""}]
+    import tempfile
+    tmp = Path(tempfile.mkdtemp(prefix="self-test-arbre-"))
+    eteinte = tmp / "arbre-eteint.html"
+    eteinte.write_text(fixture.read_text(encoding="utf-8").replace('id="t1" data-arbre>',
+                                                                   'id="t1" data-arbre="off">'),
+                       encoding="utf-8")
+    out = []
+
+    def cas(nom, attendu, obtenu, regle):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:120], "obtenu": str(obtenu)[:120], "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"[:300]})
+
+    with sync_playwright() as pw:
+        navigateur = pw.chromium.launch()
+        page = navigateur.new_page(viewport={"width": 1280, "height": 900})
+        try:
+            page.goto(fixture.resolve().as_uri())
+            page.wait_for_load_state("load")
+            vues = lambda: page.evaluate("() => window.BancArbre.vues()")  # noqa: E731
+            cas("tf-table-arbre · à l'arrivée, seules les racines",
+                {"vues": 3, "total": 48}, {"vues": vues(), "total": 48}, "TF-0952 pliage")
+            page.evaluate("() => window.__arbre.deplierTout()")
+            depliees = vues()
+            page.evaluate("() => window.__arbre.plierTout()")
+            cas("tf-table-arbre · tout déplier / tout replier",
+                {"deplie": 48, "replie": 3}, {"deplie": depliees, "replie": vues()},
+                "TF-0952 commandes")
+            page.evaluate("() => window.__arbre.deplier('s1')")
+            cas("tf-table-arbre · déplier une racine n'ouvre qu'elle",
+                {"vues": 6, "table": True, "colonne": False},
+                {"vues": vues(),
+                 "table": page.evaluate("() => window.BancArbre.estVue('s1.baux')"),
+                 "colonne": page.evaluate("() => window.BancArbre.estVue('s1.baux.identifiant')")},
+                "TF-0952 profondeur")
+            avant = vues()
+            page.evaluate("() => { if (window.__tf) window.__tf.appliquer(); }")
+            cas("tf-table-arbre · le pliage survit au composant de filtres",
+                {"vues": avant, "repliee": False},
+                {"vues": vues(),
+                 "repliee": page.evaluate("() => window.BancArbre.estVue('s2.baux')")},
+                "TF-0952 cohabitation")
+            # SENS ROUGE : le composant eteint — l'etat du livrable d'origine.
+            page.goto(eteinte.resolve().as_uri())
+            page.wait_for_load_state("load")
+            cas("tf-table-arbre · composant éteint : tout d'un coup (sens rouge)",
+                {"vues": 48, "chevrons": 0},
+                {"vues": vues(),
+                 "chevrons": page.evaluate(
+                     "() => document.querySelectorAll('button[data-arbre-chevron]').length")},
+                "TF-0952 reproduction")
+        except Exception as erreur:  # noqa: BLE001
+            out.append({"fixture": fixture.name, "verdict": "ECHEC", "attendu": "banc joué",
+                        "obtenu": type(erreur).__name__, "regle": "TF-0952",
+                        "detail": str(erreur).splitlines()[0][:300]})
+        finally:
+            navigateur.close()
+    return out
+
+
 def run_visibilite_lignes():
     """TF-0953 (08/09/2026) — LA VISIBILITE D'UNE LIGNE EST UNE DISJONCTION, ARBITREE A UN SEUL
     ENDROIT.
@@ -2272,6 +2379,11 @@ def main():
     erd = run_canevas_modele_donnees()
     if erd:
         res += erd
+    # TF-0952 — le tableau arborescent : le defaut n'est pas dans le HTML, il est dans ce que le
+    # lecteur RECOIT a l'ouverture. 296 lignes d'un coup est un defaut ; seul un navigateur le dit.
+    arbre = run_table_arbre_runtime()
+    if arbre:
+        res += arbre
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

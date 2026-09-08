@@ -2796,6 +2796,48 @@ def check_lisibilite(html: str, a: Arbre):
                 "de correspondances sans « sur combien » se lit comme complet, quel que soit son "
                 "taux réel — 89 % présenté comme 100 % sur le cas fondateur (lisibilite.md L30).")
 
+    # --- L31 : une HIERARCHIE longue rendue en tableau se PLIE (TF-0952, 08/09/2026) ------
+    #
+    # LE FAIT PAYE, ET IL EST MESURE. Un livrable rendait deux hierarchies (schema > table >
+    # colonne) dans des tableaux. Les lignes portaient DEJA `data-niveau` — la donnee de
+    # structure etait la — et l'indentation etait faite d'espaces insecables. Mesure a
+    # l'ouverture : 134 lignes visibles d'un coup sur la premiere hierarchie, 296 sur la
+    # seconde. Aucun pliage, aucun compte d'enfants sur la ligne parente. Le destinataire a du
+    # citer un composant EXTERNE pour se faire comprendre. Apres pliage : 16 lignes sur 134.
+    #
+    # CE QUE LA REGLE MESURE, et pourquoi ce seuil : au-dela de HUIT lignes portant un niveau
+    # hierarchique — le meme seuil que L4 pour le filtrage, et pour la meme raison : au-dela,
+    # une liste ne se parcourt plus a l'oeil — le tableau doit OFFRIR le pliage. Le socle le
+    # fournit : `assets/table-arbre.js` + `assets/table-arbre.css`, marquage `data-arbre` sur la
+    # table et `data-cle` / `data-parent` / `data-niveau` sur les lignes. Une page qui a
+    # deliberement besoin de tout montrer le DIT (`data-arbre="ouvert"`), et une page qui n'a
+    # pas de hierarchie a plier n'est pas concernee.
+    #
+    # BRUIT MESURE AVANT DE POSER LA REGLE, sur les depots qui CONSOMMENT le socle : 362 pages
+    # HTML suivies de huit depots du parc — ZERO tableau touche. La regle ne rougit aucun
+    # livrable existant ; elle ferme une porte pour ceux a venir.
+    L31_MIN_LIGNES = 8
+    for table in [n for n in a.racine.descendants() if n.tag == "table"]:
+        # La PRESENCE de l'attribut suffit — `data-arbre` sans valeur est la forme normale du
+        # marquage, et exiger une valeur ferait echouer toute page correcte.
+        if "data-arbre" in table.attrs:
+            continue                       # le pliage est offert (ou explicitement decline)
+        niveaux = [tr for tr in table.descendants()
+                   if tr.tag == "tr" and (tr.att("data-niveau") or "").strip()]
+        if len(niveaux) <= L31_MIN_LIGNES:
+            continue
+        profondeurs = {(tr.att("data-niveau") or "").strip() for tr in niveaux}
+        if len(profondeurs) < 2:
+            continue                       # un seul niveau : c'est une liste plate, pas un arbre
+        fails.append(
+            f"L31 hiérarchie non pliable : {len(niveaux)} lignes portent `data-niveau` sur "
+            f"{len(profondeurs)} niveaux, et la table n'offre pas le pliage. Le lecteur reçoit "
+            "tout d'un coup — mesuré sur le cas fondateur : 296 lignes à l'ouverture, 18 après "
+            "pliage. Le socle fournit le composant (`assets/table-arbre.js` + "
+            "`assets/table-arbre.css`) : poser `data-arbre` sur la table, `data-cle` et "
+            "`data-parent` sur les lignes. Tout montrer volontairement se DÉCLARE — "
+            '`data-arbre="ouvert"` — et se lit (lisibilite.md L31).')
+
     # La carte, pas son enveloppe ni ses morceaux : classe EXACTE, et un porteur dont un ancêtre
     # a déjà été signalé ne l'est pas une seconde fois — trois lignes pour un seul défaut
     # feraient croire à trois cartes fautives.

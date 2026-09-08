@@ -443,6 +443,10 @@ marquage et partage mécanique / revue : [references/lisibilite.md](references/l
 
 **Obligatoire** — Filtres de colonne sur les tableaux de données parcourus (≥ 8 lignes) — **chaque** colonne reçoit sa facette, la cardinalité ne décide que de la forme du panneau (G7) : [references/composant-filtres-tableau.md](references/composant-filtres-tableau.md) (asset : [assets/table-filters.js](assets/table-filters.js)). Exemption possible via `data-filterable="off"` **et** `data-filterable-reason="…"` — sans motif, c'est un échec.
 
+**Obligatoire** — Pliage sur les tableaux qui rendent une HIÉRARCHIE (plus de 8 lignes portant `data-niveau`, sur au moins deux niveaux) — L31 : [assets/table-arbre.js](assets/table-arbre.js) + [assets/table-arbre.css](assets/table-arbre.css). Marquage `data-arbre` sur la table, `data-cle` / `data-parent` / `data-niveau` sur les lignes ; chevron par ligne parente avec son **compte d'enfants**, guides d'indentation dérivés de la donnée (plus d'espaces insécables dans le texte), *Tout déplier* / *Tout replier*, compteur vivant. Tout montrer volontairement se déclare : `data-arbre="ouvert"`.
+
+**Socle des trois** — [assets/visibilite-lignes.js](assets/visibilite-lignes.js) : la visibilité d'une ligne est la **disjonction** des attributs de masquage déclarés par TOUS les mécanismes, calculée à un seul endroit (TF-0953). Sans lui, chaque composant recalcule `hidden` depuis sa seule liste et écrase les autres — un produit avait dû poser un `MutationObserver` sur `hidden` puis déplier tout son arbre à chaque changement de filtre. Un composant qui masque **déclare** son attribut (`register`), il ne devine jamais ceux des autres.
+
 **Optionnel** —
 
 - Bibliothèque de composants chartés prêts à coller (KPI, badges de statut, barres de progression, légende, barre d'outils + compteur, tableau repliable en cartes, **onglets accessibles** `assets/tabs.js` — L16, **ligne de tableau dépliable** `assets/table-detail.js` — L17, gabarits de chapitre `.chap.lire`/`.chap.duo` — L2), validés par les oracles : [references/composants.md](references/composants.md).

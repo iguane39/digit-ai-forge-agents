@@ -26,9 +26,10 @@
    exactement ce que ce module existe pour supprimer — un composant qui decide pour les autres.
    Un mecanisme absent de la page n'inscrit rien, donc ne masque rien.
 
-   `apply` ne touche QUE `hidden`. Le `style.display` reste la propriete du composant qui le
-   pose : melanger les deux ecritures dans un seul endroit rendrait le module responsable du
-   rendu, alors qu'il n'arbitre qu'une decision.
+   `apply` ne POSE jamais `display: none` : masquer par le style reste l'affaire du composant qui
+   le fait. Il RETIRE en revanche celui que plus aucun attribut declare ne justifie — sans quoi
+   la disjonction pourrait etre fausse (« cette ligne n'est masquee par personne ») et la ligne
+   rester invisible, tenue par un `display` en ligne que personne ne rejoue. Voir TF-0952.
 
    La ligne de DETAIL (`tr[data-detail]`) suit sa ligne mere : masquee avec elle, jamais seule.
    C'est la regle que les deux composants tenaient deja chacun de son cote.
@@ -58,9 +59,19 @@
     if (!tr || !tr.hasAttribute) { return false; }
     var cache = masquee(tr);
     tr.hidden = cache;
+    /* L'ARBITRAGE NE POSE JAMAIS `display: none` — mais il RETIRE celui que plus aucun attribut
+       declare ne justifie (TF-0952, 08/09/2026). Le cas s'est presente des le premier composant
+       branche : le composant de filtres pose `display: none` sur les lignes qu'il masque ; quand
+       un AUTRE mecanisme les demasque plus tard (un arbre qu'on deplie), `hidden` repasse a faux
+       et la ligne reste invisible, tenue par un `display` en ligne que personne ne rejoue.
+       Mesure : 3 lignes visibles sur 48 apres « tout deplier », au lieu de 48. Poser `none` reste
+       l'affaire du composant qui masque ; le RETIRER quand plus rien ne le justifie est
+       exactement le role d'un arbitrage — sans quoi la disjonction serait vraie et invisible. */
     if (cache) {
       var d = tr.nextElementSibling;
       if (d && d.hasAttribute('data-detail')) { d.hidden = true; }
+    } else if (tr.style && tr.style.display === 'none') {
+      tr.style.display = '';
     }
     return cache;
   }

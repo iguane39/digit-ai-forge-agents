@@ -1214,6 +1214,40 @@ déclarés pour 4 rendus, dénominateur jamais affiché, aucun compte de manquan
 `l30-mapping-non-declare.html` (**2 avertissements** — la forme du cas payé, qui ne déclarait
 rien). Bruit mesuré avant mise en bloquant : **0 constat** sur les documents HTML du skill.
 
+
+## L31 — Une hiérarchie longue rendue en tableau se PLIE
+
+*Retour du 08/09/2026, et il a coûté une citation de composant externe* : un livrable rendait
+deux hiérarchies (schéma > table > colonne) dans des tableaux. Les lignes portaient **déjà**
+`data-niveau` — la donnée de structure était là — et l'indentation était faite d'espaces
+insécables. Mesure à l'ouverture : **134 lignes visibles d'un coup** sur la première hiérarchie,
+**296** sur la seconde. Aucun pliage, aucun compte d'enfants sur la ligne parente. Le
+destinataire a dû citer un composant externe pour se faire comprendre. Après pliage : **16
+lignes sur 134**, 18 sur 296.
+
+**Règle.** Au-delà de **huit** lignes portant un niveau hiérarchique sur **au moins deux**
+niveaux, la table offre le pliage : `data-arbre` sur la table, `data-cle` et `data-parent` sur
+les lignes. Le seuil est celui de L4 pour le filtrage, et pour la même raison — au-delà, une
+liste ne se parcourt plus à l'œil. Un seul niveau n'est pas une hiérarchie : c'est une liste
+plate, et elle n'est pas concernée.
+
+**Le socle fournit le composant** — `assets/table-arbre.js` + `assets/table-arbre.css` : chevron
+par ligne parente (`aria-expanded`, libellé accessible, **compte d'enfants**), guides
+d'indentation dérivés de `data-niveau` (plus d'espaces insécables dans le texte, qui se
+copient-collent et mentent au lecteur d'écran), commandes *Tout déplier* / *Tout replier*, et
+compteur vivant du nombre de lignes visibles.
+
+**Il ne s'arroge pas `hidden`** : il masque par `data-arbre-cache` et passe par l'arbitrage
+partagé `DigitAIRowVisibility` (L31 ↔ TF-0953). C'est ce qui permet à un filtre et à un pliage
+de coexister *sans se connaître* — avant, le pliage était écrasé au premier passage des filtres,
+et un produit avait dû poser un `MutationObserver` sur `hidden` puis déplier tout l'arbre à
+chaque changement de filtre.
+
+**Tout montrer volontairement se déclare** : `data-arbre="ouvert"` ouvre à l'arrivée, et se lit.
+
+**Bruit mesuré avant de poser la règle**, sur les dépôts qui consomment le socle : 362 pages
+HTML suivies de huit dépôts du parc — **zéro tableau touché**.
+
 ## Lancer le contrôle
 
 ```bash
