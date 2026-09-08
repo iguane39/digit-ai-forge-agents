@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A5 — rouge : une feuille écrasée qui ne rend aucune règle — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- TF-0896, sens ROUGE — branche « densité ». La page est CELLE de la fixture verte, plus un
+     second bloc de style de plus de mille caractères qui ne rend AUCUNE règle : du texte est
+     tombé dans la feuille. C'est la forme la plus générale du défaut du 07/09/2026 — le rapport
+     entre ce qui a été écrit et ce qui en est ressorti est le seul signal qui reste quand le
+     résidu ne porte pas de marqueur reconnaissable. Le cas payé valait 0,04 règle pour 1 000
+     caractères ; la densité la plus faible du dépôt (le boilerplate) vaut 3,39. A5 refuse
+     en dessous de 0,5 : le seuil sépare deux ordres de grandeur, il n'arbitre rien. -->
+<style>
+:root {
+  --head: "Roboto", system-ui, sans-serif;
+  --sans: "DM Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --ink: #0F172A;
+  --muted: #64748B;
+  --line: #E6EAF2;
+  --surface: #FFFFFF;
+  --bg: #FAFBFF;
+  --accent: #2a5db0;
+  --r-sm: 8px;
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 24px 64px; }
+h1, h2 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+h1 { font-size: 2rem; margin: 0 0 .25em; }
+h2 { font-size: 1.4rem; margin: 2em 0 .5em; }
+p { margin: 0 0 1em; }
+code { font-family: var(--mono); }
+a { color: var(--accent); }
+.carte { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 16px; }
+.carte .titre { font-family: var(--head); font-weight: 700; }
+.note { color: var(--muted); font-size: .85rem; }
+figure { margin: 0 0 24px; }
+figcaption { color: var(--muted); font-size: .85rem; }
+@media (max-width: 640px) { main { padding: 24px 16px 48px; } }
+@media print { body { background: #fff; } .note { color: #000; } }
+</style>
+<style>
+Cette page rend compte du suivi des lots : chaque lot porte son palier, son statut et un commentaire de suivi, et la synthèse en tête reprend le nombre de lots ouverts. Le texte qui suit ne contient aucune accolade, aucune déclaration et aucun sélecteur : c'est de la prose, pas une feuille. Cette page rend compte du suivi des lots : chaque lot porte son palier, son statut et un commentaire de suivi, et la synthèse en tête reprend le nombre de lots ouverts. Le texte qui suit ne contient aucune accolade, aucune déclaration et aucun sélecteur : c'est de la prose, pas une feuille. Cette page rend compte du suivi des lots : chaque lot porte son palier, son statut et un commentaire de suivi, et la synthèse en tête reprend le nombre de lots ouverts. Le texte qui suit ne contient aucune accolade, aucune déclaration et aucun sélecteur : c'est de la prose, pas une feuille. Cette page rend compte du suivi des lots : chaque lot porte son palier, son statut et un commentaire de suivi, et la synthèse en tête reprend le nombre de lots ouverts. Le texte qui suit ne contient aucune accolade, aucune déclaration et aucun sélecteur : c'est de la prose, pas une feuille. Cette page rend compte du suivi des lots : chaque lot porte son palier, son statut et un commentaire de suivi, et la synthèse en tête reprend le nombre de lots ouverts. Le texte qui suit ne contient aucune accolade, aucune déclaration et aucun sélecteur : c'est de la prose, pas une feuille. 
+</style>
+</head>
+<body>
+<main>
+<h1>Une feuille de style qui se parse</h1>
+<h2>Ce que la page prouve</h2>
+<p>Le commentaire d'en-tête décrit l'ordre du document sans jamais citer la balise de style
+en toutes lettres. La feuille qui suit est donc entière, et le navigateur en tire toutes ses
+règles.</p>
+<div class="carte">
+  <p class="titre">Densité mesurée</p>
+  <p class="note">Quinze règles pour environ mille deux cents caractères. La règle A5 refuse un
+  bloc d'au moins mille caractères qui rend moins d'une règle par deux mille caractères.</p>
+</div>
+<figure>
+  <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="image embarquée en data URI">
+  <figcaption>Image embarquée : la page reste autonome.</figcaption>
+</figure>
+</main>
+</body>
+</html>

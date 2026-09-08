@@ -227,6 +227,16 @@ CAS_AUTONOMIE = {
     # pourrait avaler le CSS qui les suit sans que rien ne le dise.
     "a1-reseau-cite-en-commentaire.html": set(),
     "a1-reseau-hors-commentaire.html": {"A1"},
+    # TF-0896 (lot Produit-10 20260907c) — A5, la feuille de style se PARSE. Un générateur qui
+    # extrait le style « à la première occurrence » avait embarqué le commentaire qui citait la
+    # balise en toutes lettres : UNE règle obtenue pour 27 350 caractères, page rendue nue, et
+    # trois passes d'oracles à mesurer des symptômes (2 106 px de débordement, sommaire perdu,
+    # faux G1) avant de trouver une cause d'une ligne. Les DEUX branches ont leur rouge : le
+    # résidu de balisage dans un sélecteur (signature exacte) et la densité de règles (forme
+    # générale, quand le résidu ne porte aucun marqueur reconnaissable).
+    "a5-feuille-parsable.html": set(),
+    "a5-residu-de-commentaire.html": {"A5"},
+    "a5-feuille-ecrasee.html": {"A5"},
 }
 RE_CODE_A = re.compile(r"^(A\d+(?:-bis)?)\b")
 

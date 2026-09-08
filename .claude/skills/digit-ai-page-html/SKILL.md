@@ -216,6 +216,17 @@ si la page vise aussi le PDF.
   pas une fatalité, il signalait un ordre fautif — et le message ne le disait pas, parce qu'il
   ne parlait que de `defer`. Un avertissement qui ne nomme pas sa cause corrigeable se fait
   exempter au lieu de se faire corriger.
+- **Une balise ne se cite jamais en toutes lettres dans un texte (A5, TF-0896)** : ni dans un
+  commentaire HTML, ni dans un commentaire CSS, ni dans une prose de page — on écrit « la balise
+  de style », « la balise de script ». Le boilerplate le violait dans son propre commentaire
+  S-G1, avant la vraie balise : un générateur qui extrait le style **à la première occurrence** a
+  embarqué le commentaire, le script d'initialisation et le `<head>` dans la feuille. Chromium a
+  rendu **une seule règle** pour 27 350 caractères, la page est sortie **nue**, et les oracles
+  ont mesuré des symptômes sans lien avec la cause (débordement de 2 106 px, sommaire perdu,
+  faux G1) — trois passes complètes sur une page de 188 Ko avant de bissecter la feuille à la
+  main. Même famille que RA-1 pour la balise de script fermante. Contrôlé par `check_html.py`
+  (FAIL bloquant, deux branches : résidu de balisage dans un sélecteur, et **densité de règles**
+  — moins d'une règle par 2 000 caractères sur un bloc d'au moins 1 000).
 - **Titre au motif A4** : `{Marque} — {Objet} · {Client} — {YYYYMMDD}{a,b,c…}`. Deux FAIL
   distincts, parce que les deux manques ne se corrigent pas du même geste : titre d'un seul
   bloc (pas de marque séparée de l'objet), et absence d'indice de version **daté** — « V1 »
@@ -268,7 +279,8 @@ Le script signale les **échecs bloquants** (Syne présent, `lang` absent, chars
 ou déclaré au-delà du 1024e octet — A3, squelette `html`/`head`/`body` absent — A1, titre hors
 motif marque + objet + version datée — A4, favicon absent ou non embarqué — A2,
 `<h1>` absent ou multiple, `:root` absent, `<title>` vide, pas de `@media print`, ressource
-chargée par le réseau — A1, bouton `.theme-toggle` sans script câblant `data-theme` — G1,
+chargée par le réseau — A1, feuille de style qui ne rend presque aucune règle — A5, bouton
+`.theme-toggle` sans script câblant `data-theme` — G1,
 thème piloté par `prefers-color-scheme` — G1) et des
 **avertissements** (repli de font manquant, `alt` manquant, saut de niveau de titre, script
 bloquant en `<head>`, pas de repère sémantique, aucun bouton de bascule — G1, légitime sur un

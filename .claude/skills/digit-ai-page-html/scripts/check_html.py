@@ -2339,6 +2339,62 @@ def check_structure(a: Arbre):
     return fails, warns
 
 
+# --- A5 · la feuille de style se PARSE (TF-0896, lot Produit-10 20260907c) ------------------
+#
+# LE FAIT PAYÉ (mesuré le 07/09/2026). Le boilerplate citait la balise de style EN TOUTES
+# LETTRES dans son commentaire S-G1, avant la vraie balise. Un générateur qui extrait le style
+# « à la première occurrence » a donc embarqué la fin du commentaire, le script d'initialisation
+# et le `<head>` dans le bloc de style. Résultat dans Chromium :
+# `document.styleSheets[0].cssRules.length = 1` pour une feuille de 27 350 caractères — UNE règle,
+# de sélecteur « · ». La page était nue, et les oracles ont mesuré des SYMPTÔMES sans lien avec
+# la cause : débordement de 2 106 px, sommaire perdu, tableaux non repliés côté render_page ; un
+# faux G1 côté check_html (le commentaire, avalé par la feuille, citait `prefers-color-scheme`).
+# Trois passes complètes de check_html + render_page sur une page de 188 Ko avant de bissecter la
+# feuille à la main dans le navigateur pour trouver une cause d'UNE LIGNE.
+#
+# Ce que A5 mesure, et pourquoi cette forme. Une feuille cassée ne se voit pas en lisant le CSS :
+# elle se voit au RAPPORT entre ce qu'on a écrit et ce qui en est ressorti. Deux branches :
+#   1. un SÉLECTEUR qui porte un résidu de balisage (`-->`, `<!--`, `<script`, `</style`) : c'est
+#      la signature exacte du défaut, et elle ne se produit jamais par hasard ;
+#   2. la DENSITÉ de règles : un bloc d'au moins 1 000 caractères qui rend moins d'une règle par
+#      2 000 caractères n'est pas une feuille, c'est un texte. Calibrage mesuré sur les 100+
+#      documents du skill : la densité la PLUS FAIBLE est celle du boilerplate lui-même,
+#      3,39 règles / 1 000 caractères — soit près de sept fois le plancher. Le cas payé valait
+#      0,04. Le seuil n'arbitre rien : il sépare deux ordres de grandeur.
+RE_RESIDU_BALISE = re.compile(r"-->|<!--|<\s*/?\s*[a-z]", re.I)
+A5_TAILLE_MINI = 1000        # caractères — sous ce seuil, la densité ne veut rien dire
+A5_DENSITE_PLANCHER = 0.5    # règles pour 1 000 caractères (plus faible mesurée : 3,39)
+
+
+def check_feuille_parsable(a: Arbre):
+    """A5 — un bloc de style rend-il des RÈGLES ? Retourne (fails, warns)."""
+    fails, warns = [], []
+    for i, bloc in enumerate(a.styles, 1):
+        regles = regles_css([bloc])
+        taille = len(bloc)
+        residu = next((sel for sel, _d in regles if RE_RESIDU_BALISE.search(sel)), None)
+        if residu is not None:
+            extrait = " ".join(residu.split())[:70]
+            fails.append(
+                f"A5 feuille de style {i} non parsable : un sélecteur porte un résidu de "
+                f"balisage — « {extrait} ». Le navigateur s'arrête là et la page est rendue NUE, "
+                "sans qu'aucun message ne le dise. Cause la plus fréquente : un texte qui cite la "
+                "balise de style ou de script EN TOUTES LETTRES avant la vraie balise, et un "
+                "extracteur qui prend la première occurrence (TF-0896 ; même famille que RA-1 "
+                "pour la balise de script). Écrire « la balise de style », jamais la balise.")
+        if taille >= A5_TAILLE_MINI:
+            densite = len(regles) / taille * 1000
+            if densite < A5_DENSITE_PLANCHER:
+                fails.append(
+                    f"A5 feuille de style {i} non parsable : {len(regles)} règle(s) obtenue(s) "
+                    f"pour {taille} caractères, soit {densite:.2f} règle(s) par 1 000 caractères "
+                    f"(plancher {A5_DENSITE_PLANCHER}). Un bloc de cette taille qui ne rend "
+                    "presque aucune règle n'est pas une feuille, c'est un texte : la page est "
+                    "rendue NUE et tout oracle de rendu mesurera des symptômes sans lien avec la "
+                    "cause. Ouvrir le bloc et chercher ce qui précède la première accolade.")
+    return fails, warns
+
+
 def check_autonomie(html: str):
     """A1 : aucune ressource chargée par le réseau. Retourne (fails, warns)."""
     constats = []
@@ -2628,6 +2684,12 @@ def check(html: str, regles: str = "tout", source=None):
         # rend faux. Il a fallu qu'un humain le voie sur une capture pendant que les deux
         # oracles rendaient PASS.
         f, w = check_structure(construire(html))
+        fails += f
+        warns += w
+        # A5 (TF-0896) : la feuille de style se PARSE. Un bloc qui ne rend presque aucune règle
+        # rend la page NUE, et tous les autres oracles mesurent alors des symptômes sans lien
+        # avec la cause — trois passes complètes perdues sur une page de 188 Ko, le 07/09.
+        f, w = check_feuille_parsable(construire(html))
         fails += f
         warns += w
     if regles in ("tout", "L"):

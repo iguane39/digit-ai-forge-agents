@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A5 — verte : la feuille de style se parse — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- TF-0896, sens VERT. Ce commentaire dit ce qu'il a à dire SANS jamais écrire la balise de
+     style ni la balise de script en toutes lettres : il parle de « la balise de style », et
+     un extracteur qui cherche la première occurrence de la vraie balise tombe donc sur la
+     vraie. La feuille ci-dessous rend 15 règles pour ~1 200 caractères, soit une densité de
+     l'ordre de 12 règles pour 1 000 caractères — deux ordres de grandeur au-dessus du
+     plancher de A5. Sa jumelle rouge `a5-residu-de-commentaire.html` ne diffère que par un
+     bloc de style qui a avalé la fin d'un commentaire. -->
+<style>
+:root {
+  --head: "Roboto", system-ui, sans-serif;
+  --sans: "DM Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --ink: #0F172A;
+  --muted: #64748B;
+  --line: #E6EAF2;
+  --surface: #FFFFFF;
+  --bg: #FAFBFF;
+  --accent: #2a5db0;
+  --r-sm: 8px;
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 24px 64px; }
+h1, h2 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+h1 { font-size: 2rem; margin: 0 0 .25em; }
+h2 { font-size: 1.4rem; margin: 2em 0 .5em; }
+p { margin: 0 0 1em; }
+code { font-family: var(--mono); }
+a { color: var(--accent); }
+.carte { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 16px; }
+.carte .titre { font-family: var(--head); font-weight: 700; }
+.note { color: var(--muted); font-size: .85rem; }
+figure { margin: 0 0 24px; }
+figcaption { color: var(--muted); font-size: .85rem; }
+@media (max-width: 640px) { main { padding: 24px 16px 48px; } }
+@media print { body { background: #fff; } .note { color: #000; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Une feuille de style qui se parse</h1>
+<h2>Ce que la page prouve</h2>
+<p>Le commentaire d'en-tête décrit l'ordre du document sans jamais citer la balise de style
+en toutes lettres. La feuille qui suit est donc entière, et le navigateur en tire toutes ses
+règles.</p>
+<div class="carte">
+  <p class="titre">Densité mesurée</p>
+  <p class="note">Quinze règles pour environ mille deux cents caractères. La règle A5 refuse un
+  bloc d'au moins mille caractères qui rend moins d'une règle par deux mille caractères.</p>
+</div>
+<figure>
+  <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="image embarquée en data URI">
+  <figcaption>Image embarquée : la page reste autonome.</figcaption>
+</figure>
+</main>
+</body>
+</html>
