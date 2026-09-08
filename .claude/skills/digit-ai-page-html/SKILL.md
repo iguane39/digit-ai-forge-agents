@@ -413,6 +413,22 @@ node .claude/skills/digit-ai-page-html/scripts/embarquer-composants.mjs --consta
 node .claude/skills/digit-ai-page-html/scripts/embarquer-composants.mjs --ecrire    # (re)pose les blocs
 ```
 
+**Et depuis un produit, hors du dépôt des skills (TF-0890)** — c'est la porte qui manquait, et
+son absence a coûté un **second poseur** : le module tuait le processus **à l'import** (son
+analyse d'arguments s'exécutait au chargement, `exit 2` avant le premier appel) et `--ecrire` ne
+parcourait que l'arbre des skills. Un produit a donc réimplémenté le format du bloc en Python —
+marqueurs, échappement, empreinte — *exactement la classe de défaut que ce script existe pour
+éliminer*. Le même code sert désormais des deux côtés :
+
+```bash
+node …/embarquer-composants.mjs --poser mon-livrable.html --composants table-filters.css,table-filters.js
+node …/embarquer-composants.mjs --constat mon-livrable.html   # rejoue la parité sur CE fichier
+```
+
+`--poser` insère la feuille avant la fermeture de l'en-tête et le script avant celle du corps, et
+remet à la source un bloc déjà marqué. Le module s'importe aussi sans rien exécuter :
+`import { blocCanonique, poserComposants, confronterBlocs } from '…/embarquer-composants.mjs'`.
+
 ```html
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js -->
 <script data-composant="table-filters.js" data-empreinte="sha256:…">…</script>

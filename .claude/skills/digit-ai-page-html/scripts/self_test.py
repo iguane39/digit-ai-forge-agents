@@ -1368,6 +1368,99 @@ def run_l29_ter():
     return resultats
 
 
+def run_poseur_composants():
+    """TF-0890 — LE POSEUR DE COMPOSANTS S'IMPORTE, ET POSE HORS DU DEPOT DES SKILLS.
+
+    Le module exportait `blocCanonique`, `echapper` et `sha`, mais son analyse d'arguments
+    s'executait A L'IMPORT : tout `import { blocCanonique }` terminait le processus avec le code
+    2 AVANT le premier appel. Et `--ecrire` ne parcourait que l'arbre des skills. Un produit qui
+    voulait embarquer trois composants du socle dans son livrable a donc REIMPLEMENTE le format
+    du bloc en Python — marqueurs, echappement de la balise de script fermante, attributs
+    `data-composant` et `data-empreinte`. Copie conforme au format, produite par un SECOND
+    OUTIL : la classe de defaut exacte que ce script existe pour eliminer.
+
+    QUATRE CAS, chacun a double sens :
+      1. l'import ne tue plus le processus (sens rouge : c'etait exit 2) — et il rend un bloc
+         canonique identique a celui que produit la ligne de commande ;
+      2. la garde n'a PAS supprime le controle d'usage : execute sans drapeau, le script rend
+         toujours 2 (sinon on aurait echange un defaut contre un autre) ;
+      3. `--poser` pose dans une page QUELCONQUE, hors de l'arbre des skills : la feuille avant
+         la fermeture de l'en-tete, le script avant celle du corps ;
+      4. `--constat <page>` rejoue la parite sur ce meme fichier — PASS tel quel, et FAIL des
+         qu'un octet du bloc bouge. C'est ce quatrieme cas qui prouve que la parite est jouable
+         des DEUX cotes par le meme code.
+    Silencieux si node est absent : le poseur est un module Node.
+    """
+    if not shutil.which("node"):
+        return None
+    import subprocess
+    import tempfile
+    poseur = str(Path(__file__).resolve().parent / "embarquer-composants.mjs")
+    out = []
+
+    def cas(nom, attendu, obtenu, regle, detail=""):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:96], "obtenu": str(obtenu)[:96], "regle": regle,
+                    "detail": "" if ok else (detail or f"attendu {attendu!r}, obtenu {obtenu!r}")[:300]})
+
+    # ---- 1 et 2 : le module s'importe, et le script refuse toujours un appel sans drapeau ----
+    script = ("import { blocCanonique } from " + json.dumps(Path(poseur).resolve().as_uri())
+              + "; process.stdout.write(blocCanonique('sonde.js', 'const a = 1;'));")
+    imp = subprocess.run(["node", "--input-type=module", "-e", script],
+                         capture_output=True, text=True, encoding="utf-8")
+    cas("poseur · l'import n'arrete plus le processus (sens rouge : exit 2)",
+        0, imp.returncode, "TF-0890 API", (imp.stderr or "").splitlines()[-1:] and imp.stderr[-280:])
+    cas("poseur · l'import rend bien le bloc canonique",
+        True, "COMPOSANT-EMBARQUE:DEBUT sonde.js" in imp.stdout
+              and 'data-composant="sonde.js"' in imp.stdout, "TF-0890 API")
+    nu = subprocess.run(["node", poseur], capture_output=True, text=True, encoding="utf-8")
+    cas("poseur · sans drapeau, l'usage est toujours refuse (la garde n'a rien eteint)",
+        2, nu.returncode, "TF-0890 point d'entree", nu.stderr[-280:])
+
+    # ---- 3 et 4 : poser hors de l'arbre des skills, puis rejouer la parite dessus ------------
+    atelier = tempfile.mkdtemp(prefix="self-test-poseur-")
+    try:
+        page = Path(atelier) / "livrable-hors-skills.html"
+        page.write_text(
+            '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="UTF-8">\n'
+            "<title>Digit-AI — pose hors depot · essai — 20260908a</title>\n</head>\n"
+            "<body>\n<h1>Essai</h1>\n</body>\n</html>\n", encoding="utf-8")
+        pose = subprocess.run(
+            ["node", poseur, "--poser", str(page),
+             "--composants", "table-filters.css,table-filters.js"],
+            capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · --poser aboutit sur une page hors arbre des skills",
+            0, pose.returncode, "TF-0890 --poser", (pose.stderr or pose.stdout)[-280:])
+        html = page.read_text(encoding="utf-8")
+        place = {
+            "style avant la fermeture de l'en-tete":
+                0 < html.find('data-composant="table-filters.css"') < html.find("</head>"),
+            "script avant la fermeture du corps":
+                html.find("</head>") < html.find('data-composant="table-filters.js"') < html.find("</body>"),
+        }
+        cas("poseur · chaque bloc est pose la ou il doit vivre",
+            {k: True for k in place}, place, "TF-0890 --poser")
+
+        vert = subprocess.run(["node", poseur, "--constat", str(page)],
+                              capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · --constat rejoue la parite hors arbre des skills (sens vert)",
+            0, vert.returncode, "TF-0890 parite", vert.stdout[-280:])
+        # SENS ROUGE : un seul octet du bloc suffit a rompre la parite. Sans ce cas, un `--constat`
+        # qui rendrait 0 sur n'importe quoi passerait pour une preuve.
+        page.write_text(html.replace("data-composant=\"table-filters.js\"",
+                                     "data-composant=\"table-filters.js\" data-derive=\"1\"", 1),
+                        encoding="utf-8")
+        rouge = subprocess.run(["node", poseur, "--constat", str(page)],
+                               capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · un octet modifie ROMPT la parite (sens rouge)",
+            (1, True), (rouge.returncode, "PÉRIMÉE" in rouge.stdout), "TF-0890 parite",
+            rouge.stdout[-280:])
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
 def run_capture_manquee():
     """TF-0897 — UNE CAPTURE QUI ECHOUE N'EST PAS UNE PANNE DE L'OUTIL.
 
@@ -1564,6 +1657,11 @@ def main():
     capture = run_capture_manquee()
     if capture:
         res += capture
+    # TF-0890 — le poseur de composants : une API qu'on peut IMPORTER, et une pose jouable hors
+    # de l'arbre des skills. Sans ces deux portes, un produit reecrit le poseur.
+    poseur = run_poseur_composants()
+    if poseur:
+        res += poseur
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

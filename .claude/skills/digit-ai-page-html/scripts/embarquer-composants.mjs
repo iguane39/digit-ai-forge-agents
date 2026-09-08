@@ -21,8 +21,27 @@
 // source, et sa dérive est un échec (`--constat`, et l'oracle `oracle-parite-assets` du skill
 // quality-oracles, qui balaie tout le dépôt sans rien écrire).
 //
-//   node embarquer-composants.mjs --constat   ce qui a dérivé (exit 1 si écart)
-//   node embarquer-composants.mjs --ecrire    (re)pose les blocs marqués
+//   node embarquer-composants.mjs --constat            ce qui a dérivé (exit 1 si écart)
+//   node embarquer-composants.mjs --ecrire             (re)pose les blocs marqués
+//   node embarquer-composants.mjs --constat <page…>    juge CES fichiers-là, où qu'ils vivent
+//   node embarquer-composants.mjs --poser <page.html> --composants table-filters.js,table-filters.css
+//
+// TF-0890 (lot Produit-03 20260903a, 03/09/2026) — DEUX PORTES FERMÉES, ET LA SECONDE A COÛTÉ UN
+// SECOND POSEUR. Ce module exportait `blocCanonique`, `echapper` et `sha`, mais son analyse
+// d'arguments s'exécutait À L'IMPORT : `if (constat === ecrire) { … process.exit(2) }`. Tout
+// `import { blocCanonique }` terminait donc le processus avec le code 2 AVANT le premier appel —
+// une API publique qu'on ne pouvait pas appeler. Et `--ecrire` ne parcourait que l'arbre des
+// SKILLS. Conséquence mesurée : pour embarquer trois composants du socle dans un livrable, un
+// produit a RÉIMPLÉMENTÉ le format du bloc en Python — marqueurs, échappement de la balise de
+// script fermante, trois lignes de commentaire, attributs `data-composant` et `data-empreinte`.
+// Copie conforme au format, produite par un SECOND OUTIL : exactement la classe de défaut que ce
+// script a été écrit pour éliminer. Trois copies dont la parité ne pouvait se rejouer que par
+// l'outil maison du produit.
+//
+// Depuis : l'analyse d'arguments vit sous une garde de point d'entrée (le module s'importe sans
+// rien exécuter), `--constat` accepte des chemins EXPLICITES, et `--poser` pose les blocs dans
+// n'importe quel fichier, hors du dépôt des skills. La parité redevient jouable des deux côtés
+// PAR LE MÊME CODE — comme `oracle-lot-retours.mjs` l'est pour les lots.
 //
 // Ne touche QUE les blocs déjà marqués. Adopter une copie manuelle est un geste explicite :
 // on entoure le `<script>` des deux marqueurs ci-dessous, puis `--ecrire` la met à jour.
@@ -42,21 +61,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.resolve(ICI, '..', 'assets');
 const SKILLSROOT = path.resolve(ICI, '..', '..');
 const IGNORES = new Set(['.oracles', '__pycache__', 'node_modules', '.git', 'fonts']);
 const SOCLE_DEFAUT = 'digit-ai-page-html/assets';
-
-const args = process.argv.slice(2);
-const constat = args.includes('--constat');
-const ecrire = args.includes('--ecrire');
-if (constat === ecrire) {
-  console.error('usage : node embarquer-composants.mjs (--constat | --ecrire)');
-  process.exit(2);
-}
 
 // L'ÉCHAPPEMENT N'EST PAS UN DÉTAIL (RA-1) : la séquence `</script` à l'intérieur d'un
 // `<script>` — fût-elle dans un commentaire — ferme le bloc pour l'analyseur HTML et casse la
@@ -99,7 +110,7 @@ export function blocsMarques(html) {
   return trouves;
 }
 
-function pages(dir, acc = []) {
+export function pages(dir, acc = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (IGNORES.has(e.name)) continue;
     const p = path.join(dir, e.name);
@@ -116,7 +127,7 @@ function pages(dir, acc = []) {
 // installé. Un nom introuvable DANS LE SOCLE DÉCLARÉ reste un écart : c'est ainsi qu'une faute
 // de frappe se voit.
 const socles = new Map();
-function sourcesDe(socleRel) {
+export function sourcesDe(socleRel) {
   if (socles.has(socleRel)) return socles.get(socleRel);
   const dir = socleRel === SOCLE_DEFAUT ? ASSETS : path.join(SKILLSROOT, socleRel);
   const m = new Map();
@@ -129,45 +140,151 @@ function sourcesDe(socleRel) {
   return m;
 }
 
-const ecarts = [];
-const ajour = [];
-const aEcrire = new Map();
-for (const fichier of pages(SKILLSROOT)) {
-  let html = fs.readFileSync(fichier, 'utf8');
-  const rel = path.relative(SKILLSROOT, fichier).replace(/\\/g, '/');
-  let modifie = false;
+/**
+ * Confronte les blocs marqués d'un HTML à leur source, et rend le HTML remis à jour.
+ *
+ * Fonction PURE (ne lit ni n'écrit aucun fichier) : c'est ce qui la rend jouable des deux côtés
+ * — ici sur l'arbre des skills, chez un produit sur son livrable, dans un banc de test sur une
+ * chaîne en mémoire. `repere` n'est qu'une étiquette pour les messages.
+ */
+export function confronterBlocs(html, repere = '(html)') {
+  const ecarts = [];
+  const ajour = [];
+  let sortie = html;
   // À REBOURS : réécrire de la fin vers le début garde valides les bornes non encore traitées.
-  for (const b of blocsMarques(html).sort((x, y) => y.debut - x.debut)) {
-    if (b.fin < 0) { ecarts.push(`${rel} : marqueur DEBUT ${b.nom} sans marqueur FIN`); continue; }
+  for (const b of blocsMarques(sortie).sort((x, y) => y.debut - x.debut)) {
+    if (b.fin < 0) { ecarts.push(`${repere} : marqueur DEBUT ${b.nom} sans marqueur FIN`); continue; }
     const src = sourcesDe(b.socle);
     if (!src.has(b.nom)) {
-      ecarts.push(`${rel} : composant « ${b.nom} » introuvable dans le socle ${b.socle} `
+      ecarts.push(`${repere} : composant « ${b.nom} » introuvable dans le socle ${b.socle} `
         + "(faute de frappe, ou `socle=<chemin>` à déclarer au marqueur d'ouverture)");
       continue;
     }
     const attendu = blocCanonique(b.nom, src.get(b.nom), b.socle);
-    const present = html.slice(b.debut, b.fin);
-    if (present === attendu) { ajour.push(`${rel} · ${b.nom}`); continue; }
-    ecarts.push(`${rel} · ${b.nom} : copie PÉRIMÉE (${present.length} octets contre ${attendu.length})`);
-    html = html.slice(0, b.debut) + attendu + html.slice(b.fin);
-    modifie = true;
+    const present = sortie.slice(b.debut, b.fin);
+    if (present === attendu) { ajour.push(`${repere} · ${b.nom}`); continue; }
+    ecarts.push(`${repere} · ${b.nom} : copie PÉRIMÉE (${present.length} octets contre ${attendu.length})`);
+    sortie = sortie.slice(0, b.debut) + attendu + sortie.slice(b.fin);
   }
-  if (modifie) aEcrire.set(fichier, html);
+  return { html: sortie, ecarts, ajour, modifie: sortie !== html };
 }
 
-if (constat) {
-  if (!ecarts.length) {
-    console.log(`composants embarqués : ${ajour.length} copie(s) à la parité de leur source.`);
-    for (const a of ajour) console.log(`  · ${a}`);
-    process.exit(0);
+/**
+ * POSE des composants dans une page QUELCONQUE — c'est la porte qui manquait (TF-0890).
+ *
+ * Un bloc DÉJÀ marqué pour ce composant est remplacé par sa forme canonique ; sinon le bloc est
+ * INSÉRÉ — une feuille avant `</head>` (le style doit être connu avant la première peinture), un
+ * script avant `</body>` (il opère sur un document construit). Sans point d'insertion (fragment
+ * sans squelette), le bloc est ajouté en fin de chaîne plutôt que perdu en silence, et le
+ * rapport le dit.
+ *
+ * Fonction PURE elle aussi : le produit qui l'appelle décide seul de ce qu'il écrit sur disque.
+ */
+export function poserComposants(html, noms, socleRel = SOCLE_DEFAUT) {
+  const src = sourcesDe(socleRel);
+  const poses = [];
+  const manquants = [];
+  let sortie = html;
+  for (const nom of noms) {
+    if (!src.has(nom)) { manquants.push(nom); continue; }
+    const bloc = blocCanonique(nom, src.get(nom), socleRel);
+    const deja = blocsMarques(sortie).find((b) => b.nom === nom && b.fin >= 0);
+    if (deja) {
+      sortie = sortie.slice(0, deja.debut) + bloc + sortie.slice(deja.fin);
+      poses.push(`${nom} (bloc existant remis à la source)`);
+      continue;
+    }
+    const ancre = nom.endsWith('.css') ? '</head>' : '</body>';
+    const i = sortie.lastIndexOf(ancre);
+    if (i < 0) {
+      sortie = `${sortie.replace(/\n+$/, '')}\n${bloc}\n`;
+      poses.push(`${nom} (aucun ${ancre} : bloc ajouté en fin de fichier)`);
+      continue;
+    }
+    sortie = `${sortie.slice(0, i)}${bloc}\n${sortie.slice(i)}`;
+    poses.push(`${nom} (inséré avant ${ancre})`);
   }
-  console.log(`composants embarqués : ${ecarts.length} écart(s) —`);
+  return { html: sortie, poses, manquants };
+}
+
+/** Le point d'entrée en ligne de commande. Rend le code de sortie, il ne le pose pas. */
+export function main(argv) {
+  const args = argv.slice(2);
+  const constat = args.includes('--constat');
+  const ecrire = args.includes('--ecrire');
+  const poser = args.includes('--poser');
+  const drapeaux = [constat, ecrire, poser].filter(Boolean).length;
+  if (drapeaux !== 1) {
+    console.error('usage : node embarquer-composants.mjs (--constat [page…] | --ecrire | '
+      + '--poser <page.html> --composants a.js,b.css)');
+    return 2;
+  }
+
+  if (poser) {
+    const cible = args[args.indexOf('--poser') + 1];
+    const iC = args.indexOf('--composants');
+    const liste = iC < 0 ? '' : (args[iC + 1] || '');
+    const noms = liste.split(',').map((s) => s.trim()).filter(Boolean);
+    if (!cible || cible.startsWith('--') || !noms.length) {
+      console.error('usage : --poser <page.html> --composants table-filters.js,table-filters.css');
+      return 2;
+    }
+    if (!fs.existsSync(cible)) {
+      console.error(`fichier introuvable : ${cible}`);
+      return 2;
+    }
+    const r = poserComposants(fs.readFileSync(cible, 'utf8'), noms);
+    if (r.manquants.length) {
+      console.error(`composant(s) introuvable(s) dans le socle ${SOCLE_DEFAUT} : `
+        + `${r.manquants.join(', ')} — rien n'a été écrit.`);
+      return 2;
+    }
+    fs.writeFileSync(cible, r.html, 'utf8');
+    console.log(`composants embarqués : ${r.poses.length} bloc(s) posé(s) dans ${cible} —`);
+    for (const p of r.poses) console.log(`  · ${p}`);
+    console.log('\n`--constat <page.html>` rejoue la parité sur ce fichier.');
+    return 0;
+  }
+
+  // `--constat` accepte des chemins EXPLICITES : c'est ce qui rend la parité jouable chez un
+  // produit, sur un livrable qui ne vit pas dans l'arbre des skills.
+  const explicites = args.filter((a) => !a.startsWith('--'));
+  const fichiers = explicites.length ? explicites : pages(SKILLSROOT);
+  const racine = explicites.length ? process.cwd() : SKILLSROOT;
+  const ecarts = [];
+  const ajour = [];
+  const aEcrire = new Map();
+  for (const fichier of fichiers) {
+    if (!fs.existsSync(fichier)) { ecarts.push(`${fichier} : fichier introuvable`); continue; }
+    const rel = path.relative(racine, fichier).replace(/\\/g, '/') || fichier;
+    const r = confronterBlocs(fs.readFileSync(fichier, 'utf8'), rel);
+    ecarts.push(...r.ecarts);
+    ajour.push(...r.ajour);
+    if (r.modifie) aEcrire.set(fichier, r.html);
+  }
+
+  if (constat) {
+    if (!ecarts.length) {
+      console.log(`composants embarqués : ${ajour.length} copie(s) à la parité de leur source.`);
+      for (const a of ajour) console.log(`  · ${a}`);
+      return 0;
+    }
+    console.log(`composants embarqués : ${ecarts.length} écart(s) —`);
+    for (const e of ecarts) console.log(`  · ${e}`);
+    console.log('\n`--ecrire` (re)pose les blocs marqués.');
+    return 1;
+  }
+
+  for (const [fichier, html] of aEcrire) fs.writeFileSync(fichier, html, 'utf8');
+  console.log(`composants embarqués : ${aEcrire.size} page(s) réécrite(s), `
+    + `${ajour.length + ecarts.length} bloc(s) marqué(s) au total.`);
   for (const e of ecarts) console.log(`  · ${e}`);
-  console.log('\n`--ecrire` (re)pose les blocs marqués.');
-  process.exit(1);
+  return 0;
 }
 
-for (const [fichier, html] of aEcrire) fs.writeFileSync(fichier, html, 'utf8');
-console.log(`composants embarqués : ${aEcrire.size} page(s) réécrite(s), `
-  + `${ajour.length + ecarts.length} bloc(s) marqué(s) au total.`);
-for (const e of ecarts) console.log(`  · ${e}`);
+// LA GARDE DE POINT D'ENTRÉE (TF-0890). Sans elle, l'analyse d'arguments s'exécutait à l'IMPORT
+// et tout `import { blocCanonique }` terminait le processus avec le code 2 avant le premier
+// appel. Un module qui s'exécute quand on l'importe n'a pas d'API : il n'a qu'un script.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exit(main(process.argv));
+}
