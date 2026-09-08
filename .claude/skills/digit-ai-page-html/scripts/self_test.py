@@ -812,7 +812,15 @@ def run_repli_cartes():
     rendu = str(Path(__file__).resolve().parent / "render_page.py")
     cas = {
         "v1-tableau-repli-cartes.html": 0,   # replié : chaque ligne devient une carte
-        "v1-tableau-sans-repli.html": 0,     # écrasé : 0 par ÉCRASEMENT, pas par confort
+        # TF-0926 (08/09) — CE ZÉRO A ENFIN BOUGÉ, et c'est le scénario écrit ci-dessus qui
+        # s'est produit : « le jour où une règle saura voir l'écrasement, ce cas devra passer
+        # à >= 1 ». Ce n'est pas une règle neuve qui l'a vu, c'est la fixture qui a cessé de
+        # mentir. Elle portait une copie FIGÉE du CSS du gabarit, prise le 21/08 ; TF-0724 D1
+        # a retiré `overflow-wrap: anywhere` de `th, td` le 31/08, et la copie a continué
+        # d'écraser dans son coin. Depuis que la feuille est POSÉE depuis le gabarit
+        # (boilerplate.css, contrôle de parité), la mesure à 390 px rend le défaut réel :
+        # `table` à 736 px de bord droit pour 390 px de fenêtre, 45 descendants avec elle.
+        "v1-tableau-sans-repli.html": 1,     # non replié, et le débordement se VOIT enfin
     }
     out = []
     for nom, attendu in cas.items():
@@ -946,7 +954,24 @@ def run_glyphes_du_socle():
     for f in cibles:
         texte = f.read_text(encoding='utf-8')
         dans_code = False
+        # TF-0926 (08/09) — un bloc POSÉ par `embarquer-composants.mjs` n'est pas un exemple
+        # ÉCRIT dans la fixture : c'est la source elle-même, recopiée sous contrôle de parité.
+        # La juger ici la jugerait DEUX FOIS et au mauvais endroit — la source vit dans
+        # `assets/`, hors du domaine délibéré de ce contrôle (« les blocs de code des
+        # références et les fixtures »). Le fait : dès que la feuille du gabarit a été posée
+        # dans les deux fixtures V1, le séparateur de commentaire `──` (U+2500) du gabarit est
+        # devenu un glyphe « d'exemple » — un faux positif né du contrôle de parité lui-même.
+        dans_bloc_pose = False
         for i, ligne in enumerate(texte.split('\n'), 1):
+            if f.suffix == '.html':
+                if 'COMPOSANT-EMBARQUE:DEBUT' in ligne:
+                    dans_bloc_pose = True
+                    continue
+                if 'COMPOSANT-EMBARQUE:FIN' in ligne:
+                    dans_bloc_pose = False
+                    continue
+                if dans_bloc_pose:
+                    continue
             if f.suffix == '.md':
                 if ligne.strip().startswith('```'):
                     dans_code = not dans_code
@@ -1519,6 +1544,42 @@ def run_poseur_composants():
         cas("poseur · un octet modifie ROMPT la parite (sens rouge)",
             (1, True), (rouge.returncode, "PÉRIMÉE" in rouge.stdout), "TF-0890 parite",
             rouge.stdout[-280:])
+
+        # ---- TF-0926 : la FEUILLE DU GABARIT, source synthetique `boilerplate.css` ----------
+        #
+        # Deux fixtures du socle portaient une copie FIGEE du CSS de `assets/boilerplate.html`,
+        # prise le 21/08 : 91 lignes du gabarit y manquaient, dont le token --hh et le registre
+        # rouge. Rien ne les rattachait a leur source — meme classe de defaut que la copie
+        # embarquee d'un composant, dans le depot meme qui edicte la parite. La feuille du
+        # gabarit n'est pas un fichier `.css` (elle vit DANS le HTML, et l'en sortir changerait
+        # le gabarit que tout auteur copie) : le poseur l'expose donc comme source SYNTHETIQUE.
+        # Les deux sens, sur une page hors arbre des skills, comme au-dessus.
+        page2 = Path(atelier) / "livrable-feuille-de-gabarit.html"
+        page2.write_text(
+            '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="UTF-8">\n'
+            "<title>Digit-AI — feuille du gabarit · essai — 20260908a</title>\n</head>\n"
+            "<body>\n<h1>Essai</h1>\n</body>\n</html>\n", encoding="utf-8")
+        pose2 = subprocess.run(
+            ["node", poseur, "--poser", str(page2), "--composants", "boilerplate.css"],
+            capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · la feuille du gabarit se pose comme un composant",
+            0, pose2.returncode, "TF-0926 gabarit", (pose2.stderr or pose2.stdout)[-280:])
+        html2 = page2.read_text(encoding="utf-8")
+        cas("poseur · la feuille posee porte bien le CSS du gabarit",
+            True, 'data-composant="boilerplate.css"' in html2 and "--hh:" in html2,
+            "TF-0926 gabarit")
+        vert2 = subprocess.run(["node", poseur, "--constat", str(page2)],
+                               capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · la feuille posee est a la parite de son gabarit (sens vert)",
+            0, vert2.returncode, "TF-0926 parite", vert2.stdout[-280:])
+        # SENS ROUGE : la copie FIGEE. On rejoue exactement ce qui s'est passe — une ligne du
+        # gabarit retiree de la copie, sans toucher au gabarit — et la parite doit le dire.
+        page2.write_text(html2.replace("--hh: 64px;", "", 1), encoding="utf-8")
+        rouge2 = subprocess.run(["node", poseur, "--constat", str(page2)],
+                                capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · une copie FIGEE de la feuille du gabarit rend un constat (sens rouge)",
+            (1, True), (rouge2.returncode, "PÉRIMÉE" in rouge2.stdout), "TF-0926 parite",
+            rouge2.stdout[-280:])
     finally:
         shutil.rmtree(atelier, ignore_errors=True)
     return out

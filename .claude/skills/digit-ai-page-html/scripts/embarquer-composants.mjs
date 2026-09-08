@@ -136,6 +136,26 @@ export function sourcesDe(socleRel) {
       if (/\.(js|css)$/.test(n)) m.set(n, fs.readFileSync(path.join(dir, n), 'utf8'));
     }
   }
+  // TF-0926 (08/09) — LA FEUILLE DU GABARIT, source synthétique `boilerplate.css`.
+  //
+  // Deux fixtures du socle portaient une copie FIGÉE du CSS de `assets/boilerplate.html`,
+  // prise le 21/08 : 91 lignes du gabarit manquaient, dont le token `--hh`, le registre rouge
+  // et la règle de conteneur du jour. Rien ne les rattachait à la source dont elles dérivent —
+  // même classe de défaut que la copie embarquée d'un composant, sur du CSS de gabarit plutôt
+  // que sur un composant, et dans le dépôt même qui édicte la parité.
+  //
+  // La feuille du gabarit n'est pas un fichier `.css` : elle vit DANS le HTML, et l'en sortir
+  // changerait le gabarit, que tout auteur copie tel quel. Elle est donc exposée ici comme une
+  // source SYNTHÉTIQUE, extraite du premier bloc `<style>` du gabarit — le poseur y devient
+  // l'outil qui fait foi pour elle aussi, sans rien déplacer.
+  if (socleRel === SOCLE_DEFAUT) {
+    const gabarit = path.join(ASSETS, 'boilerplate.html');
+    if (fs.existsSync(gabarit)) {
+      const html = fs.readFileSync(gabarit, 'utf8');
+      const bloc = html.match(/<style>([\s\S]*?)<\/style>/);
+      if (bloc) m.set('boilerplate.css', bloc[1].replace(/^\n+/, '').replace(/\n+$/, ''));
+    }
+  }
   socles.set(socleRel, m);
   return m;
 }

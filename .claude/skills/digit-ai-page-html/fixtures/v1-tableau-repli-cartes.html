@@ -55,7 +55,10 @@
        lecture hors ligne). Roboto/DM Sans s'affichent si installées localement,
        sinon les replis système des tokens --head/--sans/--mono prennent le relais. -->
 
-  <style>
+<!-- COMPOSANT-EMBARQUE:DEBUT boilerplate.css — copie du socle digit-ai-page-html/assets/boilerplate.css,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<style data-composant="boilerplate.css" data-empreinte="sha256:0c4ef5761b560b28725c8766b987904894b27e3b94c556fefa1a9609f092343a">
     :root {
       /* Couleurs — marque & surfaces */
       --blue: #2563EB;
@@ -75,6 +78,17 @@
       --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;
       --teal:  #0E9488; --teal-fill:  #EFFDFB; --teal-line:  #C7F0EA;
       --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
+      /* TF-0755 (02/09) : le QUATRIEME registre, employe par les livrables de la maison et
+         documente nulle part. Un rapport de conformite qui a eu besoin d'un « refus / non
+         declare » ne l'a pas trouve dans le socle et l'a INVENTE — alors que le livrable
+         conforme de reference portait deja ces trois valeurs exactes. Une palette dont un
+         registre entier n'est ecrit nulle part se fait reinventer, et deux reinventions donnent
+         deux rouges dans deux livrables de la meme maison. */
+      --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
+      /* TF-0754 (02/09) : hauteur de l'EN-TETE COLLANT. Le socle a tranche — l'en-tete garde le
+         bord haut, le thead collant et le sommaire lateral se decalent de var(--hh). Un token
+         consomme sans etre pose vaudrait 0 et ramenerait la collision (controle L29). */
+      --hh: 64px;
       /* Rayons */
       --r: 12px; --r-sm: 8px;
       /* Largeur du conteneur et largeur de lecture — cf. regle L2.
@@ -105,6 +119,7 @@
       --amber: #FBBF6D; --amber-fill: #2B2210; --amber-line: #4A3A18;
       --teal:  #5FE6D6; --teal-fill:  #0E2A27; --teal-line:  #164E48;
       --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
+      --red:   #F5A3A3; --red-fill:   #2C1416; --red-line:   #4C1F22;
     }
 
     * { box-sizing: border-box; }
@@ -117,20 +132,48 @@
       line-height: 1.55;
       font-size: 16px;
     }
+    /* TF-0733 (31/08, lot produit) — LE VOILE INVISIBLE AUX SEIZE ORACLES. Un panneau masque
+       par l'attribut `hidden` mais style par un `display: flex` explicite : la regle CSS
+       l'emporte sur le display:none que l'attribut tient de la feuille de l'agent utilisateur,
+       et un rectangle TRANSPARENT couvre l'ecran en interceptant chaque clic — invisible en
+       capture (transparent), invisible a la lecture (syntaxiquement correct), trouve par
+       document.elementFromPoint. Cette ligne rend l'attribut SOUVERAIN : un composant masque
+       le reste, quel que soit le display que sa classe pose. Elle est OBLIGATOIRE de charte
+       sur toute page qui emploie `hidden` (controle L23 de check_html.py). */
+    [hidden] { display: none !important; }
+
     /* Regle L2 (corrigee, TF-0421 — lot Produit-05 20260820a) : la mesure de lecture est portee
        par le CONTENEUR, jamais par le paragraphe. L'ancienne doctrine (« conteneur relatif,
        prose bornee en ch ») bridait chaque <p> a 75ch : a 1 800 px, 60 % de la fenetre vide,
        livre vert, refuse par le client. Deux gabarits de chapitre NOMMES remplacent la bride :
-         .chap.lire  — conteneur de lecture (~1 080 px centres) : le texte le remplit ;
+         .chap.lire  — un PASSAGE de lecture (~1 080 px centres) INSERE dans une mise en page
+                       large — JAMAIS l'enveloppe d'un chapitre entier : employe comme
+                       enveloppe, il place tout le document a 56 % d'une fenetre de 1 920 px,
+                       sous le plancher de largeur que ce squelette enonce, et render_page L2
+                       le refuse a bon droit (TF-0724 D2, constate par le destinataire humain) ;
          .chap.duo   — grille 7/5 texte + encart utile (KPI, legende, figure), repli < 1 100 px.
        Un <p> seul sur une largeur de 1 680 px reste illisible : c'est le CHAPITRE qu'on
        retrecit (.chap.lire), pas la ligne. render_page.py L2 juge quelle que soit la propriete. */
     .wrap { max-width: var(--w); margin: 0 auto; padding: 32px 24px 64px; }
+    /* TF-0930 (retour humain du 08/09, « augmente la largeur complete du document ») — une
+       page qui se DECLARE page de donnees echappe au plafond de confort : `--w` la bridait a
+       1 260 px dans une fenetre de 1 370 et a 1 680 dans une fenetre de 1 920, alors que I1 et
+       L26 disent « pleine largeur adaptative ». Sept colonnes de mapping n'entrent pas dans
+       1 260 px ; la place existe, la page doit la prendre. La colonne de lecture reste
+       accessible a la PROSE par `.chap.lire`, qui n'est pas touche ici.
+       Mesure : .wrap 1 370/1 370 px et 1 920/1 920 px apres, contre 1 260 et 1 680 avant.
+       Controle : famille `conteneur_bride_donnees` de render_page.py (>= 96 % a >= 1 280 px). */
+    [data-page="donnees"] .wrap,
+    .wrap[data-page="donnees"] { max-width: none; padding: 20px 28px 48px; }
+    /* TF-0932 — l'entrée en matière d'un chapitre : ce qu'il contient, puis ses termes. */
+    .contenu { margin: .2em 0 .8em; color: var(--muted, #475569); }
+    .termes { margin: 0 0 1em; font-size: .92em; color: var(--muted, #475569); }
+    .termes dfn { font-style: normal; font-weight: 600; color: var(--ink, #0f172a); }
     .chap.lire { max-width: 1080px; margin-left: auto; margin-right: auto; }
     .chap.duo { display: grid; grid-template-columns: 7fr 5fr; gap: 32px; align-items: start; }
     @media (max-width: 1100px) { .chap.duo { grid-template-columns: 1fr; } }
 
-    /* –– Tableaux, et leur repli en cartes (TF-0442, composants.md §6) ––––––––––––––––––
+    /* ── Tableaux, et leur repli en cartes (TF-0442, composants.md §6) ──────────────────
        Le socle ne portait AUCUN style de tableau : chaque page en reinventait, et le repli en
        cartes — seule parade reelle au debordement — n'existait qu'en exemple dans un
        referentiel. Mesure du 21/08 sur une page dont TOUS les tableaux etaient deja dans un
@@ -151,13 +194,44 @@
 
        Chaque `<td>` porte `data-label="<en-tete de sa colonne>"`. Un tableau qui n'en porte
        pas ne se replie pas — c'est voulu : le repli sans etiquette rendrait des valeurs nues. */
-    .table-hote { overflow-x: auto; }
+    /* ── TF-0900 (08/09/2026) : LE CONTENEUR DEFILANT NE VIT QUE SOUS 900 px ────────────
+       Un ancetre dont l'`overflow` n'est pas `visible` DEVIENT la boite de defilement de tout
+       `position: sticky` de son sous-arbre. `.table-hote { overflow-x: auto }` pose partout
+       DEFAISAIT donc, a lui seul, le geste L29 pose vingt lignes plus bas : le thead se figeait
+       sous le haut de SON TABLEAU au lieu de l'en-tete de page. Mesure du 07/09 sur quatre
+       tableaux sans filtres : th a 404 px au repos pour 337 attendus (+67), une ligne recouverte
+       en permanence, -96 px apres 200 px de defilement — le thead quittait l'ecran avec son
+       tableau. Deux lignes du MEME gabarit se contredisaient, et un produit a du trancher seul.
+
+       ARBITRAGE : au-dessus de 900 px le conteneur ne defile PAS. Il n'y servait a rien — la
+       regle « tableau rogne » (render_page, famille rognage_donnees) refuse deja qu'un tableau
+       soit coupe dans un conteneur defilant sur une page de donnees, et V1 ne regarde pas si un
+       ancetre defile. Sous 900 px il reprend son role : c'est la que le repli en cartes masque
+       le thead (`table.repli-cartes thead { display: none }`), donc plus aucun sticky a casser,
+       et qu'un tableau NON repliable a besoin d'etre consultable a defaut d'etre lisible.
+       Reste declare : un tableau sans `data-label` (donc sans repli) ET porteur de `thead.colle`
+       perd son collage sous 900 px — c'est la seule largeur ou le socle prefere la consultation
+       au collage, et lisibilite.md L29 le dit. */
+    .table-hote { overflow-x: visible; }
     table { width: 100%; border-collapse: collapse; }
-    caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 6px 0; }
-    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+    caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 8px 0; }
+    /* TF-0724 D1 (31/08, lot produit) — `overflow-wrap: anywhere` NE VIT PLUS sur `th, td` :
+       pose la, la coupure s'appliquait a TOUTE cellule de prose, et L19 — le controle qui
+       accompagne ce squelette — refusait precisement cela. Tout document bati sur le socle et
+       portant un tableau de texte echouait SANS QUE SON AUTEUR AIT RIEN ECRIT (deux echecs
+       mesures sur un livrable, imputables au seul CSS du socle ; la surcharge ne suffisait
+       pas, l'oracle lisant la declaration et non la cascade). La coupure vit desormais aux
+       DEUX seuls endroits legitimes : le repli en cartes (composants.md §6, palier oblige,
+       tolere par L19 depuis TF-0554) et la classe explicite `.cellule-code` pour les cellules
+       d'identifiants techniques — une classe qui DIT son usage, comme L19 le demande. */
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th { font-family: var(--head); font-weight: 700; }
+    td.cellule-code, th.cellule-code { font-family: var(--mono); overflow-wrap: anywhere; }
     @media (max-width: 900px) {
-      .table-hote { overflow-x: visible; }
+      /* TF-0900 : c'est ICI que le conteneur defilant sert — le thead est masque par le repli
+         en cartes (ligne suivante), donc aucun sticky ne peut etre casse, et un tableau non
+         repliable reste consultable au doigt. */
+      .table-hote { overflow-x: auto; }
       table.repli-cartes thead { display: none; }
       table.repli-cartes tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 12px; break-inside: avoid; }
       table.repli-cartes td { display: grid; grid-template-columns: minmax(9ch, 38%) 1fr; gap: 8px; border: 0; padding: 4px 0; }
@@ -165,10 +239,14 @@
       table.repli-cartes td:not([data-label])::before { content: none; }
     }
 
-    h1, h2, h3 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+    h1, h2, h3, h4 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
     h1 { font-size: 2rem; margin: 0 0 .25em; }
     h2 { font-size: 1.4rem; font-weight: 700; margin: 2em 0 .5em; }
     h3 { font-size: 1.1rem; font-weight: 700; margin: 1.5em 0 .4em; }
+    /* TF-0724 D3 : le socle s'arretait a h3 — un document au quatrieme niveau devait le styler
+       lui-meme, et declenchait « saut de hierarchie » s'il n'intercalait pas un h3. Le niveau 4
+       existe ; au-dela, c'est un composant, pas un titre. */
+    h4 { font-size: 1rem; font-weight: 700; margin: 1.2em 0 .3em; }
     p, li { margin: 0 0 1em; }
     a { color: var(--blue); }
     code, pre { font-family: var(--mono); }
@@ -177,6 +255,18 @@
       border-bottom: 2px solid var(--blue);
       padding-bottom: 16px; margin-bottom: 24px;
     }
+    /* ── B1 contre B6 : l'ARBITRAGE, en deux lignes (TF-0754, 02/09) ──────────────────
+       « header sticky » et « thead sticky » se superposaient sur toute page longue a
+       tableaux : le thead se collait au bord haut DERRIERE l'en-tete et devenait illisible,
+       ou bien on lui donnait un decalage au jugé et il flottait au-dessus des premieres
+       lignes de son propre tableau. Aucun des deux textes du socle ne disait lequel cede, ni
+       ne fournissait le decalage — un PRODUIT a fini par trancher, apres deux cycles de
+       rendu. L'en-tete garde le bord haut (c'est lui qui porte l'identite du livrable) ; ce
+       qui colle SOUS lui consomme --hh. Le sommaire lateral (L25) prend le meme repere. */
+    header.doc.colle { position: sticky; top: 0; z-index: 20; background: var(--bg); }
+    thead.colle th   { position: sticky; top: var(--hh); z-index: 10; background: var(--surface); }
+    nav.toc.colle    { position: sticky; top: var(--hh); z-index: 10; }
+    @media (max-width: 900px) { nav.toc.colle { position: static; } }
     .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
 
     /* S-G1 (3/4, R-30) — bouton de bascule, en-tête, haut à droite */
@@ -225,6 +315,7 @@
         --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
         --teal:#0E9488;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
         --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
+        --red:#B91C1C;   --red-fill:#FEF2F2;    --red-line:#F6CFCF;
       }
       body { background: var(--surface); }
       .wrap { max-width: none; padding: 0; }
@@ -232,7 +323,9 @@
       a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em; color: var(--muted); }
       .theme-toggle { display: none; }
     }
-  </style>
+  
+</style>
+<!-- COMPOSANT-EMBARQUE:FIN boilerplate.css -->
 </head>
 <body>
   <div class="wrap">
