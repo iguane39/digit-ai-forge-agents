@@ -1583,6 +1583,93 @@ def check_lisibilite(html: str, a: Arbre):
     if len(muets) > 6:
         fails.append(f"L18 identifiant muet : {len(muets) - 6} autre(s) jeton(s) sans glose.")
 
+    # --- L18 bis : un SYSTEME d'identifiants s'explique UNE FOIS, avant son premier tableau
+    #     (TF-0954bis — item TF-0944, 08/09/2026)
+    #
+    # LE FAIT PAYE, ET IL EST INSTRUCTIF PARCE QUE L18 ETAIT VERT. Une page servie portait des
+    # reperes S1 a S12 et G1 a G9, chacun glose par une infobulle de cellule : L18 satisfait,
+    # ligne a ligne. Le lecteur a quand meme demande « a quoi servent les reperes S1, S2, G5 ?
+    # ce n'est pas explique ». Une infobulle de CELLULE dit ce que vaut CE jeton-la ; elle ne dit
+    # ni ce qu'EST un repere de cette famille, ni combien il y en a, ni ou ils vivent aussi
+    # (fichier de definition, chapitre des objets, listing). Gloser chaque occurrence et
+    # expliquer le SYSTEME sont deux gestes differents, et L18 ne connaissait que le premier.
+    #
+    # LE SEUIL EST CELUI DE L'ITEM, littéralement : PLUS DE TROIS lignes de tableau portant un
+    # meme prefixe. En dessous, une famille n'est pas un systeme — trois renvois se lisent un par
+    # un, et exiger une legende produirait le bruit que L18 evite deja en ne glosant que la
+    # premiere occurrence.
+    #
+    # LA LEGENDE SE DECLARE, elle ne se devine pas — meme doctrine que `data-codes` deux regles
+    # plus haut, et que `data-legende-ok` pour L3 : `data-legende-codes="S,G"` sur le bloc qui
+    # explique le systeme. Un oracle qui tenterait de reconnaitre une legende a sa forme
+    # accepterait n'importe quel tableau place au bon endroit ; declarer coute un attribut et
+    # rend le contrat lisible par l'auteur comme par l'oracle.
+    #
+    # LA POSITION COMPTE : la legende doit venir AVANT le premier tableau qui emploie la famille.
+    # Une legende placee apres explique ce que le lecteur a deja renonce a comprendre.
+    #
+    # MESURE DE BRUIT AVANT DE POSER LA REGLE, sur les CONSOMMATEURS et pas seulement ici :
+    # 357 pages HTML suivies de HUIT depots du parc — ZERO page touchee. La regle ne juge que les
+    # familles CONNUES (le motif ferme des renvois) ou DECLAREES par la page (`data-codes`), et
+    # aucune page du parc n'en emploie une sur plus de trois lignes. Elle ferme une porte pour les
+    # pages a venir ; elle n'en rougit aucune aujourd'hui.
+    ordre = {}
+    for i, n in enumerate(a.racine.descendants()):
+        ordre[id(n)] = i
+    prefixe = lambda j: re.match(r"[A-Za-z-]+", j).group(0)
+    # Ou chaque famille est LEGENDEE (position du premier bloc qui la declare).
+    legende_de = {}
+    for n in a.racine.descendants():
+        for p in (n.att("data-legende-codes") or "").replace(" ", "").split(","):
+            if not p:
+                continue
+            p = p.upper()
+            legende_de[p] = min(legende_de.get(p, 10 ** 9), ordre.get(id(n), 10 ** 9))
+    # Combien de LIGNES portent chaque famille, et ou son premier tableau commence.
+    # LE COMPTE SE FAIT SUR LES NOEUDS DE TEXTE, PAS SUR `texte_propre()` D'UNE LIGNE, et ce
+    # n'est pas un detail de style : `texte_propre()` colle les cellules bout a bout, si bien
+    # qu'un repere en fin de cellule se retrouve soude au premier mot de la suivante
+    # (« S1table des baux ») et perd la frontiere de mot que le motif exige. La regle comptait
+    # alors ZERO ligne sur une page qui en porte huit — un oracle muet, pas un oracle indulgent.
+    # C'est la source que L18 lit deja deux paragraphes plus haut ; les deux regles voient donc
+    # exactement le meme texte.
+    lignes_par_famille = {}
+    premier_tableau = {}
+    lignes_vues = set()
+    for txt_l, porteur in a.textes:
+        t = (txt_l or "").strip()
+        if not t or _cite(porteur) or _contenu_cite(porteur) or dans_tete(porteur):
+            continue
+        lignee_p = [porteur, *porteur.ancetres()]
+        tr = next((x for x in lignee_p if x.tag == "tr"), None)
+        table = next((x for x in lignee_p if x.tag == "table"), None)
+        if tr is None or table is None:
+            continue
+        for m in motif.finditer(t):
+            p = prefixe(m.group(0)).upper()
+            if (id(tr), p) in lignes_vues:
+                continue
+            lignes_vues.add((id(tr), p))
+            lignes_par_famille[p] = lignes_par_famille.get(p, 0) + 1
+            premier_tableau[p] = min(premier_tableau.get(p, 10 ** 9),
+                                     ordre.get(id(table), 10 ** 9))
+    L18_BIS_MIN_LIGNES = 3
+    for p, n_lignes in sorted(lignes_par_famille.items()):
+        if n_lignes <= L18_BIS_MIN_LIGNES:
+            continue
+        pos_leg = legende_de.get(p)
+        if pos_leg is not None and pos_leg < premier_tableau[p]:
+            continue
+        ou = "après le tableau" if pos_leg is not None else "absente"
+        fails.append(
+            f"L18 système d'identifiants non expliqué : le préfixe « {p} » est employé sur "
+            f"{n_lignes} lignes de tableau, et la légende du système est {ou}. Une infobulle de "
+            "cellule dit ce que vaut CE jeton ; elle ne dit ni ce qu'EST un repère de cette "
+            "famille, ni combien il y en a, ni où ils vivent aussi. Poser, AVANT le premier "
+            f'tableau qui les emploie, un bloc `data-legende-codes="{p}"` — repère, objet, '
+            "action, pourquoi. Retour humain du 08/09 : « à quoi servent les repères S1, S2, "
+            "G5 ? ce n'est pas expliqué », sur une page où L18 était vert ligne à ligne.")
+
     # --- L19 : la coupure de mot au rendu (TF-0492, 22/08/2026) ------------
     # Trois occurrences signalées par le client sur deux versions successives : « Utilisabl/e »,
     # « Plateform/e », « 231 occurrenc/es ». Cause : `overflow-wrap: anywhere`, nécessaire sur les

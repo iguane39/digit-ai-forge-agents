@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L18 systeme d identifiants non explique — 20260908a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de L18 bis — le SYSTEME d'identifiants sans legende (TF-0944, 08/09).
+
+  LE PIEGE DE CE CAS : L18 est VERT. Chaque repere S1..S5 porte son infobulle, donc chaque jeton
+  est glose ligne a ligne. Et le lecteur ne sait toujours pas ce qu'EST un repere S, combien il
+  y en a, ni ou ils vivent aussi. C'est le retour humain du 08/09, mot pour mot : « a quoi
+  servent les reperes S1, S2, G5 ? ce n'est pas explique ».
+
+  Cinq lignes portent le prefixe S — plus que le seuil de trois — et aucun bloc
+  `data-legende-codes` n'explique le systeme avant le tableau.
+
+  Attendu : L18.
+-->
+<body data-codes="S"><main class="wrap" data-page="donnees">
+<h1>Objets suivis par le chargement</h1>
+<p>Chaque ligne decrit un objet du socle et l action qui le tient a jour.</p>
+<table>
+<thead><tr><th data-definition="Repere court de l objet dans le listing. Source : fichier de definition du socle.">Repere</th><th data-definition="Objet du socle designe par le repere. Source : catalogue des objets.">Objet</th><th data-definition="Action qui tient l objet a jour. Source : ordonnanceur du chargement.">Action</th></tr></thead>
+<tbody>
+<tr><td title="Repere S1 : table des baux, chargee depuis le systeme amont.">S1</td><td>table des baux</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S2 : table des lots, chargee depuis le systeme amont.">S2</td><td>table des lots</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S3 : table des avenants, chargee depuis le systeme amont.">S3</td><td>table des avenants</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S4 : table des indices, chargee depuis le systeme amont.">S4</td><td>table des indices</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S5 : table des charges, chargee depuis le systeme amont.">S5</td><td>table des charges</td><td>chargement quotidien</td></tr>
+</tbody></table>
+</main></body></html>

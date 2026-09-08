@@ -85,6 +85,14 @@ CAS = {
     # definition. Elle ne passait nulle part ailleurs, faute d etre ecrite.
     "l18-identifiant-muet.html": {"L18"},
     "l18-identifiant-glose.html": set(),
+    # TF-0944 (08/09) — L18 bis : le SYSTEME d'identifiants, pas le jeton. Les trois fixtures
+    # tiennent ensemble : la rouge porte des jetons TOUS gloses (L18 vert) et echoue quand meme ;
+    # la verte pose la legende AVANT le tableau ; la troisieme pose la MEME legende APRES, et
+    # echoue — sans elle, une regle qui se contenterait de trouver la declaration quelque part
+    # rendrait le meme verdict sur les deux, et le vert ne prouverait rien.
+    "l18bis-systeme-non-explique.html": {"L18"},
+    "l18bis-systeme-explique.html": set(),
+    "l18bis-legende-apres-le-tableau.html": {"L18"},
     # TF-0492 (22/08) — `overflow-wrap: anywhere` est necessaire sur un chemin, ravageur sur de
     # la prose. La verte le reserve a `code`, `pre` et aux classes qui disent leur usage technique.
     "l19-coupure-en-prose.html": {"L19"},

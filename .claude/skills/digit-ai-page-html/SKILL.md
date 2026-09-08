@@ -282,6 +282,31 @@ si la page vise aussi le PDF.
 Détail complet + tokens (palette, rayons, familles, année de référence) :
 voir [references/charte-et-tokens.md](references/charte-et-tokens.md).
 
+## Avant de dessiner : ce que ce socle NE fournit PAS, et où c'est fourni
+
+**Le fait payé, et il est daté (TF-0939, 08/09/2026).** Une page de données devait montrer le
+schéma des bases source et cible. La recherche s'est arrêtée ici — ce socle est le seul cité par
+le `CLAUDE.md` du produit, et il ne renvoyait nulle part ailleurs. Verdict de ce tour-là :
+« aucun gabarit de schéma différentiel ». Une grille maison de 40 cartes et 429 puces a donc été
+écrite, puis jetée le lendemain : le gabarit existait, chez `digit-ai-schemas`, prêt à
+instancier. Coût : un composant écrit pour rien et un tour humain. Ce n'était pas un défaut de
+recherche, c'était un défaut de **renvoi** — un socle qui ne dit pas où s'arrête son périmètre
+laisse croire qu'il n'y a rien au-delà.
+
+| Ce qui est demandé | Signes dans la demande | Où c'est fourni |
+| --- | --- | --- |
+| Schéma de base de données, ERD, MCD / MLD, tables et relations, dictionnaire de données | « schéma de base de données », « ERD », « MCD », « les tables et leurs relations », « classification PII » | `digit-ai-schemas` · `references/canevas-modele-donnees.md` + `assets/template-modele-donnees.html` |
+| Schéma de base **différentiel** — ce qui CHANGE entre l'existant et la cible | « tables et champs ajoutés ou modifiés de couleurs différentes », « ce qui change », « schéma des bases X et Y » | `digit-ai-schemas` · `assets/template-schema-differentiel.html` |
+| Architecture par couches, topologie réseau, flux temporel, tableau de bord KPI | « architecture cible », « topologie », « promotion entre environnements », « vue de pilotage » | `digit-ai-schemas` · les quatre autres canevas |
+
+Ces gabarits **héritent de ce socle** : ils s'insèrent dans une page bâtie ici, consomment ses
+tokens et ses composants, et se font juger par `check_html.py` et `render_page.py` comme
+n'importe quelle page. Aller les chercher n'est pas sortir du socle, c'est l'utiliser.
+
+**Ne jamais réécrire un canevas à la main.** Une grille de cartes bricolée pour un livrable
+n'a ni la parité des composants, ni les fixtures, ni les mesures aux quatre largeurs — et le
+prochain qui en aura besoin la réécrira encore.
+
 ## Quick start
 
 Partir du boilerplate, ne jamais d'une page vierge : [assets/boilerplate.html](assets/boilerplate.html).

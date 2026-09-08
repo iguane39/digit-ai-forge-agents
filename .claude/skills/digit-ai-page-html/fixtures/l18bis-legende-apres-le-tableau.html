@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L18 legende posee apres le tableau — 20260908a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de L18 bis, TROISIEME CAS — la BORNE de la regle : la MEME legende, le MEME
+  tableau, la MEME declaration `data-legende-codes` — mais la legende est posee APRES le
+  tableau (TF-0944, 08/09).
+
+  La legende dit ce qu'EST un repere S, combien il y en a et ou ils vivent aussi. Elle est
+  DECLAREE par `data-legende-codes="S"` — meme doctrine que `data-codes` pour L18 et
+  `data-legende-ok` pour L3 : un oracle qui reconnaitrait une legende a sa forme accepterait
+  n importe quel tableau place au bon endroit.
+
+  Sans ce cas, une regle qui se contenterait de TROUVER la declaration quelque part dans la page
+  rendrait le meme verdict sur les deux fixtures, et le vert de la precedente ne prouverait rien.
+  Une legende posee apres explique ce que le lecteur a deja renonce a comprendre.
+
+  Attendu : L18.
+-->
+<body data-codes="S"><main class="wrap" data-page="donnees">
+<h1>Objets suivis par le chargement</h1>
+<p>Chaque ligne decrit un objet du socle et l action qui le tient a jour.</p>
+<table>
+<thead><tr><th data-definition="Repere court de l objet dans le listing. Source : fichier de definition du socle.">Repere</th><th data-definition="Objet du socle designe par le repere. Source : catalogue des objets.">Objet</th><th data-definition="Action qui tient l objet a jour. Source : ordonnanceur du chargement.">Action</th></tr></thead>
+<tbody>
+<tr><td title="Repere S1 : table des baux, chargee depuis le systeme amont.">S1</td><td>table des baux</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S2 : table des lots, chargee depuis le systeme amont.">S2</td><td>table des lots</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S3 : table des avenants, chargee depuis le systeme amont.">S3</td><td>table des avenants</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S4 : table des indices, chargee depuis le systeme amont.">S4</td><td>table des indices</td><td>chargement quotidien</td></tr>
+<tr><td title="Repere S5 : table des charges, chargee depuis le systeme amont.">S5</td><td>table des charges</td><td>chargement quotidien</td></tr>
+</tbody></table>
+<section data-legende-codes="S">
+<h2>A quoi servent les reperes S</h2>
+<p title="Reperes S1 a S5 : les cinq objets du socle de chargement, numerotes dans l ordre du fichier de definition.">Un repere S designe un OBJET du socle de chargement — une table ou une vue. Il y en a cinq, numerotes S1 a S5 dans l ordre du fichier de definition, et les memes reperes servent dans le chapitre des objets comme dans ce listing : un repere se lit partout de la meme facon.</p>
+</section>
+</main></body></html>

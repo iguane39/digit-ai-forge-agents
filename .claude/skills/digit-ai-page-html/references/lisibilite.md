@@ -630,6 +630,38 @@ EST la définition** du jeton : elle ne se renvoie pas à elle-même.
 C'est précisément ce que le retour jumeau (aucun contrôle de lisibilité sur un Markdown) rend
 impossible à attraper aujourd'hui.
 
+### L18 bis — Un SYSTÈME d'identifiants s'explique une fois, avant son premier tableau
+
+*Retour humain du 08/09/2026, sur une page où **L18 était vert*** : **« à quoi servent les
+repères S1, S2, G5 ? ce n'est pas expliqué »**. Chaque jeton portait bien son infobulle, ligne à
+ligne. Et le lecteur ne savait toujours pas ce qu'**est** un repère de cette famille, combien il
+y en a, ni où ils vivent aussi (fichier de définition, chapitre des objets, listing). **Gloser
+chaque occurrence et expliquer le système sont deux gestes différents**, et L18 ne connaissait
+que le premier — c'est pour cela que la page pouvait être verte et incomprise.
+
+**Règle.** Dès qu'un même préfixe d'identifiant est employé sur **plus de trois lignes de
+tableau**, la page porte une **légende du système** *avant* le premier tableau qui l'emploie.
+En dessous du seuil, une famille n'est pas un système : trois renvois se lisent un par un, et
+exiger une légende produirait le bruit que L18 évite déjà en ne glosant que la première
+occurrence.
+
+**La légende se déclare, elle ne se devine pas** — même doctrine que `data-codes` pour L18 et
+`data-legende-ok` pour L3 : `data-legende-codes="S,G"` sur le bloc qui explique le système
+(repère, objet, action, pourquoi). Un oracle qui reconnaîtrait une légende à sa *forme*
+accepterait n'importe quel tableau placé au bon endroit ; déclarer coûte un attribut et rend le
+contrat lisible par l'auteur comme par l'oracle.
+
+**La position compte, et c'est la borne de la règle** : une légende posée *après* le tableau
+explique ce que le lecteur a déjà renoncé à comprendre. Les trois fixtures tiennent ensemble —
+`l18bis-systeme-non-explique` (jetons tous glosés, L18 vert, L18 bis rouge),
+`l18bis-systeme-explique` (légende avant), `l18bis-legende-apres-le-tableau` (même légende,
+placée après : rouge). Sans la troisième, une règle qui se contenterait de *trouver* la
+déclaration quelque part rendrait le même verdict sur les deux premières.
+
+**Bruit mesuré avant de poser la règle**, et sur les dépôts qui *consomment* le socle, pas
+seulement sur le sien : 357 pages HTML suivies de huit dépôts du parc — **zéro constat**. La
+règle ne juge que les familles connues du motif fermé ou déclarées par la page (`data-codes`).
+
 ## L19 — La coupure de mot est réservée à ce qui en a besoin
 
 *Trois occurrences signalées par le client sur deux versions successives* : « Utilisabl/e »,
