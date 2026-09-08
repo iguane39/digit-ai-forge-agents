@@ -1241,6 +1241,120 @@ MEASURE_JS = r"""
 """
 
 
+# ---------------------------------------------------------------------------
+# V15 — L'EN-TETE DE TABLEAU, MESURE APRES DEFILEMENT (TF-0901, lot Produit-10 20260907e).
+#
+# LE TROU, ET IL ETAIT TRIPLE. Une page dont les HUIT en-tetes de tableau etaient poses sur
+# leurs propres lignes a ete rendue PASS par trois oracles le 07/09/2026, et vue par l'humain a
+# la premiere ouverture. Chacun des trois etait aveugle POUR SA PROPRE RAISON :
+#   · `check_html` L29 juge les DECLARATIONS de la feuille — le style en ligne pose par un
+#     script est invisible a la lecture du fichier ;
+#   · `render_page` V4 compare les enfants d'un MEME parent — le decalage vivait sur les `th`,
+#     donc sur des freres decales PAREIL, et `thead`/`tbody` gardaient leurs boites naturelles ;
+#   · l'oracle de filtres juge le marquage, qui etait juste.
+# Et le seul defilement que cet outil pratiquait servait le sommaire (V14, a 60 % de la page).
+#
+# CE QUE V15 MESURE, en deux branches :
+#   a. AU REPOS (page en haut), tout `th` de `thead` dont la boite recouvre une ligne du corps de
+#      plus de 2 px. Un en-tete correct ne recouvre RIEN au repos : il est a sa place naturelle.
+#      C'est la signature du `top` applique a un element non collant — decalage PERMANENT, une a
+#      deux lignes mangees a chaque instant. BLOQUANT.
+#   b. APRES DEFILEMENT, le tableau amene 400 px au-dessus du bord haut de la fenetre et son
+#      corps encore a l'ecran : un `th` declare `sticky` doit se tenir EXACTEMENT au `top` qu'il
+#      declare (4 px de tolerance, l'arrondi de peinture). S'il n'y est pas, c'est qu'il colle a
+#      une AUTRE boite de defilement que la fenetre — un ancetre a `overflow` non `visible`
+#      (TF-0900). CONSTAT : la cause est reelle, le geste correctif appartient a la page.
+# La mesure n'a besoin d'aucun jeton : elle compare le `top` RENDU au `top` DECLARE.
+MESURE_ENTETE_JS = r"""
+() => {
+  const poses = [], decolles = [];
+  const yInitial = window.scrollY;
+  const etiquette = (t, i) => {
+    const cap = t.querySelector('caption');
+    const txt = ((cap && cap.textContent) || t.id || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+    return txt ? `table ${i} « ${txt} »` : `table ${i}`;
+  };
+  const visibleBoite = (el) => {
+    const s = getComputedStyle(el);
+    if (s.display === 'none' || s.visibility === 'hidden') return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  };
+  const tables = [...document.querySelectorAll('table')].filter(
+    (t) => t.tHead && t.tHead.rows.length && t.tBodies.length && visibleBoite(t));
+
+  // ---- a. AU REPOS : un en-tete ne recouvre AUCUNE ligne du corps -----------------------
+  window.scrollTo(0, 0);
+  tables.forEach((t, i) => {
+    const ths = [...t.tHead.rows[0].cells].filter(visibleBoite);
+    const lignes = [...t.tBodies[0].rows].filter(visibleBoite);
+    if (!ths.length || !lignes.length) return;
+    for (const th of ths) {
+      const a = th.getBoundingClientRect();
+      const manges = lignes.filter((tr) => {
+        const b = tr.getBoundingClientRect();
+        return Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+      });
+      if (!manges.length) continue;
+      const cs = getComputedStyle(th);
+      poses.push({
+        what: `${etiquette(t, i + 1)} — en-tete « ${(th.textContent || '').trim().slice(0, 24)} »`,
+        detail: `AU REPOS, l'en-tete recouvre ${manges.length} ligne(s) du corps `
+          + `(bord haut ${Math.round(a.top)} px, premiere ligne recouverte a `
+          + `${Math.round(manges[0].getBoundingClientRect().top)} px). `
+          + `position: ${cs.position}, top: ${cs.top}. Un \`top\` applique a un element NON `
+          + `collant est un decalage PERMANENT : l'en-tete mange ses propres lignes a chaque `
+          + `instant. Cause la plus frequente : un script qui pose \`style.position\` en ligne `
+          + `sur le \`<th>\` et ecrase le \`sticky\` de la feuille (TF-0899, check_html L29)` });
+      break;   // une cause par tableau : huit `th` decales pareil font UN defaut, pas huit
+    }
+  });
+
+  // ---- b. APRES DEFILEMENT : un en-tete collant se tient a son `top` DECLARE ------------
+  tables.forEach((t, i) => {
+    const ths = [...t.tHead.rows[0].cells].filter(visibleBoite);
+    if (!ths.length) return;
+    const th = ths[0];
+    const cs = getComputedStyle(th);
+    if (cs.position !== 'sticky') return;          // rien a attendre d'un en-tete non collant
+    const attendu = parseFloat(cs.top);
+    if (!isFinite(attendu)) return;                // `top: auto` : aucun engagement declare
+    // 400 px au-dessus du bord haut, MAIS jamais au point de sortir le tableau : un `sticky` est
+    // borne par son bloc conteneur, et un en-tete pousse dehors par la FIN de son propre tableau
+    // n'est pas un defaut, c'est le comportement prescrit. Mesure du 08/09 : sur un tableau de
+    // 515 px, un defilement de 400 laissait 115 px de corps et l'en-tete rendait 77 px pour 104
+    // declares — un faux constat sur la fixture VERTE. La borne se lit sur la hauteur du tableau.
+    const recul = Math.min(400, Math.max(0, t.offsetHeight - 250));
+    window.scrollTo(0, t.getBoundingClientRect().top + window.scrollY + recul);
+    const rt = t.getBoundingClientRect();
+    const hTh = th.getBoundingClientRect().height;
+    // Le tableau doit encore etre a l'ecran : un en-tete d'un tableau parti n'a rien a tenir.
+    if (!(rt.bottom > 0 && rt.top < window.innerHeight)) return;
+    // ET le `sticky` doit avoir eu a S'ENGAGER : tant que le tableau est plus bas que le `top`
+    // declare, l'en-tete est a sa place naturelle et il n'y a RIEN a mesurer. Sans cette
+    // condition, toute page trop courte pour defiler jusque-la rendait un faux constat.
+    if (rt.top >= attendu - 1) return;
+    // ET il doit rester de la place SOUS le seuil : sinon l'en-tete est repousse par la fin de
+    // son tableau, ce que la specification prescrit.
+    if (rt.bottom < attendu + hTh + 20) return;
+    const rendu = th.getBoundingClientRect().top;
+    if (Math.abs(rendu - attendu) <= 4) return;
+    decolles.push({
+      what: `${etiquette(t, i + 1)} — en-tete collant`,
+      detail: `APRES DEFILEMENT (tableau amene ${Math.round(recul)} px au-dessus du bord haut, `
+        + `corps encore a l'ecran), l'en-tete est a ${Math.round(rendu)} px alors qu'il declare `
+        + `top: ${cs.top}. Un \`sticky\` se compte depuis sa BOITE DE DEFILEMENT : s'il n'est `
+        + `pas la ou il le dit, un ancetre porte un \`overflow\` autre que \`visible\` et lui `
+        + `sert de boite (TF-0900 — le conteneur de tableau du socle ne defile plus qu'en `
+        + `dessous de 900 px). Verifier les ancetres du tableau` });
+  });
+
+  window.scrollTo(0, yInitial);
+  return { poses, decolles };
+}
+"""
+
+
 # TF-0365 (lot Produit-10 20260818a, 18/08) — une page TRES HAUTE rendait l'outil muet.
 # Fait mesure : un livrable CONFORME de 271 Ko et 45 tableaux atteint 151 615 px de haut a
 # 390 px de large (135 272 a 768, 43 409 a 1280) — les tableaux passent en cartes sous 768, ce
@@ -1401,6 +1515,14 @@ FAMILLES = [
     # servi : « les bulles des statuts ne sont pas suffisamment differentes pour etre
     # differenciees ». Bloquant : un etat qu'on ne distingue pas n'est pas un etat.
     ("etats_indiscernables", "V16 etats indiscernables entre eux", "bloquant"),
+    # TF-0901 (lot Produit-10 20260907e) : huit en-tetes de tableau poses sur leurs propres
+    # lignes, trois oracles PASS, et l'humain seul detecteur a la premiere ouverture. Un `top`
+    # applique a un element NON collant mange ses lignes a chaque instant : bloquant.
+    ("entete_pose_sur_lignes", "V15 en-tete de tableau pose sur ses lignes", "bloquant"),
+    # TF-0901, seconde branche : l'en-tete COLLE, mais pas a la fenetre — un ancetre a
+    # `overflow` non `visible` lui sert de boite (TF-0900). Constat et non bloquant : la cause
+    # est nommee, le geste correctif appartient a la page qui a choisi ce conteneur.
+    ("entete_ne_colle_pas", "V15 en-tete collant hors de son `top` declare", "avertissement"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
@@ -1597,6 +1719,21 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 page.wait_for_timeout(250)
 
             issues = page.evaluate(js)
+            # TF-0901 — V15 se mesure APRES DEFILEMENT, donc apres la passe principale et avant
+            # la capture (qui remet la page en haut). Ne leve jamais : une page sans tableau rend
+            # une liste vide, et une panne se declare au non_juge plutot que d'emporter le reste.
+            try:
+                v15 = page.evaluate(MESURE_ENTETE_JS)
+                issues["entete_pose_sur_lignes"] = v15.get("poses") or []
+                issues["entete_ne_colle_pas"] = v15.get("decolles") or []
+            except Exception as erreur:  # noqa: BLE001 — toute panne se declare, aucune n'arrete
+                issues["entete_pose_sur_lignes"] = []
+                issues["entete_ne_colle_pas"] = []
+                issues["unmeasured"].append({
+                    "what": "V15 en-tetes de tableau",
+                    "detail": f"V15 non jugee ({type(erreur).__name__}) : la mesure apres "
+                              "defilement n'a pas pu etre jouee. Ne pas lire ce silence comme un vert",
+                })
             mesurer_actifs_visuels(page, issues, capture_timeout)
             png = png_dir / f"{html_path.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None

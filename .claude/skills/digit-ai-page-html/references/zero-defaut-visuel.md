@@ -28,6 +28,7 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | **V12** | **Tableau rogné dans un conteneur défilant** | À partir de **1 280 px** de fenêtre, aucun conteneur `overflow-x: auto\|scroll` portant un `<table>` ne rogne son contenu | **Mesuré (bloquant)** — `render_page.py` ; nomme les pixels hors champ. Un conteneur qui défile rend un tableau *consultable*, pas *lisible* — écart assumé déclaré par `data-rognage-assume`, jamais classé « acceptable » en revue |
 | **V13** | **Bloc de texte étriqué sur une page de données** | Sur une page `data-page="donnees"`, tout bloc de texte occupe **≥ 70 %** de la largeur que son conteneur lui offre | **Mesuré (bloquant)** — `render_page.py` ; colonne de lecture voulue déclarée par `data-mesure-lecture`. Complète L2, qui ne regarde que six sélecteurs et manquait `.chapo` |
 | **V14** | **Sommaire perdu au défilement** | Une page de plus de trois chapitres et de plus de deux écrans garde son sommaire **dans la fenêtre** après défilement | **Mesuré (bloquant)** — `render_page.py` (mesure aux 60 % de la page) ; l'existence du sommaire est jugée en amont par `L25` de `check_html.py` |
+| **V15** | **En-tête de tableau posé sur ses lignes** | Au repos, aucun `<th>` de `<thead>` ne recouvre une ligne du corps (2 px de tolérance) ; après défilement, un `<th>` `sticky` se tient à son `top` déclaré (4 px) tant que le corps du tableau est à l'écran | **Mesuré** — `render_page.py`, après défilement : **bloquant** pour le recouvrement au repos, **avertissement** pour le décollement (la cause est nommée, le geste appartient à la page). Complément statique : `L29` de `check_html.py` signale un script qui pose `style.position` **sans garde** alors que la feuille déclare un `<th>` collant |
 | **V16** | **Deux états indiscernables l'un de l'autre** | Dans un jeu d'au moins **trois** badges d'une même classe de base portant au moins trois fonds distincts, aucune paire de fonds n'est à la fois sous **20** d'écart de couleur (Delta-E CIE76) **et** sous **0,25** d'écart de luminance relative | **Mesuré (bloquant)** — `render_page.py` ; nomme les deux libellés, les deux fonds et les deux écarts. Un jeu d'états exige en outre un **indice non colorimétrique** (WCAG 1.4.1) : la sonde le signale quand deux badges indiscernables portent le **même** libellé — la couleur est alors le seul porteur |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
 
@@ -122,6 +123,50 @@ hauteur vaut exactement une hauteur de fenêtre usuelle — c'est la signature d
 hauteur, et l'image ne la porte pas. La règle juge une **déclaration** et la met à l'épreuve du
 seul indice disponible. `render_page.py` capture déjà en pleine page par défaut ; le défaut
 fondateur venait de scripts de capture **du produit**, cadrés par fenêtre.
+
+### V15 — rien ne mesurait le rendu APRÈS DÉFILEMENT (TF-0901, 07/09/2026)
+
+Une page dont les **huit** en-têtes de tableau étaient posés sur leurs propres lignes a été
+rendue **PASS** par trois oracles, et vue par l'humain à la première ouverture. Chacun des trois
+était aveugle *pour sa propre raison*, et c'est ce cumul qui fait la leçon :
+
+- `check_html` **L29** juge les **déclarations** de la feuille — un style en ligne posé par un
+  script est invisible à la lecture du fichier ;
+- `render_page` **V4** compare les enfants d'un **même parent** — le décalage vivait sur les
+  `<th>`, donc sur des frères décalés **pareil**, et `thead`/`tbody` gardaient leurs boîtes
+  naturelles ;
+- l'oracle de câblage des filtres juge le **marquage**, qui était juste.
+
+Et le seul défilement que cet outil pratiquait servait le sommaire (V14, à 60 % de la page).
+*Trois mesures locales justes ne font pas une page juste.*
+
+**Deux branches, deux causes.**
+
+- **a — l'en-tête recouvre ses lignes AU REPOS (bloquant).** Page en haut, tout `<th>` de
+  `<thead>` dont la boîte recouvre une ligne du corps de plus de 2 px. Un en-tête correct ne
+  recouvre **rien** au repos : il est à sa place naturelle. C'est la signature d'un `top`
+  appliqué à un élément **non collant** — décalage permanent, une à deux lignes mangées à chaque
+  instant (TF-0899). Une cause par tableau : huit `<th>` décalés pareil font **un** défaut.
+- **b — l'en-tête collant se tient hors de son `top` déclaré (constat).** Le tableau est amené
+  au-dessus du bord haut de la fenêtre, son corps restant à l'écran : un `<th>` `sticky` doit se
+  tenir **exactement** au `top` qu'il déclare, à 4 px près. Sinon, il colle à une **autre boîte
+  de défilement** que la fenêtre — un ancêtre à `overflow` non `visible` (TF-0900).
+
+La mesure n'a besoin d'**aucun jeton** : elle compare le `top` **rendu** au `top` **déclaré**.
+Trois garde-fous, chacun né d'un faux constat mesuré le 08/09 sur une fixture verte : le
+`sticky` doit avoir eu à **s'engager** (une page trop courte pour défiler n'a rien à prouver),
+il doit rester de la place **sous** le seuil (un en-tête repoussé par la fin de son propre
+tableau suit la spécification), et le recul se borne à la hauteur du tableau.
+
+**Complément statique.** `check_html` L29 signale désormais un script embarqué qui pose
+`style.position` alors que la feuille déclare un `<th>` collant — **avertissement**, et
+seulement si la pose n'est **pas gardée** : le geste sûr lit la position calculée et ne pose que
+sur un `static`. Fixtures `l29t-pose-nue.html` / `l29t-pose-gardee.html`, qui ne diffèrent que
+par cette garde ; la verte existe pour verrouiller que l'avertissement **n'accuse pas le
+correctif**.
+
+Bruit mesuré avant mise en bloquant : **0 constat** sur les 159 documents HTML du skill, hors
+les deux fixtures rouges qui le portent par construction.
 
 ### V16 — le défaut vit ENTRE deux mesures, pas dans une mesure (TF-0910, 08/09/2026)
 

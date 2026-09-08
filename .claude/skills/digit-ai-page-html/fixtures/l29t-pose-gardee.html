@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L29 ter · un script pose la position sous garde — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0901, sens VERT du complément statique de L29. La MÊME page, avec le geste sûr : le script
+  lit la position CALCULÉE et ne pose son ancrage que sur un en-tête `static`. Un en-tête déjà
+  positionné — `sticky`, `relative`, `absolute` — ancre déjà un absolu : il n y a rien à poser,
+  et y toucher défait le choix de la page.
+
+  CE QUE CETTE FIXTURE VERROUILLE, et c est sa raison d être : l avertissement ne doit PAS crier
+  sur le correctif. Un contrôle qui accuse ce qu il prescrit se fait éteindre — c est le
+  composant même du socle qui porte ce code depuis TF-0899.
+
+  Attendu : ZÉRO avertissement de cette famille, zéro échec L. Sa jumelle rouge
+  `l29t-pose-nue.html` ne diffère que par la garde sur la position calculée.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --hh:104px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  main { max-width:clamp(75vw, 1680px, 92vw); margin:0 auto; padding:24px; }
+  header.doc.colle { position:sticky; top:0; z-index:20; height:104px; box-sizing:border-box;
+                     padding:24px; background:var(--bg); border-bottom:2px solid var(--blue); }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  thead.colle th { position:sticky; top:var(--hh); z-index:10; background:var(--surface); }
+  @media print { body { background:#fff; } }
+</style>
+</head>
+<body>
+<header class="doc colle"><strong>Digit-AI</strong> — en-tête de document collant</header>
+<main>
+<h1>Suivi des lots</h1>
+<p>Le tableau ci-dessous porte un en-tête collant déclaré par la feuille, et un script qui
+ancre ses propres surcouches sur chaque en-tête de colonne.</p>
+<table id="lots">
+  <caption>Lots suivis — exemple inventé, aucune donnée réelle.</caption>
+  <thead class="colle"><tr><th>Lot</th><th>État</th><th>Palier</th></tr></thead>
+  <tbody>
+    <tr><td>Lot A</td><td>ouvert</td><td>MVP</td></tr>
+    <tr><td>Lot B</td><td>livré</td><td>V1</td></tr>
+    <tr><td>Lot C</td><td>en cours</td><td>V2</td></tr>
+  </tbody>
+</table>
+</main>
+<script>
+  /* Ancrage des surcouches : on ne pose que sur un en-tete dont la position CALCULEE vaut
+     `static` — un en-tete deja positionne ancre deja un absolu (TF-0899). */
+  Array.prototype.forEach.call(document.querySelectorAll('#lots thead th'), function (th) {
+    var calculee = window.getComputedStyle(th).position || 'static';
+    if (calculee === 'static') { th.style.position = 'relative'; }
+  });
+</script>
+</body>
+</html>

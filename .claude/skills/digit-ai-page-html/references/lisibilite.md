@@ -953,6 +953,24 @@ préfère la consultation au collage. Au-dessus, le collage est garanti.
 **Corollaire.** Une page hôte n'a plus besoin du contournement `thead.colle th { position:
 sticky !important }` : elle peut le retirer.
 
+### L29 ter — un script ne pose pas `position` sur un `<th>` ciblé collant (TF-0901, 07/09/2026)
+
+Un style **en ligne** l'emporte sur la feuille. Un script qui fait `th.style.position =
+'relative'` — pour ancrer un panneau, une surcouche, une infobulle — écrase donc le `sticky`
+déclaré par `thead.colle th`, et le `top` reste : décalage **permanent**, en-tête posé sur ses
+propres lignes. C'est ce que faisait le composant de filtres du socle jusqu'à TF-0899, et **trois
+oracles rendaient PASS dessus** : L29 juge des déclarations de feuille, la mesure de
+chevauchement compare des frères tous décalés pareil, l'oracle de filtres juge le marquage.
+
+**Le geste sûr** : lire la position **calculée** et ne poser que sur un `static`. Un `<th>` déjà
+positionné — `sticky`, `relative`, `absolute`, `fixed` — ancre déjà un absolu.
+
+**Contrôle mécanique.** `L29` (**avertissement**) : la rencontre d'une feuille qui déclare un
+`<th>` collant et d'un script embarqué qui pose `style.position` **sans garde**. Une pose gardée
+n'est pas signalée — *un contrôle qui accuse ce qu'il prescrit se fait éteindre*. Fixtures
+`l29t-pose-nue.html` (1 avertissement) et `l29t-pose-gardee.html` (0), qui ne diffèrent que par
+la garde. Le cas se tranche au rendu : `render_page.py`, famille **V15**.
+
 **Ce qui le mesure.** Aucun contrôle statique ne peut le voir — la feuille **déclare** juste, et
 c'est le *référentiel* du `top` qui est faux. Il ne se lit qu'après défilement, dans un
 navigateur : `self_test.py` (`run_thead_colle`) amène le tableau 300 px au-dessus du bord haut

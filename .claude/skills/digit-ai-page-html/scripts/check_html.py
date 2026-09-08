@@ -2232,6 +2232,48 @@ def check_lisibilite(html: str, a: Arbre):
                     "un décalage qui vaut 0 par défaut ramène exactement la collision qu'il "
                     "devait éviter (loi n° 1 : une affordance est câblée ou n'existe pas).")
 
+    # --- L29 ter : un SCRIPT qui pose `style.position` sur un `<th>` ciblé sticky (TF-0901) ---
+    #
+    # LE FAIT PAYÉ. Le composant de filtres du socle posait `th.style.position = 'relative'` pour
+    # ancrer son panneau. Un style EN LIGNE l'emporte sur la feuille : le `sticky` déclaré par
+    # `thead.colle th` était écrasé, le `top: var(--hh)` restait et devenait un décalage permanent
+    # de 104 px. L29 lit les DÉCLARATIONS de la feuille et n'a rien vu ; V4 compare des frères et
+    # les `th` étaient décalés PAREIL ; l'oracle de filtres juge le marquage. Trois PASS sur une
+    # page dont les huit en-têtes de tableau étaient posés sur leurs lignes, vue par l'humain à
+    # la première ouverture.
+    #
+    # CE CONTRÔLE EST UN AVERTISSEMENT, et il le reste : un script PEUT poser `position` à bon
+    # droit (sur un `<th>` `static`, l'ancrage est même nécessaire). Ce qui se signale, c'est la
+    # RENCONTRE des deux — une feuille qui déclare un `<th>` collant, et un script embarqué qui
+    # touche `style.position`. La mesure d'exécution V15 de `render_page.py` tranche le cas ;
+    # celui-ci le nomme sans navigateur, à la lecture du fichier.
+    if any((d.get("position") or "").strip() == "sticky"
+           and re.search(r"(^|[\s,>])(thead|th)\b", sel) for sel, d in css):
+        pose_nue = None
+        for corps_script in re.findall(r"<script\b[^>]*>(.*?)</script\s*>", html, re.S | re.I):
+            for m in re.finditer(r"\.style\s*\.\s*position\s*=", corps_script):
+                # Une pose GARDÉE n'est pas le défaut, c'est le correctif : le geste sûr lit la
+                # position CALCULÉE et ne pose que sur un `static` (TF-0899). Accuser le correctif
+                # ferait crier l'avertissement sur le composant même du socle — et un contrôle
+                # qui accuse ce qu'il prescrit se fait éteindre.
+                amont = corps_script[max(0, m.start() - 240):m.start()]
+                if "getComputedStyle" in amont or "static" in amont:
+                    continue
+                pose_nue = (corps_script, m)
+                break
+            if pose_nue:
+                break
+        if pose_nue:
+            corps_script, m = pose_nue
+            extrait = " ".join(corps_script[max(0, m.start() - 40):m.end() + 40].split())
+            warns.append(
+                "L29 un script embarqué pose `style.position` alors que la feuille déclare un "
+                f"`<th>` collant — « …{extrait[:80]}… ». Un style en ligne l'emporte sur la "
+                "feuille : s'il tombe sur un `<th>` ciblé `sticky`, le `top` reste et devient un "
+                "DÉCALAGE PERMANENT, en-tête posé sur ses propres lignes. Le geste sûr est de ne "
+                "poser que si la position CALCULÉE vaut `static` (TF-0899). Vérifier au rendu : "
+                "`render_page.py` mesure V15 après défilement.")
+
     # --- L30 : une page de COUVERTURE affiche son DÉNOMINATEUR (TF-0909, 08/09/2026) -----
     #
     # LE FAIT PAYÉ. Une page de mapping remise le 07/09 portait 47 lignes de correspondances,

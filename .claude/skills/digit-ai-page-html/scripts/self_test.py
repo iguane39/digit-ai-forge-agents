@@ -417,6 +417,19 @@ CAS_RENDU = {
     # les MEMES cinq etats en fonds pleins a encre blanche : dE de 23,8 a 98,2, contraste de
     # 6,47:1 a 7,56:1, et un glyphe par palier — l'indice non colorimetrique de WCAG 1.4.1.
     "v16-etats-pleins.html": [("etats_indiscernables", 0), ("v2_contrast", 0)],
+    # TF-0901 (lot Produit-10 20260907e) — V15 : l'en-tete de tableau, mesure APRES DEFILEMENT.
+    # Huit en-tetes poses sur leurs propres lignes, TROIS oracles PASS, et l'humain seul
+    # detecteur a la premiere ouverture : L29 lit la feuille et pas le style en ligne, V4 compare
+    # des freres tous decales pareil, l'oracle de filtres juge le marquage. Deux branches, deux
+    # causes, et chacune a sa paire :
+    #   · le conteneur defilant (TF-0900) — l'en-tete recouvre ses lignes au repos ET se tient
+    #     hors de son `top` declare apres defilement ;
+    #   · la pose en ligne par un script (TF-0899) — l'en-tete recouvre ses lignes, et le
+    #     `sticky` n'existe plus, donc la seconde branche n'a rien a mesurer.
+    "l29-table-hote-defilante.html": [("entete_pose_sur_lignes", 1), ("entete_ne_colle_pas", 1)],
+    "l29-table-hote-socle.html": [("entete_pose_sur_lignes", 0), ("entete_ne_colle_pas", 0)],
+    "l29t-pose-nue.html": [("entete_pose_sur_lignes", 1), ("entete_ne_colle_pas", 0)],
+    "l29t-pose-gardee.html": [("entete_pose_sur_lignes", 0), ("entete_ne_colle_pas", 0)],
 }
 
 
@@ -1320,6 +1333,41 @@ def run_couverture():
     return resultats
 
 
+# TF-0901 — complement STATIQUE de L29 : un script embarque qui pose `style.position` alors que
+# la feuille declare un `<th>` collant. Comptes exacts d'avertissements de cette seule famille :
+# les deux fixtures ne different QUE par la garde sur la position calculee, et la verte existe
+# pour verrouiller que l'avertissement n'accuse PAS le correctif — un controle qui accuse ce
+# qu'il prescrit se fait eteindre.
+CAS_L29_TER = {
+    "l29t-pose-nue.html": 1,
+    "l29t-pose-gardee.html": 0,
+}
+
+
+def run_l29_ter():
+    """Cas a double sens du complement statique de L29 (TF-0901)."""
+    resultats = []
+    for nom, attendu in CAS_L29_TER.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE", "attendu": attendu,
+                              "obtenu": "absente", "regle": "L29 ter", "detail": "fixture manquante"})
+            continue
+        fails, warns = check(chemin.read_text(encoding="utf-8"), regles="L")
+        n = len([x for x in warns if x.startswith("L29 un script")])
+        # La fixture doit rester VERTE par ailleurs : un echec L parasite rendrait le cas
+        # trompeur — on croirait mesurer la pose de position, on mesurerait un oubli de gabarit.
+        parasites = [x for x in fails if x.startswith("L")]
+        ok = n == attendu and not parasites
+        resultats.append({
+            "fixture": nom, "verdict": "OK" if ok else "ECHEC",
+            "attendu": f"{attendu} avert. L29 ter", "obtenu": f"{n} avert. L29 ter",
+            "regle": "L29 ter (pose en ligne)",
+            "detail": "" if ok else " | ".join(parasites + warns)[:400],
+        })
+    return resultats
+
+
 def run_capture_manquee():
     """TF-0897 — UNE CAPTURE QUI ECHOUE N'EST PAS UNE PANNE DE L'OUTIL.
 
@@ -1482,7 +1530,7 @@ def main():
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
-    res = (run() + run_exemptions() + run_structure() + run_couverture()
+    res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
            + run_glyphes_du_socle() + run_markdown())
     rendu = run_rendu()
     if rendu:
