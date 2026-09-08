@@ -1260,6 +1260,47 @@ def run_filtres_runtime():
     return out
 
 
+# TF-0909 (lot Produit-10 20260908a) — L30 : une page de COUVERTURE affiche son DENOMINATEUR.
+# Jugee dans sa propre branche, et sur des COMPTES EXACTS : la regle porte quatre constats
+# distincts (couverture partielle, denominateur jamais affiche, aucun compte de manquants,
+# renvoi hors page) et un ensemble de codes ne dirait pas lequel a mordu. Comme pour S1, on ne
+# compare QUE les codes L30 : ces fixtures sont minimales, et le bruit des autres regles de
+# lisibilite masquerait le seul point qu'elles prouvent.
+CAS_COUVERTURE = {
+    # la MEME page, rendue lisible : denominateur declare, affiche, manquants comptes
+    "l30-couverture-declaree.html": {"fails": 0, "warns": 0},
+    # la forme exacte du cas paye : 342 declares, 4 rendus, rien d'affiche, rien de compte
+    "l30-couverture-muette.html": {"fails": 3, "warns": 1},
+    # le cas paye ne portait AUCUN marquage — c'est ce qui l'a laisse passer
+    "l30-mapping-non-declare.html": {"fails": 0, "warns": 2},
+}
+
+
+def run_couverture():
+    """Cas a double sens de L30 (TF-0909), en comptes exacts de constats L30."""
+    resultats = []
+    for nom, attendu in CAS_COUVERTURE.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE",
+                              "attendu": f"{attendu['fails']} FAIL / {attendu['warns']} WARN",
+                              "obtenu": "absente", "regle": "L30", "detail": "fixture manquante"})
+            continue
+        fails, warns = check(chemin.read_text(encoding="utf-8"), regles="L")
+        f30 = [x for x in fails if x.startswith("L30")]
+        w30 = [x for x in warns if x.startswith("L30")]
+        ok = len(f30) == attendu["fails"] and len(w30) == attendu["warns"]
+        resultats.append({
+            "fixture": nom,
+            "verdict": "OK" if ok else "ECHEC",
+            "attendu": f"{attendu['fails']} FAIL / {attendu['warns']} WARN",
+            "obtenu": f"{len(f30)} FAIL / {len(w30)} WARN",
+            "regle": "L30 couverture",
+            "detail": "" if ok else " | ".join(f30 + w30)[:400],
+        })
+    return resultats
+
+
 def run_capture_manquee():
     """TF-0897 — UNE CAPTURE QUI ECHOUE N'EST PAS UNE PANNE DE L'OUTIL.
 
@@ -1422,7 +1463,8 @@ def main():
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
-    res = run() + run_exemptions() + run_structure() + run_glyphes_du_socle() + run_markdown()
+    res = (run() + run_exemptions() + run_structure() + run_couverture()
+           + run_glyphes_du_socle() + run_markdown())
     rendu = run_rendu()
     if rendu:
         res += rendu

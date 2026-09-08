@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L30 · cartographie sans dénominateur — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0909, sens ROUGE de la branche NON DÉCLARÉE (avertissement). Le cas payé ne portait
+  AUCUN marquage : c est précisément ce qui l a laissé passer. Une page qui s annonce comme une
+  cartographie de correspondances et dont aucun tableau ne déclare son dénominateur se lit
+  comme complète, quel que soit son taux réel — 89 % présenté comme 100 %. Deux avertissements
+  L30 attendus : le dénominateur non déclaré, et une carte de chiffre clé qui renvoie hors
+  page (« voir le rapport Markdown ») — un chiffre clé porte son chiffre.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --r-sm:8px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  main { max-width:1080px; margin:0 auto; padding:32px 24px 64px; }
+  .kpis { display:flex; gap:16px; margin:0 0 24px; }
+  .kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); padding:16px; }
+  .kpi-valeur { font-size:1.8rem; font-weight:700; }
+  .kpi-label { color:var(--muted); font-size:.85rem; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  @media print { body { background:#fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Cartographie des correspondances de champs</h1>
+<p>Chaque champ source du système d origine apparaît dans le tableau ci-dessous, qu il ait
+trouvé sa correspondance ou non. Les champs sans correspondance sont placés en tête.</p>
+<div class="kpis">
+  <div class="kpi"><p class="kpi-valeur">6</p><p class="kpi-label">correspondances établies</p></div>
+  <div class="kpi"><p class="kpi-valeur">—</p><p class="kpi-label">détail : voir le rapport Markdown</p></div>
+</div>
+<table>
+  <caption>Tous les champs source — exemple inventé, aucune donnée réelle.</caption>
+  <thead>
+    <tr><th>Champ source</th><th>Correspondance</th><th>Palier</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>montant_ht</td><td>aucune</td><td>—</td></tr>
+    <tr><td>code_agence</td><td>aucune</td><td>—</td></tr>
+    <tr><td>date_operation</td><td>date_op</td><td>MVP</td></tr>
+    <tr><td>libelle_client</td><td>client_libelle</td><td>MVP</td></tr>
+    <tr><td>canal_vente</td><td>canal</td><td>V1</td></tr>
+    <tr><td>statut_dossier</td><td>statut</td><td>V1</td></tr>
+  </tbody>
+</table>
+</main>
+</body>
+</html>

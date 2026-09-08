@@ -2232,6 +2232,102 @@ def check_lisibilite(html: str, a: Arbre):
                     "un décalage qui vaut 0 par défaut ramène exactement la collision qu'il "
                     "devait éviter (loi n° 1 : une affordance est câblée ou n'existe pas).")
 
+    # --- L30 : une page de COUVERTURE affiche son DÉNOMINATEUR (TF-0909, 08/09/2026) -----
+    #
+    # LE FAIT PAYÉ. Une page de mapping remise le 07/09 portait 47 lignes de correspondances,
+    # des cartes « chiffres clés » qui renvoyaient HORS PAGE (« voir le rapport Markdown »),
+    # aucun compteur de colonnes source (342) ni de mesures (160). Verdict des trois oracles :
+    # check_html 36 règles PASS, render_page PASS, oracle-filtres PASS. La recette du même soir
+    # a trouvé 38 colonnes et 22 mesures ORPHELINES — le mapping était à 89 % de couverture et
+    # se présentait comme complet. Retour humain : « impossible de savoir » si c'est exhaustif,
+    # « manquants ? ». Aucune règle n'exigeait le dénominateur : 47 lignes affichées ne disent
+    # rien tant qu'on ignore 47 SUR COMBIEN.
+    #
+    # POURQUOI CE MARQUAGE. Le nombre d'éléments SOURCE ne se déduit pas de la page — il vit
+    # dans le système d'origine. La page le DÉCLARE donc (`data-population`), et la règle
+    # confronte cette déclaration à ce qui est réellement rendu. Un tableau qui déclare 342 et
+    # rend 47 lignes n'est pas une couverture, c'est un extrait — et il doit le dire.
+    MOTS_COUVERTURE = ("mapping", "couverture", "correspondance", "correspondances",
+                       "cartographie", "traçabilité", "tracabilite")
+    RE_KPI_AILLEURS = re.compile(
+        r"\bvoir\s+(?:le|la|les|l['’]|dans\s+le|dans\s+la)?\s*"
+        r"(rapport|fichier|document|annexe|détail|detail|export|classeur)\b", re.I)
+
+    ordre = list(a.racine.descendants())
+    rang = {id(n): i for i, n in enumerate(ordre)}
+    tables_pop = [n for n in ordre if n.tag == "table" and n.att("data-population") is not None]
+
+    for table in tables_pop:
+        brut = (table.att("data-population") or "").strip()
+        chiffres = re.sub(r"[\s  ]", "", brut)
+        if not chiffres.isdigit():
+            fails.append(
+                f"L30 `data-population=\"{brut[:24]}\"` illisible sur le tableau "
+                f"« {(table.texte_propre() or '')[:32]} » : le dénominateur d'une couverture est "
+                "un nombre entier d'éléments SOURCE. Sans lui, aucune ligne affichée ne dit "
+                "« sur combien » (lisibilite.md L30).")
+            continue
+        population = int(chiffres)
+        lignes = _lignes_tbody(table)
+        if lignes < population:
+            fails.append(
+                f"L30 couverture PARTIELLE présentée comme entière : le tableau déclare "
+                f"`data-population=\"{population}\"` et ne rend que {lignes} ligne(s) — "
+                f"{population - lignes} élément(s) source n'apparaissent nulle part. Une page de "
+                "couverture porte un tableau EXHAUSTIF au grain de l'élément source, les "
+                "manquants EN TÊTE ; un extrait se déclare comme extrait. Le cas fondateur "
+                "affichait 47 lignes pour 342 colonnes et 160 mesures, et trois oracles "
+                "rendaient PASS (lisibilite.md L30).")
+        # Le dénominateur doit être LISIBLE avant le tableau : un attribut que personne ne voit
+        # ne répond pas à « 47 sur combien ? ». On accepte ses écritures usuelles (« 342 »,
+        # « 1 000 », « 1 000 » insécable) dans le texte qui PRÉCÈDE le tableau.
+        avant = "".join(n.texte_propre() for n in ordre[:rang[id(table)]] if n.tag in
+                        ("p", "li", "td", "th", "strong", "span", "h1", "h2", "h3", "h4", "dd", "dt"))
+        avant_nu = re.sub(r"[\s  ]", "", avant)
+        if str(population) not in avant_nu:
+            fails.append(
+                f"L30 dénominateur {population} JAMAIS AFFICHÉ avant le tableau de couverture : "
+                "il n'existe que dans `data-population`, donc pour personne. Le lecteur doit "
+                "lire « n sur N » avant d'entrer dans le tableau — une carte de population, une "
+                "phrase de chapeau, un compteur (lisibilite.md L30).")
+        manquants = [n for n in ordre if n.att("data-couverture-manquants") is not None]
+        if not manquants:
+            fails.append(
+                "L30 aucun compte d'éléments SANS CORRESPONDANCE sur une page de couverture "
+                "(`data-couverture-manquants` attendu sur l'élément qui l'affiche). « Combien "
+                "manquent ? » est la première question du lecteur, et elle est restée sans "
+                "réponse sur le cas fondateur : 38 colonnes et 22 mesures orphelines découvertes "
+                "en recette, après trois PASS (lisibilite.md L30).")
+
+    if not tables_pop:
+        # Le `<h1>` prime sur le `<title>` : c'est ce que le lecteur a sous les yeux. À défaut,
+        # le titre d'onglet fait foi — un livrable qui s'annonce ainsi s'annonce partout.
+        titre = next((n.texte_propre() for n in ordre if n.tag == "h1"),
+                     next((n.texte_propre() for n in ordre if n.tag == "title"), ""))
+        if any(mot in titre.lower() for mot in MOTS_COUVERTURE):
+            warns.append(
+                f"L30 la page s'annonce comme une couverture (« {titre[:48]} ») et aucun tableau "
+                "ne déclare son dénominateur (`data-population=\"N\"` sur la table). Un tableau "
+                "de correspondances sans « sur combien » se lit comme complet, quel que soit son "
+                "taux réel — 89 % présenté comme 100 % sur le cas fondateur (lisibilite.md L30).")
+
+    # La carte, pas son enveloppe ni ses morceaux : classe EXACTE, et un porteur dont un ancêtre
+    # a déjà été signalé ne l'est pas une seconde fois — trois lignes pour un seul défaut
+    # feraient croire à trois cartes fautives.
+    signales = []
+    for n in ordre:
+        if not ({"kpi", "chiffre-cle"} & n.classes()):
+            continue
+        if any(anc in signales for anc in n.ancetres()):
+            continue
+        if RE_KPI_AILLEURS.search(n.texte_propre()):
+            signales.append(n)
+            warns.append(
+                f"L30 carte de chiffre clé qui renvoie HORS PAGE — « "
+                f"{n.texte_propre()[:56]} ». Un chiffre clé porte son chiffre : renvoyer à un "
+                "autre document, c'est occuper la place de la réponse sans la donner "
+                "(lisibilite.md L30).")
+
     return fails, warns
 
 

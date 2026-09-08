@@ -961,11 +961,49 @@ de la fenêtre et exige que le th vaille `--hh` ± 4 px. Fixtures à double sens
 hors écran alors que son tableau est à l'écran) — elles ne diffèrent que par la ligne
 `.table-hote { overflow-x: … }`.
 
+## L30 — Une page de couverture affiche son DÉNOMINATEUR (TF-0909, 08/09/2026)
+
+**Le fait payé.** Une page de mapping remise le 07/09 portait 47 lignes de correspondances, des
+cartes « chiffres clés » qui renvoyaient **hors page** (« voir le rapport Markdown »), aucun
+compteur de colonnes source (342) ni de mesures (160). Verdict des trois oracles : `check_html`
+36 règles **PASS**, `render_page` **PASS**, oracle de filtres **PASS**. La recette du même soir a
+trouvé **38 colonnes et 22 mesures orphelines** : le mapping était à 89 % de couverture et se
+présentait comme complet. Retour humain : « impossible de savoir » si c'est exhaustif,
+« manquants ? ». *47 lignes affichées ne disent rien tant qu'on ignore 47 sur combien.*
+
+**La règle.** Une page dont un tableau représente une **couverture** (mapping, correspondances,
+cartographie, traçabilité) :
+
+1. **déclare son dénominateur** — `data-population="N"` sur la `<table>`, N = nombre d'éléments
+   SOURCE. Il ne se déduit pas de la page : il vit dans le système d'origine ;
+2. **porte un tableau exhaustif au grain de l'élément source** — `N` lignes de corps, les
+   sans-correspondance **en tête**. Moins de lignes que la population = **bloquant** : ce n'est
+   pas une couverture, c'est un extrait, et il doit se déclarer comme tel ;
+3. **affiche le dénominateur AVANT le tableau** — un attribut que personne ne voit ne répond pas
+   à « sur combien ? ». Le nombre doit être lisible dans le texte qui précède ;
+4. **compte les éléments sans correspondance** — `data-couverture-manquants` sur l'élément qui
+   l'affiche. « Combien manquent ? » est la première question du lecteur.
+
+**Deux avertissements, pour que la règle morde une page qui ne déclare rien** — le cas fondateur
+ne portait aucun marquage, et c'est exactement ce qui l'a laissé passer :
+
+- une page dont le `<h1>` (à défaut le `<title>`) s'annonce comme une couverture et dont **aucun**
+  tableau ne déclare sa population ;
+- une **carte de chiffre clé** (`.kpi`, `.chiffre-cle`) dont le texte renvoie à un autre document
+  (« voir le rapport », « voir le fichier », « voir l'annexe ») — *un chiffre clé porte son
+  chiffre ; renvoyer ailleurs, c'est occuper la place de la réponse sans la donner*.
+
+**Contrôle mécanique.** `L30` dans `check_html.py`. Fixtures à double sens :
+`l30-couverture-declaree.html` (0 constat), `l30-couverture-muette.html` (**3 bloquants** — 342
+déclarés pour 4 rendus, dénominateur jamais affiché, aucun compte de manquants) et
+`l30-mapping-non-declare.html` (**2 avertissements** — la forme du cas payé, qui ne déclarait
+rien). Bruit mesuré avant mise en bloquant : **0 constat** sur les documents HTML du skill.
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L29
-python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L29)
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L30
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L30)
 python scripts/check_html.py page.html --output json
 python scripts/render_page.py page.html                # V1-V14 + L2 mesuré au rendu
 python scripts/self_test.py                            # fixtures rouges et vertes du skill

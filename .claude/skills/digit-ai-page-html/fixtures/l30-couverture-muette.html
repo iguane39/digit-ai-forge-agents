@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L30 · couverture muette — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0909, sens ROUGE. La forme exacte du cas payé le 07/09/2026 : une page de mapping qui
+  affiche des correspondances SANS DIRE SUR COMBIEN. Le tableau déclare 342 champs source et
+  n en rend que 4 ; le dénominateur n est écrit nulle part dans la page ; rien ne compte les
+  champs sans correspondance ; et les cartes de chiffres clés renvoient au rapport Markdown.
+  Sur le cas réel : 47 lignes affichées, 38 colonnes et 22 mesures orphelines découvertes en
+  recette LE MÊME SOIR, après trois oracles PASS (check_html 36 règles, render_page,
+  oracle-filtres). Retour humain : « impossible de savoir », « manquants ? ».
+  Trois échecs L30 attendus : couverture partielle présentée comme entière, dénominateur
+  jamais affiché, aucun compte de sans-correspondance.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --r-sm:8px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  main { max-width:1080px; margin:0 auto; padding:32px 24px 64px; }
+  .kpis { display:flex; gap:16px; margin:0 0 24px; }
+  .kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); padding:16px; }
+  .kpi-valeur { font-size:1.8rem; font-weight:700; }
+  .kpi-label { color:var(--muted); font-size:.85rem; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  @media print { body { background:#fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Couverture du mapping des champs</h1>
+<p>Le tableau ci-dessous présente les correspondances établies entre le système d origine et
+le modèle cible.</p>
+<div class="kpis">
+  <div class="kpi"><p class="kpi-valeur">4</p><p class="kpi-label">correspondances établies</p></div>
+  <div class="kpi"><p class="kpi-valeur">—</p><p class="kpi-label">détail : voir le rapport Markdown</p></div>
+</div>
+<table data-population="342">
+  <caption>Tous les champs source — exemple inventé, aucune donnée réelle.</caption>
+  <thead>
+    <tr><th>Champ source</th><th>Correspondance</th><th>Palier</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>date_operation</td><td>date_op</td><td>MVP</td></tr>
+    <tr><td>libelle_client</td><td>client_libelle</td><td>MVP</td></tr>
+    <tr><td>canal_vente</td><td>canal</td><td>V1</td></tr>
+    <tr><td>statut_dossier</td><td>statut</td><td>V1</td></tr>
+  </tbody>
+</table>
+</main>
+</body>
+</html>
