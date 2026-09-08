@@ -817,6 +817,33 @@ croit tenir le plan de la page.
 @media (max-width: 900px) { .toc { position: static; } }   /* bande repliable sur mobile */
 ```
 
+**Sommaire à DEUX NIVEAUX — la forme admise, en `<a>` (TF-0931 et TF-0933, 08/09/2026).** Deux
+retours humains sur le même menu en une journée : « certains sous-chapitres ne sont pas dans le
+menu de gauche », puis « mets les chapitres et sous-chapitres ensemble ». Aucune forme ne passait
+`L7`, et la seule sortie conforme remplaçait les liens de sous-chapitre par des **boutons** — une
+régression sémantique imposée par l'oracle. `L7` juge désormais les descendants **directs** et
+dédoublonne par **élément** ; la forme à écrire est celle-ci, et elle ne coûte aucun script :
+
+```html
+<nav class="toc" aria-label="Sommaire"><ol>
+  <li><a href="#champs"><span class="toc-t">1 Champs</span><span class="toc-d">les colonnes servies…</span></a>
+    <ol class="toc-sous">
+      <li><a href="#champs-mesures"><span class="toc-t">1.1 Mesures</span><span class="toc-d">les grandeurs calculées…</span></a></li>
+    </ol></li>
+</ol></nav>
+…
+<section id="champs"><h2>Champs</h2><p class="ch-apprend">…ce que CE chapitre apprend…</p>
+  <div id="champs-mesures"><h3>Mesures</h3><p class="ch-apprend">…ce que CE sous-chapitre apprend…</p></div>
+</section>
+```
+
+Deux conditions, et elles sont la règle et non un contournement : la cible d'une entrée de second
+niveau est un **bloc** (`<div id="…">` portant le `h3`), jamais le `h3` nu — un titre n'a pas de
+descendants, donc pas de chapeau ; et ce bloc porte **son propre** `.ch-apprend`, distinct de
+celui du parent. Un sous-chapitre qui recopie le chapeau de son parent échoue toujours `L7`
+(fixture `l7-sommaire-deux-niveaux-chapeau-repete.html`) : la correction change ce que la règle
+regarde, elle n'éteint rien.
+
 ## L26 — Une page de DONNÉES prend toute la largeur ; la colonne de lecture est pour la prose (TF-0771 + TF-0778, 02/09/2026)
 
 **Le fait payé, deux fois.** Une console de données a été livrée dans une colonne de lecture de

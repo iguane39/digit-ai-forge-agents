@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L7 — sommaire a deux niveaux, chapeau repete</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+
+nav.toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 24px;margin:18px 0;padding:14px 16px;border:1px solid var(--line,#E2E8F0);border-radius:8px}
+.toc-t{font-weight:600}
+.toc-d{color:var(--faint,#64748B)}
+.toc-sous{margin:.2em 0 .4em 1.2em;padding:0;list-style:none}
+.toc-sous a{color:var(--faint,#64748B)}
+.ch-apprend{margin:.2em 0 1em;color:var(--faint,#64748B)}
+</style></head>
+<!--
+  Fixture ROUGE de L7 — le sommaire a deux niveaux ne desarme PAS la regle du chapeau repete
+  (TF-0931 et TF-0933, contre-epreuve de la correction du 08/09).
+
+  MEME page que `l7-sommaire-deux-niveaux.html` a UNE difference : le sous-chapitre
+  #champs-mesures recopie mot pour mot le chapeau de son parent #champs. C'est cette fois un
+  VRAI doublon — deux elements distincts, deux cibles distinctes, un seul texte — et non
+  l'artefact d'un parent qui heritait du chapeau de son enfant.
+
+  Sans cette fixture, rien ne distinguerait la correction (« juger les descendants DIRECTS et
+  dedoublonner par ELEMENT ») d'une simple extinction de la regle.
+
+  Attendu : L7.
+-->
+<body><main class="wrap">
+<h1>L7 — sommaire a deux niveaux, chapeau repete</h1>
+<nav class="toc" aria-label="Sommaire"><ol>
+<li><a href="#champs"><span class="toc-t">1 Champs</span><span class="toc-d">les colonnes servies et leur provenance</span></a>
+  <ol class="toc-sous"><li><a href="#champs-mesures"><span class="toc-t">1.1 Mesures</span><span class="toc-d">les grandeurs calculees a la volee</span></a></li></ol></li>
+<li><a href="#lecture"><span class="toc-t">2 Lecture</span><span class="toc-d">l ordre de lecture conseille du tableau</span></a></li>
+</ol></nav>
+<section id="champs"><h2>Champs</h2><p class="ch-apprend">Vous repartez d ici en sachant quelles colonnes existent et de quel systeme chacune arrive.</p><p>Texte.</p>
+  <div id="champs-mesures"><h3>Mesures</h3><p class="ch-apprend">Vous repartez d ici en sachant quelles colonnes existent et de quel systeme chacune arrive.</p><p>Texte.</p></div>
+</section>
+<section id="lecture"><h2>Lecture</h2><p class="ch-apprend">Vous repartez d ici en sachant dans quel ordre parcourir le tableau sans vous perdre.</p><p>Texte.</p></section>
+</main></body></html>

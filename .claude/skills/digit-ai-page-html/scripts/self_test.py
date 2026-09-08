@@ -177,6 +177,16 @@ CAS = {
     # TF-0425/TF-0432 : onglets et lignes dépliables — rouge sans câblage, verte conforme.
     "l7-chapeaux-identiques.html": {"L7"},
     "l7-chapeau-remplissage.html": {"L7"},
+    # TF-0931 / TF-0933 (lot Produit-10 20260908b et 20260908c) — le sommaire a DEUX NIVEAUX.
+    # L7 le refusait sous toutes ses formes : cible = <h3> nu -> « sans chapeau » ; cible = le
+    # bloc h3 + chapeau -> « chapeau IDENTIQUE » avec le parent, qui collectait les chapeaux de
+    # TOUS ses descendants. Le produit a paye ce refus deux fois en une journee, la seconde en
+    # remplacant ses liens de sous-chapitre par des BOUTONS. La verte porte la forme legitime
+    # (sous-entrees en <a href="#...">, un chapeau propre par bloc cible) ; la rouge est la MEME
+    # page avec un chapeau de sous-chapitre recopie du parent — un VRAI doublon, qui prouve que
+    # la correction juge autrement et n'eteint rien.
+    "l7-sommaire-deux-niveaux.html": set(),
+    "l7-sommaire-deux-niveaux-chapeau-repete.html": {"L7"},
     "l10-exemple-double.html": {"L10"},
     "l3-note-encadre.html": set(),
     "l3-note-chiffree.html": {"L3"},

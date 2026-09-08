@@ -1832,10 +1832,41 @@ def check_lisibilite(html: str, a: Arbre):
     # « Mode d'emploi » en double. Un chapeau est une phrase ÉCRITE, jamais générée : identique
     # dans deux chapitres, tiré du lexique de remplissage, ou plus long qu'un paragraphe, il
     # échoue. Un exemple de lecture répété mot pour mot dans un même chapitre aussi.
+    # TF-0931 / TF-0933 (lot Produit-10 20260908b et 20260908c, deux retours humains sur le
+    # MEME menu en une journee) : L7 refusait TOUTE forme de sommaire à deux niveaux, et le
+    # coût était payé par la page. Deux causes, aucune voulue.
+    #   · les chapeaux étaient collectés sur TOUS les descendants : une cible qui enveloppe un
+    #     sous-chapitre lui-même ciblé héritait de son chapeau, donc « chapeau IDENTIQUE dans
+    #     #parent et #enfant » — le parent était accusé de répéter son propre enfant ;
+    #   · le dédoublonnage se faisait par TEXTE : le même élément, vu deux fois (une fois comme
+    #     descendant du parent, une fois comme descendant de l'enfant), se dénonçait lui-même.
+    # Résultat mesuré chez le produit : aucun sommaire à deux niveaux ne passait, et la seule
+    # forme conforme remplaçait les liens de sous-chapitre par des BOUTONS — une régression
+    # sémantique imposée par l'oracle. On juge désormais les descendants DIRECTS (ce qui vit
+    # sous une AUTRE cible appartient à cette cible), et on dédoublonne par ÉLÉMENT.
+    elements_cibles = {id(sec) for _, sec in cibles}
+
+    def _chapeaux_propres(sec):
+        """Chapeaux de CETTE cible : ceux d'une cible imbriquée appartiennent à celle-ci."""
+        out = []
+        for e in sec.descendants():
+            if not (e.classes() & {"ch-apprend", "ch-st"}):
+                continue
+            porteur = e.parent
+            imbrique = False
+            while porteur is not None and porteur is not sec:
+                if id(porteur) in elements_cibles:
+                    imbrique = True
+                    break
+                porteur = porteur.parent
+            if not imbrique:
+                out.append(e)
+        return out
+
     chapeaux_vus: dict = {}
+    elements_vus: set = set()
     for ident, sec in cibles:
-        chapeaux = [e for e in sec.descendants()
-                    if e.classes() & {"ch-apprend", "ch-st"}]
+        chapeaux = _chapeaux_propres(sec)
         if not chapeaux or max(len(e.texte_propre()) for e in chapeaux) < 40:
             fails.append(f"L7 chapitre #{ident} sans chapeau d'ouverture — un élément "
                          ".ch-apprend d'au moins 40 caractères (« ce que ce chapitre "
@@ -1845,6 +1876,11 @@ def check_lisibilite(html: str, a: Arbre):
             cle = txt.lower().rstrip(" .…")
             if len(cle) < 40:
                 continue
+            # Dédoublonnage par ÉLÉMENT : un même chapeau atteint par deux chemins n'est pas
+            # deux chapeaux, et n'a jamais été un doublon (TF-0931).
+            if id(e) in elements_vus:
+                continue
+            elements_vus.add(id(e))
             if cle in chapeaux_vus and chapeaux_vus[cle] != ident:
                 fails.append(f"L7 chapeau IDENTIQUE dans #{chapeaux_vus[cle]} et #{ident} : "
                              f"« {txt[:60]}… » — un chapeau dit ce que CE chapitre apprend ; "
