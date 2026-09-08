@@ -125,6 +125,16 @@ DONNEES_PROSE_MIN_RATIO = 0.70
 # défilant est un défaut bloquant, pas un « écart acceptable ». En deçà, le défilement
 # horizontal est la parade prescrite par le socle (composants.md §6).
 ROGNAGE_DONNEES_MIN_VIEWPORT = 1280
+# TF-0930 (08/09, retour humain « augmente la largeur complète du document ») — le CONTENEUR
+# d'une page de données, et non plus seulement la prose ou le tableau qu'il porte. Le socle
+# bridait `.wrap` par `--w: clamp(75vw, 1680px, 92vw)` : 1 260 px dans une fenêtre de 1 370,
+# 1 680 dans une fenêtre de 1 920 — alors que I1 et L26 disent « pleine largeur adaptative ».
+# Aucun contrôle ne le voyait : L26 de check_html ne juge une bride que sur un conteneur DE
+# TABLEAU et ne sait pas résoudre `var(--w)` ; V13 compare un bloc à son parent, et un bloc
+# qui remplit un conteneur bridé rend 100 %. Le défaut vit entre le conteneur et la FENÊTRE.
+# Seuil à 96 % et non 100 % : la marge absorbe la gouttière de défilement et les arrondis de
+# `vw` ; le défaut constaté mesurait 92 % (1 260 / 1 370), largement sous le plancher.
+DONNEES_CONTENEUR_MIN_RATIO = 0.96
 # TF-0772 (02/09) — un sommaire ne se juge qu'au-delà de trois chapitres ET de deux écrans :
 # c'est le seuil de la règle écrite (lisibilite.md L25), et il tient les deux mesures ensemble.
 SOMMAIRE_MIN_CHAPITRES = 3
@@ -172,6 +182,7 @@ MEASURE_JS = r"""
                    l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
                    contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
+                   conteneur_bride_donnees: [],
                    unmeasured: [] };
   const doc = document.documentElement;
 
@@ -1060,6 +1071,41 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- CONTENEUR BRIDE sur une page de DONNEES (TF-0930, 08/09) -----------------------
+  //
+  // LE FAIT : retour humain « augmente la largeur complete du document » sur une page de
+  // mapping a sept colonnes. Le socle bride `.wrap` par `--w: clamp(75vw, 1680px, 92vw)`,
+  // soit 1 260 px dans une fenetre de 1 370 et 1 680 dans une fenetre de 1 920 — pendant que
+  // I1 et L26 ecrivent « pleine largeur adaptative ». Personne ne le voyait : L26 ne juge une
+  // bride que sur un conteneur DE TABLEAU et ne resout pas `var(--w)` ; la prose etroite
+  // compare un bloc a SON PARENT, et un bloc qui remplit un conteneur bride rend 100 %.
+  // La mesure qui manque est celle du conteneur contre la FENETRE.
+  if (pageDonnees && window.innerWidth >= __DONNEES_CONTENEUR_MIN_VIEWPORT__) {
+    const vusC = new Set();
+    // Le conteneur principal, et lui seul : un `.wrap` imbrique dans un autre conteneur
+    // n'est pas ce que le lecteur voit comme la largeur du document.
+    const candidats = [...document.querySelectorAll('.wrap, main, [data-page]')].filter((el) =>
+      el !== document.body && el !== doc && visible(el)
+      && !(el.parentElement && el.parentElement.closest('.wrap, main')));
+    for (const el of candidats) {
+      const w = el.getBoundingClientRect().width;
+      if (w <= 0) continue;
+      const ratio = w / window.innerWidth;
+      if (ratio >= __DONNEES_CONTENEUR_MIN__) continue;
+      const cle = label(el);
+      if (vusC.has(cle)) continue;
+      vusC.add(cle);
+      const cs = getComputedStyle(el);
+      issues.conteneur_bride_donnees.push({ what: cle, detail:
+        `page de donnees : conteneur a ${Math.round(w)}px pour ${window.innerWidth}px de ` +
+        `fenetre (${Math.round(ratio * 100)} %, plancher ` +
+        `${Math.round(__DONNEES_CONTENEUR_MIN__ * 100)} %) — max-width calcule ` +
+        `${cs.maxWidth}. Une page qui se DECLARE page de donnees est PLEINE LARGEUR ` +
+        `adaptative : la place existe, la page doit la prendre. Retirer le plafond sur ce ` +
+        `conteneur ; la colonne de lecture reste legitime CHAPITRE par chapitre (.chap.lire)` });
+    }
+  }
+
   // ---- SOMMAIRE PERDU AU DEFILEMENT (TF-0772, 02/09) ----------------------------------
   //
   // La moitie mesurable de L25 : `check_html` exige que le sommaire EXISTE, cette famille exige
@@ -1508,6 +1554,11 @@ FAMILLES = [
     ("controles_desalignes", "Controles d'une meme rangee desalignes", "bloquant"),
     ("rognage_donnees", "Tableau ROGNE dans un conteneur defilant (page de donnees)", "bloquant"),
     ("prose_etroite", "Bloc de texte etrique sur une page de donnees", "bloquant"),
+    # TF-0930 (lot Produit-10 20260908b) : le CONTENEUR, la ou `prose_etroite` juge le bloc et
+    # `rognage_donnees` le tableau. Une page de donnees bridee a 1 260 px dans une fenetre de
+    # 1 370 rend PASS aux deux — le bloc remplit bien son conteneur, le tableau ne deborde pas
+    # de la boite qu'on lui a donnee. Bloquant : c'est le troisieme angle de la meme regle.
+    ("conteneur_bride_donnees", "Conteneur bride sur une page de donnees", "bloquant"),
     ("sommaire_perdu", "Sommaire perdu au defilement", "bloquant"),
     # TF-0910 (lot Produit-10 20260908a) : cinq teintes d'etat pastel du socle, toutes autour de
     # L* 93-97. Chaque badge tenait 4,5:1 contre son fond, donc V2 rendait PASS sur chacun ; le
@@ -1681,6 +1732,8 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
           .replace("__L2_ETIQUETTE_MAX__", str(L2_ETIQUETTE_MAX))
           .replace("__DONNEES_PROSE_MIN__", str(DONNEES_PROSE_MIN_RATIO))
           .replace("__ROGNAGE_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
+          .replace("__DONNEES_CONTENEUR_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
+          .replace("__DONNEES_CONTENEUR_MIN__", str(DONNEES_CONTENEUR_MIN_RATIO))
           .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
           .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
 

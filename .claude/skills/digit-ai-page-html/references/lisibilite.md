@@ -834,7 +834,13 @@ dire laquelle s'applique ni où. Chaque auteur tranchait, et retranchait au livr
 (`data-page="donnees"` sur `<html>`, `<body>` ou le conteneur principal) et vaut alors :
 
 1. **pleine largeur adaptative** — aucune bride de lecture (`max-width` en `ch`, ou < 1 280 px)
-   sur un conteneur qui porte un **tableau** ;
+   sur un conteneur qui porte un **tableau**, et **aucun plafond de confort sur le conteneur
+   principal** : au-delà de 1 280 px de fenêtre, il occupe **≥ 96 %** de la largeur disponible
+   (TF-0930). Le token `--w` du socle reste la doctrine des pages de **prose** ; le gabarit en
+   exempte une page déclarée page de données (`[data-page="donnees"] .wrap { max-width: none }`).
+   Contrôle : famille `conteneur_bride_donnees` de `render_page.py` — L26 ne juge une bride que
+   sur un conteneur DE TABLEAU et ne sait pas résoudre `var(--w)`, la mesure du conteneur contre
+   la **fenêtre** est le troisième angle ;
 2. **un bloc de prose occupe la largeur de son conteneur**, ou deux lignes — sous **70 %**, c'est
    un défaut. Un passage de lecture voulu se **déclare** (`data-mesure-lecture`, plus
    `data-colonne-ok` s'il est calé à gauche) : c'est le geste complet, pas la moitié ;

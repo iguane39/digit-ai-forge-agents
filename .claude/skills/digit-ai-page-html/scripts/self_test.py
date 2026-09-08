@@ -404,6 +404,14 @@ CAS_RENDU = {
     "donnees-tableau-entier.html": ("rognage_donnees", 0),
     "donnees-prose-etroite.html": ("prose_etroite", 1),
     "donnees-prose-pleine.html": ("prose_etroite", 0),
+    # TF-0930 (lot Produit-10 20260908b) — le troisieme angle de la page de donnees : le
+    # CONTENEUR contre la FENETRE. La paire porte le MEME token `--w` du socle ; la seule
+    # difference est la regle qui en exempte une page declaree page de donnees. La rouge
+    # attend en outre ZERO constat des deux autres familles de la page de donnees : c'est ce
+    # qui prouve que le defaut leur echappait, et non qu'on le compte deux fois.
+    "donnees-conteneur-bride.html": [("conteneur_bride_donnees", 1),
+                                     ("rognage_donnees", 0), ("prose_etroite", 0)],
+    "donnees-conteneur-plein.html": ("conteneur_bride_donnees", 0),
     "sommaire-perdu-au-defilement.html": ("sommaire_perdu", 1),
     "sommaire-colle.html": ("sommaire_perdu", 0),
     # TF-0910 (lot Produit-10 20260908a) — V16 : deux etats qui se ressemblent ne sont pas deux

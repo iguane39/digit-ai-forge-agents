@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — conteneur pleine largeur sur une page de donnees — 20260908a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ --w:clamp(75vw, 1680px, 92vw)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:6px 8px;font-size:.85rem;border-bottom:1px solid var(--line)}
+.wrap{max-width:var(--w);margin:0 auto;padding:24px}
+/* La regle du socle corrige (TF-0930) : la page de donnees echappe au plafond de confort. */
+[data-page="donnees"] .wrap,
+.wrap[data-page="donnees"]{max-width:none;padding:20px 28px 48px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de la famille `conteneur_bride_donnees` (TF-0930, 08/09).
+
+  MEME page, MEME token `--w`, MEME tableau que la fixture rouge : la seule difference est la
+  regle que le socle pose desormais pour une page qui se DECLARE page de donnees. Dans une
+  fenetre de 1 440 px le conteneur mesure 1 440 px, soit 100 %.
+
+  Ce que cette fixture prouve en plus du sens vert : la famille ne condamne pas le token `--w`,
+  qui reste la doctrine de largeur des pages de PROSE — elle condamne le plafond LA OU la page
+  s'est declaree page de donnees.
+
+  Attendu a 1440 px : 0 constat `conteneur_bride_donnees`.
+-->
+<body><main class="wrap" data-page="donnees"><h1>Volumes par marche</h1><table><thead><tr><th>Marche</th><th>Volume</th><th>Part</th><th>Valeur moyenne</th><th>Fenetre</th></tr></thead><tbody><tr><td>Marche A</td><td>1 000</td><td>2,4 %</td><td>84 EUR par nuit</td><td>aout 2025</td></tr><tr><td>Marche B</td><td>12 500</td><td>29,8 %</td><td>112 EUR par nuit</td><td>avril 2026</td></tr><tr><td>Marche C</td><td>250</td><td>0,6 %</td><td>63 EUR par nuit</td><td>decembre 2025</td></tr><tr><td>Marche D</td><td>45 000</td><td>13,7 %</td><td>97 EUR par nuit</td><td>janvier 2026</td></tr></tbody></table></main></body></html>
