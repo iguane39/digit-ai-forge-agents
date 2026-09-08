@@ -1099,7 +1099,8 @@ def run_filtres_runtime():
                         "obtenu": type(erreur).__name__, "regle": regle,
                         "detail": str(erreur).splitlines()[0][:300]})
 
-    fichiers = ("tf-tri-milliers.html", "tf-facettes-ordre.html", "tf-etat-rejoue.html")
+    fichiers = ("tf-tri-milliers.html", "tf-facettes-ordre.html", "tf-etat-rejoue.html",
+                "tf-th-sticky-preserve.html")
     manquantes = [n for n in fichiers if not (FIXTURES / n).exists()]
     for n in manquantes:
         out.append({"fixture": n, "verdict": "ABSENTE", "attendu": "fixture présente",
@@ -1210,6 +1211,39 @@ def run_filtres_runtime():
                 {"exclues": ["livré"], "caches": 2}, rejoue, "TF-0769 rejouabilite")
 
         proteger("tf-etat-rejoue.html", "TF-0769", section_etat)
+
+        # ---- TF-0899 : l ancrage du panneau n ECRASE PLUS le thead collant du socle -----
+        def section_ancrage():
+            page.goto((FIXTURES / "tf-th-sticky-preserve.html").resolve().as_uri())
+            page.wait_for_load_state("load")
+            colle = page.evaluate(
+                "() => { const th = document.querySelectorAll('#colle thead th')[0];"
+                " return { calculee: getComputedStyle(th).position,"
+                "          en_ligne: th.style.position || '' }; }")
+            cas("tf-th-sticky-preserve · le thead collant SURVIT a init",
+                {"calculee": "sticky", "en_ligne": ""}, colle, "TF-0899 ancrage")
+            naive = page.evaluate("() => window.__poseNaive()")
+            cas("tf-th-sticky-preserve · l ancienne pose DIFFERE (sens rouge)",
+                True, naive == "relative" and naive != colle["calculee"],
+                "TF-0899 contre-epreuve")
+            libre = page.evaluate(
+                "() => getComputedStyle(document.querySelectorAll('#libre thead th')[0]).position")
+            cas("tf-th-sticky-preserve · un th `static` recoit toujours son ancrage",
+                "relative", libre, "TF-0899 affordance conservee")
+            ancre = page.evaluate("""() => {
+              const res = {};
+              for (const id of ['colle', 'libre']) {
+                const th = document.querySelectorAll('#' + id + ' thead th')[0];
+                th.querySelector('.tf-btn').click();
+                const p = th.querySelector('.tf-panel');
+                res[id] = !p.hidden && p.offsetParent === th;
+              }
+              return res;
+            }""")
+            cas("tf-th-sticky-preserve · le panneau reste ancre dans son th (deux cas)",
+                {"colle": True, "libre": True}, ancre, "TF-0899 ancrage")
+
+        proteger("tf-th-sticky-preserve.html", "TF-0899", section_ancrage)
 
         page.close()
         navigateur.close()

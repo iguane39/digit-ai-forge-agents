@@ -31,6 +31,31 @@ Preuve attendue de toute extension : un test d'interactions (voir
 [`references/tests-interactions.md`](tests-interactions.md)) — l'oracle statique ne voit pas
 une facette détruite.
 
+## L'ancrage du panneau ne DÉFAIT PAS le collage du socle (TF-0899, 07/09)
+
+`.tf-panel` est un `position: absolute` : il lui faut un **ancêtre positionné**, et le `<th>`
+est le bon. Le composant posait donc `th.style.position = th.style.position || 'relative'` —
+un style **en ligne**, qui l'emporte sur toute feuille. Il écrasait le geste L29 du socle
+(`thead.colle th { position: sticky; top: var(--hh) }`) : le `top` restait, appliqué à un
+`relative`, et devenait un **décalage permanent** de `--hh`. Mesure Playwright du 07/09 sur
+quatre tableaux filtrables : `<th>` à 441 px pour 337 attendus (+104 px = `--hh`), une à deux
+lignes recouvertes à tout défilement, `<th>` à -59 px après 200 px de défilement — l'en-tête ne
+collait **jamais** et quittait l'écran avec son tableau. Un tour humain, capture d'écran à
+l'appui, et un produit contraint de poser `thead.colle th { position: sticky !important }`.
+
+**Règle.** Le composant ne pose son `relative` que si la position **calculée** du `<th>` est
+`static`. Un `<th>` déjà positionné — `sticky`, `relative`, `absolute`, `fixed` — ancre déjà un
+absolu : il n'y a rien à poser, et y toucher défait le choix de la page.
+
+**Corollaire pour la page hôte.** Un `thead` collant reste compatible avec les filtres : plus
+besoin d'un `!important` de contournement. Une page qui en porte un peut le retirer.
+
+Preuve : `fixtures/tf-th-sticky-preserve.html`, jouée dans Chromium par `self_test.py`
+(`run_filtres_runtime`) — sens vert, la position calculée reste `sticky` et rien n'est posé en
+ligne ; sens rouge, la page rejoue elle-même l'ancienne pose sur un tableau témoin identique et
+le banc exige que les deux positions **diffèrent** ; et un `<th>` `static` reçoit toujours son
+ancrage, sinon le correctif aurait supprimé l'affordance au lieu de la rendre compatible.
+
 ## Tri ARMÉ PAR DÉFAUT, et la valeur prime sur le texte (RA-5, 14/08 — revu TF-0768, 02/09)
 
 La règle L4 exige « filtre, tri et recherche ». Le tri est donc **armé par défaut** :

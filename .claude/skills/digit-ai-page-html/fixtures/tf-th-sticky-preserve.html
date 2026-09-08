@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — filtres · ancrage du panneau sans écraser le thead collant — 20260908a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0899, fixture À DOUBLE SENS jouée par self_test (run_filtres_runtime, Playwright).
+
+  LE DÉFAUT, tel qu'il a été payé (mesure Playwright du 07/09/2026, quatre tableaux filtrables) :
+  `construireColonnes` posait `th.style.position = th.style.position || 'relative'` pour ancrer
+  le panneau `.tf-panel` (un `position:absolute`). Le style EN LIGNE l emporte sur la feuille,
+  donc il écrasait le geste L29 du socle — `thead.colle th { position: sticky; top: var(--hh) }`.
+  Le `top` restait, appliqué à un `relative` : DÉCALAGE PERMANENT de --hh. Mesuré : th à 441 px
+  pour 337 attendus (+104 = --hh), une à deux lignes recouvertes à tout défilement, th à -59 px
+  après 200 px de défilement — l en-tête ne collait jamais et quittait l écran avec son tableau.
+
+  LES DEUX SENS, dans la même page :
+    · sens VERT  — `#colle` porte un thead collant : après `init`, la position CALCULÉE de ses
+      `<th>` reste `sticky` et aucun style de position n est posé en ligne ; le panneau s ouvre
+      quand même ancré dans son `<th>` (un sticky ancre un absolu tout aussi bien) ;
+    · sens ROUGE — `window.__poseNaive()` applique l ANCIENNE ligne au tableau témoin `#temoin`,
+      strictement identique à `#colle`, et rend sa position calculée : `relative`. Le banc exige
+      que les deux DIFFÈRENT — sans cette contre-épreuve, un `sticky` obtenu par hasard (ou une
+      feuille qui n aurait jamais collé) validerait la règle sans la tenir.
+  `#libre` garde des `<th>` `static` : l ancrage doit toujours s y poser, sinon le correctif
+  aurait supprimé l affordance au lieu de la rendre compatible.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --r-sm:8px; --hh:104px;
+          --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px; }
+  header.doc.colle { position:sticky; top:0; z-index:20; height:88px; background:var(--bg);
+                     border-bottom:2px solid var(--blue); }
+  table { width:100%; border-collapse:collapse; background:var(--surface); margin:0 0 24px; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { font-weight:700; }
+  thead.colle th { position:sticky; top:var(--hh); z-index:10; background:var(--surface); }
+  .tf-btn { font:inherit; font-size:.72rem; color:var(--blue); background:var(--surface);
+            border:1px solid var(--line); border-radius:var(--r-sm); padding:3px 7px;
+            margin-left:6px; cursor:pointer; }
+  .tf-panel { position:absolute; z-index:30; top:calc(100% + 4px); left:0; min-width:230px;
+              background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
+              padding:10px 12px; font-weight:400; }
+  .tf-panel[hidden] { display:none; }
+  .tf-opts { display:flex; flex-direction:column; gap:2px; }
+  .tf-forme-note { margin:0 0 8px; color:var(--muted); font-size:.78rem; font-style:italic; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  [hidden] { display:none !important; }
+  @media print { .tf-btn, .tf-panel { display:none !important; }
+                 tr[data-tf-hidden] { display:table-row !important; } }
+</style>
+</head>
+<body>
+<header class="doc colle">
+  <div class="wrap"><strong>Digit-AI</strong> — en-tête de document collant (L29, B1)</div>
+</header>
+<main class="wrap">
+  <h1>Ancrage du panneau de filtre et en-tête de tableau collant</h1>
+  <p>Trois tableaux identiques par leur contenu. Le premier et le témoin portent un
+     <code>thead</code> collant ; le troisième non. Le composant doit ancrer son panneau
+     sans jamais retirer le collage prescrit par le socle.</p>
+
+  <h2>Tableau à en-tête collant</h2>
+  <table id="colle" data-filterable>
+    <caption>Lots suivis — exemple inventé, aucune donnée réelle.</caption>
+    <thead class="colle">
+      <tr><th>Lot</th><th>Statut</th><th>Palier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Lot A</td><td>ouvert</td><td>MVP</td></tr>
+      <tr><td>Lot B</td><td>livré</td><td>V1</td></tr>
+      <tr><td>Lot C</td><td>ouvert</td><td>V1</td></tr>
+      <tr><td>Lot D</td><td>en cours</td><td>MVP</td></tr>
+      <tr><td>Lot E</td><td>livré</td><td>V2</td></tr>
+      <tr><td>Lot F</td><td>en cours</td><td>V2</td></tr>
+      <tr><td>Lot G</td><td>ouvert</td><td>MVP</td></tr>
+      <tr><td>Lot H</td><td>livré</td><td>V1</td></tr>
+    </tbody>
+  </table>
+  <div class="tf-count" data-tf-count-for="colle" aria-live="polite"></div>
+
+  <h2>Tableau témoin — l ancienne pose y sera appliquée à la main</h2>
+  <table id="temoin" data-filterable>
+    <caption>Lots suivis (témoin) — exemple inventé, aucune donnée réelle.</caption>
+    <thead class="colle">
+      <tr><th>Lot</th><th>Statut</th><th>Palier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Lot A</td><td>ouvert</td><td>MVP</td></tr>
+      <tr><td>Lot B</td><td>livré</td><td>V1</td></tr>
+      <tr><td>Lot C</td><td>ouvert</td><td>V1</td></tr>
+      <tr><td>Lot D</td><td>en cours</td><td>MVP</td></tr>
+      <tr><td>Lot E</td><td>livré</td><td>V2</td></tr>
+      <tr><td>Lot F</td><td>en cours</td><td>V2</td></tr>
+      <tr><td>Lot G</td><td>ouvert</td><td>MVP</td></tr>
+      <tr><td>Lot H</td><td>livré</td><td>V1</td></tr>
+    </tbody>
+  </table>
+  <div class="tf-count" data-tf-count-for="temoin" aria-live="polite"></div>
+
+  <h2>Tableau sans en-tête collant</h2>
+  <table id="libre" data-filterable>
+    <caption>Lots suivis (en-tête libre) — exemple inventé, aucune donnée réelle.</caption>
+    <thead>
+      <tr><th>Lot</th><th>Statut</th><th>Palier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Lot A</td><td>ouvert</td><td>MVP</td></tr>
+      <tr><td>Lot B</td><td>livré</td><td>V1</td></tr>
+      <tr><td>Lot C</td><td>ouvert</td><td>V1</td></tr>
+      <tr><td>Lot D</td><td>en cours</td><td>MVP</td></tr>
+      <tr><td>Lot E</td><td>livré</td><td>V2</td></tr>
+      <tr><td>Lot F</td><td>en cours</td><td>V2</td></tr>
+      <tr><td>Lot G</td><td>ouvert</td><td>MVP</td></tr>
+      <tr><td>Lot H</td><td>livré</td><td>V1</td></tr>
+    </tbody>
+  </table>
+  <div class="tf-count" data-tf-count-for="libre" aria-live="polite"></div>
+</main>
+<script src="../assets/table-filters.js"></script>
+<script>
+  window.__tfColle = DigitAITableFilters.init(document.getElementById('colle'));
+  window.__tfTemoin = DigitAITableFilters.init(document.getElementById('temoin'));
+  window.__tfLibre = DigitAITableFilters.init(document.getElementById('libre'));
+
+  /* Ce qu aurait fait l ANCIENNE ligne (assets/table-filters.js, avant TF-0899), calculé par la
+     page elle-même sur un tableau strictement identique. Le test exige que la position obtenue
+     DIFFÈRE de celle de `#colle`, sinon la fixture ne prouverait rien. */
+  window.__poseNaive = function () {
+    var th = document.querySelectorAll('#temoin thead th')[0];
+    th.style.position = th.style.position || 'relative';
+    return window.getComputedStyle(th).position;
+  };
+</script>
+</body>
+</html>

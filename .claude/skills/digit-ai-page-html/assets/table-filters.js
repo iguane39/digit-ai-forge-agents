@@ -411,7 +411,20 @@
         var etat = { col: col, bouton: b, selection: selection };
         etats.push(etat);
 
-        col.th.style.position = col.th.style.position || 'relative';
+        /* TF-0899 (08/09/2026) — LE PANNEAU A BESOIN D UN ANCETRE POSITIONNE, PAS DE `relative`.
+           `.tf-panel` est un `position:absolute` : il lui faut un ancetre positionne, et le
+           `<th>` est le bon. Mais poser `relative` EN LIGNE ecrasait le geste L29 du socle
+           (`thead.colle th { position: sticky; top: var(--hh) }`) : le `top` restait, applique
+           a un `relative` — donc un DECALAGE PERMANENT de --hh. Mesure Playwright du 07/09 sur
+           quatre tableaux filtrables : `<th>` a 441 px pour 337 attendus (+104 = --hh), une a
+           deux lignes recouvertes a tout defilement, `<th>` a -59 px apres 200 px de
+           defilement — l en-tete ne collait JAMAIS. Un `<th>` deja positionne (sticky, relative,
+           absolute, fixed) ancre DEJA un absolu : on ne pose donc que sur un `<th>` `static`. */
+        var posThCalculee = 'static';
+        try {
+          posThCalculee = (window.getComputedStyle(col.th).position || 'static');
+        } catch (e) { posThCalculee = col.th.style.position || 'static'; }
+        if (posThCalculee === 'static') col.th.style.position = 'relative';
         col.th.appendChild(b);
         col.th.appendChild(ui.panneau);
         Array.prototype.forEach.call(ui.options.querySelectorAll('.tf-opt'), function (cb) {
