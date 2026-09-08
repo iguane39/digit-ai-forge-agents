@@ -1051,6 +1051,40 @@ lui-même collant ; **et** `top: var(--hh)` consommé sans que `--hh` soit décl
 qui vaut 0 par défaut ramène exactement la collision qu'il devait éviter (loi transverse n° 1 :
 une affordance est câblée ou n'existe pas).
 
+### L29 ter — un décalage de collant est une MESURE, pas un token (TF-0929, 08/09/2026)
+
+**Troisième retour humain sur l'en-tête collant en deux jours** (TF-0899, TF-0900, celui-ci) —
+et c'est le token posé par L29 ci-dessus qui est en cause. `--hh` vaut **64 px**, une constante.
+Dès que l'en-tête passe **sur deux lignes**, ou qu'une **bande de sommaire colle sous lui**, ce
+qui surplombe le `thead` est plus haut que le token, et le `thead` se range **exactement à son
+`top` déclaré, derrière eux**. Capture humaine à ~1 370 px : les `th` « Rattachement » et
+« Ligne de mapping » coupés. Mesure Playwright à la même largeur : `--hh` 104, bas de l'en-tête
+107, bas de la bande de sommaire collante 219, `th` collé à 104 — **115 px masqués**. À 1 600 px,
+**aucun défaut** : le défaut dépend de la largeur, donc d'une mesure, et aucune constante ne peut
+la suivre.
+
+**Aucun contrôle ne pouvait le voir**, et c'est le point : `L29` vérifie que `top: var(--hh)`
+existe et que `--hh` est déclaré, jamais la hauteur RÉELLE de ce qui colle au-dessus ; la branche
+« en-tête hors de son `top` déclaré » de `V15` vérifie qu'il s'y tient — **il s'y tient
+parfaitement, et c'est exactement le problème**. Le défaut vit entre le token et le rendu.
+
+**Règle.** Les hauteurs de collage se **mesurent**, au chargement, au **redimensionnement** et
+aux **polices chargées** — une police de titre qui arrive après coup fait passer un en-tête de
+une à deux lignes. Le token de `:root` reste le **repli** : celui qui sert avant la première
+mesure, et si le script ne s'exécute pas. Deux valeurs, parce qu'il y a deux étages :
+
+- `--hh` — bas de l'**en-tête** collant ; ce qui colle directement sous lui l'emploie ;
+- `--hh-tab` — bas du **dernier** collant au-dessus d'un tableau (en-tête **+** bande de sommaire
+  collante s'il y en a une) ; c'est celui que le `thead` collant consomme.
+
+Le gabarit fournit `poserHauteurs()`, qui pose les deux ; `thead.colle th` consomme
+`top: var(--hh-tab, var(--hh))`.
+
+**Contrôle mécanique.** `entete_masque_par_collants` (`render_page.py`, **bloquant**) — après
+défilement, le `th` collant doit se poser au **bas du dernier collant qui le surplombe, à 4 px
+près**. Le message nomme l'élément coupable et le nombre de pixels masqués. Jugé **à chaque
+largeur**, puisque c'est la largeur qui décide du nombre de lignes de l'en-tête.
+
 ### L29 bis — un `thead` collant ne vit pas dans un conteneur défilant (TF-0900, 07/09/2026)
 
 **Le fait payé.** Le socle se contredisait lui-même à vingt lignes d'écart : `.table-hote

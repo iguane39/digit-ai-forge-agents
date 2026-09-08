@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L29 empilement des collants, token fige — 20260908a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ /* Le TOKEN, fige a la hauteur du seul en-tete. C'est le socle d'avant TF-0929. */
+ --hh:64px}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{margin:0;padding:0 20px 400px}
+header.doc.colle{position:sticky;top:0;z-index:20;background:var(--bg);height:64px;display:flex;align-items:center}
+/* La BANDE DE SOMMAIRE COLLANTE, sous l'en-tete : 56 px de plus que le token ne connait pas. */
+nav.toc.colle{position:sticky;top:64px;z-index:10;background:var(--surface);height:56px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+thead.colle th{position:sticky;top:var(--hh);z-index:5;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de la troisieme branche de V15 — L'EMPILEMENT DES COLLANTS (TF-0929, 08/09).
+
+  Le defaut du livrable servi, reproduit : le thead collant se decale de `var(--hh)`, une
+  CONSTANTE de 64 px, alors que ce qui colle au-dessus de lui mesure 64 + 56 = 120 px — l'en-tete
+  ET la bande de sommaire collante. L'en-tete de tableau se range donc EXACTEMENT a son `top`
+  declare, derriere la bande, et ses libelles sont coupes.
+
+  C'est la troisieme instance de la classe en deux jours (TF-0899, TF-0900, celle-ci), et les
+  deux controles existants rendent PASS sur cette page :
+    · L29 de check_html verifie que `top: var(--hh)` existe et que `--hh` est declare — les deux
+      sont vrais ; il ne mesure jamais la hauteur REELLE de ce qui colle au-dessus ;
+    · la branche (b) de V15 verifie que le `th` se tient a son `top` DECLARE — il s'y tient
+      parfaitement, et c'est precisement le probleme.
+  Le defaut vit entre le token et le rendu, et aucune constante ne peut le porter : il apparait
+  a une largeur et pas a une autre, selon que l'en-tete tient sur une ou deux lignes.
+
+  Attendu a 1440 px : 1 constat `entete_masque_par_collants`, 0 `entete_ne_colle_pas`,
+  0 `entete_pose_sur_lignes`.
+-->
+<body>
+<header class="doc colle"><strong>Console des volumes</strong></header>
+<nav class="toc colle" aria-label="Sommaire"><a href="#c1">1 Volumes</a><a href="#c2">2 Marches</a></nav>
+<main class="wrap">
+<h1 id="c1">Volumes par marche</h1>
+<table><thead class="colle"><tr><th>Rattachement</th><th>Ligne de mapping</th><th>Volume</th><th>Part</th></tr></thead><tbody>
+<tr><td>Region nord</td><td>lot_cle vers silver_lot</td><td>1 000</td><td>2,4 %</td></tr>
+<tr><td>Region centre</td><td>lot_surface vers silver_lot</td><td>12 500</td><td>29,8 %</td></tr>
+<tr><td>Region sud</td><td>bail_debut vers silver_bail</td><td>250</td><td>0,6 %</td></tr>
+<tr><td>Region est</td><td>bail_fin vers silver_bail</td><td>45 000</td><td>13,7 %</td></tr>
+<tr><td>Region ouest</td><td>loyer vers silver_loyer</td><td>8 200</td><td>4,1 %</td></tr>
+<tr><td>Region nord-est</td><td>charge vers silver_charge</td><td>3 400</td><td>1,7 %</td></tr>
+<tr><td>Region sud-ouest</td><td>indexation vers silver_index</td><td>6 900</td><td>3,3 %</td></tr>
+<tr><td>Region centre-est</td><td>franchise vers silver_franchise</td><td>2 100</td><td>1,0 %</td></tr>
+<tr><td>Region littorale</td><td>depot vers silver_depot</td><td>5 500</td><td>2,6 %</td></tr>
+<tr><td>Region montagne</td><td>garantie vers silver_garantie</td><td>4 300</td><td>2,1 %</td></tr>
+<tr><td>Region insulaire</td><td>preavis vers silver_preavis</td><td>1 800</td><td>0,9 %</td></tr>
+<tr><td>Region frontaliere</td><td>renouvellement vers silver_renouv</td><td>7 600</td><td>3,6 %</td></tr>
+<tr><td>Region peripherique</td><td>resiliation vers silver_resil</td><td>2 900</td><td>1,4 %</td></tr>
+<tr><td>Region urbaine</td><td>surface vers silver_surface</td><td>9 100</td><td>4,3 %</td></tr>
+<tr><td>Region rurale</td><td>usage vers silver_usage</td><td>3 700</td><td>1,8 %</td></tr>
+<tr><td>Region mixte</td><td>zonage vers silver_zonage</td><td>5 000</td><td>2,4 %</td></tr>
+</tbody></table>
+<h2 id="c2">Marches</h2>
+<p>Texte de suite, pour que la page defile au-dela du tableau.</p>
+</main></body></html>

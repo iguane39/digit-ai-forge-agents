@@ -1313,7 +1313,7 @@ MEASURE_JS = r"""
 # La mesure n'a besoin d'aucun jeton : elle compare le `top` RENDU au `top` DECLARE.
 MESURE_ENTETE_JS = r"""
 () => {
-  const poses = [], decolles = [];
+  const poses = [], decolles = [], masques = [];
   const yInitial = window.scrollY;
   const etiquette = (t, i) => {
     const cap = t.querySelector('caption');
@@ -1395,8 +1395,80 @@ MESURE_ENTETE_JS = r"""
         + `dessous de 900 px). Verifier les ancetres du tableau` });
   });
 
+  // ---- c. L'EMPILEMENT DES COLLANTS : `--hh` est un TOKEN, pas une mesure (TF-0929) -----
+  //
+  // LE FAIT, ET C'EST LA TROISIEME INSTANCE DE LA CLASSE EN DEUX JOURS (TF-0899, TF-0900,
+  // celle-ci). Le socle decale le thead collant de `var(--hh)`, une CONSTANTE de 64 px. Des que
+  // l'en-tete passe sur deux lignes, ou qu'une bande de sommaire colle SOUS lui, ce qui colle
+  // au-dessus du thead est plus haut que le token — et le thead se range exactement a son `top`
+  // declare, DERRIERE eux. Capture humaine a ~1 370 px : deux `th` coupes ; mesure Playwright a
+  // la meme largeur : `--hh` 104, bas de l'en-tete 107, bas de la bande de sommaire collante
+  // 219, `th` colle a 104 — 115 px MASQUES. A 1 600 px, aucun defaut : le defaut depend de la
+  // largeur, donc d'une mesure, et aucun token ne peut le porter.
+  //
+  // POURQUOI PERSONNE NE LE VOYAIT. `L29` de check_html verifie que `top: var(--hh)` existe et
+  // que `--hh` est declare — jamais la HAUTEUR REELLE de ce qui colle au-dessus. La branche (b)
+  // ci-dessus verifie que le `th` se tient a son `top` DECLARE : ici il s'y tient
+  // parfaitement, et c'est precisement le probleme. Le defaut vit entre le token et le rendu.
+  //
+  // LA MESURE : le `th` colle doit se poser au BAS du dernier collant qui le surplombe, a 4 px
+  // pres. Un collant qui le surplombe est un element `sticky` ou `fixed`, visible, qui recouvre
+  // horizontalement le `th` et dont le bas depasse le haut du `th`.
+  tables.forEach((t, i) => {
+    if (!t.tHead || !t.tHead.rows.length) return;
+    const ths = [...t.tHead.rows[0].cells].filter(visibleBoite);
+    if (!ths.length) return;
+    const th = ths[0];
+    const cs = getComputedStyle(th);
+    if (cs.position !== 'sticky') return;
+    const attendu = parseFloat(cs.top);
+    if (!isFinite(attendu)) return;
+    const recul = Math.min(400, Math.max(0, t.offsetHeight - 250));
+    window.scrollTo(0, t.getBoundingClientRect().top + window.scrollY + recul);
+    const rt = t.getBoundingClientRect();
+    if (!(rt.bottom > 0 && rt.top < window.innerHeight)) return;
+    if (rt.top >= attendu - 1) return;              // le `sticky` ne s'est pas engage
+    const rth = th.getBoundingClientRect();
+    // Les collants qui SURPLOMBENT ce `th` : `sticky` ou `fixed`, visibles, en recouvrement
+    // horizontal, et dont le bas mord sur le haut du `th`. Le `th` lui-meme et ses ancetres de
+    // tableau sont exclus — un `thead` ne se masque pas lui-meme.
+    // Reperage LOCAL : `label` vit dans l'autre bloc de mesure, et une sonde qui LEVE rend la
+    // famille NON JUGEE — un silence qui se lit comme un vert (mesure du 08/09 sur la fixture
+    // rouge : « V15 non jugee (Error) », zero constat, et la paire ne prouvait rien).
+    const nomDe = (el) => el.tagName.toLowerCase()
+      + (el.id ? '#' + el.id : '')
+      + (el.className && typeof el.className === 'string' && el.className.trim()
+         ? '.' + el.className.trim().split(/\s+/).join('.') : '');
+    let bas = 0, coupable = null;
+    for (const el of document.body.querySelectorAll('*')) {
+      if (el === th || el.contains(th) || th.contains(el)) continue;
+      if (el.closest('table') === t) continue;
+      const c = getComputedStyle(el);
+      if (c.position !== 'sticky' && c.position !== 'fixed') continue;
+      if (!visibleBoite(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.right <= rth.left + 1 || r.left >= rth.right - 1) continue;   // pas au-dessus de lui
+      if (r.top > rth.top) continue;                                      // il est SOUS le `th`
+      if (r.bottom <= rth.top + 1) continue;                              // il ne le mord pas
+      if (r.bottom > bas) { bas = r.bottom; coupable = el; }
+    }
+    if (!coupable) return;
+    const masque = Math.round(bas - rth.top);
+    if (masque <= 4) return;
+    masques.push({
+      what: `${etiquette(t, i + 1)} — en-tete masque par l'empilement des collants`,
+      detail: `APRES DEFILEMENT, l'en-tete de tableau se pose a ${Math.round(rth.top)} px, son `
+        + `\`top\` declare (${cs.top}), mais ${nomDe(coupable)} colle au-dessus de lui descend `
+        + `jusqu'a ${Math.round(bas)} px : ${masque} px de l'en-tete sont MASQUES. Le decalage `
+        + `d'un collant est une MESURE, pas un token : un en-tete qui passe sur deux lignes ou `
+        + `une bande de sommaire collante changent la hauteur de ce qui colle au-dessus, et `
+        + `aucune constante ne peut la suivre — le defaut apparait a une largeur et pas a une `
+        + `autre. Poser les hauteurs au chargement, au redimensionnement et aux polices `
+        + `chargees (poserHauteurs() du gabarit) ; le token reste le repli` });
+  });
+
   window.scrollTo(0, yInitial);
-  return { poses, decolles };
+  return { poses, decolles, masques };
 }
 """
 
@@ -1574,6 +1646,12 @@ FAMILLES = [
     # `overflow` non `visible` lui sert de boite (TF-0900). Constat et non bloquant : la cause
     # est nommee, le geste correctif appartient a la page qui a choisi ce conteneur.
     ("entete_ne_colle_pas", "V15 en-tete collant hors de son `top` declare", "avertissement"),
+    # TF-0929 (lot Produit-10 20260908b) : la TROISIEME branche, et la troisieme instance de la
+    # classe en deux jours. L'en-tete se tient EXACTEMENT a son `top` declare — les deux branches
+    # ci-dessus rendent PASS — et il est quand meme illisible, parce que `--hh` est un TOKEN et
+    # que ce qui colle au-dessus est plus haut que lui. Mesure a 1 370 px : 115 px masques ; a
+    # 1 600 px, aucun defaut. Bloquant : un en-tete de colonne coupe rend le tableau indechiffrable.
+    ("entete_masque_par_collants", "V15 en-tete masque par l'empilement des collants", "bloquant"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
@@ -1779,9 +1857,11 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 v15 = page.evaluate(MESURE_ENTETE_JS)
                 issues["entete_pose_sur_lignes"] = v15.get("poses") or []
                 issues["entete_ne_colle_pas"] = v15.get("decolles") or []
+                issues["entete_masque_par_collants"] = v15.get("masques") or []
             except Exception as erreur:  # noqa: BLE001 — toute panne se declare, aucune n'arrete
                 issues["entete_pose_sur_lignes"] = []
                 issues["entete_ne_colle_pas"] = []
+                issues["entete_masque_par_collants"] = []
                 issues["unmeasured"].append({
                     "what": "V15 en-tetes de tableau",
                     "detail": f"V15 non jugee ({type(erreur).__name__}) : la mesure apres "

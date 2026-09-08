@@ -489,6 +489,16 @@ CAS_RENDU = {
     "l29-table-hote-socle.html": [("entete_pose_sur_lignes", 0), ("entete_ne_colle_pas", 0)],
     "l29t-pose-nue.html": [("entete_pose_sur_lignes", 1), ("entete_ne_colle_pas", 0)],
     "l29t-pose-gardee.html": [("entete_pose_sur_lignes", 0), ("entete_ne_colle_pas", 0)],
+    # TF-0929 (lot Produit-10 20260908b) — TROISIEME instance de la classe en deux jours, et la
+    # troisieme branche de V15 : l'en-tete se tient EXACTEMENT a son `top` declare, et il est
+    # quand meme illisible. `--hh` est un TOKEN ; des qu'une bande de sommaire colle sous
+    # l'en-tete, ce qui surplombe le thead est plus haut que lui. La rouge attend donc ZERO
+    # constat des DEUX branches existantes — c'est ce qui prouve qu'elles ne pouvaient pas le
+    # voir, et non qu'on compte le meme defaut trois fois. La paire ne differe que par le
+    # `--hh-tab` MESURE (poserHauteurs() du socle) contre le token fige.
+    "l29q-empilement-token.html": [("entete_masque_par_collants", 1),
+                                   ("entete_ne_colle_pas", 0), ("entete_pose_sur_lignes", 0)],
+    "l29q-hauteurs-mesurees.html": ("entete_masque_par_collants", 0),
 }
 
 
