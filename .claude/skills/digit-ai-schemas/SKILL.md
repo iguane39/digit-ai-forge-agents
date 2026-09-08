@@ -22,6 +22,7 @@ Ne pas déclencher pour : schémas hors contexte de livrable (outils standards t
 | Flux temporel | Séquences de pipelines, promotions entre environnements, swimlanes | « tag git → PROD », « promotion sans rebuild », « blue-green » | `references/canevas-flux-temporel.md` + `assets/template-flux-temporel.html` |
 | Tableau de bord | Synthèse KPI portfolio, vue de pilotage, comparatifs de parc | « dashboard », « vue DSI », « score par POC » | `references/canevas-tableau-de-bord.md` + `assets/template-tableau-de-bord.html` |
 | Modèle de données | Schéma relationnel de BDD, tables / colonnes / clés / relations, classification PII, dictionnaire de données | « schéma de base de données », « ERD », « MCD », « les tables et leurs relations » | `references/canevas-modele-donnees.md` + `assets/template-modele-donnees.html` |
+| Schéma de base **différentiel** | Ce qui CHANGE dans un schéma : tables créées / étendues / reprises, colonnes ajoutées / corrigées / reprises, colorées **et** marquées d'un glyphe | « tables et champs ajoutés ou modifiés de couleurs différentes », « ce qui change entre l'existant et la cible », « schéma des BDD Silver et Gold » | `assets/template-schema-differentiel.html` |
 
 Si plusieurs canevas semblent applicables, multi-bandes est le défaut. Si aucun ne colle, le besoin est probablement hors périmètre — utiliser un outil standard.
 
@@ -67,6 +68,31 @@ node .claude/skills/digit-ai-schemas/scripts/embarquer-polices.mjs --ecrire    #
 
 Portée : **les pages seulement** (celles qui portent un `<head>`). Les trois fragments de canevas sont insérés dans `template-multi-bandes.html`, qui porte déjà les faces — les y dupliquer ajouterait 300 Ko par insertion pour la même police. **Écart assumé et déclaré au CSS produit** : sous-ensemble `latin` uniquement, graisses réellement employées ; `latin-ext` s'ajoute en une ligne du générateur le jour où un schéma porte du polonais, du tchèque ou du turc. La pile de repli système reste déclarée sur chaque famille.
 
+### Le canevas DIFFÉRENTIEL : ce qui change, pas ce qui est (TF-0938, 08/09/2026)
+
+Retour humain sur un livrable servi : « schéma des BDD Silver et Gold, tables et champs ajoutés
+ou modifiés de couleurs différentes ». Le skill n'avait **aucun** canevas différentiel — celui
+du modèle de données dessine un schéma à un instant, jamais son évolution. Le composant a donc
+été écrit chez le produit (40 cartes, 429 puces) et personne d'autre n'en a profité.
+
+**Pourquoi des cartes HTML et non un SVG.** Le canevas ERD place ses tables à la main : au-delà
+d'une trentaine, le placement DEVIENT le travail, et un schéma différentiel en compte
+typiquement plus. Une grille de cartes se dispose seule, se replie sur mobile, se cherche au
+Ctrl+F, et porte une infobulle par colonne — ce qu'un `<text>` SVG ne fait pas. **Ce que ce
+canevas ne fait pas** : dessiner les relations. Un schéma qui doit montrer ses cardinalités
+reste sur `template-modele-donnees.html`.
+
+**Trois états de table, trois états de colonne, jamais plus** — et chacun porte sa teinte **et**
+son glyphe : la couleur ne porte jamais seule l'information (WCAG 1.4.1), la légende donne les
+deux, et un lecteur qui imprime en noir et blanc lit les glyphes. Chaque puce de colonne porte
+une infobulle **structurée** (une ligne par objet, une sous-précision par ligne indentée —
+L3 (g) du socle, composant `infobulle.js`), jamais un paragraphe de sept objets : ce sont les
+deux règles qui ont coûté trois passes de `check_html` chez le produit.
+
+**Alimentation** : les cartes se dérivent de la projection d'évolutions (RD-5) — une table par
+carte, une colonne par puce, l'état lu dans la projection. Écrire quarante cartes à la main est
+le geste que ce canevas existe pour éviter.
+
 ### Ce que check_html juge dans `assets/`, et ce qu'il écarte (TF-0308)
 
 Les six fichiers de `assets/` passent le contrôle de conformité du socle
@@ -75,8 +101,9 @@ sont jugées entièrement : `exemple-reference.html`, `template-modele-donnees.h
 `template-multi-bandes.html` (ce dernier avec une exemption étroite : l'indice de version
 **daté** appartient à l'instance produite, son titre est un `{{PLACEHOLDER}}`).
 
-Trois sont des **fragments par conception** — `template-topologie.html`,
-`template-flux-temporel.html`, `template-tableau-de-bord.html` : ils s'insèrent dans le
+Quatre sont des **fragments par conception** — `template-topologie.html`,
+`template-flux-temporel.html`, `template-tableau-de-bord.html`,
+`template-schema-differentiel.html` : ils s'insèrent dans le
 squelette de `template-multi-bandes.html`, qui porte le `<head>`, le `<title>` et le favicon.
 La famille « autoportance » y est écartée par une **exemption déclarée et annoncée** (registre
 `EXEMPTIONS_DECLAREES` de `check_html.py`, avec son motif ; le contrôle l'imprime à chaque

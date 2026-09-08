@@ -1,0 +1,139 @@
+<!--
+  TEMPLATE SCHÉMA DE BASE DIFFÉRENTIEL · canevas Digit-AI (TF-0938, 08/09/2026)
+
+  Utilisation : insérer ces blocs dans une page HTML qui utilise le squelette de
+  template-multi-bandes.html (head + tokens + footer + script). Le <style> ci-dessous
+  est le SEUL ajout de feuille du canevas ; tout le reste consomme les jetons du socle.
+
+  LE FAIT QUI L'A FAIT NAÎTRE. Retour humain du 08/09 : « schéma des BDD Silver et Gold,
+  tables et champs ajoutés ou modifiés de couleurs différentes ». Le skill n'avait aucun
+  canevas différentiel : le canevas « modèle de données » dessine un schéma à un instant,
+  jamais son ÉVOLUTION. Le composant a donc été écrit chez le produit — 40 cartes, 429
+  puces — et personne d'autre n'en profite.
+
+  POURQUOI DES CARTES HTML ET NON UN SVG. Le canevas ERD en SVG place ses tables à la main :
+  au-delà d'une trentaine, le placement devient le travail, et un schéma différentiel en
+  compte typiquement plus. Une grille de cartes HTML se dispose seule, se replie sur mobile,
+  se cherche au Ctrl+F, et porte une infobulle par colonne — ce qu'un <text> SVG ne fait pas.
+  Ce que ce canevas NE fait pas : dessiner les RELATIONS. Un schéma qui doit montrer ses
+  cardinalités reste sur template-modele-donnees.html ; celui-ci montre ce qui CHANGE.
+
+  LA CONVENTION DE MARQUAGE — trois états de table, trois états de colonne, jamais plus :
+
+    table   .tbl-card.est-creee    contour bleu   · la table n'existe pas encore
+            .tbl-card.est-modifiee contour ambre  · elle existe et change (colonnes ajoutées)
+            .tbl-card.est-reprise  contour gris   · elle existe et ne change pas, citée pour
+                                                    situer les autres
+    colonne .col.est-ajoutee       bleu,  glyphe ＋
+            .col.est-corrigee      rouge, glyphe ✎
+            .col.est-reprise       gris,  glyphe ●
+
+  DEUX RÈGLES QUI ONT COÛTÉ TROIS PASSES DE check_html CHEZ LE PRODUIT, notées ici pour que
+  personne ne les repaie :
+    · la couleur ne porte JAMAIS seule l'information (WCAG 1.4.1) — chaque état a son GLYPHE
+      en plus de sa teinte, et la légende donne les deux ;
+    · chaque puce de colonne porte son infobulle STRUCTURÉE (une ligne par objet, une
+      sous-précision par ligne indentée — L3 (g) du socle, composant `infobulle.js`), jamais
+      un paragraphe de sept objets.
+
+  ALIMENTATION. Les trois listes ci-dessous se dérivent de la projection d'évolutions (RD-5) :
+  une table par carte, une colonne par puce, l'état lu dans la projection. Écrire les cartes à
+  la main sur un schéma de quarante tables est le geste que ce canevas existe pour éviter.
+-->
+
+<style>
+  /* Grille de cartes : elle se dispose seule, c'est tout l'intérêt. */
+  .tbl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .tbl-card {
+    border: 2px solid var(--line);
+    border-radius: var(--r-sm, 8px);
+    background: var(--surface);
+    padding: 12px 14px;
+    break-inside: avoid;
+  }
+  .tbl-card.est-creee   { border-color: var(--blue); }
+  .tbl-card.est-modifiee{ border-color: var(--amber); }
+  .tbl-card.est-reprise { border-color: var(--line); }
+  .tbl-nom {
+    margin: 0 0 2px;
+    font-family: var(--mono);
+    font-size: .92rem;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  .tbl-etat { margin: 0 0 8px; font-size: .78rem; color: var(--muted); }
+  .tbl-card ul { margin: 0; padding: 0; list-style: none; }
+  .col { display: flex; gap: 6px; font-size: .82rem; line-height: 1.5; }
+  .col-g { flex: 0 0 auto; font-family: var(--mono); }          /* le glyphe d'état */
+  .col-n { font-family: var(--mono); word-break: break-word; }  /* le nom de colonne */
+  .col.est-ajoutee  .col-g, .col.est-ajoutee  .col-n { color: var(--blue); }
+  .col.est-corrigee .col-g, .col.est-corrigee .col-n { color: var(--red); }
+  .col.est-reprise  .col-g, .col.est-reprise  .col-n { color: var(--muted); }
+  .tbl-cle { margin: 8px 0 0; font-size: .76rem; color: var(--muted); }
+
+  .tbl-legende { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0; font-size: .8rem; }
+  .tbl-legende span { display: inline-flex; align-items: center; gap: 6px; }
+  .tbl-legende b { font-family: var(--mono); font-weight: 600; }
+
+  @media (max-width: 640px) { .tbl-grid { grid-template-columns: 1fr; } }
+  @media print { .tbl-card { break-inside: avoid; } }
+</style>
+
+<!-- La LÉGENDE d'abord : elle donne la teinte ET le glyphe. Un lecteur qui ne distingue pas
+     les couleurs lit les glyphes ; un lecteur qui imprime en noir et blanc aussi. -->
+<p class="tbl-legende">
+  <span><b style="color:var(--blue)">▭</b> table créée</span>
+  <span><b style="color:var(--amber)">▭</b> table étendue</span>
+  <span><b style="color:var(--muted)">▭</b> table reprise sans changement</span>
+  <span><b style="color:var(--blue)">＋</b> colonne ajoutée</span>
+  <span><b style="color:var(--red)">✎</b> colonne corrigée</span>
+  <span><b style="color:var(--muted)">●</b> colonne reprise</span>
+</p>
+
+<div class="tbl-grid">
+
+  <!-- Une carte par table. Répéter ce bloc ; l'état se lit dans la projection RD-5. -->
+  <article class="tbl-card est-creee">
+    <p class="tbl-nom">{{SCHEMA}}.{{NOM_TABLE}}</p>
+    <p class="tbl-etat">créée — {{GRAIN_DE_LA_TABLE}}</p>
+    <ul>
+      <li class="col est-ajoutee"><span class="col-g" aria-hidden="true">＋</span><span class="col-n"
+          title="{{NOM_COLONNE}}
+  type : {{TYPE}}
+  source : {{SYSTEME_ET_CHAMP_D_ORIGINE}}
+  règle : {{REGLE_DE_REPRISE}}">{{NOM_COLONNE}}</span></li>
+      <li class="col est-reprise"><span class="col-g" aria-hidden="true">●</span><span class="col-n"
+          title="{{NOM_COLONNE_REPRISE}}
+  type : {{TYPE}}
+  source : {{SYSTEME_ET_CHAMP_D_ORIGINE}}">{{NOM_COLONNE_REPRISE}}</span></li>
+    </ul>
+    <p class="tbl-cle">clé de substitution : {{NOM_DE_LA_CLE}} — {{COMMENT_ELLE_EST_CONSTRUITE}}</p>
+  </article>
+
+  <article class="tbl-card est-modifiee">
+    <p class="tbl-nom">{{SCHEMA}}.{{NOM_TABLE_ETENDUE}}</p>
+    <p class="tbl-etat">étendue — {{CE_QUI_CHANGE}}</p>
+    <ul>
+      <li class="col est-corrigee"><span class="col-g" aria-hidden="true">✎</span><span class="col-n"
+          title="{{NOM_COLONNE_CORRIGEE}}
+  correction : {{CE_QUI_EST_CORRIGE}}
+  avant : {{VALEUR_OU_TYPE_AVANT}}">{{NOM_COLONNE_CORRIGEE}}</span></li>
+    </ul>
+  </article>
+
+  <article class="tbl-card est-reprise">
+    <p class="tbl-nom">{{SCHEMA}}.{{NOM_TABLE_CITEE}}</p>
+    <p class="tbl-etat">reprise sans changement — citée pour situer les autres</p>
+    <ul>
+      <li class="col est-reprise"><span class="col-g" aria-hidden="true">●</span><span class="col-n"
+          title="{{NOM_COLONNE_CITEE}}
+  type : {{TYPE}}">{{NOM_COLONNE_CITEE}}</span></li>
+    </ul>
+  </article>
+
+</div>

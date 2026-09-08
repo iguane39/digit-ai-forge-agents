@@ -3054,6 +3054,11 @@ EXEMPTIONS_DECLAREES = (
      f"fragment SVG de canevas, pas une page — {_HOTE_SCHEMAS}"),
     ("digit-ai-schemas/assets/template-tableau-de-bord.html", FAMILLE_AUTOPORTANCE,
      f"blocs HTML/CSS de canevas, pas une page — {_HOTE_SCHEMAS}"),
+    # TF-0938 (08/09) — le canevas de SCHÉMA DIFFÉRENTIEL : même nature que le tableau de bord
+    # ci-dessus, des blocs HTML/CSS à insérer, jamais une page. Déclaré le jour de sa création :
+    # « un gabarit ajouté à assets/ échoue tant qu'il n'est pas soit conforme, soit déclaré ».
+    ("digit-ai-schemas/assets/template-schema-differentiel.html", FAMILLE_AUTOPORTANCE,
+     f"blocs HTML/CSS de canevas, pas une page — {_HOTE_SCHEMAS}"),
     ("digit-ai-schemas/assets/template-multi-bandes.html", FAMILLE_A4_VERSION,
      "gabarit à trous : le titre est « {{TITRE_PAGE}} · Digit-AI » et l'indice de version "
      "daté appartient à l'INSTANCE produite, jamais au canevas — les autres règles A "
@@ -3065,6 +3070,8 @@ EXEMPTIONS_DECLAREES = (
     ("digit-ai-schemas/assets/template-multi-bandes.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
     ("digit-ai-schemas/assets/template-tableau-de-bord.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
     ("digit-ai-schemas/assets/template-topologie.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
+    ("digit-ai-schemas/assets/template-schema-differentiel.html", FAMILLE_L11_GABARIT,
+     _MOTIF_GABARIT),
 )
 
 
