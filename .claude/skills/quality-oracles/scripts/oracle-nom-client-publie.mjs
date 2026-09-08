@@ -382,6 +382,9 @@ const { repo, temporaire, erreur } = ouvrir(cible);
 if (erreur) out('SKIP', [], [erreur], 2);
 
 const findings = [];
+// COMPTEURS DU COÛT DE C4 (TF-0958) — ils ne jugent rien, ils RENDENT COMPTE : le coût de cet
+// angle est ce qui décide si la porte est tenable, et un coût non déclaré ne se surveille pas.
+let passesC4 = 0, affinagesC4 = 0, lotsC4 = 0;
 const nettoyer = () => { if (temporaire) try { fs.rmSync(temporaire, { recursive: true, force: true }); } catch { /* zone temporaire : un reste ne fausse rien */ } };
 
 try {
@@ -478,7 +481,40 @@ try {
   }
   // Les révisions se passent par LOTS : une ligne de commande portant des milliers d'empreintes
   // se fait tronquer en silence sur ce poste, et un contrôle tronqué rend vert par accident.
+  //
+  // LE COÛT DE CET ANGLE EST MESURÉ, et c'est lui qui dicte la forme de la boucle (TF-0958,
+  // 08/09/2026). Elle lançait un `git grep` par TERME **et** par LOT de révisions : sur le dépôt
+  // du pilot (909 révisions, 7 lots) avec le référentiel du parc (10 termes), 70 invocations là
+  // où 21 suffisent — et chacune relit LES MÊMES blobs. Un contrôle bloquant qui coûte deux à
+  // quatre minutes ne protège plus rien le jour où quelqu'un apprend l'option qui le saute, et
+  // cette option est documentée dans le hameçon lui-même : la lenteur d'un gate est un défaut de
+  // sécurité, pas d'ergonomie.
+  //
+  // LES TERMES QUI PARTAGENT LEURS DRAPEAUX TIENNENT DANS UNE SEULE PASSE, avec autant de `-e` —
+  // exactement la technique déjà écrite pour C5 quelques lignes plus bas. Le référentiel n'a que
+  // TROIS combinaisons possibles (nom : `-i` ; identifiant : aucun ; sigle : `-i -w`), donc au
+  // plus trois passes par lot quel que soit le nombre de termes : le coût cesse de croître avec
+  // la table, et c'est la table qui grossit.
+  //
+  // LE PRIX DU GROUPAGE est que `-l` ne dit plus QUEL terme a mordu. La passe groupée sert donc
+  // de FILTRE, et le terme n'est identifié que sur les couples (révision, fichier) qui ont
+  // mordu — c'est-à-dire presque jamais, le cas nominal d'une porte étant de ne rien trouver.
+  // L'IDENTIFICATION FINE EST CONFIÉE AU MÊME OUTIL, avec LES MÊMES DRAPEAUX, terme par terme et
+  // sur ce SEUL couple : la frontière de mot et l'exclusion des binaires restent celles de git
+  // (règle R3 : l'outil qui fait foi, jamais une copie maison). Réimplémenter `-w` en JavaScript
+  // ici aurait rouvert le défaut de cohérence entre angles payé le 27/08 — `\p{L}` place une
+  // frontière là où git n'en place pas, et un constat perdu ne se voit pas.
+  // Le contrat `findings[]` est inchangé : mêmes constats, même libellé, même localisation.
+  const groupes = new Map();
   for (const t of T) {
+    const cle = (t.casse ? 'S' : 'i') + (t.motEntier ? 'w' : '-');
+    if (!groupes.has(cle)) groupes.set(cle, { drapeaux: [
+      ...(t.casse ? [] : ['-i']), ...(t.motEntier ? ['-w'] : []),
+    ], termes: [] });
+    groupes.get(cle).termes.push(t);
+  }
+  lotsC4 = lots(revs, 150).length;
+  for (const g of groupes.values()) {
     // `-w` N'EST PAS COSMÉTIQUE ICI, et son oubli était un DÉFAUT DE COHÉRENCE entre angles :
     // C1, C2 et C3 appliquaient la règle du mot entier, C4 la déléguait à `git grep` qui l'ignorait.
     // Le même sigle était donc interdit dans l'arbre et toléré dans l'historique — ou l'inverse,
@@ -492,21 +528,29 @@ try {
     // 14 sur la forge du design, TOUS sur des `.png` de référence visuelle, où trois octets
     // ressemblaient à un sigle. Zéro vrai positif, et une contradiction avec ce que l'oracle
     // déclare ne pas juger — le pire genre de faux positif, celui qui dément la notice.
-    const argsGrep = ['grep', '-l', '-I', '-F'];
-    if (!t.casse) argsGrep.push('-i');
-    if (t.motEntier) argsGrep.push('-w');
-    argsGrep.push('-e', t.mot);
+    const argsGrep = ['grep', '-l', '-I', '-F', ...g.drapeaux];
+    const eGroupe = [];
+    for (const t of g.termes) eGroupe.push('-e', t.mot);
     for (const lot of lots(revs, 150)) {
-      const r = git(repo, ...argsGrep, ...lot);
+      const r = git(repo, ...argsGrep, ...eGroupe, ...lot);
+      passesC4 += 1;
       for (const ligne of (r.stdout || '').split('\n').filter(Boolean)) {
         const [rev, ...reste] = ligne.split(':');
         const rel = reste.join(':');
         if (suivis.includes(rel) && findings.some((f) => f.regle === 'C1' && f.where.startsWith(rel + ':'))) continue;
-        findings.push({
-          sev: 'bloquant', regle: 'C4',
-          msg: `${t.genre} interdit « ${t.mot} » dans le CONTENU d'un fichier de l'historique`,
-          where: `${rev.slice(0, 12)}:${rel}`,
-        });
+        // QUEL terme ? Le couple est relu UNE fois par terme du groupe, ici seulement — sur un
+        // couple qui a déjà mordu. `:(literal)` protège les chemins portant des caractères que
+        // git lirait comme un motif de chemin.
+        for (const t of g.termes) {
+          const rt = git(repo, ...argsGrep, '-e', t.mot, rev, '--', ':(literal)' + rel);
+          affinagesC4 += 1;
+          if (!(rt.stdout || '').trim()) continue;
+          findings.push({
+            sev: 'bloquant', regle: 'C4',
+            msg: `${t.genre} interdit « ${t.mot} » dans le CONTENU d'un fichier de l'historique`,
+            where: `${rev.slice(0, 12)}:${rel}`,
+          });
+        }
       }
     }
   }
@@ -589,6 +633,22 @@ const nj = NON_JUGE.concat(['table lue (référentiel des noms interdits) : ' + 
 // C5 parle TOUJOURS : jouée, elle dit sur quoi ; non jouée, elle dit pourquoi. Un angle muet se lit
 // comme un angle vert, et c'est précisément l'état dans lequel la porte a laissé passer trois
 // mentions d'un nom de produit le 05/09.
+// LE COÛT DE C4 SE DÉCLARE, CHIFFRÉ (TF-0958, 08/09/2026). Un gate bloquant qui coûte deux à
+// quatre minutes se contourne au premier `--no-verify`, et cette option est documentée dans le
+// hameçon lui-même : la lenteur d'une porte est un défaut de sécurité, pas d'ergonomie. Le coût
+// se surveille donc au verdict, pas dans la mémoire de qui l'a mesuré une fois.
+// MESURE DU 08/09 SUR LE PLUS GROS DÉPÔT DU PARC — le dépôt du pilot, 909 révisions et 1 371
+// fichiers suivis, avec les tables RÉELLES du canal (10 termes clients, 65 clés de produits),
+// protocole séquentiel, deux passes : 330,9 s puis 295,5 s AVANT le groupage de C4 (70
+// invocations `git grep`), à comparer aux 21 que le groupage laisse. Un jeu d'essai de 4 termes
+// rendait 81 s et 99 s sur le même dépôt : le temps croît avec la TABLE, et c'est la table qui
+// grossit.
+nj.push('coût de C4 sur cet artefact : ' + passesC4 + ' passe(s) `git grep` groupée(s) pour '
+  + T.length + ' terme(s) du référentiel (' + affinagesC4 + " relecture(s) d'identification fine "
+  + 'sur les seuls couples révision/fichier qui ont mordu) — une passe par TERME et par lot en '
+  + 'aurait coûté ' + (T.length * lotsC4) + '. Temps mesuré le 08/09 sur le plus gros dépôt '
+  + 'du parc (909 révisions, 1 371 fichiers suivis, tables réelles) : 330,9 s et 295,5 s AVANT ce '
+  + 'groupage');
 nj.push(prodMotif || ('table lue (pseudonymes de produits) : ' + prodPath
   + ' — table des produits employée (' + P.length
   + ' nom(s) de produit jugé(s) par C5, ' + prodIgnorees + ' clé(s) de CHEMIN ignorée(s) — un chemin '

@@ -1120,6 +1120,164 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-0958 (08/09/2026) — LE COÛT DE C4 EST GROUPÉ, ET LE GROUPAGE N'A RIEN RENDU AVEUGLE.
+//
+// LE FAIT PAYÉ, ET IL EST MESURÉ. C4 balaie le CONTENU de tout l'historique en déléguant à
+// `git grep`. Elle lançait une invocation par TERME **et** par LOT de révisions : sur le dépôt du
+// pilot (909 révisions, 1 371 fichiers suivis, 7 lots) avec les tables RÉELLES du canal (10 termes
+// clients, 65 clés de produits), 70 invocations là où 21 suffisent — et chacune relit LES MÊMES
+// blobs. Mesure du 08/09, protocole séquentiel, deux passes, mêmes tables : 330,9 s puis 295,5 s.
+// Un jeu d'essai de 4 termes rendait 81 s et 99 s sur le même dépôt : le temps croît avec la TABLE.
+// Un gate bloquant à ce prix se contourne au premier `--no-verify`, et cette option est documentée
+// dans le hameçon lui-même — la lenteur d'une porte est un défaut de sécurité, pas d'ergonomie.
+//
+// CE QUE CE BANC PROUVE, EN DEUX SENS QUI NE SE REMPLACENT PAS :
+//   (A) LE SENS DU COÛT — celui qui était ROUGE avant la correction et vert après. L'oracle
+//       DÉCLARE au non_juge le nombre de passes groupées réellement faites. Sur une table de
+//       7 termes couvrant les TROIS genres, ce nombre doit être 3 par lot, pas 7 : avant la
+//       correction la ligne n'existe pas, et le compte serait celui des termes. Un coût qu'on ne
+//       déclare pas ne se surveille pas, et c'est ce qui a laissé la porte dériver jusqu'à 5 min ;
+//   (B) LE SENS DE LA COUVERTURE — celui SANS lequel (A) se satisferait d'une porte aveugle.
+//       Grouper, c'est perdre l'information de QUELLE aiguille a mordu : `git grep -l` ne le dit
+//       pas. Trois pièges s'ouvrent alors, et le banc les ferme un par un :
+//         · MISATTRIBUTION — deux noms du MÊME groupe vivant dans DEUX blobs différents doivent
+//           rendre UN constat chacun, sur SON fichier. Un groupage sans identification fine en
+//           rendrait deux par fichier, ou nommerait le mauvais terme ;
+//         · DRAPEAUX FONDUS, sens « trop large » — un SIGLE (mot entier) dont les trois lettres
+//           vivent À L'INTÉRIEUR d'un mot ordinaire ne doit RIEN rendre. S'il rend un constat,
+//           c'est que le `-w` de son groupe a été perdu en fusionnant les genres ;
+//         · DRAPEAUX FONDUS, sens « trop étroit » — un NOM (sous-chaîne) COLLÉ à un suffixe doit
+//           rendre son constat. S'il n'en rend pas, c'est que le `-w` du groupe des sigles a
+//           débordé sur celui des noms. Ces deux témoins vivent dans LE MÊME fichier : aucune
+//           fusion de drapeaux ne peut les satisfaire tous les deux ;
+//         · CASSE FONDUE — un IDENTIFIANT est sensible à la casse. Sa variante en MAJUSCULES ne
+//           doit RIEN rendre ; si elle rend un constat, le `-i` du groupe des noms a débordé.
+//
+// LES DÉPÔTS SONT JETABLES, LA RACINE EST JETABLE ET DÉCLARÉE, LES NOMS SONT INVENTÉS — mêmes
+// raisons qu'aux cas TF-0820, TF-0825, TF-0880 et TF-0887 : aucun nom du parc ne s'écrit dans le
+// dépôt que cette porte garde, et sans `FORGE_ROOT` sur la racine du banc, un poste portant le
+// canal confidentiel ferait lire les tables RÉELLES au lieu de celles du banc.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c4-groupage-'));
+  try {
+    // 7 TERMES SUR LES TROIS GENRES : 5 noms (`-i`), 1 identifiant (aucun drapeau), 1 sigle
+    // (`-i -w`). Trois combinaisons de drapeaux, donc trois passes attendues par lot — et sept
+    // si le groupage n'a pas eu lieu. L'écart 3 contre 7 est ce que le sens (A) mesure.
+    const NOMS = ['Zorglubtron', 'Chronopodie', 'Vermiculex', 'Bidulophone', 'Machinorama'];
+    const IDENT = 'wks-12345678901234';
+    const SIGLE = 'ZQX';
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const tClients = path.join(tables, 'clients.json');
+    const tProduits = path.join(tables, 'produits.json');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: NOMS, identifiants: [IDENT], sigles: [SIGLE] }), 'utf8');
+    // La table des produits est POSÉE ET VIDE DE TOUT NOM PRÉSENT : C5 joue, et ne dit rien —
+    // sans elle l'oracle déclarerait « C5 non jouée » et le banc mesurerait un autre objet.
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { 'Zorgonaute-Machin': 'Produit-95' } }), 'utf8');
+
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    // Le dépôt porteur : les mentions entrent au premier commit puis les fichiers sont RETIRÉS de
+    // l'arbre au second. L'arbre courant est propre — donc C1 se tait, et ce qui reste vient de
+    // C4 et de C4 SEULE. Sans ce retrait, la déduplication C1/C4 masquerait la moitié du banc.
+    const batir = (nom, fichiers, restants) => {
+      const r = path.join(depots, nom);
+      fs.mkdirSync(r, { recursive: true });
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q'); g('config', 'user.email', 'banc@local'); g('config', 'user.name', 'banc');
+      for (const [f, c] of Object.entries(fichiers)) fs.writeFileSync(path.join(r, f), c, 'utf8');
+      fs.writeFileSync(path.join(r, 'garde.md'), 'Ce fichier reste, et ne porte rien.\n', 'utf8');
+      g('add', '-A'); g('commit', '-q', '-m', 'premier depot du banc');
+      for (const f of Object.keys(fichiers)) if (!restants.includes(f)) fs.rmSync(path.join(r, f));
+      g('add', '-A'); g('commit', '-q', '-m', 'retrait des pieces');
+      return r;
+    };
+
+    // Les noms de FICHIERS sont neutres : un terme dans un nom de fichier lèverait l'autre moitié
+    // de C4 (« NOM d'un fichier ayant existé »), et le banc ne saurait plus ce qu'il mesure.
+    const porteur = batir('porteur', {
+      // MISATTRIBUTION : deux noms du MÊME groupe de drapeaux, dans DEUX blobs distincts.
+      'piece-a.md': 'Compte rendu remis a ' + NOMS[0] + ' ce matin.\n',
+      'piece-b.md': 'Compte rendu remis a ' + NOMS[1] + ' ce matin.\n',
+      // DRAPEAUX : les DEUX témoins dans LE MÊME fichier. `a<sigle>ue` doit rester muet (mot
+      // entier), `<nom>ique` doit parler (sous-chaîne). Aucune fusion ne satisfait les deux.
+      'piece-c.md': 'Le mot a' + SIGLE.toLowerCase() + 'ue est ordinaire, et '
+        + NOMS[2] + 'ique est colle a son suffixe.\n',
+      // CASSE : la variante en MAJUSCULES d'un identifiant SENSIBLE à la casse doit rester muette.
+      'piece-d.md': 'Espace de travail ' + IDENT.toUpperCase() + ' — variante de casse.\n',
+    }, []);
+
+    // Le dépôt propre : la MÊME forme, aucun terme de la table nulle part.
+    const propre = batir('propre', {
+      'piece-a.md': 'Compte rendu remis au client ce matin.\n',
+      'piece-b.md': 'Compte rendu remis au client ce matin.\n',
+    }, []);
+
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const jouer = (repo) => {
+      const r = spawnSync(process.execPath, [
+        path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits,
+      ], { encoding: 'utf8', timeout: 300000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    // Un constat C4 de CONTENU, et le terme qu'il nomme.
+    const c4contenu = (j) => (j ? (j.findings || []) : [])
+      .filter(f => f.regle === 'C4' && /CONTENU d'un fichier de l'historique/.test(f.msg))
+      .map(f => ({ terme: (f.msg.match(/« (.+?) »/) || [])[1], fichier: f.where.split(':').slice(1).join(':') }));
+
+    const jp = jouer(porteur);
+    const cp = c4contenu(jp);
+    const njp = jp ? (jp.non_juge || []).join(' ') : '';
+
+    // --- (A) LE SENS DU COÛT ------------------------------------------------------------------
+    const mCout = njp.match(/coût de C4 sur cet artefact : (\d+) passe\(s\)[^—]*— une passe par TERME et par lot en aurait coûté (\d+)/);
+    if (!jp) ko('TF-0958 coût : sortie de l oracle inexploitable');
+    else if (!mCout) ko('TF-0958 coût : le non_juge ne DÉCLARE PAS le coût de C4 — un gate dont le prix n est pas dit ne se surveille pas, et c est ainsi qu il a atteint 5 min sur le dépôt du pilot');
+    else {
+      const faites = Number(mCout[1]), naif = Number(mCout[2]);
+      if (naif !== NOMS.length + 2) ko(`TF-0958 coût : le compte NAÏF déclaré est ${naif}, attendu ${NOMS.length + 2} (un terme par passe et par lot) — le témoin de référence est faux, la comparaison ne vaut rien`);
+      else if (faites !== 3) ko(`TF-0958 coût : ${faites} passe(s) groupée(s) pour ${NOMS.length + 2} termes sur TROIS genres — attendu 3, une par combinaison de drapeaux. Le groupage n a pas eu lieu (ou il a fusionné des drapeaux, ce que le sens B refuse)`);
+      else ok(`TF-0958 coût (sens A) : ${faites} passe(s) \`git grep\` groupée(s) pour ${NOMS.length + 2} termes sur trois genres, là où une passe par terme en aurait coûté ${naif} — le coût cesse de croître avec la table, et il est DÉCLARÉ au non_juge`);
+    }
+    if (jp && !/330,9 s et 295,5 s/.test(njp)) ko('TF-0958 coût : le TEMPS mesuré sur le plus gros dépôt du parc n est pas déclaré au non_juge — la condition de clôture de l item le demande nommément');
+    else if (jp) ok('TF-0958 coût : le temps mesuré sur le plus gros dépôt du parc (909 révisions, tables réelles) est déclaré au non_juge, chiffré et daté');
+
+    // --- (B) LE SENS DE LA COUVERTURE ---------------------------------------------------------
+    // Sans ces quatre contrôles, « moins cher » et « aveugle » se lisent exactement pareil.
+    const sur = (f) => cp.filter(x => x.fichier === f);
+    if (!jp) { /* déjà dit */ }
+    else if (jp.verdict !== 'FAIL') ko(`TF-0958 couverture : le dépôt porteur ne fait plus échouer la porte (${jp.verdict}) — le groupage a rendu C4 aveugle`);
+    else if (sur('piece-a.md').length !== 1 || sur('piece-a.md')[0].terme !== NOMS[0])
+      ko(`TF-0958 misattribution : piece-a.md rend ${JSON.stringify(sur('piece-a.md'))} — attendu UN constat nommant « ${NOMS[0] }». La passe groupée ne dit pas quelle aiguille a mordu : sans identification fine, elle nomme le mauvais terme ou les nomme tous`);
+    else if (sur('piece-b.md').length !== 1 || sur('piece-b.md')[0].terme !== NOMS[1])
+      ko(`TF-0958 misattribution : piece-b.md rend ${JSON.stringify(sur('piece-b.md'))} — attendu UN constat nommant « ${NOMS[1]} »`);
+    else ok(`TF-0958 couverture · misattribution : deux noms du MÊME groupe de drapeaux dans deux blobs distincts rendent UN constat chacun, sur SON fichier et sous SON nom — l identification fine a bien eu lieu`);
+
+    if (jp && jp.verdict === 'FAIL') {
+      const cC = sur('piece-c.md');
+      if (cC.some(x => x.terme === SIGLE)) ko(`TF-0958 drapeaux (trop large) : le sigle « ${SIGLE} » est trouvé À L INTÉRIEUR du mot « a${SIGLE.toLowerCase()}ue » — le \`-w\` de son groupe a été perdu en fusionnant les genres, et la porte se remet à crier sur de la prose ordinaire`);
+      else if (!cC.some(x => x.terme === NOMS[2])) ko(`TF-0958 drapeaux (trop étroit) : le nom « ${NOMS[2]} » COLLÉ à son suffixe n est plus trouvé — le \`-w\` du groupe des sigles a débordé sur celui des noms, et l angle est devenu aveugle aux mentions collées`);
+      else ok(`TF-0958 couverture · drapeaux : dans LE MÊME fichier, le sigle enfoui dans un mot reste muet (\`-w\` tenu) et le nom collé à un suffixe parle (sous-chaîne tenue) — aucune fusion de drapeaux ne satisferait les deux`);
+      const cD = sur('piece-d.md');
+      if (cD.length) ko(`TF-0958 casse : la variante en MAJUSCULES d un identifiant SENSIBLE à la casse rend ${cD.length} constat(s) — le \`-i\` du groupe des noms a débordé sur celui des identifiants`);
+      else ok('TF-0958 couverture · casse : la variante en MAJUSCULES d un identifiant sensible à la casse reste muette — le `-i` n a pas débordé d un groupe à l autre');
+    }
+
+    // --- LE DÉPÔT PROPRE : la même forme, sans aucun terme --------------------------------------
+    const jv = jouer(propre);
+    const njv = jv ? (jv.non_juge || []).join(' ') : '';
+    if (!jv) ko('TF-0958 dépôt propre : sortie de l oracle inexploitable');
+    else if (jv.verdict !== 'PASS') ko(`TF-0958 dépôt propre : la MÊME forme sans aucun terme ne rend pas PASS (${jv.verdict}) — le groupage crie sur la structure`);
+    else if (c4contenu(jv).length) ko(`TF-0958 dépôt propre : ${c4contenu(jv).length} constat(s) C4 de contenu sur un dépôt sans aucun terme`);
+    else if (!/0 relecture\(s\) d'identification fine/.test(njv)) ko('TF-0958 dépôt propre : le non_juge ne montre pas que le cas NOMINAL d une porte (ne rien trouver) ne paie AUCUNE relecture — c est ce qui rend le groupage gratuit en régime normal');
+    else ok('TF-0958 dépôt propre : PASS, aucun constat C4, et ZÉRO relecture d identification fine — le prix du groupage n est payé que sur ce qui a mordu');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));
