@@ -3296,7 +3296,7 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="table-filters.js" data-empreinte="sha256:0336d186e19dfbfb7e3abc2e416406974f81af51efb0a028659634023196228e">
+<script data-composant="table-filters.js" data-empreinte="sha256:7720228fcc8649c1faa33c55954b17b65ffcb7f8dfdeda27833f7dcbd0dc076b">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
@@ -3328,6 +3328,10 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
        `api.etat()`, `init(table, { etat })`, `api.rafraichir()`. */
 (function (root) {
   'use strict';
+
+  /* ARBITRAGE PARTAGE DE LA VISIBILITE (TF-0953, 08/09/2026) — optionnel, jamais obligatoire :
+     un composant du socle ne cesse pas de fonctionner parce qu'un autre fichier manque. */
+  function arbitrage() { return root.DigitAIRowVisibility || null; }
 
   var SEUIL_LIGNES = 8;
   /* Au-dela de ce nombre de valeurs distinctes, la liste de cases n'est plus parcourable a
@@ -3590,6 +3594,10 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
       if (deja && deja.detruire) deja.detruire();
     }
 
+    /* DECLARER SON ATTRIBUT a l'arbitrage partage, jamais deviner ceux des autres. */
+    var V = arbitrage();
+    if (V) { V.register('data-tf-hidden'); }
+
     var lignes = corps(table);
     var scan = colonnes(table, lignes);
     var cols = scan.cols;
@@ -3648,13 +3656,27 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
         var ok = etats.every(function (e) {
           return e.selection[valeur(tr, e.col.index)] !== false;
         });
-        if (ok) { tr.removeAttribute('data-tf-hidden'); tr.style.display = ''; visibles++; }
+        if (ok) {
+          tr.removeAttribute('data-tf-hidden');
+          /* LA VISIBILITE EST UNE DISJONCTION (TF-0953, 08/09/2026). Passer CE filtre ne suffit
+             pas a rendre une ligne visible : un autre mecanisme DECLARE a l'arbitrage peut
+             encore la masquer. Forcer `display: ''` ici ecrasait ce mecanisme sans un mot — et
+             c'est ce qui a oblige un produit a poser un MutationObserver sur `hidden` pour
+             reappliquer son pliage d'arbre apres chaque passage des filtres, puis a deplier
+             tout l'arbre a chaque changement de filtre pour ne jamais cacher un resultat.
+             Sans arbitrage charge, `masquee` n'est pas consultee et le comportement est
+             exactement celui d'avant. */
+          var autre = V ? V.masquee(tr, 'data-tf-hidden') : false;
+          tr.style.display = autre ? 'none' : '';
+          if (!autre) { visibles++; }
+        }
         else {
           tr.setAttribute('data-tf-hidden', ''); tr.style.display = 'none';
           /* la ligne de détail suit le sort de sa ligne mère : masquée ET repliée */
           var det = tr.nextElementSibling;
           if (det && det.hasAttribute('data-detail')) { det.hidden = true; }
         }
+        if (V) { V.apply(tr); }
       });
       etats.forEach(function (e) {
         var actif = Object.keys(e.selection).some(function (k) { return !e.selection[k]; });
@@ -3853,7 +3875,14 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
       if (desarmerTri) { desarmerTri(); desarmerTri = null; }
       var vide = table.tBodies[0] && table.tBodies[0].querySelector('tr[data-tf-empty]');
       if (vide && vide.parentNode) vide.parentNode.removeChild(vide);
-      lignes.forEach(function (tr) { tr.removeAttribute('data-tf-hidden'); tr.style.display = ''; });
+      lignes.forEach(function (tr) {
+        tr.removeAttribute('data-tf-hidden');
+        /* Detruire CE composant ne demasque que CE qu'il masquait : une ligne cachee par un
+           autre mecanisme declare le reste. */
+        var encore = V ? V.masquee(tr, 'data-tf-hidden') : false;
+        tr.style.display = encore ? 'none' : '';
+        if (V) { V.apply(tr); }
+      });
       table.removeAttribute('data-tf-ready');
       try { delete table.__tfApi; } catch (e) { table.__tfApi = null; }
     };

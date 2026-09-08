@@ -13,9 +13,27 @@
 (function (root) {
   'use strict';
 
+  /* LES ATTRIBUTS DE MASQUAGE CONNUS DE CE COMPOSANT — et rien de plus (TF-0953, 08/09/2026).
+     Cette liste etait la DEFINITION de la visibilite d'une ligne : `tr.hidden` s'y calculait
+     entierement, donc tout mecanisme absent de la liste etait ecrase sans avertissement. Un
+     produit qui avait besoin d'un pliage d'arbre a du poser un MutationObserver sur `hidden`
+     pour reappliquer son pliage apres chaque passage des filtres. La liste reste, mais elle
+     n'est plus la definition : elle est ce que CE composant DECLARE a l'arbitrage partage
+     (assets/visibilite-lignes.js), qui calcule la disjonction de TOUS les attributs declares,
+     a un seul endroit. Ajouter un mecanisme n'oblige plus a modifier ce fichier. */
+  var MIENS = ['data-kpi-cache', 'data-rech-cache', 'data-sev-cache', 'data-axe-cache'];
+
+  function arbitrage() {
+    return root.DigitAIRowVisibility || null;
+  }
+
   function majVisibilite(tr) {
-    tr.hidden = tr.hasAttribute('data-kpi-cache') || tr.hasAttribute('data-rech-cache')
-      || tr.hasAttribute('data-sev-cache') || tr.hasAttribute('data-axe-cache');
+    var V = arbitrage();
+    if (V) { V.apply(tr); return; }
+    /* REPLI : l'arbitrage n'est pas charge sur cette page. Le composant retrouve alors son
+       comportement d'avant — un composant du socle ne cesse pas de fonctionner parce qu'un
+       autre fichier manque. */
+    tr.hidden = MIENS.some(function (a) { return tr.hasAttribute(a); });
     if (tr.hidden) {
       var d = tr.nextElementSibling;
       if (d && d.hasAttribute('data-detail')) d.hidden = true;
@@ -26,6 +44,9 @@
     scope = scope || document;
     var kpis = Array.prototype.slice.call(scope.querySelectorAll('button[data-kpi-filtre]'));
     if (!kpis.length) return null;
+    /* DECLARER SES ATTRIBUTS, jamais deviner ceux des autres : c'est tout le contrat. */
+    var V = arbitrage();
+    if (V) { MIENS.forEach(function (a) { V.register(a); }); }
     var actif = null;
 
     function lignesDe(kpi) {

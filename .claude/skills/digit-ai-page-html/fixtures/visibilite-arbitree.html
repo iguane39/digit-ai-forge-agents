@@ -1,3 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — visibilite arbitree — 20260908a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff} tr[hidden]{display:table-row}}
+</style></head>
+<!--
+  Fixture VERTE de l arbitrage partage de visibilite (TF-0953, 08/09/2026).
+
+  Cette page CHARGE le composant d arbitrage. Les trois mecanismes declarent chacun leur
+  attribut de masquage ; `hidden` est la disjonction de tous, calculee a un seul endroit. Une
+  ligne pliee par l arbre reste pliee quand un filtre passe — sans MutationObserver, et sans
+  deplier quoi que ce soit.
+
+  Sa jumelle `visibilite-sans-arbitrage.html` reproduit le defaut : la meme page, le meme
+  pliage, SANS le composant d arbitrage.
+-->
+<body><main class="wrap">
+<h1>Banc de l arbitrage de visibilite des lignes</h1>
+<p>Trois mecanismes se disputent la meme ligne : le filtre par indicateur, le composant de
+filtres de tableau, et un pliage d arbre qui n appartient pas au socle.</p>
+<p><button type="button" data-kpi-filtre data-kpi-table="t1" data-kpi-attr="statut"
+   data-kpi-valeur="ok" aria-pressed="false">Conformes</button></p>
+<table id="t1" data-filterable>
+<thead><tr><th data-definition="Objet suivi par le chargement. Source : catalogue des objets.">Objet</th><th data-definition="Etat du dernier controle. Valeurs : ok, ecart. Source : recette.">Statut</th></tr></thead>
+<tbody>
+<tr id="r1" data-statut="ok" data-niveau="0" data-cle="r1" data-parent=""><td>Chargement des baux</td><td>ok</td></tr>
+<tr id="r2" data-statut="ok" data-niveau="0" data-cle="r2" data-parent=""><td>Chargement des lots</td><td>ok</td></tr>
+<tr id="r3" data-statut="ok" data-niveau="1" data-cle="r3" data-parent="r2"><td>Colonne surface</td><td>ok</td></tr>
+<tr id="r4" data-statut="ecart" data-niveau="1" data-cle="r4" data-parent="r2"><td>Colonne loyer</td><td>ecart</td></tr>
+<tr id="r5" data-statut="ok" data-niveau="0" data-cle="r5" data-parent=""><td>Chargement des indices</td><td>ok</td></tr>
+<tr id="r6" data-statut="ok" data-niveau="1" data-cle="r6" data-parent="r5"><td>Colonne indice</td><td>ok</td></tr>
+</tbody></table>
+</main>
+<script>
+/* LE TROISIEME MECANISME — un pliage d arbre, exactement le cas du produit (TF-0953).
+   Il ne connait AUCUN attribut des composants du socle : il declare le sien et laisse
+   l arbitrage calculer la disjonction. Sans arbitrage charge, il pose son attribut et se fait
+   ecraser au premier passage d un filtre : c est le defaut que la fixture ROUGE reproduit. */
+(function (root) {
+  var ATTR = 'data-arbre-cache';
+  function V() { return root.DigitAIRowVisibility || null; }
+  if (V()) { V().register(ATTR); }
+  function plier(cle) {
+    var lignes = document.querySelectorAll('tr[data-parent="' + cle + '"]');
+    Array.prototype.forEach.call(lignes, function (tr) {
+      if (V()) { V().masquer(tr, ATTR); }
+      else { tr.setAttribute(ATTR, ''); tr.hidden = true; }
+    });
+  }
+  function estVue(id) {
+    var tr = document.getElementById(id);
+    return !tr.hidden && tr.style.display !== 'none';
+  }
+  root.BancArbre = { plier: plier, estVue: estVue, ATTR: ATTR };
+}(window));
+window.addEventListener('load', function () {
+  window.DigitAIKpiFilter.init(document);
+  window.__tf = window.DigitAITableFilters.init(document.getElementById('t1'));
+});
+</script>
+<!-- COMPOSANT-EMBARQUE:DEBUT visibilite-lignes.js — copie du socle digit-ai-page-html/assets/visibilite-lignes.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="visibilite-lignes.js" data-empreinte="sha256:8479a866bd64607f6716a892e370ab4f10a51b6b5449c48d4199a88c9450520d">
+/* Digit-AI — ARBITRAGE PARTAGE de la visibilite d'une ligne de tableau (TF-0953, 08/09/2026).
+
+   LE FAIT PAYE. Deux composants du socle calculaient chacun, pour leur compte, si une ligne
+   devait etre vue : `kpi-filter.js` posait `tr.hidden` depuis SA liste d'attributs, en dur ;
+   `table-filters.js` forcait `style.display` sur toutes les lignes qui passent son filtre.
+   Aucun des deux ne laissait de place a un TROISIEME mecanisme. Un produit qui avait besoin d'un
+   pliage d'arbre n'a eu d'autre issue qu'un MutationObserver sur `hidden`, pour reappliquer son
+   pliage apres chaque passage des filtres — et deplier tout l'arbre a chaque changement de
+   filtre, pour ne jamais cacher un resultat. Deux contournements qui ne devraient pas exister.
+
+   LA LOI, ET ELLE TIENT EN UNE PHRASE : la visibilite d'une ligne est une DISJONCTION, et elle
+   se calcule A UN SEUL ENDROIT. Chaque mecanisme DECLARE l'attribut par lequel il masque ; il ne
+   connait plus ceux des autres, et il n'a plus a les connaitre. Ajouter un mecanisme cesse
+   d'etre une modification des composants existants.
+
+   CONTRAT :
+     DigitAIRowVisibility.register('data-arbre-cache')  — declare un attribut de masquage
+     DigitAIRowVisibility.attributs()                   — la liste, dans l'ordre d'inscription
+     DigitAIRowVisibility.masquee(tr, sauf)             — un attribut declare masque-t-il ?
+                                                          `sauf` exclut le sien de la question
+     DigitAIRowVisibility.apply(tr)                     — `tr.hidden` = disjonction de TOUS
+     DigitAIRowVisibility.masquer(tr, attr)             — pose l'attribut PUIS arbitre
+     DigitAIRowVisibility.demasquer(tr, attr)           — retire l'attribut PUIS arbitre
+
+   AUCUN ATTRIBUT N'EST INSCRIT D'AVANCE, et c'est deliberé : une liste par defaut ferait
+   exactement ce que ce module existe pour supprimer — un composant qui decide pour les autres.
+   Un mecanisme absent de la page n'inscrit rien, donc ne masque rien.
+
+   `apply` ne touche QUE `hidden`. Le `style.display` reste la propriete du composant qui le
+   pose : melanger les deux ecritures dans un seul endroit rendrait le module responsable du
+   rendu, alors qu'il n'arbitre qu'une decision.
+
+   La ligne de DETAIL (`tr[data-detail]`) suit sa ligne mere : masquee avec elle, jamais seule.
+   C'est la regle que les deux composants tenaient deja chacun de son cote.
+
+   Viewer-only : au print, la regle du livrable reaffiche `tr[hidden]` — inchange. */
+(function (root) {
+  'use strict';
+
+  var attributs = [];
+
+  function register(attr) {
+    if (typeof attr !== 'string' || !attr) { return attributs.slice(); }
+    if (attributs.indexOf(attr) === -1) { attributs.push(attr); }
+    return attributs.slice();
+  }
+
+  function masquee(tr, sauf) {
+    if (!tr || !tr.hasAttribute) { return false; }
+    for (var i = 0; i < attributs.length; i++) {
+      if (attributs[i] === sauf) { continue; }
+      if (tr.hasAttribute(attributs[i])) { return true; }
+    }
+    return false;
+  }
+
+  function apply(tr) {
+    if (!tr || !tr.hasAttribute) { return false; }
+    var cache = masquee(tr);
+    tr.hidden = cache;
+    if (cache) {
+      var d = tr.nextElementSibling;
+      if (d && d.hasAttribute('data-detail')) { d.hidden = true; }
+    }
+    return cache;
+  }
+
+  function masquer(tr, attr) {
+    if (tr && tr.setAttribute) { register(attr); tr.setAttribute(attr, ''); }
+    return apply(tr);
+  }
+
+  function demasquer(tr, attr) {
+    if (tr && tr.removeAttribute) { register(attr); tr.removeAttribute(attr); }
+    return apply(tr);
+  }
+
+  root.DigitAIRowVisibility = {
+    register: register,
+    attributs: function () { return attributs.slice(); },
+    masquee: masquee,
+    apply: apply,
+    masquer: masquer,
+    demasquer: demasquer,
+  };
+}(typeof window !== 'undefined' ? window : this));
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN visibilite-lignes.js -->
+<!-- COMPOSANT-EMBARQUE:DEBUT kpi-filter.js — copie du socle digit-ai-page-html/assets/kpi-filter.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="kpi-filter.js" data-empreinte="sha256:9a6e221e2bb71825ab6bed33d0e3075b7c9d91c510ec42483725a442093958a4">
+/* Digit-AI — KPI cliquables filtrant une liste (standard H3, delta n°6 — 14/08).
+   Un KPI qui compte des éléments AFFICHÉS dans la page les filtre au clic ; re-clic = tout.
+   Un KPI d'éléments hors page ne se branche PAS ici : il reste un div et dit où ils vivent.
+
+   Contrat de marquage (le composant ne devine rien) :
+     <button data-kpi-filtre data-kpi-table="id-de-table"
+             data-kpi-attr="statut" data-kpi-valeur="candidat" aria-pressed="false">…</button>
+   Chaque ligne filtrable de la table porte data-<attr>="…" (ex. data-statut="candidat").
+   Composition : le masquage passe par data-kpi-cache ; les autres mécanismes (recherche,
+   facettes D-12, sévérité) gardent leurs attributs propres — visibilité dérivée, personne
+   n'écrase personne. Les lignes [data-detail] suivent leur ligne mère.
+   Viewer-only : au print, la règle du livrable réaffiche tr[hidden]. */
+(function (root) {
+  'use strict';
+
+  /* LES ATTRIBUTS DE MASQUAGE CONNUS DE CE COMPOSANT — et rien de plus (TF-0953, 08/09/2026).
+     Cette liste etait la DEFINITION de la visibilite d'une ligne : `tr.hidden` s'y calculait
+     entierement, donc tout mecanisme absent de la liste etait ecrase sans avertissement. Un
+     produit qui avait besoin d'un pliage d'arbre a du poser un MutationObserver sur `hidden`
+     pour reappliquer son pliage apres chaque passage des filtres. La liste reste, mais elle
+     n'est plus la definition : elle est ce que CE composant DECLARE a l'arbitrage partage
+     (assets/visibilite-lignes.js), qui calcule la disjonction de TOUS les attributs declares,
+     a un seul endroit. Ajouter un mecanisme n'oblige plus a modifier ce fichier. */
+  var MIENS = ['data-kpi-cache', 'data-rech-cache', 'data-sev-cache', 'data-axe-cache'];
+
+  function arbitrage() {
+    return root.DigitAIRowVisibility || null;
+  }
+
+  function majVisibilite(tr) {
+    var V = arbitrage();
+    if (V) { V.apply(tr); return; }
+    /* REPLI : l'arbitrage n'est pas charge sur cette page. Le composant retrouve alors son
+       comportement d'avant — un composant du socle ne cesse pas de fonctionner parce qu'un
+       autre fichier manque. */
+    tr.hidden = MIENS.some(function (a) { return tr.hasAttribute(a); });
+    if (tr.hidden) {
+      var d = tr.nextElementSibling;
+      if (d && d.hasAttribute('data-detail')) d.hidden = true;
+    }
+  }
+
+  function init(scope) {
+    scope = scope || document;
+    var kpis = Array.prototype.slice.call(scope.querySelectorAll('button[data-kpi-filtre]'));
+    if (!kpis.length) return null;
+    /* DECLARER SES ATTRIBUTS, jamais deviner ceux des autres : c'est tout le contrat. */
+    var V = arbitrage();
+    if (V) { MIENS.forEach(function (a) { V.register(a); }); }
+    var actif = null;
+
+    function lignesDe(kpi) {
+      var t = document.getElementById(kpi.getAttribute('data-kpi-table') || '');
+      if (!t || !t.tBodies || !t.tBodies[0]) return [];
+      return Array.prototype.slice.call(t.tBodies[0].rows).filter(function (tr) {
+        return !tr.hasAttribute('data-detail');
+      });
+    }
+
+    function appliquer() {
+      kpis.forEach(function (k) {
+        k.setAttribute('aria-pressed', k === actif ? 'true' : 'false');
+      });
+      var vues = {};
+      kpis.forEach(function (k) { vues[k.getAttribute('data-kpi-table')] = k; });
+      Object.keys(vues).forEach(function (idTable) {
+        lignesDe(vues[idTable]).forEach(function (tr) {
+          var ok = !actif
+            || tr.getAttribute('data-' + actif.getAttribute('data-kpi-attr'))
+               === actif.getAttribute('data-kpi-valeur');
+          if (ok) { tr.removeAttribute('data-kpi-cache'); } else { tr.setAttribute('data-kpi-cache', ''); }
+          majVisibilite(tr);
+        });
+      });
+      /* compteurs éventuels (mêmes conventions que l'outillage du socle) */
+      document.querySelectorAll('.outil-compte').forEach(function (c) {
+        var bloc = c.closest('.bloc-tableau, [data-outille]');
+        if (!bloc) return;
+        var lignes = Array.prototype.slice.call(bloc.querySelectorAll('table tbody tr'))
+          .filter(function (tr) { return !tr.hasAttribute('data-detail'); });
+        var visibles = lignes.filter(function (tr) {
+          return !tr.hidden && tr.style.display !== 'none';
+        }).length;
+        c.textContent = visibles + ' / ' + lignes.length + ' ligne(s) affichée(s)';
+      });
+    }
+
+    kpis.forEach(function (k) {
+      k.addEventListener('click', function () {
+        actif = (actif === k) ? null : k;
+        appliquer();
+      });
+    });
+    return { appliquer: appliquer, reinitialiser: function () { actif = null; appliquer(); } };
+  }
+
+  root.DigitAIKpiFilter = { init: init };
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN kpi-filter.js -->
+<!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="table-filters.js" data-empreinte="sha256:7720228fcc8649c1faa33c55954b17b65ffcb7f8dfdeda27833f7dcbd0dc076b">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
@@ -605,3 +875,6 @@
                                SEUIL_RECHERCHE: SEUIL_RECHERCHE, nombre: nombre,
                                comparer: comparer };
 })(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN table-filters.js -->
+</body></html>

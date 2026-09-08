@@ -9,7 +9,32 @@ Schéma de base de données aux standards Digit-AI : cartes-entités listant les
 - Dictionnaire de données avec classification de sensibilité
 - Signes : « schéma de base de données », « modèle de données », « ERD », « MCD/MLD », « les tables et leurs relations », « où sont les données personnelles »
 
-Ne pas utiliser pour : flux de données entre systèmes (→ canevas multi-bandes), topologie d'infrastructure (→ canevas topologie).
+Ne pas utiliser pour : flux de données entre systèmes (→ canevas multi-bandes), topologie d'infrastructure (→ canevas topologie), ce qui CHANGE entre un existant et une cible (→ `assets/template-schema-differentiel.html`).
+
+## Laquelle fait foi — la question n'est pas rhétorique (TF-0940, 08/09/2026)
+
+**Le fait, et il est vérifiable des deux côtés.** DEUX moteurs de schéma de base de données
+coexistent dans le parc, et ils ne rendent pas la même chose :
+
+| | Ce canevas | `digit-ai-forge-audit` · `tools/rapport-engine.mjs`, fonction `renderERD` |
+| --- | --- | --- |
+| Rendu | cartes HTML positionnées + calque SVG pour les arêtes | SVG pur |
+| Colonnes | badges PK / UK / FK / NN | texte « `[PK] nom *` », 🔒 pour les PII |
+| Arêtes | ancrées **sur la ligne de la colonne** | de carte à carte |
+| Mise à l'échelle | `fitSchema` (tient toujours dans la largeur) | aucune |
+| Dictionnaire | dictionnaire compagnon | aucun |
+
+**Celui-ci fait foi**, et la raison est écrite dans sa propre référence : il est *dérivé du socle
+D16 des rapports d'audit, amélioré*. Le rapport d'audit rend donc l'ANCIENNE version pendant que
+la capture donnée comme modèle est la nouvelle — deux moteurs, deux rendus, **un seul nom**.
+
+**Ce qui reste à faire, et ce n'est pas de ce côté-ci du parc.** Le rapport d'audit doit
+consommer ce canevas — import, ou copie conforme déclarée avec son empreinte, comme le socle des
+pages HTML l'exige déjà pour toute copie de composant — et `renderERD` disparaître ou devenir un
+appel. Tant que ce geste n'est pas fait, une capture de schéma ne dit pas de quel moteur elle
+sort : **le lecteur d'un rapport d'audit doit savoir qu'il regarde l'ancien rendu.** Cette
+déclaration n'est donc pas la correction, c'est le garde-fou en attendant qu'elle soit faite du
+côté propriétaire du rapport.
 
 ## Architecture technique
 

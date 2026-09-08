@@ -1866,6 +1866,118 @@ def run_infobulle_runtime():
     return out
 
 
+def run_visibilite_lignes():
+    """TF-0953 (08/09/2026) — LA VISIBILITE D'UNE LIGNE EST UNE DISJONCTION, ARBITREE A UN SEUL
+    ENDROIT.
+
+    LE FAIT PAYE. Deux composants du socle calculaient chacun, pour leur compte, si une ligne
+    devait etre vue : `kpi-filter.js` posait `tr.hidden` depuis SA liste d'attributs, ecrite en
+    dur ; `table-filters.js` forcait `style.display = ''` sur toute ligne passant son filtre.
+    Aucun des deux ne laissait de place a un TROISIEME mecanisme. Un produit qui avait besoin
+    d'un pliage d'arbre n'a eu d'autre issue qu'un MutationObserver sur `hidden` — pour
+    reappliquer son pliage APRES chaque passage des filtres — puis un depliage complet de
+    l'arbre a chaque changement de filtre, pour ne jamais cacher un resultat. Deux
+    contournements qui ne devraient pas exister.
+
+    POURQUOI UN BANC D'EXECUTION ET PAS UNE REGLE DE MARQUAGE : le defaut n'est pas dans le HTML,
+    il est dans ce que le JavaScript FAIT a l'ouverture. Aucun oracle de marquage ne le voit — la
+    page est parfaitement conforme avant comme apres.
+
+    DEUX SENS, ET LE SECOND EST LA REPRODUCTION DU DEFAUT :
+      (1) VERT  — `visibilite-arbitree.html` charge le composant d'arbitrage. Une ligne pliee par
+                  l'arbre reste pliee quand le filtre par indicateur passe, ET quand le composant
+                  de filtres de tableau repasse. Les deux composants sont eprouves, parce que
+                  chacun ecrasait a sa maniere : l'un par `hidden`, l'autre par `style.display` ;
+      (2) ROUGE — `visibilite-sans-arbitrage.html`, la MEME page et le MEME pliage SANS le
+                  composant : la ligne pliee REAPPARAIT. Sans ce sens, un vert obtenu par une
+                  mesure devenue muette serait indistinguable d'un vert obtenu par le correctif.
+
+    LE TEMOIN QUI EMPECHE LE VERT DE MENTIR : une ligne que le filtre exclut VRAIMENT doit rester
+    masquee dans les deux pages. Un arbitrage qui rendrait tout visible passerait les deux cas
+    ci-dessus et casserait le filtrage.
+
+    Silencieux si playwright est absent : un comportement se mesure dans un navigateur.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from render_page import ensure_browser_path  # noqa: PLC0415
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001 — l'auto-detection du navigateur est un confort, pas un dû
+        pass
+
+    out = []
+
+    def cas(nom, attendu, obtenu, regle):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:120], "obtenu": str(obtenu)[:120],
+                    "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"[:300]})
+
+    def jouer(fichier):
+        """Plie deux sous-arbres, passe les DEUX filtres, et rend ce qui est encore vu."""
+        cible = FIXTURES / fichier
+        if not cible.exists():
+            return {"absente": True}
+        with sync_playwright() as pw:
+            navigateur = pw.chromium.launch()
+            page = navigateur.new_page(viewport={"width": 1280, "height": 900})
+            try:
+                page.goto(cible.resolve().as_uri())
+                page.wait_for_load_state("load")
+                # r3 et r4 sont les enfants de r2 ; r6 est l'enfant de r5.
+                page.evaluate("() => { window.BancArbre.plier('r2'); window.BancArbre.plier('r5'); }")
+                plie_avant = page.evaluate("() => window.BancArbre.estVue('r3')")
+                # (a) le filtre par indicateur : il RECALCULE `hidden` sur chaque ligne.
+                page.evaluate("() => document.querySelector('button[data-kpi-filtre]').click()")
+                apres_kpi = page.evaluate("() => window.BancArbre.estVue('r3')")
+                # (b) le composant de filtres de tableau : il force `style.display` sur chaque
+                #     ligne qui passe son filtre. Sans filtre pose, TOUTES passent.
+                page.evaluate("() => { if (window.__tf) window.__tf.appliquer(); }")
+                apres_filtres = page.evaluate("() => window.BancArbre.estVue('r6')")
+                # TEMOIN : r4 est exclu par le filtre lui-meme (statut « ecart »).
+                exclu = page.evaluate("() => window.BancArbre.estVue('r4')")
+                return {"plie_avant": plie_avant, "apres_kpi": apres_kpi,
+                        "apres_filtres": apres_filtres, "exclu": exclu}
+            except Exception as erreur:  # noqa: BLE001
+                return {"erreur": type(erreur).__name__ + " · " + str(erreur).splitlines()[0][:160]}
+            finally:
+                navigateur.close()
+
+    vert = jouer("visibilite-arbitree.html")
+    rouge = jouer("visibilite-sans-arbitrage.html")
+    for nom, res in (("visibilite-arbitree.html", vert), ("visibilite-sans-arbitrage.html", rouge)):
+        if res.get("absente"):
+            out.append({"fixture": nom, "verdict": "ABSENTE", "attendu": "fixture présente",
+                        "obtenu": "absente", "regle": "TF-0953", "detail": ""})
+        elif res.get("erreur"):
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "banc joué",
+                        "obtenu": "panne", "regle": "TF-0953", "detail": res["erreur"]})
+    if vert.get("absente") or vert.get("erreur") or rouge.get("absente") or rouge.get("erreur"):
+        return out
+
+    # (1) SENS VERT — le pliage survit aux DEUX composants.
+    cas("visibilite-arbitree · pliage puis filtre par indicateur",
+        {"plie": False, "apres_kpi": False}, {"plie": vert["plie_avant"], "apres_kpi": vert["apres_kpi"]},
+        "TF-0953 disjonction")
+    cas("visibilite-arbitree · pliage puis filtres de tableau",
+        False, vert["apres_filtres"], "TF-0953 disjonction")
+    # (2) SENS ROUGE — sans arbitrage, la ligne pliée REVIENT. C'est le défaut du produit.
+    cas("visibilite-sans-arbitrage · la ligne pliée réapparaît (sens rouge)",
+        True, rouge["apres_kpi"] or rouge["apres_filtres"], "TF-0953 reproduction")
+    # (3) TÉMOIN — le filtre filtre encore, dans les deux pages.
+    cas("visibilite · témoin : la ligne exclue par le filtre reste masquée",
+        {"arbitree": False, "sans": False}, {"arbitree": vert["exclu"], "sans": rouge["exclu"]},
+        "TF-0953 témoin")
+    return out
+
+
 def _page_hote_du_canevas(legende_en_glyphes=False):
     """Fabrique une page hote portant le canevas differentiel, 40 cartes et 274 puces.
 
@@ -2070,6 +2182,13 @@ def main():
     canevas = run_canevas_differentiel()
     if canevas:
         res += canevas
+    # TF-0953 — l'arbitrage PARTAGE de la visibilite d'une ligne : deux composants du socle
+    # calculaient chacun `hidden` ou `display` pour leur compte, et ecrasaient tout troisieme
+    # mecanisme sans un mot. Le defaut n'est pas dans le HTML, il est dans ce que le JavaScript
+    # FAIT a l'ouverture — donc il se mesure dans un navigateur, pas par une regle de marquage.
+    visibilite = run_visibilite_lignes()
+    if visibilite:
+        res += visibilite
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":
