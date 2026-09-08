@@ -204,12 +204,49 @@ function litteralProduit(nom) {
   return new RegExp(`(?<![A-Za-z0-9])${corps}(?![A-Za-z0-9])`);
 }
 
+/* TF-0825 (05/09, garde-fou n° 2) — LA FORME BORNÉE D'UN TERME COURT.
+ *
+ *  LE FAIT. Un nom de client est long et distinctif ; un nom de produit est souvent une
+ *  abréviation de TROIS LETTRES, et trois majuscules sont un motif fréquent dans du code tiers.
+ *  Mesure du 05/09 sur une forge : la même séquence de trois lettres rendait 3 occurrences sur
+ *  les fichiers SUIVIS — la mesure exacte — et 212 sur l'arbre de travail, dont 209 dans
+ *  `.venv/`, où ces trois lettres sont un acronyme d'informatique sans aucun rapport.
+ *
+ *  LE GARDE-FOU. Le référentiel peut porter, pour un terme court, la ou les FORMES BORNÉES
+ *  attendues plutôt que la sous-chaîne nue — typiquement l'identifiant de lot « <nom>-FR » et
+ *  sa variante « <nom>.FR ». La valeur de la clé devient alors un objet :
+ *
+ *      "KRP": { "pseudo": "Produit-97", "formes": ["KRP-FR", "KRP.FR"] }
+ *
+ *  Déclarées, ces formes REMPLACENT la clé nue : la porte ne cherche plus que celles-là, chacune
+ *  bornée aux deux bouts comme la clé le serait. Sans `formes`, rien ne change — le comportement
+ *  par défaut reste la clé bornée plus ses variantes de graphie.
+ *
+ *  POURQUOI C'EST UN GARDE-FOU ET NON UN ASSOUPLISSEMENT : sans lui, la seule façon de faire
+ *  taire un terme court qui bruite est de le retirer de la table — c'est-à-dire d'éteindre
+ *  l'angle. Avec lui, on RESSERRE ce qu'on cherche au lieu d'abandonner ce qu'on garde. Et
+ *  c'est un choix DÉCLARÉ, terme par terme, lisible dans la table, jamais une heuristique. */
+function formesDeclarees(valeur) {
+  if (!valeur || typeof valeur !== 'object' || Array.isArray(valeur)) return null;
+  const f = Array.isArray(valeur.formes) ? valeur.formes.filter(x => typeof x === 'string' && x.trim()) : [];
+  return f.length ? f : null;
+}
+
 function termesProduits(table) {
   const termes = [];
   let ignorees = 0;
-  for (const cle of Object.keys((table || {}).produits || {})) {
+  const produits = (table || {}).produits || {};
+  for (const cle of Object.keys(produits)) {
     if (CLE_CHEMIN.test(cle)) { ignorees += 1; continue; }
-    termes.push({ cle, litt: litteralProduit(cle), re: variantesProduit(cle) });
+    const formes = formesDeclarees(produits[cle]);
+    if (formes) {
+      // Les formes déclarées REMPLACENT la clé nue. Chacune est bornée comme la clé l'aurait
+      // été : une forme qui vivrait au milieu d'un mot n'est pas une mention, c'est un blob.
+      termes.push({ cle, formes, litt: null, re: null,
+                    bornees: formes.map(litteralProduit) });
+      continue;
+    }
+    termes.push({ cle, formes: null, litt: litteralProduit(cle), re: variantesProduit(cle) });
   }
   return { termes, ignorees };
 }
@@ -217,6 +254,7 @@ function termesProduits(table) {
 /** Une clé de produit dans un texte : dans sa graphie littérale BORNÉE, ou dans une de ses
  *  variantes de graphie. Seule la frontière a changé le 07/09 — la forme d'un constat, non. */
 function porteProduit(hay, p) {
+  if (p.bornees) return p.bornees.some(re => re.test(hay));
   return p.litt.test(hay) || (p.re ? p.re.test(hay) : false);
 }
 
@@ -478,6 +516,23 @@ nj.push(prodMotif || ('table lue (pseudonymes de produits) : ' + prodPath
   + ' — table des produits employée (' + P.length
   + ' nom(s) de produit jugé(s) par C5, ' + prodIgnorees + ' clé(s) de CHEMIN ignorée(s) — un chemin '
   + "de disque n'est pas un nom)"));
+// TF-0825 (05/09, garde-fou n° 1) — LA PORTÉE « FICHIERS SUIVIS PAR GIT » EST UNE PROPRIÉTÉ,
+// PAS UNE LIMITE SUBIE, et elle se DÉCLARE comme telle. Elle était déjà tenue et déjà au
+// non_juge, mais énoncée comme un manque. Pour les termes COURTS elle devient ce qui rend
+// l'angle exploitable : mesure du 05/09 sur une forge — la même séquence de trois lettres rend
+// 3 occurrences sur les fichiers suivis (la mesure exacte) et 212 sur l'arbre de travail, dont
+// 209 dans `.venv/` où ces lettres sont un acronyme d'informatique. La portée absorbe donc seule
+// tout le bruit — MAIS c'est une propriété du DÉPÔT, pas de la règle : un `vendor/` SUIVI
+// suffirait à faire rendre des dizaines de constats faux, et c'est là que les FORMES BORNÉES
+// (voir `formesDeclarees`) prennent le relais. Le dire est ce qui permet de le vérifier.
+if (P.length) nj.push('PORTÉE ASSUMÉE de C5 sur l’arbre courant : les fichiers SUIVIS par git, '
+  + 'et eux seuls (`git ls-files`). Ce n’est pas une limite subie : pour un nom de produit COURT '
+  + '— souvent trois majuscules, motif fréquent dans du code tiers — c’est la propriété qui rend '
+  + 'l’angle exploitable. Mesure du 05/09 : 3 occurrences sur les fichiers suivis contre 212 sur '
+  + 'l’arbre de travail, dont 209 dans des paquets installés. ATTENTION : c’est une propriété du '
+  + 'DÉPÔT, pas de la règle — un `vendor/` SUIVI ramènerait le bruit. Le remède est alors la '
+  + 'FORME BORNÉE déclarée dans la table (`"formes": ["<nom>-FR", "<nom>.FR"]`), qui remplace la '
+  + 'sous-chaîne nue, jamais le retrait du terme, qui éteindrait l’angle.');
 if (P.length) nj.push("C5 ne balaie PAS le CONTENU de l'historique (ce que C4 fait pour les clients) : "
   + 'elle juge les CONTENUS et les NOMS des fichiers SUIVIS de l’arbre courant, et les MESSAGES de '
   + "commit de tout l'historique. Un nom de produit vivant seulement dans un blob ancien, sur un "

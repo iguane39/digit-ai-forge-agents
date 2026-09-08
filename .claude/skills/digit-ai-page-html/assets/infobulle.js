@@ -1,4 +1,4 @@
-/* Digit-AI — Infobulle structuree (TF-0935, lot Produit-10 20260908d, 08/09).
+/* infobulle.js — comportement de l'infobulle structuree (TF-0935, lot Produit-10 20260908d).
 
    LE FAIT. Le socle ne connaissait que l'attribut `title` natif, et aucune regle ne jugeait sa
    LISIBILITE : sur un livrable servi, 3 153 cellules a `title`, 2 527 portant plusieurs objets,

@@ -1,4 +1,8 @@
-/* Digit-AI — Infobulle structuree (TF-0935, lot Produit-10 20260908d, 08/09).
+/* infobulle.css — habillage de l'infobulle structuree (TF-0935, lot Produit-10 20260908d).
+   La BANNIERE d'un composant est ce a quoi oracle-parite-assets le RECONNAIT : deux assets
+   qui partagent leur premiere ligne se confondent, et la parite accuse chacun d'etre l'autre
+   (mesure du 08/09 : P1 « copie NON DECLAREE » et P3 « bloc non delimite » sur une page
+   pourtant posee par le poseur). Elle est donc distincte de celle d'infobulle.js.
    Le socle ne connaissait que l'attribut `title` natif : sept objets concatenes en un
    paragraphe de 700 caracteres etaient conformes a L3 et illisibles. Ce composant rend la
    MEME source (le `title`) en liste — une seule source de verite, aucun balisage double.

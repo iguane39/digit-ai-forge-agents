@@ -702,6 +702,100 @@ else {
   }
 }
 
+// TF-0825 (05/09/2026) — LA FORME BORNÉE D'UN TERME COURT, ET SA FIXTURE DOUBLE SENS.
+//
+// LE FAIT. Un nom de client est long et distinctif ; un nom de produit est souvent une
+// abréviation de TROIS LETTRES. Mesure du 05/09 sur une forge : la même séquence de trois
+// majuscules rend 3 occurrences sur les fichiers SUIVIS — la mesure exacte du lot — et 212 sur
+// l'arbre de travail, dont 209 dans des paquets installés où ces lettres sont un acronyme
+// d'informatique sans aucun rapport avec le produit.
+//
+// LE GARDE-FOU ÉPROUVÉ ICI : la table peut porter, pour un terme court, la ou les FORMES
+// BORNÉES attendues (« <nom>-FR » et sa variante « <nom>.FR ») plutôt que la sous-chaîne nue.
+// Déclarées, elles REMPLACENT la clé.
+//
+// TROIS CAS, ET LE TROISIÈME EST LE GARDE-FOU DU GARDE-FOU :
+//   (1) ROUGE — le nom dans un IDENTIFIANT DE LOT (« KRP-FR ») : la porte échoue ;
+//   (2) VERT  — les MÊMES LETTRES employées comme acronyme légitime (« le protocole KRP ») :
+//               plus aucun constat. Sans ce cas, rien ne distingue un gate juste d'un gate qui
+//               ne bruite pas ENCORE, et un gate qui bruite se contourne avant d'être corrigé ;
+//   (3) le CONTRE-CAS de (2) : la MÊME phrase, la MÊME clé, SANS `formes` déclarées → FAIL.
+//               C'est lui qui prouve que le vert de (2) vient de la déclaration et non d'une
+//               règle devenue aveugle. Un assouplissement non contrôlé se lit exactement comme
+//               un garde-fou, et seule cette paire les sépare.
+// Dépôt jetable, racine jetable DÉCLARÉE et clé INVENTÉE — mêmes raisons qu'aux cas voisins.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c5-formes-'));
+  try {
+    const CLE = 'KRP';
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const tClients = path.join(tables, 'clients.json');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+    // La table AVEC formes déclarées, et la MÊME table sans — c'est la seule différence entre
+    // le cas (2) et le cas (3).
+    const tAvec = path.join(tables, 'produits-formes.json');
+    const tSans = path.join(tables, 'produits-nu.json');
+    fs.writeFileSync(tAvec, JSON.stringify({ produits: {
+      [CLE]: { pseudo: 'Produit-97', formes: [CLE + '-FR', CLE + '.FR'] } } }), 'utf8');
+    fs.writeFileSync(tSans, JSON.stringify({ produits: { [CLE]: 'Produit-97' } }), 'utf8');
+
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const batir = (nom, fichier, contenu) => {
+      const r = path.join(depots, nom);
+      fs.mkdirSync(r);
+      fs.writeFileSync(path.join(r, fichier), contenu, 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q');
+      g('config', 'user.email', 'banc@local');
+      g('config', 'user.name', 'banc');
+      g('add', '-A');
+      g('commit', '-q', '-m', 'depot jetable du banc');
+      return r;
+    };
+
+    // (1) l'identifiant de lot, tel qu'un lot de retours le porte.
+    const lot = batir('lot', 'suivi.md', 'Lot recu : ' + CLE + '-FR - RETOURS - 20260908a.');
+    // (2)/(3) l'acronyme legitime, borne d'espaces : la MEME graphie que le cas rouge de TF-0880,
+    // qui echouait alors a bon droit. Ici la table dit que seule la forme de lot compte.
+    const acro = batir('acronyme', 'notes.md', 'Le protocole ' + CLE + ' reste a brancher cette semaine.');
+
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const jouer = (repo, tProduits) => {
+      const r = spawnSync(process.execPath, [
+        path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits,
+      ], { encoding: 'utf8', timeout: 180000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const c5de = (j) => (j ? (j.findings || []).filter(f => f.regle === 'C5') : []);
+
+    const j1 = jouer(lot, tAvec);
+    const c1 = c5de(j1);
+    if (!j1) ko('TF-0825 forme de lot : sortie de l oracle inexploitable');
+    else if (j1.verdict !== 'FAIL') ko('TF-0825 forme de lot : « ' + CLE + '-FR » dans un identifiant de lot ne fait pas echouer la porte (' + j1.verdict + ') — la forme declaree n est pas cherchee');
+    else if (!c1.length) ko('TF-0825 forme de lot : aucun constat C5 sur la forme DECLAREE');
+    else if (!c1.every(f => f.sev && f.msg && f.where)) ko('TF-0825 forme de lot : un constat C5 ne porte pas le contrat findings[] (sev, msg, where)');
+    else ok('TF-0825 forme de lot : « ' + CLE + '-FR » dans un identifiant de lot -> FAIL, ' + c1.length + ' constat(s) C5 au contrat findings[]');
+
+    const j2 = jouer(acro, tAvec);
+    if (!j2) ko('TF-0825 acronyme legitime : sortie de l oracle inexploitable');
+    else if (c5de(j2).length) ko('TF-0825 acronyme legitime : les memes lettres employees comme acronyme font encore ' + c5de(j2).length + ' constat(s) C5 — la forme bornee ne remplace pas la sous-chaine nue');
+    else if (j2.verdict !== 'PASS') ko('TF-0825 acronyme legitime : le depot au seul acronyme ne rend pas PASS (' + j2.verdict + ')');
+    else if (!/PORTÉE ASSUMÉE de C5/.test((j2.non_juge || []).join(' '))) ko('TF-0825 acronyme legitime : la portee « fichiers SUIVIS » n est pas DECLAREE comme propriete au non_juge — garde-fou n° 1 absent');
+    else ok('TF-0825 acronyme legitime : « ' + CLE + ' » comme acronyme -> PASS, aucun constat C5, et la portee « fichiers suivis » est declaree comme PROPRIETE au non_juge');
+
+    const j3 = jouer(acro, tSans);
+    if (!j3) ko('TF-0825 contre-cas : sortie de l oracle inexploitable');
+    else if (j3.verdict !== 'FAIL' || !c5de(j3).length) ko('TF-0825 contre-cas : SANS `formes` declarees, la MEME phrase ne fait plus echouer la porte (' + (j3 && j3.verdict) + ') — le vert precedent ne vient donc pas de la declaration mais d une regle devenue aveugle');
+    else ok('TF-0825 contre-cas : la MEME phrase et la MEME cle, SANS `formes`, font toujours FAIL — le vert du cas 2 vient bien de la DECLARATION, pas d un assouplissement');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0880 (07/09/2026) — LA GRAPHIE LITTÉRALE D'UNE CLÉ EST BORNÉE, COMME SES VARIANTES.
 //
 // LE FAIT PAYÉ, ET IL EST MESURÉ : le 06/09, la porte jouée sur la forge des outils avec les deux
