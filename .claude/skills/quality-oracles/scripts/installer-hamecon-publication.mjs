@@ -11,7 +11,13 @@
 //   · il joue l'oracle sur le dépôt AVANT que git n'envoie quoi que ce soit ;
 //   · FAIL → exit 1, la publication est REFUSÉE, les constats sont imprimés localisants ;
 //   · SKIP → exit 1 AUSSI, et c'est délibéré : un oracle qui ne peut pas mesurer (référentiel
-//     absent) ne doit pas laisser passer. Laisser filer sur SKIP, c'est fabriquer un vert ;
+//     absent) ne doit pas laisser passer. Laisser filer sur SKIP, c'est fabriquer un vert.
+//     MAIS UN REFUS SANS MOTIF EST UN REFUS QU'ON CONTOURNE (TF-0887, 08/09/2026) : le 07/09,
+//     les deux tables ont déménagé dans le canal confidentiel, la porte appelée sans argument
+//     s'est mise à rendre SKIP, et tout dépôt porteur du hameçon a refusé CHAQUE push — en
+//     n'imprimant du motif que trois lignes tronquées, au milieu des constats. Sur SKIP, le
+//     motif EST toute la sortie : il se répète EN CLAIR, en entier, préfixé « porte SKIP : »,
+//     avant le refus. Un garde-fou qui refuse sans dire pourquoi se fait lever à l'aveugle ;
 //   · PASS → exit 0, la publication suit son cours ;
 //   · il ne juge PAS ce qui est déjà publié — il empêche d'en ajouter. Le rattrapage de
 //     l'existant est un run, pas un hameçon.
@@ -37,6 +43,16 @@ const HAMECON = `#!/bin/sh
 #
 # L'oracle est cherché d'abord dans la copie INSTALLÉE des skills, parce que c'est elle qui
 # s'exécute (même doctrine que le contrôle d'alignement des skills), puis dans la source.
+#
+# LES CHEMINS DES DEUX TABLES NE SONT PAS GRAVÉS ICI, ET C'EST UN CHOIX (TF-0887, 08/09/2026).
+# Un chemin résolu à l'INSTALLATION est vrai le jour de la pose et périme en silence : les tables
+# ont déménagé le 07/09, et un hameçon posé la veille aurait pointé un fichier disparu sans que
+# rien ne le dise. Pire, un hameçon est posé sur les dépôts d'un poste et le même geste se rejoue
+# sur l'autre, où la racine n'est pas au même endroit. La porte, elle, résout ses tables À CHAQUE
+# APPEL — variables d'environnement, puis <racine>/_confidentiel/tables/, puis les anciens
+# fichiers libres — et NOMME au non_juge la piste qu'elle a retenue. Le hameçon lui laisse donc
+# ce travail et se contente de RÉPÉTER ce qu'elle dit. Une seule échelle de résolution dans le
+# parc, tenue à un seul endroit.
 RACINE="\${FORGE_ROOT:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
 ORACLE=""
 for CANDIDAT in \\
@@ -66,13 +82,18 @@ echo "" >&2
 echo "PUBLICATION REFUSEE — verdict \${VERDICT:-ILLISIBLE} de ${MARQUE}." >&2
 if [ "$VERDICT" = "SKIP" ]; then
   echo "  SKIP bloque AUSSI : un oracle qui ne peut pas mesurer ne doit pas laisser passer." >&2
+  echo "  Le motif de la porte est repete EN CLAIR ci-dessous — un refus sans motif se contourne a l aveugle." >&2
 fi
-printf '%s' "$SORTIE" | node -e '
+printf '%s' "$SORTIE" | QO_VERDICT="$VERDICT" node -e '
   let t = ""; process.stdin.on("data", (d) => (t += d)).on("end", () => {
     try {
       const o = JSON.parse(t);
+      // Sur SKIP, le non_juge N EST PAS un appendice : il EST le motif du refus, et le borner a
+      // trois lignes revient a refuser sans dire pourquoi. Sur FAIL, les constats portent le
+      // motif et le non_juge reste un appendice — il garde donc sa borne.
+      const skip = process.env.QO_VERDICT === "SKIP";
       for (const f of (o.findings || []).slice(0, 40)) console.error("  " + (f.regle || "") + "  " + (f.where || "") + "  " + f.msg);
-      for (const n of (o.non_juge || []).slice(0, 3)) console.error("  · " + n);
+      for (const n of (o.non_juge || []).slice(0, skip ? 12 : 3)) console.error(skip ? "  porte SKIP : " + n : "  · " + n);
     } catch { console.error(t.slice(0, 2000)); }
   });
 ' >&2

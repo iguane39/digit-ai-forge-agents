@@ -677,7 +677,9 @@
    "cmd": [
     "node",
     "{skilldir}/scripts/oracle-nom-client-publie.mjs",
-    "{fixture}"
+    "{fixture}",
+    "--referentiel={skilldir}/fixtures/_noms-interdits.json",
+    "--produits={skilldir}/fixtures/_produits-pseudonymes.json"
    ],
    "red": "nom-client-publie-red.bundle",
    "green": "nom-client-publie-green.bundle",
@@ -687,7 +689,7 @@
    "attendu_green": [
     "PASS"
    ],
-   "commentaire": "Fixtures = BUNDLES git, seul format tenant dans UN fichier commitable tout en portant contenus, noms de fichiers ET messages de commit. Le rouge plante les QUATRE angles : C1 contenu suivi, C2 nom de fichier suivi, C3 message de commit, C4 nom et contenu dans l'historique d'un fichier RETIRE de l'arbre. Le vert a la MEME FORME, pseudonymisee : il prouve que l'oracle juge le nom, pas la structure. Referentiel de jeu d'essai a cote des fixtures (`fixtures/_noms-interdits.json`), aux noms INVENTES — le referentiel reel vit hors de tout depot publie."
+   "commentaire": "Fixtures = BUNDLES git, seul format tenant dans UN fichier commitable tout en portant contenus, noms de fichiers ET messages de commit. Le rouge plante les QUATRE angles : C1 contenu suivi, C2 nom de fichier suivi, C3 message de commit, C4 nom et contenu dans l'historique d'un fichier RETIRE de l'arbre. Le vert a la MEME FORME, pseudonymisee : il prouve que l'oracle juge le nom, pas la structure. Referentiel de jeu d'essai a cote des fixtures (`fixtures/_noms-interdits.json`), aux noms INVENTES — le referentiel reel vit hors de tout depot publie. | TF-0887 (08/09/2026) : LES DEUX TABLES DE JEU D'ESSAI SONT DESIGNEES, PLUS DEVINEES. La resolution par defaut de la porte cherche desormais le canal confidentiel du parc (racine + /_confidentiel/tables/) AVANT les fichiers libres voisins : sur un poste ou le canal est clone, ces bundles etaient juges contre les tables REELLES — le rouge rendait PASS, faute d'y trouver un nom invente. Une fixture dont le verdict depend de ce que porte la machine ne prouve rien. Le manifest passe donc `--referentiel` et `--produits` explicitement ; C5 joue sur une table de jeu d'essai (`fixtures/_produits-pseudonymes.json`), aux noms de produits INVENTES."
   },
   {
    "nom": "autorite-decision",
