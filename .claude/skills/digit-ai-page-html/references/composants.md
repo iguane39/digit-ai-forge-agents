@@ -387,6 +387,45 @@ employait « espace chiffre espace », et la phrase « il y a 3 cas » devenait 
 Fixture de référence : `fixtures/src-lecteur-de-source.html` — passe check_html (A1 comprise) et la
 matrice d'états de `render_page.py`, qui déplie le document et mesure le rendu obtenu.
 
+## 13 — Infobulle structurée 🔴 (dès qu'une infobulle porte plus de deux objets, TF-0935)
+
+**Le fait payé.** Le socle ne connaissait que l'attribut `title` natif. Mesure sur un livrable
+servi : 3 153 cellules à `title`, 2 527 en portant plusieurs objets, la plus longue **sept objets
+en 700 caractères** d'un seul bloc — conforme à L3, illisible. Retour humain : « formatte tous les
+tooltips, puces et sous-puces ». Le composant a été écrit chez le produit, à la place du socle.
+
+**Assets** : `assets/infobulle.js` + `assets/infobulle.css`. Ils se posent par
+`embarquer-composants.mjs --poser <page.html> --composants infobulle.js,infobulle.css`, donc ils
+entrent au contrôle de parité comme les autres composants embarqués.
+
+**Contrat d'écriture — le `title` est la SEULE source.** Une ligne par objet, une sous-précision
+par ligne indentée. Le composant lit le `title` et le rend en puces : aucun balisage double, aucun
+attribut de données à tenir à jour (1,25 Mo chez le produit au lieu de 2,06 par la voie qui
+dupliquait le contenu).
+
+```html
+<td title="Fait mensuel des lots
+  grain : un lot par mois
+  volume : 1,4 million de lignes
+Dimension des bâtiments
+  grain : un bâtiment">LOC.FAI_LOT_MOIS</td>
+<script>window.DigitAIInfobulle.init(document);</script>
+```
+
+**Comportement.** Un seul nœud `#infobulle` (`role="tooltip"`) pour la page, `position: fixed`,
+largeur ≤ 520 px, replacé pour rester dans l'écran. Le `title` natif est **retiré** pendant
+l'affichage — sans quoi les deux infobulles se superposent — et **restitué** à la fermeture : un
+`title` perdu est un contenu perdu à l'impression et pour les technologies d'assistance.
+Fermeture : sortie du survol, perte du focus, défilement, `Échap`. À l'impression, le composant
+ne s'affiche pas ; c'est le `title` restitué qui porte le contenu.
+
+**Ce que le composant ne fait pas** : il ne fabrique pas de structure là où l'auteur n'en a pas
+mis — un `title` d'une seule ligne reste un paragraphe. La contre-épreuve est au banc
+(`tf-infobulle-structuree.html`, quatre cas joués dans Chromium).
+
+**Règle liée** : L3 (g) — au-delà de 200 caractères ou de deux objets **sans structure**,
+`check_html.py` rend un constat « légende illisible ».
+
 ## Filtres de colonne — compléments (TF-0429 / TF-0430 / TF-0431)
 
 `table-filters.js` : `init(table, { apresFiltrage(table, visibles, total) })` est appelé à la

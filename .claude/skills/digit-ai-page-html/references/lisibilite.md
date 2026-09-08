@@ -205,7 +205,32 @@ le dictionnaire en place, on le déclare par `data-dictionnaire-objets` (page, t
 les infobulles en dérivent, plutôt que de rendre la redite obligatoire. La prose libre, qui ne
 nomme aucun objet, n'a besoin d'aucune infobulle.
 
-**Contrôle mécanique.** `L3` — les six exigences ci-dessus, plus l'échec explicite sur
+**(g) Une infobulle est une LISTE, pas un paragraphe** (TF-0935, 08/09/2026). Le socle ne
+connaissait que l'attribut `title` natif, et **aucune règle ne jugeait sa lisibilité**. Mesure sur
+le livrable servi : **3 153** cellules à `title`, **2 527** en portant plusieurs objets, la plus
+longue **sept objets en 700 caractères** d'un seul bloc — conforme à (a)-(f), illisible. Retour
+humain : « formatte tous les tooltips, puces et sous-puces ».
+
+Exigence : une légende **sans structure** (aucun saut de ligne) qui dépasse **200 caractères**,
+ou qui enchaîne **plus de deux objets** séparés par `;` ou `·`, est un défaut. Le `title`
+s'écrit alors *une ligne par objet, une sous-précision par ligne indentée* :
+
+```
+Fait mensuel des lots
+  grain : un lot par mois
+  volume : 1,4 million de lignes
+Dimension des bâtiments
+  grain : un bâtiment
+```
+
+Le composant du socle — `assets/infobulle.js` + `assets/infobulle.css`, composant 13 de
+`composants.md` — **lit ce `title`** et le rend en puces : une seule source de vérité, aucun
+balisage double (1,25 Mo chez le produit au lieu de 2,06 par la voie qui dupliquait le contenu).
+Il retire le `title` natif pendant l'affichage pour que les deux infobulles ne se superposent pas,
+et le **restitue** à la fermeture — un `title` perdu est un contenu perdu à l'impression et pour
+les technologies d'assistance. Bloc **voulu** → `data-legende-ok`.
+
+**Contrôle mécanique.** `L3` — les sept exigences ci-dessus, plus l'échec explicite sur
 légende vide et sur `aria-describedby` pointant dans le vide.
 
 **Revue de lecture.** Que le barème soit juste, que ses crans soient discriminants, et que

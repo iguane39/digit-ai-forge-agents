@@ -1257,6 +1257,48 @@ def check_lisibilite(html: str, a: Arbre):
             "`data-dictionnaire-objets` sur la page ou sur la table une fois le dictionnaire "
             "en place, et faire deriver les infobulles de ses entrees.")
 
+    # --- L3 quater : une legende ILLISIBLE (TF-0935, 08/09) ---------------------------
+    #
+    # LE FAIT. Mesure sur le livrable servi : 3 153 cellules a `title`, 2 527 en portant
+    # PLUSIEURS objets, la plus longue SEPT objets en 700 caracteres d'un seul bloc. Conforme a
+    # L3 sous toutes ses formes — la legende existe, elle explique, elle ne recopie rien — et
+    # illisible. Retour humain : « formatte tous les tooltips, puces et sous-puces ». Le socle ne
+    # connaissait que l'attribut `title` natif et ne jugeait nulle part sa LISIBILITE.
+    #
+    # LA MESURE. Une legende SANS STRUCTURE (aucun saut de ligne) qui depasse 200 caracteres, ou
+    # qui enchaine plus de deux objets separes par `;` ou `·`, est un constat. Le geste est le
+    # composant du socle (assets/infobulle.js + .css) : une ligne par objet, une sous-precision
+    # par ligne indentee. Le `title` reste la SEULE source — le composant le lit et le rend en
+    # liste, il ne demande aucun balisage double.
+    LEGENDE_MAX_PLAT = 200
+    LEGENDE_MAX_OBJETS = 2
+    illisibles = []
+    vus_illisibles = set()
+    for n in a.racine.descendants():
+        aide = (n.att("title") or n.att("aria-label") or "").strip()
+        if not aide or "\n" in aide:
+            continue                       # structuree : le composant la rendra en liste
+        if any("data-legende-ok" in x.attrs for x in [n, *n.ancetres()]):
+            continue
+        objets = [x for x in re.split(r"\s[;·•]\s", aide) if x.strip()]
+        if len(aide) <= LEGENDE_MAX_PLAT and len(objets) <= LEGENDE_MAX_OBJETS:
+            continue
+        cle = aide[:80]
+        if cle in vus_illisibles:
+            continue
+        vus_illisibles.add(cle)
+        illisibles.append((len(aide), len(objets), aide[:60], n.chemin()))
+    if illisibles:
+        taille, nb, extrait, ou = max(illisibles)
+        fails.append(
+            f"L3 legende ILLISIBLE sur {len(illisibles)} element(s) — la plus longue fait "
+            f"{taille} caracteres et {nb} objet(s) en un seul bloc : « {extrait}… » ({ou}). "
+            f"Au-dela de {LEGENDE_MAX_PLAT} caracteres ou de {LEGENDE_MAX_OBJETS} objets, une "
+            "infobulle est une LISTE, pas un paragraphe : une ligne par objet, une "
+            "sous-precision par ligne indentee dans le `title` lui-meme. Le composant du socle "
+            "(assets/infobulle.js + assets/infobulle.css) le rend en puces sans balisage "
+            "double — le `title` reste la seule source. Bloc voulu -> `data-legende-ok`.")
+
     if tautologiques:
         libelle, aide, ou = tautologiques[0]
         fails.append(

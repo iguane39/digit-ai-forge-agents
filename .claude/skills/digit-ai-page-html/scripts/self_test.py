@@ -181,6 +181,12 @@ CAS = {
     # dictionnaire d'objets ecrit et source, et sa sortie declaree au niveau de la ligne.
     "l3-objet-source-muet.html": {"L3"},
     "l3-dictionnaire-d-objets.html": set(),
+    # TF-0935 (lot Produit-10 20260908d) — L3 quater : la legende ILLISIBLE. 3 153 cellules a
+    # `title`, 2 527 en portant plusieurs objets, la plus longue SEPT objets en 700 caracteres
+    # d'un bloc : conforme a toutes les formes de L3, et illisible. La paire porte les MEMES
+    # sept objets et les MEMES sous-precisions ; seule la mise en forme du `title` change.
+    "l3-legende-en-bloc.html": {"L3"},
+    "l3-legende-en-puces.html": set(),
     "l3-score-sans-formule.html": {"L3"},
     "l3-valeur-opaque.html": {"L3"},
     # TF-0233 (15/08) : un conteneur-valeur dont un DESCENDANT porte la légende est
@@ -1652,6 +1658,107 @@ def run_thead_colle():
     return out
 
 
+def run_infobulle_runtime():
+    """TF-0935 — le composant d'INFOBULLE, joue dans un navigateur.
+
+    Un `title` de sept objets concatenes en 700 caracteres est conforme a L3 sous toutes ses
+    formes et illisible : « formatte tous les tooltips, puces et sous-puces », dit le retour
+    humain. La regle statique (L3 quater) refuse le bloc ; ce banc prouve que le socle sait
+    faire ce qu'il exige. Quatre cas, chacun avec son sens :
+
+      · sept objets et neuf sous-precisions rendent SEPT puces et NEUF sous-puces ;
+      · l'infobulle d'une cible collee au bord droit reste DANS l'ecran ;
+      · le `title` natif est retire pendant l'affichage puis RESTITUE — un `title` perdu est un
+        contenu perdu a l'impression et pour les technologies d'assistance ;
+      · CONTRE-EPREUVE : un `title` d'une seule ligne rend un paragraphe, pas une fausse liste a
+        une puce. Sans ce cas, un composant qui met tout en puces passerait pour correct.
+
+    Silencieux si playwright est absent : un comportement se mesure dans un navigateur.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from render_page import ensure_browser_path  # noqa: PLC0415
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001 — l'auto-detection du navigateur est un confort, pas un du
+        pass
+
+    out = []
+    fixture = FIXTURES / "tf-infobulle-structuree.html"
+    if not fixture.exists():
+        return [{"fixture": fixture.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "infobulle (runtime)", "detail": ""}]
+
+    def cas(nom, attendu, obtenu, regle):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:120], "obtenu": str(obtenu)[:120],
+                    "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"[:300]})
+
+    with sync_playwright() as pw:
+        navigateur = pw.chromium.launch()
+        page = navigateur.new_page(viewport={"width": 1280, "height": 900})
+        try:
+            page.goto(fixture.resolve().as_uri())
+            page.wait_for_load_state("load")
+
+            # -- puces et sous-puces reconstruites depuis le SEUL `title` -----------------
+            page.evaluate("() => window.DigitAIInfobulle.ouvrir(document.getElementById('riche'))")
+            compte = page.evaluate(
+                "() => ({ puces: document.querySelectorAll('#infobulle > ul > li').length,"
+                "        sous: document.querySelectorAll('#infobulle > ul > li ul > li').length })")
+            cas("tf-infobulle-structuree · puces", {"puces": 7, "sous": 9}, compte,
+                "TF-0935 structure")
+
+            # -- l'infobulle reste dans l'ecran ------------------------------------------
+            page.evaluate("() => window.DigitAIInfobulle.fermer()")
+            page.evaluate("() => window.DigitAIInfobulle.ouvrir(document.getElementById('bord'))")
+            dedans = page.evaluate(
+                "() => { const r = document.getElementById('infobulle').getBoundingClientRect();"
+                "  return r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth"
+                "      && r.bottom <= window.innerHeight; }")
+            cas("tf-infobulle-structuree · dans l'ecran", True, dedans, "TF-0935 placement")
+
+            # -- le `title` natif : retire pendant, RESTITUE apres ------------------------
+            page.evaluate("() => window.DigitAIInfobulle.fermer()")
+            # L'attendu du `title` restitue est le `title` INITIAL, releve dans la page : le
+            # comparer a une constante recopiee ici ferait passer une fixture editee.
+            avant = page.evaluate(
+                "() => document.getElementById('riche').getAttribute('title')")
+            page.evaluate("() => window.DigitAIInfobulle.ouvrir(document.getElementById('riche'))")
+            pendant = page.evaluate(
+                "() => document.getElementById('riche').hasAttribute('title')")
+            page.evaluate("() => window.DigitAIInfobulle.fermer()")
+            apres = page.evaluate(
+                "() => document.getElementById('riche').getAttribute('title')")
+            cas("tf-infobulle-structuree · title neutralise puis restitue",
+                {"pendant": False, "restitue": True},
+                {"pendant": pendant, "restitue": apres == avant and bool(avant)},
+                "TF-0935 title")
+
+            # -- CONTRE-EPREUVE : une ligne = un paragraphe, pas une puce -----------------
+            page.evaluate("() => window.DigitAIInfobulle.ouvrir(document.getElementById('plat'))")
+            forme = page.evaluate(
+                "() => ({ p: document.querySelectorAll('#infobulle > p').length,"
+                "        ul: document.querySelectorAll('#infobulle > ul').length })")
+            cas("tf-infobulle-structuree · une ligne reste un paragraphe (sens rouge)",
+                {"p": 1, "ul": 0}, forme, "TF-0935 contre-epreuve")
+        except Exception as erreur:  # noqa: BLE001 — toute panne se compte, aucune n'arrete
+            out.append({"fixture": fixture.name, "verdict": "ECHEC",
+                        "attendu": "banc joue", "obtenu": type(erreur).__name__,
+                        "regle": "infobulle (runtime)",
+                        "detail": str(erreur).splitlines()[0][:300]})
+        finally:
+            navigateur.close()
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -1696,6 +1803,12 @@ def main():
     poseur = run_poseur_composants()
     if poseur:
         res += poseur
+    # TF-0935 — le composant d'infobulle : un `title` de sept objets rendu en puces, et la
+    # contre-epreuve qu'une seule ligne reste un paragraphe. Aucun oracle de marquage ne voit
+    # ce qu'un composant FAIT.
+    infobulle = run_infobulle_runtime()
+    if infobulle:
+        res += infobulle
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

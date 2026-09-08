@@ -1,0 +1,36 @@
+/* Digit-AI — Infobulle structuree (TF-0935, lot Produit-10 20260908d, 08/09).
+   Le socle ne connaissait que l'attribut `title` natif : sept objets concatenes en un
+   paragraphe de 700 caracteres etaient conformes a L3 et illisibles. Ce composant rend la
+   MEME source (le `title`) en liste — une seule source de verite, aucun balisage double.
+   Le style vit ici ; le comportement dans infobulle.js. */
+
+#infobulle {
+  position: fixed;
+  z-index: 9999;
+  max-width: 520px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line, #E6EAF2);
+  border-radius: var(--r-sm, 8px);
+  background: var(--surface, #FFFFFF);
+  color: var(--ink, #0F172A);
+  font-family: var(--sans, "DM Sans", system-ui, sans-serif);
+  font-size: .82rem;
+  line-height: 1.45;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, .16);
+  pointer-events: none;   /* l'infobulle ne vole jamais le survol a sa cible */
+}
+
+#infobulle[hidden] { display: none; }
+
+#infobulle ul { margin: 0; padding: 0 0 0 1.1em; list-style: disc; }
+#infobulle ul ul { margin: .15em 0 .25em; list-style: circle; }
+#infobulle li { margin: .12em 0; }
+#infobulle li > .ib-objet { font-weight: 600; }
+/* Un texte sans structure reste un paragraphe : le composant ne fabrique pas de puces
+   la ou l'auteur n'en a pas mis. */
+#infobulle p { margin: 0; }
+
+/* A l'impression, l'infobulle n'existe pas : elle est un etat de survol, et le PDF porte
+   le `title` restitue sur la cible (voir infobulle.js). */
+@media print { #infobulle { display: none !important; } }
