@@ -184,6 +184,11 @@ CAS = {
     # la regle passerait pour un refus de toute infobulle citant sa cellule.
     "l3-legende-tautologique.html": {"L3"},
     "l3-legende-explicative.html": set(),
+    # TF-0954 (08/09) — la MEME loi, un cran plus haut et sur l'autre porteur : une DEFINITION DE
+    # COLONNE qui repete son en-tete, et une `data-definition` de cellule qui recopie sa cellule.
+    # G9 et L27 verifient qu'une definition EXISTE, jamais qu'elle APPREND quelque chose.
+    "l3-definition-colonne-tautologique.html": {"L3"},
+    "l3-definition-colonne-explicative.html": set(),
     # TF-0934 (lot Produit-10 20260908c) — L3 ter : l'objet NOMME que personne n'explique. Les
     # objets d'un systeme source CITE mais jamais joint n'ont aucun catalogue commente ; le
     # generateur fait retomber l'infobulle sur la DEFINITION DE LA COLONNE, la meme phrase sur

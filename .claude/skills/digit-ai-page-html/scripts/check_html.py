@@ -1227,7 +1227,13 @@ def check_lisibilite(html: str, a: Arbre):
 
     tautologiques = []
     for td in [n for n in a.racine.descendants() if n.tag == "td"]:
-        aide = (td.att("title") or td.att("aria-label") or "").strip()
+        # `data-definition` COMPTE COMME PORTEUR (TF-0954, 08/09). La regle ne lisait que les deux
+        # attributs natifs ; or `data-definition` est le porteur DOCUMENTE d'une explication dans
+        # ce socle (G9, L27, references/dictionnaire-de-colonnes.md). Une page qui explique par
+        # `data-definition` echappait a la regle sans rien changer au defaut : la meme tautologie,
+        # sous un autre attribut. Mesure du 08/09 sur les 350 pages suivies de huit depots du parc :
+        # ZERO nouveau constat — la porte s'elargit sans bruiter.
+        aide = (td.att("title") or td.att("aria-label") or td.att("data-definition") or "").strip()
         cellule = td.texte_propre()
         if not aide or not cellule:
             continue
@@ -1243,6 +1249,35 @@ def check_lisibilite(html: str, a: Arbre):
                 reste = re.sub(re.escape(entete), " ", reste, flags=re.I)
         if _norme_legende(reste) == _norme_legende(cellule):
             tautologiques.append((cellule[:40], aide[:60], td.chemin()))
+    # --- L3 bis (suite) : une DEFINITION DE COLONNE qui recopie son en-tete (TF-0954, 08/09)
+    #
+    # LE FAIT. La loi posee par L3 bis est « une explication qui recopie son porteur n'est pas une
+    # explication ». Elle n'etait appliquee qu'aux CELLULES. Un cran plus haut, la meme tautologie
+    # passait : G9 et L27 exigent qu'un `<th>` d'une page de donnees porte sa definition — ils
+    # verifient qu'elle EXISTE, jamais qu'elle APPREND quelque chose. Un
+    # `<th data-definition="Provenance">Provenance</th>` tient les deux regles et n'informe
+    # personne, et c'est le geste que produit mecaniquement un generateur qui remplit le champ
+    # « definition » avec le libelle qu'il a sous la main.
+    #
+    # LE SEUIL EST CELUI DE L3 BIS, sans invention : une fois la ponctuation et la casse retirees,
+    # l'explication ne doit pas etre EXACTEMENT le texte de son porteur. Au moins un fait nouveau —
+    # une unite, une source, une regle, un ordre — la separe de son en-tete.
+    #
+    # MESURE DE BRUIT AVANT DE POSER LA REGLE (lecon du 08/09 sur L3 quater, propagee a un depot
+    # consommateur qui n'avait pas ete mesure) : 350 pages HTML suivies de HUIT depots du parc,
+    # 101 `<th>` portant un `data-definition` — ZERO tautologie. La regle ne rougit aucun
+    # consommateur connu ; elle ferme une porte, elle n'en ouvre pas.
+    definitions_tautologiques = []
+    for th in [n for n in a.racine.descendants() if n.tag == "th"]:
+        aide = (th.att("data-definition") or th.att("title") or th.att("aria-label") or "").strip()
+        entete = th.texte_propre()
+        if not aide or not entete:
+            continue
+        if any("data-legende-ok" in x.attrs for x in [th, *th.ancetres()]):
+            continue
+        if _norme_legende(aide) == _norme_legende(entete):
+            definitions_tautologiques.append((entete[:40], aide[:60], th.chemin()))
+
     # --- L3 ter : un OBJET de systeme source qui n'est explique nulle part (TF-0934, 08/09)
     #
     # LE FAIT. La version corrigee de la veille (L3 bis pose) portait des colonnes « Source
@@ -1330,6 +1365,17 @@ def check_lisibilite(html: str, a: Arbre):
             "sous-precision par ligne indentee dans le `title` lui-meme. Le composant du socle "
             "(assets/infobulle.js + assets/infobulle.css) le rend en puces sans balisage "
             "double — le `title` reste la seule source. Bloc voulu -> `data-legende-ok`.")
+
+    if definitions_tautologiques:
+        libelle, aide, ou = definitions_tautologiques[0]
+        fails.append(
+            f"L3 définition de colonne TAUTOLOGIQUE sur {len(definitions_tautologiques)} "
+            f"en-tête(s) — « {libelle} » a pour définition « {aide}… », qui répète son propre "
+            f"libellé sans rien y ajouter ({ou}). G9 et L27 exigent qu'une définition EXISTE ; "
+            "elle doit aussi APPRENDRE quelque chose — au moins un fait nouveau : l'unité, la "
+            "source, la règle de calcul, l'ordre. Le dictionnaire de colonnes "
+            "(references/dictionnaire-de-colonnes.md) en donne la forme : définition + unité + "
+            "source. Répétition VOULUE → `data-legende-ok` sur l'en-tête ou un ancêtre.")
 
     if tautologiques:
         libelle, aide, ou = tautologiques[0]
