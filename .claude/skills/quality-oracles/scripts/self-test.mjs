@@ -596,10 +596,19 @@ else {
 
     // L'ENVIRONNEMENT EST NEUTRALISÉ : une variable héritée du poste ferait lire la table RÉELLE, et
     // le banc mesurerait le parc au lieu de mesurer la règle.
+    //
+    // FORGE_ROOT N'EST PLUS SUPPRIMÉE, ELLE EST POSÉE SUR LA RACINE JETABLE (TF-0887, 08/09/2026).
+    // Depuis que la porte cherche le canal confidentiel dans ses pistes par défaut, une racine NON
+    // déclarée la fait deviner deux racines — le parent du dépôt jugé, puis le parent de la forge.
+    // Sur un poste où le canal est cloné, la seconde atteint la table RÉELLE : le cas « C5 absente »
+    // aurait trouvé une table et mesuré exactement le contraire de ce qu'il croit. Déclarer la
+    // racine jetable ferme l'échelle sur le banc — c'est précisément à quoi sert la marche
+    // FORGE_ROOT, et c'est ce qui rend l'ABSENCE d'une table prouvable ailleurs que sur une machine
+    // vierge.
     const envNu = { ...process.env };
     delete envNu.FORGE_PRODUITS_PSEUDO;
     delete envNu.FORGE_NOMS_INTERDITS;
-    delete envNu.FORGE_ROOT;
+    envNu.FORGE_ROOT = tmp;
     const jouer = (repo, avecTable) => {
       const a = [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo, '--referentiel=' + tClients];
       if (avecTable) a.push('--produits=' + tProduits);
@@ -753,10 +762,12 @@ else {
     // (3) Le collage : la clé en fin d'un identifiant de code, sans aucune frontière.
     const colle = batir('colle', 'outil.py', 'MDX' + CLE + ' = 1  # identifiant interne, pas un produit');
 
+    // Racine jetable DÉCLARÉE, pour la raison exposée au cas TF-0820 : sans elle la porte devine
+    // le parent de la forge, et un poste portant le canal ferait lire les tables du parc.
     const envNu = { ...process.env };
     delete envNu.FORGE_PRODUITS_PSEUDO;
     delete envNu.FORGE_NOMS_INTERDITS;
-    delete envNu.FORGE_ROOT;
+    envNu.FORGE_ROOT = tmp;
     const jouer = (repo) => {
       const r = spawnSync(process.execPath, [
         path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
@@ -785,6 +796,102 @@ else {
     else if (c5de(jc).length) ko('TF-0880 collee : la cle COLLEE a des lettres fait encore un constat C5 (' + c5de(jc).length + ') — un identifiant de code n est pas un nom de produit');
     else if (jc.verdict !== 'PASS') ko('TF-0880 collee : le depot au seul identifiant ne rend pas PASS (' + jc.verdict + ')');
     else ok('TF-0880 collee : la cle collee a des lettres (« MDX' + CLE + ' » pour « ' + CLE + ' ») ne fait plus AUCUN constat C5');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-0887 (08/09/2026) — LA PORTE TROUVE LES TABLES DU CANAL TOUTE SEULE, ET DIT LAQUELLE.
+//
+// LE FAIT PAYÉ. Le 07/09, les deux tables ont quitté les fichiers libres `<racine>\_*.json` pour
+// le canal confidentiel `<racine>\_confidentiel\tables\`. Les pistes par défaut de la porte ne
+// connaissaient que les anciens emplacements : appelée SANS `--referentiel` ni `--produits` —
+// c'est-à-dire exactement comme le `pre-push` l'appelle — elle rendait SKIP, et le hameçon traite
+// un SKIP en refus. Tout dépôt portant le hameçon refusait CHAQUE push, sur les deux postes et
+// sur tout clone neuf, jusqu'à ce que quelqu'un pose deux variables d'environnement à la main.
+// Une béquille qu'on pose à la main est une béquille qu'on oublie, et une porte muette par défaut
+// finit contournée avec l'option qui saute les hooks — pire qu'une porte absente.
+//
+// DEUX SENS, ET LE SECOND EST CE QUI EMPÊCHE LE PREMIER DE MENTIR :
+//   (1) VERT  — racine jetable portant `_confidentiel\tables\`, dépôt jugé DANS cette racine,
+//               AUCUN argument et AUCUNE variable : la porte joue C1 à C5 et NOMME les deux
+//               tables lues. Sans le correctif, ce cas rend SKIP ;
+//   (2) ROUGE — aucune table nulle part sous la racine déclarée : la porte rend SKIP et son motif
+//               DIT ce qui manque et où elle a cherché, le canal compris. Sans ce sens, on
+//               pourrait faire passer (1) en rendant la porte incapable de dire non.
+// Les noms de la table jetable sont INVENTÉS, même règle que les cas TF-0820 et TF-0880 : aucun
+// nom du parc ne s'écrit dans le dépôt que cette porte garde.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-canal-'));
+  try {
+    const NOM_CLIENT = 'Zorglub';
+    const NOM_PRODUIT = 'PortailBidule-Machin';
+
+    const batir = (racine, nom, lignes) => {
+      const r = path.join(racine, nom);
+      fs.mkdirSync(r, { recursive: true });
+      fs.writeFileSync(path.join(r, 'outil.py'), lignes.join('\n') + '\n', 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q');
+      g('config', 'user.email', 'banc@local');
+      g('config', 'user.name', 'banc');
+      g('add', '-A');
+      g('commit', '-q', '-m', 'depot jetable du banc');
+      return r;
+    };
+    // AUCUNE VARIABLE : c'est tout l'enjeu. Le cas doit prouver que la porte se débrouille sans
+    // béquille, donc l'environnement du banc est vidé des trois variables — y compris FORGE_ROOT,
+    // dont l'absence force la porte à DEVINER la racine par le parent du dépôt jugé.
+    const envSansBequille = { ...process.env };
+    delete envSansBequille.FORGE_NOMS_INTERDITS;
+    delete envSansBequille.FORGE_PRODUITS_PSEUDO;
+    delete envSansBequille.FORGE_ROOT;
+    const jouerNu = (repo, env) => {
+      const r = spawnSync(process.execPath,
+        [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo],
+        { encoding: 'utf8', timeout: 180000, env });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+
+    // --- (1) VERT : le canal sous la racine jetable, aucun argument, aucune variable -----------
+    const avec = path.join(tmp, 'avec-canal');
+    const tables = path.join(avec, '_confidentiel', 'tables');
+    fs.mkdirSync(tables, { recursive: true });
+    fs.writeFileSync(path.join(tables, 'noms-interdits.json'),
+      JSON.stringify({ noms: [NOM_CLIENT], identifiants: [], sigles: [] }), 'utf8');
+    fs.writeFileSync(path.join(tables, 'produits-pseudonymes.json'),
+      JSON.stringify({ produits: { [NOM_PRODUIT]: 'Produit-99' } }), 'utf8');
+    const porteur = batir(avec, 'depot-porteur', [
+      `# rapport remis a ${NOM_CLIENT}, a rebrancher`,
+      `# TODO : connecteur de ${NOM_PRODUIT}`,
+    ]);
+
+    const jc = jouerNu(porteur, envSansBequille);
+    const njc = jc ? (jc.non_juge || []).join(' ') : '';
+    const regles = jc ? [...new Set((jc.findings || []).map(f => f.regle))] : [];
+    if (!jc) ko('TF-0887 canal : sortie de l oracle inexploitable');
+    else if (jc.verdict === 'SKIP') ko('TF-0887 canal : la porte appelee SANS argument et SANS variable rend encore SKIP alors que le canal est sous la racine du depot juge — le hamecon refuserait chaque push, exactement la panne du 07/09');
+    else if (jc.verdict !== 'FAIL') ko(`TF-0887 canal : le depot porteur ne fait pas echouer la porte (${jc.verdict}) — les tables du canal n ont pas ete lues`);
+    else if (!regles.includes('C1') || !regles.includes('C5')) ko(`TF-0887 canal : regles levees ${regles.join('+') || 'aucune'} — les DEUX tables du canal devaient etre lues (C1 pour les clients, C5 pour les produits)`);
+    else if (!njc.includes(path.join(tables, 'noms-interdits.json')) || !njc.includes(path.join(tables, 'produits-pseudonymes.json')))
+      ko('TF-0887 canal : les tables LUES ne sont pas nommees au non_juge — un lecteur ne peut pas savoir si le verdict vient du canal, d un ancien fichier libre ou d un banc');
+    else if (!/table lue/.test(njc)) ko('TF-0887 canal : le non_juge ne dit pas « table lue : … »');
+    else ok(`TF-0887 canal VERT : sans aucun argument ni variable, la porte trouve les deux tables dans <racine>/_confidentiel/tables/, joue ${regles.join('+')} et NOMME les deux tables lues`);
+
+    // --- (2) ROUGE : aucune table nulle part, racine jetable DÉCLARÉE ---------------------------
+    // La racine est déclarée ici — et seulement ici — parce que le cas veut prouver l'ABSENCE :
+    // sans elle la porte devinerait le parent de la forge, qui porte le canal RÉEL sur un poste
+    // du parc, et le cas mesurerait le poste au lieu de la règle.
+    const sans = path.join(tmp, 'sans-canal');
+    fs.mkdirSync(sans, { recursive: true });
+    const nu = batir(sans, 'depot-nu', ['# rien a signaler ici']);
+    const envRacineNue = { ...envSansBequille, FORGE_ROOT: sans };
+    const js = jouerNu(nu, envRacineNue);
+    const njs = js ? (js.non_juge || []).join(' ') : '';
+    if (!js) ko('TF-0887 absence : sortie de l oracle inexploitable');
+    else if (js.verdict !== 'SKIP') ko(`TF-0887 absence : aucune table nulle part et la porte rend ${js.verdict} — un controle sans son referentiel produit de la confiance, pas du doute`);
+    else if (!/RÉFÉRENTIEL DES NOMS INTERDITS ABSENT/.test(njs)) ko('TF-0887 absence : le SKIP ne dit pas CE QUI manque');
+    else if (!njs.includes(path.join(sans, '_confidentiel', 'tables', 'noms-interdits.json')))
+      ko('TF-0887 absence : le motif du SKIP ne liste pas la piste du CANAL — le lecteur ne sait pas ou poser la table pour que la porte la trouve');
+    else ok('TF-0887 absence ROUGE : aucune table sous la racine declaree → SKIP motive, la piste du canal est nommee parmi les pistes explorees');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 

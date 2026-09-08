@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const DOM = 'Nom de client dans un depot publiable';
 const args = process.argv.slice(2);
@@ -57,17 +58,57 @@ const NON_JUGE = [
 ];
 
 // ---------------------------------------------------------------------------
+// LE CANAL CONFIDENTIEL — où les DEUX tables vivent depuis le 07/09/2026 (TF-0887).
+//
+// LE FAIT, ET IL EST DATÉ. Le 07/09, les deux tables ont quitté les fichiers libres
+// `<racine>\_noms-interdits.json` et `<racine>\_produits-pseudonymes.json` pour un dépôt privé
+// cloné en `<racine>\_confidentiel\`, dans `tables\`. Les pistes par défaut de cette porte ne
+// connaissaient que les anciens emplacements : appelée SANS `--referentiel` ni `--produits` —
+// c'est-à-dire exactement comme le `pre-push` l'appelle — elle rendait SKIP, et le hameçon traite
+// un SKIP en refus. Tout dépôt portant le hameçon refusait donc CHAQUE push, jusqu'à ce que
+// quelqu'un pose deux variables d'environnement à la main. Une porte muette PAR DÉFAUT finit
+// contournée avec l'option qui saute les hooks — ce qui est pire qu'une porte absente.
+//
+// LA RACINE DU PARC, DANS L'ORDRE, et l'ordre a une raison :
+//   · FORGE_ROOT quand elle est posée — un parc qui DÉCLARE sa racine fait foi, et une racine
+//     déclarée est aussi ce qui rend cette marche MESURABLE : un banc pointe FORGE_ROOT sur une
+//     racine jetable et la porte cesse de pouvoir atteindre le canal réel du poste. Sans cela,
+//     un cas qui veut prouver l'ABSENCE d'une table lirait la table du parc et mesurerait le
+//     contraire de ce qu'il croit ;
+//   · sinon les deux racines qu'on DEVINE : le parent du dépôt jugé, puis le parent de cette
+//     forge. La seconde sert le cas où l'artefact ne vit pas dans le parc (un `.bundle` en zone
+//     temporaire), où seule l'implantation de la forge dit encore où est la racine.
+//
+// LES ANCIENNES PISTES RESTENT, EN DERNIER RECOURS. Un poste qui n'a pas encore cloné le canal
+// garde son fichier libre ; une porte qui cesserait brutalement de le voir referait, à l'envers,
+// la panne qu'on est en train de réparer.
+// ---------------------------------------------------------------------------
+const ICI = path.dirname(fileURLToPath(import.meta.url));
+// <forge>/.claude/skills/quality-oracles/scripts → <forge>
+const RACINE_FORGE = path.resolve(ICI, '..', '..', '..', '..');
+
+function racinesParc(base) {
+  const r = process.env.FORGE_ROOT
+    ? [process.env.FORGE_ROOT]
+    : [path.resolve(base, '..'), path.resolve(RACINE_FORGE, '..')];
+  return [...new Set(r.map((x) => path.resolve(x)))];
+}
+const pistesCanal = (base, fichier) => racinesParc(base).map((r) => path.join(r, '_confidentiel', 'tables', fichier));
+
+// ---------------------------------------------------------------------------
 // Le référentiel : résolution ordonnée, du plus explicite au plus implicite.
-// L'ordre n'est pas cosmétique — la marche 3 sert les FIXTURES (un référentiel de jeu d'essai,
-// aux noms inventés, posé à côté d'elles) et la marche 4 sert le parc réel (un référentiel de
-// vrais noms, à la racine, hors de tout dépôt). Sans elle, prouver l'oracle exigerait de publier
-// un vrai nom de client dans le dépôt qui porte l'oracle.
+// L'ordre n'est pas cosmétique — la marche du CANAL sert le parc réel depuis le 07/09, les
+// marches des fichiers libres servent les FIXTURES (un référentiel de jeu d'essai, aux noms
+// inventés, posé à côté d'elles) et les postes qui n'ont pas encore cloné le canal. Sans ces
+// dernières, prouver l'oracle exigerait de publier un vrai nom de client dans le dépôt qui
+// porte l'oracle.
 // ---------------------------------------------------------------------------
 function resoudreReferentiel(artefact) {
   const pistes = [];
   if (optRef) pistes.push(optRef);
   if (process.env.FORGE_NOMS_INTERDITS) pistes.push(process.env.FORGE_NOMS_INTERDITS);
   const base = fs.existsSync(artefact) && fs.statSync(artefact).isDirectory() ? artefact : path.dirname(artefact);
+  pistes.push(...pistesCanal(base, 'noms-interdits.json'));
   pistes.push(path.join(base, '_noms-interdits.json'));
   pistes.push(path.join(base, '..', '_noms-interdits.json'));
   if (process.env.FORGE_ROOT) pistes.push(path.join(process.env.FORGE_ROOT, '_noms-interdits.json'));
@@ -109,6 +150,7 @@ function resoudreProduits(artefact) {
   if (optProduits) pistes.push(optProduits);
   if (process.env.FORGE_PRODUITS_PSEUDO) pistes.push(process.env.FORGE_PRODUITS_PSEUDO);
   const base = fs.existsSync(artefact) && fs.statSync(artefact).isDirectory() ? artefact : path.dirname(artefact);
+  pistes.push(...pistesCanal(base, 'produits-pseudonymes.json'));
   pistes.push(path.join(base, '_produits-pseudonymes.json'));
   pistes.push(path.join(base, '..', '_produits-pseudonymes.json'));
   if (process.env.FORGE_ROOT) pistes.push(path.join(process.env.FORGE_ROOT, '_produits-pseudonymes.json'));
@@ -261,7 +303,7 @@ const { chemin: refPath, pistes } = resoudreReferentiel(cible);
 if (!refPath) {
   out('SKIP', [], [
     'RÉFÉRENTIEL DES NOMS INTERDITS ABSENT — cet oracle ne peut rien mesurer, et il refuse de rendre PASS pour autant : un contrôle sans son référentiel produit de la confiance, pas du doute.',
-    'REMÈDE : créer un fichier `_noms-interdits.json` HORS de tout dépôt publié — `{ "noms": ["…"], "identifiants": ["…"] }` — puis le désigner par `--referentiel=<chemin>` ou la variable d\'environnement FORGE_NOMS_INTERDITS.',
+    'REMÈDE : cloner le canal confidentiel du parc, dont la table vit en `<racine>\\_confidentiel\\tables\\noms-interdits.json` — cette piste est explorée par défaut, sans aucun argument. À défaut, créer un fichier `_noms-interdits.json` HORS de tout dépôt publié — `{ "noms": ["…"], "identifiants": ["…"] }` — puis le désigner par `--referentiel=<chemin>` ou la variable d\'environnement FORGE_NOMS_INTERDITS.',
     'Pistes explorées, dans l\'ordre : ' + pistes.join(' · '),
   ], 2);
 }
@@ -283,7 +325,9 @@ if (!prodPath) {
     + "noms de fichiers, messages de commit). Un PASS ne dirait donc rien des produits. "
     + "REMÈDE : désigner la table des pseudonymes par `--produits=<chemin>` ou par la variable "
     + "d'environnement FORGE_PRODUITS_PSEUDO — elle vit HORS de tout dépôt publié, comme le "
-    + "référentiel des clients. Pistes explorées, dans l'ordre : " + pistesProd.join(" · ");
+    + "référentiel des clients, et le canal confidentiel du parc la porte en "
+    + "`<racine>\\_confidentiel\\tables\\produits-pseudonymes.json`, piste explorée par défaut. "
+    + "Pistes explorées, dans l'ordre : " + pistesProd.join(" · ");
 } else {
   try {
     const r = termesProduits(JSON.parse(fs.readFileSync(prodPath, 'utf8')));
@@ -422,11 +466,16 @@ try {
   }
 } finally { nettoyer(); }
 
-const nj = NON_JUGE.concat(['référentiel employé : ' + refPath + ' (' + T.length + ' terme(s))']);
+// LA PISTE RETENUE SE NOMME, TOUJOURS (TF-0887). Depuis que la porte sait chercher toute seule
+// dans le canal confidentiel, un lecteur ne peut plus déduire du seul verdict QUELLE table a été
+// lue — la table du canal, un ancien fichier libre, ou celle d'un banc jetable. Une porte qui
+// mesure sans dire sur quoi rend un verdict qu'on ne peut ni reproduire ni contester.
+const nj = NON_JUGE.concat(['table lue (référentiel des noms interdits) : ' + refPath + ' (' + T.length + ' terme(s))']);
 // C5 parle TOUJOURS : jouée, elle dit sur quoi ; non jouée, elle dit pourquoi. Un angle muet se lit
 // comme un angle vert, et c'est précisément l'état dans lequel la porte a laissé passer trois
 // mentions d'un nom de produit le 05/09.
-nj.push(prodMotif || ('table des produits employée : ' + prodPath + ' (' + P.length
+nj.push(prodMotif || ('table lue (pseudonymes de produits) : ' + prodPath
+  + ' — table des produits employée (' + P.length
   + ' nom(s) de produit jugé(s) par C5, ' + prodIgnorees + ' clé(s) de CHEMIN ignorée(s) — un chemin '
   + "de disque n'est pas un nom)"));
 if (P.length) nj.push("C5 ne balaie PAS le CONTENU de l'historique (ce que C4 fait pour les clients) : "

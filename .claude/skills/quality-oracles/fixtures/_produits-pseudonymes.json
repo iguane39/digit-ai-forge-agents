@@ -1,0 +1,7 @@
+{
+ "commentaire": "TABLE DE PSEUDONYMES DE JEU D'ESSAI — noms de produits INVENTÉS, aucun produit réel. Elle vit ici, à côté du référentiel de clients qui l'accompagne, pour la raison exacte qui met celui-ci là : prouver l'oracle sans écrire un vrai nom dans le dépôt qui le porte. Depuis le 07/09/2026 les deux tables RÉELLES vivent dans le canal confidentiel (racine + /_confidentiel/tables/) et la porte les y cherche PAR DÉFAUT (TF-0887) : sans cette table de jeu d'essai, les bundles rejoués par la recette feraient jouer C5 contre la table du PARC, et le banc mesurerait le poste au lieu de mesurer la règle — son verdict changerait d'une machine à l'autre. Le manifest la DÉSIGNE donc explicitement (--produits=), il ne compte plus sur le voisinage.",
+ "produits": {
+  "PortailBidule-Machin": "Produit-99",
+  "Chronopode-Truc": "Produit-98"
+ }
+}
