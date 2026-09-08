@@ -159,6 +159,14 @@ RE_TH_SCORE = re.compile(
 # lit sans légende.
 RE_EMPREINTE = re.compile(r"^[0-9a-f]{8,64}$")
 RE_JETON = re.compile(r"^[a-z][a-z0-9]*(?:[-_][a-z0-9]+){2,}$")
+# TF-0934 (08/09) — l'IDENTIFIANT TECHNIQUE D'UN OBJET DE SYSTEME SOURCE : un nom de table, de
+# schéma ou de colonne, avec ou sans qualification par un point. Plus large que RE_JETON, qui
+# exige trois segments en minuscules : `LOC.FAI_LOT_MOIS`, `DIM_BATIMENT`,
+# `Base_Tenancy_Schedule.unit_key` n'en sont aucun, et ce sont eux qu'un lecteur ne peut pas
+# deviner. Deux formes admises : qualifiée par un point, ou portant un séparateur `_`.
+RE_OBJET_TECHNIQUE = re.compile(
+    r"^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$"
+    r"|^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$")
 
 # Mots qui ne désignent rien : un <summary> qui n'en contient QUE ceux-là promet une
 # information sans dire laquelle. Les mots-outils sont ignorés avant le test — c'est
@@ -1203,6 +1211,52 @@ def check_lisibilite(html: str, a: Arbre):
                 reste = re.sub(re.escape(entete), " ", reste, flags=re.I)
         if _norme_legende(reste) == _norme_legende(cellule):
             tautologiques.append((cellule[:40], aide[:60], td.chemin()))
+    # --- L3 ter : un OBJET de systeme source qui n'est explique nulle part (TF-0934, 08/09)
+    #
+    # LE FAIT. La version corrigee de la veille (L3 bis pose) portait des colonnes « Source
+    # heritee » dont les cellules nomment les objets d'un entrepot CITE mais jamais joint —
+    # `LOC.FAI_LOT_MOIS`, `DIM_BATIMENT`. Aucun catalogue ne les commente, alors le generateur
+    # a fait retomber l'infobulle sur la DEFINITION DE LA COLONNE : la meme phrase sur toutes
+    # les cellules d'une colonne, qui se lit « pas d'explication ». L3 bis ne le voit pas —
+    # l'infobulle ne recopie pas la cellule, elle recopie l'en-tete. L27 non plus : la colonne
+    # a bien sa definition. Le trou est entre les deux : un objet NOMME sans etre EXPLIQUE.
+    #
+    # LA MESURE. Une cellule dont le texte est un identifiant technique d'objet et dont
+    # l'infobulle egale la definition de sa colonne n'explique pas cet objet. La sortie est le
+    # geste demande : un DICTIONNAIRE d'objets pour le systeme cite — lu dans le catalogue s'il
+    # est joint, ecrit et source sinon. Il se declare `data-dictionnaire-objets` sur la page ou
+    # sur la table, et l'infobulle en derive.
+    objets_muets = []
+    for td in [n for n in a.racine.descendants() if n.tag == "td"]:
+        cellule = td.texte_propre()
+        if not cellule or not RE_OBJET_TECHNIQUE.match(cellule):
+            continue
+        if any("data-legende-ok" in x.attrs or "data-dictionnaire-objets" in x.attrs
+               for x in [td, *td.ancetres()]):
+            continue
+        aide = (td.att("title") or td.att("aria-label") or "").strip()
+        if not aide:
+            continue                      # absence de legende : c'est L3 (b), deja jugee
+        th = _th_de_colonne(td)
+        if th is None:
+            continue
+        definition = (th.att("data-definition") or th.att("title") or "").strip()
+        if not definition:
+            continue
+        if _norme_legende(aide) == _norme_legende(definition):
+            objets_muets.append((cellule[:40], td.chemin()))
+    if objets_muets:
+        libelle, ou = objets_muets[0]
+        fails.append(
+            f"L3 objet NON EXPLIQUE sur {len(objets_muets)} cellule(s) — « {libelle} » nomme "
+            f"un objet d'un systeme source, et son infobulle recopie la definition de sa "
+            f"colonne ({ou}). Une definition de colonne dit ce que la COLONNE porte ; elle ne "
+            "dit pas ce qu'est CET objet — son grain, sa famille, son volume. Toute page qui "
+            "nomme les objets d'un systeme source declare un dictionnaire d'objets : lu dans "
+            "le catalogue si le systeme est joint, ecrit et source sinon. Declarer "
+            "`data-dictionnaire-objets` sur la page ou sur la table une fois le dictionnaire "
+            "en place, et faire deriver les infobulles de ses entrees.")
+
     if tautologiques:
         libelle, aide, ou = tautologiques[0]
         fails.append(

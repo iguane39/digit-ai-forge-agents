@@ -173,6 +173,14 @@ CAS = {
     # la regle passerait pour un refus de toute infobulle citant sa cellule.
     "l3-legende-tautologique.html": {"L3"},
     "l3-legende-explicative.html": set(),
+    # TF-0934 (lot Produit-10 20260908c) — L3 ter : l'objet NOMME que personne n'explique. Les
+    # objets d'un systeme source CITE mais jamais joint n'ont aucun catalogue commente ; le
+    # generateur fait retomber l'infobulle sur la DEFINITION DE LA COLONNE, la meme phrase sur
+    # toute la colonne, qui se lit « pas d'explication ». Ni L3 bis (l'infobulle ne recopie pas
+    # la cellule) ni L27 (la colonne a bien sa definition) ne le voient. La verte porte le
+    # dictionnaire d'objets ecrit et source, et sa sortie declaree au niveau de la ligne.
+    "l3-objet-source-muet.html": {"L3"},
+    "l3-dictionnaire-d-objets.html": set(),
     "l3-score-sans-formule.html": {"L3"},
     "l3-valeur-opaque.html": {"L3"},
     # TF-0233 (15/08) : un conteneur-valeur dont un DESCENDANT porte la légende est

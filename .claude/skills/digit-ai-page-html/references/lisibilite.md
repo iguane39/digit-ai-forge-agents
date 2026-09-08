@@ -189,7 +189,23 @@ générateur qui dispose d'un catalogue commenté lit ses commentaires plutôt q
 l'en-tête. Répétition **voulue** (graphie normalisée, transcription) → `data-legende-ok`,
 déclaré sur la cellule ou sur sa colonne : c'est le geste complet, pas la moitié.
 
-**Contrôle mécanique.** `L3` — les cinq exigences ci-dessus, plus l'échec explicite sur
+**(f) L'objet d'un système source CITÉ mais jamais joint** (TF-0934, 08/09/2026). Le lendemain
+de (e), le même livrable portait des colonnes « Source héritée » nommant les objets d'un
+entrepôt cité et non joint — `LOC.FAI_LOT_MOIS`, `DIM_BATIMENT`. Aucun catalogue ne les
+commente : le générateur a fait retomber l'infobulle sur la **définition de la colonne**, la
+même phrase sur toute la colonne, qui se lit « pas d'explication ». Ni (e) — l'infobulle ne
+recopie pas la cellule, elle recopie l'en-tête — ni L27 — la colonne *a* sa définition — ne le
+voient : le trou est entre les deux.
+
+Exigence : **toute page qui nomme les objets d'un système source déclare un dictionnaire de ces
+objets** — lu dans le catalogue si le système est joint, **écrit et sourcé** sinon (grain,
+famille, volume, schéma). Une cellule dont le texte est un identifiant technique d'objet et dont
+l'infobulle **égale la définition de sa colonne** est un constat « objet non expliqué ». Une fois
+le dictionnaire en place, on le déclare par `data-dictionnaire-objets` (page, table ou ligne) et
+les infobulles en dérivent, plutôt que de rendre la redite obligatoire. La prose libre, qui ne
+nomme aucun objet, n'a besoin d'aucune infobulle.
+
+**Contrôle mécanique.** `L3` — les six exigences ci-dessus, plus l'échec explicite sur
 légende vide et sur `aria-describedby` pointant dans le vide.
 
 **Revue de lecture.** Que le barème soit juste, que ses crans soient discriminants, et que
