@@ -60,6 +60,20 @@ Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
 4. **À sortie localisante** (code retour + *où* est le défaut) et **autoportant**, rejouable dans les deux environnements.
 5. **Prouvé par fixtures** — paire rouge/verte dans `fixtures/` (+ `manifest.json`) : le self-test exige
    FAIL sur la rouge, PASS sur la verte. **Un oracle qui ne sait pas échouer n'est pas un oracle.**
+6. **Une recette ÉPINGLE ce qu'elle éprouve** — sa donnée d'entrée comme la version de l'outil sous
+   test (TF-0912, 08/09/2026). Quatre fixtures rendaient un verdict qui dépendait de la MACHINE, et
+   deux jugeaient une version de l'outil qu'on venait de remplacer : une fixture rouge est devenue
+   muette (verdict PASS) sans que rien ne le dise, un cas « table absente » mesurait l'inverse de ce
+   qu'il croyait, et un banc de câblage restait vert sur la version de la veille. Trois déclinaisons,
+   et elles valent pour **toute** forge à fixtures :
+   - une fixture **désigne** sa donnée de jeu d'essai (`--referentiel=…`, `--produits=…`) et ne la
+     résout **jamais par voisinage** — « fichier voisin de l'artefact » atteint la donnée du poste
+     dès que la résolution de l'outil s'élargit ;
+   - l'isolement d'un banc se fait en **DÉCLARANT une racine jetable**, jamais en **effaçant** une
+     variable : effacer rend la main aux marches devinées, dont l'une atteint la donnée réelle ;
+   - un banc qui éprouve un **câblage** (hook, gate, lanceur posé) **épingle la version sous test**
+     — en déposant la SOURCE au repli que le câblage cherche — le câblage gardant son ordre de
+     recherche réel. Sans cela il éprouve la copie installée, pas ce qu'on vient de corriger.
 
 ## 4. Règle de remontée (la liste grandit)
 Domaine sans oracle au registre → **définir** (scaffold en une commande : skill compagnon **`write-an-oracle`** —

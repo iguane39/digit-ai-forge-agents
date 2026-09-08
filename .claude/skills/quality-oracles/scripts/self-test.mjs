@@ -702,6 +702,40 @@ else {
   }
 }
 
+// TF-0912 (08/09/2026) — UNE RECETTE ÉPINGLE SA DONNÉE D'ENTRÉE, ELLE NE LA DEVINE PAS.
+//
+// LE FAIT PAYÉ. Élargir la résolution des tables de l'oracle de publication (le canal
+// confidentiel avant les anciens fichiers libres) a fait tomber QUATRE fixtures vertes depuis
+// des semaines — non parce que la piste est fausse, mais parce qu'elles résolvaient leur donnée
+// PAR CONVENTION, jamais par désignation. Les deux bundles `nom-client-publie` appelaient
+// l'oracle SANS `--referentiel` ni `--produits`, comptant sur la marche « fichier voisin de
+// l'artefact » : dès la résolution élargie, ils étaient jugés contre les tables RÉELLES du poste,
+// et la fixture ROUGE a rendu PASS faute d'y trouver le nom inventé qu'elle porte. Une fixture
+// rouge qui passe est une fixture MORTE, et rien ne l'aurait dit.
+//
+// CE CAS EST LE CLIQUET DE LA RÈGLE, pas la correction : celle-ci vit dans le manifest depuis
+// bfdb251. Il refuse qu'on retire ces deux drapeaux — le retrait ne casserait AUCUNE fixture sur
+// une machine sans le canal, et repasserait vert le jour où la donnée du parc arrive. Un défaut
+// qui ne se voit que sur certains postes est exactement celui qu'un banc doit épingler.
+{
+  const manifest = path.join(SKILLDIR, 'fixtures', 'manifest.json');
+  try {
+    const m = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+    const entrees = Array.isArray(m) ? m : (m.fixtures || m.entrees || []);
+    const e = entrees.find((x) => x && x.nom === 'nom-client-publie');
+    if (!e) ko('TF-0912 épinglage : entrée « nom-client-publie » introuvable au manifest');
+    else {
+      const cmd = (e.cmd || []).join(' ');
+      const manquants = ['--referentiel=', '--produits='].filter((d) => !cmd.includes(d));
+      if (manquants.length) ko('TF-0912 epinglage : la commande de fixture ne DESIGNE pas ' + manquants.join(' ni ')
+        + ' — elle resout sa donnee par voisinage, donc contre les tables du POSTE des que la resolution s elargit : la fixture rouge redevient muette sans que rien ne le dise');
+      else ok('TF-0912 epinglage : la commande de fixture DESIGNE ses deux tables de jeu d essai (--referentiel, --produits) — son verdict ne depend plus de ce que porte la machine');
+    }
+  } catch (err) {
+    ko('TF-0912 épinglage : manifest illisible — ' + err.message);
+  }
+}
+
 // TF-0828 (05/09/2026) — C5 REJOUE L'ANGLE C4 : LE CONTENU DE L'HISTORIQUE.
 //
 // LE TROU. C5 jugeait trois angles sur les quatre que C1-C4 couvrent : contenus et noms des
