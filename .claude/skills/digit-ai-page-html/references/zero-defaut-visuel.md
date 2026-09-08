@@ -122,6 +122,25 @@ hauteur, et l'image ne la porte pas. La règle juge une **déclaration** et la m
 seul indice disponible. `render_page.py` capture déjà en pleine page par défaut ; le défaut
 fondateur venait de scripts de capture **du produit**, cadrés par fenêtre.
 
+### Une capture qui échoue est un CONSTAT, jamais une panne (TF-0897, 07/09/2026)
+
+La branche d'échec de capture était écrite, mesurée et rendue au JSON — `capture.faite` à
+`False`, `png` à `None`, largeur portée à `captures_manquees` — et la sortie **texte** la
+traversait quand même en `Path(None)` : `TypeError`, `exit 1`, traceback dans le journal R-32,
+et **aucun verdict pour la largeur concernée**, alors que toutes les familles lues dans le DOM
+étaient déjà mesurées. Mesuré le 07/09 sur une page de 188 Ko (~13 500 px de haut) à 768 px et
+échelle 2, reproduit deux fois ; le même appel en échelle 1 rendait PASS. Deux exécutions
+perdues pour un verdict qui existait.
+
+**Règle.** Ce qui n'a pas pu être capturé se **dit** — l'en-tête de largeur porte
+« capture NON FAITE » et le motif est imprimé — et le reste du verdict se **rend** : les
+familles du DOM (V1, V2, V4, V3, V7, L2) sont jugées et comptent, V5/V6 sont déclarées non
+jugées à cette largeur. Levier connu quand la capture ne passe pas : `--timeout` plus grand, ou
+`--scale` plus petit (une page très haute × échelle 2 dépasse la limite d'encodage du
+navigateur). Preuve à double sens dans `self_test.py` (`run_capture_manquee`) : la même page
+jouée au délai normal puis à **1 ms**, et le banc exige qu'aucun traceback ne sorte et que le
+verdict soit rendu dans les deux cas.
+
 ### V11 à V14 : quatre angles morts nommés par un lecteur, pas par un oracle (02/09/2026)
 
 Les quatre familles ajoutées ce jour ont une origine commune, et elle mérite d'être écrite : **ce

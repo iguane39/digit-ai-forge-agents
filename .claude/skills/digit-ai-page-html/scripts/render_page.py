@@ -1638,7 +1638,18 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
     else:
         for width, data in report["breakpoints"].items():
             iss = data["issues"]
-            print(f"\n===== {width}px — {Path(data['png']).name} =====")
+            # TF-0897 (lot Produit-10 20260907c) — UNE CAPTURE QUI ECHOUE N'EST PAS UNE PANNE DE
+            # L'OUTIL. La branche d'echec etait ecrite, mesuree et rendue au JSON (`capture.faite`
+            # a False, `png` a None, largeur portee a `captures_manquees`), et la sortie TEXTE la
+            # traversait quand meme en `Path(None)` : TypeError, exit 1, traceback dans le journal
+            # R-32, AUCUN verdict pour la largeur concernee — alors que toutes les familles lues
+            # dans le DOM etaient deja mesurees. Mesure du 07/09 : page de 188 Ko (~13 500 px de
+            # haut) a 768 px et echelle 2, reproduit deux fois ; le meme appel en echelle 1 rendait
+            # PASS. Ce qui n'a pas pu etre capture se DIT, et le reste du verdict se rend.
+            nom_png = Path(data["png"]).name if data.get("png") else "capture NON FAITE"
+            print(f"\n===== {width}px — {nom_png} =====")
+            if not data.get("png"):
+                print(f"  [capture] {data['capture'].get('motif', 'capture impossible')}")
             for key, title, sev in FAMILLES:
                 kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "à vérifier visuellement")
                 for item in iss.get(key, []) or []:

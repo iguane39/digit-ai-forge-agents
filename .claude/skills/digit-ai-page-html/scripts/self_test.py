@@ -1260,6 +1260,70 @@ def run_filtres_runtime():
     return out
 
 
+def run_capture_manquee():
+    """TF-0897 — UNE CAPTURE QUI ECHOUE N'EST PAS UNE PANNE DE L'OUTIL.
+
+    La branche d'echec de capture etait ecrite, mesuree et rendue au JSON (`capture.faite` a
+    False, `png` a None, largeur portee a `captures_manquees`) : la sortie TEXTE la traversait
+    quand meme en `Path(None)`. TypeError, exit 1, traceback dans le journal R-32, et AUCUN
+    verdict pour la largeur concernee — alors que toutes les familles lues dans le DOM etaient
+    deja mesurees. Mesure du 07/09/2026 : page de 188 Ko (~13 500 px de haut) a 768 px et
+    echelle 2, reproduit deux fois ; le meme appel en echelle 1 rendait PASS.
+
+    Les deux sens, sur la MEME page et par le seul delai de capture :
+      · VERT  — delai normal : la capture aboutit, l'en-tete de largeur nomme le PNG ;
+      · ROUGE — delai d'une milliseconde : la capture ne peut PAS aboutir. L'outil doit rendre
+        son verdict quand meme, nommer « capture NON FAITE », imprimer le motif et declarer la
+        largeur au non_juge — et surtout ne PAS lever. Un traceback ici est le defaut lui-meme.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import subprocess
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    page = FIXTURES / "a5-feuille-parsable.html"
+    if not page.exists():
+        return [{"fixture": page.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-0897", "detail": ""}]
+    captures = tempfile.mkdtemp(prefix="self-test-capture-")
+    out = []
+
+    def jouer(delai):
+        return subprocess.run(
+            [sys.executable, "-X", "utf8", rendu, str(page), "--widths", "768",
+             "--timeout", str(delai), "--out", captures],
+            capture_output=True, text=True, encoding="utf-8")
+
+    normal = jouer(30_000)
+    ok_vert = ("Traceback" not in (normal.stderr or "")
+               and "capture NON FAITE" not in normal.stdout
+               and "Verdict :" in normal.stdout)
+    out.append({"fixture": "capture aboutie · delai normal",
+                "verdict": "OK" if ok_vert else "ECHEC",
+                "attendu": "PNG nomme, aucun traceback", "regle": "TF-0897 sens vert",
+                "obtenu": "conforme" if ok_vert else "verdict ou capture manquants",
+                "detail": "" if ok_vert else (normal.stderr or normal.stdout)[-300:]})
+
+    rate = jouer(1)
+    manques = ["capture NON FAITE" in rate.stdout,
+               "capture impossible a 768 px" in rate.stdout,
+               "Verdict :" in rate.stdout,
+               "NON JUGEES a 768 px" in rate.stdout,
+               "Traceback" not in (rate.stderr or "")]
+    ok_rouge = all(manques)
+    out.append({"fixture": "capture impossible · delai 1 ms",
+                "verdict": "OK" if ok_rouge else "ECHEC",
+                "attendu": "constat declare, verdict rendu, aucun traceback",
+                "regle": "TF-0897 sens rouge",
+                "obtenu": "conforme" if ok_rouge else f"controles tenus : {manques}",
+                "detail": "" if ok_rouge else (rate.stderr or rate.stdout)[-300:]})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_thead_colle():
     """TF-0900 — LE CONTENEUR DE TABLEAU CONTRE LE THEAD COLLANT, mesure d'execution.
 
@@ -1386,6 +1450,11 @@ def main():
     colle = run_thead_colle()
     if colle:
         res += colle
+    # TF-0897 — une capture qui echoue est un CONSTAT, pas une panne : l'outil rend son verdict
+    # sur les familles du DOM et declare ce qu'il n'a pas pu inspecter.
+    capture = run_capture_manquee()
+    if capture:
+        res += capture
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":
