@@ -7,13 +7,45 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.18.0"
+  version: "1.19.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.19.0 (08/09/2026)** — **huit items d'une campagne, et une seule leçon : le socle se
+contredisait lui-même, ou mesurait à côté du défaut que l'humain voyait à la première
+ouverture.** · **Deux lignes du même gabarit se défaisaient l'une l'autre** : `table-filters.js`
+posait `position: relative` **en ligne** sur chaque `<th>` (TF-0899) et `.table-hote
+{ overflow-x: auto }` faisait du conteneur la boîte de défilement du `thead` collant (TF-0900).
+Chacune, seule, suffisait à défaire le geste L29 posé vingt lignes plus bas — `<th>` à 441 px
+pour 337 attendus, une à deux lignes recouvertes **en permanence**, `<th>` à **-96 px** après
+200 px de défilement. L'ancrage ne se pose plus que sur un `<th>` dont la position **calculée**
+vaut `static` ; le conteneur ne défile plus qu'**en dessous de 900 px**, là où le repli en cartes
+masque déjà le `thead`. · **Rien ne mesurait le rendu APRÈS DÉFILEMENT** (TF-0901) : huit
+en-têtes posés sur leurs lignes, **trois oracles PASS**, l'humain seul détecteur — L29 juge des
+déclarations, V4 compare des frères tous décalés pareil, l'oracle de filtres juge le marquage.
+**V15** mesure au repos (recouvrement = bloquant) puis après défilement (un `sticky` hors de son
+`top` déclaré = constat), sans aucun jeton : elle compare le **rendu** au **déclaré**. ·
+**Le défaut vit ENTRE deux mesures** (TF-0910) : les cinq teintes d'état pastel du socle vivent
+entre L\* 93 et 97, chaque badge tenait 4,5:1, et le lecteur ne les distinguait pas. **V16**
+mesure la **distance** entre fonds d'états (Delta-E CIE76 **et** luminance, seuils cumulatifs) ;
+la charte fournit des `*-solid` à encre blanche. · **Une balise citée en toutes lettres**
+(TF-0896) : le commentaire S-G1 du boilerplate a fait embarquer le `<head>` dans la feuille d'une
+page générée — **une** règle CSS pour 27 350 caractères, page nue, trois passes d'oracles à
+mesurer des symptômes. **A5** juge une feuille sur sa **densité de règles** et sur les résidus de
+balisage. · **Une capture qui échoue rendait un traceback au lieu d'un verdict** (TF-0897) : la
+branche d'échec existait, la sortie texte la traversait en `Path(None)`. · **Une page de
+couverture doit dire sur combien elle porte** (TF-0909) : 47 lignes de mapping, trois PASS, et
+38 colonnes + 22 mesures orphelines trouvées en recette le soir même — **L30**. · **Le poseur de
+composants s'importe enfin** (TF-0890) : son analyse d'arguments s'exécutait au chargement et
+tuait tout importateur ; un produit avait réimplémenté le format du bloc dans un autre langage,
+*la classe de défaut que ce script existe pour éliminer*. `--poser` et `--constat <page>`
+rendent la parité jouable des deux côtés. **Bruit mesuré avant chaque mise en bloquant : 0
+constat sur les 159 documents HTML du skill.** Recette 173 → 208 cas ; jeu de règles 36 → 38,
+empreinte `c16177d42a88` → `9dffeac5d60f`.
 
 **1.17.0 (02/09/2026)** — **huit retours d'un lot produit, et une seule famille de cause : le
 socle DÉCRIVAIT sans EXIGER, ou mesurait à côté du défaut.** · **Le composant de filtres lisait un
