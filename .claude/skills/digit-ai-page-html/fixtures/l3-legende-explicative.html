@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 legende explicative — 20260908a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de L3 bis — la legende qui EXPLIQUE (TF-0928, 08/09).
+
+  MEME tableau, MEMES cellules, MEME dictionnaire de colonnes que la fixture rouge : la seule
+  difference est ce que dit l'infobulle. Elle n'annonce plus le champ, elle dit ce qu'il porte —
+  le grain, l'unite, la clef. C'est ce qu'un catalogue commente permet de generer.
+
+  La derniere ligne porte le cas de sortie DECLARE : `data-legende-ok`, pour la repetition
+  voulue — ici la graphie normalisee d'un identifiant. Sans elle, la regle passerait pour un
+  refus de toute infobulle citant sa cellule.
+
+  Attendu : aucun echec.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Correspondance des champs servis</h1>
+<p>Chaque ligne relie un champ du modele cible au champ d'origine qui l'alimente.</p>
+<table>
+<thead><tr>
+<th data-definition="Champ du modele cible. Source : modele publie. Ordre : alphabetique.">Champ cible</th>
+<th data-definition="Table et champ du rapport actuel qui alimentent le champ cible. Source : catalogue du rapport.">Table et champ du rapport actuel</th>
+<th data-definition="Regle de reprise appliquee au champ. Source : note de cadrage.">Reprise</th>
+</tr></thead>
+<tbody>
+<tr><td>lot_cle</td><td title="Clef technique d un lot locatif, unique par batiment. Grain : un lot. Renseignee a la creation du lot, jamais modifiee ensuite.">Base_Tenancy_Schedule.unit_key</td><td>reprise a l identique</td></tr>
+<tr><td>lot_surface</td><td title="Surface louable du lot telle que saisie a la mise en gestion. Unite d origine : pieds carres. Grain : un lot.">Base_Tenancy_Schedule.unit_area</td><td>converti en metres carres</td></tr>
+<tr><td>bail_debut</td><td title="Premier jour de prise d effet du bail, avenants compris. Grain : un bail. Vide tant que le bail n est pas signe.">Base_Lease.start_date</td><td>reprise a l identique</td></tr>
+<tr><td>bail_fin</td><td title="Base_Lease.end_date" data-legende-ok>Base_Lease.end_date</td><td>graphie normalisee du champ d origine</td></tr>
+</tbody></table>
+</main></body></html>

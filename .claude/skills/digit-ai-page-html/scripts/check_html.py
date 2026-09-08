@@ -1145,6 +1145,75 @@ def check_lisibilite(html: str, a: Arbre):
                      "par un motif chiffré « n/m » ; un encadré de remarque s'écrit "
                      ".card.note ou .card.encadre.)")
 
+    # --- L3 bis : une infobulle qui RECOPIE sa cellule (TF-0928, 08/09) ---------------
+    #
+    # LE FAIT. Sur un livrable servi, 900 cellules portaient
+    # `title="table et champ du rapport … : Base_Tenancy_Schedule.unit_key"` sur la cellule
+    # `Base_Tenancy_Schedule.unit_key`. L3 rendait PASS sur chacune : la légende EXISTE, elle
+    # fait plus de 20 caractères, elle est atteignable. Retour humain : « les tooltips doivent
+    # expliquer le champ, pas recopier la cellule ». Une légende tautologique passe le contrôle
+    # et n'apprend rien — c'est exactement la conformité mécanique que L7 refuse aux chapeaux,
+    # et que L3 acceptait aux infobulles.
+    #
+    # LA MESURE. On retire de l'infobulle le libellé de sa colonne et la ponctuation ; ce qui
+    # reste, comparé au texte de la cellule normalisé de la même façon, ne doit pas être le
+    # même texte. La sortie est déclarative comme partout ailleurs : `data-legende-ok` sur la
+    # cellule, sa colonne ou un ancêtre, pour le cas — rare mais réel — où répéter la valeur
+    # est l'explication (une graphie normalisée, une transcription).
+    def _th_de_colonne(td):
+        """Le <th> qui titre la colonne de cette cellule, ou None."""
+        if td.parent is None:
+            return None
+        rang = [e for e in td.parent.enfants
+                if isinstance(e, Noeud) and e.tag in ("td", "th")]
+        if td not in rang:
+            return None
+        idx = rang.index(td)
+        table = next((x for x in td.ancetres() if x.tag == "table"), None)
+        if table is None:
+            return None
+        for th in (e for e in table.descendants() if e.tag == "th"):
+            if th.parent is None:
+                continue
+            freres = [x for x in th.parent.enfants
+                      if isinstance(x, Noeud) and x.tag in ("th", "td")]
+            if th in freres and freres.index(th) == idx:
+                return th
+        return None
+
+    def _norme_legende(txt):
+        """Minuscules, ponctuation et espaces retirés — ce qui reste est le PROPOS."""
+        return re.sub(r"[^0-9a-z]+", "", (txt or "").lower())
+
+    tautologiques = []
+    for td in [n for n in a.racine.descendants() if n.tag == "td"]:
+        aide = (td.att("title") or td.att("aria-label") or "").strip()
+        cellule = td.texte_propre()
+        if not aide or not cellule:
+            continue
+        if any("data-legende-ok" in x.attrs for x in [td, *td.ancetres()]):
+            continue
+        th = _th_de_colonne(td)
+        if th is not None and "data-legende-ok" in th.attrs:
+            continue
+        reste = aide
+        if th is not None:
+            entete = th.texte_propre()
+            if entete:
+                reste = re.sub(re.escape(entete), " ", reste, flags=re.I)
+        if _norme_legende(reste) == _norme_legende(cellule):
+            tautologiques.append((cellule[:40], aide[:60], td.chemin()))
+    if tautologiques:
+        libelle, aide, ou = tautologiques[0]
+        fails.append(
+            f"L3 légende TAUTOLOGIQUE sur {len(tautologiques)} cellule(s) — « {libelle} » a "
+            f"pour infobulle « {aide}… », qui recopie la cellule une fois son libellé de "
+            f"colonne retiré ({ou}). Une infobulle EXPLIQUE la valeur : d'où elle vient, ce "
+            "qu'elle mesure, ce qu'elle vaut. Le dictionnaire de colonnes (L27) porte la "
+            "définition du champ ; si un catalogue commenté existe, l'infobulle se génère "
+            "depuis ses commentaires. Répétition VOULUE (graphie normalisée, "
+            "transcription) → `data-legende-ok`, déclaré sur la cellule ou sa colonne.")
+
     # --- L4 : liste longue filtrable --------------------------------------
     for t in [n for n in a.racine.descendants() if n.tag == "table"]:
         nb = _lignes_tbody(t)

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 legende tautologique — 20260908a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de L3 bis — la legende TAUTOLOGIQUE (TF-0928, 08/09).
+
+  Le defaut, mot pour mot celui du livrable servi : l'infobulle recopie la cellule, precedee du
+  libelle de sa colonne. L3 rendait PASS — la legende EXISTE, elle depasse 20 caracteres, elle
+  est atteignable. Retour humain : « les tooltips doivent expliquer le champ, pas recopier la
+  cellule ». 900 cellules ainsi legendees avaient passe le controle.
+
+  Le tableau porte son dictionnaire de colonnes (L27) : c'est ce qui prouve que le defaut n'est
+  PAS l'absence de definition de colonne, mais l'infobulle de CELLULE qui n'explique rien.
+
+  Attendu : L3.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Correspondance des champs servis</h1>
+<p>Chaque ligne relie un champ du modele cible au champ d'origine qui l'alimente.</p>
+<table>
+<thead><tr>
+<th data-definition="Champ du modele cible. Source : modele publie. Ordre : alphabetique.">Champ cible</th>
+<th data-definition="Table et champ du rapport actuel qui alimentent le champ cible. Source : catalogue du rapport.">Table et champ du rapport actuel</th>
+<th data-definition="Regle de reprise appliquee au champ. Source : note de cadrage.">Reprise</th>
+</tr></thead>
+<tbody>
+<tr><td>lot_cle</td><td title="Table et champ du rapport actuel : Base_Tenancy_Schedule.unit_key">Base_Tenancy_Schedule.unit_key</td><td>reprise a l identique</td></tr>
+<tr><td>lot_surface</td><td title="Table et champ du rapport actuel : Base_Tenancy_Schedule.unit_area">Base_Tenancy_Schedule.unit_area</td><td>converti en metres carres</td></tr>
+<tr><td>bail_debut</td><td title="Table et champ du rapport actuel : Base_Lease.start_date">Base_Lease.start_date</td><td>reprise a l identique</td></tr>
+<tr><td>bail_fin</td><td title="Table et champ du rapport actuel : Base_Lease.end_date">Base_Lease.end_date</td><td>reprise a l identique</td></tr>
+</tbody></table>
+</main></body></html>

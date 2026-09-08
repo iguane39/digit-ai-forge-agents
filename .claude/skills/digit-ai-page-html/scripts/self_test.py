@@ -165,6 +165,14 @@ CAS = {
     # AVEC un motif. Sans elles, la regle passerait pour un simple refus de crochets.
     "l14-jetons-cites-en-code.html": set(),
     "l14-exemption-motivee.html": set(),
+    # TF-0928 (lot Produit-10 20260908b) — L3 bis : la legende TAUTOLOGIQUE. 900 cellules dont
+    # l'infobulle recopiait la cellule avaient passe L3, qui ne juge que l'EXISTENCE et la
+    # longueur d'une legende. La paire porte le MEME tableau et le MEME dictionnaire de
+    # colonnes (L27) : c'est ce qui prouve que le defaut n'est pas l'absence de definition de
+    # colonne. La verte porte en outre le cas de sortie DECLARE (`data-legende-ok`), sans quoi
+    # la regle passerait pour un refus de toute infobulle citant sa cellule.
+    "l3-legende-tautologique.html": {"L3"},
+    "l3-legende-explicative.html": set(),
     "l3-score-sans-formule.html": {"L3"},
     "l3-valeur-opaque.html": {"L3"},
     # TF-0233 (15/08) : un conteneur-valeur dont un DESCENDANT porte la légende est

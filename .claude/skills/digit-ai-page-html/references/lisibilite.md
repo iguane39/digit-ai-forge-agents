@@ -175,7 +175,21 @@ Exigence : `title` / `aria-label` d'au moins 12 caractères, `aria-describedby` 
 légende visible. Échappatoire pour un identifiant volontairement brut : `data-opaque-ok`. Le
 contenu d'un `<code>` est hors périmètre — il annonce déjà qu'il s'adresse à la machine.
 
-**Contrôle mécanique.** `L3` — les quatre exigences ci-dessus, plus l'échec explicite sur
+**(e) La légende TAUTOLOGIQUE** (TF-0928, 08/09/2026). Une infobulle qui **recopie sa cellule**
+passe (a)-(d) sans rien apprendre : elle existe, elle dépasse 20 caractères, elle s'atteint.
+Mesure sur un livrable servi : `title="table et champ du rapport … : Base_Tenancy_Schedule.unit_key"`
+sur la cellule `Base_Tenancy_Schedule.unit_key`, **900 cellules** ainsi légendées et conformes.
+Retour humain : « les tooltips doivent expliquer le champ, pas recopier la cellule ».
+
+Exigence : le `title` / `aria-label` d'une cellule, **son libellé de colonne et sa ponctuation
+retirés**, ne doit pas égaler le texte de la cellule. Le partage du travail est celui du
+dictionnaire de colonnes (L27) : *le `th` porte la définition du CHAMP, l'infobulle de cellule
+porte l'explication de la VALEUR* — d'où elle vient, ce qu'elle mesure, ce qu'elle vaut. Un
+générateur qui dispose d'un catalogue commenté lit ses commentaires plutôt que de recomposer
+l'en-tête. Répétition **voulue** (graphie normalisée, transcription) → `data-legende-ok`,
+déclaré sur la cellule ou sur sa colonne : c'est le geste complet, pas la moitié.
+
+**Contrôle mécanique.** `L3` — les cinq exigences ci-dessus, plus l'échec explicite sur
 légende vide et sur `aria-describedby` pointant dans le vide.
 
 **Revue de lecture.** Que le barème soit juste, que ses crans soient discriminants, et que
