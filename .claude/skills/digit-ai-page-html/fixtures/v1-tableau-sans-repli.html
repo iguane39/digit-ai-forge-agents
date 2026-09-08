@@ -59,7 +59,7 @@
 <!-- COMPOSANT-EMBARQUE:DEBUT boilerplate.css — copie du socle digit-ai-page-html/assets/boilerplate.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="boilerplate.css" data-empreinte="sha256:0c4ef5761b560b28725c8766b987904894b27e3b94c556fefa1a9609f092343a">
+<style data-composant="boilerplate.css" data-empreinte="sha256:e530881580c22318487e7ffa22050a1242b9447f13dff92d0ac0d6798204bddd">
     :root {
       /* Couleurs — marque & surfaces */
       --blue: #2563EB;
@@ -90,6 +90,18 @@
          bord haut, le thead collant et le sommaire lateral se decalent de var(--hh). Un token
          consomme sans etre pose vaudrait 0 et ramenerait la collision (controle L29). */
       --hh: 64px;
+      /* TF-0929 (08/09, troisieme retour humain sur l'en-tete collant en deux jours) — `--hh`
+         est un TOKEN, et un token ne suit pas une hauteur qui change avec la largeur. Des que
+         l'en-tete passe sur deux lignes, ou qu'une bande de sommaire colle SOUS lui, ce qui
+         colle au-dessus du thead est plus haut que 64 px, et le thead se range DERRIERE eux —
+         mesure a 1 370 px : 115 px d'en-tete masques ; a 1 600 px, aucun defaut. Les deux
+         valeurs sont donc MESUREES au chargement, au redimensionnement et aux polices chargees
+         (voir poserHauteurs() en pied de page) ; ce qui est ecrit ici est le REPLI, celui qui
+         sert avant la premiere mesure et si le script ne s'execute pas.
+         --hh     : bas de l'en-tete collant — ce qui colle directement sous lui l'emploie ;
+         --hh-tab : bas du DERNIER collant au-dessus d'un tableau (en-tete + bande de sommaire
+                    collante s'il y en a une) — le thead collant emploie celui-la. */
+      --hh-tab: 64px;
       /* Rayons */
       --r: 12px; --r-sm: 8px;
       /* Largeur du conteneur et largeur de lecture — cf. regle L2.
@@ -265,7 +277,7 @@
        rendu. L'en-tete garde le bord haut (c'est lui qui porte l'identite du livrable) ; ce
        qui colle SOUS lui consomme --hh. Le sommaire lateral (L25) prend le meme repere. */
     header.doc.colle { position: sticky; top: 0; z-index: 20; background: var(--bg); }
-    thead.colle th   { position: sticky; top: var(--hh); z-index: 10; background: var(--surface); }
+    thead.colle th   { position: sticky; top: var(--hh-tab, var(--hh)); z-index: 10; background: var(--surface); }
     nav.toc.colle    { position: sticky; top: var(--hh); z-index: 10; }
     @media (max-width: 900px) { nav.toc.colle { position: static; } }
     .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
