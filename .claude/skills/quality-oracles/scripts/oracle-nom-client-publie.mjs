@@ -539,19 +539,40 @@ try {
   //
   // Une clé portant des `formes` déclarées (TF-0825) fait chercher SES FORMES, jamais la clé
   // nue : le garde-fou du terme court vaut dans l'historique comme dans l'arbre.
-  for (const pr of P) {
-    for (const aiguille of (pr.formes || [pr.cle])) {
-      const argsGrep = ['grep', '-l', '-I', '-F', '-w', '-e', aiguille];
-      for (const lot of lots(revs, 150)) {
-        const r = git(repo, ...argsGrep, ...lot);
-        for (const ligne of (r.stdout || '').split('\n').filter(Boolean)) {
-          const [rev, ...reste] = ligne.split(':');
-          const rel = reste.join(':');
-          // Déjà dit par C5 sur l'arbre courant : ne pas compter deux fois le même fichier.
-          if (suivis.includes(rel) && findings.some((f) => f.regle === 'C5' && f.where.startsWith(rel + ':'))) continue;
+  //
+  // LE COUT, ET IL EST MESURE — c'est ce qui a dicte la forme de cette boucle. Un `git grep` par
+  // TERME et par lot de revisions relit les MEMES blobs autant de fois qu'il y a de termes.
+  // Mesure du 08/09 sur le depot du pilot (900 revisions, 1 369 fichiers suivis) : la porte y
+  // prenait deja 99 s AVANT cet angle, et le coordinateur la mesure a 2-4 min avec les tables
+  // reelles. Un gate au-dela de la minute se contourne au premier `--no-verify` : y ajouter une
+  // passe par terme aurait ete ajouter au probleme, pas a la couverture.
+  //
+  // TOUTES LES AIGUILLES DE PRODUIT PARTAGENT LEURS DRAPEAUX (`-l -I -F -w`, sensible a la
+  // casse) : elles tiennent donc dans UN SEUL `git grep` par lot, avec autant de `-e`. On paie
+  // une passe, pas |P|. Le prix de ce groupage est que `-l` ne dit pas QUELLE aiguille a mordu :
+  // la passe groupee sert de FILTRE, et l'aiguille n'est identifiee que sur les couples
+  // (revision, fichier) qui ont mordu — c'est-a-dire presque jamais, puisque le cas nominal
+  // d'une porte est de ne rien trouver. Le contrat `findings[]` est inchange.
+  const aiguilles = [];
+  for (const pr of P) for (const a of (pr.formes || [pr.cle])) if (!aiguilles.includes(a)) aiguilles.push(a);
+  if (aiguilles.length) {
+    const eGroupe = [];
+    for (const a of aiguilles) eGroupe.push('-e', a);
+    for (const lot of lots(revs, 150)) {
+      const r = git(repo, 'grep', '-l', '-I', '-F', '-w', ...eGroupe, ...lot);
+      for (const ligne of (r.stdout || '').split('\n').filter(Boolean)) {
+        const [rev, ...reste] = ligne.split(':');
+        const rel = reste.join(':');
+        // Déjà dit par C5 sur l'arbre courant : ne pas compter deux fois le même fichier.
+        if (suivis.includes(rel) && findings.some((f) => f.regle === 'C5' && f.where.startsWith(rel + ':'))) continue;
+        // QUELLE aiguille ? Le blob est relu UNE fois, ici seulement — sur un couple qui a
+        // deja morde. Le constat nomme l'aiguille, comme tous les autres constats C5.
+        const blob = git(repo, 'show', `${rev}:${rel}`).stdout || '';
+        for (const a of aiguilles) {
+          if (!litteralProduit(a).test(blob)) continue;
           findings.push({
             sev: 'bloquant', regle: 'C5',
-            msg: `nom de produit interdit « ${aiguille} » dans le CONTENU d'un fichier de l'historique`,
+            msg: `nom de produit interdit « ${a} » dans le CONTENU d'un fichier de l'historique`,
             where: `${rev.slice(0, 12)}:${rel}`,
           });
         }
