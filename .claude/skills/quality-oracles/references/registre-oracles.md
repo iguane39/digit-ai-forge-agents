@@ -371,3 +371,11 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
 - **v2.11.1** : `timeout_ms: 600000` posé sur les deux oracles claims — le budget
   par défaut de 120 s tuait `oracle-claims` sur les livrables de ~500 Ko (PASS en
   7 min lancé seul, constaté sur le rapport SEO Produit-02 du 15/08, TF-0239).
+
+<!-- Section REPORTÉE par le pilot le 10/09/2026 (TF-1006, mandat humain A-6). Une session d'engagement l'avait écrite le 10/09 à 08:21 dans la COPIE INSTALLÉE (~/.claude/skills), jamais dans cette source ; la propagation suivante l'a effacée en silence, et le pilot l'a reportée ici depuis sa lecture d'avant l'effacement, après pseudonymisation par la chaîne du parc. L'oracle décrit vit dans le dépôt du produit ; ce registre ne fait que l'indexer. Règle rappelée : une remontée §4 s'écrit ICI, dans la source versionnée — la copie installée est réécrite à chaque propagation. -->
+
+### Oracles portés par un engagement (remontée §4 — 10/09/2026)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Support Design Authority Client-A (parité de format avec le deck de référence + faits portés) | `node c:/dev/_Client-A/Produit-64/tools/design-authority/oracle-da-pptx.mjs <deck.pptx> --faits <faits.json>` — F1 format 16:9, F2 polices ⊆ {Century Gothic, Arial, Courier New}, F3 couleurs de texte ⊆ palette relevée, F4 pied de page + pagination continue, F5 couverture / intercalaires / MERCI, F6 faits attendus présents, F7 débordement probable (heuristique), F8 zip ([Content_Types].xml 1re entrée, zéro JPEG/transition). Oracle visuel de confirmation : `tools/design-authority/rendre-pptx.ps1` (export PNG par PowerPoint COM — remplace le smoke-test LibreOffice absent du poste) | cli | ✅ |
