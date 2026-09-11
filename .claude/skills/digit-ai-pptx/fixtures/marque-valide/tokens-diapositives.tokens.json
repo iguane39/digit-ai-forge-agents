@@ -1,0 +1,34 @@
+{
+  "$description": "FIXTURE VERTE — dossier de marque SYNTHÉTIQUE du skill digit-ai-pptx (TF-1023, 11/09/2026).\nCe n'est PAS une charte : aucune de ces valeurs n'est celle d'un émetteur réel. Elles sont volontairement différentes de celles de digit-ai-marketing pour qu'un lecteur qui lirait des valeurs en dur au lieu du dossier de marque soit démasqué par la comparaison avec attendu.json.\nLe jeu est complet : les deux thèmes portent les six couleurs requises, les trois polices et l'épaisseur de filet. lire-marque.mjs doit en sortir en exit 0.",
+  "couleur": {
+    "clair": {
+      "bg": { "$type": "color", "$value": "#FFFDF7" },
+      "card": { "$type": "color", "$value": "#FFFFFF" },
+      "ink": { "$type": "color", "$value": "#111827" },
+      "muted": { "$type": "color", "$value": "#556677" },
+      "line": { "$type": "color", "$value": "#DDE3EC" },
+      "blue": { "$type": "color", "$value": "#3355CC" }
+    },
+    "sombre": {
+      "bg": { "$type": "color", "$value": "#101820" },
+      "card": { "$type": "color", "$value": "#1A2430" },
+      "ink": { "$type": "color", "$value": "#F0F4FF" },
+      "muted": { "$type": "color", "$value": "#99A5B5" },
+      "line": { "$type": "color", "$value": "#2A3542" },
+      "blue": { "$type": "color", "$value": "#88AAEE" }
+    }
+  },
+  "typographie": {
+    "head": { "$type": "fontFamily", "$value": ["Fixture Titre", "system-ui", "sans-serif"] },
+    "sans": { "$type": "fontFamily", "$value": ["Fixture Corps", "system-ui", "sans-serif"] },
+    "mono": { "$type": "fontFamily", "$value": ["Fixture Mono", "ui-monospace", "monospace"] }
+  },
+  "espacement": {
+    "espace-md": { "$type": "dimension", "$value": "24px" },
+    "filet-epaisseur": { "$type": "dimension", "$value": "6px" }
+  },
+  "alias": {
+    "accent": { "$value": "{couleur.clair.blue}" },
+    "fond-couverture": { "$value": "{couleur.sombre.bg}" }
+  }
+}

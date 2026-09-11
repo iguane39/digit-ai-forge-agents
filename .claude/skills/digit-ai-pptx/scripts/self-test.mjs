@@ -21,10 +21,20 @@
 //        La table est une DONNÉE et vit HORS de tout dépôt publié (loi transverse n° 4) :
 //        elle est résolue à l'exécution, jamais embarquée — un contrôle qui embarquerait la
 //        liste publierait exactement ce qu'il protège. Son ABSENCE rend SKIP, jamais PASS.
+//   C3 — `scripts/lire-marque.mjs` consomme bien un dossier de marque (TF-1023, 11/09/2026) :
+//        joué sur les DEUX fixtures de `fixtures/`, dans les DEUX formats (source DTCG et
+//        dérivé CSS). Fixture VERTE `marque-valide` : exit 0 et chaque valeur rendue égale à
+//        `fixtures/marque-valide/attendu.json` — une valeur en dur survivante divergerait.
+//        Fixture ROUGE `marque-sans-blue` : exit 2, le jeton manquant nommé. Dossier absent :
+//        exit 2. Un lecteur qui « réussirait » sur la fixture rouge retomberait sur du dur.
+//   C4 — SKILL.md ne porte plus de VALEUR de marque en dur : aucune couleur hexadécimale,
+//        aucune famille de police nommée comme valeur. Les noms de jetons, eux, sont attendus.
+//        Une police nommée pour être INTERDITE reste permise : c'est une règle, pas une valeur.
 //
-// DOUBLE SENS. C1 est rejoué sur une FIXTURE ROUGE synthétique (un SKILL.md temporaire qui
-// cite un fichier absent) : si la fixture rouge ne rougit pas, le contrôle est aveugle et le
-// self-test échoue de lui-même. La fixture VERTE est le skill réel.
+// DOUBLE SENS. Chaque contrôle est rejoué sur une FIXTURE ROUGE : C1 sur un SKILL.md temporaire
+// citant un fichier absent, C2 sur un terme inventé, C3 sur le dossier de marque amputé, C4 sur
+// un texte planté. Si une fixture rouge ne rougit pas, le contrôle est aveugle et le self-test
+// échoue de lui-même. Les fixtures VERTES sont le skill réel et `fixtures/marque-valide`.
 //
 // Sortie : JSON {verdict, findings, non_juge} sur stdout. Exit 0 (PASS) / 1 (FAIL) / 2 (SKIP).
 // Usage : node scripts/self-test.mjs [--skill=<dir>] [--referentiel=<chemin table>]
@@ -32,6 +42,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -57,6 +68,10 @@ const NON_JUGE = [
   "C1 ne vérifie que l'EXISTENCE du fichier, jamais que son contenu tient la promesse du renvoi",
   "C2 n'a pas d'opinion sur un nom de client ABSENT de la table : la table est figée et ne s'étend pas toute seule",
   "C2 exige une frontière non alphanumérique autour des termes de 4 caractères ou moins, pour ne pas rougir sur une sous-chaîne fortuite — un sigle court collé à un mot lui échappe donc",
+  "C3 joue lire-marque.mjs sur des fixtures SYNTHÉTIQUES : il ne dit rien du dossier de marque réel de l'émetteur, ni de la justesse des valeurs qui y vivent",
+  "C3 ne juge pas le RENDU : qu'un jeton soit lu ne prouve pas qu'il ait été peint sur la diapositive — c'est l'affaire de la passe QA du deck",
+  "C4 ne voit que SKILL.md : une valeur en dur dans references/ n'est pas attrapée — charte.md porte d'ailleurs des valeurs datées, explicitement « ne fait pas foi »",
+  "C4 ne connaît que la notation hexadécimale à six chiffres et les familles de polices nommées : un nom de couleur CSS ou une valeur rgb() lui échappe",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
 
@@ -152,6 +167,95 @@ function verifierNoms(dirSkill, termes) {
   return findings;
 }
 
+// ------------------------------------------------------- C3 : consommation du système de marque
+const LECTEUR = path.join(SKILL_DIR, 'scripts', 'lire-marque.mjs');
+const FIX = path.join(SKILL_DIR, 'fixtures');
+
+function jouerLecteur(dossier, format) {
+  const r = spawnSync(process.execPath, [LECTEUR, `--marque=${dossier}`, `--format=${format}`, '--compact'], {
+    encoding: 'utf8',
+  });
+  return { code: r.status, out: r.stdout || '', err: r.stderr || '' };
+}
+
+function verifierMarque() {
+  const findings = [];
+  if (!fs.existsSync(LECTEUR)) {
+    findings.push('scripts/lire-marque.mjs — absent : le skill ne peut plus consommer de système de marque');
+    return findings;
+  }
+  const dossierVert = path.join(FIX, 'marque-valide');
+  const dossierRouge = path.join(FIX, 'marque-sans-blue');
+  const cheminAttendu = path.join(dossierVert, 'attendu.json');
+  if (!fs.existsSync(cheminAttendu)) {
+    findings.push('fixtures/marque-valide/attendu.json — absent : la fixture verte ne dit plus ce qu\'elle attend');
+    return findings;
+  }
+  const attendu = JSON.parse(fs.readFileSync(cheminAttendu, 'utf8'));
+
+  for (const format of ['dtcg', 'css']) {
+    // FIXTURE VERTE — exit 0 et valeurs strictement égales à celles du dossier de marque lu.
+    const v = jouerLecteur(dossierVert, format);
+    if (v.code !== 0) {
+      findings.push(`fixture-verte/marque-valide (${format}) — lire-marque.mjs sort en ${v.code} au lieu de 0 : ${v.err.split('\n')[0]}`);
+      continue;
+    }
+    let lu;
+    try { lu = JSON.parse(v.out); } catch { findings.push(`fixture-verte/marque-valide (${format}) — sortie JSON illisible`); continue; }
+    for (const [cle, val] of Object.entries(attendu.usages_pptx || {})) {
+      const obtenu = lu.usages_pptx && lu.usages_pptx[cle];
+      const brut = obtenu && typeof obtenu === 'object' ? obtenu.pptx : obtenu;
+      if (String(brut) !== String(val)) {
+        findings.push(`fixture-verte/marque-valide (${format}) — usages_pptx.${cle} = ${brut}, attendu ${val} : la valeur rendue ne vient pas du dossier de marque`);
+      }
+    }
+    for (const [jeton, pouces] of Object.entries(attendu.dimensions_pouces || {})) {
+      const d = lu.dimensions && lu.dimensions[jeton];
+      if (!d || d.pouces !== pouces) {
+        findings.push(`fixture-verte/marque-valide (${format}) — dimension ${jeton} = ${d ? d.pouces : 'absente'} pouce(s), attendu ${pouces} : conversion px→pouce fausse`);
+      }
+    }
+
+    // FIXTURE ROUGE — un jeton requis manque : le lecteur DOIT rendre la main, pas improviser.
+    const r = jouerLecteur(dossierRouge, format);
+    if (r.code !== 2) {
+      findings.push(`fixture-rouge/marque-sans-blue (${format}) — lire-marque.mjs sort en ${r.code} au lieu de 2 : un jeton manquant ne rend pas la main`);
+    } else if (!/blue/i.test(r.err)) {
+      findings.push(`fixture-rouge/marque-sans-blue (${format}) — exit 2 correct mais le message ne nomme pas le jeton manquant`);
+    }
+    if (r.out.trim()) {
+      findings.push(`fixture-rouge/marque-sans-blue (${format}) — le lecteur a tout de même écrit des valeurs sur stdout`);
+    }
+  }
+
+  // FIXTURE ROUGE — dossier de marque injoignable : rendre la main, jamais retomber sur du dur.
+  const absent = jouerLecteur(path.join(FIX, 'marque-qui-n-existe-pas'), 'auto');
+  if (absent.code !== 2) {
+    findings.push(`fixture-rouge/dossier-absent — lire-marque.mjs sort en ${absent.code} au lieu de 2 : un dossier de marque injoignable ne rend pas la main`);
+  }
+  return findings;
+}
+
+// ---------------------------------------------------- C4 : plus de valeur de marque en dur
+const FAMILLES = ['Montserrat', 'Inter', 'Roboto', 'DM Sans', 'JetBrains Mono', 'Helvetica', 'Arial', 'Calibri', 'Poppins', 'Lato'];
+
+function valeursEnDur(texte, etiquette) {
+  const findings = [];
+  texte.split(/\r?\n/).forEach((ligne, i) => {
+    const interdiction = /jamais|interdit/i.test(ligne); // nommer une police pour la BANNIR est une règle
+    for (const m of ligne.matchAll(/#[0-9A-Fa-f]{6}\b/g)) {
+      findings.push(`${etiquette}:${i + 1} — couleur en dur : ${m[0]} — écrire le nom du jeton, la valeur vit chez l'émetteur`);
+    }
+    if (interdiction) return;
+    for (const fam of FAMILLES) {
+      if (new RegExp(`\\b${fam}\\b`).test(ligne)) {
+        findings.push(`${etiquette}:${i + 1} — police en dur : ${fam} — écrire le nom du jeton, la valeur vit chez l'émetteur`);
+      }
+    }
+  });
+  return findings;
+}
+
 // ---------------------------------------------------------------- exécution
 const findings = [];
 const nonJuge = [...NON_JUGE];
@@ -216,6 +320,25 @@ if (!table) {
   findings.push(...verifierNoms(SKILL_DIR, table.termes));
 }
 
+// C3 — consommation du système de marque, fixtures verte et rouge
+findings.push(...verifierMarque());
+
+// C4 — fixture ROUGE synthétique d'abord : le détecteur doit voir une valeur plantée.
+const textePlante = [
+  'Fond de couverture #ABC123 posé en dur.',
+  'Titres en Montserrat, corps en Inter.',
+].join('\n');
+const rougeC4 = valeursEnDur(textePlante, 'fixture-rouge-c4');
+if (!rougeC4.some((x) => x.includes('#ABC123'))) findings.push('fixture-rouge — C4 est AVEUGLE : une couleur en dur n\'a pas été détectée');
+if (!rougeC4.some((x) => x.includes('police en dur'))) findings.push('fixture-rouge — C4 est AVEUGLE : une police en dur n\'a pas été détectée');
+if (valeursEnDur('Jamais la police Montserrat ici : elle est interdite.', 'fixture-verte-c4').length) {
+  findings.push('fixture-verte — C4 rougit sur une police nommée pour être INTERDITE : l\'exemption est cassée');
+}
+// C4 — fixture VERTE : le SKILL.md réel.
+if (fs.existsSync(skillMdPath)) {
+  findings.push(...valeursEnDur(fs.readFileSync(skillMdPath, 'utf8'), `${NOM_SKILL}/SKILL.md`));
+}
+
 if (findings.length) verdict = 'FAIL';
 else if (!c2Jouee) verdict = 'SKIP';
 
@@ -224,7 +347,12 @@ process.stdout.write(JSON.stringify({
   oracle: 'self-test-skill',
   skill: NOM_SKILL,
   artefact: SKILL_DIR.replace(/\\/g, '/'),
-  controles: { C1_liens_relatifs: 'jouée', C2_noms_interdits: c2Jouee ? 'jouée' : 'NON jouée (table absente)' },
+  controles: {
+    C1_liens_relatifs: 'jouée',
+    C2_noms_interdits: c2Jouee ? 'jouée' : 'NON jouée (table absente)',
+    C3_consommation_marque: 'jouée',
+    C4_valeurs_de_marque_en_dur: 'jouée',
+  },
   verdict,
   findings,
   non_juge: nonJuge,

@@ -1,0 +1,33 @@
+/* FIXTURE VERTE — dérivé CSS du dossier de marque SYNTHÉTIQUE (TF-1023, 11/09/2026).
+ * Valeurs volontairement étrangères à toute charte réelle. Tenu identique, jeton par jeton,
+ * à tokens-diapositives.tokens.json : le self-test lit la fixture dans les DEUX formats et
+ * exige le même résultat — un lecteur CSS qui divergerait de la source DTCG est un défaut.
+ */
+
+:root {
+  color-scheme: light;
+
+  --bg: #FFFDF7;
+  --card: #FFFFFF;
+  --ink: #111827;
+  --muted: #556677;
+  --line: #DDE3EC;
+  --blue: #3355CC;
+
+  --head: "Fixture Titre", system-ui, sans-serif;
+  --sans: "Fixture Corps", system-ui, sans-serif;
+  --mono: "Fixture Mono", ui-monospace, monospace;
+
+  --espace-md: 24px;
+  --filet-epaisseur: 6px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101820;
+  --card: #1A2430;
+  --ink: #F0F4FF;
+  --muted: #99A5B5;
+  --line: #2A3542;
+  --blue: #88AAEE;
+}

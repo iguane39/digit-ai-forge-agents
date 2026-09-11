@@ -1,0 +1,25 @@
+{
+  "$description": "Valeurs ATTENDUES en sortie de lire-marque.mjs sur ce dossier de marque synthétique (fixture verte, TF-1023). Le self-test du skill compare la sortie réelle à ce contenu, dans les deux formats (dtcg et css). Une valeur en dur qui aurait survécu dans le lecteur donnerait ici une divergence visible.",
+  "exit": 0,
+  "usages_pptx": {
+    "fond_contenu": "FFFDF7",
+    "encre_contenu": "111827",
+    "encre_faible_contenu": "556677",
+    "trait_contenu": "DDE3EC",
+    "surface_carte": "FFFFFF",
+    "accent_filets": "3355CC",
+    "fond_couverture": "101820",
+    "encre_couverture": "F0F4FF",
+    "encre_faible_couverture": "99A5B5",
+    "trait_couverture": "2A3542",
+    "accent_couverture": "88AAEE",
+    "police_titre": "Fixture Titre",
+    "police_corps": "Fixture Corps",
+    "police_mono": "Fixture Mono",
+    "filet_epaisseur_pouces": 0.0625
+  },
+  "dimensions_pouces": {
+    "espace-md": 0.25,
+    "filet-epaisseur": 0.0625
+  }
+}

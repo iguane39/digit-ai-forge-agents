@@ -1,0 +1,31 @@
+/* FIXTURE ROUGE — dérivé CSS du dossier de marque amputé (TF-1023, 11/09/2026).
+ * « --blue » est ABSENT du thème clair, et de lui seul : le reste du jeu est complet.
+ * lire-marque.mjs doit rendre la main (exit 2) sur ce dossier, format CSS comme format DTCG.
+ */
+
+:root {
+  color-scheme: light;
+
+  --bg: #FFFDF7;
+  --card: #FFFFFF;
+  --ink: #111827;
+  --muted: #556677;
+  --line: #DDE3EC;
+
+  --head: "Fixture Titre", system-ui, sans-serif;
+  --sans: "Fixture Corps", system-ui, sans-serif;
+  --mono: "Fixture Mono", ui-monospace, monospace;
+
+  --espace-md: 24px;
+  --filet-epaisseur: 6px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101820;
+  --card: #1A2430;
+  --ink: #F0F4FF;
+  --muted: #99A5B5;
+  --line: #2A3542;
+  --blue: #88AAEE;
+}

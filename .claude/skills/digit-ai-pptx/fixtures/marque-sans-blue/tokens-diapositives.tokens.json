@@ -1,0 +1,29 @@
+{
+  "$description": "FIXTURE ROUGE — dossier de marque SYNTHÉTIQUE amputé du jeton d'accent (TF-1023, 11/09/2026).\nTout y est SAUF « blue » dans le thème clair : c'est le jeton qui peint les filets haut et bas de toute diapositive. lire-marque.mjs DOIT rendre la main (exit 2, message nommant le jeton manquant) au lieu de substituer un bleu en dur. Si cette fixture passait en exit 0, le lecteur porterait encore une valeur en dur et le contrôle serait aveugle.",
+  "couleur": {
+    "clair": {
+      "bg": { "$type": "color", "$value": "#FFFDF7" },
+      "card": { "$type": "color", "$value": "#FFFFFF" },
+      "ink": { "$type": "color", "$value": "#111827" },
+      "muted": { "$type": "color", "$value": "#556677" },
+      "line": { "$type": "color", "$value": "#DDE3EC" }
+    },
+    "sombre": {
+      "bg": { "$type": "color", "$value": "#101820" },
+      "card": { "$type": "color", "$value": "#1A2430" },
+      "ink": { "$type": "color", "$value": "#F0F4FF" },
+      "muted": { "$type": "color", "$value": "#99A5B5" },
+      "line": { "$type": "color", "$value": "#2A3542" },
+      "blue": { "$type": "color", "$value": "#88AAEE" }
+    }
+  },
+  "typographie": {
+    "head": { "$type": "fontFamily", "$value": ["Fixture Titre", "system-ui", "sans-serif"] },
+    "sans": { "$type": "fontFamily", "$value": ["Fixture Corps", "system-ui", "sans-serif"] },
+    "mono": { "$type": "fontFamily", "$value": ["Fixture Mono", "ui-monospace", "monospace"] }
+  },
+  "espacement": {
+    "espace-md": { "$type": "dimension", "$value": "24px" },
+    "filet-epaisseur": { "$type": "dimension", "$value": "6px" }
+  }
+}
