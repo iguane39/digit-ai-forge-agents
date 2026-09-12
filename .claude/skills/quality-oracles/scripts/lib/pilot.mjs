@@ -17,6 +17,7 @@
 // Une piste n'est retenue que si elle porte réellement `oracles/` : un dossier homonyme vide
 // rendrait une résolution qui ment.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export const MARQUEUR_PILOT = '{pilot}';
@@ -26,6 +27,13 @@ export function pistesPilot(skilldir) {
   const pistes = [];
   if (process.env.FORGE_ROOT) pistes.push(path.join(process.env.FORGE_ROOT, 'digit-ai-factory'));
   pistes.push(path.resolve(skilldir, '..', '..', '..', '..', 'digit-ai-factory'));
+  // Mesuré le 12/09/2026 (TF-1064, première propagation) : depuis la COPIE INSTALLÉE
+  // (`~/.claude/skills/<skill>`), la piste 2 tombe sur `C:\Users\digit-ai-factory`, qui n'existe
+  // pas — l'oracle délégué était injoignable partout sauf dans la source. Les deux pistes qui
+  // suivent sont celles de `hooks-factory.mjs` du pilot, dans le même ordre : la racine
+  // conventionnelle du parc, puis le dossier utilisateur du parc.
+  pistes.push(path.join('c:\\dev', 'digit-ai-factory'));
+  pistes.push(path.join(os.homedir(), '.digit-ai-forge', 'digit-ai-factory'));
   return pistes;
 }
 

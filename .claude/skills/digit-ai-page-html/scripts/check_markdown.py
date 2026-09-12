@@ -353,7 +353,7 @@ def juger(texte: str) -> tuple[list[str], list[str]]:
 # en clair (`verdict: "SKIP"` + motif nommant les pistes essayées), il ne se tait pas. Un silence
 # se lirait comme un vert, et c'est exactement le défaut que ce lot corrige ailleurs.
 
-MARQUEURS_PILOT = ("FORGE_ROOT/digit-ai-factory", "dépôt frère ../../../../digit-ai-factory")
+MARQUEURS_PILOT = ("FORGE_ROOT/digit-ai-factory", "dépôt frère ../../../../digit-ai-factory", "c:/dev/digit-ai-factory", "~/.digit-ai-forge/digit-ai-factory")
 
 
 def pistes_pilot() -> list[Path]:
@@ -367,6 +367,13 @@ def pistes_pilot() -> list[Path]:
     # parents[1] = le skill, parents[4] = le dépôt de la forge, parents[5] = son parent (`c:\dev`).
     # Même règle que `{pilot}` de quality-oracles : quatre crans au-dessus du dossier du SKILL.
     pistes.append(Path(__file__).resolve().parents[5] / "digit-ai-factory")
+    # Mesuré le 12/09/2026 (TF-1064, première propagation) : depuis la COPIE INSTALLÉE
+    # (`~/.claude/skills/<skill>`), parents[5] tombe sur `C:\Users`, et la piste ne mène nulle part
+    # — le style était injoignable partout sauf dans la source. Les deux pistes qui suivent sont
+    # celles de `hooks-factory.mjs` du pilot, dans le même ordre : la racine conventionnelle du
+    # parc, puis le dossier utilisateur du parc.
+    pistes.append(Path("c:/dev") / "digit-ai-factory")
+    pistes.append(Path.home() / ".digit-ai-forge" / "digit-ai-factory")
     return pistes
 
 
