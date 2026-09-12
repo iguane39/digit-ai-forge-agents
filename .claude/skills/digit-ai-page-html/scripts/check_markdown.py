@@ -29,15 +29,29 @@ demande de lire) et L12 (une énumération de données n'est pas une phrase). Le
 mécanique / revue de lecture écrit dans `lisibilite.md` s'applique tel quel : il n'y avait pas de
 doctrine à inventer, seulement une porte à ouvrir.
 
+LE STYLE EST DÉLÉGUÉ, PAS RÉIMPLÉMENTÉ (TF-1064, 12/09/2026). Les deux règles laissées à la revue
+de lecture ci-dessus — L3 et L12 — plus la règle « un paragraphe qui ÉNUMÈRE est une liste écrite
+en prose » (`bonnes-pratiques.md` §3) relèvent du STYLE, et le style a désormais un oracle
+déterministe : `oracle-ecriture.mjs` du PILOT (doctrine `references/ECRITURE.md`, règles E-1 à
+E-12 ; données `references/tics-redactionnels.json`, huit familles de tournures à seuils de
+densité, datées et sourcées ; règles EC-1 à EC-6). `--style` l'appelle et FUSIONNE son verdict :
+FAIL de l'un = FAIL de l'ensemble. Aucun motif n'est recopié ici — les seuils sont une DONNÉE
+périssable qui vit chez le pilot (loi transverse n° 4), et une seconde implémentation dériverait
+de la première en silence (règle R3 : jamais de réimplémentation). Sans `--style`, ce script juge
+exactement ce qu'il jugeait avant : M7, M10, M14, M18, contrat de sortie inchangé.
+
 Usage :
-  python check_markdown.py <document.md> [--output json]
+  python check_markdown.py <document.md> [--output json] [--style]
 Exit : 0 = PASS · 1 = FAIL · 2 = non jugeable (fichier illisible ou absent).
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -324,6 +338,118 @@ def juger(texte: str) -> tuple[list[str], list[str]]:
     return fails, warns
 
 
+
+# ---------------------------------------------------------------------------
+# LE STYLE, DÉLÉGUÉ AU PILOT (TF-1064, 12/09/2026)
+#
+# POURQUOI UNE DÉLÉGATION ET PAS UN CONTRÔLE DE PLUS. Les motifs de style vivent dans une DONNÉE
+# datée et sourcée du pilot (`references/tics-redactionnels.json`, huit familles calibrées le
+# 12/09 sur 204 textes). Les recopier ici créerait une seconde vérité qui dériverait dès le
+# premier recalibrage — la classe de défaut TF-0784, « une copie ne reçoit aucun correctif ».
+# Ce module ne connaît donc AUCUN motif : il sait seulement où joindre l'oracle, et quoi faire
+# de son verdict.
+#
+# CE QUE LA FUSION GARANTIT. FAIL de l'un = FAIL de l'ensemble ; et un oracle INJOIGNABLE se dit
+# en clair (`verdict: "SKIP"` + motif nommant les pistes essayées), il ne se tait pas. Un silence
+# se lirait comme un vert, et c'est exactement le défaut que ce lot corrige ailleurs.
+
+MARQUEURS_PILOT = ("FORGE_ROOT/digit-ai-factory", "dépôt frère ../../../../digit-ai-factory")
+
+
+def pistes_pilot() -> list[Path]:
+    """Les pistes examinées pour trouver le dépôt du pilot, dans l'ordre — même règle que le
+    marqueur `{pilot}` de quality-oracles (`scripts/lib/pilot.mjs`) et que `hooks-factory.mjs`."""
+    pistes: list[Path] = []
+    racine = os.environ.get("FORGE_ROOT")
+    if racine:
+        pistes.append(Path(racine) / "digit-ai-factory")
+    # <parent>/<dépôt>/.claude/skills/<skill>/scripts/ce fichier :
+    # parents[1] = le skill, parents[4] = le dépôt de la forge, parents[5] = son parent (`c:\dev`).
+    # Même règle que `{pilot}` de quality-oracles : quatre crans au-dessus du dossier du SKILL.
+    pistes.append(Path(__file__).resolve().parents[5] / "digit-ai-factory")
+    return pistes
+
+
+def resoudre_oracle_style() -> tuple[Path | None, str]:
+    """Le script de l'oracle d'écriture du pilot, ou `None` et le motif qui NOMME les pistes."""
+    essayees = []
+    for p in pistes_pilot():
+        cible = p / "oracles" / "oracle-ecriture.mjs"
+        essayees.append(str(cible))
+        if cible.exists():
+            return cible, ""
+    return None, ("oracle de style INJOIGNABLE — pistes essayées : " + " · ".join(essayees)
+                  + ". Poser `FORGE_ROOT` ou cloner `digit-ai-factory` à côté du dépôt de la "
+                    "forge. Le verdict ci-dessous ne porte QUE sur M7-M18 : ne pas le lire "
+                    "comme un texte au style jugé")
+
+
+def chemin_relatif_pour_anteriorite(fichier: Path, pilot: Path) -> str:
+    """Le chemin que l'oracle compare à sa liste d'antériorité (EC-6).
+
+    La liste du pilot est faite de chemins RELATIFS À UNE RACINE DE DÉPÔT (`CLAUDE.md`,
+    `gabarits/RESTITUTION.md`, `references/BEST-PRACTICES-HTML.md`…). On lui donne donc le
+    chemin relatif à la racine qui contient le fichier : celle du pilot quand le fichier y vit,
+    sinon le dépôt git qui le porte. Un produit qui hérite d'un `CLAUDE.md` reçoit ainsi la même
+    exemption que l'original — c'est le MÊME texte normatif antérieur à la doctrine.
+    """
+    fichier = fichier.resolve()
+    racines = [pilot]
+    for parent in fichier.parents:
+        if (parent / ".git").exists():
+            racines.append(parent)
+            break
+    for racine in racines:
+        try:
+            return fichier.relative_to(racine).as_posix()
+        except ValueError:
+            continue
+    return fichier.name
+
+
+def juger_style(fichier: Path) -> dict:
+    """Joue l'oracle d'écriture du pilot sur `fichier` et rend son bloc de verdict.
+
+    Rend toujours un dictionnaire : `verdict` ∈ PASS | FAIL | SKIP | ERREUR, `fails` (les
+    constats bloquants), `warns` (les avertissements, qui n'échouent jamais), `non_juge`.
+    """
+    oracle, motif = resoudre_oracle_style()
+    if oracle is None:
+        return {"verdict": "SKIP", "motif": motif, "fails": [], "warns": [], "non_juge": []}
+    node = shutil.which("node")
+    if not node:
+        return {"verdict": "SKIP", "fails": [], "warns": [], "non_juge": [],
+                "motif": "oracle de style NON JOUÉ : `node` est absent du PATH de ce poste. Le "
+                         "verdict ci-dessous ne porte QUE sur M7-M18"}
+    relatif = chemin_relatif_pour_anteriorite(fichier, oracle.parents[1])
+    try:
+        r = subprocess.run([node, str(oracle), str(fichier), "--chemin-relatif", relatif],
+                           capture_output=True, text=True, encoding="utf-8", timeout=180)
+    except Exception as e:                                    # noqa: BLE001
+        return {"verdict": "ERREUR", "fails": [], "warns": [], "non_juge": [],
+                "motif": f"oracle de style NON JOUÉ ({type(e).__name__}) : {e}. Le verdict "
+                         "ci-dessous ne porte QUE sur M7-M18"}
+    try:
+        d = json.loads((r.stdout or "").strip())
+    except Exception:                                         # noqa: BLE001
+        extrait = (r.stdout or r.stderr or "(sortie vide)").strip()[:200]
+        return {"verdict": "ERREUR", "fails": [], "warns": [], "non_juge": [],
+                "motif": "oracle de style ILLISIBLE (sortie hors contrat JSON) : " + extrait
+                         + ". Le verdict ci-dessous ne porte QUE sur M7-M18"}
+    fails, warns = [], []
+    for f in d.get("findings", []):
+        ligne = f" (ligne {f['ligne']})" if "ligne" in f else ""
+        texte = f"{f.get('regle')} {f.get('message')}{ligne}"
+        if f.get("statut") == "FAIL":
+            fails.append(texte)
+        elif f.get("statut") in ("AVERT", "SKIP"):
+            warns.append(texte)
+    return {"verdict": d.get("verdict", "ERREUR"), "motif": "",
+            "oracle": str(oracle), "chemin_relatif": relatif, "mots": d.get("mots"),
+            "fails": fails, "warns": warns, "non_juge": d.get("non_juge", [])}
+
+
+
 NON_JUGE = [
     "les règles qui dépendent du RENDU — texte tronqué, largeur, surlignage, glyphes, coupure de "
     "mot : la mise en page d'un Markdown appartient au lecteur, pas au document",
@@ -351,6 +477,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Lisibilité d'un document Markdown (M7, M10, M14, M18).")
     ap.add_argument("fichier", type=Path)
     ap.add_argument("--output", choices=["text", "json"], default="text")
+    ap.add_argument("--style", action="store_true",
+                    help="joint l'oracle de style du pilot (oracle-ecriture.mjs, regles EC-1 a "
+                         "EC-6) et FUSIONNE son verdict : FAIL de l'un = FAIL de l'ensemble. "
+                         "Oracle injoignable : dit en clair, verdict des seules regles M")
     args = ap.parse_args()
 
     if not args.fichier.exists():
@@ -365,15 +495,40 @@ def main() -> None:
         sys.exit(2)
 
     fails, warns = juger(texte)
+    # TF-1064 — LA FUSION. Les regles M (structure) et les regles EC (style) jugent deux choses
+    # differentes du meme texte ; leur verdict est UN. Un FAIL de style echoue l'ensemble, et un
+    # oracle de style injoignable ne rend jamais l'ensemble vert en silence : il se declare.
+    style = juger_style(args.fichier) if args.style else None
+    regles = list(REGLES)
+    non_juge = list(NON_JUGE)
+    if style is None:
+        non_juge.append("le STYLE (tournures creuses, phrases longues en serie, profondeur de "
+                        "puces, emphase de structure) : delegue a `oracle-ecriture.mjs` du pilot "
+                        "et NON JOUE ici — le rejouer avec `--style`")
+    else:
+        regles += ["EC-1", "EC-2", "EC-3", "EC-4", "EC-5", "EC-6"]
+        non_juge += [f"[style] {n}" for n in style["non_juge"]]
+        fails += [f"[style] {f}" for f in style["fails"]]
+        warns += [f"[style] {w}" for w in style["warns"]]
+        if style["verdict"] in ("SKIP", "ERREUR") and style.get("motif"):
+            non_juge.append("[style] " + style["motif"])
+            warns.append("[style] " + style["motif"])
     verdict = "FAIL" if fails else "PASS"
     if args.output == "json":
-        print(json.dumps({
-            "source": str(args.fichier), "regles": REGLES, "verdict": verdict,
-            "fails": fails, "warns": warns, "non_juge": NON_JUGE,
-        }, ensure_ascii=False, indent=2))
+        sortie = {
+            "source": str(args.fichier), "regles": regles, "verdict": verdict,
+            "fails": fails, "warns": warns, "non_juge": non_juge,
+        }
+        if style is not None:
+            sortie["style"] = style
+        print(json.dumps(sortie, ensure_ascii=False, indent=2))
     else:
         print(f"Source  : {args.fichier}")
-        print(f"Règles  : {', '.join(REGLES)}")
+        print(f"Règles  : {', '.join(regles)}")
+        if style is not None:
+            detail = style.get("motif") or (f"{style.get('mots')} mots de prose juges "
+                                            f"(chemin relatif : {style.get('chemin_relatif')})")
+            print(f"Style   : {style['verdict']} — {detail}")
         print(f"Verdict : {verdict}")
         if fails:
             print("\nÉchecs bloquants :")

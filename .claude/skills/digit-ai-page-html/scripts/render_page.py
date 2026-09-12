@@ -18,7 +18,7 @@ V5 (croisements de flèches) et V6 (images déformées) restent à l'inspection
 visuelle des PNG produits — ce script ne les juge pas.
 
 Usage :
-    python render_page.py <page.html> [--widths 1280,768,390] [--selector body]
+    python render_page.py <page.html> [--widths 3840,2560,1920,1280,768,390] [--selector body]
                           [--scale 2] [--output json] [--out <dossier>]
                           [--timeout 30000]   # TF-0365 : page très haute
 
@@ -76,7 +76,16 @@ FONT_DIR_CANDIDATES = [
 # TF-0422 (lot Produit-05 20260820a, 21/08) : 1920 entre dans les largeurs par défaut — le défaut de
 # colonne étroite (texte à 40 % d'un écran de 1 800 px, livré vert, refusé par le client) ne se
 # voit qu'à partir de ~1 600 px ; 1280/768/390 ne le montraient jamais.
-DEFAULT_WIDTHS = [1920, 1280, 768, 390]
+#
+# TF-1066 (12/09/2026, règle E5 du pilot, décision humaine « pour le design, prends à minima par
+# défaut FullHD (1920px en largeur) pour les desktops, et du responsive design pour monter jusqu'à
+# du 4K »). Une page se CONÇOIT à 1920 px et se VÉRIFIE jusqu'à 3840 : 2560 et 3840 entrent donc
+# dans la grille par défaut. Ce qu'elles montrent et que 1920 taisait : une prose qui s'étire sur
+# 2 880 px de plancher `75vw` (E4 dit que la mesure de lecture est portée par le CONTENEUR), un
+# tableau de données qui laisse la moitié de l'écran vide, une grille qui gagne des marges au lieu
+# de gagner des colonnes. 1280 RESTE : les postes de bureau étroits existent encore, et c'est là
+# que le repli des tableaux se déclenche (ROGNAGE_DONNEES_MIN_VIEWPORT).
+DEFAULT_WIDTHS = [3840, 2560, 1920, 1280, 768, 390]
 
 # L2 au rendu : un bloc de texte doit occuper au moins ce ratio de la largeur que
 # son conteneur lui offre. En dessous, la page laisse du vide la ou le lecteur
@@ -1473,6 +1482,143 @@ MESURE_ENTETE_JS = r"""
 """
 
 
+# ---------------------------------------------------------------------------
+# V18 — CE QUE LE 4K MONTRE ET QUE 1920 TAISAIT (TF-1066, 12/09/2026).
+#
+# LA REGLE AMONT. E5 du pilot, decision humaine du 12/09/2026 : une page de bureau se CONCOIT a
+# 1920 px et se VERIFIE jusqu'a 3840. Jusqu'ici la grille s'arretait a 1920, donc la borne de ce
+# que les produits prouvaient s'y arretait aussi : une page PASS a 1920 pouvait etirer sa prose
+# sur 2 880 px ou laisser la moitie de l'ecran vide a 3840 sans qu'aucun controle ne le dise.
+#
+# DEUX DEFAUTS, ET ILS SONT SYMETRIQUES. Aux tres grandes largeurs, une page se trompe dans un
+# sens ou dans l'autre :
+#   a. la PROSE prend toute la place qu'on lui donne — mesure du 12/09 sur la sonde : 342
+#      caracteres par ligne a 3840 px pour un conteneur non bride ; l'oeil perd la ligne suivante ;
+#   b. les DONNEES n'en prennent aucune — un tableau qui reste a sa largeur de contenu pendant
+#      que son conteneur en offre le double (L26 : une page de donnees est pleine largeur).
+# Les familles existantes ne voient ni l'un ni l'autre : L2 et ses variantes comparent un bloc a
+# ce que son CONTENEUR lui offre (une prose qui remplit un conteneur large rend 100 %), et
+# `conteneur_bride_donnees` compare le conteneur a la FENETRE (il peut etre plein pendant que le
+# tableau dedans est etrique). Ce qui manque est la mesure de LECTURE, en caracteres par ligne.
+#
+# LA MESURE, ET POURQUOI PAS UNE DIVISION PAR LA TAILLE DE POLICE. `largeur / (0,5 x font-size)`
+# est une approximation qui depend de la fonte reellement servie, donc du poste. Un `Range` sur le
+# contenu du paragraphe rend une boite PAR LIGNE reellement peinte (`getClientRects`) : le nombre
+# de lignes est un FAIT du rendu, et `caracteres / lignes` la mesure de lecture effective. Elle est
+# CONSERVATRICE — la derniere ligne est partielle, donc le compte sous-estime la capacite reelle.
+#
+# LE SEUIL, ET LE CONFLIT QU'IL REVELE — DECLARE, PAS MASQUE. Le seuil demande est 100 caracteres
+# par ligne. Or le conteneur de lecture que le socle PRESCRIT (`.chap.lire`, 1 080 px, regle E4)
+# mesure 134 caracteres par ligne en 16 px (sonde du 12/09, valeur identique a 1920, 2560 et 3840).
+# Condamner la forme qu'un gabarit prescrit met le gabarit en defaut, jamais l'auteur : un
+# paragraphe TENU par un conteneur de lecture declare (`.lire`, `[data-mesure-lecture]`) n'est donc
+# pas bloque — sa mesure est PUBLIEE en non mesurable, pour que l'arbitrage (resserrer `.chap.lire`
+# ou poser le seuil a 135) se fasse sur un chiffre et non sur une impression. Ce qui est bloque est
+# la prose qu'AUCUN conteneur ne tient : exactement le defaut que E5 decrit.
+V18_MIN_VIEWPORT = 2560
+V18_MAX_CPL = 100
+V18_MIN_CHARS = 160            # sous ce compte, une ligne unique ne mesure aucune capacite
+V18_TABLE_MIN_RATIO = 0.85     # L26 — un tableau principal sous ce ratio laisse l'ecran vide
+V18_TABLE_MIN_LIGNES = 8       # un tableau principal, pas un encart de trois valeurs
+V18_TABLE_MIN_COLONNES = 4
+
+MESURE_LARGE_JS = r"""
+() => {
+  const MAX_CPL = __V18_MAX_CPL__, MIN_CHARS = __V18_MIN_CHARS__;
+  const TABLE_MIN = __V18_TABLE_MIN__, TABLE_LIGNES = __V18_TABLE_LIGNES__,
+        TABLE_COLONNES = __V18_TABLE_COLONNES__;
+  const proses = [], tableaux = [], notes = [];
+  // Reperage LOCAL : ce bloc s'evalue seul, il n'herite d'aucune aide de la passe principale.
+  const nomDe = (el) => el.tagName.toLowerCase()
+    + (el.id ? '#' + el.id : '')
+    + (el.className && typeof el.className === 'string' && el.className.trim()
+       ? '.' + el.className.trim().split(/\s+/).join('.') : '');
+  const visibleBoite = (el) => {
+    const s = getComputedStyle(el);
+    if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  };
+  const largeurOfferte = (el) => {
+    const par = el.parentElement;
+    if (!par) return 0;
+    const cs = getComputedStyle(par);
+    return par.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+  };
+
+  // ---- a. LA PROSE : caracteres par ligne, mesures sur les boites reellement peintes -------
+  const pageDonnees = !!document.querySelector(
+    '[data-page="donnees"], [data-page="donn\u00e9es"], [data-page="data"], [data-page="console"], '
+    + '[data-restitution="registre"], [data-restitution="suivi"]');
+  const vusP = new Set();
+  for (const el of document.querySelectorAll('p, li, dd, blockquote, .prose, .chapo, .va')) {
+    if (proses.length + notes.length >= 12) break;
+    if (el.closest('table, nav, pre, code, figcaption, .tf-panel')) continue;
+    if (!visibleBoite(el)) continue;
+    const texte = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (texte.length < MIN_CHARS) continue;
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const rects = [...r.getClientRects()].filter((x) => x.width > 1 && x.height > 1);
+    if (!rects.length) continue;
+    const lignes = new Set(rects.map((x) => Math.round(x.top))).size || 1;
+    const cpl = Math.round(texte.length / lignes);
+    if (cpl <= MAX_CPL) continue;
+    const cle = nomDe(el) + '|' + cpl;
+    if (vusP.has(cle)) continue;
+    vusP.add(cle);
+    const tenu = el.closest('.lire, [data-mesure-lecture]');
+    const largeur = Math.round(el.getBoundingClientRect().width);
+    const socle = `${cpl} caracteres par ligne mesures (${texte.length} caracteres sur ${lignes} `
+      + `ligne(s) peintes, bloc de ${largeur}px dans une fenetre de ${window.innerWidth}px ; `
+      + `plafond ${MAX_CPL})`;
+    if (tenu) {
+      notes.push({ what: nomDe(el), detail: `V18 — ${socle}. Ce paragraphe est TENU par un `
+        + `conteneur de lecture declare (${nomDe(tenu)}) : il n'est pas compte en defaut. La `
+        + `mesure est publiee pour que l'ecart entre le token du socle et le plafond de E5 `
+        + `s'arbitre sur un chiffre` });
+    } else {
+      proses.push({ what: nomDe(el), detail: `${socle} — au-dela de ${MAX_CPL} caracteres, l'oeil `
+        + `perd le debut de la ligne suivante. La mesure de lecture se pose sur le CONTENEUR `
+        + `(.chap.lire, regle E4), jamais sur le paragraphe : envelopper ce passage dans un `
+        + `chapitre de lecture, ou le declarer par data-mesure-lecture s'il est assume` });
+    }
+  }
+
+  // ---- b. LES DONNEES : le tableau principal contre la largeur qu'on lui offre -------------
+  const tables = [...document.querySelectorAll('table')].filter(visibleBoite);
+  const dominante = tables.map((t) => {
+    const corps = [...t.tBodies].reduce((n, b) => n + b.rows.length, 0);
+    const colonnes = t.rows.length ? t.rows[0].cells.length : 0;
+    const r = t.getBoundingClientRect();
+    return { t, corps, colonnes, aire: r.width * r.height };
+  }).sort((a, b) => b.aire - a.aire)[0];
+  if (dominante && (pageDonnees
+      || (dominante.corps >= TABLE_LIGNES && dominante.colonnes >= TABLE_COLONNES))) {
+    const t = dominante.t;
+    const offerte = largeurOfferte(t);
+    const w = t.getBoundingClientRect().width;
+    if (offerte > 0 && w > 0) {
+      const ratio = w / offerte;
+      if (ratio < TABLE_MIN) {
+        const cs = getComputedStyle(t);
+        tableaux.push({ what: nomDe(t), detail:
+          `tableau principal a ${Math.round(w)}px pour ${Math.round(offerte)}px offerts par son `
+          + `conteneur (${Math.round(ratio * 100)} %, plancher ${Math.round(TABLE_MIN * 100)} %) `
+          + `dans une fenetre de ${window.innerWidth}px — width calcule ${cs.width}, max-width `
+          + `${cs.maxWidth}. Une page de DONNEES prend toute la largeur offerte (L26) : au 4K la `
+          + `place existe, et la moitie de l'ecran reste vide. Poser width: 100% sur le tableau, `
+          + `ou retirer le plafond de son conteneur ; les colonnes se DEFINISSENT (L27) plutot `
+          + `que de se laisser etirer` });
+      }
+    }
+  }
+
+  return { proses, tableaux, notes };
+}
+"""
+
+
 # TF-0365 (lot Produit-10 20260818a, 18/08) — une page TRES HAUTE rendait l'outil muet.
 # Fait mesure : un livrable CONFORME de 271 Ko et 45 tableaux atteint 151 615 px de haut a
 # 390 px de large (135 272 a 768, 43 409 a 1280) — les tableaux passent en cartes sous 768, ce
@@ -1652,6 +1798,12 @@ FAMILLES = [
     # que ce qui colle au-dessus est plus haut que lui. Mesure a 1 370 px : 115 px masques ; a
     # 1 600 px, aucun defaut. Bloquant : un en-tete de colonne coupe rend le tableau indechiffrable.
     ("entete_masque_par_collants", "V15 en-tete masque par l'empilement des collants", "bloquant"),
+    # TF-1066 (12/09/2026, règle E5 du pilot) — V18, et elle ne se joue qu'au-delà de 2560 px :
+    # les deux défauts qu'elle mesure n'EXISTENT pas à 1920. La prose non tenue s'étire (342
+    # caractères par ligne mesurés à 3840 sur la sonde du 12/09) ; le tableau principal d'une
+    # page de données reste à sa largeur de contenu pendant que l'écran en offre le double.
+    ("v18_prose_etiree", "V18 mesure de lecture au-dela de 100 caracteres par ligne", "bloquant"),
+    ("v18_tableau_etrique", "V18 tableau principal sous 85 % de la largeur offerte", "bloquant"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
@@ -1815,6 +1967,13 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
           .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
           .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
 
+    js_large = (MESURE_LARGE_JS
+                .replace("__V18_MAX_CPL__", str(V18_MAX_CPL))
+                .replace("__V18_MIN_CHARS__", str(V18_MIN_CHARS))
+                .replace("__V18_TABLE_MIN__", str(V18_TABLE_MIN_RATIO))
+                .replace("__V18_TABLE_LIGNES__", str(V18_TABLE_MIN_LIGNES))
+                .replace("__V18_TABLE_COLONNES__", str(V18_TABLE_MIN_COLONNES)))
+
     png_dir = _dossier_captures(html_path, out_dir)
     png_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1867,6 +2026,25 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                     "detail": f"V15 non jugee ({type(erreur).__name__}) : la mesure apres "
                               "defilement n'a pas pu etre jouee. Ne pas lire ce silence comme un vert",
                 })
+            # TF-1066 — V18 ne se joue qu'aux GRANDES largeurs : les deux defauts qu'elle mesure
+            # n'existent pas en deca (une prose bornee par le viewport ne s'etire pas, un tableau
+            # a l'etroit dans 1 280 px n'a pas de place a prendre). Les cles sont posees a toute
+            # largeur — vides quand la mesure n'est pas jouee — pour qu'un consommateur ne
+            # distingue jamais « pas de defaut » de « cle absente ».
+            issues["v18_prose_etiree"] = []
+            issues["v18_tableau_etrique"] = []
+            if width >= V18_MIN_VIEWPORT:
+                try:
+                    v18 = page.evaluate(js_large)
+                    issues["v18_prose_etiree"] = v18.get("proses") or []
+                    issues["v18_tableau_etrique"] = v18.get("tableaux") or []
+                    issues["unmeasured"].extend(v18.get("notes") or [])
+                except Exception as erreur:  # noqa: BLE001 — toute panne se declare, aucune n'arrete
+                    issues["unmeasured"].append({
+                        "what": "V18 mesure de lecture et tableau principal",
+                        "detail": f"V18 non jugee ({type(erreur).__name__}) a {width} px : ne pas "
+                                  "lire ce silence comme un vert",
+                    })
             mesurer_actifs_visuels(page, issues, capture_timeout)
             png = png_dir / f"{html_path.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None
@@ -1992,6 +2170,23 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
     # V9 dit ou elle s'arrete. WCAG 2.2 SC 1.4.11 demande 3:1 pour un objet graphique PORTEUR DE
     # SENS ; distinguer le porteur de sens du decor demande un jugement, et une sonde qui
     # accuserait tout aplat decoratif se ferait eteindre. V9 ne juge donc que l'INDISCERNABLE.
+    # V18 dit OU elle a regarde. Une grille jouee sans largeur >= 2560 ne prouve rien du 4K, et
+    # un verdict vert lu comme « la page tient au 4K » serait faux (regle E5 du pilot).
+    larges = [w for w in widths if w >= V18_MIN_VIEWPORT]
+    if larges:
+        report["non_juge"].append(
+            f"V18 : jugee a {', '.join(str(w) + ' px' for w in larges)}. Un paragraphe TENU par un "
+            "conteneur de lecture declare (.lire, [data-mesure-lecture]) n'est jamais bloque, meme "
+            f"au-dela de {V18_MAX_CPL} caracteres par ligne : sa mesure est publiee en non "
+            "mesurable (le token `.chap.lire` du socle, 1 080 px, mesure 134 caracteres par ligne "
+            "en 16 px — l'ecart entre ce token et le plafond de E5 est un arbitrage, pas un "
+            "defaut d'auteur)")
+    else:
+        report["non_juge"].append(
+            f"V18 NON JOUEE : aucune largeur >= {V18_MIN_VIEWPORT} px dans cette grille. La prose "
+            "etiree et le tableau principal etrique du 4K ne sont pas juges — ne pas lire ce "
+            "silence comme une page verifiee jusqu a 3840 px (regle E5)")
+
     report["non_juge"].append(
         "V9 : un actif visuel dont le contraste vit ENTRE 1,2 et 3,0 contre son fond n'est PAS "
         "juge — sous 1,2 il est indiscernable et c'est un bloquant, au-dela de 3,0 il tient le "

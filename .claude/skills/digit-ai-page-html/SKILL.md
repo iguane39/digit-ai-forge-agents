@@ -1,13 +1,13 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V16 et les règles de lisibilité L1–L30 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L30 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.20.0"
+  version: "1.21.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
@@ -391,11 +391,21 @@ livrable ne peut pas s'exempter lui-même.
 Puis lancer l'**oracle zéro défaut visuel** (rendu multi-breakpoints + mesures) :
 
 ```bash
-python scripts/render_page.py page.html            # défaut : 1920, 1280, 768, 390 px (TF-0422)
+python scripts/render_page.py page.html            # défaut : 3840, 2560, 1920, 1280, 768, 390 px (TF-0422, TF-1066)
 # schéma : --selector .diagram-wrap · JSON : --output json
 # revue de lecture : --sections "[role=tabpanel]"  → une capture par section, par largeur
 # composants interactifs : --matrice-etats         → cinq états mesurés ET capturés (TF-0493)
 ```
+
+**La grille par défaut et la règle E5 du pilot (TF-1066, 12/09/2026).** Une page de bureau se
+**conçoit à 1920 px** — c'est la largeur de référence des maquettes, des captures de baseline et
+de la critique d'implémentation — et se **vérifie sans bloquant jusqu'à 3840 px** (règle E5,
+`references/BEST-PRACTICES-HTML.md` § E du pilot, décision humaine du 12/09/2026). D'où six
+largeurs par défaut au lieu de quatre. Ce que le 4K change, et que 1920 ne montrait pas : la
+mesure de lecture reste portée par le **conteneur** (`.chap.lire`, E4) — la prose ne s'étire pas
+sur 2 880 px ; une page de **données** prend toute la largeur (L26) au lieu de laisser la moitié
+de l'écran vide. **V18** juge ces deux défauts, et seulement au-delà de 2560 px. **1280 reste** :
+les postes de bureau étroits existent encore.
 
 **La matrice d'états (`--matrice-etats`, TF-0493) — les composants cassent là où personne ne
 regarde.** Cinq états, chacun repartant d'une **page neuve**, chacun mesuré et capturé : tout
@@ -454,7 +464,7 @@ trois oracles précédents validaient — chacune a sa fixture rouge.
 
 Ce qui suppose de LIRE (clarté du propos, pertinence, justesse d'un chapeau) n'est pas
 mécanisé : c'est la **revue de lecture — OBLIGATOIRE avant toute livraison (TF-0422)**.
-Capturer (`render_page.py`, 1920/1280/768/390 + `--sections`), **ouvrir et lire** les
+Capturer (`render_page.py`, 3840/2560/1920/1280/768/390 + `--sections`), **ouvrir et lire** les
 captures, consigner chaque constat dans `REVUE.md` au gabarit
 [references/gabarit-revue-de-lecture.md](references/gabarit-revue-de-lecture.md) (largeur ·
 section · constat · suite · preuve) ou la mention « aucun constat » datée. Une page verte à
@@ -468,7 +478,7 @@ marquage et partage mécanique / revue : [references/lisibilite.md](references/l
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V16 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Checklist canonique zéro défaut visuel V1–V18 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
 - Règles de lisibilité L1–L30 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants

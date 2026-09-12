@@ -10,9 +10,15 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolvePython } from './lib/python.mjs';
+import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
+// TF-1064 — le dépôt du PILOT, troisième racine possible d'un oracle indexé ici (le premier
+// est `oracle-ecriture.mjs`). `null` quand il est introuvable : les contrôles qui en dépendent
+// DÉCLARENT alors un SKIP motivé — un marqueur non résolu ferait échouer le lancement, et un
+// lancement en échec se lit comme un FAIL, donc comme la preuve attendue sur une fixture rouge.
+const PILOT = resolvePilot(SKILLDIR);
 const fails = [], oks = [];
 const ok = m => oks.push(m);
 const ko = m => fails.push(m);
@@ -76,7 +82,12 @@ if (reg) for (const o of reg.oracles) {
   if (o.type !== 'cli' || !o.cmd) continue;
   const script = o.cmd.find(x => /\.(mjs|py)$/.test(x));
   if (!script) continue;
-  const p = script.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT);
+  if (script.includes(MARQUEUR_PILOT) && !PILOT) {
+    ok('oracle du pilot : SKIP motivé (' + path.basename(script) + ') — ' + motifPilotAbsent(SKILLDIR));
+    continue;
+  }
+  const p = script.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT)
+    .replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT);
   const base = path.basename(p);
   if (!fs.existsSync(p)) { ko('oracle absent : ' + base); continue; }
   if (!p.startsWith(SKILLDIR)) { ok('oracle délégué présent : ' + base); continue; }   // ex. render_page.py (autre skill)
@@ -273,7 +284,13 @@ else {
       // `{skillsroot}` accepté ici comme dans `run-oracles` et dans le contrôle de compilation
       // ci-dessus (02/09/2026) : un oracle hébergé par un skill VOISIN — cas d'`oracle-angles-vides`,
       // qui vit dans experts-forge — pouvait être enregistré mais pas prouvé par fixtures.
-      let cmd = fx.cmd.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace('{fixture}', fxFile));
+      if (fx.cmd.some(s => s.includes(MARQUEUR_PILOT)) && !PILOT) {
+        ok(`fixture ${fx.nom}/${side} : SKIP motivé — ` + motifPilotAbsent(SKILLDIR)
+          + " ; la paire rouge/verte de ce domaine n'est PAS rejouée sur ce poste");
+        continue;
+      }
+      let cmd = fx.cmd.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT)
+        .replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace('{fixture}', fxFile));
       // « python3 » du manifest est un nom Unix : sur ce poste on substitue l'interpréteur
       // réellement fonctionnel (esquive l'alias Store Windows) — cf. lib/python.mjs.
       if (cmd[0] === 'python3' || cmd[0] === 'python') {

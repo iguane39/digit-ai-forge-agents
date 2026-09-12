@@ -1000,6 +1000,31 @@
     "exemption SANS MOTIF"
    ],
    "provenance": "TF-0784 (03/09/2026) — digit-ai-schemas/assets/exemple-reference.html embarquait une copie MANUELLE de digit-ai-page-html/assets/table-filters.js, corrige SEPT fois depuis (TF-0429/0430/0431 le 21/08, TF-0768/0769/0781/0782 le 02/09) sans qu un seul correctif atteigne la copie : meme depot, deux dossiers d ecart. Les deux fixtures embarquent LES MEMES TROIS composants d un socle de jeu d essai aux noms INVENTES ; seules leur declaration et leur parite changent. La rouge exerce les quatre regles a la fois (P1 copie muette, P2 empreinte perimee, P3 contenu derive, P4 exemption sans date ni motif), la verte les tient toutes et porte une exemption datee et motivee que l oracle compte au verdict."
+  },
+  {
+   "nom": "ecriture",
+   "cmd": [
+    "node",
+    "{pilot}/oracles/oracle-ecriture.mjs",
+    "{fixture}"
+   ],
+   "red": "ecriture-red.md",
+   "green": "ecriture-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "Annonce ou méta-commentaire",
+    "phrases de plus de 35 mots",
+    "liste imbriquée au 3e niveau",
+    "passages en gras de 12 mots ou plus",
+    "le premier caractère est un emoji"
+   ],
+   "provenance": "TF-1064 (12/09/2026) — les deux textes sont COPIÉS des constantes FIXTURE_ROUGE / FIXTURE_VERTE du `--self-test` de `oracle-ecriture.mjs` : la paire du registre et celle de l'oracle jugent le même contenu, donc une dérive de l'un se voit chez l'autre. La VERTE porte un bloc de code saturé de tournures interdites — c'est la preuve que citer n'est pas commettre. Les cinq messages attendus verrouillent les règles de STRUCTURE (EC-2, EC-3, EC-4-gras, EC-4-emoji) et une famille de densité : sans eux, la rouge resterait FAIL par une seule règle et les autres pourraient mourir en silence (leçon TF-0362).",
+   "note": "`{pilot}` se résout par `FORGE_ROOT/digit-ai-factory`, sinon par le dépôt frère `../../../../digit-ai-factory` du skill (scripts/lib/pilot.mjs). Pilot introuvable → SKIP MOTIVÉ nommant les pistes : un marqueur non résolu ferait échouer le lancement, et un lancement en échec se lit comme un FAIL — donc comme la preuve attendue sur la fixture rouge."
   }
  ]
 }

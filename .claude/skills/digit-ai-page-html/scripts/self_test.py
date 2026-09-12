@@ -519,6 +519,27 @@ CAS_RENDU = {
 }
 
 
+# TF-1066 (12/09/2026, regle E5 du pilot) — LES CAS QUI N'EXISTENT QU'AU-DELA DE 2560 px.
+#
+# Branche a part, et c'est le point : `CAS_RENDU` se joue a 1440 px, la ou les deux defauts de V18
+# n'existent tout simplement pas — une prose bornee par la fenetre ne s'etire pas, un tableau a
+# l'etroit dans 1 440 px n'a aucune place a prendre. Les jouer a 1440 rendrait quatre verts qui ne
+# prouveraient rien. Chaque page porte DEUX attentes : celle de sa famille, et ZERO constat de
+# l'autre — c'est ce qui prouve que les deux branches mesurent deux choses et non la meme deux fois.
+#
+# La paire de PROSE ne differe que par le chapitre de lecture (`.chap.lire`), la paire de DONNEES
+# que par le plafond en pixels nus du tableau. La verte de prose borne a 720 px et non au token de
+# 1 080 px du socle : au plafond de 100 caracteres par ligne, 1 080 px en mesure 134 — l'ecart est
+# publie en NON MESURABLE par l'oracle (il ne bloque pas une forme que le gabarit prescrit), et la
+# fixture verte prouve le sens vert PAR LA MESURE plutot que par la seule declaration.
+CAS_RENDU_LARGE = {
+    "v18-prose-etiree.html": [("v18_prose_etiree", 1), ("v18_tableau_etrique", 0)],
+    "v18-prose-mesuree.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
+    "v18-donnees-tableau-etrique.html": [("v18_tableau_etrique", 1), ("v18_prose_etiree", 0)],
+    "v18-donnees-tableau-plein.html": [("v18_tableau_etrique", 0), ("v18_prose_etiree", 0)],
+}
+
+
 # EXEMPTIONS DÉCLARÉES (TF-0308) — double sens du registre `EXEMPTIONS_DECLAREES`.
 #
 # Fixtures EMBARQUÉES ici, et non des fichiers de `fixtures/` : le mécanisme se déclenche
@@ -799,6 +820,52 @@ def run_rendu():
             out.append({"fixture": etiquette(cle), "verdict": "OK" if ok else "ECHEC",
                         "attendu": attendu, "obtenu": n, "regle": cle,
                         "detail": "" if ok else f"{n} constat(s) {cle} au rendu"})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
+def run_rendu_large():
+    """TF-1066 — les deux branches de V18, jouees a 2560 px (la ou elles se declenchent).
+
+    Silencieux si playwright est absent : la mesure de lecture se prend dans un navigateur, pas en
+    prose. Un `None` rendu ici ne vaut JAMAIS un vert — `main()` ne l'ajoute simplement pas au
+    bilan, et l'absence de ces cas se lit dans le compte total.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import json as _json
+    import subprocess
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-4k-")
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    out = []
+    for nom, paires in CAS_RENDU_LARGE.items():
+        chemin = FIXTURES / nom
+        etiquette = (lambda cle: f"{nom} · {cle}")
+        if not chemin.exists():
+            for cle, attendu in paires:
+                out.append({"fixture": etiquette(cle), "verdict": "ABSENTE", "attendu": attendu,
+                            "obtenu": 0, "detail": "fixture manquante"})
+            continue
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(chemin),
+                            "--widths", "2560", "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            d = _json.loads(r.stdout)
+        except Exception:  # noqa: BLE001
+            for cle, attendu in paires:
+                out.append({"fixture": etiquette(cle), "verdict": "ECHEC", "attendu": attendu,
+                            "obtenu": 0, "detail": "render_page illisible"})
+            continue
+        for cle, attendu in paires:
+            n = len(d["breakpoints"]["2560"]["issues"][cle])
+            ok = (n >= attendu) if attendu else (n == 0)
+            out.append({"fixture": etiquette(cle), "verdict": "OK" if ok else "ECHEC",
+                        "attendu": attendu, "obtenu": n, "regle": cle + " (2560 px)",
+                        "detail": "" if ok else f"{n} constat(s) {cle} a 2560 px"})
     shutil.rmtree(captures, ignore_errors=True)
     return out
 
@@ -2321,6 +2388,11 @@ def main():
     rendu = run_rendu()
     if rendu:
         res += rendu
+    # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
+    # n'existent pas et quatre verts ne prouveraient rien.
+    large = run_rendu_large()
+    if large:
+        res += large
     # TF-0442 — le repli en cartes se mesure a 390 px, la seule largeur ou il se declenche.
     repli = run_repli_cartes()
     if repli:

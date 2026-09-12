@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — tableau principal etrique au 4K — 20260912a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+.wrap{margin:0;padding:24px}
+/* La parade prescrite par le socle sous 1 280 px (composants.md §6) : le tableau
+   defile dans son hote au lieu de deborder. Elle ne change rien a ce que V18 mesure,
+   puisque la largeur OFFERTE est celle de l hote — pleine largeur ici. */
+.table-hote{overflow-x:auto}
+/* LE DEFAUT, et il tient en une declaration : le tableau garde un plafond en pixels nus pendant
+   que son conteneur prend toute la fenetre. A 1280 px le plafond ne se voit pas ; a 2560 il
+   laisse la moitie de l ecran vide. */
+table{width:1100px;max-width:1100px;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:6px 8px;font-size:.85rem;border-bottom:1px solid var(--line)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de la famille `v18_tableau_etrique` (TF-1066, 12/09/2026).
+
+  La page se DECLARE page de donnees et son conteneur prend toute la fenetre : `conteneur_bride_donnees`
+  rend donc PASS, et `rognage_donnees` aussi (rien ne deborde, rien ne defile). Le defaut vit un cran
+  plus bas — entre le tableau et la largeur que son conteneur lui OFFRE. C'est ce que L26 demande au
+  4K : la place existe, la page doit la prendre.
+
+  Attendu a 2560 px : >= 1 constat `v18_tableau_etrique`, 0 constat `v18_prose_etiree`
+  (le chapo est court : c'est ce qui prouve que les deux branches de V18 sont distinctes).
+
+  HORS 2560, cette page est jugee comme n'importe quelle autre : a 390 px son tableau de dix
+  colonnes deborde (V1). Le defaut est REEL et sans rapport avec V18 — la parade du socle est
+  le repli en cartes (composants.md §6), volontairement NON pose ici pour que la paire rouge
+  / verte ne differe que par la seule declaration qu'elle mesure.
+-->
+<body><main class="wrap" data-page="donnees" data-restitution="registre"><h1>Volumes par marche</h1>
+<p>Releve du 12 septembre 2026, dix colonnes, source : journal d execution.</p>
+<div class="table-hote"><table><thead><tr><th>Marche</th><th>Volume</th><th>Part</th><th>Valeur moyenne</th><th>Duree moyenne</th><th>Fenetre</th><th>Canal principal</th><th>Responsable</th><th>Derniere mesure</th><th>Suivi</th></tr></thead>
+<tbody>
+<tr><td>Marche A</td><td>1 000</td><td>2,4 %</td><td>84 EUR</td><td>3,4 nuits</td><td>aout 2025</td><td>agence locale</td><td>equipe nord</td><td>12 aout 2025</td><td>ouverture confirmee</td></tr>
+<tr><td>Marche B</td><td>12 500</td><td>29,8 %</td><td>112 EUR</td><td>2,8 nuits</td><td>avril 2026</td><td>vente directe</td><td>equipe centre</td><td>3 avril 2026</td><td>grille attendue</td></tr>
+<tr><td>Marche C</td><td>250</td><td>0,6 %</td><td>63 EUR</td><td>4,1 nuits</td><td>decembre 2025</td><td>partenaire</td><td>equipe sud</td><td>18 decembre 2025</td><td>a reevaluer</td></tr>
+<tr><td>Marche D</td><td>45 000</td><td>13,7 %</td><td>97 EUR</td><td>3,0 nuits</td><td>janvier 2026</td><td>agence locale</td><td>equipe est</td><td>9 janvier 2026</td><td>pic saisonnier</td></tr>
+<tr><td>Marche E</td><td>7 300</td><td>4,9 %</td><td>78 EUR</td><td>2,2 nuits</td><td>mars 2026</td><td>partenaire</td><td>equipe ouest</td><td>2 mars 2026</td><td>stable</td></tr>
+<tr><td>Marche F</td><td>3 100</td><td>1,8 %</td><td>91 EUR</td><td>3,7 nuits</td><td>mai 2026</td><td>vente directe</td><td>equipe nord</td><td>6 mai 2026</td><td>en hausse</td></tr>
+<tr><td>Marche G</td><td>21 400</td><td>18,2 %</td><td>103 EUR</td><td>2,9 nuits</td><td>juin 2026</td><td>agence locale</td><td>equipe centre</td><td>11 juin 2026</td><td>stable</td></tr>
+<tr><td>Marche H</td><td>980</td><td>0,9 %</td><td>59 EUR</td><td>4,4 nuits</td><td>juillet 2026</td><td>partenaire</td><td>equipe sud</td><td>4 juillet 2026</td><td>marginal</td></tr>
+<tr><td>Marche I</td><td>16 700</td><td>12,1 %</td><td>88 EUR</td><td>3,1 nuits</td><td>aout 2026</td><td>vente directe</td><td>equipe est</td><td>19 aout 2026</td><td>stable</td></tr>
+</tbody></table></div>
+</main></body></html>

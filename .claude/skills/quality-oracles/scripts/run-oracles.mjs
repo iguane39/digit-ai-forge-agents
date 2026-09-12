@@ -14,6 +14,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { MARQUEUR_PILOT, resolvePilot } from './lib/pilot.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
@@ -68,7 +69,11 @@ const files = walk(target);
 const targetIsFile = fs.statSync(target).isFile();   // une cible fichier est un fichier comme les autres (exemptions + bilan) ; seul un dossier-target injecté via trigger_files est hors bilan
 const extOf = f => path.extname(f).toLowerCase();
 const rel = f => path.relative(process.cwd(), f) || f;
-const resolveCmd = (arr, file) => arr.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace('{profil}', profilPath).replace('{file}', file));
+// TF-1064 — `{pilot}` : un oracle indexé au registre peut vivre dans le dépôt du pilot
+// (`oracle-ecriture.mjs`). Non résolu, le marqueur reste tel quel : le lancement échoue et
+// `runCli` le déclare, plutôt qu'un verdict inventé.
+const PILOT = resolvePilot(SKILLDIR);
+const resolveCmd = (arr, file) => arr.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace('{profil}', profilPath).replace('{file}', file));
 
 // ---- C2 : magic bytes — le type réel ne doit pas contredire l'extension déclarée ---------------
 const MAGIC = [[Buffer.from('504b0304', 'hex'), 'zip', ['.zip', '.pptx', '.potx', '.docx', '.xlsx', '.jar', '.epub', '.odt', '.ods', '.odp']],
@@ -189,7 +194,7 @@ const fileHash = new Map();
 const hashOf = f => { if (!fileHash.has(f)) { try { fileHash.set(f, sha(fs.readFileSync(f))); } catch { fileHash.set(f, 'ERR'); } } return fileHash.get(f); };
 function cacheKey(o, file) {
   const script = (o.cmd || []).find(x => /\.(mjs|py)$/.test(x)) || '';
-  const sp = script.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT);
+  const sp = script.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT);
   const scriptH = fs.existsSync(sp) ? sha(fs.readFileSync(sp)) : 'noscript';
   return [o.domaine, hashOf(file), scriptH, profilHash, NIVEAU].join('|');   // §6 — un PASS de niveau inférieur n'est jamais recyclé à un niveau supérieur
 }

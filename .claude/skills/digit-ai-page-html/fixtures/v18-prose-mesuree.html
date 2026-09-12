@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — prose tenue par son chapitre de lecture — 20260912a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --w:clamp(75vw,1680px,92vw);--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);font-size:16px;line-height:1.6;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+.chap{margin:0 0 24px}
+.wrap{width:var(--w);margin:0 auto;padding:24px}
+/* E4 du pilot : la mesure de lecture est portee par le CONTENEUR, jamais par le paragraphe.
+   720 px et non 1 080 : au plafond de 100 caracteres par ligne de V18, le token du socle mesure
+   134 caracteres (sonde du 12/09) — l'ecart est declare au non mesurable par l'oracle, cette
+   fixture-ci prouve le sens vert PAR LA MESURE et pas par la seule declaration. */
+.chap.lire{max-width:720px;margin-left:auto;margin-right:auto}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de la famille `v18_prose_etiree` (TF-1066, 12/09/2026).
+
+  MEME texte, MEME conteneur au token du socle, MEME largeur de fenetre que la rouge : la seule
+  difference est le chapitre de lecture qui tient la mesure. La ligne cesse de courir sur la
+  largeur de l ecran, et la regle se tait — la preuve qu elle ne condamne pas la prose, seulement
+  la prose que rien ne tient.
+
+  Attendu a 2560 px : 0 constat `v18_prose_etiree`.
+-->
+<body><main class="wrap"><h1>Note de cadrage du lot douze</h1>
+<section class="chap lire"><p>Le lot douze est entre en recette le deux septembre, sur trois environnements distincts : le poste local, la plateforme d integration et la preproduction. Les releves proviennent du journal d execution archive au meme dossier que cette note, et ils ont ete pris deux fois a deux jours d intervalle pour mesurer la stabilite du temps de construction. La duree du build a augmente de quarante secondes entre le lot onze et le lot douze, pour une cause identifiee : le lot douze ajoute quarante tests, et le cout unitaire par test reste stable a une virgule deux seconde. Aucune action n est demandee sur ce point, la mesure servant de repere pour le lot suivant du programme.</p></section>
+<section class="chap lire"><p>Les deux echecs releves en integration portent sur le meme composant. Le premier vient d un fuseau horaire code en dur, que le poste local ne montre pas puisqu il tourne en temps universel ; le second vient d un fichier de donnees absent du depot. Les deux ont ete corriges le trois septembre et la recette a ete rejouee le meme jour, sans echec sur les trois environnements. La migration de la base est planifiee le vingt septembre, le decommissionnement du service ancien suit le vingt-sept, et la bascule reste reversible pendant huit jours.</p></section>
+</main></body></html>

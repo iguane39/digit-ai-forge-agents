@@ -738,6 +738,19 @@ de lecture** : reconnaître « une valeur mise en avant » dans du Markdown dema
 mécaniser produirait plus de bruit que de gain. Le partage mécanique / revue écrit plus haut
 s'applique tel quel — *il n'y avait pas de doctrine à inventer, seulement une porte à ouvrir*.
 
+### Style — délégué
+
+**Le style d'un texte a son oracle, et il n'est pas ici** (TF-1064, 12/09/2026). Ce que L3, L12 et
+la règle « un paragraphe qui ÉNUMÈRE est une liste écrite en prose » (`bonnes-pratiques.md` §3)
+laissaient à la revue de lecture est désormais jugé par `oracle-ecriture.mjs` du **pilot** —
+doctrine [`references/ECRITURE.md`](../../../../digit-ai-factory/references/ECRITURE.md), règles
+**E-1 à E-12**, règles exécutées **EC-1 à EC-6**.
+`python check_markdown.py <doc.md> --style` l'appelle et **fusionne** son verdict : FAIL de l'un =
+FAIL de l'ensemble ; oracle injoignable = dit en clair, jamais un vert silencieux.
+**Aucun motif n'est recopié** dans ce skill : les seuils vivent dans une DONNÉE datée et sourcée
+du pilot (`references/tics-redactionnels.json`, huit familles), recalibrable sans republier un
+oracle — une seconde implémentation dériverait de la première en silence (R3).
+
 **Une borne trouvée en jouant la règle**, qui vaut d'être dite : `M7` condamnait d'abord tout
 chapitre ouvrant sur des « données », listes à puces comprises. Elle faisait échouer **sept blocs
 sur neuf** d'une restitution au gabarit — une forme PRESCRITE, où un bloc qui ouvre par ses puces
