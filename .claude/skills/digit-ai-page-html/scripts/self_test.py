@@ -524,6 +524,16 @@ CAS_RENDU = {
     "l29q-empilement-token.html": [("entete_masque_par_collants", 1),
                                    ("entete_ne_colle_pas", 0), ("entete_pose_sur_lignes", 0)],
     "l29q-hauteurs-mesurees.html": ("entete_masque_par_collants", 0),
+    # TF-0968 / TF-1060 / TF-0973 — la triple fixture de V15. Le tableau court, bride par sa
+    # propre fin, ne rend plus de bloquant (il passe dans la famille informative) ; le tableau
+    # VIDE reste bloquant ; le tableau haut recouvert, c'est l29q-empilement-token ci-dessus.
+    "v15-tableau-court-bride.html": [("entete_masque_par_collants", 0),
+                                     ("entete_bride_par_tableau", 1)],
+    "v15-tableau-vide.html": ("entete_masque_par_collants", 1),
+    # TF-1061 — une barre sticky, au-dessus, OPAQUE survole : zero V4. La meme, transparente,
+    # recouvre vraiment : un V4.
+    "v4-sticky-survol-opaque.html": ("v4_overlap", 0),
+    "v4-sticky-transparent.html": ("v4_overlap", 1),
 }
 
 

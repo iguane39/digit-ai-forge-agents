@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V15 tableau vide sous un en-tete collant — 20260914a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ --hh-tab:219px}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{margin:0;padding:0 20px 1200px}
+header.doc.colle{position:sticky;top:0;z-index:20;background:var(--bg);height:104px;display:flex;align-items:center}
+nav.toc.colle{position:sticky;top:104px;z-index:10;background:var(--surface);height:115px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+thead.colle th{position:sticky;top:var(--hh-tab);z-index:5;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de V15, TF-0973 — LE TABLEAU VIDE, VU PAR LA SEULE V15.
+
+  Le cas du tour du 08/09 : le tableau des colonnes ecartees etait VIDE, parce que le filtre du
+  mode cible avait reduit sa population source, et son titre annoncait 276 lignes. check_html,
+  oracle-filtres-tableau et la recette du chapitre etaient verts ; V15 seule l'a signale. La
+  garde « bride par la fin du tableau » ne doit donc PAS l'eteindre : un tableau sans aucune
+  ligne de donnees ni etat vide declare reste un BLOQUANT.
+
+  Attendu a 1440 px : 1 `entete_masque_par_collants`.
+-->
+<body>
+<header class="doc colle"><strong>Console des volumes</strong></header>
+<nav class="toc colle" aria-label="Sommaire"><a href="#c1">1 Colonnes ecartees</a><a href="#c2">2 Suite</a></nav>
+<main class="wrap">
+<h1 id="c1">Colonnes ecartees du perimetre (276)</h1>
+<table><thead class="colle"><tr><th>Colonne</th><th>Table source</th><th>Motif d'ecart</th></tr></thead><tbody>
+</tbody></table>
+<h2 id="c2">Suite</h2>
+<p>Texte de suite, pour que la page defile au-dela du tableau.</p>
+</main></body></html>

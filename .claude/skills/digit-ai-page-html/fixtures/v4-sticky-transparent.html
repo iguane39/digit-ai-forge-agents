@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 barre collante transparente qui recouvre — 20260914a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+header.doc.colle{position:sticky;top:0;z-index:20;background:transparent;height:64px;display:flex;align-items:center;padding:0 20px}
+div.layout{margin-top:-40px;padding:48px 20px 400px;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de V4, TF-1061 — LA MEME BARRE, SANS FOND.
+
+  Jumelle de la verte, a une declaration pres : le fond de la barre est transparent. Le contenu
+  qu'elle recouvre transparait sous son texte : c'est un vrai chevauchement, et l'exclusion de la
+  barre qui survole ne doit pas l'eteindre.
+
+  Attendu a 1440 px : 1 `v4_overlap`.
+-->
+<body>
+<div class="page">
+<header class="doc colle"><strong>Console des volumes</strong></header>
+<div class="layout"><h1>Volumes</h1><p>Contenu qui passe sous la barre collante.</p></div>
+</div>
+</body></html>

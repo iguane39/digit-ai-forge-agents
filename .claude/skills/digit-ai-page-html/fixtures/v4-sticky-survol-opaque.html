@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 barre collante opaque qui survole — 20260914a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+header.doc.colle{position:sticky;top:0;z-index:20;background:var(--bg);height:64px;display:flex;align-items:center;padding:0 20px}
+/* La mise en page remonte SOUS la barre : c'est ce qui se passe a tout defilement. */
+div.layout{margin-top:-40px;padding:48px 20px 400px;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de V4, TF-1061 — UNE BARRE QUI SURVOLE N'EST PAS UN CHEVAUCHEMENT.
+
+  header.doc.colle du boilerplate : sticky, z-index 20, fond opaque. Recouvrir ce qu'elle survole
+  est sa fonction ; V4 rendait « header.doc x div.layout, 100 % du plus petit » sur quatre etats
+  sur cinq de la matrice. Les trois conditions ensemble : sticky, z-index au-dessus, fond opaque.
+
+  Attendu a 1440 px : 0 `v4_overlap`.
+-->
+<body>
+<div class="page">
+<header class="doc colle"><strong>Console des volumes</strong></header>
+<div class="layout"><h1>Volumes</h1><p>Contenu qui passe sous la barre collante.</p></div>
+</div>
+</body></html>

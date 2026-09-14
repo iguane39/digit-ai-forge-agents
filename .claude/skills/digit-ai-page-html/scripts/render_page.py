@@ -440,6 +440,20 @@ MEASURE_JS = r"""
         const sa = getComputedStyle(a.el), sb = getComputedStyle(b.el);
         if (sa.position === 'absolute' || sb.position === 'absolute' ||
             sa.position === 'fixed' || sb.position === 'fixed') continue;  // superpositions par construction
+        // TF-1061 (11/09) — UNE BARRE QUI SURVOLE N'EST PAS UN CHEVAUCHEMENT. header.doc.colle du
+        // boilerplate (sticky, z-index 20, fond opaque) rendait un bloquant V4 sur quatre etats
+        // sur cinq de la matrice : recouvrir ce qu'il survole est sa fonction. Les TROIS
+        // conditions ensemble : `sticky`, z-index au-dessus de l'autre, fond opaque. Une barre
+        // transparente ou sous l'autre reste jugee (fixture v4-sticky-transparent.html).
+        const zIndex = (s) => { const z = parseInt(s.zIndex, 10); return isNaN(z) ? 0 : z; };
+        const opaque = (s) => {
+          const m = (s.backgroundColor || '').match(/rgba?\(([^)]*)\)/);
+          if (!m) return false;
+          const p = m[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat);
+          return p.length < 4 || p[3] >= 1;
+        };
+        const survole = (s, t) => s.position === 'sticky' && zIndex(s) > zIndex(t) && opaque(s);
+        if (survole(sa, sb) || survole(sb, sa)) continue;
         // Un element INLINE reparti sur plusieurs lignes a une boite englobante qui
         // couvre toute la largeur du bloc : elle recouvre mecaniquement ses voisins
         // de la premiere ligne, sans qu'aucun pixel ne se superpose reellement. Trois
@@ -1322,7 +1336,7 @@ MEASURE_JS = r"""
 # La mesure n'a besoin d'aucun jeton : elle compare le `top` RENDU au `top` DECLARE.
 MESURE_ENTETE_JS = r"""
 () => {
-  const poses = [], decolles = [], masques = [];
+  const poses = [], decolles = [], masques = [], brides = [];
   const yInitial = window.scrollY;
   const etiquette = (t, i) => {
     const cap = t.querySelector('caption');
@@ -1432,12 +1446,43 @@ MESURE_ENTETE_JS = r"""
     if (cs.position !== 'sticky') return;
     const attendu = parseFloat(cs.top);
     if (!isFinite(attendu)) return;
-    const recul = Math.min(400, Math.max(0, t.offsetHeight - 250));
+    // TF-0968 / TF-1060 (08/09, 11/09) — le recul place le tableau en position de LECTURE, pas de
+    // sortie d'ecran. `min(400, hauteur - 250)` laissait TOUJOURS 250 px de tableau : l'en-tete,
+    // bride par la fin de son bloc conteneur a 250 - hauteur du th, ne pouvait plus atteindre un
+    // `top` de 219 px, et rendait 9 a 11 px « masques » sur tout tableau de ~291 a ~660 px — les
+    // trois plus courts d'une page, jamais les autres. Un tiers de la hauteur, borne pareil.
+    const recul = Math.min(400, Math.max(0, Math.min(t.offsetHeight - 250, t.offsetHeight / 3)));
     window.scrollTo(0, t.getBoundingClientRect().top + window.scrollY + recul);
     const rt = t.getBoundingClientRect();
     if (!(rt.bottom > 0 && rt.top < window.innerHeight)) return;
     if (rt.top >= attendu - 1) return;              // le `sticky` ne s'est pas engage
     const rth = th.getBoundingClientRect();
+    // TF-0973 (08/09) — DEUX SIGNATURES, DEUX MESSAGES, et la sonde n'est pas desarmee. Quand le
+    // bas du tableau moins la hauteur du `th` tombe sous le `top` declare, l'en-tete est tire vers
+    // le haut par la fin de son propre tableau : c'est la specification CSS, INFORMATIF. Sauf si
+    // le tableau n'a AUCUNE ligne de donnees ni etat vide declare : c'est la signature du tableau
+    // vide annonce a 276 lignes, que seule V15 avait vu — BLOQUANT.
+    if (rt.bottom - rth.height < attendu - 1) {
+      const lignes = [...t.tBodies].flatMap((b) => [...b.rows]).filter(visibleBoite);
+      const donnees = lignes.filter((tr) => !tr.hasAttribute('data-tf-empty'));
+      if (!donnees.length && lignes.length === donnees.length) {
+        masques.push({
+          what: `${etiquette(t, i + 1)} — tableau VIDE sous un en-tete collant`,
+          detail: `le tableau ne porte AUCUNE ligne de donnees visible, et aucun etat vide declare `
+            + `(tr[data-tf-empty]) : son en-tete, bride par la fin d'un tableau de `
+            + `${Math.round(t.offsetHeight)} px, disparait sous les collants. Un tableau vide par `
+            + `construction se cherche en amont — un filtre qui a reduit la population source, un `
+            + `titre qui annonce des lignes qu'il ne porte pas (TF-0973)` });
+      } else {
+        brides.push({
+          what: `${etiquette(t, i + 1)} — en-tete bride par la fin de son tableau`,
+          detail: `informatif : a ce defilement, le bas du tableau (${Math.round(rt.bottom)} px) `
+            + `moins l'en-tete (${Math.round(rth.height)} px) tombe sous le \`top\` declare `
+            + `(${cs.top}) — le \`sticky\` est tire vers le haut par la fin de son bloc conteneur, `
+            + `comportement prescrit par CSS. Rien a corriger ; aucun token n'y changerait rien` });
+      }
+      return;
+    }
     // Les collants qui SURPLOMBENT ce `th` : `sticky` ou `fixed`, visibles, en recouvrement
     // horizontal, et dont le bas mord sur le haut du `th`. Le `th` lui-meme et ses ancetres de
     // tableau sont exclus — un `thead` ne se masque pas lui-meme.
@@ -1466,7 +1511,8 @@ MESURE_ENTETE_JS = r"""
     if (masque <= 4) return;
     masques.push({
       what: `${etiquette(t, i + 1)} — en-tete masque par l'empilement des collants`,
-      detail: `APRES DEFILEMENT, l'en-tete de tableau se pose a ${Math.round(rth.top)} px, son `
+      detail: `APRES DEFILEMENT, l'en-tete pouvait atteindre son \`top\` et il est RECOUVERT par un `
+        + `collant : il se pose a ${Math.round(rth.top)} px, son `
         + `\`top\` declare (${cs.top}), mais ${nomDe(coupable)} colle au-dessus de lui descend `
         + `jusqu'a ${Math.round(bas)} px : ${masque} px de l'en-tete sont MASQUES. Le decalage `
         + `d'un collant est une MESURE, pas un token : un en-tete qui passe sur deux lignes ou `
@@ -1477,7 +1523,7 @@ MESURE_ENTETE_JS = r"""
   });
 
   window.scrollTo(0, yInitial);
-  return { poses, decolles, masques };
+  return { poses, decolles, masques, brides };
 }
 """
 
@@ -1798,6 +1844,10 @@ FAMILLES = [
     # que ce qui colle au-dessus est plus haut que lui. Mesure a 1 370 px : 115 px masques ; a
     # 1 600 px, aucun defaut. Bloquant : un en-tete de colonne coupe rend le tableau indechiffrable.
     ("entete_masque_par_collants", "V15 en-tete masque par l'empilement des collants", "bloquant"),
+    # TF-0973 (08/09) : la SECONDE signature, separee de la premiere dans son texte — l'en-tete
+    # tire vers le haut par la fin de son propre tableau. Comportement prescrit par CSS : une
+    # information, jamais un bloquant. Une regle qui melange ses deux causes s'apprend a ignorer.
+    ("entete_bride_par_tableau", "V15 en-tete bride par la fin de son tableau (informatif)", "info"),
     # TF-1066 (12/09/2026, règle E5 du pilot) — V18, et elle ne se joue qu'au-delà de 2560 px :
     # les deux défauts qu'elle mesure n'EXISTENT pas à 1920. La prose non tenue s'étire (342
     # caractères par ligne mesurés à 3840 sur la sonde du 12/09) ; le tableau principal d'une
@@ -2017,10 +2067,12 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 issues["entete_pose_sur_lignes"] = v15.get("poses") or []
                 issues["entete_ne_colle_pas"] = v15.get("decolles") or []
                 issues["entete_masque_par_collants"] = v15.get("masques") or []
+                issues["entete_bride_par_tableau"] = v15.get("brides") or []
             except Exception as erreur:  # noqa: BLE001 — toute panne se declare, aucune n'arrete
                 issues["entete_pose_sur_lignes"] = []
                 issues["entete_ne_colle_pas"] = []
                 issues["entete_masque_par_collants"] = []
+                issues["entete_bride_par_tableau"] = []
                 issues["unmeasured"].append({
                     "what": "V15 en-tetes de tableau",
                     "detail": f"V15 non jugee ({type(erreur).__name__}) : la mesure apres "
