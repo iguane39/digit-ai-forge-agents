@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.15.0"
+  version: "2.15.1"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -78,6 +78,15 @@ Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
 ## 4. Règle de remontée (la liste grandit)
 Domaine sans oracle au registre → **définir** (scaffold en une commande : skill compagnon **`write-an-oracle`** —
 squelette + fixtures + entrées registre/manifest), **enregistrer**, **appliquer**. Chaque audit enrichit la bibliothèque — un domaine n'est jamais « jugé à l'œil » deux fois.
+**Quel fichier éditer (TF-1006, 14/09/2026)** : la remontée s'écrit dans la **source versionnée**
+— `digit-ai-forge-agents/.claude/skills/quality-oracles/references/registre-oracles.md` et
+`registre-oracles.json` (plus le manifest et les fixtures) —, **jamais** dans la copie installée
+`~/.claude/skills/quality-oracles/`, qui est celle qui s'exécute et qui est **réécrite** depuis la
+source à chaque propagation (`oracle-skills --appliquer`, joué par `bootstrap.mjs --pull` à
+l'ouverture d'une session). Fait payé le 10/09/2026 : une remontée juste, écrite dans la copie
+installée, a été effacée en silence par la propagation suivante ; elle n'a survécu que dans une
+lecture du pilot. Une remontée qui vient d'un engagement se **pseudonymise** avant d'entrer dans la
+source (nom du client, chemin du produit) : la source est publiable, la copie installée ne l'est pas.
 **Signalement = écriture (M1, D1, 23/07/2026)** : tout contrôle manuel sur un domaine hors registre produit **dans le tour même** une entrée dans la **file des candidats** (`file-candidats.md` du repo forge ; côté claude.ai : `/areas/forge-file-candidats.md`) — domaine, chantier, contrôle fait, défaut observé, date. Scaffold **obligatoire** (N1) dès : 2e occurrence **du même candidat** dans la file · rejeu d'un contrôle ad hoc dans un même fil · angle A1/A2 vide en contre-expertise d'un livrable client.
 **Règle de famille (M1, D1, 08/08/2026)** — le compteur porte sur le **candidat**, jamais sur le libellé exact du domaine. Deux entrées comptent pour le même candidat si elles partagent **(a)** le **préfixe de domaine** — segment avant le premier tiret : `cadrage-reponse-ao`, `cadrage-acquisition` et `cadrage-programme-formation` forment la famille `cadrage` —, **ou (b)** la **même classe de défaut** consignée, quels que soient les libellés. Motif : trois occurrences d'un même motif sous trois noms différents ne déclenchaient jamais N1, le candidat restait gelé indéfiniment (constaté le 08/08/2026 sur `gabarits de cadrage A0 par famille de livrable`, en attente depuis le 24/07/2026). Le critère (a) est mécanique et s'applique seul ; le critère (b) est un rattrapage, à instruire quand les préfixes divergent.
 
