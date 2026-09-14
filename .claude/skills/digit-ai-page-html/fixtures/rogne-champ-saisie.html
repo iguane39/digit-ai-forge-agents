@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — contenu rogne, champ de saisie qui defile — 20260914a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+label{display:block;margin:12px 0 4px;color:var(--muted)}
+input,select{font:inherit;width:220px;padding:6px 8px;border:1px solid var(--line);border-radius:6px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de contenu_rogne (TF-0847, 14/09/2026) — UN CHAMP DE SAISIE DEFILE NATIVEMENT.
+
+  Le defaut paye : un <input> dont la valeur depasse sa largeur etait signale ROGNE — la feuille
+  du navigateur donne a un champ un overflow masque, donc il entrait dans la boucle — alors que
+  le lecteur fait defiler sa valeur au clavier ou a la souris, et que la sonde annoncait
+  elle-meme « 0 element de texte invisible ». Le produit avait du passer une adresse en
+  <textarea> pour obtenir un vert : un choix de balisage dicte par un defaut d'oracle.
+
+  Meme page que rogne-carte-figee.html, a une declaration pres : ici aucune boite de contenu
+  n'est figee. Attendu a 1440 px : 0 constat contenu_rogne.
+-->
+<body><main class="wrap">
+<h1>Fiche de contact</h1>
+<p>Les champs ci-dessous portent des valeurs plus longues que leur largeur : elles se lisent en
+faisant defiler le champ.</p>
+<label for="adresse">Adresse</label>
+<input id="adresse" type="text" value="12 avenue de la Grande Armee, batiment C, escalier 4, troisieme etage, porte gauche, 75017 Paris">
+<label for="service">Service destinataire</label>
+<select id="service"><option>Direction des achats et de la commande publique, service des marches de prestations intellectuelles</option></select>
+<div class="carte"><p>Une carte de contenu dont la hauteur suit son texte : rien n'y est perdu.</p>
+<p>Deuxieme paragraphe de la carte, visible en entier.</p></div>
+</main></body></html>

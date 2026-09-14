@@ -928,6 +928,12 @@ MEASURE_JS = r"""
       // condamner un usage que la charte prescrit pour les libelles longs.
       if (cs.textOverflow === 'ellipsis' && dy <= MARGE) continue;
       if (el.hasAttribute('data-rognage-assume')) continue;
+      // UN CHAMP DE SAISIE DEFILE NATIVEMENT (TF-0847, 08/09) : la feuille du navigateur donne a
+      // un <input> un overflow masque, donc une adresse plus longue que le champ entrait ici —
+      // « 0 element de texte invisible » ET bloquant, et un produit a du passer son adresse en
+      // <textarea> pour obtenir un vert. Le lecteur fait defiler la valeur d'un champ, d'une zone
+      // de texte ou d'une liste : rien n'y est perdu. Les conteneurs, eux, restent juges.
+      if (el.matches('input, textarea, select')) continue;
       // CE QUI EST PERDU, nomme comme L2 le fait pour les largeurs : les elements FEUILLES
       // porteurs de texte dont le haut tombe sous la ligne de flottaison de la boite.
       const boite = el.getBoundingClientRect();

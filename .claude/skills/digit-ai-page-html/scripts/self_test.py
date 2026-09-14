@@ -450,6 +450,11 @@ CAS_RENDU = {
     # contenu disparait) ou `min-height` (plancher, la feuille s'allonge).
     "rogne-contenu-perdu.html": ("contenu_rogne", 1),
     "rogne-hauteur-plancher.html": ("contenu_rogne", 0),
+    # TF-0847 (08/09) : un champ de saisie defile nativement — une valeur plus longue que le champ
+    # n'est pas un contenu perdu (verte : 0). La meme page, une carte figee a 40 px en plus : la
+    # carte reste accusee (rouge : au moins 1) — ecarter les champs n'eteint pas la regle.
+    "rogne-champ-saisie.html": ("contenu_rogne", 0),
+    "rogne-carte-figee.html": ("contenu_rogne", 1),
     "l2f-caption-ecrasee-en-filet.html": ("l2_filet", 1),
     "l2f-caption-pleine-largeur.html": ("l2_filet", 0),
     # TF-0582 (lot Produit-02 20260824) : ce qui PEINT sans etre un `background-color`.
