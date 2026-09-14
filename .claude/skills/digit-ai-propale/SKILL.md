@@ -11,8 +11,8 @@ description: >
   les règles dures de chiffrage. Use when / déclencher dès que l'utilisateur demande une
   propale, propal, proposition commerciale, offre commerciale pour un client ou prospect
   Digit-AI, demande de chiffrer une mission, de transformer un diagnostic ou des notes de
-  RDV en proposition, ou de produire le lot suivant d'une mission existante. Le rendu est
-  délégué, par paramètre : PPTX à digit-ai-pptx, DOCX à digit-ai-docx.
+  RDV en proposition, ou de produire le lot suivant d'une mission existante. Rendu délégué
+  par paramètre : PPTX à digit-ai-pptx, DOCX à digit-ai-docx.
 metadata:
   version: "1.3.0"
 ---
