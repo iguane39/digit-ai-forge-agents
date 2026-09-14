@@ -2057,6 +2057,96 @@ def run_table_arbre_runtime():
     return out
 
 
+def run_kpi_perimetre():
+    """TF-0970 (08/09/2026) — UNE CARTE NE FILTRE QUE LE TABLEAU QU'ELLE DESIGNE.
+
+    LE FAIT PAYE. `kpi-filter.js` tenait UNE carte active pour toute la page et appliquait son
+    attribut et sa valeur a TOUS les tableaux du perimetre. Sur une page livree, un clic sur
+    « A corriger » du mapping (47 -> 3 lignes) vidait aussi le tableau des 160 mesures, qui ne
+    porte pas `data-statut` : 0 ligne, sans un mot au lecteur. Invisible tant que tous les
+    tableaux partageaient le meme attribut.
+
+    DEUX SENS sur la MEME page (`kpi-perimetre.html`, deux tableaux, deux attributs) :
+      (1) VERT  — la SOURCE du composant est injectee : chaque clic ne change le nombre de lignes
+                  vues QUE du tableau designe ;
+      (2) ROUGE — la reproduction d'avant correctif (`kpi-filter-avant-tf0970.js`) : le clic sur la
+                  carte du mapping VIDE le tableau des mesures. Sans ce sens, un vert obtenu par une
+                  mesure devenue muette serait indistinguable d'un vert obtenu par le correctif.
+    TEMOIN : dans les deux pages, la carte du mapping filtre bien le mapping (8 -> 3).
+
+    Silencieux si playwright est absent : un comportement se mesure dans un navigateur.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from render_page import ensure_browser_path  # noqa: PLC0415
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001 — l'auto-detection du navigateur est un confort, pas un dû
+        pass
+
+    out = []
+    page_banc = FIXTURES / "kpi-perimetre.html"
+    source = Path(__file__).resolve().parent.parent / "assets" / "kpi-filter.js"
+    avant = FIXTURES / "kpi-filter-avant-tf0970.js"
+    manquants = [p.name for p in (page_banc, source, avant) if not p.exists()]
+    if manquants:
+        return [{"fixture": ", ".join(manquants), "verdict": "ABSENTE", "attendu": "fichiers présents",
+                 "obtenu": "absents", "regle": "TF-0970", "detail": ""}]
+    vues = ("() => ['t-map', 't-mes'].map(id => [...document.getElementById(id).tBodies[0].rows]"
+            ".filter(tr => !tr.hidden).length)")
+
+    def jouer(composant):
+        """Au repos, puis apres : carte du mapping, carte des mesures, re-clic sur le mapping."""
+        with sync_playwright() as pw:
+            navigateur = pw.chromium.launch()
+            page = navigateur.new_page(viewport={"width": 1280, "height": 900})
+            try:
+                page.goto(page_banc.resolve().as_uri())
+                page.wait_for_load_state("load")
+                page.add_script_tag(path=str(composant))
+                page.evaluate("() => window.DigitAIKpiFilter.init(document)")
+                etapes = [page.evaluate(vues)]
+                for cible in ("#k-corriger", "#k-dax", "#k-corriger"):
+                    page.click(cible)
+                    etapes.append(page.evaluate(vues))
+                return {"etapes": etapes}
+            except Exception as erreur:  # noqa: BLE001
+                return {"erreur": type(erreur).__name__ + " · " + str(erreur).splitlines()[0][:160]}
+            finally:
+                navigateur.close()
+
+    vert, rouge = jouer(source), jouer(avant)
+    for nom, res in (("kpi-perimetre · source", vert), ("kpi-perimetre · avant TF-0970", rouge)):
+        if res.get("erreur"):
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "banc joué", "obtenu": "panne",
+                        "regle": "TF-0970", "detail": res["erreur"]})
+    if vert.get("erreur") or rouge.get("erreur"):
+        return out
+
+    def cas(nom, attendu, obtenu, regle):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:120], "obtenu": str(obtenu)[:120], "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"[:300]})
+
+    # (1) SENS VERT — [mapping, mesures] au repos, puis apres chaque clic.
+    cas("kpi-perimetre · chaque carte ne filtre que son tableau",
+        [[8, 6], [3, 6], [3, 4], [8, 4]], vert["etapes"], "TF-0970 périmètre")
+    # (2) SENS ROUGE — la carte du mapping vide le tableau des mesures. C'est le défaut livré.
+    cas("kpi-perimetre · avant correctif : le tableau voisin se vide (sens rouge)",
+        0, rouge["etapes"][1][1], "TF-0970 reproduction")
+    # (3) TÉMOIN — la carte du mapping filtre bien le mapping, dans les deux versions.
+    cas("kpi-perimetre · témoin : le mapping est filtré (8 -> 3)",
+        {"source": 3, "avant": 3}, {"source": vert["etapes"][1][0], "avant": rouge["etapes"][1][0]},
+        "TF-0970 témoin")
+    return out
+
+
 def run_visibilite_lignes():
     """TF-0953 (08/09/2026) — LA VISIBILITE D'UNE LIGNE EST UNE DISJONCTION, ARBITREE A UN SEUL
     ENDROIT.
@@ -2463,6 +2553,11 @@ def main():
     visibilite = run_visibilite_lignes()
     if visibilite:
         res += visibilite
+    # TF-0970 — une carte filtrante ne touche QUE le tableau qu'elle designe : le defaut vivait
+    # dans l'etat du composant (une carte active pour toute la page), visible au seul clic.
+    perimetre = run_kpi_perimetre()
+    if perimetre:
+        res += perimetre
     # TF-0941 — le canevas ERD est une page COMPLETE que rien ne rendait : ses declarations se
     # posaient chez chaque consommateur, a la main, a chaque instanciation.
     erd = run_canevas_modele_donnees()
