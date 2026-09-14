@@ -209,7 +209,9 @@
    "checklist": "pip-audit / npm audit / OSV sur versions épinglées",
    "statut": "ok",
    "non_juge": [
-    "dépendances transitives non épinglées"
+    "dépendances transitives non épinglées",
+    "ressource distante injoignable (pip-audit sans sortie, OSV hors d'atteinte) ou aucune dépendance épinglée → SKIP motivé et nommé, jamais un PASS (TF-1107)",
+    "sous --osv-fige : verdict sur données figées datées et sourcées, rien des vulnérabilités publiées depuis (fixtures, TF-1107)"
    ],
    "note": "cibler un dossier projet ou un manifeste (requirements.txt / package.json)"
   },

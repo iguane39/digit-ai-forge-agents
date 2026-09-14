@@ -1,0 +1,10 @@
+{
+  "commentaire": "TF-1107 — réponses OSV FIGÉES pour les fixtures d'oracle-sca : le verdict des fixtures ne dépend plus ni du réseau, ni d'un outil installé, ni de l'état du jour de la base. Relevé par POST https://api.osv.dev/v1/querybatch le 2026-09-14. Une clé absente = dépendance NON vérifiée (jamais « sans vulnérabilité »).",
+  "source": "https://api.osv.dev/v1/querybatch",
+  "date": "2026-09-14",
+  "reponses": {
+    "PyPI:requests@2.19.0": ["GHSA-9hjg-9r4m-mvj7", "GHSA-9wx4-h78v-vm56", "GHSA-gc5v-m9x4-r6x2", "GHSA-j8r2-6x86-q33q", "GHSA-x84v-xcm2-53pg", "PYSEC-2018-28", "PYSEC-2023-74", "PYSEC-2026-1872", "PYSEC-2026-1873", "PYSEC-2026-2275"],
+    "PyPI:flask@0.12": ["GHSA-562c-5r94-xh97", "GHSA-5wv5-4vpf-pj6m", "GHSA-68rp-wp8r-4726", "GHSA-m2qf-hxjv-5gpq", "PYSEC-2018-66", "PYSEC-2019-179", "PYSEC-2023-62", "PYSEC-2026-2151"],
+    "PyPI:packaging@24.1": []
+  }
+}

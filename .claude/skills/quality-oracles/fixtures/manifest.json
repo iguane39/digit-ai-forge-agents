@@ -136,19 +136,18 @@
    "cmd": [
     "node",
     "{skilldir}/scripts/oracle-sca.mjs",
-    "{fixture}"
+    "{fixture}",
+    "--osv-fige={skilldir}/fixtures/sca-osv-fige.json"
    ],
    "red": "sca-red/requirements.txt",
    "green": "sca-green/requirements.txt",
    "attendu_red": [
-    "FAIL",
-    "SKIP"
+    "FAIL"
    ],
    "attendu_green": [
-    "PASS",
-    "SKIP"
+    "PASS"
    ],
-   "dependant_outil": "pip-audit / npm audit / OSV (réseau)"
+   "dependant_outil": "aucun sous --osv-fige (TF-1107 : données figées datées) ; en usage réel pip-audit / npm audit / OSV (réseau)"
   },
   {
    "nom": "a11y",
