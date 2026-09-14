@@ -2887,6 +2887,103 @@ RE_BALISE = re.compile(r"<(\w+)\b([^>]*)>", re.S)
 RE_ATTR = re.compile(r"([\w-]+)\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)")
 
 
+# --- S2 · un même ensemble n'est énuméré qu'UNE fois par page (TF-1036, 11/09/2026) ----------
+#
+# LE FAIT. Retour humain direct : « pas de double listing qui ne sert a rien si ce n'est dupliquer
+# l'information ». Mesure sur le rapport vise : 19 identifiants de constat apparaissaient CHACUN
+# deux fois — en ligne du tableau filtrable du chapitre 03, et en summary d'un details du
+# chapitre 04. Le squelette prescrivait les deux composants sans dire qu'ils ne se cumulent pas ;
+# dix-huit domaines d'oracles joues, aucun ne l'a vu. Symetrique de « liste de renvois sans
+# detail » : ici le detail existe, mais dans une seconde liste.
+# LA MESURE : un identifiant (forme SIGLE-123) qui ouvre a la fois une ligne de corps de tableau
+# et le summary d'un details HORS de ce tableau. Un details place DANS la ligne (ligne depliable)
+# est la forme prescrite : il n'est pas compte.
+RE_ID_ENTREE = re.compile(r"^\s*([A-Z][A-Z0-9]{0,7}-\d{1,5}[a-z]?)\b")
+
+
+def check_double_listing(a: Arbre):
+    """S2 — un identifiant énuméré à la fois en ligne de tableau et en summary hors du tableau."""
+    fails, warns = [], []
+    cles = {}
+    for i, t in enumerate((n for n in a.racine.descendants() if n.tag == "table"), 1):
+        for tr in t.descendants():
+            if tr.tag != "tr" or next((x for x in tr.ancetres() if x.tag == "table"), None) is not t:
+                continue
+            if any(x.tag == "thead" for x in tr.ancetres()):
+                continue
+            cellule = next((c for c in tr.descendants() if c.tag in ("td", "th")), None)
+            m = RE_ID_ENTREE.match(" ".join(cellule.texte().split())) if cellule is not None else None
+            if m:
+                cles.setdefault(m.group(1), i)
+    doubles = []
+    for s in a.racine.descendants():
+        if s.tag != "summary" or any(x.tag == "table" for x in s.ancetres()):
+            continue
+        m = RE_ID_ENTREE.match(" ".join(s.texte().split()))
+        if m and m.group(1) in cles and m.group(1) not in doubles:
+            doubles.append(m.group(1))
+    if doubles:
+        fails.append(
+            f"S2 double listing : {len(doubles)} élément(s) énuméré(s) DEUX fois — en ligne de "
+            f"tableau ET en summary d'un details hors du tableau ({', '.join(doubles[:5])}"
+            + (f" et {len(doubles) - 5} autre(s)" if len(doubles) > 5 else "") + "). Un même "
+            "ensemble ne s'énumère qu'une fois par page : le détail vit DANS la ligne (ligne "
+            "dépliable), ce qui garde le filtrage et gagne le détail (TF-1036).")
+    return fails, warns
+
+
+# --- S3 · une colonne RELEVÉE porte sa source, et la page cite son garde-fou (TF-1053) ---------
+#
+# LE FAIT. Une colonne « Issuer OIDC » etait remplie par une CONSTANTE reconstruite, pas par la
+# valeur relevee de chaque ligne ; juste par accident (22 connexions, 1 emetteur). Seize controles
+# verts : tous jugent la forme, aucun la PROVENANCE. Un oracle generique ne connait pas la source
+# d'un produit ; il controle donc la DECLARATION : une colonne qui se dit relevee
+# (`<th data-provenance="releve">`) porte `data-source` sur chacune de ses cellules, et la page
+# cite le garde-fou qui l'a verifiee (`data-garde-provenance="…"` sur un element, ou
+# `<meta name="garde-provenance" content="…">`). Une colonne qui ne se declare pas n'est pas jugee.
+def check_provenance(a: Arbre):
+    """S3 — colonne déclarée relevée : source par ligne, et garde-fou cité par la page."""
+    fails, warns = [], []
+    noeuds = list(a.racine.descendants())
+    garde = any((n.att("data-garde-provenance") or "").strip() for n in noeuds) or any(
+        n.tag == "meta" and (n.att("name") or "").strip().lower() == "garde-provenance"
+        and (n.att("content") or "").strip() for n in noeuds)
+    declarees = 0
+    for i, t in enumerate((n for n in noeuds if n.tag == "table"), 1):
+        propres = [tr for tr in t.descendants() if tr.tag == "tr"
+                   and next((x for x in tr.ancetres() if x.tag == "table"), None) is t]
+        entete = next((tr for tr in propres if any(x.tag == "thead" for x in tr.ancetres())), None)
+        if entete is None:
+            continue
+
+        def cellules(tr):
+            return [c for c in tr.descendants() if c.tag in ("td", "th")
+                    and next((x for x in c.ancetres() if x.tag == "tr"), None) is tr]
+        ths = cellules(entete)
+        releves = [(k, th) for k, th in enumerate(ths)
+                   if (th.att("data-provenance") or "").strip().lower() in ("releve", "relevé", "relevee")]
+        if not releves:
+            continue
+        declarees += len(releves)
+        corps = [tr for tr in propres if tr is not entete
+                 and not any(x.tag == "thead" for x in tr.ancetres())]
+        for k, th in releves:
+            nues = sum(1 for tr in corps
+                       if k < len(cellules(tr)) and not (cellules(tr)[k].att("data-source") or "").strip())
+            if nues:
+                fails.append(
+                    f"S3 colonne relevée sans source : tableau {i}, colonne « "
+                    f"{' '.join(th.texte().split())[:32]} » — {nues} cellule(s) sans `data-source`. "
+                    "Une valeur qui se dit relevée dit d'où elle vient, ligne par ligne (TF-1053).")
+    if declarees and not garde:
+        fails.append(
+            f"S3 garde-fou de provenance non cité : {declarees} colonne(s) se déclarent relevées et "
+            "la page ne nomme pas le contrôle qui a comparé chaque cellule à sa source "
+            "(`data-garde-provenance` ou `<meta name=\"garde-provenance\">`). Seize contrôles de "
+            "forme verts n'ont pas vu une colonne entière reconstruite (TF-1053).")
+    return fails, warns
+
+
 def check_structure(a: Arbre):
     """S1 — cohérence de tableau : chaque ligne du corps porte autant de cellules que l'en-tête.
 
@@ -2964,6 +3061,11 @@ def check_structure(a: Arbre):
         warns.append("S1 non jugé sur " + ", ".join(ecartes[:4])
                      + (f" et {len(ecartes) - 4} autre(s)" if len(ecartes) > 4 else "")
                      + " — un tableau non comptable se déclare, il ne se juge pas à tort.")
+    # S2 (TF-1036) et S3 (TF-1053) : deux défauts de STRUCTURE de page, jugés au même appel.
+    for regle in (check_double_listing, check_provenance):
+        f, w = regle(a)
+        fails += f
+        warns += w
     return fails, warns
 
 

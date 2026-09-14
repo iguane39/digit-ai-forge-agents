@@ -654,6 +654,14 @@ CAS_STRUCTURE = {
     "s1-tableau-incoherent.html": {"S1"},   # `|` non échappé : 5 cellules pour un en-tête de 4
     "s1-tableau-coherent.html": set(),      # même page, la barre verticale échappée
     "s1-rowspan-non-juge.html": set(),      # rowspan : non comptable, écarté avec son motif
+    # TF-1036 — un même ensemble n'est énuméré qu'une fois : tableau + fiches = S2 ; le détail
+    # DANS la ligne ne compte pas.
+    "s2-double-listing.html": {"S2"},
+    "s2-detail-dans-la-ligne.html": set(),
+    # TF-1053 — une colonne déclarée relevée porte sa source par ligne et la page cite son
+    # garde-fou ; muette = S3, sourcée et gardée = rien.
+    "s3-provenance-muette.html": {"S3"},
+    "s3-provenance-declaree.html": set(),
 }
 
 

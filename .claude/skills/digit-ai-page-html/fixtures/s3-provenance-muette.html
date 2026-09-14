@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — S3 provenance muette — 20260914a</title>
+<!--
+  Fixture ROUGE de S3, TF-1053 — UNE COLONNE QUI SE DIT RELEVÉE, SANS SOURCE NI GARDE-FOU.
+
+  La colonne Emetteur se declare relevee, mais deux cellules sur trois ne disent pas d'ou elles
+  viennent, et la page ne cite aucun garde-fou de provenance. C'est la forme du cas du 08/09 : une
+  constante reconstruite, juste par accident. Attendu : S3 (deux constats).
+-->
+<style>:root{--ink:#0F172A;--line:#E6EAF2}body{margin:0;color:var(--ink)}@media print{body{color:#000}}</style>
+</head><body><main>
+<h1>Connexions de service</h1>
+<table><thead><tr><th>Connexion</th><th data-provenance="releve">Émetteur</th></tr></thead><tbody>
+<tr><td>conn-a</td><td data-source="releve-20260908.json#conn-a">https://emetteur.exemple/a</td></tr>
+<tr><td>conn-b</td><td>https://emetteur.exemple/a</td></tr>
+<tr><td>conn-c</td><td>https://emetteur.exemple/a</td></tr>
+</tbody></table>
+</main></body></html>
