@@ -7,13 +7,27 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.21.0"
+  version: "1.22.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.22.0 (14/09/2026)** — **quatre items, et une seule leçon : un contrôle qui accuse à tort
+s'apprend à ignorer, donc on le corrige sans le désarmer.** · **L30 cherche ses termes sur
+frontière de mot** (TF-0969) : « gate » était trouvé dans `aggregate_type` ; mesuré sur 1 022 pages
+HTML suivies du parc, 135 accusations avant, 12 après, et les 123 retirées étaient toutes des
+sous-chaînes. · **V15 mesure l'en-tête en position de LECTURE** (TF-0968, TF-0973) : son recul
+laissait toujours 250 px de tableau en vue, d'où trois faux bloquants par arithmétique ; sa
+troisième branche dit maintenant laquelle de ses trois causes elle a vue — recouvert (bloquant),
+bridé par la fin de son propre tableau (information), tableau sans ligne visible (bloquant). Sur
+82 pages consommatrices, 3 bloquants avant, 3 après. · **Une carte filtrante ne filtre que le
+tableau qu'elle désigne** (TF-0970) : l'état actif se tient par tableau ; avant, un clic sur le
+mapping vidait le tableau des mesures. · **`contenu_rogne` n'accuse plus un champ de saisie**
+(TF-0847) : sa valeur défile, elle n'est pas perdue ; une carte figée reste accusée. Fixtures à
+double sens pour chacun ; recette 264 → 276 cas.
 
 **1.20.0 (08/09/2026, soir)** — **six items d'une seconde campagne, et une seule leçon : ce que
 personne ne RENDAIT, personne ne le mesurait.** · **Deux gabarits du parc échouaient aux quatre
