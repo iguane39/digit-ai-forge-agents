@@ -342,3 +342,81 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
   frontiere: fixe le NIVEAU « le modèle sémantique est du texte versionné » ; n'impose aucune version de Power BI Desktop, ne copie aucun contenu de la documentation
   justification: condition posée par l'analyse L99 du 07/09/2026 pour qu'un verbe soit exerçable par un agent (formats texte, lignes de commande, API) ; sans ce format, les oracles M4 et M6 de l'étude n'ont rien à lire
   statut: ok (validée humain, 07/09/2026 — décision D-6 option (a) « 6a », tour dédié au pas 5 : les quatre références recommandées retenues telles quelles, candidats survivants conservés en mémoire de choix)
+
+# ---- Lot M8 de l'étude d'opportunité du 11/09/2026 (TF-1028, décision D-3 (a)) : trois barres
+# ---- pour les livrables de COMMUNICATION, qui n'en avaient aucune (grep propale, communication,
+# ---- marketing, pitch, LinkedIn : 0 au 11/09). Les oracles de propale jugent la forme et la
+# ---- traçabilité, jamais le NIVEAU — précédent B1-B4 de forge-design (TF-0483). Pas 1 à 4 et 6
+# ---- joués le 14/09/2026 ; test d'existence exécuté par scripts/test_existence.py le 14/09/2026.
+# ---- LE PAS 5 N'A PAS EU LIEU : les trois entrées restent en `todo` et ne sont servies à aucun
+# ---- consommateur (digit-ai-propale et digit-ai-communication en pré-vol, l'arbitre de
+# ---- digit-ai-propale-review en ligne) tant que l'humain n'a pas retenu une référence par cible,
+# ---- en un tour dédié. Candidats ÉLIMINÉS au pas 3, dits et non tus : NIAID Sample Applications
+# ---- (HTTP 405 au script), apmp.org/page/BOK (404), open-grants sur GitHub (404),
+# ---- applytosupply.digitalmarketplace (404).
+
+- cible: propale privée (proposition commerciale de conseil, envoyée à un prospect)
+  reference: à retenir au pas 5 — candidat recommandé ci-dessous
+  candidats_survivants: >
+    (1) Slideworks — « 14 Real Consulting Proposals » (https://slideworks.io/resources/10-real-consulting-proposals-free-to-download) :
+    collection de propositions RÉELLES de cabinets de conseil, dont des propositions devenues
+    documents publics après une consultation d'un organisme public (recommandé : ce sont des
+    artefacts, pas des conseils) ; (2) Administrative Conference of the United States —
+    « Consulting RFPs » (https://www.acus.gov/page/consulting-rfps) : consultations de conseil
+    publiées avec leurs pièces, utile pour lire ce que l'acheteur demande en regard ;
+    (3) https://www.shipleywins.com/ et https://www.apmp.org/ (méthode de référence du métier de
+    la proposition) — atteignables, mais ce sont des ORGANISATIONS, pas des artefacts : écartés
+    comme barre, gardés comme source de méthode.
+  test_existence: python scripts/test_existence.py https://slideworks.io/resources/10-real-consulting-proposals-free-to-download https://www.acus.gov/page/consulting-rfps
+  dernier_test: 2026-09-14 — PASS (2/2, HTTP 200)
+  niveaux:
+    structure: le problème du client ouvre le document, dans ses mots, avant toute présentation du cabinet ; le plan de travail est détaillé par phase (durée, livrables, jalons) ; le prix se lit en décomposition par phase ou par lot, jamais en un montant unique
+    vocabulaire: chaque promesse est testable (un résultat, un délai, un indicateur) ; l'expérience citée est RATTACHÉE au projet visé, jamais un catalogue de références
+    composants: une synthèse d'une page lisible seule ; des hypothèses et exclusions écrites ; l'équipe nommée avec son rôle sur la mission
+    comportement: un lecteur décideur qui ne lit que la synthèse et la page de prix sait quoi signer, pour combien et pour quand
+  frontiere: fixe le NIVEAU de rigueur et de complétude d'une propale ; n'autorise ni la reprise d'un gabarit, ni celle d'un texte, ni celle d'une identité de cabinet ; la charte (tokens-diapositives.css) et la grammaire commerciale de digit-ai-propale restent la contrainte de forme
+  justification: à faire valider (pas 5) — proposée parce que ce sont des propositions réelles de cabinets, inspectables, et non des guides d'écriture ; le niveau d'un livrable se mesure à un livrable
+  statut: todo (pas 5 en attente — décision humaine requise)
+
+- cible: mémoire technique de réponse à un appel d'offres public (trame imposée)
+  reference: à retenir au pas 5 — candidat recommandé ci-dessous
+  candidats_survivants: >
+    (1) Open Grants (https://www.ogrants.org/) : collection publique de propositions de
+    financement réellement soumises, lauréates et non lauréates, publiées par leurs auteurs
+    (recommandé : ce sont des réponses complètes à des trames imposées, avec leur issue) ;
+    (2) UK Digital Marketplace — G-Cloud (https://www.digitalmarketplace.service.gov.uk/g-cloud/search) :
+    offres de services ADMISES au cadre d'achat public britannique, publiées avec leur document
+    de définition de service. Réserve : ni l'un ni l'autre n'est un mémoire technique de marché
+    public français ; les mémoires lauréats français ne sont communicables qu'au cas par cas
+    (confidentialité des offres), et aucune source ouverte n'a été trouvée le 14/09/2026.
+  test_existence: python scripts/test_existence.py https://www.ogrants.org/ https://www.digitalmarketplace.service.gov.uk/g-cloud/search
+  dernier_test: 2026-09-14 — PASS (2/2, HTTP 200)
+  niveaux:
+    structure: chaque rubrique imposée par le règlement de consultation est reprise À L'IDENTIQUE et dans l'ordre ; chaque exigence du CCTP reçoit une réponse localisable (oracle-exigences-ao X1-X3)
+    vocabulaire: la réponse reprend les termes de l'acheteur ; chaque engagement est chiffré ou daté ; aucune affirmation sans preuve jointe (référence, certificat, CV)
+    composants: un tableau de conformité exigence → réponse → page ; des moyens humains nommés ; un planning et une méthode de pilotage
+    comportement: un évaluateur retrouve la réponse à un critère de notation en moins d'une minute, sans lire le mémoire en entier
+  frontiere: fixe le NIVEAU de conformité et de preuve ; n'autorise aucune reprise de texte d'une réponse tierce ; la trame imposée par l'acheteur prime sur la barre
+  justification: à faire valider (pas 5) — proposée parce que ce sont des réponses complètes à des trames imposées, publiées avec leur issue ; l'écart de juridiction est déclaré ci-dessus
+  statut: todo (pas 5 en attente — décision humaine requise, et source française à chercher)
+
+- cible: publication réseau B2B (post, article, étude courte publiés par Digit-AI)
+  reference: à retenir au pas 5 — candidat recommandé ci-dessous
+  candidats_survivants: >
+    (1) LinkedIn B2B Institute — « B2B Edge » (https://business.linkedin.com/marketing-solutions/b2b-institute/blog) :
+    publications de recherche B2B d'un institut reconnu, dont la règle 95:5 (recommandé : un
+    niveau de preuve et de clarté sur exactement le public visé) ; (2) Marketing Week —
+    « The 95:5 rule is the new 60:40 rule » (https://www.marketingweek.com/peter-weinberg-jon-lombardo-95-5-rule/) :
+    un article B2B de référence, court, une idée, sourcé ; (3) Nielsen Norman Group — « How Users
+    Read on the Web » (https://www.nngroup.com/articles/how-users-read-on-the-web/) : niveau de
+    lisibilité à l'écran (complément, pas une barre de contenu).
+  test_existence: python scripts/test_existence.py https://business.linkedin.com/marketing-solutions/b2b-institute/blog https://www.marketingweek.com/peter-weinberg-jon-lombardo-95-5-rule/ https://www.nngroup.com/articles/how-users-read-on-the-web/
+  dernier_test: 2026-09-14 — PASS (3/3, HTTP 200)
+  niveaux:
+    structure: une idée par publication, énoncée dans la première ligne ; la preuve suit l'idée (chiffre sourcé, cas daté) ; une action ou une question en clôture
+    vocabulaire: aucun chiffre sans source nommée ; aucun superlatif non prouvé ; le jargon est glosé ou retiré
+    composants: la mention de contenu généré de l'article 50 quand la publication est générée (oracle-transparence-ia, TF-1030) ; les contraintes de plateforme (oracle-post-linkedin L1-L5)
+    comportement: un décideur qui lit les deux premières lignes sait de quoi parle la publication et pourquoi il devrait lire la suite
+  frontiere: fixe le NIVEAU de preuve et de clarté ; n'autorise ni la reprise d'une idée sans la citer, ni celle d'une voix d'auteur ; la voix de l'émetteur (MARQUE.md) prime
+  justification: à faire valider (pas 5) — proposée parce que l'institut de recherche B2B de la plateforme même où Digit-AI publie fixe un niveau de preuve que ses publications n'ont aucune barre pour atteindre aujourd'hui
+  statut: todo (pas 5 en attente — décision humaine requise)
