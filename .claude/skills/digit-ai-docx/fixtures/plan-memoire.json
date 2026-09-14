@@ -1,0 +1,20 @@
+{
+  "titre": "Mémoire technique — consultation synthétique d'accompagnement",
+  "emetteur": "Cabinet-A (émetteur synthétique de fixture)",
+  "sections": [
+    { "titre": "1. Présentation du candidat", "niveau": 1, "blocs": [
+      { "type": "paragraphe", "texte": "Cabinet de conseil fondé il y a douze ans, certifié Qualiopi depuis 2021." }
+    ] },
+    { "titre": "2. Méthodologie d'intervention", "niveau": 1, "blocs": [
+      { "type": "paragraphe", "texte": "Trois temps, chacun avec son livrable et son critère de réussite." },
+      { "type": "puces", "items": ["Diagnostic des pratiques existantes", "Ateliers de 8 participants au moins", "Restitution au format PDF accessible"] },
+      { "type": "tableau", "entetes": ["Exigence", "Réponse", "Page"], "lignes": [["EXG-01 · 3 ans en conduite du changement", "Références 2019-2026 jointes", "4"], ["EXG-02 · Qualiopi", "Certificat en annexe", "12"]] }
+    ] },
+    { "titre": "2.1 Pilotage", "niveau": 2, "blocs": [
+      { "type": "paragraphe", "texte": "Un comité mensuel, un tableau de bord partagé." }
+    ] },
+    { "titre": "3. Moyens humains affectés", "niveau": 1, "blocs": [
+      { "type": "paragraphe", "texte": "Deux consultants seniors et une cheffe de projet." }
+    ] }
+  ]
+}

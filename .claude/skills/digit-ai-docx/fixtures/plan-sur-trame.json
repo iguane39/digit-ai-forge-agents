@@ -1,0 +1,10 @@
+{
+  "titre": "Courrier d'accompagnement — synthétique",
+  "emetteur": "Cabinet-A (émetteur synthétique de fixture)",
+  "sections": [
+    { "titre": "Objet", "niveau": 1, "blocs": [
+      { "type": "paragraphe", "texte": "Remise de notre offre pour la consultation synthétique." },
+      { "type": "puces", "items": ["Mémoire technique", "Bordereau des prix unitaires"] }
+    ] }
+  ]
+}

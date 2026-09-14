@@ -11,10 +11,10 @@ description: >
   les règles dures de chiffrage. Use when / déclencher dès que l'utilisateur demande une
   propale, propal, proposition commerciale, offre commerciale pour un client ou prospect
   Digit-AI, demande de chiffrer une mission, de transformer un diagnostic ou des notes de
-  RDV en proposition, ou de produire le lot suivant d'une mission existante. Le rendu PPTX
-  est intégralement délégué au skill digit-ai-pptx.
+  RDV en proposition, ou de produire le lot suivant d'une mission existante. Le rendu est
+  délégué, par paramètre : PPTX à digit-ai-pptx, DOCX à digit-ai-docx.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Digit-AI Propale
@@ -46,7 +46,12 @@ dupliquer charte ou pipeline ici**.
    un lecteur non technique pour comprendre l'apport). **Soumettre ce plan à
    l'utilisateur pour validation avant toute génération PPTX.** Le chiffrage doit être
    validé à cette étape.
-5. **Générer le PPTX** via `digit-ai-pptx` (charte, slide canonique « Vos interlocuteurs
+5. **Rendre — le format est un PARAMÈTRE du livrable, jamais un défaut** (TF-1027) :
+   `rendu: pptx` → `digit-ai-pptx` ; `rendu: docx` (mémoire technique sur trame imposée,
+   courrier, kit partenaire) → `digit-ai-docx`, sur la marque de l'émetteur ou sur la trame
+   fournie, oracle de validité du paquet avant remise. Un règlement de consultation qui fixe le
+   format tranche ; sans paramètre ni règlement, **demander**, en une ligne. Pour un PPTX,
+   **générer** via `digit-ai-pptx` (charte, slide canonique « Vos interlocuteurs
    chez Digit-AI », pipeline complet, QA) ; les messages-clés de l'étape 3 lui sont transmis
    comme sous-titres. Nommage : `Digit-AI - {Client} - Proposition commerciale - {Scope} - {YYYYMMDD}{a,b,c…}.pptx`.
    **Puis pointer (ne pas enchaîner)** : signaler que l'audit avant envoi relève d'un juge

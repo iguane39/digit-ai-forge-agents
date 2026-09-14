@@ -1,0 +1,7 @@
+/* Marque SYNTHÉTIQUE INCOMPLÈTE (fixture rouge, digit-ai-docx, TF-1027) : la police du corps
+   (--sans) manque. Le rendu doit REFUSER (exit 2) plutôt que retomber sur une valeur en dur. */
+:root {
+  --head: "Roboto", system-ui, sans-serif;
+  --ink: #0F172A;
+  --accent: #1E5AA8;
+}
