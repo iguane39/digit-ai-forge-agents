@@ -123,6 +123,26 @@
   /* Jeton nomme par TF-0856 : voile clair sur fond sombre (infobulle). */
   --bg-overlay: rgba(255,255,255,.14);
 }
+/* TF-1063 (11/09) — LA PROJECTION SOMBRE DE LA PALETTE appartient au gabarit, pas au produit
+   qui le monte. Définie en clair seulement, elle rendait 36 écarts durs (oracle-bascule T4 et
+   B-T4) et des cartes à fond clair sur page sombre ; Produit-62 l'avait réécrite dans sa page.
+   Même mécanisme que le boilerplate du socle : clair strict par défaut, sombre sur
+   data-theme="dark" posé par la page hôte. Dérivée teinte par teinte (fond 950, texte 100/200,
+   trait 700). Les jetons de base reprennent la projection sombre du boilerplate du socle
+   (--bg, --surface, --ink, --muted, --faint, --line, --blue) : une source, deux projections. */
+:root[data-theme="dark"] {
+  --bg: #0B1220; --bg-soft: #121B2E;
+  --ink: #EEF2F8; --ink-soft: #A9B4C4; --ink-muted: #7C8AA0;
+  --line: #263248; --line-soft: #1C2740;
+  --accent: #7DA2F5;
+  --bg-overlay: rgba(255,255,255,.14);
+  --c-purple-bg:#2E1065; --c-purple-fg:#DDD6FE; --c-purple-stroke:#6D28D9;
+  --c-blue-bg:#172554;   --c-blue-fg:#DBEAFE;   --c-blue-stroke:#1D4ED8;
+  --c-teal-bg:#042F2E;   --c-teal-fg:#CCFBF1;   --c-teal-stroke:#0F766E;
+  --c-coral-bg:#450A0A;  --c-coral-fg:#FEE2E2;  --c-coral-stroke:#B91C1C;
+  --c-amber-bg:#451A03;  --c-amber-fg:#FEF3C7;  --c-amber-stroke:#B45309;
+  --c-gray-bg:#1F2937;   --c-gray-fg:#E5E7EB;   --c-gray-stroke:#4B5563;
+}
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--ink); font-family: var(--sans); font-size:16px; line-height:1.55; }
 .page { max-width: clamp(75vw, 1680px, 92vw); margin:0 auto; padding:48px 32px; } /* L2 socle */
