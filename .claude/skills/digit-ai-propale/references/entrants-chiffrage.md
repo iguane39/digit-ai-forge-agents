@@ -37,8 +37,8 @@ générer 14 slides sur du vide sans signaler les hypothèses.
 
 1. **Aucun montant inventé.** Sources légitimes, par ordre de priorité :
    - chiffrage explicite dans les entrants ;
-   - TJM établi sur une mission précédente du même client (ex. « TJM Lot 1 ») —
-     à confirmer avec l'utilisateur ;
+   - TJM établi sur une mission précédente du même client (ex. « TJM Lot 1 », à vérifier
+     dans la propale de ce lot, source citée) — à confirmer avec l'utilisateur ;
    - proposition de l'utilisateur en réponse à la question de cadrage.
 2. Sans source : slide investissement en placeholders `[à chiffrer]`, signalés
    explicitement à l'étape de validation du plan. Ne jamais générer le PPTX final
