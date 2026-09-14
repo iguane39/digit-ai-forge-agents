@@ -74,6 +74,12 @@ Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
    - un banc qui éprouve un **câblage** (hook, gate, lanceur posé) **épingle la version sous test**
      — en déposant la SOURCE au repli que le câblage cherche — le câblage gardant son ordre de
      recherche réel. Sans cela il éprouve la copie installée, pas ce qu'on vient de corriger.
+7. **Une règle de DENSITÉ exclut de son dénominateur ce que le socle impose ailleurs** (TF-0984,
+   08/09/2026). A5 comptait comme du texte les polices en `url(data:…)` que A1 exige : tenir A1
+   faisait échouer A5, et le gabarit de modèle de données rougissait en permanence. Toute règle qui
+   mesure une densité, une proportion ou un ratio retire de sa mesure les charges imposées par une
+   règle voisine. Et une règle neuve se joue contre un artefact qui applique DÉJÀ toutes les règles
+   voisines, pas seulement contre sa propre fixture.
 
 ## 4. Règle de remontée (la liste grandit)
 Domaine sans oracle au registre → **définir** (scaffold en une commande : skill compagnon **`write-an-oracle`** —

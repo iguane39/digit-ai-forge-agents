@@ -171,6 +171,10 @@ CAS = {
     # avertissements — un chapitre annonce ne doit declencher ni l'un ni l'autre.
     "l30-chapitre-annonce.html": set(),
     "l30-terme-non-glose.html": {"L30"},
+    # TF-0969 (08/09) — le terme se cherche entre deux frontieres de mot Unicode : « gate »
+    # dans `aggregate_type` ne compte pas, « la gate du mandat » reste rouge.
+    "l30-identifiant-technique.html": set(),
+    "l30-terme-employe-comme-mot.html": {"L30"},
     "l25-chapitres-sans-sommaire.html": {"L25"},
     "l25-sommaire-lateral.html": set(),
     "l26-donnees-colonne-de-lecture.html": {"L26"},
@@ -305,6 +309,10 @@ CAS_AUTONOMIE = {
     "a5-feuille-parsable.html": set(),
     "a5-residu-de-commentaire.html": {"A5"},
     "a5-feuille-ecrasee.html": {"A5"},
+    # TF-0984 (08/09) — le dénominateur de A5 exclut les `url(data:…)` que A1 impose : une page
+    # qui embarque ses polices reste verte ; la même police suivie de prose diluée reste rouge.
+    "a5-polices-embarquees.html": set(),
+    "a5-polices-et-feuille-ecrasee.html": {"A5"},
 }
 RE_CODE_A = re.compile(r"^(A\d+(?:-bis)?)\b")
 
@@ -1550,6 +1558,39 @@ def run_l29_ter():
     return resultats
 
 
+# TF-1049 (11/09) — la police Syne se juge sur sa DÉCLARATION, jamais sur le mot. Rouge : la
+# feuille la déclare. Verte : le texte cite la règle « jamais Syne » sans rien déclarer — le
+# cas de la page du registre du pilot, restée rouge une journée.
+CAS_SYNE = {
+    "syne-declaree-feuille.html": True,
+    "syne-citee-en-texte.html": False,
+}
+
+
+def run_syne():
+    """Cas a double sens de la règle Syne (TF-1049)."""
+    resultats = []
+    for nom, attendu in CAS_SYNE.items():
+        chemin = FIXTURES / nom
+        if not chemin.exists():
+            resultats.append({"fixture": nom, "verdict": "ABSENTE", "attendu": attendu,
+                              "obtenu": "absente", "regle": "Syne", "detail": "fixture manquante"})
+            continue
+        fails, _ = check(chemin.read_text(encoding="utf-8"), regles="charte")
+        obtenu = any(f.startswith("Police Syne") for f in fails)
+        # la fixture est charte-verte par ailleurs : un autre échec rendrait le cas trompeur
+        parasites = [f for f in fails if not f.startswith("Police Syne")]
+        ok = obtenu == attendu and not parasites
+        resultats.append({
+            "fixture": nom, "verdict": "OK" if ok else "ECHEC",
+            "attendu": "Syne déclarée" if attendu else "aucun échec",
+            "obtenu": "Syne déclarée" if obtenu else "aucun échec",
+            "regle": "Syne (déclaration)",
+            "detail": "" if ok else " | ".join(fails)[:400],
+        })
+    return resultats
+
+
 def run_poseur_composants():
     """TF-0890 — LE POSEUR DE COMPOSANTS S'IMPORTE, ET POSE HORS DU DEPOT DES SKILLS.
 
@@ -2384,7 +2425,7 @@ def main():
     args = ap.parse_args()
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
-           + run_glyphes_du_socle() + run_markdown())
+           + run_glyphes_du_socle() + run_markdown() + run_syne())
     rendu = run_rendu()
     if rendu:
         res += rendu

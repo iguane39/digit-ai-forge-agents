@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture Syne — rouge : la feuille déclare la police — 20260914a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- TF-1049, sens ROUGE. Le jeton de titre déclare la police interdite par la charte, et les
+     titres la consomment par var(). La règle doit la trouver dans la feuille, pas dans le texte :
+     le corps de la page ne prononce jamais son nom. -->
+<style>
+:root {
+  --head: "Syne", system-ui, sans-serif;
+  --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A;
+  --muted: #64748B;
+  --bg: #FAFBFF;
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+main { max-width: min(92vw, 1680px); margin: 0 auto; padding: 32px 24px 64px; }
+h1 { font-family: var(--head); font-size: 2rem; margin: 0 0 .25em; }
+p { margin: 0 0 1em; max-width: 72ch; }
+.note { color: var(--muted); font-size: .85rem; }
+@media (max-width: 640px) { main { padding: 24px 16px 48px; } }
+@media print { body { background: #fff; } .note { color: #000; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Une police déclarée dans la feuille</h1>
+<p>Le titre de cette page est composé dans une police que la charte refuse. Le texte n'en dit
+rien : c'est la déclaration qui porte le défaut.</p>
+<p class="note">Attendu : échec « Police Syne détectée ».</p>
+</main>
+</body>
+</html>

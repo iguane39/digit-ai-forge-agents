@@ -600,7 +600,7 @@ def check_charte(html: str):
     if not re.search(r"@media\s+print", low):
         fails.append("@media print absent (robustesse export PDF).")
 
-    if re.search(r"\bsyne\b", low):
+    if police_syne_declaree(html):
         fails.append("Police Syne détectée — interdite par la charte.")
 
     for decl in re.findall(r"font-family\s*:\s*([^;}{]+)", low):
@@ -2305,7 +2305,12 @@ def check_lisibilite(html: str, a: Arbre):
         gloses = " ".join(e.texte_propre() for e in sec.descendants()
                           if e.tag == "dfn" or (e.classes() & {"termes", "glossaire"}))
         for terme in termes_jargon:
-            if terme.lower() not in texte_chapitre.lower():
+            # TF-0969 (08/09) — frontiere de mot Unicode, comme la porte de publication
+            # (TF-0880) et les gardes lexicales (TF-0799, TF-0805) : en sous-chaine, « gate »
+            # etait trouve dans `aggregate_type` et le chapitre accuse d'un terme absent. `\w`
+            # couvre le souligne : un identifiant technique (snake_case) ne compte jamais.
+            if not re.search(r"(?<!\w)" + re.escape(terme) + r"(?!\w)", texte_chapitre,
+                             re.I):
                 continue
             if terme.lower() in gloses.lower():
                 continue
@@ -2962,6 +2967,31 @@ def check_structure(a: Arbre):
     return fails, warns
 
 
+# --- Police Syne : une DÉCLARATION, jamais un mot du texte (TF-1049, 11/09/2026) -----------------
+#
+# LE FAIT. La règle cherchait « syne » dans TOUT le document : la page générée du registre du
+# pilot rendait une candidature qui CITE la règle « jamais Syne », et le self-test du pilot est
+# resté rouge une journée sur ce seul faux positif. Une règle qui juge une police juge ce qui
+# DÉCLARE une police : les feuilles de style (commentaires retirés — y compris un jeton
+# `--head: "Syne"` qu'un `var()` consommerait), les attributs `style` et `font-family` (SVG), les
+# liens et `@import` de police. Le texte de la page et les scripts ne déclarent rien.
+RE_SYNE = re.compile(r"(?<![a-z0-9])syne(?![a-z0-9])", re.I)
+
+
+def police_syne_declaree(html: str) -> bool:
+    """TF-1049 — Syne est-elle DÉCLARÉE (feuille, style, font-family, lien de police) ?"""
+    feuilles = re.findall(r"<style\b[^>]*>(.*?)</style\s*>", html, re.I | re.S)
+    css = re.sub(r"/\*.*?\*/", " ", " ".join(feuilles), flags=re.S)
+    if RE_SYNE.search(css):
+        return True
+    hors_script = re.sub(r"<script\b[^>]*>.*?</script\s*>", " ", html, flags=re.I | re.S)
+    attributs = re.findall(
+        r"\s(?:style|font-family)\s*=\s*(\"[^\"]*\"|'[^']*')", hors_script, re.I)
+    if any(RE_SYNE.search(v) for v in attributs):
+        return True
+    return any(RE_SYNE.search(lien) for lien in re.findall(r"<link\b[^>]*>", hors_script, re.I))
+
+
 # --- A5 · la feuille de style se PARSE (TF-0896, lot Produit-10 20260907c) ------------------
 #
 # LE FAIT PAYÉ (mesuré le 07/09/2026). Le boilerplate citait la balise de style EN TOUTES
@@ -2987,6 +3017,14 @@ def check_structure(a: Arbre):
 RE_RESIDU_BALISE = re.compile(r"-->|<!--|<\s*/?\s*[a-z]", re.I)
 A5_TAILLE_MINI = 1000        # caractères — sous ce seuil, la densité ne veut rien dire
 A5_DENSITE_PLANCHER = 0.5    # règles pour 1 000 caractères (plus faible mesurée : 3,39)
+# TF-0984 (08/09) — le DÉNOMINATEUR exclut ce que le socle impose par ailleurs. A1 exige
+# l'autoportance, donc des polices embarquées en `url(data:…)` : ~320 Ko de base64 dans la
+# feuille du gabarit de modèle de données, comptés comme du texte — 0,28 règle pour 1 000
+# caractères, FAIL permanent sur une page conforme à A1. Tenir A1 faisait échouer A5 par
+# construction. La charge utile est remplacée par `url()` avant la mesure ; la feuille
+# réellement diluée par du texte reste rouge (fixture a5-polices-et-feuille-ecrasee.html).
+RE_A5_URL_DATA = re.compile(
+    r"url\(\s*(?:\"data:[^\"]*\"|'data:[^']*'|data:[^)]*)\s*\)", re.I)
 
 
 def check_feuille_parsable(a: Arbre):
@@ -2994,7 +3032,7 @@ def check_feuille_parsable(a: Arbre):
     fails, warns = [], []
     for i, bloc in enumerate(a.styles, 1):
         regles = regles_css([bloc])
-        taille = len(bloc)
+        taille = len(RE_A5_URL_DATA.sub("url()", bloc))
         residu = next((sel for sel, _d in regles if RE_RESIDU_BALISE.search(sel)), None)
         if residu is not None:
             extrait = " ".join(residu.split())[:70]
