@@ -267,6 +267,13 @@ après renormalisation est un tableau qui a trop de colonnes : le replier, ou en
 
 - **Recherche in-page** (surlignage insensible aux accents) : composant dédié déjà fourni,
   voir [composant-recherche.md](composant-recherche.md).
+- **Embarquer un composant, c'est le POSER, jamais le coller** (TF-1059). Une copie collée à la
+  main perd l'exemption du socle : les oracles de forge-design (`oracles/lib/socle.mjs`)
+  n'exemptent que les blocs marqués `COMPOSANT-EMBARQUE` et scellés par leur empreinte, et la
+  jugent donc sur tout son CSS. Poser avec
+  `node scripts/embarquer-composants.mjs --poser <page.html> --composants table-filters.js,table-filters.css`,
+  vérifier avec `--constat <page.html>`. Un défaut du composant se corrige ici, à la source ;
+  une copie éditée sur place perd son sceau et redevient une fourche.
 - Tous les composants ci-dessus supposent le bloc `:root` du boilerplate. Après intégration,
   **relancer les oracles** (`check_html.py` puis `render_page.py`) : ne jamais juger un rendu
   depuis le seul code (cf. `zero-defaut-visuel.md`).

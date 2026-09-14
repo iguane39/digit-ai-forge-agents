@@ -10,7 +10,10 @@
      · le chevron porte son COMPTE d'enfants. « 24 » sur une ligne repliee dit au lecteur ce
        qu'il ouvre ; sans lui, replier revient a cacher sans dire quoi.
 
-   Tout est en jetons du socle : ce composant ne pose aucune couleur en dur. */
+   Tout est en jetons du socle : ce composant ne pose aucune couleur en dur. TF-1059 (11/09) :
+   c'etait faux — les replis `var(--x, #hex)` en posaient dix, et sept espacements sortaient de
+   l'echelle 4pt. Le socle exige ses jetons :root (check_html) : les replis en dur sont retires,
+   les espacements alignes sur 4, l'anneau de focus consomme --focus-anneau. */
 
 .arbre-commandes {
   display: flex;
@@ -22,28 +25,28 @@
 .arbre-commandes button {
   font: inherit;
   font-size: .85rem;
-  padding: 4px 10px;
-  border: 1px solid var(--line, #E6EAF2);
+  padding: 4px 12px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--surface, #FFF);
+  background: var(--surface);
   color: inherit;
   cursor: pointer;
 }
-.arbre-commandes button:hover { border-color: var(--blue, #2563EB); }
-.arbre-commandes button:focus-visible { outline: var(--focus-anneau, 2px solid #2563EB); outline-offset: 2px; }
-.arbre-compteur { color: var(--muted, #64748B); font-size: .85rem; }
+.arbre-commandes button:hover { border-color: var(--blue); }
+.arbre-commandes button:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: 2px; }
+.arbre-compteur { color: var(--muted); font-size: .85rem; }
 
 /* L'INDENTATION VIENT DE LA DONNEE, PAS DU TEXTE. Quatre niveaux suffisent : au-dela, ce n'est
    plus un tableau, c'est un arbre — et il se rend autrement. */
-tr[data-niveau="1"] > td:first-child { padding-left: 26px; }
-tr[data-niveau="2"] > td:first-child { padding-left: 50px; }
-tr[data-niveau="3"] > td:first-child { padding-left: 74px; }
+tr[data-niveau="1"] > td:first-child { padding-left: 24px; }
+tr[data-niveau="2"] > td:first-child { padding-left: 48px; }
+tr[data-niveau="3"] > td:first-child { padding-left: 72px; }
 
 /* Le GUIDE : un filet vertical qui rattache visuellement l'enfant a sa branche. */
 tr[data-niveau="1"] > td:first-child,
 tr[data-niveau="2"] > td:first-child,
 tr[data-niveau="3"] > td:first-child {
-  background-image: linear-gradient(var(--line, #E6EAF2), var(--line, #E6EAF2));
+  background-image: linear-gradient(var(--line), var(--line));
   background-size: 1px 100%;
   background-repeat: no-repeat;
 }
@@ -57,17 +60,17 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
   gap: 4px;
   font: inherit;
   font-size: .8rem;
-  margin-right: 6px;
-  padding: 1px 5px;
-  border: 1px solid var(--line, #E6EAF2);
+  margin-right: 8px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
   border-radius: 5px;
-  background: var(--surface, #FFF);
-  color: var(--muted, #64748B);
+  background: var(--surface);
+  color: var(--muted);
   cursor: pointer;
   vertical-align: baseline;
 }
-.arbre-chevron:hover { border-color: var(--blue, #2563EB); color: inherit; }
-.arbre-chevron:focus-visible { outline: var(--focus-anneau, 2px solid #2563EB); outline-offset: 2px; }
+.arbre-chevron:hover { border-color: var(--blue); color: inherit; }
+.arbre-chevron:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: 2px; }
 
 /* LE GLYPHE EST DESSINE, PAS ECRIT. Un caractere de chevron ne tient pas 4,5:1 dans toutes les
    fontes de repli, et il se lirait a voix haute ; ce triangle est une forme, l'etat est porte

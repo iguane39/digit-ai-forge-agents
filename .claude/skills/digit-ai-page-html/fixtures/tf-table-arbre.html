@@ -15,7 +15,7 @@ th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
 </style><!-- COMPOSANT-EMBARQUE:DEBUT table-arbre.css — copie du socle digit-ai-page-html/assets/table-arbre.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="table-arbre.css" data-empreinte="sha256:b90bce99734b89d0a718f51d69acaa04e29b6e2578e20173159dcb78461b4fac">
+<style data-composant="table-arbre.css" data-empreinte="sha256:988dd2b2b2ffe3f344882523c74172d3772b5c68d57595fe6204187ed9158cc5">
 /* Digit-AI — TABLEAU ARBORESCENT, feuille du composant (TF-0952, 08/09/2026).
 
    Elle ne fait que TROIS choses, et chacune repond a un constat mesure sur le livrable qui a
@@ -28,7 +28,10 @@ th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
      · le chevron porte son COMPTE d'enfants. « 24 » sur une ligne repliee dit au lecteur ce
        qu'il ouvre ; sans lui, replier revient a cacher sans dire quoi.
 
-   Tout est en jetons du socle : ce composant ne pose aucune couleur en dur. */
+   Tout est en jetons du socle : ce composant ne pose aucune couleur en dur. TF-1059 (11/09) :
+   c'etait faux — les replis `var(--x, #hex)` en posaient dix, et sept espacements sortaient de
+   l'echelle 4pt. Le socle exige ses jetons :root (check_html) : les replis en dur sont retires,
+   les espacements alignes sur 4, l'anneau de focus consomme --focus-anneau. */
 
 .arbre-commandes {
   display: flex;
@@ -40,28 +43,28 @@ th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
 .arbre-commandes button {
   font: inherit;
   font-size: .85rem;
-  padding: 4px 10px;
-  border: 1px solid var(--line, #E6EAF2);
+  padding: 4px 12px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--surface, #FFF);
+  background: var(--surface);
   color: inherit;
   cursor: pointer;
 }
-.arbre-commandes button:hover { border-color: var(--blue, #2563EB); }
-.arbre-commandes button:focus-visible { outline: var(--focus-anneau, 2px solid #2563EB); outline-offset: 2px; }
-.arbre-compteur { color: var(--muted, #64748B); font-size: .85rem; }
+.arbre-commandes button:hover { border-color: var(--blue); }
+.arbre-commandes button:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: 2px; }
+.arbre-compteur { color: var(--muted); font-size: .85rem; }
 
 /* L'INDENTATION VIENT DE LA DONNEE, PAS DU TEXTE. Quatre niveaux suffisent : au-dela, ce n'est
    plus un tableau, c'est un arbre — et il se rend autrement. */
-tr[data-niveau="1"] > td:first-child { padding-left: 26px; }
-tr[data-niveau="2"] > td:first-child { padding-left: 50px; }
-tr[data-niveau="3"] > td:first-child { padding-left: 74px; }
+tr[data-niveau="1"] > td:first-child { padding-left: 24px; }
+tr[data-niveau="2"] > td:first-child { padding-left: 48px; }
+tr[data-niveau="3"] > td:first-child { padding-left: 72px; }
 
 /* Le GUIDE : un filet vertical qui rattache visuellement l'enfant a sa branche. */
 tr[data-niveau="1"] > td:first-child,
 tr[data-niveau="2"] > td:first-child,
 tr[data-niveau="3"] > td:first-child {
-  background-image: linear-gradient(var(--line, #E6EAF2), var(--line, #E6EAF2));
+  background-image: linear-gradient(var(--line), var(--line));
   background-size: 1px 100%;
   background-repeat: no-repeat;
 }
@@ -75,17 +78,17 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
   gap: 4px;
   font: inherit;
   font-size: .8rem;
-  margin-right: 6px;
-  padding: 1px 5px;
-  border: 1px solid var(--line, #E6EAF2);
+  margin-right: 8px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
   border-radius: 5px;
-  background: var(--surface, #FFF);
-  color: var(--muted, #64748B);
+  background: var(--surface);
+  color: var(--muted);
   cursor: pointer;
   vertical-align: baseline;
 }
-.arbre-chevron:hover { border-color: var(--blue, #2563EB); color: inherit; }
-.arbre-chevron:focus-visible { outline: var(--focus-anneau, 2px solid #2563EB); outline-offset: 2px; }
+.arbre-chevron:hover { border-color: var(--blue); color: inherit; }
+.arbre-chevron:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: 2px; }
 
 /* LE GLYPHE EST DESSINE, PAS ECRIT. Un caractere de chevron ne tient pas 4,5:1 dans toutes les
    fontes de repli, et il se lirait a voix haute ; ce triangle est une forme, l'etat est porte
@@ -113,7 +116,7 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.css — copie du socle digit-ai-page-html/assets/table-filters.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="table-filters.css" data-empreinte="sha256:b223afec569edcfc070af59fb47584f250cfee13c9bc8342de972ace8ed380ef">
+<style data-composant="table-filters.css" data-empreinte="sha256:36a64400e5c944a5dbbdfbed124f8cd27baee82db16795997024bbc6bc8e84aa">
 /* table-filters.css — habillage charté du composant de filtres de colonne (D-12).
    TF-0176 (13/08) : un composant se livre AVEC son CSS — livré nu, il sort en rendu brut
    navigateur chez tous ses hôtes (constaté sur le dashboard forge-tests du 13/08, refusé
@@ -121,18 +124,21 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
    composant — JAMAIS de balise écrite en toutes lettres dans ce commentaire (même famille
    de piège que RA-1 : un « script » ouvrant en commentaire fausse toute lecture paresseuse
    du document). Ne consomme que les tokens :root du socle (--surface, --ink, --muted,
-   --line, --blue, --r-sm) : aucune couleur en dur, les deux thèmes sont servis. */
+   --line, --blue, --r-sm) : aucune couleur en dur, les deux thèmes sont servis. TF-1059
+   (11/09) : deux couleurs en dur restaient (texte du bouton actif, repli du survol), treize
+   espacements sortaient de l'échelle 4pt et quatre anneaux de focus n'étaient pas prescrits —
+   corrigés ici, à la source, plutôt que dans chaque produit. */
 
 .tf-btn {
   font: inherit; font-size: .72rem; line-height: 1;
   color: var(--blue); background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--r-sm);
-  padding: 3px 7px; margin-left: 6px; cursor: pointer; vertical-align: middle;
+  padding: 4px 8px; margin-left: 8px; cursor: pointer; vertical-align: middle;
 }
 .tf-btn:hover { border-color: var(--blue); }
-.tf-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-btn:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 /* filtre ACTIF : l'état se voit sans ouvrir le panneau */
-.tf-btn.tf-on { background: var(--blue); color: #fff; border-color: var(--blue); }
+.tf-btn.tf-on { background: var(--blue); color: var(--surface); border-color: var(--blue); }
 
 .tf-panel {
   position: absolute; z-index: 30; top: calc(100% + 4px); left: 0;
@@ -140,31 +146,31 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: var(--r-sm);
   box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
-  padding: 10px 12px; text-align: left; text-transform: none;
+  padding: 12px; text-align: left; text-transform: none;
   font-family: var(--sans); font-size: .85rem; font-weight: 400;
   letter-spacing: normal; cursor: default;
 }
 .tf-search {
   width: 100%; font: inherit; color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--r-sm);
-  padding: 6px 10px; margin: 0 0 8px;
+  padding: 8px 12px; margin: 0 0 8px;
 }
-.tf-search:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-search:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 .tf-actions {
-  display: flex; gap: 14px; border-bottom: 1px solid var(--line);
+  display: flex; gap: 16px; border-bottom: 1px solid var(--line);
   padding-bottom: 8px; margin-bottom: 8px;
 }
 .tf-actions button {
   font: inherit; font-weight: 600; color: var(--blue);
-  background: none; border: none; cursor: pointer; padding: 2px 4px;
+  background: none; border: none; cursor: pointer; padding: 0 4px;
 }
-.tf-actions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-.tf-opts { display: flex; flex-direction: column; gap: 2px; }
+.tf-actions button:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
+.tf-opts { display: flex; flex-direction: column; gap: 4px; }
 .tf-opts label {
   display: flex; align-items: center; gap: 8px;
-  padding: 4px 2px; border-radius: 4px; cursor: pointer;
+  padding: 4px; border-radius: 4px; cursor: pointer;
 }
-.tf-opts label:hover { background: var(--bg, #f6f8fc); }
+.tf-opts label:hover { background: var(--bg); }
 .tf-opts input[type="checkbox"] { accent-color: var(--blue); }
 /* TF-0782 (02/09) : la cardinalite decide de la FORME du panneau, pas de son existence — et
    une forme qui change sans le dire est une affordance muette. Le panneau ouvert sur sa
@@ -185,16 +191,16 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
 /* TF-0430 : etat vide — un filtre qui ne laisse rien le DIT dans le tableau, et offre la
    seule action utile a ce moment. */
 tr[data-tf-empty] td {
-  padding: 18px 12px; text-align: center; color: var(--muted);
+  padding: 16px 12px; text-align: center; color: var(--muted);
   font-style: italic; border-bottom: 1px solid var(--line);
 }
 .tf-reset {
   font: inherit; font-style: normal; font-weight: 600; color: var(--blue);
   background: none; border: 1px solid var(--line); border-radius: var(--r-sm);
-  padding: 4px 10px; margin-left: 10px; cursor: pointer;
+  padding: 4px 12px; margin-left: 12px; cursor: pointer;
 }
 .tf-reset:hover { border-color: var(--blue); }
-.tf-reset:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-reset:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 
 @media print { .tf-btn, .tf-panel, tr[data-tf-empty] { display: none; } }
 </style>
