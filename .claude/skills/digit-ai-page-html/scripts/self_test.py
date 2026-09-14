@@ -520,6 +520,19 @@ CAS_RENDU = {
     "l29q-empilement-token.html": [("entete_masque_par_collants", 1),
                                    ("entete_ne_colle_pas", 0), ("entete_pose_sur_lignes", 0)],
     "l29q-hauteurs-mesurees.html": ("entete_masque_par_collants", 0),
+    # TF-0968 + TF-0973 (08/09) — la troisieme branche de V15 separe ses TROIS causes, et aucune
+    # n'est desarmee. La verte reproduit le faux positif ARITHMETIQUE : l'ancien recul laissait
+    # toujours 250 px de tableau en vue, l'en-tete de 41 px se bridait a 209 px sous une bande
+    # collante descendant a 219 — 3 bloquants avant correctif, un par tableau. Apres : zero
+    # bloquant, et le tableau qu'aucun recul ne met en position de lecture est PUBLIE en
+    # information (au moins un constat attendu : c'est ce qui prouve que la branche mesure encore).
+    # La rouge est le tableau VIDE du 08/09 : bloquant sous sa propre famille, et zero constat de
+    # recouvrement — les deux signatures ne se confondent plus. Le troisieme sens, le tableau haut
+    # recouvert alors qu'il pouvait atteindre son `top`, reste porte par l29q-empilement-token.
+    "v15-tableau-bride-par-sa-fin.html": [("entete_masque_par_collants", 0),
+                                          ("entete_tableau_vide", 0),
+                                          ("entete_bride_par_tableau", 1)],
+    "v15-tableau-vide.html": [("entete_tableau_vide", 1), ("entete_masque_par_collants", 0)],
 }
 
 

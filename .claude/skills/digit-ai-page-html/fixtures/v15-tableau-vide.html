@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V15 tableau vide sous un en-tete collant — 20260914a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ --hh:104px;--hh-tab:219px}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{margin:0;padding:0 20px 900px}
+header.doc.colle{position:sticky;top:0;z-index:20;background:var(--bg);height:104px;display:flex;align-items:center}
+nav.toc.colle{position:sticky;top:104px;z-index:10;background:var(--surface);height:115px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line);box-sizing:border-box}
+table{width:100%;border-collapse:collapse;background:var(--surface);margin:0 0 60px}
+caption{text-align:left;padding:6px 0;color:var(--muted)}
+th,td{text-align:left;padding:0 12px;box-sizing:border-box}
+thead th{height:41px}
+tbody td{height:32px}
+thead.colle th{position:sticky;top:var(--hh-tab, var(--hh));z-index:5;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de V15 (TF-0973) — LE TABLEAU VIDE PAR UN FILTRE EN AMONT.
+
+  Le cas du tour du 08/09 : le chapitre du perimetre annoncait 276 colonnes ecartees, et son
+  tableau n'avait AUCUNE ligne — le filtre du mode cible avait reduit la population source.
+  check_html PASS, l'oracle de filtres PASS, la recette ne comptait pas ce tableau : seule V15
+  l'a signale, par un en-tete « masque » de 49 px, de signature nettement differente des faux
+  positifs arithmetiques (TF-0968).
+
+  Meme page que v15-tableau-bride-par-sa-fin.html, mais le tableau n'a pas de corps visible.
+  L'en-tete est bride par la fin de son tableau — comme dans la fixture verte — MAIS il n'y a
+  rien sous lui : ce n'est pas un comportement de `sticky`, c'est un tableau qui ne dit rien.
+
+  Attendu a 1440 px : 1 constat BLOQUANT `entete_tableau_vide`, et aucun
+  `entete_masque_par_collants` (les deux causes se distinguent dans le verdict).
+-->
+<body>
+<header class="doc colle"><strong>Console du perimetre</strong></header>
+<nav class="toc colle" aria-label="Sommaire"><a href="#c1">1 Perimetre</a></nav>
+<main class="wrap">
+<h1 id="c1">Perimetre</h1>
+<p>Colonnes ecartees du perimetre cible, avec leur motif.</p>
+<table><caption>276 colonnes ecartees</caption>
+<thead class="colle"><tr><th>Colonne</th><th>Table</th><th>Motif</th></tr></thead><tbody>
+</tbody></table>
+<p>Texte de suite, pour que la page defile au-dela du tableau.</p>
+</main>
+<script>
+(function () {
+  function poserHauteurs() {
+    var racine = document.documentElement;
+    var enTete = document.querySelector('header.doc.colle');
+    var hh = enTete ? Math.ceil(enTete.getBoundingClientRect().height) : 0;
+    if (hh > 0) racine.style.setProperty('--hh', hh + 'px');
+    var bas = hh;
+    var toc = document.querySelector('nav.toc.colle');
+    if (toc && getComputedStyle(toc).position === 'sticky') {
+      var r = toc.getBoundingClientRect();
+      if (r.height > 0 && r.width > 0) bas = Math.max(bas, hh + Math.ceil(r.height));
+    }
+    racine.style.setProperty('--hh-tab', bas + 'px');
+  }
+  window.addEventListener('resize', poserHauteurs);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(poserHauteurs);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', poserHauteurs);
+  else poserHauteurs();
+  window.addEventListener('load', poserHauteurs);
+})();
+</script>
+</body></html>

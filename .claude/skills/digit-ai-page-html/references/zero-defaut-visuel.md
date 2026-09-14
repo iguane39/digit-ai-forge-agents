@@ -171,6 +171,25 @@ correctif**.
 Bruit mesuré avant mise en bloquant : **0 constat** sur les 159 documents HTML du skill, hors
 les deux fixtures rouges qui le portent par construction.
 
+**La branche c distingue ses causes, sans se désarmer (TF-0968, TF-0973, 08/09/2026).** Le recul
+d'avant, `min(400, hauteur - 250)`, laissait **toujours** 250 px de tableau en vue ; un `sticky`
+étant borné par son bloc conteneur, un en-tête de 41 px ne dépassait pas 209 px, et une bande de
+sommaire descendant à 219 le « masquait » de 10-11 px — trois faux bloquants sur des tableaux de
+370 à 585 px, les mêmes sur une page déjà livrée. Le recul place désormais le tableau en position
+de **lecture** (au plus un tiers de sa hauteur), et le verdict se partage en trois signatures :
+
+- **recouvert alors qu'il pouvait atteindre son `top`** — la fin du tableau laissait la place :
+  `entete_masque_par_collants`, **bloquant**, inchangé (`l29q-empilement-token.html`) ;
+- **bridé par la fin de son propre tableau** — comportement prescrit d'un `sticky` :
+  `entete_bride_par_tableau`, **information**, jamais bloquant (`v15-tableau-bride-par-sa-fin.html` :
+  3 bloquants avant, 0 après, 1 information) ;
+- **bridé au-dessus d'un tableau SANS LIGNE visible** — le cas du 08/09, 276 lignes annoncées et
+  0 rendue par un filtre en amont, qu'aucune autre sonde n'avait vu : `entete_tableau_vide`,
+  **bloquant** (`v15-tableau-vide.html`).
+
+Aucun constat n'est ajouté : l'ancien bloquant se partage, et une règle qui sépare ses causes
+dans son texte ne s'apprend pas à ignorer.
+
 ### V16 — le défaut vit ENTRE deux mesures, pas dans une mesure (TF-0910, 08/09/2026)
 
 Les cinq teintes d'état du socle — `--green-fill` #DCFCE7, `--teal-fill`, `--amber-fill`

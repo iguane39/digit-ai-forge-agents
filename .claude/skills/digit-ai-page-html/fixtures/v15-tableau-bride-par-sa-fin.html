@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V15 en-tete bride par la fin de son tableau — 20260914a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ --hh:104px;--hh-tab:219px}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{margin:0;padding:0 20px 900px}
+header.doc.colle{position:sticky;top:0;z-index:20;background:var(--bg);height:104px;display:flex;align-items:center}
+nav.toc.colle{position:sticky;top:104px;z-index:10;background:var(--surface);height:115px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line);box-sizing:border-box}
+table{width:100%;border-collapse:collapse;background:var(--surface);margin:0 0 60px}
+th,td{text-align:left;padding:0 12px;box-sizing:border-box}
+thead th{height:41px}
+tbody td{height:32px}
+thead.colle th{position:sticky;top:var(--hh-tab, var(--hh));z-index:5;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de V15 (TF-0968, TF-0973) — L'EN-TETE BRIDE PAR LA FIN DE SON PROPRE TABLEAU.
+
+  Le cas du livrable du 08/09, reproduit a ses cotes : en-tete de page collant de 104 px, bande
+  de sommaire collante de 115 px dessous (bas a 219 px), thead collant a `--hh-tab` = 219 px,
+  hauteurs MESUREES (poserHauteurs, comme le socle le prescrit). Trois tableaux de 361, 489 et
+  585 px — tous dans la bande 291-660 px ou la sonde d'avant rendait un faux constat.
+
+  POURQUOI LA SONDE D'AVANT ACCUSAIT. Elle defilait de min(400, hauteur - 250), ce qui laissait
+  TOUJOURS 250 px de tableau en vue ; un `sticky` est borne par son bloc conteneur, donc l'en-tete
+  de 41 px ne pouvait pas depasser 250 - 41 = 209 px, et la bande de sommaire (bas a 219) le
+  « masquait » de 10 px. Rien n'etait masque en LECTURE : l'arithmetique de la sonde fabriquait
+  l'ecart. Mesure avant correctif : 3 constats `entete_masque_par_collants`, un par tableau.
+
+  Attendu a 1440 px : 0 constat bloquant V15 ; les tableaux qu'aucun recul ne peut amener en
+  position de lecture sont publies en information (`entete_bride_par_tableau`), jamais en bloquant.
+-->
+<body>
+<header class="doc colle"><strong>Console des baux</strong></header>
+<nav class="toc colle" aria-label="Sommaire"><a href="#c1">1 Echeances</a><a href="#c2">2 Loyers</a><a href="#c3">3 Charges</a></nav>
+<main class="wrap">
+<h1 id="c1">Echeances</h1>
+<table><thead class="colle"><tr><th>Lot</th><th>Echeance</th><th>Montant</th></tr></thead><tbody>
+<tr><td>Lot 01</td><td>2026-10</td><td>1 000</td></tr>
+<tr><td>Lot 02</td><td>2026-11</td><td>1 200</td></tr>
+<tr><td>Lot 03</td><td>2026-12</td><td>1 400</td></tr>
+<tr><td>Lot 04</td><td>2027-01</td><td>1 600</td></tr>
+<tr><td>Lot 05</td><td>2027-02</td><td>1 800</td></tr>
+<tr><td>Lot 06</td><td>2027-03</td><td>2 000</td></tr>
+<tr><td>Lot 07</td><td>2027-04</td><td>2 200</td></tr>
+<tr><td>Lot 08</td><td>2027-05</td><td>2 400</td></tr>
+<tr><td>Lot 09</td><td>2027-06</td><td>2 600</td></tr>
+<tr><td>Lot 10</td><td>2027-07</td><td>2 800</td></tr>
+</tbody></table>
+<h2 id="c2">Loyers</h2>
+<table><thead class="colle"><tr><th>Lot</th><th>Loyer</th><th>Indexation</th></tr></thead><tbody>
+<tr><td>Lot 01</td><td>800</td><td>ILC</td></tr>
+<tr><td>Lot 02</td><td>820</td><td>ILC</td></tr>
+<tr><td>Lot 03</td><td>840</td><td>ILAT</td></tr>
+<tr><td>Lot 04</td><td>860</td><td>ILC</td></tr>
+<tr><td>Lot 05</td><td>880</td><td>ILAT</td></tr>
+<tr><td>Lot 06</td><td>900</td><td>ILC</td></tr>
+<tr><td>Lot 07</td><td>920</td><td>ILC</td></tr>
+<tr><td>Lot 08</td><td>940</td><td>ILAT</td></tr>
+<tr><td>Lot 09</td><td>960</td><td>ILC</td></tr>
+<tr><td>Lot 10</td><td>980</td><td>ILC</td></tr>
+<tr><td>Lot 11</td><td>1 000</td><td>ILAT</td></tr>
+<tr><td>Lot 12</td><td>1 020</td><td>ILC</td></tr>
+<tr><td>Lot 13</td><td>1 040</td><td>ILC</td></tr>
+<tr><td>Lot 14</td><td>1 060</td><td>ILAT</td></tr>
+</tbody></table>
+<h2 id="c3">Charges</h2>
+<table><thead class="colle"><tr><th>Lot</th><th>Charge</th><th>Nature</th></tr></thead><tbody>
+<tr><td>Lot 01</td><td>100</td><td>Entretien</td></tr>
+<tr><td>Lot 02</td><td>110</td><td>Entretien</td></tr>
+<tr><td>Lot 03</td><td>120</td><td>Taxe</td></tr>
+<tr><td>Lot 04</td><td>130</td><td>Entretien</td></tr>
+<tr><td>Lot 05</td><td>140</td><td>Taxe</td></tr>
+<tr><td>Lot 06</td><td>150</td><td>Entretien</td></tr>
+<tr><td>Lot 07</td><td>160</td><td>Assurance</td></tr>
+<tr><td>Lot 08</td><td>170</td><td>Entretien</td></tr>
+<tr><td>Lot 09</td><td>180</td><td>Taxe</td></tr>
+<tr><td>Lot 10</td><td>190</td><td>Entretien</td></tr>
+<tr><td>Lot 11</td><td>200</td><td>Assurance</td></tr>
+<tr><td>Lot 12</td><td>210</td><td>Entretien</td></tr>
+<tr><td>Lot 13</td><td>220</td><td>Taxe</td></tr>
+<tr><td>Lot 14</td><td>230</td><td>Entretien</td></tr>
+<tr><td>Lot 15</td><td>240</td><td>Assurance</td></tr>
+<tr><td>Lot 16</td><td>250</td><td>Entretien</td></tr>
+<tr><td>Lot 17</td><td>260</td><td>Taxe</td></tr>
+</tbody></table>
+<p>Texte de suite, pour que la page defile au-dela du dernier tableau.</p>
+</main>
+<script>
+(function () {
+  function poserHauteurs() {
+    var racine = document.documentElement;
+    var enTete = document.querySelector('header.doc.colle');
+    var hh = enTete ? Math.ceil(enTete.getBoundingClientRect().height) : 0;
+    if (hh > 0) racine.style.setProperty('--hh', hh + 'px');
+    var bas = hh;
+    var toc = document.querySelector('nav.toc.colle');
+    if (toc && getComputedStyle(toc).position === 'sticky') {
+      var r = toc.getBoundingClientRect();
+      if (r.height > 0 && r.width > 0) bas = Math.max(bas, hh + Math.ceil(r.height));
+    }
+    racine.style.setProperty('--hh-tab', bas + 'px');
+  }
+  window.addEventListener('resize', poserHauteurs);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(poserHauteurs);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', poserHauteurs);
+  else poserHauteurs();
+  window.addEventListener('load', poserHauteurs);
+})();
+</script>
+</body></html>
