@@ -11,8 +11,8 @@ description: >
   ou demande pourquoi un skill déclenche mal. Ne pas déclencher pour créer un skill de zéro
   (→ write-a-skill), auditer une propale (→ digit-ai-propale-review) ni analyser un prompt
   (→ prompt-analyzer-l99).
-# TF-0475 : le noyau declare ce skill APPELE PAR MOT-CLE (lexique d'invocation RV-6).
-# Le modele ne le charge donc pas de lui-meme ; l'appel direct reste entier.
+# TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
+# oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 ---
 
 # Améliore un skill

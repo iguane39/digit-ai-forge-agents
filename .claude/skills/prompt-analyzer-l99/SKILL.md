@@ -2,10 +2,10 @@
 name: prompt-analyzer-l99
 description: >
   Analyse approfondie de prompts en 8 couches stratégiques (OODA, Chainlogic, Blindspots, Factcheck, Premortem, Wargame, Deepthink, Synthèse). Utiliser ce skill dès que l'utilisateur demande d'analyser, auditer, améliorer, optimiser, décortiquer ou stress-tester un prompt, que ce soit un prompt personnel ou un prompt client. Aussi déclencher quand l'utilisateur mentionne L99, analyse de prompt, prompt review, audit de prompt, améliore ce prompt, optimise ce prompt, ou colle un prompt en demandant de le passer au crible. Fonctionne sur tout type de prompt, y compris system prompts, user prompts, chaînes de prompts, templates, instructions agent.
-# TF-0475 : le noyau declare ce skill APPELE PAR MOT-CLE (lexique d'invocation RV-6).
-# Le modele ne le charge donc pas de lui-meme ; l'appel direct reste entier.
+# TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
+# oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.3.0"
+  version: "2.3.1"
   updated: "2026-09-02"
 ---
 
