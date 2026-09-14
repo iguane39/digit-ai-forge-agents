@@ -7,13 +7,28 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.21.0"
+  version: "1.22.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.22.0 (14/09/2026)** — **le socle cesse d'accuser ce qu'il impose, et ses composants disent ce
+qu'ils font.** · Trois règles de `check_html` jugeaient le mauvais objet : A5 comptait les polices
+embarquées que A1 exige (TF-0984), la police Syne se cherchait dans le texte au lieu des
+déclarations (TF-1049), L30 trouvait « gate » dans `aggregate_type` (TF-0969). · Deux règles de
+STRUCTURE naissent : **S2** refuse un même ensemble énuméré deux fois, en tableau et en fiches
+(TF-1036), **S3** exige qu'une colonne déclarée relevée porte sa source par ligne et que la page
+cite son garde-fou (TF-1053). · `render_page` sépare l'en-tête bridé par la fin de son tableau
+(informatif) de l'en-tête recouvert (bloquant), sans désarmer le tableau vide (TF-0968, TF-0973,
+TF-1060), laisse survoler une barre collante opaque (TF-1061) et n'accuse plus un champ de saisie
+(TF-0847). · Les composants : une carte ne filtre que son tableau (TF-0970), une colonne à valeur
+unique le dit dans son en-tête et sa forme se lit sur le `<th>` (TF-1051, TF-1052), plus aucune
+balise fermante en clair dans un asset inlinable (TF-1062), zéro couleur en dur, espacement hors
+échelle ou focus improvisé dans les feuilles des composants (TF-1059). **Version MINEURE** : jouée
+contre 301 pages des dépôts consommateurs, **zéro accusation nouvelle**, six faux positifs retirés.
 
 **1.20.0 (08/09/2026, soir)** — **six items d'une seconde campagne, et une seule leçon : ce que
 personne ne RENDAIT, personne ne le mesurait.** · **Deux gabarits du parc échouaient aux quatre
