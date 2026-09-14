@@ -2304,8 +2304,15 @@ def check_lisibilite(html: str, a: Arbre):
             for t in e.enfants if isinstance(t, str))
         gloses = " ".join(e.texte_propre() for e in sec.descendants()
                           if e.tag == "dfn" or (e.classes() & {"termes", "glossaire"}))
+        # TF-0969 (08/09) — LE TERME SE CHERCHE SUR FRONTIERE DE MOT, jamais en sous-chaine.
+        # Mesure : « gate » trouve 17 fois dans `aggregate_type` (valeur relevee, affichee en
+        # clair dans une cellule), 0 fois comme mot — et trois chapitres glosaient deja un mot
+        # absent pour faire taire le controle. Meme classe que TF-0880 (porte de publication) et
+        # TF-0799/TF-0805 (gardes lexicales) : ni lettre, ni chiffre, ni `_` de part et d'autre
+        # (\w est Unicode en Python 3), donc un identifiant snake_case ne compte jamais.
         for terme in termes_jargon:
-            if terme.lower() not in texte_chapitre.lower():
+            if not re.search(r"(?<!\w)" + re.escape(terme.lower()) + r"(?!\w)",
+                             texte_chapitre.lower()):
                 continue
             if terme.lower() in gloses.lower():
                 continue

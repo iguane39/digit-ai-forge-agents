@@ -171,6 +171,10 @@ CAS = {
     # avertissements — un chapitre annonce ne doit declencher ni l'un ni l'autre.
     "l30-chapitre-annonce.html": set(),
     "l30-terme-non-glose.html": {"L30"},
+    # TF-0969 : le terme se cherche sur FRONTIERE DE MOT — « gate » dans `aggregate_type` n'est
+    # pas employe (vert) ; « la gate du mandat », dans la meme page, l'est (rouge).
+    "l30-terme-sous-chaine.html": set(),
+    "l30-terme-mot-entier.html": {"L30"},
     "l25-chapitres-sans-sommaire.html": {"L25"},
     "l25-sommaire-lateral.html": set(),
     "l26-donnees-colonne-de-lecture.html": {"L26"},

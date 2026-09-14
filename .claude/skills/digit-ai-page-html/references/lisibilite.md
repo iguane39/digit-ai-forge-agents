@@ -987,6 +987,17 @@ liste n'attrape que ce qui a réellement coûté un aller-retour, et elle grossi
 sommaire** et sur les descendants **directs** : ce qui vit sous un sous-chapitre lui-même ciblé
 appartient à ce sous-chapitre, jamais à son parent (même partage que L7 depuis TF-0931).
 
+**Un terme se cherche sur FRONTIÈRE DE MOT, jamais en sous-chaîne (TF-0969, 08/09/2026).**
+« gate » était trouvé dans `aggregate_type`, une valeur relevée et affichée en clair dans une
+cellule, et le chapitre accusé d'employer un terme absent ; la parade du produit a été de gloser
+un mot qu'aucun de ses textes n'emploie, ce qui ajoute du bruit au lecteur. Le terme n'est
+employé que s'il n'est ni précédé ni suivi d'une lettre, d'un chiffre ou d'un `_` : un
+identifiant technique (`aggregate_type`, snake_case) ne compte jamais. Même classe que la porte
+de publication (TF-0880) et les gardes lexicales (TF-0799, TF-0805). Mesure sur les 1 022 pages
+HTML suivies du parc : 135 accusations avant, 12 après ; les 123 retirées étaient toutes des
+sous-chaînes (`navigateur`, `Gateway`, `gate_declare`, « requête money »). Fixtures :
+`l30-terme-sous-chaine.html` (vert) et `l30-terme-mot-entier.html` (rouge, même page).
+
 ## L26 — Une page de DONNÉES prend toute la largeur ; la colonne de lecture est pour la prose (TF-0771 + TF-0778, 02/09/2026)
 
 **Le fait payé, deux fois.** Une console de données a été livrée dans une colonne de lecture de
