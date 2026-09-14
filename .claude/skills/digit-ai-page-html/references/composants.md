@@ -280,6 +280,11 @@ page ne se branche pas — il reste un `div` et dit où vivent ses éléments. C
 marquage : `<button data-kpi-filtre data-kpi-table="id" data-kpi-attr="statut"
 data-kpi-valeur="candidat">` + `data-<attr>` sur chaque ligne. Masquage par
 `data-kpi-cache`, composable avec la recherche et les facettes D-12 (visibilité dérivée).
+**Une carte ne filtre QUE le tableau qu'elle désigne** (`data-kpi-table`, TF-0970) : l'état
+actif se tient par tableau, donc `init(document)` est sûr sur une page à plusieurs groupes de
+cartes, même quand ils filtrent sur des attributs différents. Règle vérifiée par
+`self_test.py` (`run_kpi_perimetre`) : un clic sur une carte ne change le nombre de lignes
+visibles que du tableau désigné.
 La règle **L13** de `check_html` exige la recherche statique dès 8 lignes et signale les
 KPI non cliquables au-dessus d'une liste. Modèles éprouvés : `todo/TODO.html` (pilot,
 oracle 13/13) et le dashboard forge-tests (tuiles).

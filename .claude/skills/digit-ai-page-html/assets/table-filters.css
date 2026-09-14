@@ -54,6 +54,12 @@
    une forme qui change sans le dire est une affordance muette. Le panneau ouvert sur sa
    recherche (plus de 15 valeurs) ou reduit a une valeur unique porte sa note. */
 .tf-forme-note { margin: 0 0 8px; color: var(--muted); font-size: .78rem; font-style: italic; }
+/* TF-1051 (08/09) : une colonne a valeur UNIQUE le dit dans son en-tete, la ou on la lit —
+   repliee dans le panneau, la note n'etait vue par personne et le lecteur concluait a une panne. */
+.tf-unique {
+  display: block; margin-top: 4px; color: var(--muted);
+  font-size: .72rem; font-weight: 400; font-style: italic; text-transform: none;
+}
 
 /* TF-0431 : panneau aligne a droite quand la place manque (choisi par le composant) ;
    le conteneur defilant porteur d'un panneau ouvert ne rogne plus (data-tf-ouvert). */

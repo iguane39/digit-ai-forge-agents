@@ -1392,6 +1392,29 @@ def run_filtres_runtime():
                                    "          colonne: ex.colonne }; }")
             cas("tf-facettes-ordre · exemption DECLAREE avec motif",
                 {"bouton": False, "motif": True, "colonne": "Référence"}, exempt, "TF-0782 exemption")
+            # TF-1052 : la forme se lit sur le <th> de CHAQUE colonne a facette (et pas sur
+            # l'exemptee) ; TF-1051 : la colonne a valeur unique le DIT dans l'en-tete, sans
+            # clic — et seulement elle (sens rouge : une colonne a plusieurs valeurs n'a rien).
+            formes = page.evaluate("() => [...document.querySelectorAll('#fenetres thead th')]"
+                                   ".map(th => th.getAttribute('data-tf-forme'))")
+            cas("tf-facettes-ordre · data-tf-forme publie sur chaque <th> a facette",
+                ["liste", "liste", "liste", None, "unique"], formes, "TF-1052 forme")
+            unique = page.evaluate("""() => {
+              const ths = document.querySelectorAll('#fenetres thead th');
+              const vue = el => !!el && el.getBoundingClientRect().width > 0
+                                     && getComputedStyle(el).visibility !== 'hidden';
+              return { devise: vue(ths[4].querySelector('.tf-unique')),
+                       ouverts: [...document.querySelectorAll('#fenetres .tf-panel')]
+                                  .filter(p => !p.hidden).length,
+                       autres: [0, 1, 2].filter(i => ths[i].querySelector('.tf-unique')).length };
+            }""")
+            cas("tf-facettes-ordre · valeur unique LISIBLE dans l'en-tete sans clic",
+                {"devise": True, "ouverts": 0, "autres": 0}, unique, "TF-1051 en-tete")
+            refait = page.evaluate("() => { window.__tf.rafraichir();"
+                                   " return document.querySelectorAll('#fenetres thead th')[4]"
+                                   ".querySelectorAll('.tf-unique').length; }")
+            cas("tf-facettes-ordre · la note d'en-tete ne s'empile pas au rafraichissement",
+                1, refait, "TF-1051 rafraichir")
 
         proteger("tf-facettes-ordre.html", "TF-0781/0782", section_facettes)
 
@@ -1589,6 +1612,93 @@ def run_syne():
             "detail": "" if ok else " | ".join(fails)[:400],
         })
     return resultats
+
+
+def run_kpi_perimetre():
+    """TF-0970 (08/09) — une carte ne filtre QUE le tableau qu'elle désigne.
+
+    L'ancien composant appliquait l'attribut et la valeur de LA carte active à tous les tableaux :
+    un clic sur une carte du mapping vidait le tableau des mesures DAX (160 → 0) sur une page
+    livrée. Sens vert : après un clic sur « À corriger » du mapping, le mapping passe à 2 lignes et
+    les mesures restent à 4. Sens rouge : ce que l'ancien couplage aurait laissé (0) en diffère.
+    Puis une carte des mesures n'efface pas le filtre du mapping (état par tableau)."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return []
+    page_f = FIXTURES / "kpi-perimetre-par-tableau.html"
+    if not page_f.exists():
+        return [{"fixture": page_f.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-0970", "detail": ""}]
+    out = []
+
+    def cas(nom, attendu, obtenu, regle):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": str(attendu),
+                    "obtenu": str(obtenu), "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"})
+    try:
+        with sync_playwright() as pw:
+            nav = pw.chromium.launch()
+            page = nav.new_page(viewport={"width": 1280, "height": 900})
+            page.goto(page_f.resolve().as_uri())
+            page.wait_for_load_state("load")
+            r = page.evaluate("""() => {
+              const cartes = document.querySelectorAll('button[data-kpi-filtre]');
+              const repos = { mapping: __visibles('mapping'), mesures: __visibles('mesures') };
+              cartes[0].click();
+              const apres = { mapping: __visibles('mapping'), mesures: __visibles('mesures') };
+              const couple = __visiblesCouples('mesures', cartes[0]);
+              cartes[2].click();
+              const deux = { mapping: __visibles('mapping'), mesures: __visibles('mesures'),
+                             presses: [...cartes].map(c => c.getAttribute('aria-pressed')) };
+              return { repos, apres, couple, deux };
+            }""")
+            nav.close()
+    except Exception as erreur:  # noqa: BLE001 — une panne se compte, elle n'arrete rien
+        return [{"fixture": page_f.name, "verdict": "ECHEC", "attendu": "section jouee",
+                 "obtenu": type(erreur).__name__, "regle": "TF-0970", "detail": str(erreur)[:300]}]
+    cas("kpi-perimetre · au repos", {"mapping": 5, "mesures": 4}, r["repos"], "TF-0970 repos")
+    cas("kpi-perimetre · une carte du mapping ne touche pas les mesures",
+        {"mapping": 2, "mesures": 4}, r["apres"], "TF-0970 perimetre")
+    cas("kpi-perimetre · l'ancien couplage DIFFERE (sens rouge)", True,
+        r["couple"] != r["apres"]["mesures"], "TF-0970 contre-epreuve")
+    cas("kpi-perimetre · deux tableaux filtres ensemble, etat par tableau",
+        {"mapping": 2, "mesures": 2, "presses": ["true", "false", "true"]}, r["deux"],
+        "TF-0970 etat par tableau")
+    return out
+
+
+RE_FERMANTE_NUE = re.compile(r"</(script|style)", re.I)
+
+
+def fermantes_nues(texte):
+    """TF-1062 — les balises fermantes EN CLAIR d'un asset inlinable (liste de n° de ligne)."""
+    return [i for i, ligne in enumerate(texte.splitlines(), 1) if RE_FERMANTE_NUE.search(ligne)]
+
+
+def run_assets_inlinables():
+    """TF-1062 (11/09) — un asset qui s'inline ne porte aucune balise fermante EN CLAIR.
+
+    find-in-page.js l'écrivait dans le commentaire même qui expliquait pourquoi l'échapper : une
+    copie inlinée à la main était coupée à cette ligne, et son câblage d'exemple devenait du vrai
+    DOM — oracle-a11y a compté trois identifiants dupliqués, et il avait raison. Le poseur échappe
+    la séquence ; une copie manuelle, non. La source doit donc tenir seule.
+    Sens rouge : la ligne d'avant correctif, verbatim, est reconnue."""
+    out = []
+    for chemin in sorted((FIXTURES.parent / "assets").glob("*.[jc]s*")):
+        if chemin.suffix not in (".js", ".css"):
+            continue
+        lignes = fermantes_nues(chemin.read_text(encoding="utf-8"))
+        out.append({"fixture": f"assets/{chemin.name}", "verdict": "OK" if not lignes else "ECHEC",
+                    "attendu": "aucune fermante en clair", "obtenu": f"lignes {lignes}" if lignes else "aucune",
+                    "regle": "TF-1062 asset inlinable", "detail": ""})
+    rouge = " * Câblage minimal (RA-1, 13/08 : la séquence « </script » est ÉCHAPPÉE en <\\/script> dans"
+    vu = fermantes_nues(rouge) == [1]
+    out.append({"fixture": "ligne d'avant correctif (sens rouge)", "verdict": "OK" if vu else "ECHEC",
+                "attendu": "reconnue", "obtenu": "reconnue" if vu else "muette",
+                "regle": "TF-1062 contre-epreuve", "detail": ""})
+    return out
 
 
 def run_poseur_composants():
@@ -2425,7 +2535,7 @@ def main():
     args = ap.parse_args()
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
-           + run_glyphes_du_socle() + run_markdown() + run_syne())
+           + run_glyphes_du_socle() + run_markdown() + run_syne() + run_assets_inlinables() + run_kpi_perimetre())
     rendu = run_rendu()
     if rendu:
         res += rendu

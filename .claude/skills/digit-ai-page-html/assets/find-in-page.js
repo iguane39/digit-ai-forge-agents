@@ -14,9 +14,13 @@
  * ⚠️ Viewer-only : le JS ne s'exécute pas à l'export PDF (WeasyPrint). Si le livrable
  * vise aussi le PDF, prévoir un équivalent statique de l'information.
  *
- * Câblage minimal (RA-1, 13/08 : la séquence « </script » est ÉCHAPPÉE en <\/script> dans
- * ce commentaire — cet asset s'inline (règle A1), et un </script> nu dans un commentaire
- * fermerait la balise hôte au milieu du fichier : composant tronqué, silencieusement) :
+ * Câblage minimal (RA-1, 13/08 : la balise FERMANTE de script est ÉCHAPPÉE en <\/script> dans
+ * ce commentaire — cet asset s'inline (règle A1), et une fermante nue dans un commentaire
+ * fermerait la balise hôte au milieu du fichier : composant tronqué, silencieusement).
+ * TF-1062 (11/09) : ce commentaire l'écrivait lui-même EN CLAIR. Une copie inlinée à la main
+ * était coupée ici, et le câblage ci-dessous devenait du vrai DOM — trois identifiants
+ * dupliqués, que oracle-a11y a comptés à juste titre. Cette explication ne cite plus la
+ * séquence ; self_test.py vérifie qu'aucun asset inlinable ne la porte :
  *   <input id="find" type="text" placeholder="Rechercher…">
  *   <div id="findCount" class="find-count" aria-live="polite"></div>
  *   <div id="content"> … contenu à fouiller … </div>

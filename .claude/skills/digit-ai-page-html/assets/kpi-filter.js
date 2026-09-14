@@ -47,7 +47,12 @@
     /* DECLARER SES ATTRIBUTS, jamais deviner ceux des autres : c'est tout le contrat. */
     var V = arbitrage();
     if (V) { MIENS.forEach(function (a) { V.register(a); }); }
-    var actif = null;
+    /* TF-0970 (08/09) — UNE CARTE ACTIVE PAR TABLEAU, jamais une pour la page. `actif` etait
+       unique : l'attribut et la valeur de la carte active s'appliquaient a TOUS les tableaux du
+       perimetre. Mesure sur une page livree : un clic sur une carte du mapping faisait passer les
+       mesures DAX de 160 lignes a 0, sans un mot. Une carte ne filtre QUE le tableau qu'elle
+       designe (data-kpi-table) ; init(document) redevient sur. */
+    var actifs = {};
 
     function lignesDe(kpi) {
       var t = document.getElementById(kpi.getAttribute('data-kpi-table') || '');
@@ -59,11 +64,12 @@
 
     function appliquer() {
       kpis.forEach(function (k) {
-        k.setAttribute('aria-pressed', k === actif ? 'true' : 'false');
+        k.setAttribute('aria-pressed', actifs[k.getAttribute('data-kpi-table')] === k ? 'true' : 'false');
       });
       var vues = {};
       kpis.forEach(function (k) { vues[k.getAttribute('data-kpi-table')] = k; });
       Object.keys(vues).forEach(function (idTable) {
+        var actif = actifs[idTable] || null;
         lignesDe(vues[idTable]).forEach(function (tr) {
           var ok = !actif
             || tr.getAttribute('data-' + actif.getAttribute('data-kpi-attr'))
@@ -87,11 +93,12 @@
 
     kpis.forEach(function (k) {
       k.addEventListener('click', function () {
-        actif = (actif === k) ? null : k;
+        var idTable = k.getAttribute('data-kpi-table');
+        actifs[idTable] = (actifs[idTable] === k) ? null : k;
         appliquer();
       });
     });
-    return { appliquer: appliquer, reinitialiser: function () { actif = null; appliquer(); } };
+    return { appliquer: appliquer, reinitialiser: function () { actifs = {}; appliquer(); } };
   }
 
   root.DigitAIKpiFilter = { init: init };
