@@ -43,7 +43,9 @@
 // est un geste EXPLICITE, pas un défaut.
 //
 // Usage : node installer-hamecon-publication.mjs <depot…> [--retirer] [--verifier]
-//         [--seul=pre-push|pre-commit] pour n'agir que sur l'un des deux.
+//         [--seul=pre-push|pre-commit|commit-msg] pour n'agir que sur l'un d'eux (le
+//         commit-msg de TF-1071 juge le seul message, à l'écriture) ;
+//         [--migrer] reprend un hameçon qui porte la marque SANS la signature (TF-0994).
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -59,7 +61,19 @@ const MARQUE = 'oracle-nom-client-publie';
 // qui n'apparaît nulle part ailleurs est le seul repère qui ne mente pas.
 const MARQUE_COMMIT = 'pre-commit-anonymiser';
 
+// TF-0994 (08/09/2026) — LA PROPRIÉTÉ SE RECONNAÎT À UNE SIGNATURE, JAMAIS À UNE SOUS-CHAÎNE.
+// L'installeur reconnaissait « son » hameçon en cherchant sa marque DANS le fichier. Or la marque
+// est un nom de fichier : le pre-commit du pilot appelle `todo/pre-commit-anonymise.mjs`, et une
+// seule lettre le séparait d'un hameçon étranger que l'installeur aurait ÉCRASÉ en affichant
+// « REPOSE ». La propriété tient désormais à une LIGNE ENTIÈRE, écrite par l'installeur seul et
+// comparée telle quelle. Un hameçon posé avant cette version ne la porte pas : il est classé
+// CONFLIT, et `--migrer` le reprend — geste explicite, décidé, jamais implicite.
+const SIGNATURE = 'pre-push-nom-client';
+const SIGNATURE_COMMIT = 'pre-commit-anonymiser';
+const ligneSignature = (id) => `# hamecon-parc: ${id} v1`;
+
 const HAMECON = `#!/bin/sh
+${ligneSignature(SIGNATURE)}
 # pre-push — refuse une publication portant un nom de client (${MARQUE}).
 # Posé par installer-hamecon-publication.mjs. Contournement explicite : git push --no-verify.
 #
@@ -131,6 +145,7 @@ exit 1
 // un poste où la racine n'est pas au même endroit. La copie INSTALLÉE passe d'abord, parce que
 // c'est elle qui s'exécute ; la source de la forge des outils sert de repli.
 const HAMECON_COMMIT = `#!/bin/sh
+${ligneSignature(SIGNATURE_COMMIT)}
 # pre-commit — le nom est retire AVANT que le commit n'existe (${MARQUE_COMMIT}).
 # Pose par installer-hamecon-publication.mjs. Contournement explicite : git commit --no-verify.
 #
@@ -158,13 +173,66 @@ fi
 exec node "$LANCEUR"
 `;
 
+// LE HAMEÇON DE MESSAGE — TF-1071 (13/09/2026). Le pre-commit juge l'INDEX, jamais le message ; le
+// pre-push juge tout, messages compris, mais après le commit. Un nom de produit entré dans un message
+// y a vécu deux jours et n'a pu sortir qu'en réécrivant 23 enregistrements. Ce hameçon joue la même
+// porte sur le SEUL message, à l'écriture : un refus d'une seconde au lieu d'une réécriture d'histoire.
+const SIGNATURE_MSG = 'commit-msg-nom-client';
+const HAMECON_MSG = `#!/bin/sh
+${ligneSignature(SIGNATURE_MSG)}
+# commit-msg — refuse un MESSAGE de commit portant un nom de client ou de produit (${MARQUE}).
+# Pose par installer-hamecon-publication.mjs. Contournement explicite : git commit --no-verify.
+# Le pre-push reste le filet : il juge toute l'histoire, messages compris.
+RACINE="\${FORGE_ROOT:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
+ORACLE=""
+for CANDIDAT in \\
+  "$HOME/.claude/skills/quality-oracles/scripts/${MARQUE}.mjs" \\
+  "$RACINE/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/${MARQUE}.mjs"
+do
+  [ -f "$CANDIDAT" ] && ORACLE="$CANDIDAT" && break
+done
+
+if [ -z "$ORACLE" ]; then
+  echo "MESSAGE REFUSE — l'oracle de nom de client est introuvable." >&2
+  echo "  Contournement explicite si vous savez ce que vous faites : git commit --no-verify" >&2
+  exit 1
+fi
+
+DEPOT="$(git rev-parse --show-toplevel)"
+SORTIE="$(node "$ORACLE" "$DEPOT" --message="$1" 2>&1)"
+VERDICT="$(printf '%s' "$SORTIE" | sed -n 's/.*"verdict":"\\([A-Z]*\\)".*/\\1/p')"
+if [ "$VERDICT" = "PASS" ]; then
+  exit 0
+fi
+echo "" >&2
+echo "MESSAGE REFUSE — verdict \${VERDICT:-ILLISIBLE} de ${MARQUE} sur le message de commit." >&2
+printf '%s' "$SORTIE" | node -e '
+  let t = ""; process.stdin.on("data", (d) => (t += d)).on("end", () => {
+    try {
+      const o = JSON.parse(t);
+      for (const f of (o.findings || [])) console.error("  " + (f.regle || "") + "  " + (f.where || "") + "  " + f.msg);
+      for (const n of (o.non_juge || []).slice(0, 12)) console.error("  · " + n);
+    } catch { console.error(t.slice(0, 2000)); }
+  });
+' >&2
+echo "  Corrigez le message, ou contournez EXPLICITEMENT : git commit --no-verify" >&2
+exit 1
+`;
+
 // LES DEUX HAMEÇONS PASSENT PAR LE MÊME GESTE, et c'est ce qui garantit qu'ils se posent, se
 // reposent, se vérifient et se retirent de la même façon. Un second hameçon traité par un second
 // bloc de code recopié dériverait du premier au premier correctif.
 const HAMECONS = [
-  { nom: 'pre-push', marque: MARQUE, contenu: HAMECON },
-  { nom: 'pre-commit', marque: MARQUE_COMMIT, contenu: HAMECON_COMMIT },
+  { nom: 'pre-push', marque: MARQUE, signature: ligneSignature(SIGNATURE), contenu: HAMECON },
+  { nom: 'pre-commit', marque: MARQUE_COMMIT, signature: ligneSignature(SIGNATURE_COMMIT), contenu: HAMECON_COMMIT },
+  { nom: 'commit-msg', marque: MARQUE, signature: ligneSignature(SIGNATURE_MSG), contenu: HAMECON_MSG },
 ];
+const migrer = args.includes('--migrer');
+// NÔTRE = la ligne de signature, entière, telle quelle. ANCIEN = la marque sans la signature :
+// un hameçon posé avant TF-0994, OU un étranger qui cite la marque — indiscernables par le texte,
+// d'où le geste explicite `--migrer` pour le reprendre.
+const estNotre = (txt, h) => txt.split(/\r?\n/).some((l) => l.trimEnd() === h.signature);
+const estAncien = (txt, h) => !estNotre(txt, h) && txt.includes(h.marque);
 const choisis = seul ? HAMECONS.filter((h) => h.nom === seul) : HAMECONS;
 if (!choisis.length) {
   console.error(`--seul=${seul} : hameçon inconnu. Attendu : ` + HAMECONS.map((h) => h.nom).join(' ou '));
@@ -180,27 +248,37 @@ for (const d of depots) {
     const cible = path.join(hooks, h.nom);
     const etiquette = `${h.nom.padEnd(10)} ${d}`;
 
+    const txtCible = fs.existsSync(cible) ? fs.readFileSync(cible, 'utf8') : null;
+    const reprendre = txtCible !== null && (estNotre(txtCible, h) || (migrer && estAncien(txtCible, h)));
+
     if (verifier) {
-      const present = fs.existsSync(cible) && fs.readFileSync(cible, 'utf8').includes(h.marque);
-      console.log(`  ${present ? 'POSE    ' : 'MANQUANT'} ${etiquette}`);
+      const present = txtCible !== null && estNotre(txtCible, h);
+      const ancien = txtCible !== null && estAncien(txtCible, h);
+      console.log(`  ${present ? 'POSE    ' : ancien ? 'A-MIGRER' : 'MANQUANT'} ${etiquette}`
+        + (ancien ? ' — porte la marque sans la signature (TF-0994) : --migrer' : ''));
       present ? poses++ : absents++;
       continue;
     }
 
     if (retirer) {
-      if (fs.existsSync(cible) && fs.readFileSync(cible, 'utf8').includes(h.marque)) { fs.rmSync(cible); console.log(`  RETIRE   ${etiquette}`); retires++; }
-      else console.log(`  RIEN     ${etiquette} — aucun hameçon de ce contrôle`);
+      if (reprendre) { fs.rmSync(cible); console.log(`  RETIRE   ${etiquette}`); retires++; }
+      else console.log(`  RIEN     ${etiquette} — aucun hameçon signé de ce contrôle`);
       continue;
     }
 
     // JAMAIS écraser un hameçon qui n'est pas le nôtre : un hook étranger porte le travail
     // de quelqu'un d'autre, et l'écraser en silence est le genre de geste qu'on découvre trois
     // semaines plus tard. Le conflit se DIT, il ne se résout pas tout seul.
-    if (fs.existsSync(cible)) {
-      const txt = fs.readFileSync(cible, 'utf8');
-      if (!txt.includes(h.marque)) { console.log(`  CONFLIT  ${etiquette} — un ${h.nom} ÉTRANGER existe déjà, rien touché`); absents++; continue; }
+    if (txtCible !== null) {
+      if (!reprendre) {
+        const motif = estAncien(txtCible, h)
+          ? `porte la marque « ${h.marque} » sans la signature — ancien hameçon du parc, ou étranger qui la cite : --migrer pour le reprendre`
+          : `un ${h.nom} ÉTRANGER existe déjà`;
+        console.log(`  CONFLIT  ${etiquette} — ${motif}, rien touché`); absents++; continue;
+      }
+      const migre = !estNotre(txtCible, h);
       fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
-      console.log(`  REPOSE   ${etiquette}`); deja++; continue;
+      console.log(`  ${migre ? 'MIGRE   ' : 'REPOSE  '} ${etiquette}`); deja++; continue;
     }
     fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
     console.log(`  POSE     ${etiquette}`);

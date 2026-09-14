@@ -652,6 +652,30 @@ else {
     else if (jsans.verdict !== 'PASS') ko(`TF-0820 C5 absente : l oracle ne rend plus PASS sur C1-C4 faute de la SECONDE table (${jsans.verdict}) — une table de produits absente ne doit pas éteindre la porte entière`);
     else if (!/C5 NON JOUÉE : table absente/.test((jsans.non_juge || []).join(' '))) ko('TF-0820 C5 absente : l angle est ÉTEINT EN SILENCE — un angle muet se lit comme un angle vert, et c est le défaut du 05/09');
     else ok('TF-0820 C5 absente : le même dépôt porteur rend PASS sur C1-C4, et l oracle DÉCLARE « C5 non jouée : table absente » — jamais tue');
+
+    // TF-0991 (08/09) — LE TOTAL EST UN CHAMP. Le pilot a publié 200 pour un passif de 939 : le vrai
+    // total vivait dans une phrase du non_juge. Deux sens, sur le MÊME dépôt rouge (≥ 2 constats) :
+    // plafond 1 → la sortie est bornée et le total se lit SANS PROSE ; plafond par défaut →
+    // total = rendus, bornee faux.
+    const jouerPlafond = (plafond) => {
+      const a = [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), rouge,
+        '--referentiel=' + tClients, '--produits=' + tProduits];
+      const env = { ...envNu };
+      if (plafond === undefined) delete env.FORGE_PORTE_PLAFOND; else env.FORGE_PORTE_PLAFOND = plafond;
+      const r = spawnSync(process.execPath, a, { encoding: 'utf8', timeout: 180000, env });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const jb = jouerPlafond('1');
+    if (!jb) ko('TF-0991 bornée : sortie de l oracle inexploitable');
+    else if (!(jb.bornee === true && jb.rendus === jb.findings.length && jb.total > jb.rendus
+               && jb.comptes && jb.comptes.bloquants.rendus === 1))
+      ko(`TF-0991 bornée : total/rendus/bornee absents ou faux (total=${jb.total}, rendus=${jb.rendus}, bornee=${jb.bornee}) — le vrai total ne se lirait que dans la prose`);
+    else ok(`TF-0991 bornée : plafond 1 → bornee vrai, total ${jb.total} > rendus ${jb.rendus}, lisibles SANS lire le non_juge`);
+    const jn = jouerPlafond(undefined);
+    if (!jn) ko('TF-0991 non bornée : sortie de l oracle inexploitable');
+    else if (!(jn.bornee === false && jn.total === jn.rendus && jn.rendus === jn.findings.length))
+      ko(`TF-0991 non bornée : sous le plafond, total (${jn.total}) et rendus (${jn.rendus}) devraient être égaux et bornee faux (${jn.bornee})`);
+    else ok(`TF-0991 non bornée : sous le plafond, total = rendus = ${jn.total}, bornee faux`);
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
@@ -1032,6 +1056,23 @@ else {
     else if (!c5m.length) ko('TF-0880 mot entier : aucun constat C5 sur une mention franche — la frontiere est trop large');
     else if (!c5m.every(f => f.sev && f.msg && f.where)) ko('TF-0880 mot entier : un constat C5 ne porte pas le contrat findings[] (sev, msg, where) — le contrat de sortie devait etre inchange');
     else ok('TF-0880 mot entier : la cle bornee d espaces fait toujours FAIL, ' + c5m.length + ' constat(s) C5 au contrat findings[] inchange');
+
+    // TF-1002 (09/09) — LA FRONTIÈRE ET LA LOCALISATION, sur le MÊME fichier. Le constat du 09/09
+    // accusait un commentaire qui citait la clé DANS un mot, et le localisait 29 lignes plus bas.
+    // Lignes 1 et 2 : la clé collée à une lettre (« …c », comme « escc ») — aucun constat. Ligne 3 :
+    // la clé nue — un constat, et son `where` porte LA ligne du terme, pas une autre.
+    const ligne = batir('ligne', 'notes.md', [
+      '// exemple de faux positif : « ' + CLE.toLowerCase() + 'c » dans un mot ordinaire',
+      '// et encore d' + CLE.toLowerCase() + 'client, colle a sa suite',
+      'Le connecteur de ' + CLE + ' reste a brancher.',
+      '',
+    ].join('\n'));
+    const jl = jouer(ligne);
+    const c5l = c5de(jl);
+    if (!jl) ko('TF-1002 localisation : sortie de l oracle inexploitable');
+    else if (c5l.length !== 1) ko(`TF-1002 localisation : ${c5l.length} constat(s) C5 au lieu d UN — la cle collee dans un mot est accusee, ou la cle nue ne l est plus`);
+    else if (!/^notes\.md:3$/.test(c5l[0].where)) ko(`TF-1002 localisation : le constat pointe « ${c5l[0].where} » au lieu de notes.md:3 — un where est une promesse de localisation`);
+    else ok('TF-1002 localisation : la cle collee dans un mot (lignes 1-2) ne fait aucun constat, la cle nue en fait UN, localise a notes.md:3');
 
     const jc = jouer(colle);
     if (!jc) ko('TF-0880 collee : sortie de l oracle inexploitable');

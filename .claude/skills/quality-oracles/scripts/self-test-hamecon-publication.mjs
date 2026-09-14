@@ -215,6 +215,26 @@ try {
   if (p6.status === 0) oks.push('cas 5 — tables dans le CANAL et AUCUNE variable : dépôt PROPRE ACCEPTÉ — la porte mesure, elle ne bloque pas par défaut');
   else kos.push('cas 5 — dépôt PROPRE REFUSÉ alors que les tables sont dans le canal : ' + (p6.stderr || '').trim().slice(0, 300));
 
+  // --- cas 8 : LE MESSAGE SE JUGE AU COMMIT (TF-1071) --------------------------
+  // Un nom de produit entré dans un message a coûté une réécriture de 23 enregistrements : le
+  // pre-push l'a vu deux jours après. Le commit-msg le refuse à l'écriture. Deux sens sur le MÊME
+  // dépôt : le message qui porte un nom de la table (jetable, nom inventé) est refusé et rien n'est
+  // enregistré ; le même message pseudonymisé passe.
+  const d8 = depot(racine, 'message', false);
+  const pose8 = sh(racine, 'node', [INSTALLEUR, d8, '--seul=commit-msg']);
+  fs.writeFileSync(path.join(d8, 'suite.md'), 'suite du rapport\n');
+  git(d8, 'add', '-A');
+  const sujet8 = () => (git(d8, 'log', '-1', '--format=%s').stdout || '').trim();
+  const c8r = sh(d8, 'git', ['commit', '-q', '-m', 'Livraison du rapport Zorglub'], ENV_JEU_ESSAI);
+  if (/POSE/.test(pose8.stdout || '') && c8r.status !== 0 && /MESSAGE REFUSE/.test(c8r.stderr || '')
+      && /message:1/.test(c8r.stderr || '') && sujet8() !== 'Livraison du rapport Zorglub')
+    oks.push('cas 8 — commit-msg : un message portant un nom de la table est REFUSÉ à l\'écriture, constat localisé (message:1), rien n\'est enregistré');
+  else kos.push('cas 8 — le message porteur n\'est pas refusé au commit (exit ' + c8r.status + ') : ' + ((c8r.stderr || '') + (pose8.stdout || '')).trim().slice(0, 300));
+  const c8v = sh(d8, 'git', ['commit', '-q', '-m', 'Livraison du rapport Client-A'], ENV_JEU_ESSAI);
+  if (c8v.status === 0 && sujet8() === 'Livraison du rapport Client-A')
+    oks.push('cas 8 — commit-msg : le MÊME message pseudonymisé passe, le hameçon ne crie pas sur un travail juste');
+  else kos.push('cas 8 — le message pseudonymisé est refusé à tort (exit ' + c8v.status + ') : ' + (c8v.stderr || '').trim().slice(0, 300));
+
   // --- cas 6 : LE HAMEÇON DE COMMIT (TF-0980) --------------------------------
   //
   // POURQUOI CES CAS EXISTENT. Le `pre-push` arrive après : quand il parle, le nom est déjà dans
@@ -234,6 +254,14 @@ try {
   const cc = fs.mkdtempSync(path.join(os.tmpdir(), 'hamecon-commit-'));
   try {
     poserLanceurSource(cc);
+    // TF-1071 : l'installeur pose désormais AUSSI le commit-msg, qui juge le message par la porte.
+    // Un poste réel porte les deux ; la racine jetable les porte donc aussi — l'oracle en SOURCE au
+    // repli du hameçon et un référentiel jetable voisin des dépôts (nom inventé). Sans eux, le cas 6
+    // éprouverait un poste amputé : le commit tomberait sur « oracle introuvable » avant même que le
+    // pre-commit ait corrigé quoi que ce soit. Les messages des cas 6 ne portent aucun nom.
+    poserOracleSource(cc);
+    fs.writeFileSync(path.join(cc, '_noms-interdits.json'),
+      JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
     // La chaîne jetable : le MÊME contrat que celle du pilot — `passer({ fichiers, racine,
     // ecrire })` rendant `{ corriges, nomsPorteurs }` — et rien de plus. Elle lève quand on le lui
     // demande, ce qui est le seul moyen d'éprouver la branche « tables illisibles ».
@@ -376,6 +404,33 @@ try {
     if (/CONFLIT/.test(p6h.stdout || '') && /quelqu un d autre/.test(fs.readFileSync(cible, 'utf8')))
       oks.push('cas 6h — un pre-commit ÉTRANGER est signalé en CONFLIT et laissé intact : écraser le travail de quelqu\'un d\'autre en silence se découvre trois semaines plus tard');
     else kos.push('cas 6h — un pre-commit étranger a été écrasé ou le conflit n\'est pas dit : ' + (p6h.stdout || '').trim().slice(0, 200));
+
+    // --- (6h bis) TF-0994 : un ÉTRANGER QUI CITE LA MARQUE n'est pas le nôtre ---------------
+    // La collision de noms qu'une lettre séparait : un hook étranger dont le contenu CONTIENT
+    // `pre-commit-anonymiser`. Reconnu par sous-chaîne, il était écrasé en affichant REPOSE.
+    const cite = nu('pre-commit-cite-la-marque');
+    const cibleCite = path.join(cite, '.git', 'hooks', 'pre-commit');
+    fs.writeFileSync(cibleCite, '#!/bin/sh\n# le hook de quelqu un d autre\nexec node tools/pre-commit-anonymiser.mjs\n', { mode: 0o755 });
+    const p6hb = sh(cc, 'node', [INSTALLEUR, cite]);
+    if (/CONFLIT/.test(p6hb.stdout || '') && /quelqu un d autre/.test(fs.readFileSync(cibleCite, 'utf8')))
+      oks.push('cas 6h bis — un pre-commit étranger qui CITE la marque est en CONFLIT et laissé intact : la propriété tient à la signature, plus à une lettre');
+    else kos.push('cas 6h bis — un étranger citant la marque a été écrasé ou le conflit n\'est pas dit : ' + (p6hb.stdout || '').trim().slice(0, 200));
+
+    // --- (6h ter) la SIGNATURE seule vaut propriété : le hook signé est reposé -------------
+    const signe = nu('pre-commit-signe');
+    const cibleSigne = path.join(signe, '.git', 'hooks', 'pre-commit');
+    fs.writeFileSync(cibleSigne, '#!/bin/sh\n# hamecon-parc: pre-commit-anonymiser v1\nexit 0\n', { mode: 0o755 });
+    const p6ht = sh(cc, 'node', [INSTALLEUR, signe]);
+    if (/REPOSE/.test(p6ht.stdout || '') && /exec node "\$LANCEUR"/.test(fs.readFileSync(cibleSigne, 'utf8')))
+      oks.push('cas 6h ter — un pre-commit portant la ligne de signature est REPOSÉ à la version courante');
+    else kos.push('cas 6h ter — le hook signé n\'a pas été reposé : ' + (p6ht.stdout || '').trim().slice(0, 200));
+
+    // --- (6h quater) migration EXPLICITE : l'ancien hook (marque sans signature) → --migrer ----
+    const p6hq = sh(cc, 'node', [INSTALLEUR, cite, '--migrer', '--seul=pre-commit']);
+    const txtMigre = fs.readFileSync(cibleCite, 'utf8');
+    if (/MIGRE/.test(p6hq.stdout || '') && txtMigre.includes('# hamecon-parc: pre-commit-anonymiser v1'))
+      oks.push('cas 6h quater — `--migrer` reprend un hook à la marque sans signature et le signe : la passe de migration est un geste décidé');
+    else kos.push('cas 6h quater — la migration explicite n\'a pas signé le hook : ' + (p6hq.stdout || '').trim().slice(0, 200));
 
     // --- (6i) LE RETRAIT VAUT POUR LES DEUX HAMEÇONS --------------------------------------
     const ret6 = sh(cc, 'node', [INSTALLEUR, avecHook, '--retirer']);
