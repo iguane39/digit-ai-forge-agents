@@ -14,9 +14,11 @@
 //   2. NUMÉROTE — EXG-01, EXG-02… dans l'ordre d'apparition, source et ligne citées ; un motif
 //      de traçabilité par ligne (nombre et unité, puis sigle ou nom propre, puis deux mots longs,
 //      insensible aux accents), que l'humain peut resserrer avant de sceller.
-//   3. SCELLE — deux empreintes, comme les vues de forge-conception : celle de chaque SOURCE (un
-//      RC modifié après construction rend le référentiel PÉRIMÉ) et celle du CORPS (une ligne
-//      retirée à la main rend le référentiel AMPUTÉ). `--verifier` rejoue les deux.
+//   3. SCELLE — au format déclaré du parc, `forge-ops/empreinte@1` (references/EMPREINTES.md du
+//      pilot) : un sha256 par SOURCE (un RC modifié après construction rend le référentiel
+//      PÉRIMÉ) et un pour le CORPS (clé `referentiel.md#corps` : une ligne retirée à la main le
+//      rend AMPUTÉ), fins de ligne normalisées LF avant hachage (règle E4). `--verifier` rejoue
+//      les deux et refuse tout autre format.
 // Le format produit est EXACTEMENT celui qu'oracle-exigences-ao lit (« ## Exigences », « - EXG-xx
 // · texte · motif: regex », « ## Rubriques imposées », « ## Pièces attendues ») : aucun oracle
 // neuf, le juge reste celui qui existe.
@@ -48,7 +50,11 @@ export const NON_JUGE = [
   'les sources PDF ou DOCX : à convertir en texte avant ce verbe, qui ne lit que .md et .txt',
 ];
 
-const sha = (t) => crypto.createHash('sha256').update(t, 'utf8').digest('hex');
+// Format et normalisation de la convention transverse (EMPREINTES.md du pilot) : le contenu est
+// haché en LF, jamais tel qu'il est sur le disque — deux postes, deux fins de ligne, un seul sceau.
+const FORMAT = 'forge-ops/empreinte@1';
+const CLE_CORPS = 'referentiel.md#corps';
+const sha = (t) => crypto.createHash('sha256').update(String(t).replace(/\r\n/g, '\n'), 'utf8').digest('hex');
 const L = '\\p{L}';
 const OBLIGATION = new RegExp(`(?<!${L})(doit|doivent|devra|devront|est\\s+tenue?|sont\\s+tenue?s|exig[ée]e?s?|obligatoire(?:ment)?|imp[ée]rativement)(?!${L})`, 'iu');
 const CONSIGNE = /(ignore[zr]?\s+(les|toutes?\s+les)\s+(consignes|instructions)|ignore\s+(all\s+)?previous|en\s+tant\s+qu['’]assistant|you\s+are\s+an?\s+(ai|assistant))/iu;
@@ -148,25 +154,31 @@ export function construire(sources, nom = 'consultation') {
   const entete = [
     `# Référentiel d'exigences — ${nom}`,
     `<!-- construit par construire-referentiel-ao.mjs (digit-ai-propale, TF-1026) ; à RELIRE avant de répondre : ${NON_JUGE[0].split(' : ')[0]} -->`,
-    `<!-- sceau-sources: ${sources.map((s) => `${s.nom}=sha256:${sha(s.texte)}`).join('; ')} -->`,
-    `<!-- sceau-corps: sha256:${sha(corps)} -->`,
+    `<!-- empreinte: ${JSON.stringify({
+      format: FORMAT,
+      release: `referentiel-ao:${nom}`,
+      ts: new Date().toISOString(),
+      fichiers: { ...Object.fromEntries(sources.map((s) => [s.nom, sha(s.texte)])), [CLE_CORPS]: sha(corps) },
+    })} -->`,
     '',
   ].join('\n');
   return { texte: entete + corps, compte: { exigences: tout.exigences.length, rubriques: tout.rubriques.length, pieces: tout.pieces.length, consignes: tout.consignes.length } };
 }
 
-/** Rejoue les deux sceaux. Rend la liste des écarts (vide = intact et à jour). */
+/** Rejoue l'empreinte forge-ops/empreinte@1. Rend la liste des écarts (vide = intact et à jour). */
 export function verifier(referentiel, sources = []) {
   const ecarts = [];
-  const mc = /<!-- sceau-corps: sha256:([0-9a-f]{64}) -->\n\n?/.exec(referentiel);
-  const ms = /<!-- sceau-sources: (.*?) -->/.exec(referentiel);
-  if (!mc || !ms) return ['sceaux absents : ce référentiel n\'a pas été construit par le verbe, ou ses sceaux ont été retirés'];
-  const corps = referentiel.slice(mc.index + mc[0].length);
-  if (sha(corps) !== mc[1]) ecarts.push('AMPUTÉ ou modifié à la main : l\'empreinte du corps ne correspond plus — reconstruire depuis les sources');
-  const scelle = Object.fromEntries(ms[1].split('; ').map((x) => x.split('=sha256:')));
+  const m = /<!-- empreinte: (\{.*?\}) -->\n\n?/.exec(referentiel);
+  if (!m) return ['empreinte absente : ce référentiel n\'a pas été construit par le verbe, ou son empreinte a été retirée'];
+  let e;
+  try { e = JSON.parse(m[1]); } catch { return ['empreinte illisible : JSON invalide'] }
+  if (e.format !== FORMAT) return [`format d'empreinte « ${e.format} » inconnu : ce vérificateur lit ${FORMAT}, et un lecteur qui ne sait pas lire le dit`];
+  const f = e.fichiers || {};
+  const corps = referentiel.slice(m.index + m[0].length);
+  if (f[CLE_CORPS] !== sha(corps)) ecarts.push('AMPUTÉ ou modifié à la main : l\'empreinte du corps ne correspond plus — reconstruire depuis les sources');
   for (const s of sources) {
-    if (!(s.nom in scelle)) ecarts.push(`source ${s.nom} absente du sceau : le référentiel a été construit sans elle`);
-    else if (scelle[s.nom] !== sha(s.texte)) ecarts.push(`PÉRIMÉ : ${s.nom} a changé depuis la construction — reconstruire`);
+    if (!(s.nom in f)) ecarts.push(`source ${s.nom} absente de l'empreinte : le référentiel a été construit sans elle`);
+    else if (f[s.nom] !== sha(s.texte)) ecarts.push(`PÉRIMÉ : ${s.nom} a changé depuis la construction — reconstruire`);
   }
   return ecarts;
 }
