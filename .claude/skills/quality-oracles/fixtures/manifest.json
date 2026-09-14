@@ -1025,6 +1025,27 @@
    ],
    "provenance": "TF-1064 (12/09/2026) — les deux textes sont COPIÉS des constantes FIXTURE_ROUGE / FIXTURE_VERTE du `--self-test` de `oracle-ecriture.mjs` : la paire du registre et celle de l'oracle jugent le même contenu, donc une dérive de l'un se voit chez l'autre. La VERTE porte un bloc de code saturé de tournures interdites — c'est la preuve que citer n'est pas commettre. Les cinq messages attendus verrouillent les règles de STRUCTURE (EC-2, EC-3, EC-4-gras, EC-4-emoji) et une famille de densité : sans eux, la rouge resterait FAIL par une seule règle et les autres pourraient mourir en silence (leçon TF-0362).",
    "note": "`{pilot}` se résout par `FORGE_ROOT/digit-ai-factory`, sinon par le dépôt frère `../../../../digit-ai-factory` du skill (scripts/lib/pilot.mjs). Pilot introuvable → SKIP MOTIVÉ nommant les pistes : un marqueur non résolu ferait échouer le lancement, et un lancement en échec se lit comme un FAIL — donc comme la preuve attendue sur la fixture rouge."
+  },
+  {
+   "nom": "transparence-ia",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence-ia.mjs",
+    "{fixture}"
+   ],
+   "red": "transparence-red.html",
+   "green": "transparence-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR-1 — aucune MENTION",
+    "TR-2 — aucun MARQUAGE"
+   ],
+   "provenance": "TF-1030 (décision humaine du 11/09/2026, D-3 (a) et D-4 ; oracle écrit le 14/09/2026) — aucun livrable public de Digit-AI ne portait la mention ni le marquage de l'article 50 de l'AI Act, applicable depuis le 2026-08-02, et aucun contrôle ne le disait. La rouge est une fiche offre (livrable L5 de la spécification du produit marketing) qui déclare sa diffusion publique et ne porte ni mention visible ni méta ; sa seule mention est dans un COMMENTAIRE, que l'oracle doit ignorer. La verte est la même page, mention en pied et méta `ai-generated`. Les deux messages attendus verrouillent TR-1 ET TR-2 : sans eux, la rouge resterait FAIL par une seule règle et l'autre pourrait mourir en silence (leçon TF-0362)."
   }
  ]
 }

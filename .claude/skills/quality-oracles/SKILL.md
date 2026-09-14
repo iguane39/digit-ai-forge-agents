@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.14.0"
+  version: "2.15.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
