@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — contenu rogne · un champ de saisie defile nativement — 20260914a</title>
+<!--
+  Fixture VERTE de contenu_rogne, TF-0847 (lot Produit-61 20260905a).
+
+  Un champ de saisie dont la valeur est plus longue que sa largeur : il DEFILE nativement, le
+  lecteur place son curseur et lit la suite. La feuille du navigateur lui pose un rognage, ce qui
+  le faisait entrer dans la mesure : « zero element de texte invisible » et bloquant quand meme,
+  aux quatre largeurs. Le produit avait remplace son champ par une zone de texte pour passer.
+
+  Attendu : 0 constat contenu_rogne. La rouge voisine, rogne-contenu-perdu.html, garde son
+  constat : le contenu reellement perdu reste juge.
+-->
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+main{max-width:70ch;margin:0 auto;padding:24px}
+label{display:block;margin:0 0 8px}
+input{width:240px;padding:8px;border:1px solid var(--line);font:inherit}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<main>
+<h1>Adresse de facturation</h1>
+<label for="adresse">Adresse complete</label>
+<input id="adresse" type="text" value="12 avenue des Tilleuls, batiment C, escalier 4, troisieme etage, porte gauche, 75011 Paris, France">
+</main>
+</body></html>

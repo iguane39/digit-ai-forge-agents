@@ -454,6 +454,9 @@ CAS_RENDU = {
     # contenu disparait) ou `min-height` (plancher, la feuille s'allonge).
     "rogne-contenu-perdu.html": ("contenu_rogne", 1),
     "rogne-hauteur-plancher.html": ("contenu_rogne", 0),
+    # TF-0847 (05/09) — un champ de saisie defile nativement : sa valeur longue n'est pas du
+    # contenu perdu. rogne-contenu-perdu.html, ci-dessus, garde son constat.
+    "rogne-champ-saisie.html": ("contenu_rogne", 0),
     "l2f-caption-ecrasee-en-filet.html": ("l2_filet", 1),
     "l2f-caption-pleine-largeur.html": ("l2_filet", 0),
     # TF-0582 (lot Produit-02 20260824) : ce qui PEINT sans etre un `background-color`.

@@ -929,6 +929,11 @@ MEASURE_JS = r"""
     const MARGE = 2;                       // 2px : le bruit d'arrondi d'un rendu, pas une perte
     for (const el of document.body.querySelectorAll('*')) {
       if (!visible(el)) continue;
+      // TF-0847 (05/09) — UN CHAMP DE SAISIE DEFILE NATIVEMENT. La feuille du navigateur lui pose
+      // un rognage, donc une adresse plus longue que le champ entrait ici : « zero element de
+      // texte invisible » et BLOQUANT quand meme, aux quatre largeurs, pendant que la zone de
+      // texte voisine passait. Le produit avait troque son champ contre une zone de texte.
+      if (el.matches('input, select')) continue;
       const cs = getComputedStyle(el);
       const oy = cs.overflowY, ox = cs.overflowX;
       const masqueY = oy === 'hidden' || oy === 'clip';
