@@ -62,6 +62,46 @@ for (const d of fs.readdirSync(SKILLSROOT, { withFileTypes: true })) {
   else ok(`${d.name} : frontmatter OK (description ${fm.description.length}/1024)`);
 }
 
+// (1b) TF-1022 (11/09) — CHAQUE CHEMIN CITÉ PAR UN SKILL.md SE RÉSOUT. L'archive de digit-ai-pptx
+// chargeait « toujours » trois références qu'elle ne contenait pas : un agent produisait un deck sans
+// charte, sans que rien ne le signale. Un chemin se résout dans le skill, dans un skill voisin (un
+// renvoi entre skills du socle est légitime) ou chez le pilot. Sens rouge : une citation fantôme.
+const RE_CHEMIN_CITE = /(?<![\w/.-])((?:references|scripts|assets|fixtures|templates|profils)\/[\w./-]+\.[A-Za-z0-9]+)/g;
+const voisins = fs.readdirSync(SKILLSROOT, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => path.join(SKILLSROOT, d.name));
+const citesAbsents = (dir, txt) => [...new Set([...txt.matchAll(RE_CHEMIN_CITE)].map(m => m[1]))]
+  .filter(rel => !fs.existsSync(path.join(dir, rel)) && !voisins.some(v => fs.existsSync(path.join(v, rel)))
+    && !(PILOT && fs.existsSync(path.join(PILOT, rel))));
+let citesJuges = 0;
+for (const v of voisins) {
+  const sf = path.join(v, 'SKILL.md');
+  if (!fs.existsSync(sf)) continue;
+  const absents = citesAbsents(v, fs.readFileSync(sf, 'utf8'));
+  citesJuges++;
+  if (absents.length) ko(`${path.basename(v)} : SKILL.md cite ${absents.length} chemin(s) introuvable(s) — ${absents.slice(0, 4).join(', ')} (TF-1022)`);
+}
+const fantome = citesAbsents(SKILLDIR, 'Charger `references/charte-fantome-tf1022.md` — toujours.');
+fantome.length === 1 ? ok(`TF-1022 : chemins cités résolus sur ${citesJuges} SKILL.md, et une citation fantôme est bien vue (sens rouge)`)
+  : ko('TF-1022 : la citation fantôme n est pas vue — le contrôle des chemins cités est aveugle');
+
+// (1c) TF-1021 (11/09) — un AGENT compilé qui dit charger un skill le trouve. Quatre agents du
+// pipeline de propale chargeaient des skills qu'aucune forge ne versionnait. Sens rouge : un agent
+// synthétique qui cite un skill inexistant.
+const RE_SKILL_CITE = /skills? `([a-z0-9][a-z0-9-]+)`/g;
+const skillsCitesAbsents = (txt) => [...new Set([...txt.matchAll(RE_SKILL_CITE)].map(m => m[1]))]
+  .filter(n => !fs.existsSync(path.join(SKILLSROOT, n, 'SKILL.md')));
+const AGENTS = path.join(SKILLSROOT, '..', 'agents');
+if (fs.existsSync(AGENTS)) {
+  let n = 0;
+  for (const f of fs.readdirSync(AGENTS).filter(x => x.endsWith('.md'))) {
+    const abs = skillsCitesAbsents(fs.readFileSync(path.join(AGENTS, f), 'utf8'));
+    n++;
+    if (abs.length) ko(`agent ${f} : charge ${abs.join(', ')}, absent(s) de ${SKILLSROOT} (TF-1021)`);
+  }
+  skillsCitesAbsents('mandat opératoire : charger le skill `skill-fantome-tf1021`').length === 1
+    ? ok(`TF-1021 : skills cités par ${n} agent(s) présents, et un skill fantôme est bien vu (sens rouge)`)
+    : ko('TF-1021 : le skill fantôme n est pas vu — le contrôle agents → skills est aveugle');
+} else ok('TF-1021 : aucun dossier agents/ à côté des skills — contrôle agents → skills non applicable ici');
+
 // (2) registre JSON
 let reg = null;
 try { reg = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8')); ok('registre-oracles.json : JSON valide (' + reg.oracles.length + ' oracles)'); }
