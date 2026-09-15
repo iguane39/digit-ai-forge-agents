@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — capture d'une page très haute — 20260915a</title>
+<!--
+  Fixture de TF-1131 (lot Produit-64 20260913a) — UNE PAGE BIEN PLUS HAUTE QUE LARGE.
+
+  Le livrable du 13/09 mesurait 5:1 à 1920 px et 58:1 à 390 px ; sa capture pleine page, réduite
+  à l'écran du relecteur, ne laissait rien lire, et la revue de lecture s'est déclarée faite sur
+  elle. Cette page dépasse largement 4:1 à 1280 px. Attendu : la capture pleine page existe, son
+  rapport est publié, et des TUILES D'UN ÉCRAN (1280 × 900 CSS) sont produites d'office — chacune
+  plus large que haute, donc lisible sans réduction.
+-->
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--bg:#FAFBFF;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:16px;line-height:1.6;color:var(--ink);background:var(--bg)}
+main{max-width:72ch;margin:0 auto;padding:24px}
+section{border-top:1px solid var(--line);padding:16px 0}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>Journal des séances de formation</h1>
+<script>
+  // Soixante séances, chacune un paragraphe : la page dépasse 4:1 à toute largeur de la grille.
+  for (let i = 1; i <= 60; i++) {
+    document.write('<section><h2>Séance ' + i + '</h2><p>Compte rendu de la séance ' + i +
+      ' : objectifs rappelés, exercices menés, points à reprendre à la séance suivante. Le texte ' +
+      'est volontairement ordinaire : ce qui compte ici est la hauteur de la page, pas son contenu.</p></section>');
+  }
+</script>
+</main></body></html>

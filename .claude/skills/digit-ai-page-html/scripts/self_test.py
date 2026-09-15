@@ -1707,6 +1707,65 @@ def run_kpi_perimetre():
     return out
 
 
+def run_capture_tuiles():
+    """TF-1131 (15/09) — une capture qu'on ne peut pas lire n'est pas une pièce de revue.
+
+    La capture pleine page d'un livrable, réduite à l'écran du relecteur, ne laissait rien lire
+    (facteurs 9,5 et 23) ; la revue s'est déclarée faite et cinq défauts sont passés. Au-delà de
+    4:1, render_page produit d'office des tuiles d'un écran. Sens rouge : la page très haute
+    dépasse bien 4:1 (la capture pleine page est illisible). Sens vert : ses tuiles existent, en
+    nombre exact, chacune plus large que haute. Témoin : une page courte n'a pas de tuile."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return []
+    import subprocess
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    out = []
+
+    def jouer(nom):
+        dossier = tempfile.mkdtemp(prefix="self-test-tuiles-")
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(FIXTURES / nom), "--widths", "1280",
+                            "--output", "json", "--out", dossier],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            cap = json.loads(r.stdout)["breakpoints"]["1280"]["capture"]
+        except Exception:  # noqa: BLE001 — une sortie illisible se compte comme un échec
+            cap = None
+        return cap, dossier
+
+    def cas(nom, ok, attendu, obtenu, regle):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": str(obtenu)[:160], "regle": regle, "detail": ""})
+
+    cap, dossier = jouer("capture-page-tres-haute.html")
+    if cap is None:
+        cas("capture-page-tres-haute", False, "sortie JSON", "illisible", "TF-1131")
+        return out
+    cas("capture-page-tres-haute · pleine page au-delà de 4:1 (sens rouge)", cap.get("ratio", 0) > 4,
+        "ratio > 4", cap.get("ratio"), "TF-1131 contre-epreuve")
+    attendu_n = -(-cap.get("hauteur_css", 0) // 900)
+    tuiles = cap.get("tuiles") or []
+    presentes = [t for t in tuiles if (Path(dossier) / t).exists()]
+    cas("capture-page-tres-haute · une tuile par écran, toutes produites",
+        len(tuiles) == attendu_n and len(presentes) == attendu_n and attendu_n >= 2,
+        f"{attendu_n} tuile(s)", f"{len(tuiles)} annoncée(s), {len(presentes)} sur disque", "TF-1131 tuiles")
+    try:
+        from PIL import Image
+        tailles = [Image.open(Path(dossier) / t).size for t in presentes]
+        lisibles = all(w >= h for w, h in tailles) and bool(tailles)
+        cas("capture-page-tres-haute · chaque tuile plus large que haute (lisible sans réduction)",
+            lisibles, "largeur ≥ hauteur", tailles[:2], "TF-1131 lisibilite")
+    except ImportError:
+        pass
+    court, _ = jouer("a5-feuille-parsable.html")
+    cas("page courte · aucune tuile (témoin)", bool(court) and not court.get("tuiles"),
+        "pas de tuile", (court or {}).get("ratio"), "TF-1131 temoin")
+    return out
+
+
 RE_FERMANTE_NUE = re.compile(r"</(script|style)", re.I)
 
 
@@ -2573,7 +2632,8 @@ def main():
     args = ap.parse_args()
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
-           + run_glyphes_du_socle() + run_markdown() + run_syne() + run_assets_inlinables() + run_kpi_perimetre())
+           + run_glyphes_du_socle() + run_markdown() + run_syne() + run_assets_inlinables() + run_kpi_perimetre()
+           + run_capture_tuiles())
     rendu = run_rendu()
     if rendu:
         res += rendu

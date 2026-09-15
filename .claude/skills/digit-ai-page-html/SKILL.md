@@ -480,7 +480,8 @@ trois oracles précédents validaient — chacune a sa fixture rouge.
 Ce qui suppose de LIRE (clarté du propos, pertinence, justesse d'un chapeau) n'est pas
 mécanisé : c'est la **revue de lecture — OBLIGATOIRE avant toute livraison (TF-0422)**.
 Capturer (`render_page.py`, 3840/2560/1920/1280/768/390 + `--sections`), **ouvrir et lire** les
-captures, consigner chaque constat dans `REVUE.md` au gabarit
+captures — au-delà de 4:1, les **tuiles d'un écran** que le script produit d'office, jamais la
+seule capture pleine page, illisible une fois réduite (TF-1131) —, consigner chaque constat dans `REVUE.md` au gabarit
 [references/gabarit-revue-de-lecture.md](references/gabarit-revue-de-lecture.md) (largeur ·
 section · constat · suite · preuve) ou la mention « aucun constat » datée. Une page verte à
 tous les oracles a été refusée par son client à l'ouverture : les oracles mesurent des

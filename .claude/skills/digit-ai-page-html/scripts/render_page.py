@@ -2118,6 +2118,9 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                     target.screenshot(path=str(png), timeout=capture_timeout)
                 else:
                     page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+                    # TF-1131 : au-delà de 4:1, des tuiles d'un écran, produites d'office.
+                    capture.update(produire_tuiles(page, png_dir, html_path.stem, width,
+                                                   capture_timeout))
                 # TF-0422 : une capture PAR SECTION — un panneau d'onglet masqué est rendu
                 # visible le temps de sa capture, puis remis dans son état.
                 if sections:
@@ -2273,6 +2276,13 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             # PASS. Ce qui n'a pas pu etre capture se DIT, et le reste du verdict se rend.
             nom_png = Path(data["png"]).name if data.get("png") else "capture NON FAITE"
             print(f"\n===== {width}px — {nom_png} =====")
+            cap = data.get("capture") or {}
+            if cap.get("tuiles"):
+                reste = cap.get("tuiles_non_produites")
+                print(f"  [capture] pleine page à {cap['ratio']}:1 — ILLISIBLE une fois réduite "
+                      f"(au-delà de {TUILES_RATIO:g}:1) : {len(cap['tuiles'])} tuile(s) d'un écran "
+                      f"produite(s) pour la revue de lecture, {cap['tuiles'][0]} … {cap['tuiles'][-1]}"
+                      + (f" ; {reste} écran(s) au-delà de la borne NON capturé(s)" if reste else ""))
             if not data.get("png"):
                 print(f"  [capture] {data['capture'].get('motif', 'capture impossible')}")
             for key, title, sev in FAMILLES:
@@ -2300,6 +2310,40 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             print(f"  non jugé — {note}")
         print(f"PNG : {png_dir}")
     return 0 if report["verdict"] == "PASS" else 1
+
+
+# TF-1131 (lot Produit-64 20260913a, 15/09/2026) — UNE CAPTURE QU'ON NE PEUT PAS LIRE N'EST PAS
+# UNE PIÈCE DE REVUE. La capture pleine page d'un livrable mesurait 3840 × 19012 px à 1920 et
+# 780 × 45480 à 390 : ramenées à l'écran du relecteur, 404 × 2000 et 34 × 2000 — un corps de 16 px
+# y tient sur moins de deux pixels. La revue de lecture s'est déclarée faite, cinq défauts sont
+# passés. Au-delà d'un rapport hauteur/largeur de 4:1, le script produit D'OFFICE des tuiles d'UN
+# ÉCRAN (la hauteur de la fenêtre de rendu, ce qu'un lecteur voit à la fois), numérotées, et le dit
+# dans sa sortie. La capture pleine page reste produite, marquée illisible à l'échelle.
+TUILES_RATIO = 4.0            # au-delà, la capture pleine page n'est plus lisible une fois réduite
+TUILES_HAUTEUR_CSS = 900      # hauteur de la fenêtre de rendu : une tuile = un écran
+TUILES_MAX = 60               # borne déclarée : au-delà, la sortie dit combien manquent
+
+
+def produire_tuiles(page, png_dir: Path, stem: str, width: int, timeout_ms: int) -> dict:
+    """TF-1131 — rapport de la capture pleine page, et ses tuiles d'un écran s'il dépasse 4:1."""
+    hauteur = int(page.evaluate("() => document.documentElement.scrollHeight"))
+    ratio = hauteur / max(1, width)
+    info: dict = {"hauteur_css": hauteur, "ratio": round(ratio, 2)}
+    if ratio <= TUILES_RATIO:
+        return info
+    n = -(-hauteur // TUILES_HAUTEUR_CSS)
+    tuiles = []
+    for i in range(min(n, TUILES_MAX)):
+        y = i * TUILES_HAUTEUR_CSS
+        nom = png_dir / f"{stem}-w{width}-ecran{i + 1:02d}.png"
+        page.screenshot(path=str(nom), full_page=True, timeout=timeout_ms,
+                        clip={"x": 0, "y": y, "width": width,
+                              "height": min(TUILES_HAUTEUR_CSS, hauteur - y)})
+        tuiles.append(nom.name)
+    info["tuiles"] = tuiles
+    if n > TUILES_MAX:
+        info["tuiles_non_produites"] = n - TUILES_MAX
+    return info
 
 
 # TF-0230 (lot Produit-10, 14/08) — reconstat sur TF-0058, archivé « corrigé » et ne l'étant
