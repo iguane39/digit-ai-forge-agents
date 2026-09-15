@@ -1,0 +1,10 @@
+{
+  "commentaire": "TF-1130 — profil de jeu d'essai des règles de FORMAT d'oracle-pptx (P1-P3). Valeurs inventées : un produit passe SON profil (format, polices, palette relevés sur son deck de référence), qui vit chez lui.",
+  "pptx": {
+    "jpeg_interdit": true,
+    "transitions_interdites": true,
+    "format": "16:9",
+    "polices": ["Roboto", "DM Sans"],
+    "palette": ["0F172A", "2563EB"]
+  }
+}

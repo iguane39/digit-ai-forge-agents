@@ -500,6 +500,30 @@
    ]
   },
   {
+   "domaine": "Support de diapositives (parité de format par profil)",
+   "ext": [
+    ".pptx",
+    ".potx"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "oracle-pptx piloté par la politique pptx du profil : P1 format (pptx.format, ex. 16:9), P2 polices ⊆ pptx.polices, P3 couleurs de texte explicites ⊆ pptx.palette — plus l'hygiène du paquet ([Content_Types].xml en 1re entrée, zéro transition, zéro JPEG). Chaque règle P n'est jouée que si le profil la déclare",
+   "statut": "partiel",
+   "non_juge": [
+    "débordement de texte hors cadre — le rendu PowerPoint le montre (TF-1130)",
+    "couleurs héritées du thème ou des masques (schemeClr)",
+    "règles propres à un type de séance (pied de page attendu, mot de couverture, faits portés) → invocation locale au produit, en plus de cet oracle",
+    "pied de page et pagination → oracle-charte-pptx-semantique S4"
+   ],
+   "note": "TF-1130 (lot Produit-64 20260913a) : un produit avait dupliqué son oracle de format de support faute de domaine ; les règles de marque passent par SON profil (format, polices, palette relevés sur son deck de référence), qui vit chez lui"
+  },
+  {
    "domaine": "Charte PPTX sémantique (sommaire, kicker, logos, footer)",
    "ext": [
     ".pptx"

@@ -114,6 +114,30 @@
    ]
   },
   {
+   "nom": "pptx-format",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/fixtures/profil-pptx-format.json"
+   ],
+   "red": "pptx-format-red.pptx",
+   "green": "pptx-format-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "P1",
+    "P2",
+    "P3"
+   ],
+   "provenance": "TF-1130 (lot Produit-64 20260913a) : un oracle de format de support de diapositives dupliqué par un produit, faute de domaine au registre ; les règles de format pilotées par profil entrent dans oracle-pptx"
+  },
+  {
    "nom": "llm",
    "cmd": [
     "node",
