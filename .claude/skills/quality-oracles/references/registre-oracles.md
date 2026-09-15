@@ -9,7 +9,7 @@
 
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
-| Rendu HTML / visuel | `render_page.py` (digit-ai-page-html) — V1–V18 ; **V18** (TF-1066, 12/09/2026, règle E5 du pilot) ne se joue qu'aux largeurs ≥ 2560 px : mesure de lecture au-delà de 100 caractères par ligne sur une prose que rien ne tient, tableau principal d'une page de données sous 85 % de la largeur offerte. Grille par défaut : 3840, 2560, 1920, 1280, 768, 390 | cli (délégué) | ✅ |
+| Rendu HTML / visuel | `render_page.py` (digit-ai-page-html) — V1–V18 ; **V18** (TF-1066, 12/09/2026, règle E5 du pilot ; plafond porté à 135 par la décision humaine du 15/09/2026, « 13a », TF-1069) ne se joue qu'aux largeurs ≥ 2560 px : mesure de lecture au-delà de 135 caractères par ligne sur une prose que rien ne tient, tableau principal d'une page de données sous 85 % de la largeur offerte. Grille par défaut : 3840, 2560, 1920, 1280, 768, 390 | cli (délégué) | ✅ |
 | Conformité charte HTML (charte, sémantique, print) | `check_html.py` (digit-ai-page-html) — DOCTYPE, `lang="fr"`, charset prioritaire, viewport, `<h1>` unique, `:root`, `<title>`, `@media print`, police Syne interdite | cli (délégué) | ✅ |
 | Filtres de colonne sur tableaux de données | `scripts/oracle-filtres-tableau.mjs <page.html>` — G1 marquage ou exemption motivée, G2 asset référencé, G3 initialisation, G4 id + thead, G5 compteur aria-live, G6 réaffichage à l'impression | cli | ✅ |
 | Rendu PPTX (structure & compatibilité) | `scripts/oracle-pptx.mjs` — zip, [Content_Types].xml 1re entrée, zéro transition/JPEG, smoke-test LibreOffice ; charte sémantique → gate digit-ai-pptx | cli | ⚙️ |

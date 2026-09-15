@@ -550,14 +550,31 @@ CAS_RENDU = {
 #
 # La paire de PROSE ne differe que par le chapitre de lecture (`.chap.lire`), la paire de DONNEES
 # que par le plafond en pixels nus du tableau. La verte de prose borne a 720 px et non au token de
-# 1 080 px du socle : au plafond de 100 caracteres par ligne, 1 080 px en mesure 134 — l'ecart est
-# publie en NON MESURABLE par l'oracle (il ne bloque pas une forme que le gabarit prescrit), et la
-# fixture verte prouve le sens vert PAR LA MESURE plutot que par la seule declaration.
+# 1 080 px du socle : au plafond de 100 caracteres par ligne pose le 12/09, 1 080 px en mesurait
+# 134 — l'ecart etait publie en NON MESURABLE par l'oracle (il ne bloquait pas une forme que le
+# gabarit prescrit), et cette fixture verte prouvait le sens vert PAR LA MESURE plutot que par la
+# seule declaration.
+#
+# TF-1069 (decision humaine du 15/09/2026, "13a") — L'ARBITRAGE EST TRANCHE, DEUX FIXTURES DE
+# PLUS. Le plafond passe a 135 et `.chap.lire` reste a 1 080 px : son token (134 cpl) rentre
+# desormais SOUS le plafond. Les deux fixtures ci-dessus restaient vraies apres l'arbitrage (720
+# px mesure encore moins que 134, 1 080 px non tenu mesure encore plus que 135), mais aucune des
+# deux ne PROUVE le nouveau seuil lui-meme : `v18-prose-mesuree.html` mesure un conteneur plus
+# etroit que le token reel, `v18-prose-etiree.html` mesure une prose totalement non tenue. Deux
+# fixtures neuves ferment cet ecart, sur le token EXACT du socle et sur le plafond EXACT de 135 :
+#   · `v18-chap-lire-socle.html` — le VRAI conteneur du boilerplate (1 080 px), sonde du 15/09 :
+#     129 et 125 caracteres par ligne mesures sur les deux paragraphes, tous deux SOUS 135 — la
+#     page passe desormais par la MESURE, plus seulement par l'exemption de conteneur declare ;
+#   · `v18-cpl-au-dela-135.html` — un conteneur plus large (1 200 px) et NON declare comme
+#     chapitre de lecture, sonde du 15/09 : 168 et 136 caracteres par ligne, tous deux AU-DELA de
+#     135 — le plafond releve de 100 a 135 bloque encore une forme reelle.
 CAS_RENDU_LARGE = {
     "v18-prose-etiree.html": [("v18_prose_etiree", 1), ("v18_tableau_etrique", 0)],
     "v18-prose-mesuree.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
     "v18-donnees-tableau-etrique.html": [("v18_tableau_etrique", 1), ("v18_prose_etiree", 0)],
     "v18-donnees-tableau-plein.html": [("v18_tableau_etrique", 0), ("v18_prose_etiree", 0)],
+    "v18-chap-lire-socle.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
+    "v18-cpl-au-dela-135.html": [("v18_prose_etiree", 1), ("v18_tableau_etrique", 0)],
 }
 
 

@@ -11,9 +11,13 @@ h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
 .chap{margin:0 0 24px}
 .wrap{width:var(--w);margin:0 auto;padding:24px}
 /* E4 du pilot : la mesure de lecture est portee par le CONTENEUR, jamais par le paragraphe.
-   720 px et non 1 080 : au plafond de 100 caracteres par ligne de V18, le token du socle mesure
-   134 caracteres (sonde du 12/09) — l'ecart est declare au non mesurable par l'oracle, cette
-   fixture-ci prouve le sens vert PAR LA MESURE et pas par la seule declaration. */
+   720 px et non 1 080 : au plafond de 100 caracteres par ligne pose le 12/09, le token du socle
+   mesurait 134 caracteres (sonde du 12/09) — l'ecart etait publie en non mesurable par l'oracle,
+   et cette fixture prouvait le sens vert PAR LA MESURE plutot que par la seule declaration.
+   Option NON RETENUE par la decision humaine du 15/09/2026 (13a, TF-1069), qui a garde
+   `.chap.lire` a 1 080 px et porte le plafond a 135 (v18-chap-lire-socle.html en porte la
+   preuve sur le token reel) : cette fixture-ci reste vraie a 720 px (89 cpl, sous 100 comme
+   sous 135) et documente l'option qu'on aurait pu prendre. */
 .chap.lire{max-width:720px;margin-left:auto;margin-right:auto}
 @media print{body{background:#fff}}
 </style></head>

@@ -1558,16 +1558,23 @@ MESURE_ENTETE_JS = r"""
 # de lignes est un FAIT du rendu, et `caracteres / lignes` la mesure de lecture effective. Elle est
 # CONSERVATRICE — la derniere ligne est partielle, donc le compte sous-estime la capacite reelle.
 #
-# LE SEUIL, ET LE CONFLIT QU'IL REVELE — DECLARE, PAS MASQUE. Le seuil demande est 100 caracteres
-# par ligne. Or le conteneur de lecture que le socle PRESCRIT (`.chap.lire`, 1 080 px, regle E4)
-# mesure 134 caracteres par ligne en 16 px (sonde du 12/09, valeur identique a 1920, 2560 et 3840).
-# Condamner la forme qu'un gabarit prescrit met le gabarit en defaut, jamais l'auteur : un
-# paragraphe TENU par un conteneur de lecture declare (`.lire`, `[data-mesure-lecture]`) n'est donc
-# pas bloque — sa mesure est PUBLIEE en non mesurable, pour que l'arbitrage (resserrer `.chap.lire`
-# ou poser le seuil a 135) se fasse sur un chiffre et non sur une impression. Ce qui est bloque est
-# la prose qu'AUCUN conteneur ne tient : exactement le defaut que E5 decrit.
+# LE SEUIL, ET LE CONFLIT QU'IL REVELAIT — TRANCHE, PAS MASQUE (decision humaine du 15/09/2026,
+# "13a"). Le seuil pose le 12/09 etait 100 caracteres par ligne. Or le conteneur de lecture que le
+# socle PRESCRIT (`.chap.lire`, 1 080 px, regle E4) mesure 134 caracteres par ligne en 16 px (sonde
+# du 12/09, valeur identique a 1920, 2560 et 3840) : condamner la forme qu'un gabarit prescrit met
+# le gabarit en defaut, jamais l'auteur. L'etude d'opportunite « lots de travaux et style —
+# 20260914a » du pilot (TF-1069, section 5 « Verdict ») arbitre entre les deux options mesurees —
+# resserrer `.chap.lire` sous 100, ou porter le plafond a
+# 135 — et retient la seconde : « option la moins destructrice pour l'existant, la mesure montrant
+# 134 cpl a 1 080 px, sous le nouveau plafond ». La decision du 15/09 (13a) suit ce verdict : le
+# plafond passe a 135, `.chap.lire` est GARDE a 1 080 px sans y toucher. Consequence mesuree : le
+# token du socle (134 cpl) tient desormais SOUS le plafond et rentre directement dans les proses
+# jugees — l'exemption de conteneur de lecture declare (`.lire`, `[data-mesure-lecture]`, ci-dessous)
+# reste au code pour la forme plus large qu'un chapitre pourrait encore adopter, mais elle ne
+# s'applique plus au token `.chap.lire` lui-meme. Ce qui reste bloque est la prose qu'AUCUN
+# conteneur ne tient au-dela de 135 : exactement le defaut que E5 decrit.
 V18_MIN_VIEWPORT = 2560
-V18_MAX_CPL = 100
+V18_MAX_CPL = 135
 V18_MIN_CHARS = 160            # sous ce compte, une ligne unique ne mesure aucune capacite
 V18_TABLE_MIN_RATIO = 0.85     # L26 — un tableau principal sous ce ratio laisse l'ecran vide
 V18_TABLE_MIN_LIGNES = 8       # un tableau principal, pas un encart de trois valeurs
@@ -1857,7 +1864,7 @@ FAMILLES = [
     # les deux défauts qu'elle mesure n'EXISTENT pas à 1920. La prose non tenue s'étire (342
     # caractères par ligne mesurés à 3840 sur la sonde du 12/09) ; le tableau principal d'une
     # page de données reste à sa largeur de contenu pendant que l'écran en offre le double.
-    ("v18_prose_etiree", "V18 mesure de lecture au-dela de 100 caracteres par ligne", "bloquant"),
+    ("v18_prose_etiree", "V18 mesure de lecture au-dela de 135 caracteres par ligne", "bloquant"),
     ("v18_tableau_etrique", "V18 tableau principal sous 85 % de la largeur offerte", "bloquant"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
@@ -2232,12 +2239,13 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
     larges = [w for w in widths if w >= V18_MIN_VIEWPORT]
     if larges:
         report["non_juge"].append(
-            f"V18 : jugee a {', '.join(str(w) + ' px' for w in larges)}. Un paragraphe TENU par un "
-            "conteneur de lecture declare (.lire, [data-mesure-lecture]) n'est jamais bloque, meme "
-            f"au-dela de {V18_MAX_CPL} caracteres par ligne : sa mesure est publiee en non "
-            "mesurable (le token `.chap.lire` du socle, 1 080 px, mesure 134 caracteres par ligne "
-            "en 16 px — l'ecart entre ce token et le plafond de E5 est un arbitrage, pas un "
-            "defaut d'auteur)")
+            f"V18 : jugee a {', '.join(str(w) + ' px' for w in larges)}. Plafond {V18_MAX_CPL} "
+            "caracteres par ligne (decision humaine du 15/09/2026, 13a, TF-1069) : le token du "
+            "socle `.chap.lire` (1 080 px, E4) mesure 134 caracteres par ligne en 16 px, sous ce "
+            "plafond, et rentre desormais directement dans les proses jugees. Un paragraphe TENU "
+            "par un conteneur de lecture declare (.lire, [data-mesure-lecture]) reste, lui, "
+            f"jamais bloque meme au-dela de {V18_MAX_CPL} caracteres : sa mesure est publiee en "
+            "non mesurable pour un chapitre plus large que le token du socle")
     else:
         report["non_juge"].append(
             f"V18 NON JOUEE : aucune largeur >= {V18_MIN_VIEWPORT} px dans cette grille. La prose "
