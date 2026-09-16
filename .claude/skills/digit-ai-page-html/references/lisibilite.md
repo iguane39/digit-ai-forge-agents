@@ -321,6 +321,30 @@ classe `toc-d` (l'annonce), de **12 caractères au moins**.
 **Contrôle mécanique.** `L6` — (a) toute ancre `#id` du sommaire dont l'`id` n'existe pas ;
 (b) toute entrée sans élément `.toc-d` d'au moins 12 caractères.
 
+**Plusieurs navigations sur une même page : laquelle porte quoi (TF-1145, 16/09/2026).** Le
+destinataire humain demande, mot pour mot : « Les textes dans le menu ne sont pas nécessaires,
+cela laissera plus d'espace entre les titres ». Le menu passe en titres seuls, et L6 refuse
+aussitôt **onze fois**. Le sommaire jugé était **le premier** `<nav>` du document — et
+`render_page.py` faisait le même choix, avec le même sélecteur, pour sa famille `sommaire_perdu`,
+à laquelle il demande l'inverse : tenir dans la fenêtre aux 60 % de la page.
+
+**Les deux exigences ne tiennent pas ensemble sur un document long.** Une barre collante peut
+rester visible, mais onze annonces de douze caractères y tiennent la place que le lecteur a
+demandé de rendre ; un sommaire **en cartes**, où l'annonce se lit, ne peut pas être collant —
+c'est une grille. La page livrée portait **trois** navigations, et chaque oracle n'en regardait
+qu'une, en rendant son verdict comme si elle était seule. Mesure du repli réel, prise au
+navigateur : la barre à onze entrées est `position: sticky`, haut 0 / bas 194 px, et reste dans
+la fenêtre **après 20 000 px de défilement**, script actif comme script coupé.
+
+**Ce qui est jugé maintenant.** Les deux contrôles collectent **tous** les navs candidats. L6
+juge les ancres de **chacun** — une ancre morte est un défaut sur n'importe quelle navigation, et
+ce contrôle-là s'élargit — et n'exige les annonces que du sommaire **qui les porte** ; une page
+qui n'en porte nulle part échoue comme avant. `sommaire_perdu` passe dès qu'**une** des
+navigations reste atteignable. Une page qui offre les deux passe les deux, et un avertissement
+dit laquelle porte quoi. **Mesure avant / après** : 3 échecs L6 → 0 sur la fixture qui offre les
+deux, 3 → 3 sur celle qui n'annonce nulle part ; côté rendu, 1 bloquant → 0 quand une barre
+permanente existe, 1 → 1 quand aucune ne tient.
+
 **Revue de lecture.** Que l'annonce dise le contenu et non le titre reformulé.
 
 ## L7 — Chaque chapitre ouvre par ce qu'il apprend

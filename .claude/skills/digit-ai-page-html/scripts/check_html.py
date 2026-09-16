@@ -684,12 +684,44 @@ def _lignes_tbody(table: Noeud) -> int:
     return sum(1 for n in cible.descendants() if n.tag == "tr")
 
 
+def _sommaires(a: Arbre):
+    """TOUS les navs candidats au titre de sommaire, dans l'ordre du document (TF-1145).
+
+    LE FAIT PAYÉ, 16/09/2026 (lot Produit-64 20260916a, retour RD-5). Le destinataire humain
+    demande, mot pour mot : « Les textes dans le menu ne sont pas nécessaires, cela laissera plus
+    d'espace entre les titres ». Le menu passe en titres seuls ; `check_html.py` refuse aussitôt
+    ONZE fois — « L6 entrée sans annonce ». Le sommaire jugé était choisi par un `return` sur LE
+    PREMIER nav du document, et `render_page.py` faisait le MÊME choix, avec le MÊME sélecteur,
+    pour sa famille `sommaire_perdu` — à laquelle il demande, lui, de rester dans la fenêtre aux
+    60 % de la page.
+
+    LES DEUX EXIGENCES NE TIENNENT PAS ENSEMBLE sur un document long. Une barre COLLANTE peut
+    rester visible, mais onze annonces de douze caractères y tiennent la place que le lecteur a
+    explicitement demandé de rendre ; un sommaire EN CARTES, où l'annonce se lit, ne peut pas
+    être collant — c'est une grille. La page livrée portait donc TROIS navigations (barre
+    collante de onze vues en titres seuls, menu latéral collant des chapitres, sommaire en cartes
+    avec ses onze annonces), et chaque oracle n'en regardait QU'UNE, en rendant son verdict comme
+    si elle était seule. Mesure du repli réel, prise au navigateur : le bandeau à onze entrées est
+    `position: sticky`, haut 0 / bas 194 px, et reste dans la fenêtre après 20 000 px de
+    défilement, script actif comme script coupé. Aucun lecteur ne perdait la navigation ;
+    `sommaire_perdu` rendait pourtant BLOQUANT aux six largeurs, en désignant les cartes.
+
+    LA SORTIE, ET ELLE RENFORCE. Les deux contrôles collectent désormais TOUS les candidats.
+    L6 juge les ancres de CHACUN — une ancre morte est un défaut sur n'importe quelle
+    navigation, et ce contrôle-là s'élargit — et n'exige les annonces que du sommaire QUI LES
+    PORTE ; une page qui n'en porte nulle part échoue comme avant. `sommaire_perdu` passe dès
+    qu'UNE des navigations reste atteignable. Une page qui offre les deux passe les deux ; rien
+    n'est désactivé.
+    """
+    return [n for n in a.racine.descendants()
+            if n.tag == "nav" and ("toc" in n.classes()
+                                   or (n.att("aria-label") or "").lower().startswith("sommaire"))]
+
+
 def _sommaire(a: Arbre):
-    for n in a.racine.descendants():
-        if n.tag == "nav" and ("toc" in n.classes()
-                               or (n.att("aria-label") or "").lower().startswith("sommaire")):
-            return n
-    return None
+    """Le premier nav candidat — conservé pour les règles qui désignent UN sommaire (L7, L10)."""
+    tous = _sommaires(a)
+    return tous[0] if tous else None
 
 
 # TF-0771/0777/0778/0783 (02/09) — LA PAGE DE DONNEES SE DECLARE.
@@ -2354,25 +2386,48 @@ def check_lisibilite(html: str, a: Arbre):
                          "doit rester inline pour ne pas casser le flux du mot.")
 
     # --- L6 : sommaire ----------------------------------------------------
-    if toc is None:
+    # TF-1145 — L6 ne lit plus LE PREMIER nav du document, mais TOUS. Les ancres se jugent sur
+    # chacun : une ancre morte est un défaut sur n'importe quelle navigation, et ce contrôle-là
+    # s'élargit. Les ANNONCES ne sont exigées que du sommaire QUI LES PORTE — une page qui offre
+    # une barre collante en titres seuls ET un sommaire en cartes annoté satisfait les deux
+    # doctrines, et onze échecs sur un menu que le destinataire a explicitement demandé sans
+    # annonces disparaissent. Une page qui n'en porte nulle part échoue exactement comme avant.
+    tocs = _sommaires(a)
+    if not tocs:
         warns.append("L6 aucun sommaire détecté (nav.toc ou aria-label=\"Sommaire\").")
     else:
-        liens = [n for n in toc.descendants() if n.tag == "a"]
-        if not liens:
-            fails.append("L6 sommaire sans aucune entrée.")
-        for lien in liens:
-            href = (lien.att("href") or "").strip()
-            if not href.startswith("#") or len(href) < 2:
-                fails.append(f"L6 entrée de sommaire sans ancre exploitable : "
-                             f"« {lien.texte_propre()[:40]} » (href={href!r}).")
-                continue
-            if href[1:] not in ids:
-                fails.append(f"L6 ancre morte : {href} ne résout vers aucun id "
-                             f"(entrée « {lien.texte_propre()[:40]} »).")
-            annonce = [e for e in lien.descendants() if "toc-d" in e.classes()]
-            if not annonce or max(len(e.texte_propre()) for e in annonce) < 12:
-                fails.append(f"L6 entrée sans annonce : « {lien.texte_propre()[:40]} » — "
-                             "un élément .toc-d d'au moins 12 caractères est attendu.")
+        def _annonces_de(nav):
+            return [e for lien in nav.descendants() if lien.tag == "a"
+                    for e in lien.descendants() if "toc-d" in e.classes()]
+
+        porteur = next((n for n in tocs
+                        if any(len(e.texte_propre()) >= 12 for e in _annonces_de(n))), None)
+        cible_annonces = porteur or tocs[0]
+        if len(tocs) > 1 and porteur is not None:
+            warns.append(
+                f"L6 {len(tocs)} navigations candidates au titre de sommaire sur cette page — les "
+                "annonces (.toc-d) sont exigées de CELLE QUI LES PORTE, les ancres sont jugées "
+                "sur toutes. Une barre permanente en titres seuls et un sommaire annoté ne "
+                "s'excluent pas (TF-1145).")
+        for nav in tocs:
+            liens = [n for n in nav.descendants() if n.tag == "a"]
+            if not liens:
+                fails.append("L6 sommaire sans aucune entrée.")
+            for lien in liens:
+                href = (lien.att("href") or "").strip()
+                if not href.startswith("#") or len(href) < 2:
+                    fails.append(f"L6 entrée de sommaire sans ancre exploitable : "
+                                 f"« {lien.texte_propre()[:40]} » (href={href!r}).")
+                    continue
+                if href[1:] not in ids:
+                    fails.append(f"L6 ancre morte : {href} ne résout vers aucun id "
+                                 f"(entrée « {lien.texte_propre()[:40]} »).")
+                if nav is not cible_annonces:
+                    continue
+                annonce = [e for e in lien.descendants() if "toc-d" in e.classes()]
+                if not annonce or max(len(e.texte_propre()) for e in annonce) < 12:
+                    fails.append(f"L6 entrée sans annonce : « {lien.texte_propre()[:40]} » — "
+                                 "un élément .toc-d d'au moins 12 caractères est attendu.")
 
     # --- L7 / L10 : chapitres --------------------------------------------
     cibles = []

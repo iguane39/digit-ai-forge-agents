@@ -109,6 +109,14 @@ CAS = {
     # fixture joue le remede que le message prescrit, mot pour mot, et doit PASSER (TF-1013) ; les
     # deux suivantes prouvent que les selecteurs d attribut sont desormais EVALUES, pas ignores —
     # sans la rouge, corriger le faux positif aurait pu eteindre la regle en silence.
+    # TF-1145 (16/09/2026, lot Produit-64 20260916a) — L6 ET sommaire_perdu LISAIENT LE MEME
+    # PREMIER NAV, ET LEURS DEUX EXIGENCES S EXCLUAIENT SUR UN DOCUMENT LONG. Le destinataire
+    # demande un menu sans annonces ; onze echecs L6 tombent. Les deux fixtures portent la MEME
+    # page a une difference pres : dans la verte, UNE des deux navigations porte les annonces ;
+    # dans la rouge, aucune — et L6 mord alors exactement comme avant. Sans la rouge, elargir la
+    # collecte aurait suffi a s exempter de la regle en ajoutant un second nav.
+    "l6-deux-navigations-complementaires.html": set(),
+    "l6-aucune-navigation-annotee.html": {"L6"},
     "l16-regle-impression-prescrite.html": set(),       # le remede prescrit par L16, joue sous L1
     "l1-attribut-retenu-rouge.html": {"L1"},            # le porteur PORTE l attribut : L1 mord
     "l1-attribut-ecarte-vert.html": set(),              # il ne le porte pas : plus de faux positif
@@ -411,6 +419,13 @@ CAS_RENDU = {
     # passait sur les deux, elle ne mesurerait pas ce qu'elle pretend mesurer.
     "v9-logo-invisible.html": ("v9_actif_invisible", 1),
     "v9-logo-visible.html": ("v9_actif_invisible", 0),
+    # TF-1145 (16/09) — sommaire_perdu juge desormais la navigation LA PLUS PERMANENTE, pas le
+    # premier nav du document. Les deux fixtures sont la MEME page a une declaration pres : la
+    # barre est `position: sticky` dans la verte, elle ne l est pas dans la rouge. Le sommaire en
+    # cartes est place AVANT la barre : c est ce qui reproduisait le defaut, l ancien selecteur
+    # retenant le premier nav rencontre. Mesure avant / apres sur la verte : 1 bloquant, puis 0.
+    "sommaire-permanent-et-cartes.html": ("sommaire_perdu", 0),
+    "sommaire-perdu-aucune-permanente.html": ("sommaire_perdu", 1),
     "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
     "v4-chevauchement-reel.html": ("v4_overlap", 1),   # deux frères qui se recouvrent vraiment
     # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.

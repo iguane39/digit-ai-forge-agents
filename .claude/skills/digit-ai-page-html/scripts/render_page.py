@@ -1146,23 +1146,35 @@ MEASURE_JS = r"""
   // de deux ecrans de haut.
   {
     const chapitres = [...document.querySelectorAll('h2')].filter(visible);
-    const nav = document.querySelector('nav.toc, nav[aria-label^="Sommaire"], nav[aria-label^="sommaire"]');
+    // TF-1145 (16/09) — TOUS les navs candidats, pas le premier. Cette famille lisait le MEME
+    // premier nav que L6 de check_html, avec le MEME selecteur, et lui demandait l'inverse :
+    // L6 veut des annonces de douze caracteres, cette famille veut qu'il tienne dans la fenetre.
+    // Sur un document long les deux ne tiennent pas ensemble — un sommaire EN CARTES, ou
+    // l'annonce se lit, ne peut pas etre collant. La page livree portait TROIS navigations, dont
+    // une barre sticky mesuree encore en fenetre apres 20 000 px de defilement, et cette famille
+    // rendait BLOQUANT aux six largeurs en designant les cartes. Elle juge desormais LE PLUS
+    // PERMANENT : si UNE navigation reste atteignable, le lecteur n'a rien perdu.
+    const navs = [...document.querySelectorAll(
+      'nav.toc, nav[aria-label^="Sommaire"], nav[aria-label^="sommaire"]')];
     const hauteur = document.documentElement.scrollHeight;
-    if (chapitres.length > __SOMMAIRE_MIN_CHAP__ && nav
+    if (chapitres.length > __SOMMAIRE_MIN_CHAP__ && navs.length
         && hauteur > window.innerHeight * __SOMMAIRE_MIN_ECRANS__) {
       const y0 = window.scrollY;
       window.scrollTo(0, Math.round(hauteur * 0.6));
-      const r = nav.getBoundingClientRect();
-      const visible_apres = r.bottom > 0 && r.top < window.innerHeight
-                            && r.width > 1 && r.height > 1;
+      const restants = navs.filter((nav) => {
+        const r = nav.getBoundingClientRect();
+        return r.bottom > 0 && r.top < window.innerHeight && r.width > 1 && r.height > 1;
+      });
       window.scrollTo(0, y0);
-      if (!visible_apres) {
-        issues.sommaire_perdu.push({ what: label(nav), detail:
-          `sommaire hors de la fenetre apres defilement : ${chapitres.length} chapitres sur ` +
-          `${Math.round(hauteur)}px (${(hauteur / window.innerHeight).toFixed(1)} ecrans), et le ` +
-          `sommaire n'est plus atteignable aux 60 % de la page. Au-dela de trois chapitres ou ` +
-          `deux ecrans, il est VISIBLE EN PERMANENCE : lateral colle sur bureau ` +
-          `(position: sticky; top: var(--hh)), bande repliable sur mobile` });
+      if (!restants.length) {
+        issues.sommaire_perdu.push({ what: navs.map(label).join(' + '), detail:
+          `AUCUNE des ${navs.length} navigation(s) de la page n'est dans la fenetre apres ` +
+          `defilement : ${chapitres.length} chapitres sur ${Math.round(hauteur)}px ` +
+          `(${(hauteur / window.innerHeight).toFixed(1)} ecrans), et rien n'est atteignable aux ` +
+          `60 % de la page. Au-dela de trois chapitres ou deux ecrans, UNE navigation au moins ` +
+          `est VISIBLE EN PERMANENCE : laterale collee sur bureau ` +
+          `(position: sticky; top: var(--hh)), bande repliable sur mobile. Il suffit qu'UNE ` +
+          `tienne — une barre en titres seuls et un sommaire annote ne s'excluent pas (TF-1145)` });
       }
     }
   }
