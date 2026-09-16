@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L1 — selecteur d attribut retenu</title>
+<!--
+  Fixture de TF-1144 — CONTRE-EPREUVE : evaluer les selecteurs d attribut n a pas eteint L1.
+
+  La feuille met en bloc les seuls elements portant `data-jeton`. Le porteur de la ponctuation
+  orpheline EN PORTE UN : L1 doit mordre. Sa jumelle verte est le meme document, au meme
+  selecteur, avec un porteur qui ne porte pas l attribut.
+-->
+<style>
+:root{--ink:#0F172A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+span[data-jeton]{display:block}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L1 — le selecteur d attribut retient son porteur</h1>
+<p>Le blocage principal est <span data-jeton="n42">le noeud 42</span>. La fusion a operer suit.</p>
+</main></body></html>

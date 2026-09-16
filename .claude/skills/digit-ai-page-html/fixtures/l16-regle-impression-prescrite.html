@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L16 — la regle d impression prescrite, rejouee sous L1</title>
+<!--
+  Fixture de TF-1144 (lot Produit-64 20260916a, retour RD-4) — LE REMEDE QUE L16 PRESCRIT EST
+  JOUE A SON BANC, ET IL DOIT PASSER (TF-1013).
+
+  L16 refuse une page a onglets tant que la feuille ne porte pas la regle qu il nomme lui-meme :
+  [role="tabpanel"][hidden] { display: block } sous @media print. La regle a ete posee mot pour
+  mot sur un livrable, et le controle suivant a rendu SIX echecs bloquants L1 « ponctuation
+  orpheline » sur de la prose intacte. Cause : un compound portant des crochets etait declare
+  non evaluable, donc permissif, et ne trouvant ni balise ni classe ni identifiant a verifier il
+  retenait TOUT ELEMENT du document — chaque <a>, <strong> et <code> devenait un bloc.
+
+  Cette page porte donc les deux pieces ensemble : la regle d impression PRESCRITE, et de la
+  prose ou un lien, une emphase et un jeton de code sont suivis d une ponctuation. Attendu :
+  AUCUN code L. Le contournement subi — prefixer le selecteur d une classe — n est ecrit nulle
+  part, et n a pas a l etre : c est l oracle qui doit evaluer ce qu il sait lire.
+-->
+<style>
+/* garde TF-0733 : l'attribut hidden reste souverain face a tout display explicite */
+[hidden]{display:none !important}
+:root{--ink:#0F172A;--mark:#FEF08A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+/* LA REGLE PRESCRITE PAR LE MESSAGE DE L16, mot pour mot. */
+@media print{body{background:#fff} [role="tabpanel"][hidden]{display:block}}
+</style></head>
+<body><main class="wrap">
+<h1>La regle d impression prescrite par L16</h1>
+<p>Le detail de la mesure se lit dans <a href="#pan-b">le second panneau</a>. La phrase qui suit
+le lien reste une phrase, et sa ponctuation n est pas orpheline.</p>
+<p>Le seuil retenu est <strong>quarante-cinq secondes</strong>. Passe ce delai, la capture est
+declaree manquee et son motif est publie.</p>
+<p>La valeur se lit dans le champ <code>duree_ms</code>, en millisecondes.</p>
+<div class="tabs" data-tabs><div role="tablist" aria-label="Chapitres"><button type="button" role="tab" id="tab-a" aria-controls="pan-a" aria-selected="true">Synthese</button><button type="button" role="tab" id="tab-b" aria-controls="pan-b" aria-selected="false" tabindex="-1">Constats</button></div><section role="tabpanel" id="pan-a" aria-labelledby="tab-a"><p>Le verdict tient en une phrase.</p></section><section role="tabpanel" id="pan-b" aria-labelledby="tab-b" hidden><p>Trois constats.</p></section></div>
+</main></body></html>

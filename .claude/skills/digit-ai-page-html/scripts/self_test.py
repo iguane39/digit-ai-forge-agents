@@ -102,6 +102,16 @@ CAS = {
     # identifiant : url(#pointe) resolvait vers le premier, et sept schemas sur huit se peignaient
     # sans pointe des que leur vue etait affichee seule. Les quatre fixtures portent la MEME
     # construction ; seuls les identifiants et le lieu des definitions changent.
+    # TF-1144 (16/09/2026, lot Produit-64 20260916a) — LA REGLE QUE L16 PRESCRIT DANS SON MESSAGE
+    # DE REFUS FAISAIT ECHOUER L1 SUR SIX PASSAGES DE PROSE INTACTS. Le compound
+    # `[role="tabpanel"][hidden]` etait declare non evaluable, donc permissif, et ne trouvant ni
+    # balise ni classe ni identifiant a verifier il retenait TOUT ELEMENT du document. La premiere
+    # fixture joue le remede que le message prescrit, mot pour mot, et doit PASSER (TF-1013) ; les
+    # deux suivantes prouvent que les selecteurs d attribut sont desormais EVALUES, pas ignores —
+    # sans la rouge, corriger le faux positif aurait pu eteindre la regle en silence.
+    "l16-regle-impression-prescrite.html": set(),       # le remede prescrit par L16, joue sous L1
+    "l1-attribut-retenu-rouge.html": {"L1"},            # le porteur PORTE l attribut : L1 mord
+    "l1-attribut-ecarte-vert.html": set(),              # il ne le porte pas : plus de faux positif
     "l32-marqueur-svg-duplique.html": {"L32"},          # deux <marker id="pointe"> dans un document
     "l32-marqueurs-svg-uniques.html": set(),            # un identifiant par schema
     "l33-reference-hors-de-son-svg.html": {"L33"},      # le schema 2 emprunte la piece du schema 1

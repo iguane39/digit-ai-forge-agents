@@ -65,6 +65,24 @@ de champ ne sont pas du contenu) ; (b) tout nœud de texte commençant par `. , 
 l'élément qui le précède est **de niveau bloc** selon le CSS de la page. Un élément inline
 suivi d'une virgule est légitime, un élément en bloc ne l'est jamais.
 
+**Ce que « de niveau bloc selon le CSS de la page » veut dire, et ce qu'il ne veut pas
+(TF-1144, 16/09/2026).** L1 évalue les sélecteurs qu'il sait lire — balise, classe, identifiant
+et **sélecteurs d'attribut** (`[hidden]`, `[role="tabpanel"]`, `[data-x^="v"]`…) — chaîne
+d'ancêtres comprise. Ce qui reste hors de portée (pseudo-classe, `*`, forme d'attribut non
+reconnue) garde une voie permissive, mais **un compound sans le moindre point d'ancrage
+vérifiable ne retient plus aucun élément** — il en retenait *tous*.
+
+Le fait payé : L16 refuse une page à onglets tant que la feuille ne porte pas la règle qu'il
+nomme lui-même, `[role="tabpanel"][hidden] { display: block }` sous `@media print`. La règle a
+été posée **mot pour mot**, et le contrôle suivant a rendu **six échecs bloquants L1** sur de la
+prose intacte : le compound ne portait ni balise ni classe ni identifiant, la voie permissive
+renvoyait vrai pour tout élément, et chaque `<a>`, `<strong>` et `<code>` devenait un bloc. Le
+contournement subi — préfixer le sélecteur d'une classe — n'était écrit nulle part, et n'a pas
+à l'être : c'est l'oracle qui doit évaluer ce qu'il sait lire. **Mesure avant / après** sur
+`l16-regle-impression-prescrite.html` : **3 échecs bloquants L1 → 0**, et les six fixtures rouges
+de L1 mordent toujours. Contre-épreuve à double sens : `l1-attribut-retenu-rouge.html` (le
+porteur porte l'attribut, L1 mord) et `l1-attribut-ecarte-vert.html` (il ne le porte pas).
+
 **Revue de lecture.** Qu'un texte non tronqué soit pour autant compréhensible.
 
 ## L2 — Largeur de lecture pleine

@@ -1028,6 +1028,67 @@ def check_lisibilite(html: str, a: Arbre):
             parties.append(tampon.strip())
         return parties, comb
 
+    # TF-1144 (16/09/2026, lot Produit-64 20260916a, retour RD-4) — LA RÈGLE QUE L16 PRESCRIT
+    # DANS SON MESSAGE DE REFUS FAISAIT ÉCHOUER L1 SUR SIX PASSAGES DE PROSE INTACTS.
+    #
+    # LE FAIT. Une fenêtre modale à deux onglets déclare le motif ARIA attendu. L16 refuse la page
+    # tant que la feuille ne porte pas la règle qu'il nomme lui-même : `[role="tabpanel"][hidden]
+    # { display: block }` sous `@media print`. La règle a été posée MOT POUR MOT. Au contrôle
+    # suivant : SIX échecs bloquants L1 « ponctuation orpheline », tous sur de la prose intacte,
+    # chacun nommant ce même sélecteur « retenu SANS vérification de sa contrainte d'ancêtre ».
+    #
+    # LE MÉCANISME. Un compound portant `[ ] : ( ) *` était déclaré NON ÉVALUABLE, donc traité en
+    # PERMISSIF, et `_compound_matche` décidait seul. Sur `[role="tabpanel"][hidden]` cette
+    # fonction ne trouvait NI balise NI classe NI identifiant à vérifier et renvoyait VRAI POUR
+    # TOUT ÉLÉMENT du document : chaque <a>, <strong> et <code> devenait un bloc, et L1 accusait
+    # la prose qui les entourait. Le contournement subi a été de préfixer le sélecteur d'une
+    # classe — un geste écrit NULLE PART, trouvé en lisant la source de l'oracle, pas son message.
+    #
+    # LE REMÈDE, ET IL RENFORCE. Un sélecteur d'attribut n'est pas un état inconnu : l'arbre porte
+    # les attributs. On les ÉVALUE donc, au lieu de renoncer — la chaîne d'ancêtres redevient
+    # vérifiée sur ces sélecteurs-là, et le contrôle devient plus précis, pas plus indulgent. Ce
+    # qui reste hors de portée (pseudo-classes, `*`, forme d'attribut non reconnue) garde la voie
+    # permissive, mais celle-ci n'a plus le droit de retenir TOUT : un compound sans le moindre
+    # point d'ancrage vérifiable ne retient plus rien (G-2 : c'est le choix sûr, l'inverse de
+    # l'ancien).
+    RE_ATTR_SEL = re.compile(
+        r"\[\s*([\w:.-]+)\s*(?:([~|^$*]?=)\s*(\"[^\"]*\"|'[^']*'|[^\]\s]+)\s*)?"
+        r"(?:[iIsS]\s*)?\]")
+
+    def _contraintes_attr(compound):
+        """Les contraintes d'attribut d'un compound, ou None si l'une n'est pas lisible."""
+        if "[" not in compound and "]" not in compound:
+            return []
+        if RE_ATTR_SEL.sub("", compound).count("[") or RE_ATTR_SEL.sub("", compound).count("]"):
+            return None                      # forme non reconnue : on ne devine pas
+        out = []
+        for m in RE_ATTR_SEL.finditer(compound):
+            val = m.group(3) or ""
+            if val[:1] in ("\"", "'") and val[-1:] == val[:1]:
+                val = val[1:-1]
+            out.append((m.group(1).lower(), m.group(2), val))
+        return out
+
+    def _attr_matche(n, nom, op, val):
+        brut = n.attrs.get(nom)
+        if brut is None:
+            return False
+        if op is None:
+            return True                      # [hidden] : la présence suffit
+        if op == "=":
+            return brut == val
+        if op == "^=":
+            return bool(val) and brut.startswith(val)
+        if op == "$=":
+            return bool(val) and brut.endswith(val)
+        if op == "*=":
+            return bool(val) and val in brut
+        if op == "~=":
+            return bool(val) and val in brut.split()
+        if op == "|=":
+            return brut == val or brut.startswith(val + "-")
+        return False
+
     def _compound_matche(n, compound):
         mt = re.match(r"^([a-zA-Z][\w-]*)", compound)
         if mt and n.tag != mt.group(1).lower():
@@ -1038,12 +1099,25 @@ def check_lisibilite(html: str, a: Arbre):
         for idv in re.findall(r"#([A-Za-z_][\w-]*)", compound):
             if n.att("id") != idv:
                 return False
+        for nom, op, val in (_contraintes_attr(compound) or []):
+            if not _attr_matche(n, nom, op, val):
+                return False
         return True
 
-    # Un compound n'est évaluable que s'il ne porte QUE tag, classes et id. Une pseudo-classe ou un
-    # sélecteur d'attribut dépend d'un état que ce contrôle ne connaît pas.
+    # Un compound est évaluable s'il ne porte que tag, classes, id et sélecteurs d'attribut
+    # LISIBLES. Une pseudo-classe ou `*` dépend d'un état que ce contrôle ne connaît pas.
     def _evaluable(compound):
-        return not re.search(r"[\[\]:()*]", compound)
+        if re.search(r"[:()*]", compound):
+            return False
+        return _contraintes_attr(compound) is not None
+
+    def _ancre_quelque_chose(compound):
+        """Le compound porte-t-il de quoi retenir un élément PLUTÔT QUE TOUS ? (TF-1144)"""
+        if re.match(r"^[a-zA-Z][\w-]*", compound):
+            return True
+        if re.search(r"[.#][A-Za-z_][\w-]*", compound):
+            return True
+        return bool(_contraintes_attr(compound))
 
     regles = []          # (parties, combinateurs, sélecteur source, vérifiable)
     for sel, d in css:
@@ -1081,7 +1155,12 @@ def check_lisibilite(html: str, a: Arbre):
             if verifiable and _chaine_matche(n, parties, comb):
                 return source, True
         for parties, comb, source, verifiable in regles:
-            if not verifiable and _compound_matche(n, parties[-1]):
+            # TF-1144 — la voie permissive n'a plus le droit de retenir TOUT. Un compound sans le
+            # moindre point d'ancrage vérifiable (ni balise, ni classe, ni identifiant, ni
+            # contrainte d'attribut lisible) ne retient plus aucun élément : six échecs bloquants
+            # L1 sur de la prose intacte ont été payés pour l'inverse.
+            if not verifiable and _ancre_quelque_chose(parties[-1]) \
+                    and _compound_matche(n, parties[-1]):
                 return source, False
         return None, False
 

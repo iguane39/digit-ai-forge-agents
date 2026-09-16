@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L1 — selecteur d attribut ecarte</title>
+<!--
+  Fixture de TF-1144 — le sens VERT du meme selecteur. Le porteur de la ponctuation ne porte PAS
+  `data-jeton` : la regle ne le met pas en bloc, et sa phrase est intacte. Avant la correction,
+  ce compound etait declare non evaluable, donc permissif, et retenait TOUT ELEMENT du document
+  — cette page rendait un echec bloquant L1 sur une phrase parfaitement formee.
+-->
+<style>
+:root{--ink:#0F172A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+span[data-jeton]{display:block}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L1 — le selecteur d attribut ecarte ce qui ne le porte pas</h1>
+<p>Le blocage principal est <span class="valeur">le noeud 42</span>. La fusion a operer suit.</p>
+</main></body></html>
