@@ -3689,6 +3689,22 @@ def jeu_de_regles(source_py=None) -> dict:
 #
 # Le bloc est PERMANENT : il sort sur un PASS comme sur un FAIL, en texte comme en JSON, au même
 # format que celui de render_page.py (`  non jugé — …`, clé `non_juge`).
+#
+# TF-1141 (lot Produit-64 20260915b) — ET IL DIT LE RESTE DU PÉRIMÈTRE, pas seulement l'étape
+# manquante. Fait mesuré le 15/09 : un livrable de 11 pages passe check_html.py (PASS, 40 règles,
+# empreinte 695359b17ff5) et render_page.py (PASS, 6 largeurs). Le destinataire humain relève
+# ensuite HUIT défauts, tous hors du champ des deux contrôles — la largeur UTILE d'une colonne
+# par rapport à son contenu, la densité d'information d'un schéma et son étirement au-delà de sa
+# taille naturelle, le SENS d'un libellé de navigation pour un lecteur neuf, l'APPARTENANCE d'un
+# chapitre à son lecteur déclaré. Ce n'est pas une défaillance : c'est un périmètre. Le défaut
+# est qu'il n'était publié nulle part.
+#
+# ASYMÉTRIE AGGRAVANTE, ET C'EST ELLE QUI A TROMPÉ. render_page.py publie son bloc non_juge à
+# chaque exécution, et il est précis — il a déclaré lui-même, le même jour, que les familles
+# d'image n'étaient pas jugées faute de capture. check_html.py rendait « Verdict : PASS » et un
+# nombre de règles, SANS UNE LIGNE sur ce qu'il ne regarde pas. Quand l'un des deux oracles
+# publie honnêtement ses limites, le silence de l'autre se lit comme une ABSENCE DE LIMITE, pas
+# comme une absence de publication. Un verdict sans périmètre de non-mesure n'est pas complet.
 GABARIT_REVUE = "references/gabarit-revue-de-lecture.md"
 
 
@@ -3703,6 +3719,21 @@ def non_juge() -> list:
         "SEPT défauts relevés à l'ouverture, dont cinq visibles en une minute sur des captures. "
         f"Produire la matière (`render_page.py <page> --sections \"…\"`) et consigner chaque "
         f"constat dans REVUE.md, au gabarit : {ou}",
+        "LA LARGEUR UTILE d'une colonne par rapport à son CONTENU n'est pas jugée. Ce script lit "
+        "les largeurs DÉCLARÉES dans la feuille, jamais le rapport entre la place prise et la "
+        "place offerte : une prose à 840 px dans une colonne de 1 144 passe ici (mesure du "
+        "15/09/2026). `render_page.py` en mesure une part (L2, V18) ; le reste se voit sur "
+        "capture, et nulle part ailleurs",
+        "LA DENSITÉ ET LA PROPORTION D'UNE FIGURE ne sont pas jugées : un schéma trop dense pour "
+        "être lu, ou étiré au-delà de sa taille naturelle, reste du balisage valide",
+        "LE SENS D'UN LIBELLÉ pour un lecteur neuf n'est pas jugé. L6 et L30 exigent qu'une "
+        "annonce EXISTE et fasse une longueur minimale — jamais qu'elle veuille dire quelque "
+        "chose. Un intitulé de navigation juste et incompréhensible passe",
+        "L'ADÉQUATION DU CONTENU À SON LECTEUR DÉCLARÉ n'est pas jugée : qu'un chapitre "
+        "appartienne au public que la page annonce est un jugement, pas une mesure",
+        "LE RENDU N'EST PAS JUGÉ ICI. Débordements, contrastes, chevauchements, croisements et "
+        "images relèvent de `render_page.py`, qui publie son propre périmètre de non-mesure. Un "
+        "PASS de ce seul script ne dit rien de ce que le lecteur voit",
     ]
 
 

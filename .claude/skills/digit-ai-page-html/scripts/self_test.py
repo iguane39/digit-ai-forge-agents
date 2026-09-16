@@ -1204,6 +1204,17 @@ def run_perimetre_non_mesure():
             chemin = note.split(': ')[-1].strip()
     cas('perimetre · le gabarit cité par le message EXISTE sur le disque',
         True, bool(chemin) and Path(chemin).is_file(), 'TF-1148 remède joué')
+
+    # TF-1141 — les QUATRE familles que le destinataire a relevées sur onze pages doublement
+    # vertes sont NOMMÉES, chacune. Une liste qui en perdrait une redeviendrait un silence sur
+    # ce point-là, et c'est exactement ce silence qui a coûté huit défauts le 15/09.
+    bloc = ' '.join(j.get('non_juge') or [])
+    for famille, mot in (('largeur utile des colonnes', 'LARGEUR UTILE'),
+                         ('densité et proportion des figures', 'DENSITÉ ET LA PROPORTION'),
+                         ('sens des libellés', "SENS D'UN LIBELLÉ"),
+                         ('adéquation contenu / lecteur', 'ADÉQUATION DU CONTENU'),
+                         ('renvoi au rendu (render_page.py)', "LE RENDU N'EST PAS JUGÉ")):
+        cas(f'perimetre · famille NOMMÉE : {famille}', True, mot in bloc, 'TF-1141 périmètre publié')
     return out
 
 

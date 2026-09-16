@@ -497,6 +497,14 @@ et donne le chemin du gabarit. Mesure du défaut fermé : un indice livré le 15
 verdicts verts, **sept défauts** relevés à l'ouverture par son destinataire, dont **cinq**
 visibles en une minute sur des captures.
 
+Le même bloc nomme ensuite **ce que `check_html.py` ne regarde pas** (TF-1141) : la largeur
+*utile* d'une colonne par rapport à son contenu, la densité et la proportion d'une figure, le
+sens d'un libellé pour un lecteur neuf, l'appartenance d'un chapitre à son lecteur déclaré, et
+le rendu — qui appartient à `render_page.py`. Onze pages **doublement vertes** ont été remises à
+un humain qui y a relevé **huit défauts**, tous hors du champ des deux contrôles ; la session qui
+les produisait n'avait aucun moyen de savoir ce qui n'était pas mesuré. Quand l'un des deux
+oracles publie ses limites et l'autre se tait, le silence se lit comme une absence de limite.
+
 ## Référentiel détaillé
 
 - Charte & tokens : [references/charte-et-tokens.md](references/charte-et-tokens.md)
