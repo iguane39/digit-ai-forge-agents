@@ -488,6 +488,15 @@ tous les oracles a été refusée par son client à l'ouverture : les oracles me
 propriétés locales, la revue regarde la page comme un lecteur. Règles, conventions de
 marquage et partage mécanique / revue : [references/lisibilite.md](references/lisibilite.md).
 
+**Le socle le dit lui-même désormais (TF-1148, 16/09/2026).** Cette étape était déclarée
+obligatoire ici et vérifiée par le seul `run-oracles` : pour un produit qui consomme le socle
+par ses trois scripts, elle n'existait pas. `check_html.py` publie donc à chaque exécution, PASS
+ou FAIL, un bloc **« Périmètre de NON-MESURE »** (clé `non_juge` en JSON, au format de celui de
+`render_page.py`) dont la première ligne nomme la revue de lecture, dit qu'elle n'a pas été jouée
+et donne le chemin du gabarit. Mesure du défaut fermé : un indice livré le 15/09 avec trois
+verdicts verts, **sept défauts** relevés à l'ouverture par son destinataire, dont **cinq**
+visibles en une minute sur des captures.
+
 ## Référentiel détaillé
 
 - Charte & tokens : [references/charte-et-tokens.md](references/charte-et-tokens.md)

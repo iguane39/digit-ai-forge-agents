@@ -48,6 +48,7 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from html.parser import HTMLParser
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Le JARGON À GLOSER (TF-0932) — une DONNÉE, pas du code (loi transverse n° 4).
@@ -3666,6 +3667,45 @@ def jeu_de_regles(source_py=None) -> dict:
     return {"regles": codes, "nombre": len(codes), "empreinte": empreinte}
 
 
+# ---------------------------------------------------------------------------
+# PÉRIMÈTRE DE NON-MESURE — ce que ce contrôle NE regarde pas, dit à chaque exécution.
+# ---------------------------------------------------------------------------
+# TF-1148 (lot Produit-64 20260916a, retour RD-8) — UNE ÉTAPE OBLIGATOIRE QUI N'EXISTE PAS POUR
+# QUI CONSOMME LE SOCLE DIRECTEMENT. `SKILL.md` écrit « la revue de lecture — OBLIGATOIRE avant
+# toute livraison (TF-0422) », et le gabarit ajoute « aucune livraison sans REVUE.md, et
+# run-oracles / l'orchestrateur le vérifient ». Un produit qui n'exécute pas run-oracles consomme
+# le socle par ses trois scripts : AUCUN des trois ne demandait REVUE.md, et aucun ne le
+# mentionnait dans sa sortie.
+#
+# CONSÉQUENCE MESURÉE : un indice livré le 15/09 avec trois verdicts verts — check_html.py PASS
+# sur 40 règles, render_page.py PASS sur 6 largeurs, check_markdown.py --style PASS. Le
+# destinataire humain a ouvert le fichier et relevé SEPT défauts, dont CINQ qu'une lecture de
+# captures montre en une minute. La revue faite le 16/09 les a tous retrouvés, plus trois autres.
+# Trois PASS se lisaient comme un travail fini.
+#
+# Le remède n'est pas d'exiger REVUE.md ici — ce script juge un fichier, il ne connaît pas le run
+# qui l'entoure, et un contrôle qui accuserait un livrable de ne pas être accompagné se ferait
+# éteindre. Il est de DIRE que l'étape existe et qu'elle n'a pas été jouée ici.
+#
+# Le bloc est PERMANENT : il sort sur un PASS comme sur un FAIL, en texte comme en JSON, au même
+# format que celui de render_page.py (`  non jugé — …`, clé `non_juge`).
+GABARIT_REVUE = "references/gabarit-revue-de-lecture.md"
+
+
+def non_juge() -> list:
+    """Ce que check_html.py ne mesure pas — publié à chaque exécution, PASS ou FAIL."""
+    gabarit = Path(__file__).resolve().parent.parent / "references" / "gabarit-revue-de-lecture.md"
+    ou = str(gabarit) if gabarit.is_file() else f"{GABARIT_REVUE} (INTROUVABLE depuis ce script)"
+    return [
+        "LA REVUE DE LECTURE N'A PAS ÉTÉ JOUÉE ICI. Elle est OBLIGATOIRE avant toute livraison "
+        "(TF-0422) et ce script ne la remplace pas : il lit un fichier, elle regarde des "
+        "captures comme le fait le destinataire. Sur le cas fondateur, trois oracles verts et "
+        "SEPT défauts relevés à l'ouverture, dont cinq visibles en une minute sur des captures. "
+        f"Produire la matière (`render_page.py <page> --sections \"…\"`) et consigner chaque "
+        f"constat dans REVUE.md, au gabarit : {ou}",
+    ]
+
+
 def main():
     ap = argparse.ArgumentParser(description="Conformité HTML au socle Digit-AI.")
     ap.add_argument("path", nargs="?", help="Chemin du fichier HTML (sinon échantillon).")
@@ -3698,7 +3738,8 @@ def main():
     if args.output == "json":
         print(json.dumps(
             {"source": source, "regles": args.regles, "verdict": verdict,
-             "version_regles": jeu_de_regles(), "fails": fails, "warns": warns},
+             "version_regles": jeu_de_regles(), "fails": fails, "warns": warns,
+             "non_juge": non_juge()},
             ensure_ascii=False, indent=2))
     else:
         print(f"Source  : {source}")
@@ -3717,6 +3758,11 @@ def main():
                 print(f"  ! {x}")
         if not fails and not warns:
             print("\nAucun problème détecté.")
+        # Le périmètre de non-mesure sort TOUJOURS, et il sort en dernier : c'est là que le
+        # lecteur s'arrête. Un « aucun problème détecté » sans lui se lit comme un travail fini.
+        print("\nPérimètre de NON-MESURE (ce verdict ne dit rien de ceci) :")
+        for note in non_juge():
+            print(f"  non jugé — {note}")
 
     sys.exit(0 if not fails else 1)
 

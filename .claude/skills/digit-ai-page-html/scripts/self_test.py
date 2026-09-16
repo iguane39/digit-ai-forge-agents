@@ -1147,6 +1147,66 @@ def run_glyphes_du_socle():
              'detail': detail}]
 
 
+def run_perimetre_non_mesure():
+    """TF-1148 — LE PÉRIMÈTRE DE NON-MESURE DE check_html.py, joué dans les deux sens.
+
+    Le fait payé : `SKILL.md` déclare la revue de lecture OBLIGATOIRE avant toute livraison, et
+    aucun des trois scripts du socle ne la demandait ni ne la mentionnait. Un indice livré le
+    15/09 avec trois verdicts verts s'est vu opposer SEPT défauts par son destinataire, dont
+    cinq visibles en une minute sur des captures.
+
+    Un bloc qui ne sortirait que sur un PASS serait pire qu'absent : il apprendrait à se lire
+    comme une décoration du vert. Les deux sens sont donc : il sort sur un verdict PASS, ET il
+    sort sur un verdict FAIL. Le troisième cas ferme la seule autre façon de mentir — un
+    gabarit nommé dans le message et introuvable sur le disque n'envoie le lecteur nulle part.
+    """
+    outil = Path(__file__).resolve().parent / 'check_html.py'
+    fx = Path(__file__).resolve().parent.parent / 'fixtures'
+    out = []
+
+    def cas(nom, attendu, obtenu, regle):
+        out.append({'fixture': nom, 'verdict': 'OK' if attendu == obtenu else 'ECHEC',
+                    'attendu': str(attendu), 'obtenu': str(obtenu), 'regle': regle, 'detail': ''})
+
+    def jouer(cible, sortie):
+        r = subprocess.run([sys.executable, '-X', 'utf8', str(outil), str(cible),
+                            '--output', sortie],
+                           capture_output=True, text=True, encoding='utf-8', timeout=120)
+        return r.stdout or ''
+
+    # Sens VERT et sens ROUGE du VERDICT — le bloc est permanent, il ne suit pas le verdict.
+    for nom, etiquette in (('lisibilite-verte.html', 'verdict le plus favorable'),
+                           ('l1-ponctuation-orpheline.html', 'verdict en échec')):
+        cible = fx / nom
+        if not cible.exists():
+            cas(f'perimetre · {nom}', 'fixture présente', 'absente', 'TF-1148')
+            continue
+        texte = jouer(cible, 'text')
+        cas(f'perimetre · {etiquette} · le bloc sort quand même',
+            True, 'non jugé — ' in texte, 'TF-1148 bloc permanent')
+        cas(f'perimetre · {etiquette} · la revue de lecture est NOMMÉE',
+            True, 'REVUE DE LECTURE' in texte and 'REVUE.md' in texte, 'TF-1148 étape nommée')
+
+    # Le contrat machine : même clé et même forme que render_page.py, sinon un consommateur
+    # devrait connaître deux formats pour lire le même périmètre.
+    brut = jouer(fx / 'lisibilite-verte.html', 'json')
+    try:
+        j = json.loads(brut)
+    except Exception:
+        j = {}
+    cas('perimetre · clé `non_juge` au JSON, liste non vide (format render_page.py)',
+        True, isinstance(j.get('non_juge'), list) and len(j['non_juge']) > 0, 'TF-1148 contrat JSON')
+
+    # TF-1013 — le remède que le message propose est JOUÉ : le gabarit cité existe.
+    chemin = ''
+    for note in (j.get('non_juge') or []):
+        if 'gabarit' in note:
+            chemin = note.split(': ')[-1].strip()
+    cas('perimetre · le gabarit cité par le message EXISTE sur le disque',
+        True, bool(chemin) and Path(chemin).is_file(), 'TF-1148 remède joué')
+    return out
+
+
 def run_markdown():
     """TF-0518 (22/08/2026) — LA PORTE DU MARKDOWN, ouverte et jouée dans les deux sens.
 
@@ -2642,7 +2702,7 @@ def main():
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
            + run_glyphes_du_socle() + run_markdown() + run_syne() + run_assets_inlinables() + run_kpi_perimetre()
-           + run_capture_tuiles())
+           + run_capture_tuiles() + run_perimetre_non_mesure())
     rendu = run_rendu()
     if rendu:
         res += rendu
