@@ -788,6 +788,151 @@ def _contenu_cite(porteur) -> bool:
     return any("data-cite" in n.attrs for n in [porteur, *porteur.ancetres()])
 
 
+# --- L32 / L33 · identifiants SVG (TF-1147, lot Produit-64 20260916a, retour RD-7) -----------
+#
+# Éléments SVG dont l'unique raison d'être est d'être RÉFÉRENCÉS par un `url(#…)`. Deux d'entre
+# eux portant le MÊME identifiant dans un même document, le second n'est jamais servi.
+SVG_DEFS_REFERENCABLES = {"marker", "lineargradient", "radialgradient", "clippath",
+                          "filter", "pattern", "mask", "symbol"}
+RE_SVG_JALON = re.compile(r"<(/?)svg\b[^>]*?(/?)>", re.I)
+RE_BALISE_AVEC_ATTRS = re.compile(r"<(\w+)\b([^>]*)>", re.S)
+RE_ID_VAL = re.compile(r"\bid\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))", re.I)
+RE_URL_FRAGMENT = re.compile(r"url\(\s*(?:\"|')?#([^)\"'\s]+)(?:\"|')?\s*\)")
+RE_DEFS_PARTAGEES = re.compile(r"\bdata-defs-partagees\b", re.I)
+
+
+def _svg_spans(html: str):
+    """Les portions `<svg>…</svg>` de PREMIER niveau, en couples (début, fin) dans `html`.
+
+    Segmentation TEXTUELLE, et non par l'arbre : un `<circle>` laissé non refermé fait dériver
+    le parseur permissif, et une règle de marquage qui se tromperait de `<svg>` porteur serait
+    pire que pas de règle du tout. Un `<svg>` jamais refermé porte jusqu'à la fin du document.
+    """
+    spans, profondeur, debut = [], 0, None
+    for m in RE_SVG_JALON.finditer(html):
+        if m.group(1):                       # </svg>
+            profondeur = max(0, profondeur - 1)
+            if profondeur == 0 and debut is not None:
+                spans.append((debut, m.end()))
+                debut = None
+        elif not m.group(2):                 # <svg …>, et non <svg …/>
+            if profondeur == 0:
+                debut = m.start()
+            profondeur += 1
+    if debut is not None:
+        spans.append((debut, len(html)))
+    return spans
+
+
+def check_svg_identifiants(html: str):
+    """L32 / L33 — la référence SVG juste DANS LE FICHIER et morte DANS L'INSTANCE SERVIE.
+
+    LE FAIT PAYÉ, ET IL EST MESURÉ. Un générateur a produit huit schémas SVG dans un même
+    document ; chacun définissait sa pointe de flèche sous le MÊME identifiant —
+    `<defs><marker id="pointe">` et `<line marker-end="url(#pointe)">`. Dans un document
+    unique, `url(#pointe)` résout vers le PREMIER élément portant cet identifiant, celui du
+    schéma de la vue d'entrée. Les onze vues du guide étant peintes une à la fois
+    (`display: none` sur les dix autres), dès qu'une autre vue s'affiche le marqueur référencé
+    vit dans un sous-arbre masqué : les flèches deviennent des traits nus. Mesure sur les
+    captures : pointes présentes sur le schéma de la vue peinte au chargement, ABSENTES sur les
+    sept autres — sur un fichier que check_html.py et render_page.py déclaraient PASS.
+
+    POURQUOI AUCUN CONTRÔLE NE POUVAIT LE VOIR. Le balisage est syntaxiquement correct et
+    l'identifiant existe : toute lecture du fichier innocente. Rien ne déborde, rien ne se
+    recouvre, rien ne manque de contraste : toute sonde de rendu innocente aussi. Le défaut
+    n'apparaît qu'en REGARDANT la capture de la vue concernée.
+
+    DEUX RÈGLES DE MARQUAGE PUR, à zéro faux positif par construction :
+      · L32 — dans un document portant plusieurs `<svg>`, un identifiant porté par un élément
+        RÉFÉRENÇABLE (marker, gradient, clipPath, filter, pattern, mask, symbol) est unique ;
+      · L33 — un `url(#id)` écrit dans un `<svg>` résout vers un élément du MÊME `<svg>`.
+    Le magasin de définitions partagé se DÉCLARE : un `<svg data-defs-partagees>` est un dépôt
+    de pièces, et L33 admet qu'on y renvoie. Une exemption se déclare, elle ne se devine pas.
+
+    BRUIT MESURÉ AVANT DE POSER LES RÈGLES, sur les dépôts qui CONSOMMENT le socle : 467 pages
+    HTML de onze dépôts du parc (dont les 208 du skill lui-même) — ZÉRO fichier touché. Les
+    règles ne rougissent aucun livrable existant ; elles ferment une porte pour ceux à venir.
+    """
+    fails, warns = [], []
+    html = _sans_commentaires(html)
+    spans = _svg_spans(html)
+    if not spans:
+        return fails, warns
+
+    partagees = set()
+    for i, (d, _f) in enumerate(spans):
+        fin_ouvrant = html.find(">", d)
+        if fin_ouvrant != -1 and RE_DEFS_PARTAGEES.search(html[d:fin_ouvrant + 1]):
+            partagees.add(i)
+
+    def _svg_de(pos):
+        for i, (d, f) in enumerate(spans):
+            if d <= pos < f:
+                return i
+        return None
+
+    ids_par_svg = [set() for _ in spans]
+    defs_par_id: dict = {}
+    for mb in RE_BALISE_AVEC_ATTRS.finditer(html):
+        mi = RE_ID_VAL.search(mb.group(2))
+        if not mi:
+            continue
+        ident = next(g for g in mi.groups() if g is not None).strip()
+        if not ident:
+            continue
+        i = _svg_de(mb.start())
+        if i is None:
+            continue
+        ids_par_svg[i].add(ident)
+        balise = mb.group(1).lower()
+        if balise in SVG_DEFS_REFERENCABLES:
+            defs_par_id.setdefault(ident, []).append((i, balise))
+
+    if len(spans) >= 2:
+        for ident, porteurs in sorted(defs_par_id.items()):
+            svgs = sorted({i for i, _ in porteurs})
+            if len(svgs) < 2:
+                continue
+            balises = ", ".join(sorted({t for _, t in porteurs}))
+            fails.append(
+                f"L32 identifiant SVG référençable dupliqué : « #{ident} » est défini par "
+                f"{len(porteurs)} élément(s) <{balises}> répartis dans {len(svgs)} des "
+                f"{len(spans)} <svg> de la page. Un `url(#…)` y résout vers le PREMIER : un seul "
+                "schéma est servi complet, les autres perdent la pièce dès que le premier est "
+                "masqué (une vue à la fois). Invisible à la lecture du fichier — le balisage est "
+                "correct — et invisible aux sondes de rendu : rien ne déborde, rien ne manque de "
+                f"contraste. Préfixer l'identifiant par celui de son schéma (`{ident}-<schéma>`) "
+                "et reporter le préfixe dans ses `url(#…)` (lisibilite.md L32).")
+
+    for i, (d, f) in enumerate(spans):
+        deja = set()
+        for mu in RE_URL_FRAGMENT.finditer(html[d:f]):
+            ident = mu.group(1)
+            if ident in deja or ident in ids_par_svg[i]:
+                continue
+            deja.add(ident)
+            ailleurs = sorted(j for j, s in enumerate(ids_par_svg) if ident in s)
+            if ailleurs and all(j in partagees for j in ailleurs):
+                continue                     # magasin de définitions DÉCLARÉ
+            if ailleurs:
+                fails.append(
+                    f"L33 `url(#{ident})` écrit dans le <svg> n° {i + 1} résout vers un élément "
+                    f"défini dans le <svg> n° {ailleurs[0] + 1} : la pièce vit HORS du schéma qui "
+                    "l'emploie. Dès que ce schéma-là est masqué — une vue à la fois, "
+                    "`display: none` sur les autres — la référence n'est plus servie et le trait "
+                    "perd sa pointe. Définir la pièce dans le <svg> qui s'en sert, ou déclarer le "
+                    "dépôt partagé (`data-defs-partagees` sur le <svg> qui porte les définitions) "
+                    "(lisibilite.md L33).")
+            else:
+                fails.append(
+                    f"L33 `url(#{ident})` écrit dans le <svg> n° {i + 1} ne résout vers AUCUN "
+                    "identifiant de ce document : la référence est morte et l'attribut qui la "
+                    "porte est sans effet — le trait se peint nu, sans que rien ne le signale "
+                    "(lisibilite.md L33).")
+
+    return fails, warns
+
+
 def check_lisibilite(html: str, a: Arbre):
     fails, warns = [], []
     ids = index_ids(a)
@@ -3480,6 +3625,13 @@ def check(html: str, regles: str = "tout", source=None):
                     "exemption L déclarée SANS EFFET sur ce fichier — plus aucun contrôle "
                     "écarté : retirer sa ligne de EXEMPTIONS_DECLAREES (check_html.py).")
             f = gardes
+        fails += f
+        warns += w
+        # L32 / L33 (TF-1147) : les identifiants SVG se jugent sur le TEXTE du document, pas sur
+        # l'arbre — un `<circle>` non refermé fait dériver le parseur permissif, et se tromper de
+        # `<svg>` porteur serait pire que se taire. Hors du champ des exemptions L : une pointe de
+        # flèche absente n'est pas une question de gabarit.
+        f, w = check_svg_identifiants(html)
         fails += f
         warns += w
     return fails, warns

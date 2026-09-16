@@ -97,6 +97,15 @@ CAS = {
     # portent la MEME donnee ; seule la table de la verte porte `data-arbre`.
     "l31-hierarchie-non-pliable.html": {"L31"},
     "l31-hierarchie-pliable.html": set(),
+    # TF-1147 (16/09/2026, lot Produit-64 20260916a) — LA REFERENCE JUSTE DANS LE FICHIER ET MORTE
+    # DANS L INSTANCE SERVIE. Huit schemas definissaient leur pointe de fleche sous le MEME
+    # identifiant : url(#pointe) resolvait vers le premier, et sept schemas sur huit se peignaient
+    # sans pointe des que leur vue etait affichee seule. Les quatre fixtures portent la MEME
+    # construction ; seuls les identifiants et le lieu des definitions changent.
+    "l32-marqueur-svg-duplique.html": {"L32"},          # deux <marker id="pointe"> dans un document
+    "l32-marqueurs-svg-uniques.html": set(),            # un identifiant par schema
+    "l33-reference-hors-de-son-svg.html": {"L33"},      # le schema 2 emprunte la piece du schema 1
+    "l33-defs-partagees-declarees.html": set(),         # depot mutualise, et il se DECLARE
     # TF-0492 (22/08) — `overflow-wrap: anywhere` est necessaire sur un chemin, ravageur sur de
     # la prose. La verte le reserve a `code`, `pre` et aux classes qui disent leur usage technique.
     "l19-coupure-en-prose.html": {"L19"},

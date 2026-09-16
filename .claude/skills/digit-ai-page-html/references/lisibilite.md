@@ -1261,6 +1261,39 @@ chaque changement de filtre.
 **Bruit mesuré avant de poser la règle**, sur les dépôts qui consomment le socle : 362 pages
 HTML suivies de huit dépôts du parc — **zéro tableau touché**.
 
+## L32 / L33 — Un identifiant SVG référençable est unique, et se résout chez lui (TF-1147, 16/09/2026)
+
+**Le fait payé.** Un générateur a produit huit schémas SVG dans un même document. Chacun
+définissait sa pointe de flèche sous le même identifiant — `<defs><marker id="pointe">` et
+`<line marker-end="url(#pointe)">`. Dans un document unique, `url(#pointe)` résout vers le
+**premier** élément portant cet identifiant. Les onze vues du guide étant peintes une à la fois
+(`display: none` sur les dix autres), dès qu'une autre vue s'affiche le marqueur référencé vit
+dans un sous-arbre masqué et les flèches deviennent des traits nus. Mesure sur les captures :
+pointes présentes sur le schéma de la vue peinte au chargement, **absentes sur les sept autres**,
+sur un fichier que `check_html.py` et `render_page.py` déclaraient PASS.
+
+**Pourquoi rien ne pouvait le voir.** Le balisage est syntaxiquement correct et l'identifiant
+existe : toute lecture du fichier innocente. Rien ne déborde, rien ne se recouvre, rien ne manque
+de contraste : toute sonde de rendu innocente aussi. Le défaut n'apparaît qu'en **regardant** la
+capture de la vue concernée — c'est-à-dire pendant la revue de lecture, et seulement là.
+
+**Les deux règles**, de marquage pur, sans jugement à rendre :
+
+- **L32** — dans un document portant plusieurs `<svg>`, un identifiant porté par un élément
+  référençable (`marker`, `linearGradient`, `radialGradient`, `clipPath`, `filter`, `pattern`,
+  `mask`, `symbol`) est **unique**. Le geste : préfixer par le schéma — `pointe-vue1`.
+- **L33** — un `url(#id)` écrit dans un `<svg>` résout vers un élément du **même** `<svg>`. Un
+  identifiant qui ne résout nulle part est signalé au même titre : la référence est morte.
+
+**Le dépôt mutualisé se déclare** : `data-defs-partagees` sur le `<svg>` qui porte les
+définitions, et L33 admet qu'on y renvoie. Une exemption se déclare, elle ne se devine pas.
+
+**Bruit mesuré avant de poser les règles**, sur les dépôts qui consomment le socle : 467 pages
+HTML de onze dépôts du parc, dont les 208 du skill — **zéro fichier touché**.
+
+Fixtures : `l32-marqueur-svg-duplique.html` (rouge), `l32-marqueurs-svg-uniques.html` (verte),
+`l33-reference-hors-de-son-svg.html` (rouge), `l33-defs-partagees-declarees.html` (verte).
+
 ## Lancer le contrôle
 
 ```bash
