@@ -55,6 +55,26 @@ accuserait tout aplat décoratif se ferait éteindre. V9 ne juge donc que l'**in
 pixel n'atteint 1,2 de contraste. À ce niveau il n'y a plus de jugement à rendre — l'actif n'est pas
 là. Ce qui vit **entre 1,2 et 3,0 est déclaré non jugé**, jamais tu.
 
+*V9 ne bloque plus sous `--scale 1` (TF-1143, 16/09/2026).* Même fichier, même largeur de
+fenêtre : `--scale 1` rendait PASS et `--scale 0.5` rendait FAIL, avec un bloquant V9 à 1,10:1 sur
+un SVG mesuré à 18,1:1 à l'échelle native (chiffres du lot). L'option est pourtant documentée
+comme un réglage de **performance** — « 0.4 sur une page très haute, moins de pixels à encoder » —
+et c'est pour cela qu'elle avait été employée. **Contre-mesure du socle**, page inchangée à
+1280 px, capture de l'actif et meilleur contraste : **17,85:1** à l'échelle 1, **10,85:1** à 0,5,
+**6,39:1** à 0,4, **3,66:1** à 0,25. Le contraste mesuré perd un facteur cinq sans qu'un pixel de
+la page ait bougé : sous l'échelle 1, ce que V9 lit est la rastérisation, pas le livrable.
+
+**Règle.** À l'échelle 1 et au-dessus — dont l'échelle 2 par défaut — V9 est inchangée, seuil
+compris. **Sous** l'échelle 1, elle ne rend plus de bloquant : le constat part au **non jugé**
+avec sa raison, et la sortie dit que la capture a été réduite. Ne pas lire un PASS obtenu à
+`--scale 0.4` comme un contraste d'actif vérifié — rejouer à `--scale 1`. Le coût de l'ancien
+comportement était direct : le premier réflexe devant un bloquant V9 est de foncer la charte du
+livrable, et ce geste aurait dégradé huit schémas pour satisfaire un artefact.
+
+**Banc** (`self_test.py`, `run_v9_echelles`) : la fixture conforme est rejouée à **chacune des
+échelles documentées** (1 / 0,5 / 0,4) et ne rend aucun bloquant ; la fixture vraiment invisible
+bloque toujours à l'échelle 1 — la garde n'a pas éteint V9 — et part au non jugé en dessous.
+
 ### V8 mérite son paragraphe : c'est le seul défaut qu'un oracle VISUEL ne peut pas voir
 
 *Le fait, du 24/08/2026.* Une fiche de sécurité livrée à un client avait été déclarée conforme la

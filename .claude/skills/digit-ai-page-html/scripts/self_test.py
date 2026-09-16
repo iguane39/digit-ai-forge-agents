@@ -1157,6 +1157,84 @@ def run_glyphes_du_socle():
              'detail': detail}]
 
 
+def run_v9_echelles():
+    """TF-1143 — V9 REJOUEE A CHAQUE ECHELLE DOCUMENTEE (1 / 0,5 / 0,4).
+
+    Le fait payé : même fichier, même largeur de fenêtre, `--scale 1` rendait PASS et
+    `--scale 0.5` rendait FAIL avec un bloquant V9 « actif visuel indiscernable de son fond ».
+    L'aide de l'option la présente comme un réglage de PERFORMANCE — « 0.4 sur une page très
+    haute » — et c'est pour cela qu'elle avait été employée. Le premier réflexe devant ce
+    bloquant est de foncer la charte du livrable : le geste aurait dégradé huit schémas pour
+    satisfaire un artefact de rastérisation.
+
+    Contre-mesure du socle, même page et même largeur, capture de l'actif et meilleur contraste :
+    17,85:1 à l'échelle 1, 10,85:1 à 0,5, 6,39:1 à 0,4, 3,66:1 à 0,25 — un facteur cinq perdu
+    sans qu'un pixel de la page ait bougé.
+
+    Trois sens ici. (a) La fixture CONFORME ne rend aucun bloquant à AUCUNE des trois échelles —
+    c'est le geste (1) de l'item : le banc rejoue la fixture conforme à chaque échelle
+    documentée. (b) La fixture VRAIMENT invisible bloque toujours à l'échelle 1 : la garde n'a
+    pas éteint V9. (c) Sous l'échelle 1, ce même constat part au non jugé, avec sa raison, et la
+    sortie DIT que l'échelle est réduite — un PASS obtenu à 0,4 ne doit pas se lire comme un PASS
+    obtenu à l'échelle native.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return []
+    import subprocess
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    dossier = tempfile.mkdtemp(prefix="self-test-v9-")
+    out = []
+
+    def cas(nom, attendu, obtenu, regle):
+        out.append({"fixture": nom, "verdict": "OK" if attendu == obtenu else "ECHEC",
+                    "attendu": str(attendu), "obtenu": str(obtenu), "regle": regle, "detail": ""})
+
+    def jouer(nom, echelle):
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(FIXTURES / nom),
+                            "--widths", "1280", "--scale", str(echelle),
+                            "--output", "json", "--out", dossier],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            d = json.loads(r.stdout)
+        except Exception:  # noqa: BLE001
+            return None
+        i = d["breakpoints"]["1280"]["issues"]
+        return {
+            "bloquants": len(i["v9_actif_invisible"]),
+            "non_juge_v9": sum(1 for x in (i.get("unmeasured") or []) if "V9" in x["detail"]),
+            "dit_echelle": any(x.startswith("ECHELLE") for x in d["non_juge"]),
+        }
+
+    for nom, conforme in (("v9-texte-fin-a-echelle-reduite.html", True),
+                          ("v9-logo-visible.html", True),
+                          ("v9-logo-invisible.html", False)):
+        if not (FIXTURES / nom).exists():
+            cas(f"v9 · {nom}", "fixture présente", "absente", "TF-1143")
+            continue
+        for echelle in (1, 0.5, 0.4):
+            r = jouer(nom, echelle)
+            if r is None:
+                cas(f"v9 · {nom} · échelle {echelle}", "sortie JSON", "illisible", "TF-1143")
+                continue
+            if conforme:
+                cas(f"v9 · page conforme · échelle {echelle} · aucun bloquant",
+                    0, r["bloquants"], "TF-1143 fixture conforme a chaque echelle")
+            elif echelle >= 1:
+                cas("v9 · page vraiment invisible · échelle 1 · BLOQUE (la garde n'éteint rien)",
+                    1, r["bloquants"], "TF-1143 contre-epreuve")
+            else:
+                cas(f"v9 · page vraiment invisible · échelle {echelle} · non jugé, pas bloquant",
+                    (0, 1), (r["bloquants"], r["non_juge_v9"]), "TF-1143 garde")
+            cas(f"v9 · {nom} · échelle {echelle} · la réduction est DITE",
+                echelle < 1, r["dit_echelle"], "TF-1143 echelle publiee")
+    shutil.rmtree(dossier, ignore_errors=True)
+    return out
+
+
 def run_perimetre_non_mesure():
     """TF-1148 — LE PÉRIMÈTRE DE NON-MESURE DE check_html.py, joué dans les deux sens.
 
@@ -2758,7 +2836,7 @@ def main():
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
            + run_glyphes_du_socle() + run_markdown() + run_syne() + run_assets_inlinables() + run_kpi_perimetre()
-           + run_capture_tuiles() + run_perimetre_non_mesure())
+           + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles())
     rendu = run_rendu()
     if rendu:
         res += rendu

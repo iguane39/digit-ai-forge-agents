@@ -1937,7 +1937,39 @@ def _v9_ratio(c1, c2) -> float:
     return (a + 0.05) / (b + 0.05)
 
 
-def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int) -> None:
+# TF-1143 (lot Produit-64 20260916a, retour RD-3, 16/09/2026) — LE FACTEUR D ECHELLE, DOCUMENTE
+# COMME UNE AIDE A LA CAPTURE, RENDAIT UN VERDICT BLOQUANT SUR UNE PAGE CONFORME.
+#
+# LE FAIT. Meme fichier, meme largeur de fenetre : `--widths 390 --scale 1` rend PASS,
+# `--widths 390 --scale 0.5` rend FAIL avec un bloquant V9 « actif visuel indiscernable de son
+# fond », meilleur contraste 1,10:1 (mesure rapportee par le lot ; la contre-mesure Playwright a
+# l echelle native du meme SVG donnait 18,1:1). La page n avait pas change : a echelle reduite le
+# rasteriseur noie une police de 13 px rendue a moins de deux pixels, et il ne reste que du
+# quasi-blanc a mesurer.
+#
+# CONTRE-MESURE FAITE ICI, sur la fixture `v9-texte-fin-a-echelle-reduite.html`, meme page, meme
+# largeur de 1280 px, capture de l actif par Playwright et calcul du meilleur contraste :
+#   echelle 2   -> 630 x 42 px, 26 460 pixels opaques, meilleur contraste 17,85:1
+#   echelle 1   -> 315 x 21 px,  6 615 pixels opaques, meilleur contraste 17,85:1
+#   echelle 0,5 -> 158 x 11 px,  1 738 pixels opaques, meilleur contraste 10,85:1
+#   echelle 0,4 -> 126 x  8 px,  1 008 pixels opaques, meilleur contraste  6,39:1
+#   echelle 0,25 ->  79 x  5 px,   395 pixels opaques, meilleur contraste  3,66:1
+# Le contraste mesure perd un facteur CINQ sans qu un pixel de la page ait bouge : ce que V9 lit
+# sous l echelle 1 est une propriete de la rasterisation, pas du livrable.
+#
+# CE QUE COUTAIT LE SILENCE. Le premier reflexe devant un bloquant V9 est de changer la charte du
+# livrable — foncer le remplissage des boites de schema jusqu a passer le seuil. Ce geste aurait
+# degrade huit schemas pour satisfaire un artefact.
+#
+# LA DECISION, ET ELLE N ASSOUPLIT RIEN. A l echelle 1 et au-dessus — dont l echelle 2 par
+# defaut — V9 est inchangee, seuil compris. SOUS l echelle 1, elle ne rend plus de BLOQUANT : le
+# constat part au non juge avec sa raison, exactement comme le socle le fait deja pour une
+# capture impossible ou un actif entierement transparent. Un verdict qu on sait etre un artefact
+# n est pas un verdict — le taire aurait ete l assouplissement, le declarer ne l est pas.
+V9_ECHELLE_MIN_BLOQUANTE = 1.0
+
+
+def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float = 1.0) -> None:
     """Juge chaque actif visuel contre le fond REELLEMENT peint derriere lui.
 
     Ne leve jamais : tout ce qui empeche la mesure est DECLARE au non_juge. Le silence d'une
@@ -1991,6 +2023,21 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int) -> None:
         meilleur = max(_v9_ratio(px[:3], fond) for _, px in opaques)
         if meilleur < _V9_SEUIL:
             domine = max(opaques)[1]
+            if echelle < V9_ECHELLE_MIN_BLOQUANTE:
+                # TF-1143 — la capture a ete REDUITE : ce qui est mesure ici est la rasterisation,
+                # pas le livrable. Le constat se DIT, il ne bloque pas.
+                issues["unmeasured"].append({
+                    "what": c["what"],
+                    "detail": (
+                        f"V9 NON JUGEE a l echelle {echelle:g} : capture REDUITE "
+                        f"({im.width}x{im.height} px, {total} pixels opaques), meilleur contraste "
+                        f"mesure {meilleur:.2f}:1 — sous le seuil {_V9_SEUIL}, mais la reduction "
+                        "seule suffit a l expliquer. Contre-mesure du socle sur un libelle de "
+                        "13 px inchange : 17,85:1 a l echelle 1, 6,39:1 a 0,4. Rejouer a "
+                        "`--scale 1` avant de toucher a la charte du livrable — foncer un aplat "
+                        "pour passer un artefact de rasterisation degrade la page pour rien"),
+                })
+                continue
             issues["v9_actif_invisible"].append({
                 "what": c["what"],
                 "detail": (
@@ -2135,7 +2182,9 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                         "detail": f"V18 non jugee ({type(erreur).__name__}) a {width} px : ne pas "
                                   "lire ce silence comme un vert",
                     })
-            mesurer_actifs_visuels(page, issues, capture_timeout)
+            # TF-1143 — V9 doit savoir a quelle echelle elle regarde : sous l echelle 1, ce
+            # qu elle lit est la rasterisation et non le livrable.
+            mesurer_actifs_visuels(page, issues, capture_timeout, scale)
             png = png_dir / f"{html_path.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None
             # TF-1139 — LA HAUTEUR SE MESURE AVANT D'ESSAYER. Elle est publiée dans tous les cas :
@@ -2330,6 +2379,18 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             "etiree et le tableau principal etrique du 4K ne sont pas juges — ne pas lire ce "
             "silence comme une page verifiee jusqu a 3840 px (regle E5)")
 
+    # TF-1143 — UNE ECHELLE REDUITE SE DECLARE, ET LE VERDICT AVEC. Sous l echelle 1, ce que V9
+    # lit est la rasterisation ; elle ne rend donc plus de bloquant, et ce choix se publie —
+    # sans quoi un PASS obtenu a `--scale 0.4` se lirait comme un PASS obtenu a l echelle native.
+    if scale < V9_ECHELLE_MIN_BLOQUANTE:
+        report["non_juge"].append(
+            f"ECHELLE {scale:g} : la capture est REDUITE, et V9 ne rend AUCUN bloquant sous "
+            f"l echelle {V9_ECHELLE_MIN_BLOQUANTE:g} — ses constats partent au non juge avec leur "
+            "raison. Contre-mesure du socle sur un libelle de 13 px inchange, meme page et meme "
+            "largeur : 17,85:1 a l echelle 1, 10,85:1 a 0,5, 6,39:1 a 0,4, 3,66:1 a 0,25 ; le "
+            "contraste mesure perd un facteur cinq sans qu un pixel de la page ait bouge. Ne pas "
+            "lire ce PASS comme un contraste d actif verifie : rejouer a `--scale 1`")
+
     report["non_juge"].append(
         "V9 : un actif visuel dont le contraste vit ENTRE 1,2 et 3,0 contre son fond n'est PAS "
         "juge — sous 1,2 il est indiscernable et c'est un bloquant, au-dela de 3,0 il tient le "
@@ -2460,7 +2521,11 @@ def main() -> None:
     # encoder). Un entier n'était pas une contrainte de Playwright, c'était un type trop étroit.
     ap.add_argument("--scale", type=float, default=2.0,
                     help="facteur d'échelle du rendu ; accepte un flottant (0.4 sur une page "
-                         "très haute — moins de pixels à encoder, capture qui aboutit)")
+                         "très haute — moins de pixels à encoder, capture qui aboutit). "
+                         "ATTENTION (TF-1143) : sous l'échelle 1 la capture est RÉDUITE et V9 "
+                         "n'y rend plus de bloquant — ce qu'elle lirait serait la rastérisation, "
+                         "pas le livrable (contraste mesuré d'un libellé de 13 px inchangé : "
+                         "17,85:1 à l'échelle 1, 6,39:1 à 0,4). Le choix est publié au non jugé")
     ap.add_argument("--timeout", type=int, default=CAPTURE_TIMEOUT_DEFAUT, dest="capture_timeout",
                     help=f"délai de capture en ms (défaut {CAPTURE_TIMEOUT_DEFAUT}). Une capture "
                          "qui échoue n'interrompt plus l'outil : les familles lues dans le DOM "
