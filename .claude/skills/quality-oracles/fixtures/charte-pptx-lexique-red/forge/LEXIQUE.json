@@ -1,0 +1,17 @@
+{
+  "format": "pilot/lexique-produit@1",
+  "termes": [
+    {
+      "proscrit": "ticket",
+      "remplacer_par": "demande",
+      "depuis": "2026-09-16",
+      "preuve": "fixture TF-1152 — terme synthetique, aucun retour client reel"
+    },
+    {
+      "proscrit": "workflow",
+      "remplacer_par": "chaine de traitement",
+      "depuis": "2026-09-16",
+      "preuve": "fixture TF-1152 — terme synthetique, aucun retour client reel"
+    }
+  ]
+}

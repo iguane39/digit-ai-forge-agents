@@ -434,6 +434,28 @@
    "provenance": "Propales PPTX tous clients — règles kicker/logo/bijection nées de renders fautifs (charte v2, legacy renders to discard) ; overrides slideMaster fantômes découverts après livraison le 08/06/2026 (inventaire P2 §2-§3 O2) ; comble le non_juge charte sémantique déclaré par oracle-pptx"
   },
   {
+   "nom": "charte-pptx-lexique",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-lexique-red/deck.pptx",
+   "green": "charte-pptx-lexique-green/deck.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S5",
+    "« ticket » (2) → « demande »",
+    "« workflow » (1) → « chaine de traitement »"
+   ],
+   "provenance": "TF-1152 (retour humain du 16/09/2026) : le lexique du destinataire n'était joué sur aucun texte de présentation — EC-7 d'oracle-ecriture ne lit que des .md, S46 d'oracle-synthese que des restitutions. Les deux decks sont identiques à quatre chaînes près. Le terme « workflow » ne vit QUE dans les notes du présentateur : sans lecture des notes, le message attendu manque et la règle n'est plus prouvée. La VERTE applique mot pour mot la correction que le message de la rouge propose (TF-1013) — un remède recommandé se joue au banc. Les deux termes sont synthétiques : aucun retour client réel n'est publié ici"
+  },
+  {
    "nom": "etat-forge",
    "cmd": [
     "node",

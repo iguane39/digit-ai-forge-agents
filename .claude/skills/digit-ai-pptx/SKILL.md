@@ -82,10 +82,21 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    arrondis sans cadre), placement **contain-fit** (ratio préservé, jamais d'étirement).
 6. Construire le PPTX avec pptxgenjs, **en n'écrivant que des valeurs venues de l'étape 1** :
    aucune couleur ni police littérale dans le script de génération — les lire depuis le JSON.
-7. **Passe QA finale (obligatoire)** : rasteriser tout le deck (PDF → PNG) et inspecter
-   **chaque** slide — aucune image déformée / hors zone / encadrée, aucun texte qui déborde
-   d'un encart ou de la slide, bijection sommaire ↔ intercalaires. Corriger à la source et
-   **re-générer** si défaut. Détail : `references/drive-assets.md` §8.
+7. **Passe QA finale (obligatoire)** — deux temps, l'oracle d'abord :
+
+   ```bash
+   node ../quality-oracles/scripts/oracle-charte-pptx-semantique.mjs <deck.pptx>
+   ```
+
+   L'oracle vit dans le skill voisin quality-oracles, sous scripts/oracle-charte-pptx-semantique.mjs :
+   S1 bijection sommaire ↔ intercalaires, S2 kicker, S3 logos, S4 footer + pagination, S5
+   **lexique du destinataire** sur les textes de slide **et les notes du présentateur**
+   (TF-1152). Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
+   fichier LEXIQUE.json du socle du projet où vit le deck : si le `non_juge` déclare l'avoir
+   cherché en vain, le vocabulaire du client n'a été jugé par personne — le dire, pas conclure.
+   Puis rasteriser tout le deck (PDF → PNG) et inspecter **chaque** slide — aucune image
+   déformée / hors zone / encadrée, aucun texte qui déborde d'un encart ou de la slide.
+   Détail : `references/drive-assets.md` §8.
 8. Nommer selon la convention ci-dessous, livrer dans `/mnt/user-data/outputs/` via `present_files`.
 
 Le slide canonique « Vos interlocuteurs » se **construit avec le deck** (étape 6), il ne se
@@ -208,9 +219,10 @@ le renvoi est retiré du workflow, le manque est déclaré.
 - **Illustrations : ≈ 1 slide de contenu sur 2**, jamais sur intercalaire, sommaire, ni
   prix/investissement. La couverture porte logo Digit-AI + logo client + une photo d'habillage.
   La slide interlocuteurs porte ses photos de profil (hors de ce rythme).
-- **Passe QA finale non négociable** : rasteriser + inspecter chaque slide (image déformée /
-  hors zone / encadrée, **texte qui déborde d'un encart ou de la slide**, zones qui se
-  chevauchent). Corriger à la source et re-générer — jamais livrer avec un débordement.
+- **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S5, dont
+  le **lexique du destinataire** sur textes et notes), puis rasteriser + inspecter chaque slide
+  (image déformée / hors zone / encadrée, **texte qui déborde d'un encart ou de la slide**, zones
+  qui se chevauchent). Corriger à la source et re-générer — jamais livrer avec un défaut.
 - **Toujours** vérifier visuellement le rendu avant de livrer (conversion PDF + lecture des slides)
 
 ## Exemple type

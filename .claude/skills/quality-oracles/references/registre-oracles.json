@@ -534,13 +534,14 @@
     "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
     "{file}"
    ],
-   "checklist": "S1-S4 en tête d oracle-charte-pptx-semantique.mjs (bijection sommaire↔intercalaires, kicker, logos hors couverture/interlocuteurs, footer+pagination)",
+   "checklist": "S1-S5 en tête d oracle-charte-pptx-semantique.mjs (bijection sommaire↔intercalaires, kicker, logos hors couverture/interlocuteurs, footer+pagination, lexique du destinataire sur textes et notes via lib-lexique.mjs du pilot — le module que lisent déjà EC-7 et S46)",
    "statut": "ok",
    "non_juge": [
     "logo vs image de contenu distingués par taille seule (seuil 2000000 EMU documenté)",
     "footers hérités des layouts/masters non inspectés",
     "structure zip/transitions/JPEG → oracle-pptx",
-    "rendu visuel → digit-ai-pptx"
+    "rendu visuel → digit-ai-pptx",
+    "S5 : texte enfermé dans une image (capture, schéma embarqué) ; lexique absent du socle du projet → non jugé et dit, jamais PASS par silence"
    ]
   },
   {
