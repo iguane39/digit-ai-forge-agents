@@ -5,16 +5,58 @@
 // remplacer par les vrais contrôles sans jamais casser la porte fixtures), l'entrée de
 // REGISTRE et l'entrée de MANIFEST. Sauvegardes .bak des fichiers modifiés.
 //   node scaffold-oracle.mjs --nom X --domaine "…" --ext ".a,.b" [--skilldir <quality-oracles>]
+//
+// LE REGISTRE NE S'ÉCRIT QUE DANS SA SOURCE VERSIONNÉE (TF-1006, 16/09/2026).
+// Le 10/09, une remontée §4 exemplaire — un domaine réellement découvert, son oracle, ses huit
+// règles — a été écrite dans la COPIE INSTALLÉE du registre, sous `~/.claude/skills/`. Le travail
+// était juste ; seule sa localisation le condamnait, car la propagation d'ouverture de session
+// (`bootstrap.mjs --pull` du pilot) recopie le versionné par-dessus l'installé et efface l'ajout
+// sans un mot. Rien n'en avertissait l'auteur : le défaut d'origine est ICI, dans la valeur par
+// défaut de ce script, qui visait précisément cette copie, et dans la commande d'exemple du
+// SKILL.md, qui l'écrivait noir sur blanc. Les deux sont corrigées ensemble.
+// Le refus est FERMÉ et sans échappatoire : écrire le registre dans la copie installée n'est
+// jamais utile, puisque l'écriture est toujours perdue. Un poste sans clone du dépôt de forge
+// n'est pas un poste où l'on remonte un oracle — il est où l'on en joue.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const ICI = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const opt = n => args.includes('--' + n) ? args[args.indexOf('--' + n) + 1] : null;
 const nom = opt('nom'), domaine = opt('domaine'), extList = (opt('ext') || '').split(',').map(s => s.trim()).filter(Boolean);
-const SKILLDIR = path.resolve(opt('skilldir') || path.join(process.env.HOME || '', '.claude', 'skills', 'quality-oracles'));
-if (!nom || !domaine || !extList.length) { console.error('usage: node scaffold-oracle.mjs --nom X --domaine "…" --ext ".a,.b" [--skilldir <chemin quality-oracles>]'); process.exit(2); }
+
+/** La racine des skills INSTALLÉS — la copie que la propagation écrase à chaque session. */
+const RACINE_INSTALLEE = path.resolve(path.join(os.homedir(), '.claude', 'skills'));
+const estInstalle = p => {
+  const rel = path.relative(RACINE_INSTALLEE, path.resolve(p));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+};
+
+/** Les pistes de la SOURCE versionnée de quality-oracles, dans l'ordre, pour le message et le défaut. */
+function pistesSource() {
+  const pistes = [path.resolve(ICI, '..', '..', 'quality-oracles')]; // ce skill, chez son voisin
+  if (process.env.FORGE_ROOT) pistes.push(path.join(process.env.FORGE_ROOT, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'));
+  pistes.push(path.join('c:\\dev', 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'));
+  pistes.push(path.join(os.homedir(), '.digit-ai-forge', 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'));
+  return pistes.filter(p => !estInstalle(p));
+}
+const sourceVersionnee = () => pistesSource().find(p => fs.existsSync(path.join(p, 'references', 'registre-oracles.json'))) || null;
+
+const SKILLDIR = path.resolve(opt('skilldir') || sourceVersionnee() || '');
+if (!nom || !domaine || !extList.length) { console.error('usage: node scaffold-oracle.mjs --nom X --domaine "…" --ext ".a,.b" [--skilldir <chemin quality-oracles VERSIONNÉ>]'); process.exit(2); }
 if (!/^[a-z0-9-]+$/.test(nom)) { console.error('--nom : minuscules/chiffres/tirets uniquement'); process.exit(2); }
-if (!fs.existsSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'))) { console.error('skilldir invalide (registre introuvable) : ' + SKILLDIR); process.exit(2); }
+if (estInstalle(SKILLDIR)) {
+  const src = sourceVersionnee();
+  console.error('REFUS — le registre des oracles ne s\'écrit QUE dans sa source versionnée (TF-1006).\n'
+    + '  visé      : ' + SKILLDIR + '  ← copie INSTALLÉE, écrasée à chaque propagation (bootstrap.mjs --pull)\n'
+    + '  source    : ' + (src || 'introuvable depuis ce poste — pistes : ' + pistesSource().join(' · ')) + '\n'
+    + (src ? '  relancer  : --skilldir "' + src + '"\n' : '  poser FORGE_ROOT ou cloner digit-ai-forge-agents, puis relancer\n')
+    + '  motif     : une remontée §4 écrite dans la copie installée est perdue à la session suivante, sans message.');
+  process.exit(2);
+}
+if (!SKILLDIR || !fs.existsSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'))) { console.error('skilldir invalide (registre introuvable) : ' + (SKILLDIR || '(aucune source versionnée résolue)')); process.exit(2); }
 const oraclePath = path.join(SKILLDIR, 'scripts', `oracle-${nom}.mjs`);
 if (fs.existsSync(oraclePath)) { console.error('oracle-' + nom + '.mjs existe déjà — pas d\'écrasement'); process.exit(2); }
 

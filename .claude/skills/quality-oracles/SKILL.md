@@ -95,7 +95,11 @@ squelette + fixtures + entrées registre/manifest), **enregistrer**, **appliquer
 > travail qui n'y vit que là disparaît sans bruit, et le dépôt qui le porte ne l'a jamais vu.
 > Deux conséquences pratiques : on édite la **source**, puis on propage ; et une remontée écrite
 > dans la copie installée se **rapatrie** vers la source avant toute propagation — le pilot relève
-> l'écart (`oracle-skills`, règle K11) et refuse d'écraser une copie en avance sur sa source. Chaque audit enrichit la bibliothèque — un domaine n'est jamais « jugé à l'œil » deux fois.
+> l'écart (`oracle-skills`, règle K11) et refuse d'écraser une copie en avance sur sa source.
+> Depuis le 16/09/2026 la règle est tenue par deux gestes, plus par la seule lecture : le
+> générateur de `write-an-oracle` **refuse** (exit 2) d'écrire un registre sous `~/.claude/skills/`
+> et nomme la source à viser, et le self-test de ce skill échoue si un domaine vit au registre
+> INSTALLÉ sans vivre à la source. Chaque audit enrichit la bibliothèque — un domaine n'est jamais « jugé à l'œil » deux fois.
 **Signalement = écriture (M1, D1, 23/07/2026)** : tout contrôle manuel sur un domaine hors registre produit **dans le tour même** une entrée dans la **file des candidats** (`file-candidats.md` du repo forge ; côté claude.ai : `/areas/forge-file-candidats.md`) — domaine, chantier, contrôle fait, défaut observé, date. Scaffold **obligatoire** (N1) dès : 2e occurrence **du même candidat** dans la file · rejeu d'un contrôle ad hoc dans un même fil · angle A1/A2 vide en contre-expertise d'un livrable client.
 **Règle de famille (M1, D1, 08/08/2026)** — le compteur porte sur le **candidat**, jamais sur le libellé exact du domaine. Deux entrées comptent pour le même candidat si elles partagent **(a)** le **préfixe de domaine** — segment avant le premier tiret : `cadrage-reponse-ao`, `cadrage-acquisition` et `cadrage-programme-formation` forment la famille `cadrage` —, **ou (b)** la **même classe de défaut** consignée, quels que soient les libellés. Motif : trois occurrences d'un même motif sous trois noms différents ne déclenchaient jamais N1, le candidat restait gelé indéfiniment (constaté le 08/08/2026 sur `gabarits de cadrage A0 par famille de livrable`, en attente depuis le 24/07/2026). Le critère (a) est mécanique et s'applique seul ; le critère (b) est un rattrapage, à instruire quand les préfixes divergent.
 

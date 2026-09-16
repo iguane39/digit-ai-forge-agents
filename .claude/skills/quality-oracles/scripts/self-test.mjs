@@ -116,6 +116,71 @@ else {
   missing.length ? ko('regles-oracles.md incomplet : règles manquantes ' + missing.join(' ')) : ok('regles-oracles.md : référentiel R1-R10 complet');
 }
 
+// (2c) TF-1006 (16/09/2026) — UN REGISTRE ÉDITÉ HORS DE SA SOURCE EST DÉTECTABLE.
+// Le 10/09, une remontée §4 exemplaire a été écrite dans la COPIE INSTALLÉE du registre. Elle
+// était juste ; sa localisation la condamnait, la propagation d'ouverture de session recopiant le
+// versionné par-dessus l'installé. Aucun contrôle ne l'a dit à son auteur, et le seul qui voyait
+// l'écart (K2/K11 du pilot) ne se joue qu'à l'ouverture d'un run, pas là où l'on écrit.
+// LA COMPARAISON EST DIRECTIONNELLE, et c'est tout ce qui la rend utilisable : la source EN AVANCE
+// sur la copie est l'état NORMAL après une édition, jusqu'à la propagation suivante — l'accuser
+// ferait rougir le banc à chaque commit et le contrôle serait désarmé dans la semaine. Un domaine
+// présent à l'INSTALLÉ et absent de la SOURCE, lui, n'a qu'une explication : quelqu'un a écrit
+// dans la copie, et son travail est à une propagation de sa disparition.
+// CE QUE CE CONTRÔLE NE VOIT PAS : une entrée EXISTANTE retouchée dans la copie sans domaine neuf.
+// Séparer cette retouche d'une source légitimement en avance demande un journal de propagation,
+// qui vit chez le pilot (K11 d'oracle-skills, TF-1012) — ici on tient le geste qui a coûté, la
+// remontée §4 d'un domaine NOUVEAU, qui est la forme qu'une remontée prend toujours.
+const domainesEnTrop = (source, installe) => installe.filter(d => !source.includes(d));
+{
+  const RACINE_INSTALLEE = path.resolve(path.join(os.homedir(), '.claude', 'skills'));
+  const sousInstalle = p => { const r = path.relative(RACINE_INSTALLEE, path.resolve(p)); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)); };
+  const lireDomaines = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')).oracles.map(o => o.domaine); } catch { return null; } };
+  const REG = path.join('references', 'registre-oracles.json');
+  const cote = sousInstalle(SKILLDIR) ? 'installé' : 'source';
+  // Le côté d'en face : depuis la source, la copie installée ; depuis la copie, la source
+  // versionnée, cherchée sur les pistes du parc (mêmes pistes que lib/pilot.mjs, dépôt voisin).
+  const pistesSource = [
+    process.env.FORGE_ROOT && path.join(process.env.FORGE_ROOT, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'),
+    path.join('c:\\dev', 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'),
+    path.join(os.homedir(), '.digit-ai-forge', 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'),
+  ].filter(Boolean).filter(p => !sousInstalle(p));
+  const cheminInstalle = path.join(RACINE_INSTALLEE, 'quality-oracles', REG);
+  const cheminSource = cote === 'source' ? path.join(SKILLDIR, REG)
+    : (pistesSource.map(p => path.join(p, REG)).find(f => fs.existsSync(f)) || null);
+  const dSource = cheminSource ? lireDomaines(cheminSource) : null;
+  const dInstalle = fs.existsSync(cheminInstalle) ? lireDomaines(cheminInstalle) : null;
+  if (!dSource) ok(`TF-1006 : source versionnée du registre introuvable depuis ce poste (pistes : ${pistesSource.join(' · ') || '(aucune)'}) — comparaison non jouée, et dite`);
+  else if (!dInstalle) ok(`TF-1006 : aucune copie installée du registre sous ${RACINE_INSTALLEE} — comparaison sans objet sur ce poste`);
+  else {
+    const enTrop = domainesEnTrop(dSource, dInstalle);
+    enTrop.length
+      ? ko(`TF-1006 : ${enTrop.length} domaine(s) au registre INSTALLÉ et absent(s) de la SOURCE — « ${enTrop.join(' » · « ')} ». `
+        + `Le registre a été édité dans la copie (${cheminInstalle}) : la prochaine propagation l'écrasera en silence. Rapatrier vers ${cheminSource}`)
+      : ok(`TF-1006 : le registre installé (${dInstalle.length} domaine(s)) n'ajoute rien à sa source (${dSource.length}) — aucune édition hors source`);
+  }
+  // Sens ROUGE et sens VERT sur la MÊME fonction : sans eux, le vert ci-dessus serait indiscernable
+  // d'un contrôle aveugle, et la tolérance à « source en avance » d'une tolérance à tout.
+  const rouge = domainesEnTrop(['A', 'B'], ['A', 'B', 'C']);
+  const vert = domainesEnTrop(['A', 'B', 'C'], ['A', 'B']);
+  (rouge.length === 1 && rouge[0] === 'C' && vert.length === 0)
+    ? ok('TF-1006 : un domaine ajouté à la copie est VU (sens rouge), et une source en avance sur sa copie ne fait pas rougir (sens vert)')
+    : ko(`TF-1006 : la comparaison directionnelle ne tient pas ses deux sens — rouge ${JSON.stringify(rouge)}, vert ${JSON.stringify(vert)}`);
+}
+
+// (2d) TF-1006 — le banc du GÉNÉRATEUR d'oracles est joué ici. `scaffold-oracle` est le chemin
+// par lequel passe une remontée §4 : son refus d'écrire dans la copie installée est le juge qui
+// empêche la récidive, et un juge dont le banc n'est joué nulle part ne juge rien.
+{
+  const bancWao = path.join(SKILLSROOT, 'write-an-oracle', 'scripts', 'self-test.mjs');
+  if (!fs.existsSync(bancWao)) ok('TF-1006 : write-an-oracle absent de ce parc — banc du générateur non joué, et dit');
+  else {
+    const r = spawnSync(process.execPath, [bancWao], { encoding: 'utf8', timeout: 120000 });
+    const derniere = (r.stdout || '').trim().split('\n').pop() || '';
+    r.status === 0 ? ok(`TF-1006 : banc de write-an-oracle vert — ${derniere.replace(/^\s*[✅❌]\s*/, '')}`)
+      : ko(`TF-1006 : banc de write-an-oracle en échec (exit ${r.status}) — ${((r.stdout || '') + (r.stderr || '')).split('\n').filter(l => l.includes('❌')).join(' · ').slice(0, 300)}`);
+  }
+}
+
 // (3) oracles CLI : script présent + compile (.mjs via node --check, .py via py_compile)
 const have = c => spawnSync(process.platform === 'win32' ? 'where' : 'which', [c], { encoding: 'utf8' }).status === 0;
 if (reg) for (const o of reg.oracles) {
