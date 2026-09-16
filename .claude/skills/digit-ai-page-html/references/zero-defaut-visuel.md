@@ -212,6 +212,38 @@ navigateur). Preuve à double sens dans `self_test.py` (`run_capture_manquee`) :
 jouée au délai normal puis à **1 ms**, et le banc exige qu'aucun traceback ne sorte et que le
 verdict soit rendu dans les deux cas.
 
+### Seuil de hauteur : au-delà, la page n'est plus jugeable visuellement (TF-1139, 15/09/2026)
+
+**Le seuil est `50 000 px` de `scrollHeight` CSS**, mesuré **avant** toute tentative de capture,
+à chaque largeur. Au-delà, `render_page.py` ne tente rien et rend immédiatement un constat nommé
+et chiffré — « page trop haute pour etre jugee visuellement a `<largeur>` px : `N` px de haut,
+seuil `M` px ». Les familles lues au DOM (V1, V2, V4, V3, V7, L2, V18) restent jugées et comptent
+dans le verdict ; V5 et V6 sont déclarées non jugées. Le seuil employé et la hauteur mesurée
+sortent dans le bloc `non jugé` **à chaque exécution**, seuil atteint ou non : un auteur doit
+pouvoir lire la marge qui lui reste, pas la découvrir.
+
+**Le geste de remède est de DÉCOUPER la page** — un document par chapitre ou par vue. Ce n'est
+pas un réglage d'échelle : sur le cas fondateur, six échelles ont été essayées (0,4 / 0,35 / 0,3
+/ 0,25 / 0,2 / 0,12) et aucune n'a produit d'image. `--hauteur-max` déplace la borne pour tenter
+quand même, et la valeur employée est publiée.
+
+**Le fait payé.** Page de référence de 15 228 mots. Hauteurs relevées par l'oracle lui-même :
+**54 793 px** à 2560 px de large, **62 127** à 1280, **98 079** à 768, **123 822** à 390. Quatre
+exécutions successives, six échelles, délais de 45 s à 300 s : **aucune n'a produit d'image**, et
+**deux ont tourné plus de trente minutes** avant d'être arrêtées à la main — pour un verdict
+d'image jamais rendu. L'oracle se comportait honnêtement ; ce qui manquait était la borne, et
+qu'elle soit publiée.
+
+**Où le seuil est posé, et sur quelles mesures.** Sous le plus bas **échec** mesuré (54 793 px)
+et au-dessus du plus haut **succès** mesuré (22 740 px CSS — la capture 780 × 45 480 de TF-1131,
+à 390 px et échelle 2). Entre 22 740 et 50 000 px, aucune mesure : la tentative a donc bien lieu,
+délibérément — un seuil posé trop bas retirerait la capture à des pages qui l'obtiennent.
+
+**Preuve à double sens** dans `self_test.py` (`run_capture_tuiles`) : `capture-page-au-dela-du-seuil.html`
+(60 210 px à 1280) rend le constat **sans tenter**, et `capture-page-tres-haute.html` (12 381 px)
+reste capturée avec ses tuiles. Le banc mesure aussi la **durée** — c'est elle, pas le message,
+qui prouve qu'aucune tentative n'a eu lieu : **2,4 s** contre les dizaines de minutes payées.
+
 ### V11 à V14 : quatre angles morts nommés par un lecteur, pas par un oracle (02/09/2026)
 
 Les quatre familles ajoutées ce jour ont une origine commune, et elle mérite d'être écrite : **ce

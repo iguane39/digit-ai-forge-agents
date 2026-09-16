@@ -1877,6 +1877,31 @@ LIBELLE = {c: l for c, l, _sev in FAMILLES}
 SEVERITE = {c: sev for c, _l, sev in FAMILLES}
 
 CAPTURE_TIMEOUT_DEFAUT = 30_000
+
+# TF-1139 (lot Produit-64 20260915a, 15/09/2026) — LE SEUIL AU-DELÀ DUQUEL UNE PAGE N'EST PLUS
+# JUGEABLE VISUELLEMENT, ET IL N'ÉTAIT PUBLIÉ NULLE PART.
+#
+# LE FAIT, MESURÉ. Page de référence de 15 228 mots. Hauteurs relevées par l'oracle lui-même :
+# 54 793 px à 2560 px de large, 62 127 px à 1280, 98 079 px à 768, 123 822 px à 390. Quatre
+# exécutions successives, échelles 0,4 / 0,35 / 0,3 / 0,25 / 0,2 / 0,12, délais de 45 s à 300 s :
+# AUCUNE n'a produit d'image, et DEUX ont tourné plus de trente minutes avant d'être arrêtées.
+# L'oracle se comportait honnêtement — familles du DOM jugées, V5/V6 déclarées non jugées avec
+# leur motif. Le défaut est ailleurs : un auteur ne savait pas, AVANT d'écrire, à partir de
+# quelle hauteur son livrable cesserait d'être jugeable, ni que le temps de le découvrir se
+# comptait en dizaines de minutes par tentative.
+#
+# OÙ LE SEUIL EST POSÉ, ET SUR QUELLES MESURES. Sous le plus bas ÉCHEC mesuré (54 793 px, le
+# 15/09) et au-dessus du plus haut SUCCÈS mesuré (22 740 px CSS — la capture 780 × 45 480 de
+# TF-1131, à 390 px et échelle 2). Entre 22 740 et 50 000, aucune mesure : la tentative a donc
+# bien lieu, et c'est délibéré — un seuil posé trop bas retirerait la capture à des pages qui
+# l'obtiennent. `--hauteur-max` déplace la borne quand un auteur veut tenter quand même ; la
+# valeur employée est publiée à chaque exécution, seuil par défaut ou seuil forcé.
+CAPTURE_HAUTEUR_MAX = 50_000  # px CSS de scrollHeight, au-delà : constat nommé, aucune tentative
+
+
+class _SautDeCapture(Exception):
+    """Sortie propre du bloc de capture quand la page est au-delà du seuil (TF-1139)."""
+
 FAMILLES_SANS_IMAGE = "V1 debordement, V2 contraste, V4 chevauchement, V3, V7, L2"
 FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
 
@@ -2002,7 +2027,8 @@ def compter_bloquants(issues: dict) -> int:
 def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json: bool,
         out_dir: Path | None = None, etats_ouverts: bool = False,
         capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None,
-        matrice_etats: bool = False, matrice_toutes_largeurs: bool = False) -> int:
+        matrice_etats: bool = False, matrice_toutes_largeurs: bool = False,
+        hauteur_max: int = CAPTURE_HAUTEUR_MAX) -> int:
     ensure_browser_path()
     ensure_local_fonts()
     try:
@@ -2112,8 +2138,31 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             mesurer_actifs_visuels(page, issues, capture_timeout)
             png = png_dir / f"{html_path.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None
-            capture: dict = {"faite": True, "motif": ""}
+            # TF-1139 — LA HAUTEUR SE MESURE AVANT D'ESSAYER. Elle est publiée dans tous les cas :
+            # un auteur doit pouvoir lire la marge qui lui reste avant de perdre le jugement
+            # visuel, et non la découvrir en deux tentatives de plus de trente minutes.
+            hauteur_css = int(page.evaluate("() => document.documentElement.scrollHeight"))
+            capture: dict = {"faite": True, "motif": "", "hauteur_css": hauteur_css,
+                             "hauteur_max": hauteur_max}
+            if hauteur_css > hauteur_max:
+                capture = {
+                    "faite": False, "hauteur_px": hauteur_css, "hauteur_css": hauteur_css,
+                    "hauteur_max": hauteur_max, "trop_haute": True,
+                    "motif": (f"page trop haute pour etre jugee visuellement a {width} px : "
+                              f"{hauteur_css} px de haut, seuil {hauteur_max} px. AUCUNE "
+                              "tentative de capture n est faite — sur le cas fondateur, quatre "
+                              "executions et six echelles (0,4 a 0,12) n ont produit aucune "
+                              "image, dont deux arretees a la main apres plus de trente minutes. "
+                              f"Les familles lues dans le DOM restent JUGEES ({FAMILLES_SANS_IMAGE}) ; "
+                              f"{FAMILLES_AVEC_IMAGE} ne sont PAS jugees faute d image. REMEDE : "
+                              "DECOUPER la page (un document par chapitre ou par vue) — c est le "
+                              "geste, pas un reglage d echelle. `--hauteur-max` deplace la borne "
+                              "pour tenter quand meme, et le seuil employe est publie"),
+                }
+                captures_manquees.append(width)
             try:
+                if capture.get("trop_haute"):
+                    raise _SautDeCapture       # aucune tentative : le constat est déjà rendu
                 if target:
                     target.screenshot(path=str(png), timeout=capture_timeout)
                 else:
@@ -2133,6 +2182,8 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                             if etait_cache:
                                 handle.evaluate("el => { el.hidden = true; }")
                     capture["sections"] = len(page.query_selector_all(sections))
+            except _SautDeCapture:
+                pass                         # TF-1139 : `capture` porte déjà son motif nommé
             except Exception as erreur:  # noqa: BLE001 — toute panne, pas seulement le delai
                 hauteur = page.evaluate("() => document.documentElement.scrollHeight")
                 capture = {
@@ -2234,6 +2285,30 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
     else:
         report["non_juge"].append(f"{FAMILLES_AVEC_IMAGE} : a inspecter sur les PNG produits")
 
+    # TF-1139 — LE SEUIL SE PUBLIE, ET LA HAUTEUR MESUREE AVEC LUI. Un auteur doit savoir AVANT
+    # d ecrire a partir de quelle hauteur son livrable cesse d etre jugeable visuellement ; le
+    # decouvrir coutait quatre executions, six echelles et deux arrets manuels apres plus de
+    # trente minutes. La ligne sort a chaque execution, que le seuil soit atteint ou non.
+    report["hauteur_max"] = hauteur_max
+    hauteurs = {w: (d.get("capture") or {}).get("hauteur_css")
+                for w, d in report["breakpoints"].items()}
+    releve = ", ".join(f"{h} px a {w} px" for w, h in hauteurs.items() if h is not None)
+    trop_hautes = [w for w, d in report["breakpoints"].items()
+                   if (d.get("capture") or {}).get("trop_haute")]
+    if trop_hautes:
+        report["non_juge"].append(
+            f"HAUTEUR : seuil de jugement visuel {hauteur_max} px CSS — DEPASSE a "
+            f"{', '.join(str(w) + ' px' for w in trop_hautes)} ({releve}). Aucune capture n a ete "
+            "TENTEE a ces largeurs : sur le cas fondateur, quatre executions et six echelles "
+            "(0,4 a 0,12) n ont produit aucune image, deux arretees a la main apres plus de "
+            "trente minutes. Le remede est de DECOUPER la page, pas de baisser l echelle "
+            "(zero-defaut-visuel.md, « Seuil de hauteur »)")
+    else:
+        report["non_juge"].append(
+            f"HAUTEUR : seuil de jugement visuel {hauteur_max} px CSS, non atteint ({releve}). "
+            "Au-dela, aucune capture n est tentee et le constat est rendu immediatement — le "
+            "remede est de decouper la page. `--hauteur-max` deplace la borne")
+
     # V9 dit ou elle s'arrete. WCAG 2.2 SC 1.4.11 demande 3:1 pour un objet graphique PORTEUR DE
     # SENS ; distinguer le porteur de sens du decor demande un jugement, et une sonde qui
     # accuserait tout aplat decoratif se ferait eteindre. V9 ne juge donc que l'INDISCERNABLE.
@@ -2323,7 +2398,6 @@ TUILES_RATIO = 4.0            # au-delà, la capture pleine page n'est plus lisi
 TUILES_HAUTEUR_CSS = 900      # hauteur de la fenêtre de rendu : une tuile = un écran
 TUILES_MAX = 60               # borne déclarée : au-delà, la sortie dit combien manquent
 
-
 def produire_tuiles(page, png_dir: Path, stem: str, width: int, timeout_ms: int) -> dict:
     """TF-1131 — rapport de la capture pleine page, et ses tuiles d'un écran s'il dépasse 4:1."""
     hauteur = int(page.evaluate("() => document.documentElement.scrollHeight"))
@@ -2391,6 +2465,13 @@ def main() -> None:
                     help=f"délai de capture en ms (défaut {CAPTURE_TIMEOUT_DEFAUT}). Une capture "
                          "qui échoue n'interrompt plus l'outil : les familles lues dans le DOM "
                          "restent jugées, V5/V6 sont déclarées NON JUGÉES")
+    # TF-1139 — le seuil de jugement visuel est une DONNEE, pas une constante cachee : il se lit
+    # dans la sortie a chaque execution, et il se deplace quand un auteur veut tenter quand meme.
+    ap.add_argument("--hauteur-max", type=int, default=CAPTURE_HAUTEUR_MAX, dest="hauteur_max",
+                    help=f"hauteur CSS au-dela de laquelle AUCUNE capture n'est tentee (defaut "
+                         f"{CAPTURE_HAUTEUR_MAX} px). Le constat est rendu immediatement, nomme "
+                         "et chiffre, au lieu d'expirer apres des dizaines de minutes ; le remede "
+                         "est de DECOUPER la page, pas de baisser --scale")
     ap.add_argument("--output", choices=["text", "json"], default="text")
     ap.add_argument("--out", type=Path, default=None, dest="out_dir",
                     help="dossier des PNG (défaut : <dossier du HTML>/.oracles/, ou un dossier "
@@ -2435,7 +2516,8 @@ def main() -> None:
     raise SystemExit(run(args.html, widths, args.selector, args.scale,
                          args.output == "json", args.out_dir, args.etats_ouverts,
                          args.capture_timeout, args.sections,
-                         args.matrice_etats, args.matrice_toutes_largeurs))
+                         args.matrice_etats, args.matrice_toutes_largeurs,
+                         args.hauteur_max))
 
 
 if __name__ == "__main__":

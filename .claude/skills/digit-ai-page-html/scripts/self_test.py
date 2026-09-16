@@ -1843,6 +1843,41 @@ def run_capture_tuiles():
     court, _ = jouer("a5-feuille-parsable.html")
     cas("page courte · aucune tuile (témoin)", bool(court) and not court.get("tuiles"),
         "pas de tuile", (court or {}).get("ratio"), "TF-1131 temoin")
+
+    # TF-1139 (15/09) — LE SEUIL DE HAUTEUR, dans ses deux sens et en TEMPS. Le fait payé :
+    # quatre exécutions, six échelles de 0,4 à 0,12, délais de 45 s à 300 s, AUCUNE image, et
+    # deux passes arrêtées à la main après plus de trente minutes — pour un verdict jamais rendu.
+    # Sens rouge : au-delà du seuil, aucune capture n'est TENTÉE et le constat sort nommé et
+    # chiffré. Sens vert : la page très haute ci-dessus est sous le seuil et reste capturée — un
+    # seuil posé trop bas retirerait la capture à des pages qui l'obtiennent. Et la durée est
+    # mesurée : c'est elle, pas le message, qui prouve qu'aucune tentative n'a eu lieu.
+    import time as _time
+    t0 = _time.monotonic()
+    haute, _ = jouer("capture-page-au-dela-du-seuil.html")
+    duree = _time.monotonic() - t0
+    if haute is None:
+        cas("capture-au-dela-du-seuil", False, "sortie JSON", "illisible", "TF-1139")
+        return out
+    cas("capture au-delà du seuil · aucune capture faite, constat nommé (sens rouge)",
+        haute.get("faite") is False and haute.get("trop_haute") is True
+        and "trop haute" in (haute.get("motif") or ""),
+        "faite=False, trop_haute=True, motif nommé",
+        f"faite={haute.get('faite')}, trop_haute={haute.get('trop_haute')}", "TF-1139 constat")
+    cas("capture au-delà du seuil · la hauteur ET le seuil sont publiés",
+        isinstance(haute.get("hauteur_css"), int) and haute.get("hauteur_css", 0) > 50_000
+        and haute.get("hauteur_max") == 50_000,
+        "hauteur mesurée > seuil, seuil publié",
+        f"{haute.get('hauteur_css')} px / seuil {haute.get('hauteur_max')}", "TF-1139 seuil publié")
+    cas("capture au-delà du seuil · le remède annoncé est de DÉCOUPER la page",
+        "DECOUPER" in (haute.get("motif") or ""), "le motif dit le geste",
+        (haute.get("motif") or "")[:80], "TF-1139 remède nommé")
+    cas("capture au-delà du seuil · rendu en secondes, pas en dizaines de minutes",
+        duree < 120, "< 120 s", f"{duree:.1f} s", "TF-1139 cout mesure")
+    cas("page très haute SOUS le seuil · toujours capturée (sens vert)",
+        bool(cap.get("tuiles")) and cap.get("hauteur_css", 0) < 50_000,
+        "capture produite sous le seuil",
+        f"{cap.get('hauteur_css')} px, {len(cap.get('tuiles') or [])} tuile(s)",
+        "TF-1139 seuil non abaissif")
     return out
 
 
