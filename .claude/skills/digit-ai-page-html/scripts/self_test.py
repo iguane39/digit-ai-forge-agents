@@ -2001,6 +2001,56 @@ def fermantes_nues(texte):
     return [i for i, ligne in enumerate(texte.splitlines(), 1) if RE_FERMANTE_NUE.search(ligne)]
 
 
+
+def run_echeance_forme_ancienne():
+    """D-4 (b), decision humaine du 16/09/2026 — une forme ancienne est admise JUSQU A UNE DATE.
+
+    Quatre sens, et le quatrieme est celui qui empeche la donnee de devenir une porte de sortie :
+      1. avant la date, la famille garde sa severite declaree (avertissement) ;
+      2. apres la date, elle DURCIT en bloquant, sans qu aucune ligne de code ait change ;
+      3. sans echeance declaree, rien ne bouge et le fait est DIT, jamais un blocage par accident ;
+      4. une echeance ne peut jamais ADOUCIR une famille bloquante — le sens est unique, sinon la
+         premiere urgence venue s en servirait pour eteindre un controle.
+    """
+    import importlib
+    from datetime import date
+    rp = importlib.import_module("render_page")
+    out = []
+
+    def cas(nom, attendu, obtenu, regle="D-4 (b)"):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": str(attendu),
+                    "obtenu": str(obtenu), "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"})
+
+    depassee_avant, limite, jours = rp._echeance_depassee("overlap_en_bloc", date(2026, 10, 1))
+    cas("echeance-avant-la-date : encore admise", (False, "2026-12-16"), (depassee_avant, limite))
+    cas("echeance-avant-la-date : jours restants comptes", True, isinstance(jours, int) and jours > 0)
+
+    depassee_apres, _l, jours_apres = rp._echeance_depassee("overlap_en_bloc", date(2027, 1, 5))
+    cas("echeance-apres-la-date : depassee", True, depassee_apres)
+    cas("echeance-apres-la-date : le retard est compte", True, isinstance(jours_apres, int) and jours_apres < 0)
+
+    cas("famille sans echeance : rien ne bouge, et c est dit", (False, None, None),
+        rp._echeance_depassee("v1_overflow"))
+    cas("la phrase du constat nomme la date", True, "2026-12-16" in rp._phrase_echeance("overlap_en_bloc"))
+    cas("la phrase sans echeance le DIT", True, "Aucune echeance" in rp._phrase_echeance("v1_overflow"))
+
+    # SENS UNIQUE : une echeance posee sur une famille BLOQUANTE ne la rend pas avertissante.
+    familles_test = [("famille_bloquante", "libelle", "bloquant"), ("famille_avertie", "libelle", "avertissement")]
+    vraies = rp.FAMILLES
+    try:
+        rp.FAMILLES = familles_test
+        original = rp._echeance_depassee
+        rp._echeance_depassee = lambda cle, aujourdhui=None: (True, "2026-01-01", -1)
+        severites = {c: sev for c, _l, sev in rp._familles_apres_echeances()}
+    finally:
+        rp.FAMILLES = vraies
+        rp._echeance_depassee = original
+    cas("sens unique : une echeance DURCIT un avertissement", "bloquant", severites["famille_avertie"])
+    cas("sens unique : une echeance n ADOUCIT jamais un bloquant", "bloquant", severites["famille_bloquante"])
+    return out
+
 def run_assets_inlinables():
     """TF-1062 (11/09) — un asset qui s'inline ne porte aucune balise fermante EN CLAIR.
 
@@ -2860,7 +2910,8 @@ def main():
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
            + run_glyphes_du_socle() + run_markdown() + run_syne() + run_assets_inlinables() + run_kpi_perimetre()
-           + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles())
+           + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
+           + run_echeance_forme_ancienne())
     rendu = run_rendu()
     if rendu:
         res += rendu

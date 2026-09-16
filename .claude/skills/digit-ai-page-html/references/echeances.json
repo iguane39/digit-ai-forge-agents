@@ -1,0 +1,23 @@
+{
+  "format": "digit-ai-page-html/echeances@1",
+  "version": "1.0.0",
+  "date": "2026-09-16",
+  "pourquoi_une_donnee_et_pas_du_code": "Loi transverse n° 4 du noyau — une donnée volatile est une donnée, pas du code. Une échéance se décale, s'avance ou se lève par décision humaine ; l'écrire en dur obligerait à republier le socle pour changer une date, et personne ne saurait où la lire.",
+  "regle": "Une forme ANCIENNE qu'on ne peut pas casser d'un commit est admise jusqu'à une date, recensée d'ici là, et refusée après. L'oracle lit cette date à chaque exécution : avant l'échéance il AVERTIT et dit combien de jours restent, après il BLOQUE. Une échéance sans décision humaine écrite n'entre pas ici.",
+  "echeances": [
+    {
+      "cle": "overlap_en_bloc",
+      "quoi": "l'exemption de recouvrement en forme NUE — `data-overlap-ok` sans valeur, qui exempte l'ÉLÉMENT au lieu de la PAIRE",
+      "admise_jusqu_au": "2026-12-16",
+      "decidee_par": "humain, 16/09/2026 — décision D-4 option (b) : « poser une date de fin d'admission, et migrer d'ici là au fil des pages touchées »",
+      "pourquoi_cette_date": "3 mois. La migration suit les pages qu'on rouvre et ne mobilise aucun tour dédié : il faut donc laisser passer assez de cycles de livraison pour que les pages vivantes soient touchées au moins une fois. Une date plus courte forcerait un tour dédié, que la décision (b) écarte ; une date plus longue laisserait l'échéance sortir du champ de vision.",
+      "etat_au_moment_de_la_decision": "1 716 occurrences mesurées le 16/09/2026 dans dix pages HTML de deux dépôts du parc",
+      "geste_de_migration": "remplacer `data-overlap-ok` sans valeur par `data-overlap-ok=\"<id de l'élément recouvert>\"`, plusieurs identifiants séparés par des espaces ; le recensement donne le compte, trois exemples et le geste, page par page",
+      "fonde_par": "TF-1146"
+    }
+  ],
+  "non_juge": [
+    "la JUSTESSE d'une date : elle est décidée par un humain et consignée ici, l'oracle la lit et ne la discute pas",
+    "l'AVANCEMENT de la migration entre deux exécutions : le recensement dit l'état d'une page à l'instant où il la juge, il ne garde aucune mémoire d'un passage au suivant"
+  ]
+}

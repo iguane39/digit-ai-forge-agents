@@ -53,6 +53,7 @@ import os
 import shutil
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 # Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression
@@ -66,6 +67,61 @@ for _stream in (sys.stdout, sys.stderr):
 
 SCRIPT_DIR = Path(__file__).parent
 PREINSTALLED_BROWSER_ROOTS = ["/opt/pw-browsers"]
+
+# ---- LES ÉCHÉANCES (D-4 (b), décision humaine du 16/09/2026) --------------------------------
+#
+# Une forme ancienne qu'on ne peut pas casser d'un commit est admise JUSQU'À UNE DATE, recensée
+# d'ici là, refusée après. Le fait qui l'a fait naître : 1 716 occurrences de l'exemption de
+# recouvrement en forme nue, mesurées dans le parc le 16/09 — les rendre bloquantes le jour même
+# aurait rougi tout ce qui existe avant qu'aucune migration n'ait commencé, et un recensement sans
+# fin est un compteur qu'on regarde monter.
+#
+# LA DATE VIT DANS UNE DONNÉE (references/echeances.json, loi transverse n° 4) : elle se décale,
+# s'avance ou se lève par décision humaine, sans republier le socle. Donnée absente ou illisible :
+# l'échéance est réputée NON POSÉE, la famille garde sa sévérité déclarée, et le fait est dit —
+# jamais un blocage par accident, jamais un silence non plus.
+ECHEANCES_PATH = SCRIPT_DIR.parent / "references" / "echeances.json"
+
+
+def _echeances():
+    """Rend {cle: entree} depuis la donnée, ou {} si elle est absente ou illisible."""
+    try:
+        brut = json.loads(ECHEANCES_PATH.read_text(encoding="utf-8"))
+        return {e["cle"]: e for e in brut.get("echeances", []) if e.get("cle")}
+    except Exception:
+        return {}
+
+
+def _phrase_echeance(cle):
+    """La phrase que le constat porte : la date, et ce qui se passe a cette date.
+
+    Une echeance qu'on ne LIT pas dans le message est une echeance que personne ne voit venir :
+    le recensement redeviendrait le compteur qu'on regarde monter, que la decision D-4 (b)
+    existe justement pour eviter.
+    """
+    depassee, limite, jours = _echeance_depassee(cle)
+    if not limite:
+        return ("Aucune echeance n'est posee pour cette forme : elle reste admise sans terme "
+                "(references/echeances.json ne la declare pas).")
+    if depassee:
+        return (f"ECHEANCE DEPASSEE depuis le {limite} (decision humaine D-4 (b) du 16/09/2026) : "
+                "cette forme n'est plus admise, et ce constat est desormais BLOQUANT.")
+    return (f"Cette forme est admise jusqu'au {limite}, soit {jours} jour(s) (decision humaine "
+            "D-4 (b) du 16/09/2026). Passe cette date, le constat devient BLOQUANT : migrer au "
+            "fil des pages qu'on rouvre, sans tour dedie.")
+
+
+def _echeance_depassee(cle, aujourdhui=None):
+    """(depassee, date, jours_restants) — jours_restants negatif une fois la date passee."""
+    e = _echeances().get(cle)
+    if not e or not e.get("admise_jusqu_au"):
+        return (False, None, None)
+    try:
+        limite = date.fromisoformat(str(e["admise_jusqu_au"]))
+    except ValueError:
+        return (False, None, None)
+    jour = aujourdhui or date.today()
+    return (jour > limite, e["admise_jusqu_au"], (limite - jour).days)
 # Polices bundlées : celles de digit-ai-schemas si le skill est installé à côté.
 FONT_DIR_CANDIDATES = [
     SCRIPT_DIR / "fonts",
@@ -1187,7 +1243,7 @@ MEASURE_JS = r"""
           `executions des trois oracles avant d etre vu sur une capture (TF-1146). Geste : ` +
           `declarer la paire, data-overlap-ok="<id de l element recouvert>" (plusieurs ids ` +
           `separes par des espaces). Un recouvrement avec un autre element que ceux declares ` +
-          `redevient alors un constat`,
+          `redevient alors un constat. __ECHEANCE_OVERLAP__`,
       });
     }
   }
@@ -1947,10 +2003,23 @@ FAMILLES = [
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
     ("unmeasured", "Non mesurable — à vérifier à l'œil", "info"),
 ]
-BLOQUANTES = [c for c, _l, sev in FAMILLES if sev == "bloquant"]
-AVERTIES = [c for c, _l, sev in FAMILLES if sev == "avertissement"]
+# UNE ÉCHÉANCE DÉPASSÉE DURCIT LA FAMILLE, elle ne l'adoucit jamais : la table déclare la
+# sévérité d'AVANT la date, la donnée dit quand elle devient bloquante. Le sens unique est
+# délibéré — une donnée qui pourrait ADOUCIR un contrôle serait une porte de sortie, et la
+# première urgence venue s'en servirait.
+def _familles_apres_echeances():
+    sorties = []
+    for cle, libelle, sev in FAMILLES:
+        depassee, _limite, _jours = _echeance_depassee(cle)
+        sorties.append((cle, libelle, "bloquant" if depassee and sev == "avertissement" else sev))
+    return sorties
+
+
+FAMILLES_EFFECTIVES = _familles_apres_echeances()
+BLOQUANTES = [c for c, _l, sev in FAMILLES_EFFECTIVES if sev == "bloquant"]
+AVERTIES = [c for c, _l, sev in FAMILLES_EFFECTIVES if sev == "avertissement"]
 LIBELLE = {c: l for c, l, _sev in FAMILLES}
-SEVERITE = {c: sev for c, _l, sev in FAMILLES}
+SEVERITE = {c: sev for c, _l, sev in FAMILLES_EFFECTIVES}
 
 CAPTURE_TIMEOUT_DEFAUT = 30_000
 
@@ -2160,6 +2229,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
         sys.exit("ERREUR : playwright non installé.\n  pip install playwright && playwright install chromium")
 
     js = (MEASURE_JS
+          .replace("__ECHEANCE_OVERLAP__", _phrase_echeance("overlap_en_bloc"))
           .replace("__OVERLAP_MIN_RATIO__", str(OVERLAP_MIN_RATIO))
           .replace("__ALIGN_TOL__", str(ALIGN_TOLERANCE_PX))
           .replace("__V7_MAX__", str(V7_MAX_DETAILS))
