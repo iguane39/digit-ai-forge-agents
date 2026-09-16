@@ -191,7 +191,7 @@ MEASURE_JS = r"""
                    l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
                    contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
-                   conteneur_bride_donnees: [],
+                   conteneur_bride_donnees: [], overlap_en_bloc: [],
                    unmeasured: [] };
   const doc = document.documentElement;
 
@@ -426,7 +426,38 @@ MEASURE_JS = r"""
       for (let j = i + 1; j < kids.length; j++) {
         const a = kids[i], b = kids[j];
         if (svgIcone || groupeTitre) continue;
-        if (a.el.hasAttribute('data-overlap-ok') || b.el.hasAttribute('data-overlap-ok')) continue;
+        // TF-1146 (16/09, lot Produit-64 20260916a, retour RD-6) — L EXEMPTION S APPLIQUAIT A L
+        // ELEMENT, PAS A LA PAIRE, ET COUVRAIT DONC AUSSI LE RECOUVREMENT NON VOULU. Dans le
+        // schema des trois couches, le libelle de fleche « expose ses sorties a » etait imprime
+        // A L INTERIEUR de la boite voisine, sous son sous-titre : un lecteur y lisait une
+        // troisieme ligne de legende. Le defaut a traverse DEUX livraisons et quatre executions
+        // des trois oracles, et a ete trouve en regardant une capture. Aucun controle ne pouvait
+        // le voir : V1 ne voit rien (le texte est dans le cadre), V2 ne voit rien (il est
+        // lisible — c est sa PLACE qui est fausse), L1 ne voit rien (texte SVG hors modele de
+        // prose), et V4 ne voyait rien parce que le <text> portait data-overlap-ok et etait
+        // exempte EN BLOC.
+        //
+        // L exemption reste indispensable — un libelle pose SUR sa boite la recouvre par
+        // construction, et sans elle V4 crierait sur chaque boite de chaque schema. Elle devient
+        // donc une PAIRE DECLAREE : data-overlap-ok="<id de l element recouvert>", plusieurs ids
+        // separes par des espaces. Un recouvrement avec un AUTRE element que ceux declares
+        // redevient un constat.
+        //
+        // La forme NUE (attribut sans valeur) continue d exempter en bloc : 1 716 occurrences
+        // mesurees le 16/09 dans dix pages de deux depots du parc, la casser rendrait tout le
+        // parc rouge d un coup. Elle n est plus silencieuse pour autant — elle est recensee et
+        // publiee, famille `overlap_en_bloc`, avec son geste de migration.
+        const _paires = (el) => {
+          const v = el.getAttribute('data-overlap-ok');
+          return v === null ? null : v.trim().split(/\s+/).filter(Boolean);
+        };
+        const pa = _paires(a.el), pb = _paires(b.el);
+        if ((pa !== null && pa.length === 0) || (pb !== null && pb.length === 0)) continue;
+        if (pa !== null || pb !== null) {
+          const declare = (pa || []).includes(b.el.id) || (pb || []).includes(a.el.id);
+          if (declare) continue;
+          // Paire NON declaree : le recouvrement est juge, comme s il n y avait pas d exemption.
+        }
         // TF-0444 (21/08) : <colgroup> et <col> sont des elements de DECLARATION, pas de mise
         // en page. Leur boite englobe par construction celle du tableau — donc tout tableau
         // portant un colgroup produisait deux faux positifs BLOQUANTS (« colgroup x thead »,
@@ -1131,6 +1162,33 @@ MEASURE_JS = r"""
         `${cs.maxWidth}. Une page qui se DECLARE page de donnees est PLEINE LARGEUR ` +
         `adaptative : la place existe, la page doit la prendre. Retirer le plafond sur ce ` +
         `conteneur ; la colonne de lecture reste legitime CHAPITRE par chapitre (.chap.lire)` });
+    }
+  }
+
+  // ---- TF-1146 : RECENSEMENT DES EXEMPTIONS V4 EN BLOC ---------------------------------
+  //
+  // Une exemption qui ne se voit pas est un angle mort qui ne se corrige jamais. L invariant
+  // que V4 pretend tenir n est pas « deux rectangles se recouvrent » — c est « un libelle
+  // appartient a l element qu il annote ». Tant que les deux sont correles, V4 a raison ; le
+  // jour ou un libelle change d element sans changer de geometrie, elle est muette. Le
+  // recensement rend ce silence LISIBLE, page par page, avec son geste de migration.
+  {
+    const enBloc = [...document.querySelectorAll('[data-overlap-ok]')]
+      .filter((el) => !(el.getAttribute('data-overlap-ok') || '').trim());
+    if (enBloc.length) {
+      const echantillon = enBloc.slice(0, 3).map(label).join(' · ');
+      issues.overlap_en_bloc.push({
+        what: `${enBloc.length} element(s) exemptes EN BLOC — ${echantillon}` +
+              (enBloc.length > 3 ? ` … et ${enBloc.length - 3} autre(s)` : ''),
+        detail:
+          `data-overlap-ok sans valeur exempte l ELEMENT, pas la PAIRE : V4 ne juge AUCUN de ` +
+          `leurs recouvrements, voulu ou non. Un libelle de fleche tombe dans la boite VOISINE ` +
+          `y est invisible — c est exactement le defaut qui a traverse deux livraisons et quatre ` +
+          `executions des trois oracles avant d etre vu sur une capture (TF-1146). Geste : ` +
+          `declarer la paire, data-overlap-ok="<id de l element recouvert>" (plusieurs ids ` +
+          `separes par des espaces). Un recouvrement avec un autre element que ceux declares ` +
+          `redevient alors un constat`,
+      });
     }
   }
 
@@ -1848,6 +1906,12 @@ FAMILLES = [
     # de la boite qu'on lui a donnee. Bloquant : c'est le troisieme angle de la meme regle.
     ("conteneur_bride_donnees", "Conteneur bride sur une page de donnees", "bloquant"),
     ("sommaire_perdu", "Sommaire perdu au defilement", "bloquant"),
+    # TF-1146 (16/09, lot Produit-64 20260916a) : l exemption V4 posee EN BLOC. Avertissement et
+    # non bloquant — 1 716 occurrences mesurees dans le parc le 16/09, les rendre bloquantes
+    # d un coup rougirait tout ce qui existe. Mais le silence, lui, s arrete : un libelle de
+    # fleche imprime dans la boite voisine a traverse DEUX livraisons sous cette exemption.
+    ("overlap_en_bloc", "V4 exemption posee EN BLOC (data-overlap-ok sans paire declaree)",
+     "avertissement"),
     # TF-0910 (lot Produit-10 20260908a) : cinq teintes d'etat pastel du socle, toutes autour de
     # L* 93-97. Chaque badge tenait 4,5:1 contre son fond, donc V2 rendait PASS sur chacun ; le
     # defaut vit ENTRE deux badges — une distance, pas un ratio. Retour humain sur le livrable

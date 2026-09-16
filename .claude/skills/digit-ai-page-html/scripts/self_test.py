@@ -426,6 +426,15 @@ CAS_RENDU = {
     # retenant le premier nav rencontre. Mesure avant / apres sur la verte : 1 bloquant, puis 0.
     "sommaire-permanent-et-cartes.html": ("sommaire_perdu", 0),
     "sommaire-perdu-aucune-permanente.html": ("sommaire_perdu", 1),
+    # TF-1146 (16/09) — data-overlap-ok exemptait l ELEMENT, pas la PAIRE, et couvrait donc aussi
+    # le recouvrement NON VOULU : un libelle de fleche imprime dans la boite VOISINE a traverse
+    # deux livraisons et quatre executions des trois oracles. Les trois fixtures sont le MEME
+    # fichier a une valeur d attribut ou une coordonnee pres. Mesure avant / apres sur la rouge :
+    # 0 constat, puis 1 — c est le constat que l exemption en bloc avalait.
+    "v4-libelle-dans-la-boite-voisine.html": ("v4_overlap", 1),   # paire declaree, autre boite
+    "v4-libelle-sur-sa-boite.html": ("v4_overlap", 0),            # paire declaree, sa boite
+    # La forme NUE exempte toujours — 1 716 occurrences dans le parc — mais elle est RECENSEE.
+    "v4-exemption-en-bloc-recensee.html": [("v4_overlap", 0), ("overlap_en_bloc", 1)],
     "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
     "v4-chevauchement-reel.html": ("v4_overlap", 1),   # deux frères qui se recouvrent vraiment
     # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.

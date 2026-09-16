@@ -443,7 +443,7 @@ Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de l
 qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'une grille —
 la mesure de lecture se règle sur le conteneur, pas sur le paragraphe),
 **V1** (débordement horizontal), **V2** (contraste WCAG AA : ≥ 4.5:1,
-≥ 3:1 en texte large) et **V4** (chevauchements — superposition voulue = `data-overlap-ok`),
+≥ 3:1 en texte large) et **V4** (chevauchements — superposition voulue = `data-overlap-ok="<id de l'élément recouvert>"`, une **paire** et non un interrupteur depuis TF-1146 ; la forme nue exempte encore mais elle est recensée),
 signale **L2-frères** (TF-0491), **V3** et **V7** en avertissements — L2-frères compare la
 largeur d'un bloc de texte à celle de son **frère empilé** : trois mesures L2 ne voyaient que
 le rapport d'un bloc à son propre conteneur, et une prose bornée ET CENTRÉE au-dessus de

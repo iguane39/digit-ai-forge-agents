@@ -18,7 +18,7 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | V1 | Texte ou élément qui sort de son cadre / de la page | Aucun débordement horizontal du document ; aucun contenu hors de la zone de son conteneur | **Mesuré** — `render_page.py` (scrollWidth vs clientWidth, bounding boxes vs viewport) |
 | V2 | Texte illisible — clair sur fond clair, sombre sur sombre | Ratio de contraste **≥ 4.5:1** (WCAG AA) pour le texte courant ; ≥ 3:1 pour le texte large (≥ 24px, ou ≥ 18.66px gras) | **Mesuré** — `render_page.py` (couleur effective vs fond effectif, formule WCAG) |
 | V3 | Éléments non alignés | Les éléments frères d'un même groupe partagent leur bord d'alignement (écart ≤ 2px) | **Mesuré (avertissement)** — `render_page.py` ; l'arbitrage final reste visuel (un décalage peut être voulu) |
-| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok` |
+| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok="<id de l'élément recouvert>"` — une **paire**, pas un interrupteur (TF-1146). La forme nue exempte encore l'élément entier, mais elle est **recensée** (famille `overlap_en_bloc`, avertissement) |
 | V5 | Flèches ou filets qui croisent un élément | Aucun connecteur à travers un nœud ou un texte ; routage en L pur (règle `digit-ai-schemas`) | **Visuel** — rendu + inspection (boucle render-view-fix) |
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
@@ -264,6 +264,41 @@ délibérément — un seuil posé trop bas retirerait la capture à des pages q
 reste capturée avec ses tuiles. Le banc mesure aussi la **durée** — c'est elle, pas le message,
 qui prouve qu'aucune tentative n'a eu lieu : **2,4 s** contre les dizaines de minutes payées.
 
+### `data-overlap-ok` est une PAIRE DÉCLARÉE, plus un interrupteur (TF-1146, 16/09/2026)
+
+**Le fait payé.** Dans le schéma des trois couches, le libellé de flèche « expose ses sorties à »
+était imprimé **à l'intérieur de la boîte voisine**, sous son sous-titre : un lecteur y lisait une
+troisième ligne de légende de la couche, pas le sens d'une flèche. Le défaut a traversé **deux
+livraisons** et quatre exécutions des trois oracles, et a été trouvé **en regardant une capture**.
+
+**Aucun contrôle ne pouvait le voir.** V1 ne voit rien — le texte est dans le cadre du SVG. V2 ne
+voit rien — le texte est lisible, c'est sa *place* qui est fausse. L1 ne voit rien — c'est du
+texte SVG, hors du modèle de prose. Et V4 ne voyait rien parce que le `<text>` portait
+`data-overlap-ok` et était exempté **en bloc**.
+
+**L'invariant mesuré n'était pas le bon.** V4 mesure « deux rectangles se recouvrent », grandeur
+*corrélée* ; l'invariant est « un libellé appartient à l'élément qu'il annote ». Tant que la
+corrélation tient, V4 a raison ; le jour où un libellé change d'élément **sans changer de
+géométrie**, elle est muette. L'exemption reste indispensable — un libellé posé sur sa boîte la
+recouvre par construction, et sans elle V4 crierait sur chaque boîte de chaque schéma — mais elle
+s'appliquait à l'**élément**, donc elle couvrait aussi le recouvrement *non voulu*.
+
+**La forme.** `data-overlap-ok="<id de l'élément recouvert>"`, plusieurs identifiants séparés par
+des espaces. Un recouvrement avec un **autre** élément que ceux déclarés redevient un constat.
+Coût : un attribut à renseigner là où le schéma le pose déjà.
+
+**La forme nue continue d'exempter, et n'est plus silencieuse.** **1 716 occurrences** de
+`data-overlap-ok=""` mesurées le 16/09 dans dix pages HTML de deux dépôts du parc : les rendre
+bloquantes d'un coup rougirait tout ce qui existe. Elles sont donc **recensées** — famille
+`overlap_en_bloc`, **avertissement**, une ligne agrégée par page qui donne le compte, trois
+exemples et le geste de migration. Une exemption qui ne se voit pas est un angle mort qui ne se
+corrige jamais.
+
+**Preuve à double sens** : `v4-libelle-dans-la-boite-voisine.html` (paire déclarée, libellé dans
+l'autre boîte → **constat**, mesure avant / après : **0 puis 1**), `v4-libelle-sur-sa-boite.html`
+(même fichier, une coordonnée près → **aucun constat** : apparier n'a pas rendu l'exemption
+inopérante), `v4-exemption-en-bloc-recensee.html` (forme nue → toujours exemptée, **recensée**).
+
 ### V11 à V14 : quatre angles morts nommés par un lecteur, pas par un oracle (02/09/2026)
 
 Les quatre familles ajoutées ce jour ont une origine commune, et elle mérite d'être écrite : **ce
@@ -305,6 +340,8 @@ manquant.
    conforme à l'arbitrage à charge de `la-boucle`.
 2. **Corriger à la source, jamais masquer** : un contraste insuffisant se corrige dans les tokens
    `:root`, pas par une ombre portée ; un chevauchement se corrige dans la géométrie, pas en
-   déclarant `data-overlap-ok` (réservé aux superpositions par construction : badges, rubans).
+   déclarant `data-overlap-ok` (réservé aux superpositions par construction : badges, rubans,
+   libellé posé sur sa propre boîte de schéma). **Cette exemption est une PAIRE, pas un
+   interrupteur** — voir ci-dessous.
 3. **Cette liste s'étend ici et seulement ici.** Un nouveau défaut récurrent constaté sur un
    livrable = une ligne V8+ ajoutée dans ce fichier, jamais une règle locale dans un autre skill.
