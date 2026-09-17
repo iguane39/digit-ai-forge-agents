@@ -3919,6 +3919,13 @@ def non_juge() -> list:
         "images relèvent de `render_page.py`, qui publie son propre périmètre de non-mesure. Un "
         "PASS de ce seul script ne dit rien de ce que le lecteur voit",
         renvoi_forge_design(),
+        # TF-1174 (lot Produit-64 20260916b, RD-10) — LA GRANDEUR CORRÉLÉE PRISE POUR L'INVARIANT.
+        "LA COMPLÉTUDE N'EST PAS JUGÉE ICI : que la page rendue porte ce que sa SOURCE dit n'est "
+        "mesuré par aucune règle de ce script, ni par aucun des six oracles de forme. Mesure du "
+        "16/09/2026 : une page ayant perdu les trois quarts de son texte (11 996 → ~3 000 mots "
+        "visibles, neuf encadrés tombés à zéro) restait PARFAITEMENT CONFORME — ni débordement, "
+        "ni contraste faible, ni couleur en dur. Le compter : "
+        "`python scripts/check_completude.py <page.html> --source <source.md>`",
     ]
 
 

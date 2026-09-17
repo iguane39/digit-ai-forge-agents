@@ -1361,6 +1361,105 @@ def run_perimetre_non_mesure():
     return out
 
 
+def run_completude():
+    """TF-1174 — LA COMPLÉTUDE RENDU vs SOURCE, JOUÉE DANS LES DEUX SENS.
+
+    Le fait payé, 16/09/2026 (lot Produit-64 20260916b, RD-10) : une édition d'un générateur a
+    sorti un `append` de sa boucle de regroupement de prose. Le livrable est passé de 11 996 à
+    environ 3 000 mots visibles, les neuf encadrés « Exemple de lecture » sont tombés à ZÉRO, et
+    SIX oracles ont rendu leur verdict dessus — cinq PASS, et le sixième rouge sur deux règles qui
+    parlent d'autre chose. Une page amputée n'a ni débordement, ni contraste faible, ni couleur en
+    dur : elle est parfaitement conforme et presque vide.
+
+    LES CAS, et le dernier est celui qui donne son sens aux autres :
+      1. SENS VERT — la page qui porte toute sa source passe, et sa couverture dépasse 100 %
+         (un rendu porte EN PLUS les libellés du générateur) ;
+      2. SENS ROUGE — la page amputée du dernier-paragraphe-seulement échoue, exit 1, et le
+         message CHIFFRE la perte au lieu de la qualifier ;
+      3. une source vide rend SKIP (exit 2), jamais un PASS de complaisance ;
+      4. une dérogation de seuil est ÉCRITE au périmètre de non-mesure, jamais silencieuse ;
+      5. LE TÉMOIN DE L'AVEUGLEMENT — `check_html.py` rend le MÊME verdict et les MÊMES constats
+         sur les deux pages. Sans ce cas, rien ne prouverait que la chaîne existante ne voyait
+         pas déjà la perte, et le contrôle neuf serait une duplication qu'on croirait utile.
+    """
+    import tempfile
+    outil = Path(__file__).resolve().parent / 'check_completude.py'
+    chk = Path(__file__).resolve().parent / 'check_html.py'
+    fx = Path(__file__).resolve().parent.parent / 'fixtures'
+    src = fx / 'completude-source.md'
+    out = []
+
+    def cas(nom, attendu, obtenu, regle, detail=''):
+        ok = attendu == obtenu
+        out.append({'fixture': nom, 'verdict': 'OK' if ok else 'ECHEC', 'attendu': str(attendu)[:96],
+                    'obtenu': str(obtenu)[:96], 'regle': regle,
+                    'detail': '' if ok else (detail or '')[:300]})
+
+    def jouer(page, *extra, source=None):
+        r = subprocess.run([sys.executable, '-X', 'utf8', str(outil), str(page),
+                            '--source', str(source or src), '--output', 'json', *extra],
+                           capture_output=True, text=True, encoding='utf-8', timeout=120)
+        try:
+            return r.returncode, json.loads(r.stdout)
+        except Exception:
+            return r.returncode, {}
+
+    code_vert, j_vert = jouer(fx / 'completude-verte.html')
+    cas('completude · page complète : PASS, exit 0 (sens vert)',
+        (0, 'PASS'), (code_vert, j_vert.get('verdict')), 'TF-1174 sens vert')
+    cas('completude · un rendu est PLUS riche que sa source (couverture > 1)',
+        True, (j_vert.get('couverture') or 0) > 1.0, 'TF-1174 sens vert',
+        f"couverture {j_vert.get('couverture')}")
+
+    code_rouge, j_rouge = jouer(fx / 'completude-amputee.html')
+    cas('completude · page amputée : FAIL, exit 1 (sens rouge)',
+        (1, 'FAIL'), (code_rouge, j_rouge.get('verdict')), 'TF-1174 sens rouge')
+    cas('completude · le message CHIFFRE la perte (mots rendus, mots source, couverture)',
+        True, any('PERTE DE TEXTE' in f and str(j_rouge.get('mots_rendu')) in f
+                  and str(j_rouge.get('mots_source')) in f for f in j_rouge.get('fails') or []),
+        'TF-1174 constat localisant', str(j_rouge.get('fails'))[:280])
+    cas('completude · la page amputée porte bien moins de la moitié de sa source',
+        True, (j_rouge.get('couverture') or 1) < 0.5, 'TF-1174 sens rouge',
+        f"couverture {j_rouge.get('couverture')}")
+
+    # 3 — une source vide ne rend jamais PASS : rien à comparer se DIT, exit 2.
+    atelier = tempfile.mkdtemp(prefix='self-test-completude-')
+    try:
+        vide = Path(atelier) / 'source-vide.md'
+        vide.write_text('\n\n', encoding='utf-8')
+        code_skip, j_skip = jouer(fx / 'completude-verte.html', source=vide)
+        cas('completude · source vide : SKIP motivé (exit 2), jamais un PASS',
+            (2, 'SKIP'), (code_skip, j_skip.get('verdict')), 'TF-1174 pas de PASS de complaisance')
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+
+    # 4 — la dérogation de seuil est ÉCRITE. Un seuil qu'on abaisse en silence désarmerait la règle
+    # sans laisser de trace au verdict ; ici le PASS porte la raison pour laquelle il est vert.
+    code_der, j_der = jouer(fx / 'completude-amputee.html', '--seuil', '0.3')
+    cas('completude · un seuil abaissé rend PASS, mais la DÉROGATION est écrite au non_juge',
+        (0, 'PASS', True),
+        (code_der, j_der.get('verdict'),
+         any('DÉROGATION DÉCLARÉE' in n for n in j_der.get('non_juge') or [])),
+        'TF-1174 dérogation déclarée')
+
+    # 5 — LE TÉMOIN : la chaîne existante ne distingue pas les deux pages.
+    def verdict_check_html(page):
+        r = subprocess.run([sys.executable, '-X', 'utf8', str(chk), str(page), '--output', 'json'],
+                           capture_output=True, text=True, encoding='utf-8', timeout=120)
+        try:
+            d = json.loads(r.stdout)
+            return d['verdict'], sorted(d['fails'])
+        except Exception:
+            return None, None
+    v_vert, f_vert = verdict_check_html(fx / 'completude-verte.html')
+    v_amp, f_amp = verdict_check_html(fx / 'completude-amputee.html')
+    cas('completude · TÉMOIN : check_html.py rend le MÊME verdict et les MÊMES constats sur les deux',
+        True, v_vert is not None and (v_vert, f_vert) == (v_amp, f_amp),
+        'TF-1174 aveuglement de la chaîne',
+        f"verte {v_vert}/{len(f_vert or [])} · amputée {v_amp}/{len(f_amp or [])}")
+    return out
+
+
 def run_markdown():
     """TF-0518 (22/08/2026) — LA PORTE DU MARKDOWN, ouverte et jouée dans les deux sens.
 
@@ -2940,7 +3039,8 @@ def main():
     args = ap.parse_args()
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
-           + run_glyphes_du_socle() + run_markdown() + run_syne() + run_assets_inlinables() + run_kpi_perimetre()
+           + run_glyphes_du_socle() + run_completude() + run_markdown() + run_syne()
+           + run_assets_inlinables() + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
            + run_echeance_forme_ancienne())
     rendu = run_rendu()

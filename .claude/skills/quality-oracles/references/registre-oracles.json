@@ -1,5 +1,5 @@
 {
- "version": "2.21.0",
+ "version": "2.22.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -43,6 +43,31 @@
     "rendu réel (débordement, contraste, chevauchement) — délégué à render_page.py",
     "pertinence éditoriale du contenu"
    ]
+  },
+  {
+   "domaine": "Complétude d'un rendu par rapport à sa source (texte perdu à la génération)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skillsroot}/digit-ai-page-html/scripts/check_completude.py",
+    "{file}",
+    "--source",
+    "{source}",
+    "--output",
+    "json"
+   ],
+   "checklist": "Un seul invariant, et il se COMPTE : rendu = mots visibles du corps HTML (balises, commentaires, scripts et styles retirés) ; source = mots visibles du ou des Markdown dont il sort ; si rendu < source, ARRÊT. Le seuil est grossier à dessein — un rendu porte EN PLUS les libellés du générateur (menus, inventaires, légendes), il est normalement PLUS riche que sa source ; plus pauvre, il a PERDU quelque chose.",
+   "statut": "ok",
+   "commande": "digit-ai-page-html/scripts/check_completude.py <page.html> --source <source.md> [--source …] [--seuil <ratio>] [--output json]",
+   "provenance": "TF-1174 (lot Produit-64 20260916b, retour RD-10, 16/09/2026) — une édition d'un générateur a sorti un append de sa boucle de regroupement de prose : le livrable est passé de 11 996 à environ 3 000 mots visibles et les neuf encadrés « Exemple de lecture » sont tombés à ZÉRO. SIX oracles joués dessus : render_page.py PASS, check_markdown.py --style PASS (il juge la source, qui n a pas bougé), oracle-slop PASS, oracle-tokens PASS, oracle-mobile PASS, check_html.py FAIL mais sur L7 et L10 seulement — l absence d un chapeau et d un exemple de lecture, jamais la disparition du texte. Classe controle-vrai-sur-le-mauvais-invariant : les six mesurent la FORME, aucun ne mesure la COMPLÉTUDE.",
+   "non_juge": [
+    "LA FIDÉLITÉ : ce contrôle compte des mots, il ne dit pas que ce sont LES MÊMES mots, ni qu ils sont au bon endroit — une page qui remplacerait chaque paragraphe par un autre de longueur égale passerait",
+    "LA FORME (débordement, contraste, chevauchement, jetons, marqueurs) — check_html.py, render_page.py et les quatre oracles de digit-ai-forge-design",
+    "LE TEXTE INJECTÉ PAR LE JAVASCRIPT à l ouverture : le script lit le fichier, il ne l exécute pas — faux positif assumé, levé en fournissant le rendu après exécution",
+    "LA SOURCE elle-même : que les Markdown fournis soient bien ceux dont la page sort est une déclaration de l appelant, jamais une mesure"
+   ],
+   "note": "ext VIDE À DESSEIN : ce contrôle COMPARE deux fichiers, et rien dans une extension ne dit de quelle source une page sort — l invocation est explicite, l appelant nomme la source. Le seuil par défaut est 1.0 ; --seuil sous 1.0 reste possible mais la DÉROGATION est écrite au non_juge de chaque exécution, jamais silencieuse. Vaut pour toute chaîne qui transforme une source en page : un gabarit rendu, une synthèse publiée, un rapport d audit."
   },
   {
    "domaine": "Lisibilité d'un document (Markdown)",

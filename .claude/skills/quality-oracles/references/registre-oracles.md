@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.21.0, alignée sur le JSON le 17/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.22.0, alignée sur le JSON le 17/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -11,6 +11,7 @@
 |---|---|---|---|
 | Rendu HTML / visuel | `render_page.py` (digit-ai-page-html) — V1–V18 ; **V18** (TF-1066, 12/09/2026, règle E5 du pilot ; plafond porté à 135 par la décision humaine du 15/09/2026, « 13a », TF-1069) ne se joue qu'aux largeurs ≥ 2560 px : mesure de lecture au-delà de 135 caractères par ligne sur une prose que rien ne tient, tableau principal d'une page de données sous 85 % de la largeur offerte. Grille par défaut : 3840, 2560, 1920, 1280, 768, 390 | cli (délégué) | ✅ |
 | Conformité charte HTML (charte, sémantique, print) | `check_html.py` (digit-ai-page-html) — DOCTYPE, `lang="fr"`, charset prioritaire, viewport, `<h1>` unique, `:root`, `<title>`, `@media print`, police Syne interdite | cli (délégué) | ✅ |
+| Complétude d'un rendu par rapport à sa source (texte perdu à la génération) | `check_completude.py <page.html> --source <source.md>` (digit-ai-page-html) — **invocation explicite** : rendu = mots visibles du corps HTML, source = mots visibles du Markdown dont il sort, `rendu < source` ⇒ ARRÊT. Seuil par défaut 1.0 ; `--seuil` en dessous reste possible mais la dérogation est écrite au `non_juge` de chaque exécution. **TF-1174** : une page ayant perdu les trois quarts de son texte (11 996 → ~3 000 mots) passait les SIX oracles de forme — ils mesurent une grandeur *corrélée*, pas l'invariant | cli (délégué) | ✅ |
 | Filtres de colonne sur tableaux de données | `scripts/oracle-filtres-tableau.mjs <page.html>` — G1 marquage ou exemption motivée, G2 asset référencé, G3 initialisation, G4 id + thead, G5 compteur aria-live, G6 réaffichage à l'impression | cli | ✅ |
 | Rendu PPTX (structure & compatibilité) | `scripts/oracle-pptx.mjs` — zip, [Content_Types].xml 1re entrée, zéro transition/JPEG, smoke-test LibreOffice ; charte sémantique → gate digit-ai-pptx | cli | ⚙️ |
 | Accessibilité (WCAG structurel) | `scripts/oracle-a11y.py` — lang, alt, labels, titres, id, zoom (Playwright) | cli | ✅ |

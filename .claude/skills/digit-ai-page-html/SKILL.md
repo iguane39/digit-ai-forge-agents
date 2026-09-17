@@ -505,6 +505,42 @@ un humain qui y a relevé **huit défauts**, tous hors du champ des deux contrô
 les produisait n'avait aucun moyen de savoir ce qui n'était pas mesuré. Quand l'un des deux
 oracles publie ses limites et l'autre se tait, le silence se lit comme une absence de limite.
 
+## Compter ce qui est RENDU contre ce que la source DIT — la complétude (TF-1174)
+
+**Le fait payé, 16/09/2026 (lot Produit-64 20260916b, RD-10).** Une édition d'un générateur a sorti
+un `append` de sa boucle de regroupement de prose : toute la prose sauf le dernier fragment de
+chaque chapitre a disparu de la page rendue. Le livrable est passé de **11 996 à environ 3 000 mots
+visibles**, et les neuf encadrés « Exemple de lecture » sont tombés à **zéro**. Les six oracles
+joués dessus : `render_page.py` PASS · `check_markdown.py --style` PASS (il juge la source, qui n'a
+pas bougé) · `oracle-slop` PASS · `oracle-tokens` PASS · `oracle-mobile` PASS · `check_html.py` FAIL,
+mais sur L7 et L10 seulement — l'absence d'un chapeau et d'un exemple de lecture, jamais la
+disparition du texte. Une page amputée n'a en effet ni débordement, ni contraste faible, ni couleur
+en dur : **elle est parfaitement conforme et presque vide.**
+
+Les six mesurent la FORME. Aucun ne mesurait la COMPLÉTUDE — une grandeur *corrélée* prise pour
+l'invariant : tant qu'un générateur ne perd rien, forme et contenu vont ensemble ; le jour où la
+corrélation se rompt, six verdicts verts couvrent une page vide.
+
+Le contrôle ne demande aucune finesse, il demande de **compter** :
+
+```bash
+python scripts/check_completude.py page.html --source source.md     # exit 0 PASS · 1 FAIL · 2 SKIP
+python scripts/check_completude.py page.html --source a.md --source b.md --output json
+```
+
+    rendu  = mots visibles du corps HTML (balises, commentaires, scripts et styles retirés)
+    source = mots visibles du ou des Markdown dont il sort
+    si rendu < source : ARRÊT — la page porte moins de texte que sa source
+
+Le seuil est grossier à dessein : un rendu porte EN PLUS les libellés du générateur (menus,
+inventaires, légendes de schéma), il est donc normalement **plus riche** que sa source. Un rendu
+plus pauvre est une perte, sans jugement à rendre. `--seuil` sous 1.0 reste possible, mais la
+**dérogation est écrite au périmètre de non-mesure de chaque exécution** — jamais silencieuse.
+
+À lancer dès qu'une chaîne **transforme une source en page** : un gabarit rendu, une synthèse
+publiée, un rapport d'audit. Une page écrite à la main n'a pas de source à laquelle se comparer, et
+ce contrôle ne s'y applique pas.
+
 ## La chaîne ne s'arrête pas à ce socle : quatre oracles de `digit-ai-forge-design` jugent la même page (TF-1173)
 
 **Le fait mesuré, 16/09/2026 (lot Produit-64 20260916b, RD-9).** Un guide développeur déclaré PASS
@@ -540,6 +576,8 @@ contrôles que le producteur lance de toute façon.
 
 ## Référentiel détaillé
 
+- Complétude rendu vs source, pour toute page issue d'un générateur : `scripts/check_completude.py`
+  (TF-1174) — section ci-dessus ; registre : `quality-oracles/references/registre-oracles.md`
 - Les quatre oracles de `digit-ai-forge-design` qui jugent cette même page, et leur ligne de
   commande : section ci-dessus (TF-1173) — `oracle-slop`, `oracle-tokens`, `oracle-mobile`,
   `oracle-images`, lancés ensemble par `oracles/run-oracles-design.mjs`
