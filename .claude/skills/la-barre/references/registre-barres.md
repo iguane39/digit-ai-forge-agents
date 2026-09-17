@@ -342,3 +342,114 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
   frontiere: fixe le NIVEAU « le modèle sémantique est du texte versionné » ; n'impose aucune version de Power BI Desktop, ne copie aucun contenu de la documentation
   justification: condition posée par l'analyse L99 du 07/09/2026 pour qu'un verbe soit exerçable par un agent (formats texte, lignes de commande, API) ; sans ce format, les oracles M4 et M6 de l'étude n'ont rien à lire
   statut: ok (validée humain, 07/09/2026 — décision D-6 option (a) « 6a », tour dédié au pas 5 : les quatre références recommandées retenues telles quelles, candidats survivants conservés en mémoire de choix)
+
+# ---- TF-1028 (17/09/2026) : barre externe « publication réseau ». Pas 1 à 4 joués le
+# ---- 17/09/2026 (test d'existence : 4/4 candidats atteignables, HTTP 200, exécuté par
+# ---- scripts/test_existence.py --liste) ; niveaux décomposés (pas 6) en anticipation. Le
+# ---- pas 5 — validation humaine en un tour, non sautable — N'A PAS EU LIEU : statut todo,
+# ---- entrée prête pour ce tour, jamais auto-validée.
+
+- cible: >
+    publication réseau professionnelle (LinkedIn), 150 à 300 mots — deux écritures : profil
+    d'une personne (première voix) et page d'une organisation (voix de marque)
+  reference: >
+    Paire — LinkedIn Top Voices (programme éditorial officiel de LinkedIn, corpus nommé et
+    daté d'exemples reconnus) pour l'écriture profil ; LinkedIn Pages Best Practices
+    (recommandations officielles de LinkedIn pour les organisations) pour l'écriture page.
+    Complément transversal de structure : LinkedIn Help — « Tips for writing articles on
+    LinkedIn » (bornée : porte sur les articles longs, pas les posts courts — seule sa
+    discipline de structure et de voix est importée, jamais sa longueur).
+  candidats_survivants: >
+    (1) https://www.linkedin.com/help/linkedin/answer/a776208 — « LinkedIn Top Voices »,
+    critères de sélection (recommandée, écriture profil) ; test le 17/09/2026, HTTP 200,
+    41 343+ octets, page datée « Last updated: 8 months ago » (relatif — texte exact relevé
+    dans le HTML). (2) https://www.linkedin.com/news/story/meet-the-linkedin-top-voices-class-of-january-2026-6924764/
+    — classe nommée « Top Voices » du 27/01/2026 (métadonnée `datePublished:
+    2026-01-27T20:13:10.955Z`), auteure Devin Banerjee sous LinkedIn News (rédacteur en chef
+    Daniel Roth) — exemple concret cité, post de Kim Scott, corpus illustratif de la même
+    référence (1), pas une barre à part ; test le 17/09/2026, HTTP 200, 65 536+ octets.
+    (3) https://business.linkedin.com/marketing-solutions/linkedin-pages/best-practices
+    (recommandée, écriture page) — datée « © LinkedIn Corporation 2026 » (texte exact relevé,
+    aucune date de mise à jour plus précise trouvée) ; test le 17/09/2026, HTTP 200,
+    65 536+ octets. Retenue UNIQUEMENT pour ses éléments d'identité et de format (image de
+    couverture, mise en avant des salariés) — ses statistiques d'engagement non sourcées
+    (« 2x », « 5x », « 24x ») sont explicitement HORS barre, voir frontière. (4)
+    https://www.linkedin.com/help/linkedin/answer/a516913 — « Tips for writing articles on
+    LinkedIn » — datée « Last updated: 3 years ago » (texte exact relevé) ; test le
+    17/09/2026, HTTP 200, 45 569+ octets. Retenue en complément transversal pour sa
+    discipline de structure (un seul sujet, opinion assumée, en-tête écrit en dernier) ;
+    écartée comme barre autonome car elle vise les articles longs (600-1 200 mots selon la
+    page), hors du format court demandé (150-300 mots).
+  test_existence: python scripts/test_existence.py --liste candidats.txt (4 candidats)
+  dernier_test: 2026-09-17 — PASS (4/4 références atteignables, HTTP 200, exécuté par
+    scripts/test_existence.py --liste, exit 0)
+  niveaux:
+    structure: >
+      S1 la première phrase porte, à elle seule, le sujet ET l'intérêt du post — fondé sur
+      (4) : « Write the headline last… find the sharpest sentence in the whole thing, then
+      ask whether it belongs at the top ». S2 un seul sujet par post, aucune juxtaposition de
+      sujets — fondé sur (4) : « Keep your writing focused. Avoid covering too many topics in
+      the same article ». S3 longueur 150 à 300 mots — DONNÉE PAR LE MANDAT de cette entrée
+      (cible demandée), non issue d'une référence testée ; à dire tel quel, jamais fondue dans
+      la barre comme si elle était sourcée. S4 clôture qui appelle une réponse (question ou
+      invitation explicite) — fondé sur (4), structure attendue « introduction → implications
+      → solutions et un appel à l'action ».
+    vocabulaire: >
+      V1 un fait concret nommé (chiffre, exemple vécu, référence datée) plutôt qu'une
+      généralité — fondé sur (1) : « professional topics, including specific industry
+      insights, news analysis and knowledge that can inform others ». V2 aucun remplissage :
+      chaque phrase apporte une information neuve, pas un lieu commun — fondé sur (2), post
+      cité de la classe de janvier 2026 : « Share what they're still figuring out, not just
+      what worked once ». V3 mention de transparence si le texte est généré ou assisté par
+      IA, conforme à la règle de marque de l'émetteur — fondé sur `references\PLATEFORME-LINKEDIN.md`
+      §3 du pilot (obligation datée du 2026-08-02, article 50 du règlement européen sur l'IA ;
+      lignes directrices de la Commission mises à jour le 2026-08-06) — référence interne au
+      pilot, distincte des quatre candidats web, citée telle quelle.
+    artefacts: >
+      A1 écriture profil = première personne assumée, une opinion exprimée depuis une
+      expérience nommée — fondé sur (4) : « Don't shy away from expressing your opinion » et
+      sur (2), post Kim Scott : « Say the hard thing with care ». A2 écriture page = voix de
+      marque cohérente, l'organisation nommée comme sujet, jamais un porte-parole anonyme, un
+      élément d'identité visible (logo ou image de couverture) quand le format le permet —
+      fondé sur (3) : « cover image to bring your Page to life ». A3 la page nomme des
+      personnes réelles de l'organisation plutôt qu'un « nous » désincarné, quand le sujet s'y
+      prête — fondé sur (3) : « employees to humanize your brand », « personalized
+      shout-outs from your Page ».
+    comportement: >
+      B1 le post reste lisible et complet indépendamment de tout lien externe : le lien n'est
+      jamais la seule source du fait annoncé (déduit de S1/V1, pas d'une référence à part). B2
+      le choix profil vs page est déclaré avant rédaction et gouverne A1/A2 — pas de mélange
+      des deux voix dans un même post.
+  frontiere: >
+    Fixe le NIVEAU d'un post court professionnel (accroche, un fait, une voix, une clôture) —
+    n'autorise NI la copie du contenu, NI la reproduction de l'identité de marque LinkedIn, NI
+    l'emprunt de la voix d'un Top Voice nommé : on mesure l'exigence à son corpus, on ne le
+    recopie pas. EXPLICITEMENT HORS barre (exclusion tenue de `references\PLATEFORME-LINKEDIN.md`
+    §4 du pilot, dernière partie, qui refuse tout recueil de « règles d'algorithme » sans
+    source primaire datée) : heure de publication idéale, fréquence hebdomadaire optimale,
+    nombre de hashtags, emplacement des liens, et les multiplicateurs d'engagement non
+    sourcés de (3) (« 2x », « 5x », « 24x » — LinkedIn ne publie pas la méthodologie derrière
+    ces chiffres). La fourchette de longueur en articles de (4) (600-1 200 mots) n'est pas
+    transposée au post court : seule sa discipline de structure l'est. La charte de voix déjà
+    définie par l'émetteur, le cas échéant, prime et reste la contrainte de forme.
+  justification: >
+    Les deux références recommandées adressent chacune une des deux écritures demandées.
+    LinkedIn Top Voices est le programme par lequel LinkedIn — l'opérateur de la plateforme,
+    organisation publique citée comme source — désigne publiquement, par nom et par date, les
+    publications qu'il reconnaît comme incarnant la voix personnelle professionnelle
+    (sélection par son équipe éditoriale, direction Daniel Roth) : un corpus cité en exemple
+    par une source nommée, au sens exact du protocole. LinkedIn Pages Best Practices est la
+    recommandation officielle de LinkedIn pour l'écriture d'une organisation. Aucune des deux
+    n'est un recueil de règles d'algorithme sans méthode : (1)+(2) documentent des critères de
+    sélection éditoriaux (qualité, originalité, expertise) et un exemple nommé et daté ; (3)
+    documente des éléments d'identité et de format, sa partie « performance » étant
+    explicitement écartée de la barre (voir frontière). Aucun nom de personne privée n'entre
+    au registre : LinkedIn (organisation) porte la référence ; l'exemple nommé (Kim Scott) est
+    une autrice publique déjà mise en avant, par son nom, dans le corpus officiel et daté cité.
+  statut: >
+    todo — pas 1 à 4 joués le 17/09/2026 (candidats cherchés, test d'existence exécuté et vert
+    4/4, filtre de légitimité passé : aucune copie, aucun nom privé), niveaux décomposés
+    ci-dessus en anticipation du pas 6. Le pas 5 — validation humaine en un tour, non
+    sautable — N'A PAS EU LIEU dans cette campagne (agent de campagne sans tour humain dédié
+    disponible) : cette entrée est une PROPOSITION prête pour ce tour, elle n'est ni servie au
+    pas 1 ni auto-validée tant que ce tour n'a pas eu lieu.
