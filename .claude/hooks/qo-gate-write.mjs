@@ -60,6 +60,10 @@ const NON_JUGE = [
   "sera exemptée à tort — l'exemption est déclarée au verdict pour que ce cas soit visible",
   "la qualité du template lui-même — ce hook décide s'il y a lieu de juger, pas ce que vaut le fichier",
   "la page RENDUE par le template : elle, se juge normalement quand elle est écrite",
+  "TF-0836 — un template de MAQUETTE (placeholders `/*TOKENS*/`, `/*TABLE_FILTERS*/`) n'est pas " +
+  "exempté en bloc : seuls les constats dont le SUJET est ce que le placeholder injecte sont " +
+  "écartés, et la liste de ces sujets est DÉCLARÉE (`PLACEHOLDERS_BUILD`). Un placeholder non " +
+  "recensé n'écarte rien, et un vrai défaut du template reste bloqué",
 ];
 
 /** Marqueur de moteur de templates trouvé dans ce contenu ? (nom du marqueur, ou null) */
@@ -129,6 +133,85 @@ export function constatDePoliceNeutralise(ligne, contenu, chartes = CHARTES) {
   const nommees = [...String(ligne).matchAll(/[«"'`]\s*([^»"'`]{2,40}?)\s*[»"'`]/g)].map(m => m[1].trim().toLowerCase());
   if (!nommees.length) return false;               // aucune fonte nommée : on ne neutralise pas ce qu'on ne lit pas
   return nommees.every(f => charte.fontes.includes(f));
+}
+
+// ── UN TEMPLATE DE MAQUETTE N'EST PAS LE FICHIER QUE LE LECTEUR REÇOIT (TF-0836) ─────────────
+//
+// LE FAIT, remonté par un produit le 05/09/2026 (lot Produit-61 20260905a, RP-1, ledger seq 39).
+// Le hook jugeait un TEMPLATE de maquette — un `.html` où le build remplace des placeholders
+// `/*TOKENS*/` et `/*TABLE_FILTERS*/` par le bloc de jetons et par le composant de filtres — comme
+// une page autonome. Il bloquait donc sur G2 (l'asset `table-filters.js` n'est pas référencé), T5
+// (les paires de contraste ne se résolvent pas : les jetons n'existent pas encore) et L8. Six
+// écritures, six blocages, sur des constats qui DISPARAISSENT au build. C'est la même mécanique
+// que le fragment SSR de TF-0282, à un détail près : ce template-là ne porte ni `{% %}` ni `{{ }}`,
+// donc l'exemption existante ne le voyait pas.
+//
+// CE QUI N'EST PAS FAIT, ET POURQUOI : exempter le fichier en bloc dès qu'il porte un placeholder.
+// Un template a une charte, des couleurs, une structure — un vrai défaut y est un vrai défaut, et
+// il doit rester bloqué. Le geste est donc le MÊME que celui de la règle de précédence D-41 (b) :
+// on n'écarte QUE les constats dont le SUJET est précisément ce que le placeholder injecte, et le
+// placeholder doit être PRÉSENT dans le fichier. Trois conditions, aucune devinette.
+//
+// LA TABLE EST DÉCLARATIVE ET SE LIT : chaque entrée dit quel placeholder, ce qu'il injecte, et
+// quels constats cessent d'exister une fois qu'il est remplacé. Un constat qui ne tombe sous aucun
+// motif reste bloquant — « je ne sais pas » ne vaut jamais « c'est bon », ici comme ailleurs.
+//
+// LES MOTIFS SONT ÉCRITS SUR LES MESSAGES RÉELS, PAS SUR LES CODES DE RÈGLE. Première écriture de
+// cette table : elle cherchait `G2`, `T4`, `T5` dans la ligne. Or le contrat de sortie du lanceur
+// (`quality-oracles/references/contrat-sortie-runner.md` §2.1) le dit — `detail` ne porte que le
+// `msg` de la raison, JAMAIS son code. Aucune ligne réelle n'aurait jamais mordu : une règle juste
+// dont la clé est fausse est une règle morte qui croit vivre, la classe close par TF-0732. Les
+// motifs ci-dessous viennent des messages relevés dans le code des oracles le 17/09/2026, et le
+// banc les rejoue tels quels ; le code de règle reste en variante, pour le jour où il paraîtra.
+const PLACEHOLDERS_BUILD = [
+  {
+    nom: '/*TOKENS*/',
+    motif: /\/\*\s*TOKENS\s*\*\//,
+    injecte: 'le bloc de jetons `:root` (couleurs des deux thèmes, espacements, polices)',
+    // Sans jetons, il n'y a ni déclaration de token, ni paire de couleurs à confronter, ni thème
+    // sombre : ces constats n'ont pas d'objet AVANT le build, et plus d'objet APRÈS.
+    efface: [
+      /:root\s+absent/i,                                            // check_html
+      /aucun\s+(?:token|jeton)\s+d[ée]clar[ée]/i,                    // oracle-tokens
+      /ni\s+:root,\s*ni\s+\[data-theme\]/i,                          // oracle-tokens (même constat)
+      /aucune\s+paire\s+texte\/fond\s+pos[ée]e/i,                    // oracle-tokens T5
+      /d[ée]fini\s+en\s+clair\s+mais\s+absent\s+du\s+th[èe]me\s+sombre/i,  // oracle-tokens T4
+      /d[ée]fini\s+en\s+sombre\s+seulement/i,                        // oracle-tokens T4
+      /\bT[45]\b[^\n]{0,80}(?:paire|parit[ée]|th[èe]me\s+sombre)/i,  // variante si le code paraît
+    ],
+  },
+  {
+    nom: '/*TABLE_FILTERS*/',
+    motif: /\/\*\s*TABLE_FILTERS\s*\*\//,
+    injecte: "l'asset du composant de filtres de colonne (`table-filters.js`)",
+    // UNIQUEMENT la référence à l'asset — G2. G3 (initialisation), G4 (id et thead), G5 (compteur
+    // aria-live) et G6 (règle d'impression) portent sur le BALISAGE de la page, que le placeholder
+    // n'injecte pas : les écarter ferait passer un template réellement défectueux.
+    efface: [
+      /aucune\s+r[ée]f[ée]rence\s+a\s+table-filters\.js/i,           // oracle-filtres-tableau G2
+      /\bG2\b[^\n]{0,80}(?:table-filters|r[ée]f[ée]renc)/i,          // variante si le code paraît
+    ],
+  },
+];
+
+/** Les placeholders de build PRÉSENTS dans ce contenu (HTML seulement). Fonction pure. */
+export function placeholdersDeBuild(cible, contenu) {
+  if (!EXT_TEMPLATE.has(path.extname(String(cible ?? '')).toLowerCase())) return [];
+  return PLACEHOLDERS_BUILD.filter(p => p.motif.test(contenu || ''));
+}
+
+/** Ce constat disparaît-il au build ? Rend la raison (chaîne) ou null. Fonction pure —
+ *  c'est elle que le banc éprouve, dans les deux sens (TF-0836). */
+export function constatEffaceParUnPlaceholder(ligne, contenu, cible) {
+  const presents = placeholdersDeBuild(cible, contenu);
+  if (!presents.length) return null;                 // pas un template de maquette : rien à écarter
+  const l = String(ligne ?? '');
+  for (const p of presents) {
+    if (p.efface.some(m => m.test(l))) {
+      return `constat effacé au build par ${p.nom}, qui injecte ${p.injecte}`;
+    }
+  }
+  return null;                                       // sujet non couvert : le constat TIENT
 }
 
 // ── LE CHEMIN N'EST PAS L'IDENTITÉ D'UN CONSTAT (TF-0806 + TF-0812, 05/09/2026) ──────────────
@@ -402,17 +485,29 @@ export function partagerConstats(apres, avant) {
 const apresConstats = lignesFautives(r.stdout);
 // D-41 (b) : la précédence s'applique AVANT le partage neufs/préexistants. Un constat neutralisé
 // par la charte posée du fichier n'est pas « préexistant », il n'a jamais eu lieu d'être.
-const neutralises = apresConstats.filter(l => constatDePoliceNeutralise(l, contenu));
+// TF-0836 : même geste pour un template de maquette — un constat que le build efface n'a jamais eu
+// lieu d'être non plus. La raison est retenue pour que le verdict dise LAQUELLE des deux a parlé.
+const raisonNeutralisation = (l) => (
+  constatDePoliceNeutralise(l, contenu)
+    ? 'PRÉCÉDENCE de la charte posée (D-41 (b), registre des oracles, profil digit-ai)'
+    : constatEffaceParUnPlaceholder(l, contenu, cible));
+const neutralises = apresConstats.filter(l => raisonNeutralisation(l));
 const versionHead = constatsAvant(cible);
 const { neufs, preexistants, delta } = partagerConstats(
   apresConstats.filter(l => !neutralises.includes(l)), versionHead.constats);
 
 if (!neufs.length && !preexistants.length && neutralises.length) {
   if (compte[cle]) { delete compte[cle]; ecrire(compte); }
-  sortie(0, `qo-gate-write : « ${path.basename(cible)} » PASSE — ${neutralises.length} constat(s) de POLICE `
-    + `écarté(s) par la règle de PRÉCÉDENCE (D-41 (b), registre des oracles, profil digit-ai) : une charte POSÉE `
-    + `prime sur la liste des fontes réflexes. Ce fichier déclare la charte « ${(charteDeclaree(contenu) || {}).nom} », `
-    + `qui prescrit ces fontes.\n` + neutralises.slice(0, 4).join('\n'));
+  const placeholders = placeholdersDeBuild(cible, contenu);
+  sortie(0, `qo-gate-write : « ${path.basename(cible)} » PASSE — ${neutralises.length} constat(s) `
+    + `ÉCARTÉ(S), chacun avec sa raison :\n`
+    + neutralises.slice(0, 4).map(l => `   · ${raisonNeutralisation(l)}\n     ${String(l).trim()}`).join('\n')
+    + (placeholders.length
+        ? `\nCe fichier est un TEMPLATE DE MAQUETTE : ${placeholders.map(p => p.nom).join(', ')} `
+          + `— les constats ci-dessus disparaissent au build (TF-0836). Ce qui n'est pas injecté par `
+          + `un placeholder recensé reste jugé : un vrai défaut du template resterait bloqué.`
+        : `\nCe fichier déclare la charte « ${(charteDeclaree(contenu) || {}).nom} », qui prescrit `
+          + `ces fontes : une charte POSÉE prime sur la liste des fontes réflexes.`));
 }
 
 if (delta && !neufs.length && preexistants.length) {
@@ -440,7 +535,16 @@ if (n > MAX_ECHECS) {
 // Les préexistants sont CITÉS sous leur forme NORMALISÉE (TF-0806) : c'est cette ligne-là qui a
 // servi de clé, et la montrer est le seul moyen, pour un lecteur, de voir POURQUOI un constat a
 // été reconnu des deux côtés — un partage invérifiable se croit sur parole.
-const details = (delta ? neufs : apresConstats).slice(0, 8).join('\n')
+// TF-0836 : les constats NEUTRALISÉS ne figurent pas parmi les motifs du refus, même quand le
+// delta n'a pas été calculable. La branche `!delta` citait `apresConstats`, la liste NON filtrée :
+// le lecteur d'un verdict bloquant y retrouvait les constats qu'on venait d'écarter, et cherchait
+// à corriger ce que le build efface. Le compte des neutralisés est dit à côté, jamais tu.
+const details = (delta ? neufs : apresConstats.filter(l => !neutralises.includes(l)))
+  .slice(0, 8).join('\n')
+  + (neutralises.length
+      ? `\n(+ ${neutralises.length} constat(s) ÉCARTÉ(S) et NON imputé(s) : `
+        + `${[...new Set(neutralises.map(raisonNeutralisation))].join(' · ')})`
+      : '')
   // TF-0816 : quand le delta n'a PAS été calculable, le verdict le DIT et dit pourquoi. Sans cette
   // ligne, un refus faute de delta ressemble trait pour trait à un refus après un delta calculé
   // sans aucun préexistant, et la cause se cherche là où elle n'est pas.
@@ -683,6 +787,61 @@ function selfTest() {
     ['ROUGE  une erreur levee hors de l assertion compte FAIL AVEC son message (le banc ne l avale plus)',
       () => { const r = jouer(['temoin', () => { throw new Error('BOUM-TEMOIN'); }]);
               return r.tenu === false && /BOUM-TEMOIN/.test(String(r.erreur)); }],
+    // ── TF-0836 (17/09/2026) — LE TEMPLATE DE MAQUETTE, DANS LES DEUX SENS. Six ecritures du
+    // meme template bloquees sur G2, T5 et L8, c est-a-dire sur des constats que le build efface
+    // (lot Produit-61 20260905a, RP-1, ledger seq 39). Les cas ROUGES sont ceux qui comptent :
+    // sans eux, la regle serait une exemption en bloc deguisee, et un template defectueux
+    // passerait. La porte reste fermee sur tout ce qu aucun placeholder recense n injecte.
+    // Les lignes ci-dessous sont les lignes REELLES : celle de `:root absent` et celle de
+    // « aucun token declare » ont ete relevees le 17/09/2026 en jouant le lanceur sur un
+    // template de maquette ; celle de G2 est le `msg` exact de `oracle-filtres-tableau.mjs`
+    // (ligne 104), mis au format que le contrat de sortie §2.1 prescrit. AUCUNE ne porte le CODE
+    // de la regle — c'est ce qui avait tue la premiere ecriture de la table.
+    ['VERTE  template de maquette : le constat G2 (asset table-filters absent) est ECARTE',
+      () => /effac[ée] au build par \/\*TABLE_FILTERS\*\//.test(String(constatEffaceParUnPlaceholder(
+              '  ❌ [Composant filtres de tableau] maquette.html — 1 constat(s) · Aucune reference a table-filters.js ni a DigitAITableFilters : le composant est declare mais absent.',
+              '<style>/*TOKENS*/</style><body><!--/*TABLE_FILTERS*/--></body>', '/p/maquette.html')))],
+    ['VERTE  template de maquette : « :root absent » est ECARTE (ligne reelle de check_html)',
+      () => constatEffaceParUnPlaceholder(
+              '  ❌ [Conformité charte HTML (charte, sémantique, print)] maquette.html — 1 constat(s) · :root absent (tokens CSS centralisés requis).',
+              '<style>/*TOKENS*/</style>', '/p/maquette.html') !== null],
+    ['VERTE  template de maquette : « aucun token déclaré » est ECARTE (ligne reelle d oracle-tokens)',
+      () => constatEffaceParUnPlaceholder(
+              '  ❌ [Système de marque : traçabilité des tokens] maquette.html — 1 constat(s) · aucun token déclaré : ni :root, ni [data-theme], ni fichier --tokens exploitable',
+              '<style>/*TOKENS*/</style>', '/p/maquette.html') !== null],
+    ['VERTE  template de maquette : T5 « aucune paire texte/fond posée » est ECARTE (sans jetons, aucune paire)',
+      () => constatEffaceParUnPlaceholder(
+              "  ❌ [Système de marque : traçabilité des tokens] maquette.html — 1 constat(s) · aucune paire texte/fond posée par le CSS : AUCUN contraste n'a été mesuré",
+              '<style>/*TOKENS*/</style>', '/p/maquette.html') !== null],
+    ['VERTE  la raison NOMME le placeholder ET ce qu il injecte (jamais une exemption muette)',
+      () => /\/\*TOKENS\*\/, qui injecte le bloc de jetons/.test(String(constatEffaceParUnPlaceholder(
+              '❌ maquette.html — :root absent', '<style>/*TOKENS*/</style>', '/p/maquette.html')))],
+    ['ROUGE  MEME template : une couleur en dur reste BLOQUANTE (le build ne l efface pas)',
+      () => constatEffaceParUnPlaceholder(
+              '  ❌ [Système de marque : traçabilité des tokens] maquette.html — 1 constat(s) · couleur en dur « #fff » sur background : passer par var(--token)',
+              '<style>/*TOKENS*/</style><body><!--/*TABLE_FILTERS*/--></body>', '/p/maquette.html') === null],
+    ['ROUGE  MEME template : la police interdite Syne reste BLOQUANTE',
+      () => constatEffaceParUnPlaceholder('  ❌ [Conformité charte HTML] maquette.html — 1 constat(s) · police Syne presente (interdite par la charte).',
+              '<style>/*TOKENS*/</style>', '/p/maquette.html') === null],
+    ['ROUGE  MEME template : G5 (compteur aria-live absent) reste BLOQUANT — le placeholder n injecte que l asset',
+      () => constatEffaceParUnPlaceholder(
+              '  ❌ [Composant filtres de tableau] maquette.html — 1 constat(s) · Aucun compteur data-tf-count-for="t1" : l\'utilisateur ne peut pas savoir combien de lignes sont masquees.',
+              '<style>/*TOKENS*/</style><body><!--/*TABLE_FILTERS*/--></body>', '/p/maquette.html') === null],
+    ['ROUGE  page SANS placeholder : le MEME constat G2 tient — un livrable reste un livrable',
+      () => constatEffaceParUnPlaceholder(
+              '  ❌ [Composant filtres de tableau] page.html — 1 constat(s) · Aucune reference a table-filters.js ni a DigitAITableFilters : le composant est declare mais absent.',
+              PAGE_AUTONOME, '/p/livrables/page.html') === null],
+    ['ROUGE  placeholder present mais l AUTRE : G2 tient si seul /*TOKENS*/ est la',
+      () => constatEffaceParUnPlaceholder(
+              '  ❌ [Composant filtres de tableau] maquette.html — 1 constat(s) · Aucune reference a table-filters.js ni a DigitAITableFilters : le composant est declare mais absent.',
+              '<style>/*TOKENS*/</style>', '/p/maquette.html') === null],
+    ['ROUGE  un .md portant /*TOKENS*/ n est pas un template — hors EXT_TEMPLATE, il reste juge',
+      () => placeholdersDeBuild('/p/note.md', 'Exemple : /*TOKENS*/ dans un gabarit.').length === 0],
+    ['       les placeholders presents sont NOMMES, et seulement ceux qui y sont',
+      () => { const p = placeholdersDeBuild('/p/maquette.html', '<style>/*TOKENS*/</style>');
+              return p.length === 1 && p[0].nom === '/*TOKENS*/'; }],
+    ['       la limite de la regle est declaree au non_juge (exemption non globale)',
+      () => NON_JUGE.some(n => /TF-0836/.test(n) && /n['’]est pas exempt[ée] en bloc/.test(n))],
   ];
   // Le resultat d un cas porte l ERREUR quand il en leve une : c est la seule difference entre un
   // banc qui juge et un banc qui rassure.
