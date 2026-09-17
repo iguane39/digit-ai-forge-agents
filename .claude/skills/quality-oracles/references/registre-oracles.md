@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.22.0, alignée sur le JSON le 17/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.23.0, alignée sur le JSON le 17/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -358,6 +358,44 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
 - **Artefact unique.** Les quatre jugent le même fichier sous quatre angles
   (énoncé, traçabilité, couverture, affirmations chiffrées) : un référentiel qui passe
   les quatre est celui que les forges aval peuvent consommer.
+
+## Oracles de la forge data (chantier forge-data, remontée §4 le 17/09/2026, v2.23.0)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Périmètre d'un livrable migré : ce que les visuels lisent, excédent non motivé refusé | `node c:/dev/digit-ai-forge-data/oracles/oracle-delimiter.mjs <perimetre.json> --json-only` — format `forge-data/perimetre@1` ; DL1 forme, DL2 relevé identifié (par/date/source), DL3 rien de ce que le lecteur voyait n'est perdu, DL4 excédent non motivé BLOQUE, DL5 déclarations résolvent, DL6 taux recalculé (TF-1180) | cli | ✅ |
+| Chaîne de travail déclarée : étapes ordonnées, chacune avec un porteur qui existe | `node c:/dev/digit-ai-forge-data/oracles/oracle-enchainer.mjs <chaine.json> --json-only` — format `forge-data/chaine@1` ; CH1 forme, CH2 rangs contigus, CH3 porteur existant, CH4 règles retrouvées chez leur porteur, CH5 geste humain enregistré, CH6 document ↔ étapes (TF-1179) | cli | ✅ |
+| Reconstruction d'un rapport existant : mise en page conservée, jamais réinventée | `node c:/dev/digit-ai-forge-data/oracles/oracle-reconstruire.mjs <reconstruction.json> --json-only` — format `forge-data/reconstruction@1` ; RS1 forme, RS2 doctrine du repli (motif ≥ 6 mots), RS3 bijection des pages, RS4 bijection des visuels au pixel, RS5 écarts motivés, RS6 ressources portées et référencées (TF-1176) | cli | ✅ |
+| Livrable dont l'usage est un rendu : liaisons, mesures, visuels vides, geste de vérification déclaré | `node c:/dev/digit-ai-forge-data/oracles/oracle-rendre.mjs <rendu.json> --json-only` — format `forge-data/rendu@1` ; RN1 forme, RN2 liaisons visuel → modèle, RN3 mesures existantes et typées, RN4 visuels vides dits, RN5 geste de vérification du rendu réel déclaré (TF-1175) | cli | ✅ |
+
+Les quatre oracles ci-dessus vivent hors `~/.claude/skills` : leur source est
+`c:/dev/digit-ai-forge-data/oracles/`, avec fixtures verte/rouge et self-test
+(`node oracles/self-test.mjs` — 324 PASS, 0 FAIL au 17/09/2026, sur l'ensemble des oracles du
+dépôt). Mêmes conséquences assumées que pour les forges design et conception :
+
+- **Chemins absolus dans `cmd`.** Ces oracles ne sont pas empaquetés dans un skill ;
+  déplacer le dépôt casse l'invocation — la remonter ici le jour où ça arrive.
+- **Déclenchement par contenu, pas par extension.** `ext` est vide et `content_patterns`
+  matche la signature `"format": "forge-data/<nom>@1"` de chaque artefact JSON — router
+  tout `.json` du parc ferait juger n'importe quel fichier de configuration par un oracle
+  qui n'attend qu'un périmètre, une chaîne, une reconstruction ou un rendu.
+- **Frontières croisées, déclarées dans chaque `non_juge`.** Les quatre oracles se
+  découpent le même incident (retour Produit-62, RF-21/RF-22/RF-24/RF-25) sans se
+  recouvrir : `oracle-rendre` juge les liaisons du rapport CONSTRUIT, `oracle-reconstruire`
+  juge la fidélité de sa mise en page à un rapport d'origine, `oracle-delimiter` juge le
+  périmètre AVANT que le rapport existe (le symétrique d'`oracle-couvrir`, déjà au
+  registre), `oracle-enchainer` juge que la procédure qui enchaîne ces étapes est écrite et
+  que chaque étape nomme un porteur qui existe — y compris ces quatre oracles eux-mêmes.
+- **Non inscrits au registre** (constat, pas objet de cette remontée) : les autres oracles
+  du même dépôt (`oracle-tracer`, `oracle-profiler`, `oracle-restituer`, `oracle-modeliser`,
+  `oracle-contractualiser`, `oracle-couvrir`, `oracle-evoluer`, `oracle-rapprocher`,
+  `oracle-reconcilier`, `oracle-transformer`) suivent la même convention d'invocation mais
+  n'ont pas d'entrée ici — candidature à ouvrir séparément.
+- **`fixtures/manifest.json` de ce skill non modifié.** Convention constatée sur les deux
+  précédents de ce type (forge-design, forge-conception) : un oracle délégué vivant dans un
+  dépôt frère prouve sa paire rouge/verte par le self-test de CE dépôt, pas par le manifest
+  de `quality-oracles` — aucune des entrées forge-design/forge-conception déjà au registre
+  n'y figure. Reconduit ici plutôt qu'inventé.
 
 ## Injection du 15/08/2026 — restitution lisible (TF-0235, v2.11.0-v2.11.1)
 

@@ -1,5 +1,5 @@
 {
- "version": "2.22.0",
+ "version": "2.23.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -1002,6 +1002,94 @@
     "affirmations non chiffrées"
    ],
    "timeout_ms": 600000
+  },
+  {
+   "domaine": "Périmètre d'un livrable migré : ce que les visuels lisent, excédent non motivé refusé (DL1-DL6)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/perimetre@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-delimiter.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "DL1 forme (format, id, mise en page avec pages, usage au format forge-data/usage-restitution@1 exigé, périmètre livré non vide) · DL2 relevé identifié (par, date ISO, source = fichier d'origine) · DL3 rien de ce que le lecteur voyait n'est perdu (résolution insensible à la casse, avertissement sur colonne lue sans être affichée) · DL4 excédent non motivé BLOQUE (objet livré lu, ou exclusion motivée ≥ 4 mots) · DL5 les déclarations (correspondance / lecture / exclusion) résolvent à un objet du périmètre livré · DL6 taux_declare recalculé et confronté à 0,1 point près",
+   "statut": "ok",
+   "non_juge": [
+    "la JUSTESSE du relevé d'usage : un visuel oublié au relevé rend ses objets excédentaires à tort, un champ inventé les rend nécessaires à tort — d'où DL2 (qui a relevé, quand, sur quel fichier) et la chaîne `traduire-modele-semantique --usage-restitution` qui produit l'usage sans transcription à la main",
+    "la COMPLÉTUDE du livrable vers sa source — le défaut symétrique (ce que la source contient et que le livrable a oublié) appartient à `oracles/oracle-couvrir.mjs` de ce dépôt",
+    "les liaisons du rapport CONSTRUIT et le geste de vérification du rendu — `oracles/oracle-rendre.mjs` (RN2-RN5) ; la fidélité de sa mise en page — `oracles/oracle-reconstruire.mjs`",
+    "la pertinence métier d'une exclusion : l'oracle exige un motif écrit, il ne l'arbitre pas (convention CV4)"
+   ]
+  },
+  {
+   "domaine": "Chaîne de travail déclarée : étapes ordonnées, chacune avec un porteur qui existe (CH1-CH6)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/chaine@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-enchainer.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "CH1 forme (format, id, document, étapes avec id/libellé ≥ 4 mots/entrée/sortie) · CH2 rangs entiers contigus de 1 à n sans doublon · CH3 porteur dans {oracle, script, geste_humain} au chemin qui EXISTE · CH4 règles citées par un porteur oracle retrouvées dans le fichier de cet oracle · CH5 geste_humain nommé (≥ 6 mots) avec son enregistreur (contrôle existant + règle) · CH6 le document lu par les humains cite chaque étape par son id",
+   "statut": "ok",
+   "non_juge": [
+    "que la procédure ait été SUIVIE : aucune trace d'exécution n'est lue ici — un contrôle ne remplace pas un geste",
+    "la JUSTESSE de la procédure : l'oracle exige que l'ordre soit écrit et contigu, il n'arbitre pas l'ordre choisi",
+    "ce que chaque porteur juge de son côté — ses règles et ses fixtures lui appartiennent ; ici seule leur EXISTENCE est vérifiée",
+    "la COMPLÉTUDE de la chaîne : une étape absente à la fois de la déclaration et du document n'est visible d'aucune règle de forme — c'est la limite structurelle, et c'est elle qui a coûté les 3 jours du retour"
+   ]
+  },
+  {
+   "domaine": "Reconstruction d'un rapport existant : mise en page conservée, géométrie au pixel, repli déclaré (RS1-RS6)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/reconstruction@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-reconstruire.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RS1 forme (format, id, mode dans le jeu fermé, tolerance_px entier ≥ 0, source et produit avec pages, source nommant origine et releve_par) · RS2 mode repli_genere exige un motif ≥ 6 mots, écarts RS3-RS6 comptés et nommés en avertissement sous ce mode · RS3 bijection des pages (largeur, hauteur, ordre, visibilité) · RS4 bijection des visuels par page (type, x, y, largeur, hauteur à tolerance_px près) · RS5 tout écart source/produit porte un motif ≥ 4 mots dans ecarts_assumes · RS6 chaque ressource de la source est portée (depuis) ET référencée (referencee: true) par le produit",
+   "statut": "ok",
+   "non_juge": [
+    "le RENDU lui-même — ce que le lecteur voit à l'écran (polices, couleurs, données affichées) : une géométrie fidèle ne dit rien de ce qui s'affiche dedans ; `oracles/oracle-rendre.mjs` de ce dépôt (TF-1175) pour ce qui se mécanise, et le geste de vérification qu'il exige déclaré pour le reste",
+    "la justesse du relevé de la source : il se produit en lisant le fichier d'origine chez le produit, jamais ici — cet oracle compare deux relevés, il n'en lit aucun fichier natif",
+    "les objets de FORMATAGE fins (polices, couleurs, largeurs de colonnes, tri) au-delà de la géométrie et des ressources déclarées ici",
+    "un rapport construit sans rapport d'origine : il n'y a rien à conserver, et ce domaine ne s'applique pas"
+   ]
+  },
+  {
+   "domaine": "Livrable dont l'usage est un rendu : liaisons, mesures, visuels vides, et geste de vérification du rendu déclaré (RN1-RN5)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/rendu@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-rendre.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RN1 forme (format, id, mise_en_page au format forge-data/mise-en-page@1, inventaire non vide inline ou via inventaire_ref) · RN2 liaisons : toute projection porteuse de données résout à un objet de l'inventaire (comparaison insensible à la casse) · RN3 une projection Table[Mesure] existe à l'inventaire et y est typée mesure · RN4 un visuel porteur de données sans projection AFFICHÉE n'affiche rien, et l'est dit · RN5 au moins un geste de vérification du rendu réel déclaré (libellé ≥ 4 mots, date AAAA-MM-JJ, résultat)",
+   "statut": "ok",
+   "non_juge": [
+    "CE QUE LE LECTEUR VOIT : le rendu réel (pages affichées, données, polices, couleurs, libellés d'erreur du service, durée et poids d'un export) ne s'obtient qu'en ouvrant le rapport ou en l'exportant depuis le service — c'est le geste que RN5 exige DÉCLARÉ, daté et résulté, jamais une case à cocher",
+    "la forme native des expressions du rapport (référence de source, alias du From, en-têtes de colonnes) — profil Power BI de forge-audit, jamais jugé ici",
+    "la FIDÉLITÉ de la mise en page à un rapport d'origine fourni en entrée — `oracles/oracle-reconstruire.mjs` de ce dépôt (TF-1176)",
+    "la justesse des valeurs affichées — `oracles/oracle-reconcilier.mjs` de ce dépôt, sur deux lots de mesures sous tolérance"
+   ]
   },
   {
    "domaine": "Style rédactionnel d'un texte Markdown (plancher E-1..E-12 du pilot)",
