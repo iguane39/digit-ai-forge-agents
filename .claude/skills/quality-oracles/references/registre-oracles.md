@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.20.0, alignée sur le JSON le 12/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.21.0, alignée sur le JSON le 17/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -381,3 +381,35 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
 | Support Design Authority Client-A (parité de format avec le deck de référence + faits portés) | `node c:/dev/_Client-A/Produit-64/tools/design-authority/oracle-da-pptx.mjs <deck.pptx> --faits <faits.json>` — F1 format 16:9, F2 polices ⊆ {Century Gothic, Arial, Courier New}, F3 couleurs de texte ⊆ palette relevée, F4 pied de page + pagination continue, F5 couverture / intercalaires / MERCI, F6 faits attendus présents, F7 débordement probable (heuristique), F8 zip ([Content_Types].xml 1re entrée, zéro JPEG/transition). Oracle visuel de confirmation : `tools/design-authority/rendre-pptx.ps1` (export PNG par PowerPoint COM — remplace le smoke-test LibreOffice absent du poste) | cli | ✅ |
+
+## Injection du 17/09/2026 — transparence des contenus publics générés (TF-1030, v2.21.0)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Transparence des contenus publics générés par IA (article 50 du règlement européen sur l'IA) | `scripts/oracle-transparence.mjs <fichier.md .html .txt> [--mentions <mentions.json>] [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]` — **TR1** mention d'assistance par IA dans le texte **lisible par un humain**, formules **fournies** par `--mentions` (aucune formule d'émetteur codée dans l'oracle), bloquant **sans échéance** · **TR2** marquage **lisible par machine** sur une page HTML, sévérité pilotée par une échéance en donnée · **TR3** contenu déclaré non généré (`--non-genere`, ou frontmatter `genere: false`) → **SKIP motivé, jamais PASS** | cli | ✅ |
+
+- **L'obligation existait, le contrôle n'existait pas.** L'article 50 s'applique depuis le
+  2026-08-02. La règle de transparence a été écrite le 11/09/2026 dans la règle de marque d'un
+  émetteur, et elle citait un contrôle exécutable — `scripts/controler-transparence.mjs`, appelé
+  **17 fois dans 9 fichiers** d'un produit et présent nulle part (mesure du 14/09/2026). Cette
+  entrée est ce contrôle, écrit une fois pour le parc au lieu d'une fois par produit.
+- **Agnostique de l'émetteur.** Les formules admises sont une **donnée** passée par `--mentions`
+  (tableau de chaînes, ou objet à champs `mentions` et `expressions`) ; sans fichier, un jeu
+  **générique** français et anglais s'applique. La fixture verte porte une formule **inventée**
+  qui ne correspond à aucun motif par défaut : son PASS prouve que l'oracle lit ce qu'on lui
+  donne. Une marque qui change sa formule change son fichier, pas cet oracle.
+- **La date vit en donnée, et le banc le prouve.** L'échéance du marquage machine — 2026-12-02,
+  report réglementaire **rapporté et non vérifié**, source `references/PLATEFORME-LINKEDIN.md` §3
+  du pilot — vit dans `references/echeances.json`, au format `echeances@1` **repris** du socle
+  `digit-ai-page-html` et non redécoupé. Le banc joue une donnée d'essai à date **différente**
+  (2026-10-15) : un oracle qui coderait la vraie date en dur ferait rougir le self-test.
+- **La convention de marquage est INTERNE, pas une norme.** Une balise meta `ai-generated` au
+  contenu non vide dans le `<head>`, la forme la plus simple qu'une machine sache lire ; la balise
+  meta `generator` portant un marqueur d'IA est admise, parce que c'est la forme que **nomment**
+  les règles de marque rencontrées dans le parc. Aucun texte publié n'impose l'une ou l'autre.
+- **`ext` vide à dessein.** Le contrôle porte sur les contenus **destinés au public**, et rien
+  dans une extension ne dit qu'un fichier est public : router tout `.md` du parc ferait rougir
+  chaque note interne. Invocation explicite, comme `oracle-exigences-ao` ou `oracle-post-linkedin`.
+- **Appel historique côté produit.** Un produit qui appelle encore son
+  `scripts/controler-transparence.mjs` invoque désormais celui-ci, sans rien créer chez lui :
+  `node <racine>/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/oracle-transparence.mjs <fichier> --mentions <formules de la marque>.json`

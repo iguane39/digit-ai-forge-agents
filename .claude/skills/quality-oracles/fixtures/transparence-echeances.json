@@ -1,0 +1,18 @@
+{
+  "format": "quality-oracles/echeances@1",
+  "commentaire": "JEU D'ESSAI — la date est INVENTÉE (2026-10-15) et volontairement DIFFÉRENTE de l'échéance réelle portée par references/echeances.json (2026-12-02). C'est le discriminant du banc : un oracle qui coderait la vraie date en dur rendrait PASS sur le cas « après échéance » du manifest, et le self-test virerait au rouge. TF-0912 : une fixture épingle sa donnée d'essai, elle ne la résout pas par voisinage.",
+  "version": "1.0.0",
+  "date": "2026-09-17",
+  "echeances": [
+    {
+      "cle": "marquage_machine_absent",
+      "quoi": "cas d'essai — l'absence de marquage lisible par machine sur une page HTML publique",
+      "admise_jusqu_au": "2026-10-15",
+      "decidee_par": "personne : donnée de banc, sans portée hors des fixtures de ce skill",
+      "pourquoi_cette_date": "elle n'a aucun sens métier ; elle sert à prouver que l'oracle LIT la donnée"
+    }
+  ],
+  "non_juge": [
+    "tout : ce fichier ne porte aucune échéance réelle"
+  ]
+}

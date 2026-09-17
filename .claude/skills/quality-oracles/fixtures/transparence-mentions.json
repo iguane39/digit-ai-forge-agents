@@ -1,0 +1,12 @@
+{
+  "format": "quality-oracles/mentions-transparence@1",
+  "commentaire": "JEU D'ESSAI — formules INVENTÉES, choisies pour ne ressembler à AUCUNE formule réelle et pour ne matcher AUCUNE expression du jeu générique par défaut d'oracle-transparence. C'est le discriminant du banc : si la fixture verte passe avec CE fichier, l'oracle a bien LU les formules qu'on lui fournit au lieu de retomber sur ses propres motifs. Aucune formule d'émetteur ne vit dans le code de l'oracle (TF-1030).",
+  "date": "2026-09-17",
+  "mentions": [
+    "Texte assemblé par un outil automatique, vérifié par la rédaction",
+    "Passage composé en atelier outillé puis contrôlé par un relecteur nommé"
+  ],
+  "expressions": [
+    "atelier outille numero \\d+ relu par [a-z -]+"
+  ]
+}
