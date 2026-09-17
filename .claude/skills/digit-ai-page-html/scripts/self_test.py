@@ -419,6 +419,12 @@ CAS_RENDU = {
     # passait sur les deux, elle ne mesurerait pas ce qu'elle pretend mesurer.
     "v9-logo-invisible.html": ("v9_actif_invisible", 1),
     "v9-logo-visible.html": ("v9_actif_invisible", 0),
+    # TF-1087 (17/09) — V9 retenait le MEILLEUR pixel : un logo dont 90 % de la surface est
+    # exactement la couleur du fond passait, sauve par un accent a 2,16:1. La fixture verte du
+    # meme couple est un DESSIN AU TRAIT conforme du gabarit de schema — c'est elle qui interdit
+    # de rouvrir la regression du 14/09, ou juger la dominance condamnait tous les schemas.
+    "v9-logo-bicolore.html": ("v9_actif_invisible", 1),
+    "v9-schema-au-trait.html": ("v9_actif_invisible", 0),
     # TF-1145 (16/09) — sommaire_perdu juge desormais la navigation LA PLUS PERMANENTE, pas le
     # premier nav du document. Les deux fixtures sont la MEME page a une declaration pres : la
     # barre est `position: sticky` dans la verte, elle ne l est pas dans la rouge. Le sommaire en
@@ -1358,6 +1364,93 @@ def run_perimetre_non_mesure():
     cas('renvoi · SKILL.md amputé de ces noms : chaque manque est LOCALISÉ (sens rouge)',
         [nom for nom, _r, _d in ORACLES_FORGE_DESIGN] + ['commande qui les joue'],
         manques_du_renvoi_forge_design(ampute), 'TF-1173 sens rouge')
+    return out
+
+
+def run_v9_surface_dominante():
+    """TF-1087 — LA SURFACE DOMINANTE ENTRE DANS LE JUGEMENT DE V9, SANS CONDAMNER LES SCHEMAS.
+
+    Le fait mesure (preuve de couverture P-1 du 14/09/2026, livrable E-06) : V9 retenait le
+    MEILLEUR pixel de l'actif. Un logo dont 90 % de la surface est exactement la couleur du fond
+    rendait PASS, sauve par un accent minoritaire a 2,16:1 — au-dessus du seuil de 1,2. Le temoin
+    monocolore, lui, echouait : la regle ne marchait que sur l'actif d'une seule couleur.
+
+    CE QUE CE BANC VERROUILLE, et c'est le point dur de l'item : la correction proposee le 14/09
+    (« juger la dominante, ou un contraste pondere par la surface ») avait ete RETIREE, et la
+    mesure dit pourquoi — le dessin au trait CONFORME du gabarit de schema est plus dominant
+    (86,7 % a 1,00:1) et moins contraste en surface (3,2 %) que le logo DEFECTUEUX (90,0 % et
+    10,0 %). Aucun seuil de surface ne les separe. Ce qui les separe est le NIVEAU du contraste qui
+    depasse : 9,12:1 contre 2,16:1.
+
+    Les cas :
+      1. le logo bicolore rend un constat, et son motif est celui de la clause NEUVE (la regle
+         historique ne mord pas : son meilleur pixel est a 2,16, au-dessus de 1,2) ;
+      2. le temoin monocolore rend un constat, et son motif est celui de la regle HISTORIQUE —
+         sans ce cas, on ne saurait pas laquelle des deux a parle ;
+      3. le temoin blanc sur bandeau sombre reste VERT (la clause neuve n'a rien elargi) ;
+      4. le GABARIT REEL `digit-ai-schemas/assets/template-multi-bandes.html` reste VERT — le
+         dessin fabrique pour le banc ne prouverait rien si le vrai gabarit rougissait.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    outil = Path(__file__).resolve().parent / "render_page.py"
+    fx = Path(__file__).resolve().parent.parent / "fixtures"
+    gabarit = (Path(__file__).resolve().parent.parent.parent
+               / "digit-ai-schemas" / "assets" / "template-multi-bandes.html")
+    captures = tempfile.mkdtemp(prefix="self-test-v9-dominante-")
+    out = []
+
+    def cas(nom, attendu, obtenu, regle, detail=""):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": str(attendu)[:96],
+                    "obtenu": str(obtenu)[:96], "regle": regle,
+                    "detail": "" if ok else (detail or "")[:300]})
+
+    def constats(page):
+        r = subprocess.run([sys.executable, "-X", "utf8", str(outil), str(page),
+                            "--widths", "1280", "--scale", "1", "--output", "json",
+                            "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8", timeout=600)
+        try:
+            return json.loads(r.stdout)["breakpoints"]["1280"]["issues"]["v9_actif_invisible"]
+        except Exception:
+            return None
+
+    try:
+        bicolore = constats(fx / "v9-logo-bicolore.html")
+        cas("v9-dominante · logo bicolore 90/10 : 1 constat (sens rouge)",
+            1, len(bicolore or []), "TF-1087 sens rouge", str(bicolore)[:280])
+        cas("v9-dominante · et c'est la clause NEUVE qui parle, pas l'ancienne",
+            True, bool(bicolore) and "SAUVE PAR UN ACCENT MINORITAIRE" in bicolore[0]["detail"],
+            "TF-1087 motif localisant", str(bicolore)[:280])
+
+        mono = constats(fx / "v9-logo-invisible.html")
+        cas("v9-dominante · temoin monocolore : reste rouge sur la regle HISTORIQUE",
+            (1, True), (len(mono or []),
+                        bool(mono) and "INDISCERNABLE de son fond" in mono[0]["detail"]),
+            "TF-1087 temoin", str(mono)[:280])
+
+        blanc = constats(fx / "v9-logo-visible.html")
+        cas("v9-dominante · temoin blanc sur bandeau sombre : reste VERT",
+            0, len(blanc or []), "TF-1087 rien d'elargi", str(blanc)[:280])
+
+        trait = constats(fx / "v9-schema-au-trait.html")
+        cas("v9-dominante · dessin au trait conforme : reste VERT (anti-regression du 14/09)",
+            0, len(trait or []), "TF-1087 anti-regression", str(trait)[:280])
+
+        if gabarit.is_file():
+            reel = constats(gabarit)
+            cas("v9-dominante · GABARIT REEL multi-bandes de digit-ai-schemas : reste VERT",
+                0, len(reel or []), "TF-1087 anti-regression sur le vrai gabarit", str(reel)[:280])
+        else:
+            cas("v9-dominante · gabarit reel de digit-ai-schemas introuvable — cas NON JOUE, et dit",
+                "non joue", "non joue", "TF-1087 anti-regression")
+    finally:
+        shutil.rmtree(captures, ignore_errors=True)
     return out
 
 
@@ -3114,6 +3207,12 @@ def main():
     arbre = run_table_arbre_runtime()
     if arbre:
         res += arbre
+    # TF-1087 — V9 retenait le MEILLEUR pixel : un actif a 90 % invisible passait, sauve par son
+    # accent. Le banc porte AUSSI le dessin au trait conforme et le gabarit reel de
+    # digit-ai-schemas, seuls temoins qui interdisent de rouvrir la regression du 14/09.
+    dominante = run_v9_surface_dominante()
+    if dominante:
+        res += dominante
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

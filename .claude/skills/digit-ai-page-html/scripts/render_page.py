@@ -2069,6 +2069,44 @@ FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
 _V9_SEUIL = 1.2
 _V9_MAX_PIXELS = 40_000        # au-dela, l'actif est reechantillonne : la couleur ne change pas
 
+# TF-1087 (preuve de couverture P-1 du 14/09/2026, decision D-4 (a)) — LE MEILLEUR PIXEL SAUVAIT
+# UN ACTIF A 90 % INVISIBLE.
+#
+# LE FAIT MESURE. Livrable E-06 du banc des defauts echappes : la variante BLANCHE d un logo avait
+# recu le contenu de la variante COULEUR. Pose sur un bandeau de sa propre couleur dominante,
+# 90 % de sa surface disparait — et V9 rendait PASS, parce que `max()` retient le MEILLEUR pixel et
+# que l accent minoritaire (la seconde couleur de marque) atteignait 2,16:1, au-dessus du seuil de
+# 1,2. Le temoin monocolore, lui, echouait : la regle marchait sur le cas ou l actif n a qu une
+# couleur, et sur celui-la seulement.
+#
+# POURQUOI LA CORRECTION ECRITE LE 14/09 A ETE RETIREE, ET LA MESURE QUI L EXPLIQUE. Le geste
+# propose etait « juger la couleur dominante, ou un contraste pondere par la part de surface ».
+# Mesure faite ici le 17/09/2026, capture Playwright a 1280 px, sur les quatre actifs :
+#
+#   actif                                    meilleur  part dominante  pondere  part >= 1,2
+#   logo monocolore sur son fond (temoin)      1,00        99,4 %        1,00      0,0 %
+#   logo bicolore 90/10 sur son fond           2,16        90,0 %        1,12     10,0 %
+#   logo blanc sur bandeau sombre (temoin)    10,85        73,5 %        3,09     25,7 %
+#   dessin au trait du gabarit multi-bandes    9,12        86,7 %        1,02      3,2 %
+#
+# Le dessin au trait CONFORME a une part dominante de 86,7 % a 1,0:1 et une part contrastee de
+# 3,2 % — soit MOINS que le logo defectueux sur les DEUX grandeurs de surface. Aucun seuil de
+# dominance ni de surface ne peut donc separer les deux : c est mecaniquement impossible, et c est
+# ce qui a fait retirer la premiere ecriture. Un dessin au trait est fait de fond et de traits.
+#
+# CE QUI LES SEPARE, ET C EST LA SEULE GRANDEUR QUI LE FAIT : le NIVEAU de contraste de ce qui
+# depasse. Les traits du schema atteignent 9,12:1, l accent du logo 2,16:1 — a peine plus que rien.
+# La regle ajoutee dit donc : un actif dont la surface DOMINANTE est indiscernable, et dont RIEN
+# n atteint le seuil WCAG 2.2 SC 1.4.11 de 3:1, n est pas sauve par son accent — cet accent est
+# lui-meme a la limite du visible.
+#
+# CE N EST PAS UN ASSOUPLISSEMENT ET CE N EST PAS UN ELARGISSEMENT AVEUGLE. La regle historique
+# (aucun pixel a 1,2) est INCHANGEE : elle continue de bloquer seule. La clause neuve n ajoute de
+# constat que dans la bande [1,2 ; 3,0[ ET quand la surface dominante est sous 1,2. Un aplat
+# decoratif franchement contraste, un pictogramme, un dessin au trait lisible n y entrent pas.
+_V9_PART_DOMINANTE = 0.70      # au-dela, la surface dominante EST l'actif pour le lecteur
+_V9_SEUIL_WCAG = 3.0           # WCAG 2.2 SC 1.4.11 — objet graphique porteur de sens
+
 
 def _v9_luminance(c) -> float:
     def f(v):
@@ -2166,8 +2204,15 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float =
             continue
         total = sum(n for n, _ in opaques)
         meilleur = max(_v9_ratio(px[:3], fond) for _, px in opaques)
-        if meilleur < _V9_SEUIL:
-            domine = max(opaques)[1]
+        # TF-1087 — la surface DOMINANTE, qui etait deja calculee et ne servait qu'a rediger le
+        # message, entre maintenant dans le jugement : elle dit ce que le lecteur voit vraiment.
+        domine_n, domine = max(opaques)
+        part_dominante = domine_n / total
+        ratio_dominante = _v9_ratio(domine[:3], fond)
+        sauve_par_un_accent = (part_dominante >= _V9_PART_DOMINANTE
+                               and ratio_dominante < _V9_SEUIL
+                               and meilleur < _V9_SEUIL_WCAG)
+        if meilleur < _V9_SEUIL or sauve_par_un_accent:
             if echelle < V9_ECHELLE_MIN_BLOQUANTE:
                 # TF-1143 — la capture a ete REDUITE : ce qui est mesure ici est la rasterisation,
                 # pas le livrable. Le constat se DIT, il ne bloque pas.
@@ -2183,16 +2228,26 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float =
                         "pour passer un artefact de rasterisation degrade la page pour rien"),
                 })
                 continue
-            issues["v9_actif_invisible"].append({
-                "what": c["what"],
-                "detail": (
+            contexte = (
+                f"contre un fond rgb({fond[0]:.0f}, {fond[1]:.0f}, {fond[2]:.0f}). "
+                f"Un actif visuel se valide dans le contexte OU IL EST SERVI, pas sur son fichier : "
+                f"un logo blanc devenu sombre est juste sur son fichier et absent du bandeau (TF-0633)")
+            if meilleur < _V9_SEUIL:
+                detail = (
                     f"actif INDISCERNABLE de son fond — meilleur contraste {meilleur:.2f}:1 sur "
-                    f"{total} pixels opaques, contre un fond rgb({fond[0]:.0f}, {fond[1]:.0f}, {fond[2]:.0f}). "
-                    f"Couleur dominante de l'actif : rgb({domine[0]}, {domine[1]}, {domine[2]}). "
-                    "Un actif visuel se valide dans le contexte OU IL EST SERVI, pas sur son fichier : "
-                    "un logo blanc devenu sombre est juste sur son fichier et absent du bandeau (TF-0633)"
-                ),
-            })
+                    f"{total} pixels opaques, {contexte[:-1]}. "
+                    f"Couleur dominante de l'actif : rgb({domine[0]}, {domine[1]}, {domine[2]})")
+            else:
+                # TF-1087 — l'actif depasse le seuil quelque part, et nulle part assez.
+                detail = (
+                    f"actif SAUVE PAR UN ACCENT MINORITAIRE — {part_dominante:.0%} de sa surface "
+                    f"opaque ({total} pixels) est a {ratio_dominante:.2f}:1, donc invisible, et son "
+                    f"meilleur contraste plafonne a {meilleur:.2f}:1, sous le seuil WCAG 2.2 "
+                    f"SC 1.4.11 de {_V9_SEUIL_WCAG:g}:1. Couleur dominante : "
+                    f"rgb({domine[0]}, {domine[1]}, {domine[2]}), {contexte} "
+                    "Verifier la VARIANTE servie avant de retoucher la charte : le cas fondateur "
+                    "est un fichier de variante blanche portant le contenu de la variante couleur")
+            issues["v9_actif_invisible"].append({"what": c["what"], "detail": detail})
 
 
 def compter_bloquants(issues: dict) -> int:

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V9 rendu — logo bicolore sauve par son accent — 20260917a</title>
+<!--
+  TF-1087 (preuve de couverture P-1 du 14/09/2026, livrable E-06 du banc des defauts echappes).
+
+  LE CAS REEL : la variante BLANCHE d un logo avait recu le contenu de la variante COULEUR. Pose
+  sur un bandeau de sa propre couleur dominante, le logo disparait a 90 % — et V9 rendait PASS,
+  parce qu elle retenait le MEILLEUR pixel et que l accent (la seconde couleur de marque, #a25d42)
+  atteignait 2,16:1, au-dessus du seuil de 1,2.
+
+  Cette fixture est la fixture v9-logo-invisible.html avec UNE rangee de plus : 90 % de la surface
+  est exactement la couleur du bandeau (#2d4047), 10 % porte l accent #a25d42. Les deux couleurs
+  sont celles de la charte de la fixture jumelle — rien n est choisi pour faire mordre la regle.
+
+  Mesure du 17/09/2026 (capture Playwright, 1280 px, echelle 1) :
+    meilleur contraste 2,16:1 · part dominante 90,0 % a 1,00:1 · pondere par surface 1,12.
+
+  Attendu : au moins 1 constat v9_actif_invisible, avec le motif « SAUVE PAR UN ACCENT
+  MINORITAIRE » — pas celui de la regle historique, qui ne mord pas ici.
+-->
+<style>
+:root{--marine:#2d4047;--sable:#a25d42;--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+.bandeau{background:var(--marine);padding:18px 24px;display:flex;align-items:center;gap:16px}
+.bandeau a{color:#fff;text-decoration:none;font-weight:600}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<header class="bandeau">
+  <svg width="120" height="32" viewBox="0 0 120 32" role="img" aria-label="Logo bicolore de la maison">
+    <rect x="0" y="0" width="108" height="32" fill="#2d4047"/>
+    <rect x="108" y="0" width="12" height="32" fill="#a25d42"/>
+  </svg>
+  <a href="#contenu">Reservation</a>
+</header>
+<main id="contenu">
+  <h1>V9 rendu — un accent minoritaire ne sauve pas un actif a 90 % invisible</h1>
+  <p>Le logo ci-dessus porte deux couleurs. Celle qui couvre 90 % de sa surface est exactement
+  celle du bandeau : le lecteur ne voit qu un liseré. Sur son propre fichier, le logo est
+  parfaitement valide.</p>
+</main>
+</body></html>

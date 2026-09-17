@@ -22,7 +22,7 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | V5 | Flèches ou filets qui croisent un élément | Aucun connecteur à travers un nœud ou un texte ; routage en L pur (règle `digit-ai-schemas`) | **Visuel** — rendu + inspection (boucle render-view-fix) |
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
-| **V9** | **Actif visuel indiscernable de son fond** | Aucun `<img>` ni `<svg>` visible dont AUCUN pixel n'atteint **1,2:1** de contraste contre le fond effectivement peint derrière lui | **Mesuré (bloquant)** — `render_page.py` ; capture de l'élément et mesure au pixel, jamais sur le fichier source. Nomme le meilleur ratio atteint et la couleur dominante de l'actif |
+| **V9** | **Actif visuel indiscernable de son fond** | Aucun `<img>` ni `<svg>` visible dont AUCUN pixel n'atteint **1,2:1** de contraste contre le fond effectivement peint derrière lui ; ni dont la surface **dominante** (≥ 70 % des pixels opaques) est sous 1,2:1 alors que son meilleur contraste plafonne sous **3:1** — l'accent minoritaire ne sauve pas (TF-1087) | **Mesuré (bloquant)** — `render_page.py` ; capture de l'élément et mesure au pixel, jamais sur le fichier source. Nomme le meilleur ratio atteint, la part et le ratio de la surface dominante |
 | **V10** | **Verdict rendu sur un cadre qui ne contient pas le défaut** | Tout verdict visuel PORTANT SUR UNE PAGE s'appuie sur **au moins une capture pleine page**, et la revue **nomme ses captures avec leurs dimensions** | **Mesuré (bloquant)** — `oracle-verdict-visuel.mjs` du pilot (W1–W4) ; les captures par fenêtre jugent la ligne de flottaison et le défilement, **jamais la page** |
 | **V11** | **Contrôles d'une même rangée désalignés** | Les contrôles (`input`, `select`, `textarea`, `button`) d'une même rangée de grille partagent leur bord haut à **2 px près** | **Mesuré (bloquant)** — `render_page.py` ; écart voulu déclaré par `data-alignement-ok`. Cause la plus fréquente, et nommée dans le message : une étiquette qui passe sur deux lignes parce qu'elle porte son statut dans son libellé |
 | **V12** | **Tableau rogné dans un conteneur défilant** | À partir de **1 280 px** de fenêtre, aucun conteneur `overflow-x: auto\|scroll` portant un `<table>` ne rogne son contenu | **Mesuré (bloquant)** — `render_page.py` ; nomme les pixels hors champ. Un conteneur qui défile rend un tableau *consultable*, pas *lisible* — écart assumé déclaré par `data-rognage-assume`, jamais classé « acceptable » en revue |
@@ -74,6 +74,39 @@ livrable, et ce geste aurait dégradé huit schémas pour satisfaire un artefact
 **Banc** (`self_test.py`, `run_v9_echelles`) : la fixture conforme est rejouée à **chacune des
 échelles documentées** (1 / 0,5 / 0,4) et ne rend aucun bloquant ; la fixture vraiment invisible
 bloque toujours à l'échelle 1 — la garde n'a pas éteint V9 — et part au non jugé en dessous.
+
+*Un accent minoritaire ne sauve plus un actif à 90 % invisible (TF-1087, 17/09/2026).* V9 retenait
+le **meilleur pixel** de l'actif. Le livrable E-06 du banc des défauts échappés — un fichier de
+variante blanche portant le contenu de la variante couleur — passait donc, posé sur un bandeau de
+sa propre couleur dominante : 90 % de sa surface à 1,00:1, et un accent de marque à 2,16:1, assez
+pour franchir le seuil de 1,2. Le témoin monocolore, lui, échouait : la règle ne marchait que sur
+l'actif d'une seule couleur.
+
+*Pourquoi juger la dominance ne suffisait pas, et la mesure qui le dit.* Le geste écrit le
+14/09 — « juger la couleur dominante ou un contraste pondéré par la surface » — avait été retiré.
+Mesure du 17/09/2026, capture Playwright à 1280 px, échelle 1 :
+
+| Actif | Meilleur | Part dominante | Pondéré par surface | Part ≥ 1,2 |
+|---|---|---|---|---|
+| Logo monocolore sur son fond (témoin rouge) | 1,00 | 99,4 % | 1,00 | 0,0 % |
+| Logo bicolore 90/10 sur son fond (E-06) | 2,16 | 90,0 % | 1,12 | 10,0 % |
+| Logo blanc sur bandeau sombre (témoin vert) | 10,85 | 73,5 % | 3,09 | 25,7 % |
+| Dessin au trait du gabarit multi-bandes | 9,12 | 86,7 % | 1,02 | 3,2 % |
+
+Le dessin au trait **conforme** est plus dominant et moins contrasté en surface que le logo
+**défectueux** : aucun seuil de surface ne les sépare, et c'est mécanique — un dessin au trait est
+fait de fond et de traits. Ce qui les sépare est le **niveau** du contraste qui dépasse.
+
+**Règle ajoutée.** Un actif dont la surface dominante couvre **≥ 70 %** des pixels opaques à moins
+de 1,2:1, et dont le meilleur contraste reste **sous 3:1** (WCAG 2.2 SC 1.4.11), est signalé
+« sauvé par un accent minoritaire ». La règle historique est inchangée et bloque toujours seule :
+la clause neuve n'ajoute de constat que dans la bande **[1,2 ; 3,0[**. Bruit mesuré avant mise en
+service, sur les six gabarits de `digit-ai-schemas` et son exemple de référence : **zéro constat**.
+
+**Banc** (`self_test.py`, `run_v9_surface_dominante`) : le logo bicolore rend un constat et son
+motif est celui de la clause neuve ; le témoin monocolore rend un constat sur la règle historique ;
+le témoin blanc reste vert ; le dessin au trait **et le gabarit réel `template-multi-bandes.html`**
+restent verts — ce sont eux qui interdisent de rouvrir la régression du 14/09.
 
 ### V8 mérite son paragraphe : c'est le seul défaut qu'un oracle VISUEL ne peut pas voir
 
