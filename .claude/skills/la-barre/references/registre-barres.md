@@ -346,8 +346,8 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
 # ---- TF-1028 (17/09/2026) : barre externe « publication réseau ». Pas 1 à 4 joués le
 # ---- 17/09/2026 (test d'existence : 4/4 candidats atteignables, HTTP 200, exécuté par
 # ---- scripts/test_existence.py --liste) ; niveaux décomposés (pas 6) en anticipation. Le
-# ---- pas 5 — validation humaine en un tour, non sautable — N'A PAS EU LIEU : statut todo,
-# ---- entrée prête pour ce tour, jamais auto-validée.
+# ---- pas 5 — validation humaine en un tour, non sautable — a eu lieu le 17/09/2026
+# ---- (décision D-4 option (a)) : statut ok.
 
 - cible: >
     publication réseau professionnelle (LinkedIn), 150 à 300 mots — deux écritures : profil
@@ -446,10 +446,4 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
     explicitement écartée de la barre (voir frontière). Aucun nom de personne privée n'entre
     au registre : LinkedIn (organisation) porte la référence ; l'exemple nommé (Kim Scott) est
     une autrice publique déjà mise en avant, par son nom, dans le corpus officiel et daté cité.
-  statut: >
-    todo — pas 1 à 4 joués le 17/09/2026 (candidats cherchés, test d'existence exécuté et vert
-    4/4, filtre de légitimité passé : aucune copie, aucun nom privé), niveaux décomposés
-    ci-dessus en anticipation du pas 6. Le pas 5 — validation humaine en un tour, non
-    sautable — N'A PAS EU LIEU dans cette campagne (agent de campagne sans tour humain dédié
-    disponible) : cette entrée est une PROPOSITION prête pour ce tour, elle n'est ni servie au
-    pas 1 ni auto-validée tant que ce tour n'a pas eu lieu.
+  statut: ok (validée humain, 17/09/2026 — décision D-4 option (a) « 4a », tour dédié au pas 5 : les quatre références retenues telles quelles, frontière conservée. Réserve dite par l'humain dans le même message : la barre ne couvre que LinkedIn ; d'autres réseaux demanderont leur propre entrée, jamais une extension par analogie)
