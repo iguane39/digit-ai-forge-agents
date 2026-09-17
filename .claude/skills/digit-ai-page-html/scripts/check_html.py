@@ -3839,7 +3839,57 @@ def jeu_de_regles(source_py=None) -> dict:
 # nombre de règles, SANS UNE LIGNE sur ce qu'il ne regarde pas. Quand l'un des deux oracles
 # publie honnêtement ses limites, le silence de l'autre se lit comme une ABSENCE DE LIMITE, pas
 # comme une absence de publication. Un verdict sans périmètre de non-mesure n'est pas complet.
+#
+# TF-1173 (lot Produit-64 20260916b, retour RD-9) — QUATRE ORACLES JUGENT CETTE MÊME PAGE, ET LE
+# SOCLE NE LES NOMMAIT NULLE PART. `SKILL.md` prescrivait trois scripts et une revue de lecture ;
+# `digit-ai-forge-design` fait vivre quatre oracles qui jugent le MÊME artefact, et aucune
+# référence du socle ne les citait. Un producteur ne joue pas ce qu'il ne sait pas exister, et il
+# croit sa chaîne complète parce qu'elle est écrite comme telle (loi transverse n° 1 : toute
+# affordance est câblée ou n'existe pas).
+#
+# MESURE DU 16/09/2026 : sur un guide développeur que les trois scripts du socle déclaraient PASS,
+# TROIS des quatre étaient rouges — `oracle-slop` 4 règles dures S1 (filets latéraux de 2, 3 et
+# 4 px, marqueurs de page générée), `oracle-tokens` 59 écarts dont 3 bloquants T1 (couleurs en dur),
+# `oracle-mobile` 1 bloquant M3 (barre fixe sans `env(safe-area-inset-*)`), `oracle-images` PASS.
+# Aucun de ces défauts n'est visible aux trois scripts du socle : le filet de 3 px ne déborde pas,
+# la couleur en dur contraste correctement, la barre fixe ne recouvre rien au rendu de bureau.
 GABARIT_REVUE = "references/gabarit-revue-de-lecture.md"
+
+# Les quatre oracles de `digit-ai-forge-design` qui jugent une page du socle, avec leur domaine.
+# Cette table est la SOURCE du renvoi : `SKILL.md` la recopie, `render_page.py` l'importe, et le
+# self-test la rejoue dans les deux sens (nommés → PASS ; retirés → le manque est localisé).
+ORACLES_FORGE_DESIGN = (
+    ("oracle-slop", "S1–S10", "marqueurs de design généré"),
+    ("oracle-tokens", "T1–T8", "traçabilité des jetons, parité des thèmes, contraste"),
+    ("oracle-mobile", "M1–M8", "viewport, cibles tactiles, encoche, reflow, paysage"),
+    ("oracle-images", "I1–I7", "alt, plafonds, zéro réseau, variantes réellement différentes"),
+)
+ORCHESTRATEUR_FORGE_DESIGN = "oracles/run-oracles-design.mjs"
+
+
+def renvoi_forge_design() -> str:
+    """La phrase de renvoi aux quatre oracles de `digit-ai-forge-design` (TF-1173)."""
+    liste = " · ".join(f"{nom} ({regles} — {domaine})" for nom, regles, domaine in ORACLES_FORGE_DESIGN)
+    return (
+        "LES QUATRE ORACLES DE `digit-ai-forge-design` JUGENT CETTE MÊME PAGE ET N'ONT PAS ÉTÉ "
+        f"JOUÉS ICI : {liste}. Mesure du 16/09/2026 (lot Produit-64 20260916b, RD-9) : sur une "
+        "page que les trois scripts du socle déclaraient PASS, TROIS d'entre eux étaient rouges "
+        "— 4 règles dures S1, 59 écarts de jetons dont 3 bloquants T1, 1 bloquant M3. Les jouer : "
+        f"`node <racine digit-ai-forge-design>/{ORCHESTRATEUR_FORGE_DESIGN} <page.html>`, ou un "
+        "par un `node <racine digit-ai-forge-design>/oracles/<oracle>.mjs <page.html>`"
+    )
+
+
+def manques_du_renvoi_forge_design(texte: str) -> list:
+    """Ce qui manque à un texte pour renvoyer aux quatre oracles (TF-1173).
+
+    Sert au self-test dans les DEUX sens : liste vide sur un texte qui les nomme tous avec la
+    commande qui les joue, liste des manques localisés sur un texte amputé.
+    """
+    manques = [nom for nom, _, _ in ORACLES_FORGE_DESIGN if nom not in texte]
+    if ORCHESTRATEUR_FORGE_DESIGN not in texte and "run-oracles-design" not in texte:
+        manques.append("commande qui les joue")
+    return manques
 
 
 def non_juge() -> list:
@@ -3868,6 +3918,7 @@ def non_juge() -> list:
         "LE RENDU N'EST PAS JUGÉ ICI. Débordements, contrastes, chevauchements, croisements et "
         "images relèvent de `render_page.py`, qui publie son propre périmètre de non-mesure. Un "
         "PASS de ce seul script ne dit rien de ce que le lecteur voit",
+        renvoi_forge_design(),
     ]
 
 

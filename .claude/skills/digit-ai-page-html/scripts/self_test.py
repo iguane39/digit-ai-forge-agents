@@ -1327,6 +1327,37 @@ def run_perimetre_non_mesure():
                          ('adéquation contenu / lecteur', 'ADÉQUATION DU CONTENU'),
                          ('renvoi au rendu (render_page.py)', "LE RENDU N'EST PAS JUGÉ")):
         cas(f'perimetre · famille NOMMÉE : {famille}', True, mot in bloc, 'TF-1141 périmètre publié')
+
+    # TF-1173 (lot Produit-64 20260916b, RD-9) — LE RENVOI AUX QUATRE ORACLES DE
+    # `digit-ai-forge-design`, JOUÉ DANS LES DEUX SENS. Trois d'entre eux étaient rouges sur une
+    # page que les trois scripts du socle déclaraient PASS ; le socle ne les nommait nulle part.
+    # SENS VERT : les quatre sont nommés dans le bloc publié à chaque exécution, ET dans SKILL.md,
+    # avec la commande qui les joue. SENS ROUGE : la même détection, sur une copie de SKILL.md
+    # amputée de ces noms, rend les manques un par un — une règle qui ne saurait pas dire ce qui
+    # manque ne prouverait rien de ce qu'elle déclare présent.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from check_html import ORACLES_FORGE_DESIGN, manques_du_renvoi_forge_design
+
+    for nom_oracle, _regles, _domaine in ORACLES_FORGE_DESIGN:
+        cas(f'perimetre · oracle de forge-design NOMMÉ : {nom_oracle}',
+            True, nom_oracle in bloc, 'TF-1173 renvoi publié')
+    cas('perimetre · la COMMANDE qui joue les quatre est donnée',
+        True, 'run-oracles-design.mjs' in bloc, 'TF-1173 renvoi publié')
+    cas('perimetre · le renvoi sort AUSSI sur un verdict en échec',
+        [], manques_du_renvoi_forge_design(jouer(fx / 'l1-ponctuation-orpheline.html', 'text')),
+        'TF-1173 renvoi permanent')
+
+    skill = Path(__file__).resolve().parent.parent / 'SKILL.md'
+    texte_skill = skill.read_text(encoding='utf-8') if skill.is_file() else ''
+    cas('renvoi · SKILL.md nomme les quatre oracles ET leur commande (sens vert)',
+        [], manques_du_renvoi_forge_design(texte_skill), 'TF-1173 socle écrit')
+    ampute = texte_skill
+    for nom_oracle, _r, _d in ORACLES_FORGE_DESIGN:
+        ampute = ampute.replace(nom_oracle, 'oracle-XXX')
+    ampute = ampute.replace('run-oracles-design', 'run-XXX')
+    cas('renvoi · SKILL.md amputé de ces noms : chaque manque est LOCALISÉ (sens rouge)',
+        [nom for nom, _r, _d in ORACLES_FORGE_DESIGN] + ['commande qui les joue'],
+        manques_du_renvoi_forge_design(ampute), 'TF-1173 sens rouge')
     return out
 
 

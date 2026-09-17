@@ -2543,6 +2543,20 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
         "seuil WCAG 1.4.11 ; entre les deux, savoir si l'actif porte du sens ou decore est un "
         "jugement humain. Ne pas lire ce silence comme un vert")
 
+    # TF-1173 (lot Produit-64 20260916b, RD-9) — le renvoi aux quatre oracles de
+    # `digit-ai-forge-design` sort ici aussi : un producteur qui ne joue QUE le rendu croirait sa
+    # chaine complete. La phrase a une seule source, `check_html.py`, pour qu'un renvoi ne derive
+    # pas de l'autre. Source introuvable : le manque est DIT, jamais tu.
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from check_html import renvoi_forge_design as _renvoi_design
+        report["non_juge"].append(_renvoi_design())
+    except Exception as exc:  # pragma: no cover - defense, jamais un silence
+        report["non_juge"].append(
+            "LES ORACLES DE `digit-ai-forge-design` NE SONT PAS NOMMES ICI : leur renvoi vit dans "
+            f"check_html.py et n a pas pu etre lu ({exc}). Les jouer quand meme : "
+            "`node <racine digit-ai-forge-design>/oracles/run-oracles-design.mjs <page.html>`")
+
     if as_json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:

@@ -505,8 +505,44 @@ un humain qui y a relevé **huit défauts**, tous hors du champ des deux contrô
 les produisait n'avait aucun moyen de savoir ce qui n'était pas mesuré. Quand l'un des deux
 oracles publie ses limites et l'autre se tait, le silence se lit comme une absence de limite.
 
+## La chaîne ne s'arrête pas à ce socle : quatre oracles de `digit-ai-forge-design` jugent la même page (TF-1173)
+
+**Le fait mesuré, 16/09/2026 (lot Produit-64 20260916b, RD-9).** Un guide développeur déclaré PASS
+par les trois scripts ci-dessus a été soumis pour la première fois aux oracles de
+`digit-ai-forge-design` : **trois verdicts rouges sur quatre.** Aucun de ces défauts n'est visible
+aux trois scripts du socle — le filet de 3 px ne déborde pas, la couleur en dur contraste
+correctement, la barre fixe ne recouvre rien au rendu de bureau. Le défaut était **entre** les deux
+forges : le socle ne disait pas que quatre autres oracles jugent cette même page, et un producteur
+ne joue pas ce qu'il ne sait pas exister.
+
+| Oracle | Règles | Ce qu'il juge | Trouvé le 16/09 sur une page « conforme » |
+|---|---|---|---|
+| `oracle-slop` | S1–S10 | marqueurs de design généré | **FAIL** — 4 règles dures S1 (filets latéraux de 2, 3 et 4 px, marqueurs de page générée) |
+| `oracle-tokens` | T1–T8 | traçabilité des jetons, parité des thèmes, contraste | **FAIL** — 59 écarts durs, dont 3 bloquants T1 (couleurs en dur) et 56 T3 (espacements hors échelle 4 pt) |
+| `oracle-mobile` | M1–M8 | viewport, cibles tactiles, encoche, reflow, paysage | **FAIL** — M3 bloquant : barre fixe sans `env(safe-area-inset-*)`, passage sous l'encoche |
+| `oracle-images` | I1–I7 | alt, plafonds, zéro réseau, variantes réellement différentes | PASS |
+
+Les jouer, d'un coup ou un par un :
+
+```bash
+# Les quatre (et les autres oracles applicables), avec verdict agrégé — exit 0 PASS / 1 FAIL / 2 indéterminé
+node <racine digit-ai-forge-design>/oracles/run-oracles-design.mjs page.html
+# Un seul, quand on corrige une famille
+node <racine digit-ai-forge-design>/oracles/oracle-slop.mjs page.html
+node <racine digit-ai-forge-design>/oracles/oracle-tokens.mjs page.html
+node <racine digit-ai-forge-design>/oracles/oracle-mobile.mjs page.html   # --mobile côté orchestrateur si le châssis n'est pas détecté
+node <racine digit-ai-forge-design>/oracles/oracle-images.mjs page.html
+```
+
+`check_html.py` et `render_page.py` **le rappellent à chaque exécution**, PASS ou FAIL, dans leur
+bloc « Périmètre de NON-MESURE » : le renvoi n'est pas seulement écrit ici, il est prononcé par les
+contrôles que le producteur lance de toute façon.
+
 ## Référentiel détaillé
 
+- Les quatre oracles de `digit-ai-forge-design` qui jugent cette même page, et leur ligne de
+  commande : section ci-dessus (TF-1173) — `oracle-slop`, `oracle-tokens`, `oracle-mobile`,
+  `oracle-images`, lancés ensemble par `oracles/run-oracles-design.mjs`
 - Charte & tokens : [references/charte-et-tokens.md](references/charte-et-tokens.md)
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
