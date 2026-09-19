@@ -103,6 +103,25 @@ de 1,2:1, et dont le meilleur contraste reste **sous 3:1** (WCAG 2.2 SC 1.4.11),
 la clause neuve n'ajoute de constat que dans la bande **[1,2 ; 3,0[**. Bruit mesuré avant mise en
 service, sur les six gabarits de `digit-ai-schemas` et son exemple de référence : **zéro constat**.
 
+*Un bandeau collant n'est pas le fond de ce qu'il recouvre (TF-1192, 17/09/2026).* `render_page.py
+--etats-ouverts` rendait FAIL à 3 840 et 2 560 px sur le premier schéma d'un guide — « actif
+INDISCERNABLE de son fond, meilleur contraste 1,00:1 sur 39 494 pixels opaques » — et PASS aux
+cinq autres largeurs. Le schéma n'était pas blanc : boîtes teintées, traits et textes contrastés.
+La recherche remplie par `--etats-ouverts` faisait défiler la page jusqu'à son premier résultat, et
+le bandeau `position: sticky` se retrouvait peint **à la hauteur du schéma** ; `el.screenshot()`
+capture la région de l'écran où vit l'élément, donc le bandeau. Le verdict dépendait de la position
+d'un résultat de recherche, pas de l'actif jugé — vrai sur l'image, faux sur la page.
+
+**Règle.** Les éléments `position: sticky | fixed` qui ne sont **ni un ancêtre ni un descendant**
+de l'actif sont rendus invisibles **le temps de sa capture**, puis restaurés à l'identique
+(`visibility: hidden` : la boîte garde sa place, aucune mise en page ne bouge). Un actif **posé
+dans** un bandeau collant garde le sien — c'est bien son fond, et c'est le cas fondateur de V9.
+La neutralisation est déclarée au `non_juge` de chaque exécution. Mesure avant / après sur la
+fixture `v9-schema-sous-bandeau-collant.html`, à 1 440 px : **1 constat à 1,06:1, puis 0** ; sur
+`v9-schema-indiscernable-sous-bandeau-collant.html`, le même fichier à la couleur du dessin près :
+**1 constat à 1,00:1 avant comme après**. Les six cas de la clause de surface dominante restent
+verts.
+
 **Banc** (`self_test.py`, `run_v9_surface_dominante`) : le logo bicolore rend un constat et son
 motif est celui de la clause neuve ; le témoin monocolore rend un constat sur la règle historique ;
 le témoin blanc reste vert ; le dessin au trait **et le gabarit réel `template-multi-bandes.html`**

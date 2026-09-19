@@ -425,6 +425,15 @@ CAS_RENDU = {
     # de rouvrir la regression du 14/09, ou juger la dominance condamnait tous les schemas.
     "v9-logo-bicolore.html": ("v9_actif_invisible", 1),
     "v9-schema-au-trait.html": ("v9_actif_invisible", 0),
+    # TF-1192 (17/09) — V9 mesurait ce qu un element COLLANT peint par-dessus l actif dans sa
+    # propre capture : un schema lisible, passe sous un bandeau `position: sticky`, etait declare
+    # indiscernable de son fond. Les deux fixtures sont le MEME fichier a la couleur du dessin
+    # pres. La VERTE porte un schema lisible sous le bandeau : mesure avant / apres correctif, a
+    # 1440 px et a l echelle par defaut, 1 constat a 1,06:1 puis 0. La ROUGE porte un dessin
+    # blanc sur blanc sous le MEME bandeau : elle reste a 1 constat, a 1,00:1 — sans elle,
+    # neutraliser les elements collants serait indistinguable d un desarmement de V9.
+    "v9-schema-sous-bandeau-collant.html": ("v9_actif_invisible", 0),
+    "v9-schema-indiscernable-sous-bandeau-collant.html": ("v9_actif_invisible", 1),
     # TF-1145 (16/09) — sommaire_perdu juge desormais la navigation LA PLUS PERMANENTE, pas le
     # premier nav du document. Les deux fixtures sont la MEME page a une declaration pres : la
     # barre est `position: sticky` dans la verte, elle ne l est pas dans la rouge. Le sommaire en

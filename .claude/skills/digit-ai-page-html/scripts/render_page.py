@@ -2151,6 +2151,56 @@ def _v9_ratio(c1, c2) -> float:
 # n est pas un verdict — le taire aurait ete l assouplissement, le declarer ne l est pas.
 V9_ECHELLE_MIN_BLOQUANTE = 1.0
 
+# TF-1192 (lot Produit-64 20260917a, retour RD-12, 17/09/2026) — LA SONDE MESURAIT CE QU UN
+# ELEMENT COLLANT PEINT PAR-DESSUS L ACTIF DANS SA PROPRE CAPTURE.
+#
+# LE FAIT MESURE. `render_page.py --etats-ouverts` rendait FAIL a 3840 et 2560 px sur le premier
+# schema d un guide — « V9 actif INDISCERNABLE de son fond, meilleur contraste 1.00:1 sur 39494
+# pixels opaques » — et PASS aux cinq autres largeurs. Le schema n etait pas blanc : boites
+# teintees a 1,25:1 contre le blanc, traits et textes contrastes, et une capture de l element seul
+# montrait ses cinq boites. Le mecanisme : `--etats-ouverts` remplit le champ de recherche, le
+# composant de recherche fait defiler la page jusqu au premier resultat, et le bandeau
+# `position: sticky` se retrouve peint A LA HAUTEUR du schema. `el.screenshot()` capture la REGION
+# de l ecran ou vit l element : elle capture donc le bandeau. Aux autres largeurs le premier
+# resultat tombait ailleurs — le verdict dependait de la position d un resultat de recherche, pas
+# de l actif juge.
+#
+# CE QUI EST CORRIGE, ET CE QUI NE L EST PAS. L invariant que V9 protege est « l actif se distingue
+# de son fond quand un lecteur le regarde ». Un bandeau collant est un choix de navigation que le
+# socle admet, et aucun lecteur ne voit le schema sous le bandeau : la mesure etait vraie sur
+# l image et fausse sur la page. Les elements `position: sticky | fixed` qui ne sont ni un ancetre
+# ni un descendant de l actif sont donc RENDUS INVISIBLES le temps de la capture, puis restaures a
+# l identique. `visibility: hidden` et pas `display: none` : la boite garde sa place, donc aucune
+# mise en page ne bouge entre le recensement des cibles et leur mesure.
+#
+# CE QUI N EST PAS TOUCHE — et c est la porte qui empeche de rouvrir TF-0633 : un actif POSE DANS
+# un bandeau collant (le logo du cas fondateur, blanc devenu bleu fonce sur son fond sombre) garde
+# son bandeau, puisque celui-ci est son ancetre. Le fond qu il faut lui opposer est bien celui-la.
+_V9_JS_RECENSER_COLLES = """() => {
+  window.__v9Colles = [...document.querySelectorAll('*')].filter((el) => {
+    const p = getComputedStyle(el).position;
+    return p === 'sticky' || p === 'fixed';
+  });
+  return window.__v9Colles.length;
+}"""
+
+_V9_JS_MASQUER_COLLES = """(n) => {
+  const cible = document.querySelector('[data-v9="' + n + '"]');
+  window.__v9Masques = [];
+  if (!cible) return 0;
+  for (const el of (window.__v9Colles || [])) {
+    if (el === cible || el.contains(cible) || cible.contains(el)) continue;
+    window.__v9Masques.push([el, el.style.visibility]);
+    el.style.visibility = 'hidden';
+  }
+  return window.__v9Masques.length;
+}"""
+
+_V9_JS_RESTAURER_COLLES = """() => {
+  for (const [el, v] of (window.__v9Masques || [])) el.style.visibility = v;
+  window.__v9Masques = [];
+}"""
+
 
 def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float = 1.0) -> None:
     """Juge chaque actif visuel contre le fond REELLEMENT peint derriere lui.
@@ -2172,6 +2222,18 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float =
             "detail": "V9 non jugee : Pillow absent de l'environnement. `pip install pillow`",
         })
         return
+    # TF-1192 — le recensement des elements collants ou fixes se fait UNE FOIS pour la page : le
+    # masquage, lui, est propre a chaque actif, puisque le bandeau qui porte un logo ne se masque
+    # pas quand c'est ce logo qu'on mesure. Une panne ici ne prive de rien : la mesure reprend son
+    # comportement d'avant, et le fait est declare.
+    try:
+        page.evaluate(_V9_JS_RECENSER_COLLES)
+    except Exception as erreur:          # noqa: BLE001 — toute panne se declare, aucune n'arrete
+        issues["unmeasured"].append({
+            "what": f"{len(cibles)} actif(s) visuel(s)",
+            "detail": f"V9 — recensement des elements collants impossible ({type(erreur).__name__}) : "
+                      "un actif recouvert par un bandeau collant peut etre juge sur ce bandeau",
+        })
     for c in cibles:
         if c.get("nonMesurable"):
             issues["unmeasured"].append({"what": c["what"], "detail": f"V9 — {c['nonMesurable']}"})
@@ -2183,6 +2245,10 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float =
             issues["unmeasured"].append({"what": c["what"], "detail": "V9 — element introuvable a la capture"})
             continue
         try:
+            try:
+                page.evaluate(_V9_JS_MASQUER_COLLES, c["n"])
+            except Exception:            # noqa: BLE001 — le masquage est un mieux, jamais un du
+                pass
             brut = el.screenshot(timeout=timeout_ms)
             im = Image.open(_io.BytesIO(brut)).convert("RGBA")
         except Exception as erreur:      # noqa: BLE001 — toute panne se declare, aucune n'arrete
@@ -2191,6 +2257,13 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float =
                 "detail": f"V9 — capture impossible ({type(erreur).__name__}) : contraste de l'actif non juge",
             })
             continue
+        finally:
+            # La page est RENDUE A SON ETAT : les familles mesurees apres V9 (capture pleine page
+            # comprise) ne doivent rien voir de ce masquage.
+            try:
+                page.evaluate(_V9_JS_RESTAURER_COLLES)
+            except Exception:            # noqa: BLE001
+                pass
         if im.width * im.height > _V9_MAX_PIXELS:
             cote = max(1, int((_V9_MAX_PIXELS / max(1, im.width * im.height)) ** 0.5 * min(im.width, im.height)))
             im = im.resize((max(1, im.width * cote // max(1, min(im.width, im.height))),
@@ -2597,6 +2670,16 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
         "juge — sous 1,2 il est indiscernable et c'est un bloquant, au-dela de 3,0 il tient le "
         "seuil WCAG 1.4.11 ; entre les deux, savoir si l'actif porte du sens ou decore est un "
         "jugement humain. Ne pas lire ce silence comme un vert")
+
+    # TF-1192 — ce que la mesure fait a la page se DIT : un lecteur du rapport doit savoir que le
+    # contexte mesure n'est pas exactement la capture pleine page livree a cote.
+    report["non_juge"].append(
+        "V9 : les elements `position: sticky | fixed` qui ne sont ni un ancetre ni un descendant "
+        "de l'actif sont rendus invisibles LE TEMPS de sa capture, puis restaures — un bandeau "
+        "collant peint a la hauteur d'un schema dans la capture n'est pas le fond de ce schema, "
+        "et aucun lecteur ne le voit ainsi (TF-1192). L'actif POSE DANS un bandeau collant garde "
+        "le sien : c'est bien son fond. Ce qu'un element collant masque a l'ECRAN reste, lui, "
+        "un jugement humain")
 
     # TF-1173 (lot Produit-64 20260916b, RD-9) — le renvoi aux quatre oracles de
     # `digit-ai-forge-design` sort ici aussi : un producteur qui ne joue QUE le rendu croirait sa

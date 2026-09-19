@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V9 rendu — schema indiscernable sous un bandeau collant — 20260919a</title>
+<!--
+  TF-1192 (lot Produit-64 20260917a, retour RD-12) — LA SONDE MESURAIT CE QU UN BANDEAU COLLANT
+  PEINT PAR-DESSUS L ACTIF, PAS L ACTIF.
+
+  Le fait mesure le 17/09/2026 : `render_page.py --etats-ouverts` rendait FAIL a 3840 et 2560 px
+  sur le premier schema d un guide — « V9 actif INDISCERNABLE de son fond, meilleur contraste
+  1.00:1 sur 39494 pixels opaques » — et PASS aux cinq autres largeurs. Le schema n etait pas
+  blanc : boites teintees, traits et textes contrastes. Le bandeau `position: sticky` de la page,
+  peint a la hauteur du schema dans la capture, le recouvrait d un aplat blanc. Le verdict
+  dependait de la position d un resultat de recherche, pas de l actif juge.
+
+  CETTE PAGE EST LE SENS ROUGE DE LA PAIRE. Elle est le MEME fichier que
+  `v9-schema-sous-bandeau-collant.html`, a la couleur du dessin pres : boites, traits et libelles
+  sont blancs sur fond blanc. Le schema est REELLEMENT indiscernable, bandeau ou pas — et il doit
+  le rester apres le correctif. Sans ce cas, neutraliser les elements collants pendant la mesure
+  serait indistinguable d un desarmement de V9.
+
+  Attendu : au moins 1 constat `v9_actif_invisible`, a 1,00:1.
+-->
+<style>
+:root{
+  --bg:#ffffff; --bg-soft:#f7f8fa; --ink:#0f172a; --ink-soft:#334155;
+  --line:#e2e8f0; --c-slate-fg:#475569; --c-blue-fg:#1d4ed8; --sch-fill:#ffffff;
+  --sans:'DM Sans',system-ui,sans-serif; --head:'Roboto',system-ui,sans-serif;
+}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--bg)}
+/* Le bandeau collant : un choix de navigation que le socle admet. Il est plus HAUT que le schema,
+   pour que la capture de l actif soit entierement recouverte quand il passe dessous. */
+.bandeau{position:sticky;top:0;z-index:50;height:420px;background:var(--bg);
+  border-bottom:1px solid var(--line);padding:16px 24px;box-sizing:border-box}
+.bandeau h1{font-family:var(--head);margin:0 0 8px;font-size:20px}
+main{max-width:1100px;margin:0 auto;padding:24px}
+.remplissage{height:1200px;color:var(--ink-soft)}
+.diagram-wrap{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:28px 20px;margin:20px 0 12px}
+.svg-th{font-family:var(--head);font-weight:700;fill:#ffffff}
+.svg-tlabel{font-family:var(--sans);font-size:11px;fill:#ffffff}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<div class="bandeau">
+  <h1>Guide de lecture</h1>
+  <p>Ce bandeau reste en fenetre pendant tout le defilement : c est le choix de navigation de la
+  page, et il est conforme au socle.</p>
+</div>
+<main>
+<p class="remplissage">Le schema vit plus bas que la premiere fenetre : c est la condition pour que
+le bandeau collant se trouve entre le lecteur et lui.</p>
+<div class="diagram-wrap">
+  <svg id="schema" viewBox="0 0 900 260" width="860" height="248" role="img" aria-label="Chaine de traitement en trois etapes">
+    <defs>
+      <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" style="fill:#ffffff"/>
+      </marker>
+    </defs>
+    <rect x="30" y="60" width="220" height="90" rx="8" stroke-width="1" style="fill:#ffffff;stroke:#ffffff"/>
+    <text x="140" y="92" text-anchor="middle" class="svg-th" style="font-size:14px">Collecte</text>
+    <text x="140" y="114" text-anchor="middle" class="svg-tlabel">Depot de fichiers</text>
+    <text x="140" y="132" text-anchor="middle" class="svg-tlabel">Cadence : horaire</text>
+
+    <rect x="340" y="60" width="220" height="90" rx="8" stroke-width="1" style="fill:#ffffff;stroke:#ffffff"/>
+    <text x="450" y="92" text-anchor="middle" class="svg-th" style="font-size:14px">Controle</text>
+    <text x="450" y="114" text-anchor="middle" class="svg-tlabel">Schema et unicite</text>
+    <text x="450" y="132" text-anchor="middle" class="svg-tlabel">Rejet trace</text>
+
+    <rect x="650" y="60" width="220" height="90" rx="8" stroke-width="1" style="fill:#ffffff;stroke:#ffffff"/>
+    <text x="760" y="92" text-anchor="middle" class="svg-th" style="font-size:14px">Restitution</text>
+    <text x="760" y="114" text-anchor="middle" class="svg-tlabel">Page autoportante</text>
+    <text x="760" y="132" text-anchor="middle" class="svg-tlabel">Signee et datee</text>
+
+    <line x1="250" y1="105" x2="334" y2="105" stroke-width="1.6" marker-end="url(#fleche)" style="stroke:#ffffff"/>
+    <line x1="560" y1="105" x2="644" y2="105" stroke-width="1.6" marker-end="url(#fleche)" style="stroke:#ffffff"/>
+
+    <text x="30" y="200" class="svg-tlabel">Lecture : chaque etape rend son verdict avant de passer la main a la suivante.</text>
+    <text x="30" y="222" class="svg-tlabel">Un rejet arrete la chaine et reste trace dans le journal de collecte.</text>
+  </svg>
+</div>
+<p>Le schema ci-dessus porte des boites teintees, des traits et des libelles franchement
+contrastes. Ce que la sonde doit mesurer est ce dessin, jamais l aplat qu un element collant pose
+par-dessus dans sa propre capture.</p>
+<p class="remplissage">Suite de la page, pour que le defilement soit possible dans les deux sens.</p>
+</main>
+<script>
+  // Poser le schema SOUS le bandeau collant, sans dependre d une recherche : le schema entre
+  // entierement dans la fenetre, donc la capture de l element ne provoquera aucun defilement
+  // correctif — exactement l etat ou la sonde mesurait le bandeau.
+  addEventListener('load', function () {
+    var s = document.getElementById('schema');
+    window.scrollTo(0, s.getBoundingClientRect().top + window.scrollY - 140);
+  });
+</script>
+</body></html>
