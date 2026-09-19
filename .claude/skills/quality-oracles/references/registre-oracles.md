@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.23.0, alignée sur le JSON le 17/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.24.0, alignée sur le JSON le 19/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -37,6 +37,7 @@
 | Données / dataset | skill `data-quality-auditor` (profilage : complétude, cohérence, distributions, anomalies, model-readiness) | skill | ✅ |
 | Schémas / diagrammes | skill `digit-ai-schemas` (marque paramétrable — un engagement client ne se forke plus) | skill | ✅ |
 | Prompts | skill `prompt-analyzer-l99` | skill | ✅ |
+| Prémisse d'accès mesurée avant d'être classée (analyse L99) | `scripts/oracle-premisse-acces.mjs <analyse.md>` — A1 « invérifiable » sans mesure ni test manquant déclaré, A2 refus sans contrôle positif à identité égale, A3 mesure sans horodatage ni identité, A4 conclusion d'indisponibilité sans énumération des familles d'accès (*scopes*, points d'entrée parallèles). **Invocation explicite** sur une analyse L99 ou son chapitre 4 — aucun déclenchement automatique sur `.md`. TF-1185 : un refus prouve qu'une porte est fermée, jamais qu'il n'y en a qu'une | cli | ✅ |
 | Versions de dépendances | `maj-versions.mjs` (kit RefAudit) | kit | ✅ |
 | Conformité rapport d'audit | `verifier-rapport-audit.mjs` (kit RefAudit) — checks 1-10 | kit | ✅ |
 | Clôture de remédiation | `verifier-remediation.mjs --status` (kit RefAudit) | kit | ✅ |

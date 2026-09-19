@@ -1254,6 +1254,27 @@
     "PERTE DE TEXTE"
    ],
    "provenance": "TF-1174 (lot Produit-64 20260916b, RD-10, 16/09/2026) — la fixture rouge REPRODUIT le defaut reel : un append sorti de la boucle de regroupement de prose ne laisse que le DERNIER paragraphe de chaque chapitre. Les deux pages rendent le MEME verdict et les MEMES huit constats a check_html.py : la chaine de forme est aveugle a l amputation."
+  },
+  {
+   "nom": "premisse-acces",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-premisse-acces.mjs",
+    "{fixture}"
+   ],
+   "red": "premisse-acces-red.md",
+   "green": "premisse-acces-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "A1 —",
+    "A4 —"
+   ],
+   "provenance": "TF-1185, lot Produit-62 - RETOURS - 20260917e (RF-26) — la fixture rouge est la forme qu avait l analyse du 17/09/2026 AVANT la regle : deux premisses d acces classees inverifiables sans qu aucun des quatre appels REST en lecture seule ait ete emis."
   }
  ]
 }
