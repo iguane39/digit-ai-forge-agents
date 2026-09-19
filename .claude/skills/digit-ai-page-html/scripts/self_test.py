@@ -2298,6 +2298,67 @@ def run_assets_inlinables():
     return out
 
 
+# T3 d'oracle-tokens (digit-ai-forge-design), transcrit ici : proprietes d'espacement, valeurs en
+# px, multiples de 4. Les valeurs qui passent par un jeton, un calcul ou un pourcentage sont hors
+# champ — c'est la meme clause d'exemption que l'oracle, et pas une tolerance de plus.
+RE_ESPACEMENT = re.compile(
+    r"(?:^|[;{\s])(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;}]+)",
+    re.I)
+RE_EXEMPT = re.compile(r"var\(\s*--|calc\(|clamp\(|auto|%")
+
+
+def espacements_hors_echelle(texte):
+    """Les espacements en px qui ne sont pas multiples de 4 : [(ligne, « propriete: valeur »)]."""
+    trouves = []
+    for i, ligne in enumerate(texte.splitlines(), 1):
+        for m in RE_ESPACEMENT.finditer(ligne):
+            if RE_EXEMPT.search(m.group(3)):
+                continue
+            for px in re.finditer(r"(-?[\d.]+)px", m.group(3)):
+                valeur = abs(float(px.group(1)))
+                if valeur and valeur % 4:
+                    trouves.append((i, f"{m.group(1)}{m.group(2) or ''}: {px.group(0)}"))
+    return trouves
+
+
+def run_assets_echelle_4pt():
+    """TF-1191 (17/09/2026) — UN COMPOSANT DU SOCLE NE POSE PAS D'ESPACEMENT HORS ECHELLE 4 PT.
+
+    LE FAIT PAYE. Le socle rend l'infobulle structuree OBLIGATOIRE des qu'une legende porte plus
+    de deux objets (composants.md, composant 13 ; lisibilite.md L3 g). Un produit l'a posee par la
+    voie prescrite, et `oracle-tokens` de digit-ai-forge-design a rendu FAIL sur sa page : T3
+    majeur, « espacement 10px hors echelle 4pt sur padding », T3 majeur, « 14px » — les deux dans
+    le bloc que le poseur venait d'ecrire, sur une page qui avait recale 57 espacements la veille
+    pour passer au vert. Suivre une regle rouge du socle faisait echouer un autre oracle du meme
+    ecosysteme : deux regles inconciliables sur une page qui les respecte toutes deux.
+
+    Ce cas joue T3 sur les SOURCES des composants (assets/), la ou le poseur les prend. Deux sens :
+      · sens vert : aucun asset ne pose d'espacement hors echelle ;
+      · sens rouge : la declaration d'avant correctif, verbatim, est reconnue — et pour les deux
+        valeurs, sinon un correctif a moitie fait passerait pour complet.
+
+    CE QUE CE CAS NE VOIT PAS : les extraits CSS prescrits par les references (composants.md,
+    composant-recherche.md) et les canevas de digit-ai-schemas, qui portent leurs propres
+    espacements hors echelle — meme classe, autres composants, hors du perimetre de TF-1191.
+    """
+    out = []
+    for chemin in sorted((FIXTURES.parent / "assets").iterdir()):
+        if chemin.suffix not in (".css", ".js", ".html"):
+            continue
+        ecarts = espacements_hors_echelle(chemin.read_text(encoding="utf-8"))
+        out.append({"fixture": f"assets/{chemin.name}", "verdict": "OK" if not ecarts else "ECHEC",
+                    "attendu": "0 espacement hors echelle 4pt",
+                    "obtenu": f"{len(ecarts)} : {ecarts[:3]}" if ecarts else "0",
+                    "regle": "TF-1191 echelle 4pt (T3)", "detail": ""})
+    rouge = espacements_hors_echelle("  padding: 10px 14px;")
+    attendu = [(1, "padding: 10px"), (1, "padding: 14px")]
+    out.append({"fixture": "infobulle.css d'avant correctif (sens rouge)",
+                "verdict": "OK" if rouge == attendu else "ECHEC",
+                "attendu": str(attendu), "obtenu": str(rouge),
+                "regle": "TF-1191 contre-epreuve", "detail": ""})
+    return out
+
+
 def run_poseur_composants():
     """TF-0890 — LE POSEUR DE COMPOSANTS S'IMPORTE, ET POSE HORS DU DEPOT DES SKILLS.
 
@@ -3133,7 +3194,7 @@ def main():
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
            + run_glyphes_du_socle() + run_completude() + run_markdown() + run_syne()
-           + run_assets_inlinables() + run_kpi_perimetre()
+           + run_assets_inlinables() + run_assets_echelle_4pt() + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
            + run_echeance_forme_ancienne())
     rendu = run_rendu()
