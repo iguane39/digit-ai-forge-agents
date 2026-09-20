@@ -2310,8 +2310,15 @@ def run_assets_inlinables():
 # T3 d'oracle-tokens (digit-ai-forge-design), transcrit ici : proprietes d'espacement, valeurs en
 # px, multiples de 4. Les valeurs qui passent par un jeton, un calcul ou un pourcentage sont hors
 # champ — c'est la meme clause d'exemption que l'oracle, et pas une tolerance de plus.
+#
+# TF-1193 (20/09/2026) — LA BORNE DE GAUCHE ACCEPTE AUSSI UN GUILLEMET. Un style EN LIGNE
+# commence juste apres le guillemet ouvrant (`style="padding-left:14px"`), sans `;` ni espace
+# devant : la transcription ne voyait pas ces declarations, T3 si. Mesure sur
+# digit-ai-schemas/assets/exemple-reference.html : 48 ecarts vus ici contre 52 rendus par
+# l'oracle — les quatre manquants etaient quatre `<ul style="padding-left:14px">`. Une
+# transcription qui compte moins que la regle qu'elle transcrit endort le banc.
 RE_ESPACEMENT = re.compile(
-    r"(?:^|[;{\s])(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;}]+)",
+    r"(?:^|[;{\s\"'])(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;}\"']+)",
     re.I)
 RE_EXEMPT = re.compile(r"var\(\s*--|calc\(|clamp\(|auto|%")
 
@@ -2346,25 +2353,72 @@ def run_assets_echelle_4pt():
       · sens rouge : la declaration d'avant correctif, verbatim, est reconnue — et pour les deux
         valeurs, sinon un correctif a moitie fait passerait pour complet.
 
-    CE QUE CE CAS NE VOIT PAS : les extraits CSS prescrits par les references (composants.md,
-    composant-recherche.md) et les canevas de digit-ai-schemas, qui portent leurs propres
-    espacements hors echelle — meme classe, autres composants, hors du perimetre de TF-1191.
+    TF-1193 (20/09/2026) — LE PERIMETRE S'ETEND A CE QUI EST PRESCRIT A LA COPIE. Ce cas ne
+    jouait que `assets/`. Or un auteur ne prend pas seulement un composant pose : il COPIE
+    l'extrait CSS d'une reference (composants.md, composant-recherche.md) et il part d'un canevas
+    de digit-ai-schemas. Remesure du 20/09 sur les sept fichiers restes hors du banc : 124
+    espacements hors echelle (117 avec la borne de gauche d'avant, qui ne voyait pas les styles
+    EN LIGNE — voir RE_ESPACEMENT). Toute page derivee de l'un d'eux rougissait a T3 sans que
+    rien, ici, ne le dise. Les trois sources sont desormais jugees ensemble.
+
+    CE QUE CE CAS NE VOIT TOUJOURS PAS : les valeurs qui passent par un jeton, un calcul ou un
+    pourcentage (meme clause d'exemption que l'oracle), les espacements ecrits dans un attribut
+    SVG (x, y, dx, dy — geometrie, pas espacement), et les pages produites par les skills, qui
+    relevent d'oracle-tokens sur le livrable.
     """
     out = []
-    for chemin in sorted((FIXTURES.parent / "assets").iterdir()):
-        if chemin.suffix not in (".css", ".js", ".html"):
+    # Les trois sources qu'un auteur prend : le composant qu'il POSE, l'extrait qu'il COPIE,
+    # le canevas dont il PART. Une reference manquante est un ECHEC, jamais un silence.
+    racine_skills = FIXTURES.parent.parent
+    sources = [("assets", sorted((FIXTURES.parent / "assets").iterdir()))]
+    sources.append(("references", [FIXTURES.parent / "references" / n
+                                   for n in ("composants.md", "composant-recherche.md")]))
+    canevas = racine_skills / "digit-ai-schemas" / "assets"
+    sources.append(("digit-ai-schemas/assets", sorted(canevas.iterdir()) if canevas.is_dir() else []))
+    for etiquette, chemins in sources:
+        if etiquette == "digit-ai-schemas/assets" and not chemins:
+            out.append({"fixture": "digit-ai-schemas/assets", "verdict": "ECHEC",
+                        "attendu": "canevas presents a cote du socle",
+                        "obtenu": f"dossier absent : {canevas}",
+                        "regle": "TF-1193 echelle 4pt (T3)", "detail": "un perimetre introuvable n'est pas un perimetre vert"})
             continue
-        ecarts = espacements_hors_echelle(chemin.read_text(encoding="utf-8"))
-        out.append({"fixture": f"assets/{chemin.name}", "verdict": "OK" if not ecarts else "ECHEC",
-                    "attendu": "0 espacement hors echelle 4pt",
-                    "obtenu": f"{len(ecarts)} : {ecarts[:3]}" if ecarts else "0",
-                    "regle": "TF-1191 echelle 4pt (T3)", "detail": ""})
+        for chemin in chemins:
+            if chemin.suffix not in (".css", ".js", ".html", ".md"):
+                continue
+            if not chemin.is_file():
+                out.append({"fixture": f"{etiquette}/{chemin.name}", "verdict": "ECHEC",
+                            "attendu": "fichier present", "obtenu": "absent",
+                            "regle": "TF-1193 echelle 4pt (T3)", "detail": ""})
+                continue
+            ecarts = espacements_hors_echelle(chemin.read_text(encoding="utf-8"))
+            out.append({"fixture": f"{etiquette}/{chemin.name}", "verdict": "OK" if not ecarts else "ECHEC",
+                        "attendu": "0 espacement hors echelle 4pt",
+                        "obtenu": f"{len(ecarts)} : {ecarts[:3]}" if ecarts else "0",
+                        "regle": "TF-1191/1193 echelle 4pt (T3)", "detail": ""})
     rouge = espacements_hors_echelle("  padding: 10px 14px;")
     attendu = [(1, "padding: 10px"), (1, "padding: 14px")]
     out.append({"fixture": "infobulle.css d'avant correctif (sens rouge)",
                 "verdict": "OK" if rouge == attendu else "ECHEC",
                 "attendu": str(attendu), "obtenu": str(rouge),
                 "regle": "TF-1191 contre-epreuve", "detail": ""})
+    # TF-1193, sens rouge du STYLE EN LIGNE : la declaration d'avant correctif, verbatim, telle
+    # qu'elle vivait dans exemple-reference.html. La borne de gauche d'avant ne la voyait pas —
+    # ce cas ECHOUERAIT si on la retrecissait, et le trou de quatre ecarts se rouvrirait en
+    # silence. Le `margin:0` de la meme declaration reste muet : zero est sur l'echelle.
+    ligne = '            <ul style="padding-left:14px;margin:0;">'
+    rouge_inline = espacements_hors_echelle(ligne)
+    attendu_inline = [(1, "padding-left: 14px")]
+    out.append({"fixture": "style EN LIGNE d'avant correctif (sens rouge)",
+                "verdict": "OK" if rouge_inline == attendu_inline else "ECHEC",
+                "attendu": str(attendu_inline), "obtenu": str(rouge_inline),
+                "regle": "TF-1193 contre-epreuve", "detail": "la borne de gauche accepte le guillemet ouvrant"})
+    # TF-1193, sens vert de la meme borne : une valeur SUR l'echelle, en ligne, reste muette —
+    # sinon le cas rouge ci-dessus passerait aussi avec une regle qui crie sur tout.
+    vert_inline = espacements_hors_echelle('<ul style="padding-left:16px;margin:0;">')
+    out.append({"fixture": "style EN LIGNE sur l'echelle (sens vert)",
+                "verdict": "OK" if vert_inline == [] else "ECHEC",
+                "attendu": "[]", "obtenu": str(vert_inline),
+                "regle": "TF-1193 contre-epreuve", "detail": ""})
     return out
 
 

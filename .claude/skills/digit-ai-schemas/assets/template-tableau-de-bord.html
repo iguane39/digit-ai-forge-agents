@@ -19,7 +19,7 @@
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 14px;
+    gap: 16px;
     margin: 24px 0 8px;
   }
   .kpi {
@@ -27,7 +27,7 @@
     border: 1px solid var(--line);
     border: 1px solid var(--c-purple-fg);
     border-radius: 8px;
-    padding: 18px 20px;
+    padding: 16px 20px;
   }
   .kpi.kpi-teal { border-left-color: var(--c-teal-fg); }
   .kpi.kpi-teal .kpi-value { color: var(--c-teal-fg); }
@@ -41,7 +41,7 @@
     font-size: 28px;
     color: var(--c-purple-fg);
     line-height: 1;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
   .kpi-label {
     font-family: var(--sans);
@@ -54,39 +54,39 @@
   .trajectory {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
+    gap: 16px;
     margin: 20px 0;
   }
   .palier {
     background: var(--bg);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 22px 22px;
+    padding: 20px;
     position: relative;
   }
-  .palier-num { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--ink-muted); margin-bottom: 6px; }
-  .palier-title { font-family: var(--head); font-weight: 800; font-size: 18px; margin-bottom: 10px; }
+  .palier-num { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--ink-muted); margin-bottom: 8px; }
+  .palier-title { font-family: var(--head); font-weight: 800; font-size: 18px; margin-bottom: 12px; }
   .palier-1 .palier-title { color: var(--c-gray-fg); }
   .palier-2 .palier-title { color: var(--c-amber-fg); }
   .palier-3 .palier-title { color: var(--c-purple-fg); }
   .palier-horizon { font-size: 12px; color: var(--ink-muted); margin-bottom: 12px; font-family: var(--mono); }
-  .palier ul { padding-left: 18px; }
-  .palier ul li { font-size: 13px; margin-bottom: 5px; }
+  .palier ul { padding-left: 16px; }
+  .palier ul li { font-size: 13px; margin-bottom: 4px; }
 
   /* Cards POC */
   .poc-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 14px;
+    gap: 16px;
     margin: 16px 0;
   }
   .poc-card {
     background: var(--bg);
     border: 1px solid var(--line);
     border-radius: 8px;
-    padding: 16px 18px;
+    padding: 16px;
   }
-  .poc-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .poc-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .poc-name { font-family: var(--head); font-weight: 700; font-size: 16px; color: var(--ink); }
   .poc-score { font-family: var(--head); font-weight: 800; font-size: 24px; }
   .poc-score.score-good { color: var(--c-teal-fg); }
@@ -102,7 +102,7 @@
     font-size: 11px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 100px;
   }
   .palier-pill.p1 { background: var(--c-gray-bg); color: var(--c-gray-fg); }
@@ -181,7 +181,7 @@
         <div class="poc-score score-good">{{POC_SCORE_1}}</div>
       </div>
       <span class="palier-pill p2">{{POC_PALIER_1}}</span>
-      <div class="poc-meta" style="margin-top: 10px;">
+      <div class="poc-meta" style="margin-top: 12px;">
         <div>Squad : {{POC_SQUAD_1}}</div>
         <div>Dernière MEP : {{POC_LAST_MEP_1}}</div>
         <div>Baseline SLI : {{POC_SLI_1}}</div>
@@ -195,7 +195,7 @@
         <div class="poc-score score-warn">{{POC_SCORE_2}}</div>
       </div>
       <span class="palier-pill p1">{{POC_PALIER_2}}</span>
-      <div class="poc-meta" style="margin-top: 10px;">
+      <div class="poc-meta" style="margin-top: 12px;">
         <div>Squad : {{POC_SQUAD_2}}</div>
         <div>Dernière MEP : {{POC_LAST_MEP_2}}</div>
         <div>Baseline SLI : {{POC_SLI_2}}</div>
@@ -209,7 +209,7 @@
         <div class="poc-score score-bad">{{POC_SCORE_3}}</div>
       </div>
       <span class="palier-pill p3">{{POC_PALIER_3}}</span>
-      <div class="poc-meta" style="margin-top: 10px;">
+      <div class="poc-meta" style="margin-top: 12px;">
         <div>Squad : {{POC_SQUAD_3}}</div>
         <div>Dernière MEP : {{POC_LAST_MEP_3}}</div>
         <div>Baseline SLI : {{POC_SLI_3}}</div>

@@ -53,14 +53,14 @@
     border: 2px solid var(--line);
     border-radius: var(--r-sm, 8px);
     background: var(--surface);
-    padding: 12px 14px;
+    padding: 12px 16px;
     break-inside: avoid;
   }
   .tbl-card.est-creee   { border-color: var(--blue); }
   .tbl-card.est-modifiee{ border-color: var(--amber); }
   .tbl-card.est-reprise { border-color: var(--line); }
   .tbl-nom {
-    margin: 0 0 2px;
+    margin: 0 0 4px;
     font-family: var(--mono);
     font-size: .92rem;
     font-weight: 600;
@@ -68,7 +68,7 @@
   }
   .tbl-etat { margin: 0 0 8px; font-size: .78rem; color: var(--muted); }
   .tbl-card ul { margin: 0; padding: 0; list-style: none; }
-  .col { display: flex; gap: 6px; font-size: .82rem; line-height: 1.5; }
+  .col { display: flex; gap: 8px; font-size: .82rem; line-height: 1.5; }
   .col-g { flex: 0 0 auto; font-family: var(--mono); }          /* le glyphe d'état */
   .col-n { font-family: var(--mono); word-break: break-word; }  /* le nom de colonne */
   .col.est-ajoutee  .col-g, .col.est-ajoutee  .col-n { color: var(--blue); }
@@ -77,7 +77,7 @@
   .tbl-cle { margin: 8px 0 0; font-size: .76rem; color: var(--muted); }
 
   .tbl-legende { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0; font-size: .8rem; }
-  .tbl-legende span { display: inline-flex; align-items: center; gap: 6px; }
+  .tbl-legende span { display: inline-flex; align-items: center; gap: 8px; }
   .tbl-legende b { font-family: var(--mono); font-weight: 600; }
   /* LA PASTILLE D'ÉTAT DE TABLE N'EST PAS UN CARACTÈRE, ET LA MESURE L'A IMPOSÉ (TF-0938,
      08/09/2026). La légende rendait les trois états de table par le glyphe « ▭ » teinté. Mesure

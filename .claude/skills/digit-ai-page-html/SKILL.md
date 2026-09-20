@@ -7,7 +7,7 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.22.0"
+  version: "1.23.0"
 ---
 
 # Page HTML — Socle commun Digit-AI

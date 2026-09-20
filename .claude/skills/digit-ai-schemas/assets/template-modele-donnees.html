@@ -152,8 +152,8 @@ h1 { font-family: var(--head); font-weight:800; font-size:42px; letter-spacing:-
 .meta { display:flex; flex-wrap:wrap; gap:8px 28px; font-size:13px; color:var(--ink-muted); }
 .meta b { color:var(--ink-soft); }
 header.doc { border-bottom:1px solid var(--line); padding-bottom:32px; margin-bottom:48px; }
-h2 { font-family: var(--head); font-weight:800; font-size:26px; margin:0 0 18px; }
-h2 .num { color:var(--accent); font-size:13px; letter-spacing:.1em; margin-right:10px; vertical-align:2px; }
+h2 { font-family: var(--head); font-weight:800; font-size:26px; margin:0 0 16px; }
+h2 .num { color:var(--accent); font-size:13px; letter-spacing:.1em; margin-right:12px; vertical-align:2px; }
 section { margin-bottom:56px; }
 
 /* --- Diagramme : conteneur --- */
@@ -163,11 +163,11 @@ section { margin-bottom:56px; }
 .db-schema { position:relative; }
 .db-edges { position:absolute; left:0; top:0; pointer-events:none; }
 .db-edges path[data-tip] { pointer-events:stroke; cursor:help; }
-.diagram-caption { font-style:italic; color:var(--ink-muted); font-size:13px; margin:10px 4px 0; }
+.diagram-caption { font-style:italic; color:var(--ink-muted); font-size:13px; margin:12px 4px 0; }
 
 /* --- Titres de bande : pastilles encadrées (convention Digit-AI) --- */
 .db-bandtitle { position:absolute; top:6px; display:flex; justify-content:center; }
-.db-bandtitle span { background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:3px 14px;
+.db-bandtitle span { background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:4px 16px;
   font-family: var(--head); font-weight:700; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); white-space:nowrap; }
 
 /* --- Cartes-entités --- */
@@ -178,10 +178,10 @@ section { margin-bottom:56px; }
 .db-card.s-coral { border-top:3px solid var(--c-coral-fg); }
 .db-card.s-teal  { border-top:3px solid var(--c-teal-fg); }
 .db-card.s-dashed { border:1px dashed var(--c-gray-stroke); background:var(--bg-soft); }
-.db-card-head { font-family: var(--mono); font-weight:600; font-size:12px; padding:6px 10px;
+.db-card-head { font-family: var(--mono); font-weight:600; font-size:12px; padding:8px 12px;
   border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .db-role { font-family: var(--sans); font-weight:400; color:var(--ink-muted); font-size:10px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:48%; flex:0 1 auto; }
-.dbf-row { display:flex; align-items:center; gap:6px; padding:0 10px; height:19px; border-bottom:1px solid var(--line-soft); }
+.dbf-row { display:flex; align-items:center; gap:8px; padding:0 12px; height:19px; border-bottom:1px solid var(--line-soft); }
 .dbf-row:last-child { border-bottom:none; }
 .dbf-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family: var(--mono); font-size:11px; }
 .dbf-name.pii { color:var(--c-coral-fg); font-weight:700; }
@@ -194,26 +194,26 @@ section { margin-bottom:56px; }
 .db-card-rel { font-family: var(--mono); font-size:9.5px; font-weight:600; paint-order:stroke; stroke:var(--bg-soft); stroke-width:3px; }
 
 /* --- Légende (couleur + style de trait + libellé : jamais couleur seule) --- */
-.db-legend { display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:16px; font-size:13px; color:var(--ink-soft); }
-.db-legend .lg { display:flex; align-items:center; gap:7px; }
+.db-legend { display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:16px; font-size:13px; color:var(--ink-soft); }
+.db-legend .lg { display:flex; align-items:center; gap:8px; }
 .db-legend .sw { width:14px; height:14px; border-radius:3px; display:inline-block; }
 .db-legend svg { display:inline-block; vertical-align:middle; }
 
 /* --- Dictionnaire de données --- */
-.dd-list { display:flex; flex-direction:column; gap:14px; }
+.dd-list { display:flex; flex-direction:column; gap:16px; }
 .dd-card { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--bg); }
 .dd-card.s-gray{border: 1px solid var(--c-gray-fg);} .dd-card.s-blue{border: 1px solid var(--c-blue-fg);}
 .dd-card.s-coral{border: 1px solid var(--c-coral-fg);} .dd-card.s-teal{border: 1px solid var(--c-teal-fg);}
 .dd-card.s-dashed{border: 1px dashed var(--c-gray-stroke);}
-.dd-head { display:flex; align-items:baseline; gap:12px; padding:10px 14px; background:var(--bg-soft); border-bottom:1px solid var(--line-soft); flex-wrap:wrap; }
+.dd-head { display:flex; align-items:baseline; gap:12px; padding:12px 16px; background:var(--bg-soft); border-bottom:1px solid var(--line-soft); flex-wrap:wrap; }
 .dd-name { font-family: var(--mono); font-weight:700; font-size:14px; }
 .dd-role { color:var(--ink-muted); font-size:13px; }
 .dd-class { margin-left:auto; font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;
-  background:var(--c-amber-bg); color:var(--c-amber-fg); padding:2px 9px; border-radius:999px; }
+  background:var(--c-amber-bg); color:var(--c-amber-fg); padding:4px 8px; border-radius:999px; }
 table.dd-table { width:100%; border-collapse:collapse; font-size:13px; }
 .dd-table th { text-align:left; font-family: var(--head); font-weight:700; font-size:11px; letter-spacing:.06em;
-  text-transform:uppercase; color:var(--ink-muted); padding:8px 14px; border-bottom:1px solid var(--line-soft); }
-.dd-table td { padding:6px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  text-transform:uppercase; color:var(--ink-muted); padding:8px 16px; border-bottom:1px solid var(--line-soft); }
+.dd-table td { padding:8px 16px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
 .dd-col { font-family: var(--mono); white-space:nowrap; font-weight:500; }
 .dd-col.pii { color:var(--c-coral-fg); font-weight:700; }
 .dd-type { font-family: var(--mono); color:var(--ink-muted); font-size:12px; white-space:nowrap; }
@@ -221,7 +221,7 @@ table.dd-table { width:100%; border-collapse:collapse; font-size:13px; }
 
 /* --- Tooltip HTML carré (standard Digit-AI : Titre | puces) --- */
 #diagTooltip { position:fixed; z-index:50; max-width:340px; background:var(--ink); color:var(--bg); border-radius:8px;
-  padding:10px 13px; font-size:12.5px; line-height:1.45; display:none; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25); }
+  padding:12px; font-size:12.5px; line-height:1.45; display:none; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25); }
 #diagTooltip .tt-title { font-family: var(--head); font-weight:700; margin-bottom:4px; }
 #diagTooltip ul { margin:0; padding-left:16px; }
 #diagTooltip code { font-family: var(--mono); background:var(--bg-overlay); padding:0 4px; border-radius:3px; font-size:11.5px; }
@@ -246,8 +246,8 @@ footer.doc .brand { font-family: var(--head); font-weight:700; letter-spacing:.0
      perdue : chaque cellule la porte dans son `data-label`, rendue par `::before`. */
   .dd-table thead { display:none; }
   .dd-table, .dd-table tbody, .dd-table tr, .dd-table td { display:block; width:auto; }
-  .dd-table tr { border-bottom:1px solid var(--line-soft); padding:6px 0; }
-  .dd-table td { border:0; padding:2px 14px; }
+  .dd-table tr { border-bottom:1px solid var(--line-soft); padding:8px 0; }
+  .dd-table td { border:0; padding:4px 16px; }
   .dd-table td:empty { display:none; }
   .dd-table td::before { content:attr(data-label) " : "; font-family:var(--head); font-weight:700;
     font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); }

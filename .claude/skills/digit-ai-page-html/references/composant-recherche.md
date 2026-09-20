@@ -38,7 +38,7 @@ CSS (adapter aux tokens du livrable — voir `charte-et-tokens.md`) :
 ```css
 mark.find-hit { background: var(--amber-fill, #fde9c8); color: var(--ink, #1a1a1a);
                 border-radius: 2px; display: inline; padding: 0; margin: 0; }
-.find-bar     { display: flex; flex-direction: column; gap: 2px; }
+.find-bar     { display: flex; flex-direction: column; gap: 4px; }
 .find-count   { margin-top: 4px; font-size: .72rem; color: var(--muted); min-height: 1em; }
 .find-count.zero { color: #c0392b; }
 ```

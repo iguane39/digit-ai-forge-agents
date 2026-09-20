@@ -22,7 +22,7 @@ nue, jamais le sens porté par la seule couleur.
 </div>
 ```
 ```css
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 4px; }
 .kpi-label { font-family: var(--sans); color: var(--muted); font-size: .8rem; }
 .kpi-value { font-family: var(--head); font-weight: 800; font-size: 1.6rem; color: var(--ink); }
@@ -42,8 +42,8 @@ clair, et « couleur seule » viole WCAG 1.4.1).
 <span class="badge info">Info</span>
 ```
 ```css
-.badge { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 600;
-  color: var(--ink); padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); }
+.badge { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 600;
+  color: var(--ink); padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); }
 .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--_dot, var(--muted)); }
 .badge.ok   { --_dot: var(--green); background: var(--green-fill); border-color: var(--green-line); }
 .badge.part { --_dot: var(--amber); background: var(--amber-fill); border-color: var(--amber-line); }
@@ -74,7 +74,7 @@ Accompagne tout code couleur : **swatch + libellé texte** (la couleur ne porte 
 ```
 ```css
 .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0; padding: 0; list-style: none; }
-.leg-item { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: .85rem; }
+.leg-item { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .85rem; }
 .leg-swatch { width: 12px; height: 12px; border-radius: 4px; border: 1px solid var(--line); }
 ```
 
@@ -195,9 +195,9 @@ et une retraduction sur trois se trompe — ici elle s'est trompée sur celui qu
 ```
 ```css
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 6px 0; }
-thead th { background: var(--surface); text-align: left; font-family: var(--head); font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--line); padding: 10px 12px; }
-tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 8px 0; }
+thead th { background: var(--surface); text-align: left; font-family: var(--head); font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--line); padding: 12px; }
+tbody td { padding: 12px; border-bottom: 1px solid var(--line); }
 @media (max-width: 640px) {
   /* TF-0499 (22/08/2026) : `table` ne passe JAMAIS en display:block. Une <caption> dont le
      tableau parent est en block recoit une boite de tableau anonyme qui se reduit au contenu :
@@ -207,8 +207,8 @@ tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
      livrable reel : quinze tableaux touches, jamais vus par aucun oracle. */
   tr, td { display: block; width: 100%; box-sizing: border-box; }
   thead { display: none; }
-  tbody tr { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; margin: 10px 0; }
-  tbody td { border: none; padding: 5px 0; display: flex; justify-content: space-between; gap: 12px; }
+  tbody tr { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 12px; margin: 12px 0; }
+  tbody td { border: none; padding: 4px 0; display: flex; justify-content: space-between; gap: 12px; }
   tbody td::before { content: attr(data-label); font-weight: 700; color: var(--muted); font-size: .78rem; }
 }
 ```
@@ -316,7 +316,7 @@ l'impression de **tous** les panneaux. Contrat de marquage :
 ```
 ```css
 [role="tablist"] { display: flex; gap: 4px; border-bottom: 2px solid var(--line); }
-[role="tab"] { font: inherit; font-family: var(--head); font-weight: 700; color: var(--muted); background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 14px; cursor: pointer; }
+[role="tab"] { font: inherit; font-family: var(--head); font-weight: 700; color: var(--muted); background: none; border: none; border-bottom: 3px solid transparent; padding: 12px 16px; cursor: pointer; }
 [role="tab"][aria-selected="true"] { color: var(--blue); border-bottom-color: var(--blue); }
 [role="tab"]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 [role="tabpanel"] { padding-top: 16px; }
