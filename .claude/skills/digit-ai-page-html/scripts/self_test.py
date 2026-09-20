@@ -2422,6 +2422,82 @@ def run_assets_echelle_4pt():
     return out
 
 
+def run_fins_de_ligne_declarees():
+    """TF-1193 (20/09/2026) — LA COPIE DE TRAVAIL TIENT LA FIN DE LIGNE QUE LE DEPOT DECLARE.
+
+    LE FAIT PAYE, le jour meme. Une passe outillee a recale 124 espacements dans huit fichiers du
+    parc. L'outil lisait chaque fichier par `Path.read_text()` — qui ramene DEJA tout a `\\n` — puis
+    le reecrivait par `Path.write_text()`, qui sous Windows retraduit chaque `\\n` en `\\r\\n`. La
+    garde « relire la fin de ligne du fichier » etait ECRITE dans l'outil et INERTE : elle mesurait
+    une chaine deja normalisee. Les huit copies de travail sont passees en CRLF alors que
+    `.gitattributes` declare `*.html`, `*.md`, `*.js`, `*.css`, `*.py` en `eol=lf`.
+
+    CE QUI L'A RATTRAPE, ET CE QUI NE L'A PAS VU. `git status` est reste MUET : le filtre `clean`
+    de git normalise a la validation, donc le blob committe etait juste et le diff vide — c'est la
+    COPIE DE TRAVAIL, celle qui s'execute et qui part, qui etait fausse. Un seul controle a parle,
+    `oracle-parite-assets` (P3), et seulement sur l'UNIQUE page du parc qui embarque des copies du
+    socle : trois blocs « contenu DERIVE de sa source », +116, +85 et +622 octets — exactement un
+    `\\r` par ligne. Les SEPT autres fichiers ont derive sans qu'aucune regle ne le dise.
+
+    Ce cas ferme le trou : les extensions que `.gitattributes` declare `eol=lf` sont relues sur
+    disque, dans l'arbre des skills, et aucune ne porte de CRLF. Deux sens :
+      · sens vert : le parc reel, fichier par fichier ;
+      · sens rouge : un texte porteur d'un CRLF est reconnu — sinon la regle ne juge rien.
+
+    CE QUE CE CAS NE VOIT PAS : les extensions absentes de `.gitattributes` (`.json`, `.jsonl` —
+    laissees libres a dessein, plusieurs sont ecrites en CRLF par des outils tiers), et ce qui vit
+    hors de l'arbre des skills.
+    """
+    racine_skills = FIXTURES.parent.parent
+    attributs = racine_skills.parent.parent / ".gitattributes"
+    out = []
+    if not attributs.exists():
+        out.append({"fixture": ".gitattributes", "verdict": "ECHEC",
+                    "attendu": "present a la racine du depot", "obtenu": f"absent : {attributs}",
+                    "regle": "TF-1193 fins de ligne",
+                    "detail": "un perimetre introuvable n'est pas un perimetre vert"})
+        return out
+    suffixes = set()
+    for ligne in attributs.read_text(encoding="utf-8").splitlines():
+        nu = ligne.strip()
+        if nu.startswith("#") or "eol=lf" not in nu:
+            continue
+        motif = nu.split()[0]
+        if motif.startswith("*."):
+            suffixes.add(motif[1:])
+    if not suffixes:
+        out.append({"fixture": ".gitattributes", "verdict": "ECHEC",
+                    "attendu": "au moins une extension declaree eol=lf",
+                    "obtenu": "aucune", "regle": "TF-1193 fins de ligne", "detail": ""})
+        return out
+    coupables = []
+    for chemin in sorted(racine_skills.rglob("*")):
+        if chemin.suffix not in suffixes or not chemin.is_file():
+            continue
+        if any(p in {"__pycache__", "node_modules", ".venv", ".pytest_cache"} for p in chemin.parts):
+            continue
+        try:
+            brut = chemin.read_bytes()
+        except OSError:
+            continue
+        n = brut.count(b"\r\n")
+        if n:
+            coupables.append(f"{chemin.relative_to(racine_skills).as_posix()} ({n} CRLF)")
+    out.append({"fixture": f"arbre des skills · {' '.join(sorted(suffixes))}",
+                "verdict": "OK" if not coupables else "ECHEC",
+                "attendu": "0 fichier en CRLF sous les extensions declarees eol=lf",
+                "obtenu": "0" if not coupables else f"{len(coupables)} : {coupables[:5]}",
+                "regle": "TF-1193 fins de ligne", "detail": ""})
+    # Sens rouge : la forme exacte d'avant correctif — une ligne terminee par CRLF.
+    rouge = b'<ul style="padding-left:16px">\r\n</ul>\r\n'
+    out.append({"fixture": "contenu porteur de CRLF (sens rouge)",
+                "verdict": "OK" if rouge.count(b"\r\n") == 2 else "ECHEC",
+                "attendu": "2 CRLF reconnus", "obtenu": str(rouge.count(b"\r\n")),
+                "regle": "TF-1193 contre-epreuve",
+                "detail": "la mesure compte les octets, jamais un texte deja normalise a la lecture"})
+    return out
+
+
 def run_poseur_composants():
     """TF-0890 — LE POSEUR DE COMPOSANTS S'IMPORTE, ET POSE HORS DU DEPOT DES SKILLS.
 
@@ -3257,7 +3333,8 @@ def main():
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
            + run_glyphes_du_socle() + run_completude() + run_markdown() + run_syne()
-           + run_assets_inlinables() + run_assets_echelle_4pt() + run_kpi_perimetre()
+           + run_assets_inlinables() + run_assets_echelle_4pt() + run_fins_de_ligne_declarees()
+           + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
            + run_echeance_forme_ancienne())
     rendu = run_rendu()
