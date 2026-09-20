@@ -1,5 +1,5 @@
 {
- "version": "2.24.0",
+ "version": "2.25.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -1089,6 +1089,256 @@
     "la forme native des expressions du rapport (référence de source, alias du From, en-têtes de colonnes) — profil Power BI de forge-audit, jamais jugé ici",
     "la FIDÉLITÉ de la mise en page à un rapport d'origine fourni en entrée — `oracles/oracle-reconstruire.mjs` de ce dépôt (TF-1176)",
     "la justesse des valeurs affichées — `oracles/oracle-reconcilier.mjs` de ce dépôt, sur deux lots de mesures sous tolérance"
+   ]
+  },
+  {
+   "domaine": "Lineage déclaré complet (T1-T5, T6 optionnel granularité colonne, T7 environnement des datasets, T8 optionnel cibles structurées — niveau OpenLineage)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/lineage@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-tracer.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "T1 format forge-data/lineage@1 + artefact nommé · T2 entrées non vides, chaque dataset nommé ET daté (facet de fraîcheur) · T3 transformations non vides, chaque étape nommée et typée dans {declaratif, statique, runtime} · T4 sorties non vides + horodatage d'exécution (le « run » d'OpenLineage) · T5 méta-lineage : confiance.niveau ∈ 0..3 et confiance.methode, `etat` ∈ {constate, propose} optionnel · T6 (optionnel) granularité colonne : chaque entrée de `colonnes` vise une colonne de sortie déclarée et au moins une colonne d'entrée déclarée · T7 `namespace` sur chaque entrée et chaque sortie, jugé à partir du 2026-08-24 sur l'horodatage du lineage · T8 (optionnel) cibles structurées : `cibles` nomme table et colonnes, une cible entière porte `entier: true` ET un motif ≥ 4 mots",
+   "statut": "ok",
+   "non_juge": [
+    "véracité du lineage déclaré contre le plan réellement exécuté (capture runtime — niveau 3, hors v0)",
+    "résolution colonne→colonne multi-saut (T6 vérifie que la référence directe existe, pas la chaîne complète)",
+    "ingestion dans un catalogue (OpenMetadata ou autre) — instanciation, pas discipline",
+    "T7 : la JUSTESSE du `namespace` déclaré. L'oracle constate qu'il est présent et qu'il ne se réduit pas à un nom de technologie ; il ne peut pas savoir si `databricks://adb-1234…` est bien l'instance qui a répondu. Un namespace faux mais bien formé passe — et c'est déjà infiniment mieux qu'un namespace absent, qui rend deux archives INDISCERNABLES au lieu de fausses",
+    "T7 : un lineage écrit aujourd'hui avec un `horodatage` antérieur au 2026-08-24 échappe au jugement. La borne d'antériorité est déclarée, donc contournable ; elle est préférée à la mise en échec rétroactive de tout lineage existant (R-33 bis : une règle bruyante se fait contourner au lieu de se corriger)",
+    "T8 : la pertinence métier d'un motif d'`entier: true` — l'oracle exige le motif écrit, il ne l'arbitre pas (même limite que CV4 de `oracles/oracle-couvrir.mjs` sur une exclusion motivée)",
+    "T8 : une cible dont le nom de table ne correspond à aucun dataset des `entrees`/`sorties` — T8 juge la structure du référentiel de cibles, pas son rattachement au lineage porté par le même document"
+   ]
+  },
+  {
+   "domaine": "Qualité de données : assertions exécutables (P1-P3, P4 optionnel pont lineage)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/assertions@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-profiler.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "P1 format forge-data/assertions@1, liste non vide · P2 chaque assertion nomme son objet (table/colonne) et son type du jeu fermé {non_nul, unique, bornes, ensemble, motif, fraicheur} avec les paramètres exacts de ce type · P3 aucun vocabulaire subjectif (« propre », « correct », « bon », « valide », « cohérent ») en guise de condition · P4 (optionnel) pont qualité↔lineage : `lineage_ref` existe et chaque assertion.objet référence un dataset ou une colonne déclarés de ce lineage",
+   "statut": "ok",
+   "non_juge": [
+    "exécution des assertions sur données réelles — composée via le skill data-quality-auditor, jamais réécrite ici",
+    "pertinence métier des seuils et des bornes (revue humaine)",
+    "profilage exploratoire (distributions, outliers) — data-quality-auditor",
+    "résolution du pont qualité↔lineage au-delà de la référence directe (chaîne multi-saut, hors v0)"
+   ]
+  },
+  {
+   "domaine": "Restitution : chiffres ancrés, déclaré → généré (R1-R4, niveau dbt)",
+   "ext": [],
+   "content_patterns": [
+    "^lineage_ref\\s*:"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-restituer.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "R1 frontmatter avec lineage_ref ET bloc chiffres non vide · R2 chaque entrée chiffres a id, valeur, source, date · R3 bijection corps ↔ déclarations (tout [c:id] déclaré, toute déclaration utilisée) · R4 le fichier lineage_ref existe à côté du rapport · R5 couverture des nombres de prose : tout nombre porte un marqueur ou l'échappement [c:-] (avertissement, bloquant sous --strict) · R6/R7/R9 (optionnels) reconciliation_ref, couverture_ref et modele_ref pointent un artefact existant du bon format, et le corps cite chaque décision d'architecture du modèle · R8 vocabulaire du destinataire : terme déclaré « machine » au glossaire employé dans la prose, avertissement ou bloquant selon le glossaire",
+   "statut": "ok",
+   "non_juge": [
+    "justesse arithmétique des valeurs — couverte par `digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/oracle-calculs.mjs`, À EXÉCUTER SÉPARÉMENT : elle n'est pas câblée à la batterie de ce dépôt",
+    "montants commerciaux et engagements datés — `digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/oracle-claims.mjs`, à exécuter séparément",
+    "complétude du lineage pointé — juger lineage_ref avec `oracles/oracle-tracer.mjs` de ce dépôt",
+    "R5 : les nombres de TABLEAU sont hors champ — générés, leur ancrage est porté par le chapeau du chapitre ; les juger ligne à ligne exigerait un marqueur par cellule",
+    "R5 : sont écartés par nature les dates, millésimes, numérotations de chapitre, unités CSS et nombres écrits en lettres. Un chiffre METIER déguisé en date échappe donc, et c'est une limite, pas un oubli",
+    "R5 : l'ancrage est jugé à la PHRASE, les lignes d'un même paragraphe étant réunies au préalable (une phrase repliée n'est pas deux phrases). Deux chiffres d'une même phrase pour un seul marqueur passent : la granularité fine se corrige en rédigeant, pas en resserrant la règle jusqu'au bruit. Une abréviation suivie d'un point coupe la phrase trop tôt — le sens de l'erreur est alors un faux POSITIF, jamais un faux négatif"
+   ]
+  },
+  {
+   "domaine": "Modèle dimensionnel déclaré : granularité, dimensions conformes, clés, temps, matrice en bus, décisions portées (M1-M7, niveau Kimball)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/modele-dimensionnel@[12]\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-modeliser.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "M1 format forge-data/modele-dimensionnel@1|@2 + id, faits et dimensions non vides · M2 chaque fait déclare sa granularité en une phrase (≥ 6 mots, « une ligne par … ») · M3 dimensions conformes : chaque dimension définie une fois, toute dimension référencée existe · M4 chaque dimension porte une clé de substitution ET une clé naturelle, distinctes · M5 dimension temps : exactement une dimension de rôle « temps », granularité « jour » · M6 matrice en bus présente, chaque fait nomme un processus de la matrice et ses dimensions · M7 décisions d'architecture portées par le modèle (TF-1170)",
+   "statut": "ok",
+   "non_juge": [
+    "M7 : justesse et actualité de la décision citée — le ledger du produit fait foi ; un modèle qui cite une décision révoquée passe M7 et ment",
+    "M7 : reprise des mêmes décisions dans le mode d'emploi du livrable-dossier (LISEZMOI) — gabarit du pilot, jamais jugé ici",
+    "véracité de la granularité réelle contre la table construite — une mesure (`oracles/oracle-reconcilier.mjs` et `scripts/mesurer_base.py` de ce dépôt), jamais une déclaration",
+    "pertinence métier du type de changement lent retenu par dimension (0-3) — arbitrage du concepteur",
+    "performance et volumétrie de la couche Gold",
+    "correspondance colonne à colonne avec le modèle sémantique aval — profil Power BI de forge-audit"
+   ]
+  },
+  {
+   "domaine": "Data contract exécutable : schéma + SLA + propriétaire + version (C1-C5, niveau ODCS v3.1)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/contrat@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-contractualiser.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "C1 format forge-data/contrat@1 + id du contrat nommé (ODCS apiVersion/kind/id) · C2 schema non vide, chaque objet nommé, chaque propriété nommée et typée dans le jeu fermé · C3 sla non vide, chaque garantie porte une propriété du jeu fermé {fraicheur, disponibilite, latence, completude, exactitude} · C4 propriétaire déclaré : équipe ET contact joignable (ODCS team + support) · C5 versionnage : version semver (x.y.z) et statut du jeu fermé ODCS",
+   "statut": "ok",
+   "non_juge": [
+    "conformité aux 11 sections complètes du standard ODCS — v0 couvre les 4 piliers exigés par l'item (schéma, SLA, propriétaire, version)",
+    "véracité runtime du SLA annoncé (le producteur respecte-t-il sa fraîcheur déclarée — hors v0)",
+    "validation du type physique déclaré contre le moteur de stockage cible"
+   ]
+  },
+  {
+   "domaine": "Couverture d'un mapping contre l'inventaire de sa source : taux, orphelins, exclusions motivées (CV1-CV6)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/couverture@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-couvrir.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "CV1 format forge-data/couverture@1 + id, inventaire de la source non vide, mapping déclaré · CV2 la source s'identifie : nom, date ISO, namespace (l'instance) · CV3 tout objet cité par le mapping EXISTE dans l'inventaire · CV4 règles de rattachement déclarées : type ∈ {nomme, table_entiere, exclusion}, une exclusion porte son motif · CV5 orphelins : tout objet de l'inventaire ni couvert ni exclu est nommé et compté par type · CV6 taux_declare confronté au taux RECALCULÉ",
+   "statut": "ok",
+   "non_juge": [
+    "la JUSTESSE de chaque rattachement — cet oracle compte ce qui est rattaché, jamais si le rattachement est correct ; les VALEURS se réconcilient avec `oracles/oracle-reconcilier.mjs` de ce dépôt",
+    "l'EXHAUSTIVITÉ de l'inventaire lui-même : un objet que le relevé a manqué n'est orphelin pour personne. C'est la limite structurelle de la mesure, d'où l'exigence CV2 de dire COMMENT l'inventaire a été relevé",
+    "la pertinence métier d'une exclusion : l'oracle exige un motif écrit, il ne l'arbitre pas",
+    "la forme du lineage, du modèle dimensionnel et du rapport — `oracles/oracle-tracer.mjs`, `oracles/oracle-modeliser.mjs`, `oracles/oracle-restituer.mjs` de ce dépôt, qui rendent PASS sur un mapping incomplet : c'est précisément le trou que cet oracle bouche"
+   ]
+  },
+  {
+   "domaine": "Projection des évolutions d'une couche : complétude ligne à ligne, provenance typée et résolue en objets, comptes recalculés, arbre schéma › table › colonne (EV1-EV7)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/evolutions@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-evoluer.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "EV1 format forge-data/evolutions@1, id, couche nommée, date ISO, lignes non vide · EV2 chaque ligne porte table, colonne, type, evolution du jeu fermé et une provenance · EV3 complétude interne : toute table déclarée au bloc `tables` a au moins une ligne · EV4 toute provenance sans objet (colonne_technique, cle_de_la_table…) est typée et remontée comme dette · EV5 les comptes affichés (comptes.colonnes, comptes.par_evolution) sont recalculés et confrontés · EV6 l'arbre schéma › table › colonne existe et ses trois niveaux sont peuplés · EV7 une provenance objets_resolus porte une LISTE d'objets résolus, jamais une phrase",
+   "statut": "ok",
+   "non_juge": [
+    "la JUSTESSE d'une provenance — cet oracle vérifie qu'elle est TYPÉE, expliquée et, quand elle cite des objets, RÉSOLUE ; il ne sait pas si l'explication dit vrai",
+    "l'EXISTENCE des objets cités en provenance quand AUCUN catalogue n'est joint (`--catalogue`) : la forme est jugée, l'existence non — et l'oracle le dit en clair au lieu de la supposer",
+    "le CONTENU d'un dictionnaire déclaré : l'oracle exige qu'il soit déclaré et cité, jamais qu'il soit exact ou à jour",
+    "l'EXHAUSTIVITÉ de la projection contre le DDL réel de la couche : une colonne que le DDL fourni ne portait pas n'est manquante pour personne ici. Cette question exige une SECONDE source et appartient à `oracles/oracle-couvrir.mjs` de ce dépôt",
+    "la forme de la déclaration de lineage citée en origine — `oracles/oracle-tracer.mjs` de ce dépôt",
+    "la pertinence métier d'une évolution retenue (créée plutôt que déplacée, par exemple) : l'oracle exige un type du jeu fermé, il ne l'arbitre pas",
+    "la RÈGLE de dérivation du statut d'un parent (« schema_cree » plutôt que « schema_complete ») : EV6 exige un statut du jeu fermé de son niveau et un agrégat COHÉRENT avec ses enfants, jamais que la règle de dérivation soit la bonne"
+   ]
+  },
+  {
+   "domaine": "Rapprochement modèle ↔ extrait externe, bijection dans les deux sens (RA1-RA4)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/rapprochement@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-rapprocher.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RA1 format forge-data/rapprochement@1 + id, modele.objets et extrait.intitules non vides · RA2 bijection dans les DEUX sens entre intitulés de l'extrait et objets du modèle · RA3 toute correspondance non littérale (via: « dictionnaire ») référence une entrée du dictionnaire déclaré · RA4 chaque objet du modèle absent de l'extrait porte un motif ≥ 4 mots",
+   "statut": "ok",
+   "non_juge": [
+    "la pertinence métier d'un motif d'absence ou d'un concept de dictionnaire — l'oracle exige le motif et le concept, il ne les arbitre pas",
+    "la lecture de l'export lui-même (isolement des lignes non-données) — `scripts/isoler-lignes-non-donnees.mjs`, TF-0976, à exécuter en amont",
+    "la correspondance à la granularité VALEUR (deux lots de mesures sous tolérance) — `oracles/oracle-reconcilier.mjs` de ce dépôt",
+    "la complétude du mapping contre l'inventaire de sa source — `oracles/oracle-couvrir.mjs` de ce dépôt, qui mesure l'AMONT quand celui-ci mesure l'AVAL"
+   ]
+  },
+  {
+   "domaine": "Réconciliation Gold ↔ modèle sémantique : deux lots de mesures identifiées sous tolérance déclarée (RC1-RC7)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/reconciliation@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-reconcilier.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RC1 format forge-data/reconciliation@1 + id · RC2 tolérance DÉCLARÉE (relative_pct et/ou absolue, nombres ≥ 0), jamais implicite · RC3 deux lots nommés (reference, compare) avec nom et cible.namespace · RC4 chaque mesure du lot de référence a son homologue (même id) dans le lot comparé · RC5 chaque paire est dans la tolérance déclarée · RC6 (avertissement) plus d'un jour d'écart entre les deux lots · RC7 (info) TF-1195",
+   "statut": "ok",
+   "non_juge": [
+    "véracité des valeurs archivées — la cible et la requête de chaque lot sont archivées par mesurer_base.py, pas rejouées ici",
+    "justesse de la formule de la mesure aval (DAX) — seule sa VALEUR est comparée",
+    "complétude : une mesure jamais archivée n'est pas réconciliée (D-D2 : mesures archivées, pas exécution observée)"
+   ]
+  },
+  {
+   "domaine": "Projet de transformation : dépendances déclarées, description, tests attachés et rejoués, documentation générée (TR1-TR6, niveau dbt-core)",
+   "ext": [],
+   "content_patterns": [
+    "\"dbt_schema_version\"\\s*:\\s*\"https://schemas\\.getdbt\\.com/dbt/manifest"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-transformer.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "TR1 manifest lisible, `nodes` présent, au moins un modèle · TR2 chaque modèle déclare au moins une dépendance (depends_on.nodes : ref ou source) · TR3 chaque modèle porte une description (≥ 10 caractères) · TR4 chaque modèle a au moins un test rattaché · TR5 tests rejoués : run_results.json présent et chaque test `pass` (fail/error bloquant, absent signalé) · TR6 documentation générée : catalog.json présent à côté du manifest",
+   "statut": "ok",
+   "non_juge": [
+    "justesse du SQL des modèles — seule la FORME du projet est jugée",
+    "couverture des tests au-delà du plancher « au moins un test par modèle » — forge-tests (pan data) mesure l'exercice réel",
+    "fraîcheur des artefacts lus (manifest, run_results, catalog) par rapport au code du projet"
+   ]
+  },
+  {
+   "domaine": "Bascule d'un rapport migré : six dimensions, leur angle mort, la définition changée distinguée du défaut, et un verdict de remplacement composé (QR1-QR8)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/qualification-rapport@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-qualifier.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "QR1 forme : format forge-data/qualification-rapport@1, id, date ISO, ancre de la comparaison nommée · QR2 chaque dimension porte son ANGLE MORT écrit (≥ 6 mots) · QR3 chaque classe porte sa pièce : `conforme_prouve` exige une preuve dont le porteur EXISTE · QR4 interactions non jugeables par construction, déclarées comme telles · QR5 écarts : id unique, libellé ≥ 4 mots, classe du jeu fermé, un écart `assume` porte son motif · QR6 bascule composée : `remplacable` refusé dès qu'une dimension n'est pas tenue · QR7 définition changée distinguée du défaut · QR8 test des fractions régulières recalculé",
+   "statut": "ok",
+   "non_juge": [
+    "la JUSTESSE de ce que chaque dimension affirme : l'oracle vérifie qu'un porteur EXISTE et qu'il porte la règle citée, jamais que le verdict rapporté est celui qu'il rendrait aujourd'hui — rejouer les porteurs est le geste du qualificateur, et la date de chaque preuve est écrite pour ça",
+    "la pertinence métier d'une décision qui assume un écart, ni la réponse à une question de définition : l'oracle exige l'identifiant de la décision, les deux définitions et l'accord daté, il n'arbitre aucun des trois (convention CV4)",
+    "que le test des fractions régulières soit l'explication JUSTE d'un écart : l'oracle recalcule la part déclarée et la confronte au seuil déclaré, il ne mesure aucune donnée — les comptes lui sont rapportés, et c'est le qualificateur qui les produit",
+    "ce que chaque porteur juge de son côté — `oracles/oracle-rendre.mjs`, `oracles/oracle-delimiter.mjs`, `oracles/oracle-reconstruire.mjs` et `oracles/oracle-reconcilier.mjs` de ce dépôt ont leurs propres règles et leurs propres fixtures",
+    "les INTERACTIONS elles-mêmes (segments, signet, tri au clic, largeurs, format conditionnel, info-bulles, mise en évidence croisée) : aucun contrôle de ce parc ne les atteint, elles ne survivent pas à l'export — QR4 exige qu'elles soient déclarées non jugeables et outillées de gestes numérotés, c'est tout ce qu'une machine peut en faire"
    ]
   },
   {

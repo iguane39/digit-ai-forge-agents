@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.24.0, alignée sur le JSON le 19/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.25.0, alignée sur le JSON le 20/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -360,7 +360,7 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
   (énoncé, traçabilité, couverture, affirmations chiffrées) : un référentiel qui passe
   les quatre est celui que les forges aval peuvent consommer.
 
-## Oracles de la forge data (chantier forge-data, remontée §4 le 17/09/2026, v2.23.0)
+## Oracles de la forge data (chantier forge-data, remontées §4 des 17/09 et 20/09/2026, v2.25.0)
 
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
@@ -368,8 +368,19 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
 | Chaîne de travail déclarée : étapes ordonnées, chacune avec un porteur qui existe | `node c:/dev/digit-ai-forge-data/oracles/oracle-enchainer.mjs <chaine.json> --json-only` — format `forge-data/chaine@1` ; CH1 forme, CH2 rangs contigus, CH3 porteur existant, CH4 règles retrouvées chez leur porteur, CH5 geste humain enregistré, CH6 document ↔ étapes (TF-1179) | cli | ✅ |
 | Reconstruction d'un rapport existant : mise en page conservée, jamais réinventée | `node c:/dev/digit-ai-forge-data/oracles/oracle-reconstruire.mjs <reconstruction.json> --json-only` — format `forge-data/reconstruction@1` ; RS1 forme, RS2 doctrine du repli (motif ≥ 6 mots), RS3 bijection des pages, RS4 bijection des visuels au pixel, RS5 écarts motivés, RS6 ressources portées et référencées (TF-1176) | cli | ✅ |
 | Livrable dont l'usage est un rendu : liaisons, mesures, visuels vides, geste de vérification déclaré | `node c:/dev/digit-ai-forge-data/oracles/oracle-rendre.mjs <rendu.json> --json-only` — format `forge-data/rendu@1` ; RN1 forme, RN2 liaisons visuel → modèle, RN3 mesures existantes et typées, RN4 visuels vides dits, RN5 geste de vérification du rendu réel déclaré (TF-1175) | cli | ✅ |
+| Lineage déclaré complet (niveau OpenLineage) | `node c:/dev/digit-ai-forge-data/oracles/oracle-tracer.mjs <lineage.json> --json-only` — format `forge-data/lineage@1` ; T1 forme, T2 entrées datées, T3 transformations typées, T4 sorties horodatées, T5 méta-lineage (confiance), T6 granularité colonne, T7 namespace de chaque dataset, T8 cibles structurées (TF-1197) | cli | ✅ |
+| Qualité de données : assertions exécutables (niveau Great Expectations) | `node c:/dev/digit-ai-forge-data/oracles/oracle-profiler.mjs <assertions.json> --json-only` — format `forge-data/assertions@1` ; P1 forme, P2 objet + type du jeu fermé avec ses paramètres exacts, P3 aucun vocabulaire subjectif, P4 pont qualité↔lineage (TF-1197) | cli | ✅ |
+| Restitution : chiffres ancrés, déclaré → généré (niveau dbt) | `node c:/dev/digit-ai-forge-data/oracles/oracle-restituer.mjs <rapport.md> --json-only` — frontmatter `lineage_ref:` ; R1 forme, R2 chiffres complets, R3 bijection corps ↔ déclarations, R4 lineage_ref existant, R5 couverture des nombres de prose, R6/R7/R9 références croisées, R8 vocabulaire du destinataire (TF-1197) | cli | ✅ |
+| Modèle dimensionnel déclaré (niveau Kimball) | `node c:/dev/digit-ai-forge-data/oracles/oracle-modeliser.mjs <modele.json> --json-only` — format `forge-data/modele-dimensionnel@1\|@2` ; M1 forme, M2 granularité écrite, M3 dimensions conformes, M4 clés de substitution et naturelle, M5 dimension temps, M6 matrice en bus, M7 décisions d'architecture portées (TF-1197) | cli | ✅ |
+| Data contract exécutable (niveau ODCS v3.1) | `node c:/dev/digit-ai-forge-data/oracles/oracle-contractualiser.mjs <contrat.json> --json-only` — format `forge-data/contrat@1` ; C1 forme, C2 schéma typé, C3 SLA du jeu fermé, C4 propriétaire joignable, C5 semver + statut ODCS (TF-1197) | cli | ✅ |
+| Couverture d'un mapping contre l'inventaire de sa source | `node c:/dev/digit-ai-forge-data/oracles/oracle-couvrir.mjs <couverture.json> --json-only` — format `forge-data/couverture@1` ; CV1 forme, CV2 source identifiée, CV3 objets cités existants, CV4 règles de rattachement déclarées, CV5 orphelins nommés et comptés, CV6 taux recalculé (TF-1197) | cli | ✅ |
+| Projection des évolutions d'une couche : complétude ligne à ligne, provenance typée | `node c:/dev/digit-ai-forge-data/oracles/oracle-evoluer.mjs <evolutions.json> --json-only` — format `forge-data/evolutions@1` ; EV1 forme, EV2 lignes complètes, EV3 complétude interne, EV4 provenance sans objet remontée en dette, EV5 comptes recalculés, EV6 arbre schéma › table › colonne, EV7 objets résolus listés (TF-1197) | cli | ✅ |
+| Rapprochement modèle ↔ extrait externe, bijection dans les deux sens | `node c:/dev/digit-ai-forge-data/oracles/oracle-rapprocher.mjs <rapprochement.json> --json-only` — format `forge-data/rapprochement@1` ; RA1 forme, RA2 bijection des deux sens, RA3 correspondance non littérale référencée au dictionnaire, RA4 absence motivée (TF-1197) | cli | ✅ |
+| Réconciliation Gold ↔ modèle sémantique sous tolérance déclarée | `node c:/dev/digit-ai-forge-data/oracles/oracle-reconcilier.mjs <reconciliation.json> --json-only` — format `forge-data/reconciliation@1` ; RC1 forme, RC2 tolérance déclarée, RC3 deux lots nommés, RC4 homologues présents, RC5 écarts dans la tolérance, RC6 fraîcheur des lots, RC7 info (TF-1197) | cli | ✅ |
+| Projet de transformation : dépendances, description, tests rejoués, doc générée (niveau dbt-core) | `node c:/dev/digit-ai-forge-data/oracles/oracle-transformer.mjs <target/manifest.json> --json-only` — signature `dbt_schema_version` ; TR1 manifest lisible, TR2 dépendances déclarées, TR3 description, TR4 test attaché, TR5 tests rejoués, TR6 catalog.json présent (TF-1197) | cli | ✅ |
+| Bascule d'un rapport migré : six dimensions, angle mort, définition changée, verdict composé | `node c:/dev/digit-ai-forge-data/oracles/oracle-qualifier.mjs <qualification.json> --json-only` — format `forge-data/qualification-rapport@1` ; QR1 forme, QR2 angle mort écrit, QR3 chaque classe porte sa pièce, QR4 interactions non jugeables déclarées, QR5 écarts qualifiés, QR6 bascule composée, QR7 définition changée, QR8 fractions régulières recalculées (TF-1197) | cli | ✅ |
 
-Les quatre oracles ci-dessus vivent hors `~/.claude/skills` : leur source est
+Les quatre premiers oracles ci-dessus vivent hors `~/.claude/skills` : leur source est
 `c:/dev/digit-ai-forge-data/oracles/`, avec fixtures verte/rouge et self-test
 (`node oracles/self-test.mjs` — 324 PASS, 0 FAIL au 17/09/2026, sur l'ensemble des oracles du
 dépôt). Mêmes conséquences assumées que pour les forges design et conception :
@@ -387,11 +398,19 @@ dépôt). Mêmes conséquences assumées que pour les forges design et conceptio
   périmètre AVANT que le rapport existe (le symétrique d'`oracle-couvrir`, déjà au
   registre), `oracle-enchainer` juge que la procédure qui enchaîne ces étapes est écrite et
   que chaque étape nomme un porteur qui existe — y compris ces quatre oracles eux-mêmes.
-- **Non inscrits au registre** (constat, pas objet de cette remontée) : les autres oracles
-  du même dépôt (`oracle-tracer`, `oracle-profiler`, `oracle-restituer`, `oracle-modeliser`,
+- **Les onze autres oracles du dépôt sont inscrits** (TF-1197, 20/09/2026, v2.25.0) —
+  `oracle-tracer`, `oracle-profiler`, `oracle-restituer`, `oracle-modeliser`,
   `oracle-contractualiser`, `oracle-couvrir`, `oracle-evoluer`, `oracle-rapprocher`,
-  `oracle-reconcilier`, `oracle-transformer`) suivent la même convention d'invocation mais
-  n'ont pas d'entrée ici — candidature à ouvrir séparément.
+  `oracle-reconcilier`, `oracle-transformer` et `oracle-qualifier` (livré le 19/09). Le
+  dépôt en compte quinze au 20/09/2026 (relevé sur disque : `oracles/oracle-*.mjs`), et les
+  quinze ont désormais une entrée. Chaque `non_juge` de ce registre est la sortie RÉELLE de
+  l'oracle, recopiée à la lettre : les onze ont été exécutés sur leur fixture verte, tous
+  PASS, et leur `non_juge` lu dans le JSON émis — jamais rédigé ici.
+- **Deux artefacts sans signature `format`.** Le rapport de restitution est un `.md` à
+  frontmatter (routé par `^lineage_ref\s*:`) et le projet de transformation est le
+  `manifest.json` que dbt produit (routé par `"dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest`).
+  Les deux motifs sont aussi étroits que les signatures `format` : déclarer `.md` ou `.json`
+  ferait juger tout le parc par un oracle qui n'attend qu'un rapport ou qu'un manifeste.
 - **`fixtures/manifest.json` de ce skill non modifié.** Convention constatée sur les deux
   précédents de ce type (forge-design, forge-conception) : un oracle délégué vivant dans un
   dépôt frère prouve sa paire rouge/verte par le self-test de CE dépôt, pas par le manifest
