@@ -2,7 +2,7 @@
 name: write-an-oracle
 description: Génère (generate/scaffold) en une commande un oracle de qualité conforme au standard §3 de quality-oracles — squelette CLI au contrat JSON commun (verdict PASS/FAIL/SKIP, findings localisants, non_juge obligatoire, exit 0/1/2), paire de fixtures rouge/verte probante d'office, entrée de registre et entrée de manifest — puis guide son durcissement jusqu'au statut « ok ». Rend la règle §4 (« domaine sans oracle → définir + remonter un oracle ») mécanique : couvrir un domaine nouveau prend moins de 15 minutes au lieu d'une réécriture de zéro. Use when l'utilisateur veut créer, scaffolder ou ajouter un oracle de qualité, couvrir un nouveau domaine de défaut au registre de quality-oracles, outiller un contrôle signalé « oracle à outiller / règle §4 » par run-oracles, ou industrialiser un contrôle manuel récurrent. Ne pas déclencher pour exécuter les oracles existants ni auditer un livrable (→ quality-oracles), ni pour créer un skill complet (→ write-a-skill).
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # write-an-oracle — générateur d'oracles de qualité
@@ -37,7 +37,11 @@ Produit, en une commande, dans le skill `quality-oracles` visé :
    (PASS d'office) — la porte fixtures du self-test reste verte de bout en bout.
 3. L'entrée de **registre** (`quality-oracles/references/registre-oracles.json`, statut `partiel`)
    et l'entrée de **manifest** (`quality-oracles/fixtures/manifest.json`) — sauvegardes `.bak`
-   des deux fichiers modifiés.
+   des deux fichiers modifiés. **La forme de ces deux fichiers est relue, pas imposée** :
+   indentation, fin de ligne et newline finale sont rendues à l'identique, de sorte que le diff
+   d'une remontée ne contienne QUE l'entrée ajoutée (TF-1194 — un rendu en 2 espaces imposé à
+   deux fichiers qui vivent en 1 espace coûtait 2 625 lignes réécrites pour 44 lignes utiles).
+   Mesuré au banc, cas (5) : 17 lignes ajoutées au registre, 0 retirée.
 
 Refus sûrs : oracle déjà existant, domaine déjà au registre, skilldir sans registre, **skilldir
 sous la copie installée** → exit 2, aucune modification partielle. Les quatre sont éprouvés par

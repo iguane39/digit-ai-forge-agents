@@ -44,6 +44,24 @@ function pistesSource() {
 }
 const sourceVersionnee = () => pistesSource().find(p => fs.existsSync(path.join(p, 'references', 'registre-oracles.json'))) || null;
 
+// LA FORME DU FICHIER MODIFIÉ SE RELIT, ELLE NE S'IMPOSE PAS (TF-1194, 19/09/2026).
+// Le scaffolder rendait ses deux fichiers en `JSON.stringify(…, null, 2)` alors que le registre
+// et le manifest vivent en 1 espace : une remontée §4 de 44 lignes utiles a produit un diff de
+// 2 849 insertions / 2 581 suppressions — tout le fichier réécrit, l'ajout réel introuvable à la
+// relecture. On relit donc l'indentation, la fin de ligne et la newline finale du fichier visé,
+// et on les REND À L'IDENTIQUE : le diff d'un ajout ne contient plus que l'ajout.
+/** @returns {{indent: string|number, eol: string, finale: boolean}} la forme du JSON déjà sur disque. */
+function formeDe(texte) {
+  const m = texte.match(/^[\[{]\r?\n([ \t]+)["\[{]/);
+  const indent = !m ? 1 : (m[1].includes('\t') ? '\t' : m[1].length);
+  return { indent, eol: /\r\n/.test(texte) ? '\r\n' : '\n', finale: /\n$/.test(texte) };
+}
+/** Sérialise `obj` dans la forme relue par `formeDe` — aucune ligne touchée hors de l'ajout. */
+const rendreJson = (obj, forme) => {
+  const corps = JSON.stringify(obj, null, forme.indent) + (forme.finale ? '\n' : '');
+  return forme.eol === '\r\n' ? corps.replace(/\n/g, '\r\n') : corps;
+};
+
 const SKILLDIR = path.resolve(opt('skilldir') || sourceVersionnee() || '');
 if (!nom || !domaine || !extList.length) { console.error('usage: node scaffold-oracle.mjs --nom X --domaine "…" --ext ".a,.b" [--skilldir <chemin quality-oracles VERSIONNÉ>]'); process.exit(2); }
 if (!/^[a-z0-9-]+$/.test(nom)) { console.error('--nom : minuscules/chiffres/tirets uniquement'); process.exit(2); }
@@ -62,7 +80,9 @@ if (fs.existsSync(oraclePath)) { console.error('oracle-' + nom + '.mjs existe d�
 
 // Validations restantes AVANT toute écriture — un refus ne laisse AUCUNE modification partielle
 const regPath = path.join(SKILLDIR, 'references', 'registre-oracles.json');
-const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
+const regBrut = fs.readFileSync(regPath, 'utf8');
+const regForme = formeDe(regBrut);
+const reg = JSON.parse(regBrut);
 if (reg.oracles.some(o => o.domaine === domaine)) { console.error('domaine déjà au registre : ' + domaine); process.exit(2); }
 const manPath = path.join(SKILLDIR, 'fixtures', 'manifest.json');
 if (!fs.existsSync(manPath)) { console.error('manifest.json introuvable : ' + manPath); process.exit(2); }
@@ -99,13 +119,14 @@ fs.writeFileSync(path.join(fxDir, `${nom}-green${extList[0]}`), 'exemple conform
 // 3) registre (sauvegarde .bak, ajout entrée — registre lu et validé AVANT les écritures)
 fs.copyFileSync(regPath, regPath + '.bak');
 reg.oracles.push({ domaine, ext: extList, type: 'cli', cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{file}'], checklist: 'TODO : checklist canonique du domaine (squelette scaffold)', statut: 'partiel', non_juge: ['TODO'] });
-fs.writeFileSync(regPath, JSON.stringify(reg, null, 2) + '\n', 'utf8');
+fs.writeFileSync(regPath, rendreJson(reg, regForme), 'utf8');
 
 // 4) manifest fixtures (sauvegarde .bak)
 fs.copyFileSync(manPath, manPath + '.bak');
-const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
+const manBrut = fs.readFileSync(manPath, 'utf8');
+const man = JSON.parse(manBrut);
 man.fixtures.push({ nom, cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{fixture}'], red: `${nom}-red${extList[0]}`, green: `${nom}-green${extList[0]}`, attendu_red: ['FAIL'], attendu_green: ['PASS'] });
-fs.writeFileSync(manPath, JSON.stringify(man, null, 2) + '\n', 'utf8');
+fs.writeFileSync(manPath, rendreJson(man, formeDe(manBrut)), 'utf8');
 
 console.log(`✅ oracle-${nom} scaffoldé :
   - ${path.relative(process.cwd(), oraclePath)}

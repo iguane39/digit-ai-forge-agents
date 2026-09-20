@@ -93,6 +93,67 @@ try {
     const r4 = jouer(['--nom', 'banc-remede', '--domaine', 'Banc TF-1006 — doublon', '--ext', '.md', '--skilldir', qo]);
     r4.status === 2 ? ok('(4) un oracle déjà présent reste refusé (exit 2) — les refus sûrs d avant ne sont pas tombés')
       : ko(`(4) un oracle déjà présent n est plus refusé (exit ${r4.status})`);
+
+    // ================================================================ TF-1194 : le DIFF vaut l'AJOUT
+    // La règle jugée ici : une remontée §4 ne touche que les lignes qu'elle ajoute. Le 19/09, le
+    // scaffolder rendait registre et manifest en 2 espaces alors qu'ils vivent en 1 : 44 lignes
+    // utiles, 2 849 insertions et 2 581 suppressions — l'ajout réel introuvable à la relecture.
+    // On mesure donc la ZONE TOUCHÉE (préfixe et suffixe communs retirés, fins de ligne comprises)
+    // et on la borne à 5 % du fichier. Les deux sens sont joués : la version en place (verte) et
+    // une copie MUTÉE reproduisant le défaut d'origine (rouge), qui doit être prise.
+    const SEUIL = 0.05;
+    /** Zone touchée entre deux textes : lignes retirées / ajoutées hors préfixe et suffixe communs. */
+    const zoneTouchee = (avant, apres) => {
+      const a = avant.split('\n'), b = apres.split('\n'); // le \r reste sur la ligne : une bascule CRLF↔LF est vue
+      let p = 0; while (p < a.length && p < b.length && a[p] === b[p]) p++;
+      let s = 0; while (s < a.length - p && s < b.length - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s++;
+      return { retirees: a.length - p - s, ajoutees: b.length - p - s, total: a.length };
+    };
+    /** Monte un quality-oracles neuf (registre + manifest réels) et rend ses chemins. */
+    const parcNeuf = (nom) => {
+      const d = path.join(tmp, nom);
+      fs.mkdirSync(path.join(d, 'references'), { recursive: true });
+      fs.mkdirSync(path.join(d, 'fixtures'), { recursive: true });
+      fs.mkdirSync(path.join(d, 'scripts'), { recursive: true });
+      fs.copyFileSync(regSrc, path.join(d, 'references', 'registre-oracles.json'));
+      fs.copyFileSync(manSrc, path.join(d, 'fixtures', 'manifest.json'));
+      return { dir: d, reg: path.join(d, 'references', 'registre-oracles.json'), man: path.join(d, 'fixtures', 'manifest.json') };
+    };
+    /** Joue `script` sur un parc neuf et rend la zone touchée des deux fichiers de registre. */
+    const mesurerRemontee = (script, suffixe) => {
+      const p = parcNeuf('parc-' + suffixe);
+      const avantReg = fs.readFileSync(p.reg, 'utf8'), avantMan = fs.readFileSync(p.man, 'utf8');
+      const r = spawnSync(process.execPath, [script, '--nom', 'banc-diff-' + suffixe, '--domaine',
+        'Banc TF-1194 — diff ' + suffixe, '--ext', '.md', '--skilldir', p.dir], { encoding: 'utf8', env, timeout: 60000 });
+      return { r, reg: zoneTouchee(avantReg, fs.readFileSync(p.reg, 'utf8')), man: zoneTouchee(avantMan, fs.readFileSync(p.man, 'utf8')) };
+    };
+    const dit = z => `${z.ajoutees} ajoutées / ${z.retirees} retirées sur ${z.total} lignes`;
+
+    // ---------------------------------------------------------------- (5) VERT : le diff = l'ajout
+    const m5 = mesurerRemontee(scaffold, 'vert');
+    if (m5.r.status !== 0) ko(`(5) diff : le scaffolder échoue (exit ${m5.r.status}) — ${(m5.r.stderr || '').slice(0, 200)}`);
+    else if (m5.reg.ajoutees === 0 && m5.man.ajoutees === 0) ko('(5) diff : aucune ligne ajoutée — la mesure ne juge rien');
+    else {
+      const trop = [['registre', m5.reg], ['manifest', m5.man]].filter(([, z]) => z.ajoutees > z.total * SEUIL || z.retirees > z.total * SEUIL);
+      if (trop.length) ko(`(5) diff : une remontée réécrit plus de ${SEUIL * 100} % du fichier — `
+        + trop.map(([n, z]) => `${n} : ${dit(z)}`).join(' · ') + ' (TF-1194 : forme du fichier non relue)');
+      else ok(`(5) une remontée ne touche que ce qu elle ajoute — registre : ${dit(m5.reg)} · manifest : ${dit(m5.man)}`);
+    }
+
+    // ------------------------------------------------- (6) ROUGE : le défaut d origine est REPRIS
+    const mutant = path.join(tmp, 'scaffold-mute.mjs');
+    const source = fs.readFileSync(scaffold, 'utf8');
+    const mute = source.replace('rendreJson(reg, regForme)', "JSON.stringify(reg, null, 2) + '\\n'")
+      .replace('rendreJson(man, formeDe(manBrut))', "JSON.stringify(man, null, 2) + '\\n'");
+    if (mute === source) ko('(6) rouge : la mutation ne s applique plus (le rendu a changé de nom) — la fixture rouge est devenue creuse, à réaccorder');
+    else {
+      fs.writeFileSync(mutant, mute, 'utf8');
+      const m6 = mesurerRemontee(mutant, 'rouge');
+      if (m6.r.status !== 0) ko(`(6) rouge : le mutant n a pas scaffoldé (exit ${m6.r.status}) — le cas rouge ne prouve rien`);
+      else if (m6.reg.ajoutees <= m6.reg.total * SEUIL && m6.man.ajoutees <= m6.man.total * SEUIL)
+        ko(`(6) rouge : le rendu en 2 espaces N EST PAS pris par la mesure — registre : ${dit(m6.reg)} · manifest : ${dit(m6.man)}`);
+      else ok(`(6) le défaut d origine (rendu en 2 espaces) est bien pris — registre : ${dit(m6.reg)} · manifest : ${dit(m6.man)}`);
+    }
   }
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 
