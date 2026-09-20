@@ -89,7 +89,15 @@ chirurgicales `str_replace`).
 - [references/objections.md](references/objections.md) — table d'objections conseil
   IA/data, à croiser avec le deal pour vérifier le pré-traitement dans la propale
 - [references/relance.md](references/relance.md) — séquence J0 → J+21 francisée, ton Digit-AI
-- [templates/rapport-review.html](templates/rapport-review.html) — fiche HTML chartée
+- [templates/rapport-review.html](templates/rapport-review.html) — fiche HTML chartée, bâtie
+  sur le boilerplate du socle `digit-ai-page-html` (TF-1032 (b), 20/09/2026) : jetons `:root`,
+  bascule de thème, sommaire collant, repli des tableaux en cartes, aucun chargement réseau.
+  Trois substitutions s'ajoutent aux trous historiques, et le contrôle `grep -c "{{"` = 0 les
+  couvre déjà : **`{{INDICE_VERSION}}`** (l'indice daté `{YYYYMMDD}{a,b,c…}` du titre, celui du
+  nom de fichier), **`{{D8_STATUT_DIT}}`** (le statut d'un contrôle D8 écrit en toutes lettres
+  pour les lecteurs d'écran, le pictogramme n'étant pas lu) et, hors accolades, la **lettre du
+  favicon** (le `R` du `data:` URI, à remplacer par l'initiale du client). Chaque ligne D8 porte
+  DEUX pictogrammes, tenu et manqué : en garder un, retirer l'autre.
 
 ## Exemple d'invocation
 
