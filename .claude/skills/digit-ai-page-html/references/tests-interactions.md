@@ -28,6 +28,26 @@ geste** et affirme l'effet observable — jamais la présence :
 sur une fixture verte (câblage vrai → PASS) et une rouge (câblage FAUX — un compteur qui
 ment d'une unité suffit → FAIL). Un test qui n'a jamais échoué ne prouve rien.
 
+## Sur quoi on joue : une instance SERVIE, et des filtres CROISÉS (TF-1093, 20/09/2026)
+
+Deux bornes de cette méthode ont été payées, puis levées :
+
+- **`file://` n'est pas le livrable.** Tout ce que les oracles mesuraient, ils le mesuraient sur
+  un fichier local. Un actif référencé en chemin **absolu** (`/tokens.css`) n'y résout pas et
+  disparaît **sans bruit** ; tout comportement gardé par `location.protocol` ne s'exécute pas.
+  Mesure : même page, **PASS** sur fichier et **2 bloquants V1** une fois servie.
+  `render_page.py` accepte désormais une **URL `http(s)://`** à la place du chemin — `localhost`,
+  `127.0.0.1`, `::1` seulement ; toute autre origine exige `--origine-distante` et reste une
+  **donnée tierce** (lecture seule, aucune authentification, aucun secret saisi).
+- **Un filtre à la fois ne juge pas un tableau filtrable.** Les cinq états de `--matrice-etats`
+  sont unitaires : une intersection vide que chaque facette prise seule ne montre pas leur échappe
+  entièrement. `--matrice-paires` énumère `(colonne A = valeur a) × (colonne B = valeur b)`, et
+  publie sa couverture — « N paires jouées sur M possibles », plafond `--paires-max`. Les
+  croisements de **trois facettes et plus ne sont pas jugés**, et la sortie le dit.
+
+Un test d'interactions écrit pour un livrable se joue donc sur l'**instance** qui sera servie,
+pas sur le fichier qui l'a produite — et il croise au moins deux facettes.
+
 ## Points de départ éprouvés
 
 [`assets/exemples-interactions/`](../assets/exemples-interactions/) porte les deux scripts

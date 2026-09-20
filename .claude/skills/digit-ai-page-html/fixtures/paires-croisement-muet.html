@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — filtres croises — intersection vide et MUETTE, refuse — 20260920a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --danger:#B91C1C;--mark:#FEF08A;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+th{position:relative}
+.tf-btn{border:0;background:none;cursor:pointer;font:inherit;color:var(--muted)}
+.tf-panel{position:absolute;z-index:10;top:100%;left:0;background:var(--surface);
+ border:1px solid var(--line);border-radius:6px;padding:8px;min-width:180px}
+.tf-panel[hidden]{display:none}
+th:last-child .tf-panel{left:auto;right:0}
+.tf-count{margin-top:6px;font-size:.78rem;color:var(--muted);min-height:1em}
+.tf-count.zero{color:var(--danger)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}tr[data-tf-hidden]{display:table-row !important}}
+</style></head>
+<!--
+  TF-1093, sens ROUGE. Le trou que la matrice d etats de TF-0493 ne pouvait pas voir : ses cinq
+  etats sont UNITAIRES, aucun ne pose DEUX filtres a la fois.
+
+  Sur cette page, chaque facette prise SEULE laisse des lignes et l annonce, et la bascule
+  « Aucun » (etat `filtre-sans-resultat`) annonce elle aussi. Mais le CROISEMENT
+  Region=nord x Statut=en cours ne laisse AUCUNE ligne, et la page ne dit rien : son compteur
+  ne se declenche que lorsqu une facette est entierement decochee, pas quand l intersection
+  est vide. Le lecteur voit un tableau reduit a son en-tete sans savoir si l outil a filtre ou
+  casse — loi n 3, un etat vide se declare.
+
+  Attendu :
+    - `--matrice-etats` SEUL (mode fichier) : PASS. C est la preuve que le trou existait.
+    - `--matrice-paires` : au moins 1 constat `etat_muet` sur un croisement, BLOQUANT.
+-->
+<body><main class="wrap">
+<h1>Lots livres</h1>
+<table id="t"><thead><tr><th>Region</th><th>Statut</th></tr></thead>
+<tbody>
+  <tr><td>nord</td><td>livre</td></tr>
+  <tr><td>nord</td><td>livre</td></tr>
+  <tr><td>sud</td><td>en cours</td></tr>
+</tbody></table>
+<div class="tf-count" id="c" aria-live="polite">3 lignes affichees</div>
+<script>
+// Composant de filtres reduit a ce que la matrice et les paires actionnent : un declencheur
+// par colonne, un panneau, une bascule « Aucun », une case par valeur.
+(function () {
+  var t = document.getElementById('t');
+  var c = document.getElementById('c');
+  var ths = t.querySelectorAll('thead th');
+  var facettes = [];
+
+  function valeurs(col) {
+    var vues = [], trs = t.querySelectorAll('tbody tr');
+    for (var i = 0; i < trs.length; i++) {
+      var v = trs[i].cells[col].textContent.trim();
+      if (vues.indexOf(v) < 0) vues.push(v);
+    }
+    return vues;
+  }
+
+  function appliquer() {
+    var trs = t.querySelectorAll('tbody tr'), n = 0, facetteVide = false;
+    for (var f = 0; f < facettes.length; f++) {
+      if (facettes[f].cochees().length === 0) facetteVide = true;
+    }
+    for (var i = 0; i < trs.length; i++) {
+      var garde = true;
+      for (var j = 0; j < facettes.length; j++) {
+        var v = trs[i].cells[facettes[j].col].textContent.trim();
+        if (facettes[j].cochees().indexOf(v) < 0) garde = false;
+      }
+      if (garde) { trs[i].removeAttribute('data-tf-hidden'); trs[i].style.display = ''; n++; }
+      else { trs[i].setAttribute('data-tf-hidden', ''); trs[i].style.display = 'none'; }
+    }
+    // LE DEFAUT MESURE : le message ne se calcule PAS sur les lignes restantes, mais sur le
+    // nombre de valeurs cochees d une facette. Une intersection vide passe donc au silence.
+    if (facetteVide) {
+      c.textContent = 'Aucune ligne : une colonne n a plus aucune valeur cochee';
+      c.className = 'tf-count zero';
+    } else if (n > 0) {
+      c.textContent = n + ' ligne(s) affichee(s)';
+      c.className = 'tf-count';
+    } else {
+      c.textContent = '';
+      c.className = 'tf-count';
+    }
+  }
+
+  for (var i = 0; i < ths.length; i++) {
+    (function (th, col) {
+      var b = document.createElement('button');
+      b.className = 'tf-btn'; b.type = 'button'; b.setAttribute('aria-expanded', 'false');
+      b.textContent = ' +';
+      var p = document.createElement('div');
+      p.className = 'tf-panel'; p.hidden = true;
+      var tous = document.createElement('button');
+      tous.className = 'tf-all'; tous.type = 'button'; tous.textContent = 'Tous';
+      var aucun = document.createElement('button');
+      aucun.className = 'tf-none'; aucun.type = 'button'; aucun.textContent = 'Aucun';
+      p.appendChild(tous); p.appendChild(aucun);
+      var cases = [];
+      valeurs(col).forEach(function (v) {
+        var lab = document.createElement('label');
+        var cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.className = 'tf-opt'; cb.value = v; cb.checked = true;
+        lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + v));
+        lab.style.display = 'block';
+        p.appendChild(lab); cases.push(cb);
+        cb.addEventListener('change', appliquer);
+      });
+      tous.addEventListener('click', function () {
+        cases.forEach(function (cb) { cb.checked = true; }); appliquer();
+      });
+      aucun.addEventListener('click', function () {
+        cases.forEach(function (cb) { cb.checked = false; }); appliquer();
+      });
+      b.addEventListener('click', function () {
+        p.hidden = !p.hidden;
+        b.setAttribute('aria-expanded', p.hidden ? 'false' : 'true');
+      });
+      th.appendChild(b); th.appendChild(p);
+      facettes.push({ col: col, cochees: function () {
+        return cases.filter(function (cb) { return cb.checked; })
+                    .map(function (cb) { return cb.value; });
+      } });
+    })(ths[i], i);
+  }
+  appliquer();
+})();
+</script>
+</main></body></html>

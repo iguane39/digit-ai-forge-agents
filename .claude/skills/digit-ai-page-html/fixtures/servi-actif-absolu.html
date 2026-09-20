@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — instance servie — actif en chemin ABSOLU, refuse servi — 20260920a</title>
+<link rel="stylesheet" href="/servi-actif-absolu.css">
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1093, sens ROUGE cote INSTANCE SERVIE. Le defaut n existe QUE servi.
+
+  La feuille `/servi-actif-absolu.css` est referencee en chemin ABSOLU. Sous `file://`, cette URL
+  designe la racine du disque : la requete echoue, la regle n est jamais appliquee, et l oracle
+  rend PASS sur une page qui, une fois servie, deborde de son viewport. C est exactement la
+  classe de defaut que la campagne ferme — un controle joue sur fichier et pas sur une instance
+  servie ne juge pas le livrable, il juge une approximation de bureau.
+
+  Attendu :
+    - mode FICHIER : PASS (la feuille ne charge pas, rien ne deborde) ;
+    - mode SERVI (racine = ce dossier) : FAIL, au moins 1 constat V1 `v1_overflow`.
+-->
+<body><main class="wrap">
+<h1>Bandeau de synthese</h1>
+<p>Cette page ne porte qu un bloc, dont la largeur est decidee par une feuille externe
+referencee en chemin absolu.</p>
+<div class="bandeau-large">Bandeau dont la largeur vient de la feuille servie.</div>
+</main></body></html>

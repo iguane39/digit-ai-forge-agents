@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — instance servie — actif en chemin absolu SAIN, accepte — 20260920a</title>
+<link rel="stylesheet" href="/servi-actif-corrige.css">
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1093, sens VERT cote INSTANCE SERVIE. La meme construction que `servi-actif-absolu.html`,
+  avec une feuille servie qui tient dans le viewport.
+
+  Attendu : PASS en mode SERVI comme en mode fichier. C est ce cas qui interdit de lire la regle
+  rouge comme « le mode servi refuse les feuilles en chemin absolu » : ce qu il refuse est le
+  debordement, qu il est desormais le seul a pouvoir voir.
+-->
+<body><main class="wrap">
+<h1>Bandeau de synthese</h1>
+<p>Cette page ne porte qu un bloc, dont la largeur est decidee par une feuille externe
+referencee en chemin absolu.</p>
+<div class="bandeau-large">Bandeau dont la largeur vient de la feuille servie.</div>
+</main></body></html>

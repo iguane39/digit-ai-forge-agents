@@ -1,0 +1,10 @@
+/* TF-1093, sens VERT — la meme feuille, en chemin absolu elle aussi, mais SAINE.
+   Elle prouve que le mode servi ne crie pas au loup : une page qui charge reellement sa feuille
+   sous HTTP et tient dans son viewport passe. Sans ce pendant, la regle rouge pourrait n etre
+   qu un refus systematique des feuilles en chemin absolu. */
+.bandeau-large {
+  max-width: 100%;
+  background: #EFF6FF;
+  border: 1px solid #2563EB;
+  padding: 12px;
+}

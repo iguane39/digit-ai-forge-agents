@@ -1741,6 +1741,167 @@ def run_matrice_etats():
     return out
 
 
+def run_instance_servie():
+    """TF-1093 (20/09/2026) — CE QUI NE SE VOIT QUE SUR UNE INSTANCE SERVIE, ET LES CROISEMENTS.
+
+    Restes archives de TF-0480 et TF-0493 : les controles visuels et d'interaction n'etaient
+    JAMAIS joues sur une instance servie, et la matrice d'etats ne pose qu'UN filtre a la fois.
+    Deux trous, deux sens rouges, et un banc qui sert lui-meme ses fixtures.
+
+    LE BANC SERT SES FIXTURES. Un serveur HTTP de la bibliotheque standard, sur 127.0.0.1 et sur
+    un port LIBRE choisi par le systeme (aucun port en dur, aucune collision avec une autre
+    session), enracine sur le dossier des fixtures, arrete en `finally`. Aucune dependance
+    nouvelle, aucun acces reseau exterieur.
+
+    LES QUATRE CELLULES DU PREMIER SENS ROUGE. `servi-actif-absolu.html` reference sa feuille en
+    chemin ABSOLU (`/servi-actif-absolu.css`) :
+      - sur FICHIER : la feuille ne resout pas, rien ne deborde, PASS. C'est le trou.
+      - SERVIE : la feuille charge, le bandeau deborde, FAIL sur V1.
+    Et sa corrigee passe des DEUX cotes — sans elle, la regle pourrait n'etre qu'un refus
+    systematique des feuilles en chemin absolu.
+
+    LES TROIS CELLULES DU SECOND. `paires-croisement-muet.html` annonce le vide quand une facette
+    est entierement decochee, et se TAIT quand l'intersection de deux facettes est vide :
+      - `--matrice-etats` seule : PASS. C'est la preuve que le trou existait.
+      - `--matrice-paires` : FAIL, au moins un `etat_muet` sur un croisement.
+      - la meme page corrigee : PASS, zero `etat_muet`.
+
+    ET LA BORNE SE DIT. La couverture (« N paires jouees sur M possibles ») est exigee dans la
+    sortie machine : une borne tue n'est pas une borne.
+
+    Silencieux si playwright est absent : une instance servie se juge dans un navigateur.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import functools
+    import http.server
+    import socketserver
+    import tempfile
+    import threading
+
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    captures = tempfile.mkdtemp(prefix="self-test-servi-")
+    out = []
+
+    def juger(cible, options):
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, cible, "--widths", "1440",
+                            "--output", "json", "--out", captures] + options,
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return json.loads(r.stdout), r
+        except Exception:
+            return None, r
+
+    def compte(rapport, famille):
+        """Les constats d'une famille, etat au repos + etats + croisements confondus."""
+        n = 0
+        for data in (rapport.get("breakpoints") or {}).values():
+            n += len(((data.get("issues") or {}).get(famille)) or [])
+            for e in (data.get("etats") or {}).values():
+                n += len(((e.get("issues") or {}).get(famille)) or [])
+            for c in ((data.get("paires") or {}).get("combinaisons") or {}).values():
+                n += len(((c.get("issues") or {}).get(famille)) or [])
+        return n
+
+    def cas(nom, tenu, attendu, obtenu, regle, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if tenu else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": regle, "detail": "" if tenu else detail})
+
+    class BancHTTP(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    class Silencieux(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *_a):   # le banc n'imprime pas le journal d'acces du serveur
+            pass
+
+    srv = BancHTTP(("127.0.0.1", 0),
+                   functools.partial(Silencieux, directory=str(FIXTURES)))
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{port}"
+    try:
+        # ---- 1. le defaut qui n'existe QUE servi -----------------------------------------
+        for nom, servi_attendu in (("servi-actif-absolu.html", 1),
+                                   ("servi-actif-corrige.html", 0)):
+            if not (FIXTURES / nom).exists():
+                cas(nom, False, "fixture presente", "absente", "instance servie")
+                continue
+            jf, rf = juger(str(FIXTURES / nom), [])
+            js_, rs = juger(f"{base}/{nom}", [])
+            if jf is None or js_ is None:
+                cas(nom, False, "rapport lisible", "illisible", "instance servie",
+                    ((rf.stderr if jf is None else rs.stderr) or "")[:160])
+                continue
+            vf, vs = compte(jf, "v1_overflow"), compte(js_, "v1_overflow")
+            cas(f"{nom} · sur FICHIER", vf == 0, "0 V1 (feuille absolue non resolue)", vf,
+                "instance servie", f"{vf} constat(s) V1 sur file:// — la feuille a resolu ?")
+            cas(f"{nom} · SERVIE", (vs >= 1) if servi_attendu else (vs == 0),
+                f"{'>=1' if servi_attendu else '0'} V1 une fois servie", vs,
+                "instance servie",
+                f"{vs} constat(s) V1 servie, attendu {'au moins 1' if servi_attendu else '0'}")
+            cas(f"{nom} · origine declaree", js_.get("servie") is True
+                and any("INSTANCE SERVIE" in x for x in js_.get("non_juge", [])),
+                "verdict servi DECLARE au non juge", js_.get("servie"),
+                "instance servie", "un verdict servi qui ne se declare pas se lit comme un "
+                                   "verdict sur fichier")
+            cas(f"{nom} · file:// declare", jf.get("servie") is False
+                and any("file://" in x for x in jf.get("non_juge", [])),
+                "verdict fichier DECLARE au non juge", jf.get("servie"),
+                "instance servie", "un PASS sur fichier doit dire qu'il ne juge pas le servi")
+
+        # ---- 2. les croisements, et le trou qu'ils ferment --------------------------------
+        for nom, muets_attendus in (("paires-croisement-muet.html", 1),
+                                    ("paires-croisement-annonce.html", 0)):
+            if not (FIXTURES / nom).exists():
+                cas(nom, False, "fixture presente", "absente", "filtres croises")
+                continue
+            sans, rsa = juger(f"{base}/{nom}", ["--matrice-etats"])
+            avec, rav = juger(f"{base}/{nom}", ["--matrice-paires"])
+            if sans is None or avec is None:
+                cas(nom, False, "rapport lisible", "illisible", "filtres croises",
+                    ((rsa.stderr if sans is None else rav.stderr) or "")[:160])
+                continue
+            # Le trou : la matrice UNITAIRE ne voit rien, sur la fixture rouge comme sur la verte.
+            m_sans = compte(sans, "etat_muet")
+            cas(f"{nom} · matrice unitaire seule", m_sans == 0,
+                "0 etat_muet (aucun etat ne croise deux filtres)", m_sans, "filtres croises",
+                "la matrice unitaire voit deja le croisement : la demonstration du trou tombe")
+            m_avec = compte(avec, "etat_muet")
+            cas(f"{nom} · croisements par paires",
+                (m_avec >= 1) if muets_attendus else (m_avec == 0),
+                f"{'>=1' if muets_attendus else '0'} etat_muet sur un croisement", m_avec,
+                "filtres croises",
+                f"{m_avec} constat(s) etat_muet, attendu "
+                f"{'au moins 1' if muets_attendus else '0'}")
+            cas(f"{nom} · verdict", avec.get("verdict") == ("FAIL" if muets_attendus else "PASS"),
+                "FAIL" if muets_attendus else "PASS", avec.get("verdict"), "filtres croises")
+            # LA BORNE SE DIT : couverture chiffree, jamais un plafond silencieux.
+            p = (avec.get("breakpoints", {}).get("1440", {}) or {}).get("paires") or {}
+            dit = any("paire(s) jouee(s) sur" in x for x in avec.get("non_juge", []))
+            cas(f"{nom} · couverture affichee",
+                bool(p) and p.get("possibles", 0) > 0 and dit,
+                "« N paires jouees sur M possibles » au rapport",
+                f"{p.get('jouees')}/{p.get('possibles')}, declaree={dit}", "filtres croises",
+                "un plafond qui ne publie pas son total est une borne silencieuse")
+
+        # ---- 3. une origine non locale ne s'ouvre pas sans drapeau ------------------------
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, "https://exemple.invalid/p.html"],
+                           capture_output=True, text=True, encoding="utf-8")
+        refus = (r.stderr or "") + (r.stdout or "")
+        cas("origine non locale · sans drapeau", r.returncode != 0 and "NON LOCALE" in refus,
+            "refus nomme, aucune page ouverte", r.returncode, "instance servie",
+            f"code {r.returncode} — {refus.strip()[:160]}")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_filtres_runtime():
     """TF-0768/0769/0781/0782 (02/09/2026) — LE COMPOSANT DE FILTRES, JOUE DANS UN NAVIGATEUR.
 
@@ -3359,6 +3520,12 @@ def main():
     matrice = run_matrice_etats()
     if matrice:
         res += matrice
+    # TF-1093 — l'INSTANCE SERVIE et les FILTRES CROISES : un defaut qui n'existe que servi
+    # (feuille en chemin absolu) et une intersection vide qu'aucun etat unitaire ne montre.
+    # Le banc sert lui-meme ses fixtures, sur un port libre, et ferme son serveur en finally.
+    servie = run_instance_servie()
+    if servie:
+        res += servie
     # TF-0768/0769/0781/0782 — le composant de filtres joue DANS un navigateur : ses defauts
     # sont des defauts d'execution, qu'aucun oracle de marquage ne peut voir.
     filtres = run_filtres_runtime()

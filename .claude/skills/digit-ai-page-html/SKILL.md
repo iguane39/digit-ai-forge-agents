@@ -7,13 +7,35 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.23.1"
+  version: "1.24.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.24.0 (20/09/2026)** — **l'oracle cesse de juger une page qui n'existe que sur le poste de
+l'auditeur, et il croise enfin deux filtres.** Restes archivés de TF-0480 et TF-0493, rouverts par
+TF-1093. · **Mode INSTANCE SERVIE** : une URL `http(s)://` se donne à la place d'un chemin, et
+c'est la page **telle qu'elle est servie** qui est mesurée. Ce que `file://` ne peut pas voir, et
+qui est mesuré ici : un actif référencé en chemin **absolu** (`/tokens.css`) n'y résout pas et
+disparaît sans bruit — fixture `servi-actif-absolu.html`, **PASS sur fichier, 2 bloquants V1 une
+fois servie** (`scrollWidth 4284 px > viewport 1440 px`) ; sa corrigée passe des deux côtés. Le
+mode n'accepte que `localhost` / `127.0.0.1` / `::1` ; toute autre origine **arrête l'outil** sans
+`--origine-distante`, et une page distante reste une **donnée tierce** — lecture seule, aucune
+authentification, aucun secret saisi. Un verdict pris sur fichier **dit désormais** qu'il ne juge
+pas le livrable servi. · **`--matrice-paires`** : les **filtres croisés**, énumérés par paires
+(colonne A = valeur a) × (colonne B = valeur b), chaque croisement sur une page neuve. La matrice
+de TF-0493 ne pose qu'**un** filtre à la fois : une intersection vide que chaque facette prise
+seule ne montre pas lui échappe entièrement. Fixture `paires-croisement-muet.html` : **PASS** sous
+`--matrice-etats` seule — c'est la preuve du trou —, **FAIL** avec 2 `etat_muet` sous
+`--matrice-paires` ; sa corrigée passe. La **borne est affichée**, toujours : « N paires jouées sur
+M possibles », plafond `--paires-max` (24), croisements servis en **tour de rôle** entre paires de
+colonnes pour qu'un plafond ne soit jamais dépensé sur un seul couple. · Le banc sert lui-même ses
+fixtures (serveur HTTP de la bibliothèque standard, port libre, fermé en `finally`) : **17 cas
+neufs**, aucune dépendance ajoutée, aucun accès réseau externe. **Version MINEURE** : le mode
+fichier reste le défaut et son comportement ne change pas.
 
 **1.22.0 (14/09/2026)** — **le socle cesse d'accuser ce qu'il impose, et ses composants disent ce
 qu'ils font.** · Trois règles de `check_html` jugeaient le mauvais objet : A5 comptait les polices
@@ -410,6 +432,8 @@ python scripts/render_page.py page.html            # défaut : 3840, 2560, 1920,
 # schéma : --selector .diagram-wrap · JSON : --output json
 # revue de lecture : --sections "[role=tabpanel]"  → une capture par section, par largeur
 # composants interactifs : --matrice-etats         → cinq états mesurés ET capturés (TF-0493)
+# filtres croisés        : --matrice-paires        → (col A = val a) × (col B = val b) (TF-1093)
+python scripts/render_page.py http://127.0.0.1:8000/page.html --matrice-paires   # INSTANCE SERVIE
 ```
 
 **La grille par défaut et la règle E5 du pilot (TF-1066, 12/09/2026).** Une page de bureau se
@@ -438,6 +462,33 @@ qui ne trouve pas son déclencheur est déclaré **NON JOUÉ**, jamais vert : un
 une réponse, un état muet serait un mensonge. La preuve qui justifie d'ouvrir **les deux**
 colonnes : sur la même page, le panneau rend 0 constat sur la première et 2 sur la dernière — un
 panneau ne déborde pas du même côté à droite qu'à gauche.
+
+**Les filtres CROISÉS (`--matrice-paires`, TF-1093) — la matrice unitaire ne pose qu'un filtre à
+la fois.** Ses cinq états sont unitaires : un panneau ouvert, une colonne décochée, une recherche
+sans correspondance. Aucun ne pose **deux** filtres ensemble, alors que c'est l'usage normal d'un
+tableau filtrable et que c'est là que l'intersection devient vide. Une page qui n'annonce le vide
+que lorsqu'une facette est **entièrement décochée** reste muette sur le croisement — la loi n° 3
+est violée sans qu'aucun état unitaire ne puisse le montrer. L'option énumère
+`(colonne A = valeur a) × (colonne B = valeur b)`, chaque croisement sur une page neuve, mesuré et
+capturé, et le `etat_muet` y est jugé au **même barème** que `filtre-sans-resultat` — un croisement
+jugé autrement ne lui serait pas comparable. **La borne se dit** : « N paires jouées sur M
+possibles », plafond `--paires-max` (24 par défaut), croisements servis en **tour de rôle** entre
+paires de colonnes — à plat, le plafond serait dépensé sur le premier couple et annoncerait une
+couverture qu'il n'a pas. Les croisements de **trois facettes et plus ne sont pas jugés**, et la
+sortie le déclare.
+
+**L'INSTANCE SERVIE (TF-1093) — un verdict sur `file://` n'est pas un verdict sur le livrable.**
+Le positionnel accepte une **URL `http(s)://`** à la place d'un chemin, et l'oracle mesure alors la
+page telle qu'elle est **servie**. Ce que `file://` ne montre pas : un actif référencé en chemin
+**absolu** (`/tokens.css`) n'y résout pas et disparaît **sans bruit**, et tout comportement gardé
+par `location.protocol` ne s'exécute pas — la page rendue n'existe nulle part ailleurs que sur le
+poste de l'auditeur. Mesure du 20/09 : même fixture, **PASS** sur fichier et **2 bloquants V1** une
+fois servie. Un verdict pris sur fichier le **déclare** désormais au non jugé. **Frontières
+d'environnement** (loi transverse n° 2) : seules `localhost`, `127.0.0.1` et `::1` sont acceptées ;
+toute autre origine **arrête l'outil** tant que `--origine-distante` n'est pas donné, et une page
+distante reste une **donnée tierce** — lecture seule, aucune authentification, aucune saisie de
+secret. Le geste attendu est de servir la page en local (`python -m http.server` dans son dossier).
+**Le mode fichier reste le défaut** : sans URL, rien de tout cela ne s'active.
 
 Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de la largeur
 qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'une grille —

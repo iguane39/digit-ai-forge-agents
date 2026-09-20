@@ -55,6 +55,8 @@ import subprocess
 import sys
 from datetime import date
 from pathlib import Path
+from typing import NamedTuple
+from urllib.parse import urlsplit
 
 # Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression
 # des rapports contenant des caractères hors Latin-1 (tirets cadratins, ①-⑤, ✓…).
@@ -1918,6 +1920,197 @@ VERIF_ETATS = {
 }
 
 # ---------------------------------------------------------------------------
+# TF-1093 (20/09/2026) — LES FILTRES CROISES, PAR PAIRES.
+#
+# CE QUE LA MATRICE DE TF-0493 NE VOIT PAS. Ses cinq etats sont UNITAIRES : un panneau ouvert,
+# une colonne decochee, une recherche sans correspondance. Aucun ne pose DEUX filtres a la fois.
+# Or le croisement est l'usage normal d'un tableau filtrable, et c'est la que l'intersection
+# devient vide : chaque facette prise seule laisse des lignes, leur intersection n'en laisse
+# aucune, et une page qui n'annonce le vide que lorsqu'une facette est entierement decochee
+# reste MUETTE sur ce croisement-la. La loi n 3 (un etat vide se declare) y est violee sans
+# qu'aucun etat unitaire puisse le montrer.
+#
+# LA BORNE EST DECLAREE ET AFFICHEE. Le produit cartesien complet de n colonnes est
+# inatteignable ; on s'arrete aux PAIRES, et le rapport dit toujours « N paires jouees sur M
+# possibles ». Une borne tue n'est pas une borne, c'est un mensonge par omission : le verdict
+# doit se lire avec sa couverture.
+PAIRES_MAX_DEFAUT = 24
+
+# L'inventaire OUVRE puis REFERME chaque panneau : plusieurs composants ne peuplent leurs
+# valeurs qu'a la premiere ouverture, et un inventaire qui laisserait un panneau ouvert
+# changerait l'etat qu'il pretend seulement decrire.
+INVENTAIRE_FACETTES_JS = """() => {
+  const bts = [...document.querySelectorAll('.tf-btn')];
+  const cols = [];
+  bts.forEach((b, i) => {
+    b.click();
+    const hote = b.closest('th') || b.parentElement || document;
+    const p = hote.querySelector('.tf-panel');
+    const opts = p ? [...p.querySelectorAll('.tf-opt')] : [];
+    const valeurs = opts.map((o, k) => {
+      const lab = o.closest('label');
+      const txt = ((lab ? lab.textContent : o.value) || '').replace(/\\s+/g, ' ').trim();
+      return (txt || o.value || ('valeur ' + (k + 1))).slice(0, 24);
+    });
+    const th = b.closest('th');
+    let libelle = '';
+    if (th) {
+      const clone = th.cloneNode(true);
+      clone.querySelectorAll('.tf-btn, .tf-panel').forEach((x) => x.remove());
+      libelle = (clone.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 24);
+    }
+    cols.push({ index: i, libelle: libelle || ('colonne ' + (i + 1)), valeurs });
+    b.click();
+  });
+  return cols;
+}"""
+
+# Poser un filtre, c'est ne laisser qu'UNE valeur cochee. Le panneau est REFERME apres coup :
+# ce qu'on juge ici est le TABLEAU sous deux filtres, pas la geometrie d'un panneau ouvert —
+# celle-la est deja jugee par les etats « filtre-premiere/derniere-colonne ».
+APPLIQUER_PAIRE_JS = """(a) => {
+  const bts = [...document.querySelectorAll('.tf-btn')];
+  const poser = (ci, vi) => {
+    const b = bts[ci];
+    if (!b) return 'colonne ' + (ci + 1) + ' absente de la page';
+    b.click();
+    const hote = b.closest('th') || b.parentElement || document;
+    const p = hote.querySelector('.tf-panel');
+    if (!p) return 'aucun panneau (.tf-panel) pour la colonne ' + (ci + 1);
+    const opts = [...p.querySelectorAll('.tf-opt')];
+    if (!opts.length) return 'aucune valeur (.tf-opt) dans la colonne ' + (ci + 1);
+    if (vi >= opts.length) return 'valeur ' + (vi + 1) + ' absente de la colonne ' + (ci + 1);
+    opts.forEach((o, k) => {
+      const veut = (k === vi);
+      if (o.checked !== veut) {
+        o.checked = veut;
+        o.dispatchEvent(new Event('change', { bubbles: true }));
+        o.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    b.click();
+    return '';
+  };
+  const e1 = poser(a.i, a.vi); if (e1) return { applique: false, motif: e1 };
+  const e2 = poser(a.j, a.vj); if (e2) return { applique: false, motif: e2 };
+  return { applique: true, motif: '' };
+}"""
+
+# La sonde d'etat vide est CELLE des etats unitaires, a l'identique : un croisement juge avec
+# un autre bareme que « filtre-sans-resultat » ne serait pas comparable a lui.
+VERIF_PAIRE_JS = VERIF_ETATS["filtre-sans-resultat"]
+
+
+def _combinaisons_par_paires(colonnes: list[dict], plafond: int) -> tuple[list[dict], int]:
+    """Les croisements (colonne A = valeur a) x (colonne B = valeur b), servis en TOUR DE ROLE.
+
+    Le tour de role n'est pas cosmetique. A plat, le plafond serait depense entierement sur la
+    PREMIERE paire de colonnes et les suivantes ne seraient jamais touchees — une couverture
+    qui s'annonce « 24 paires jouees » en n'ayant regarde qu'un seul couple de colonnes serait
+    pire que pas de couverture du tout. Chaque paire de colonnes recoit donc son premier
+    croisement avant qu'aucune n'en recoive un deuxieme.
+    """
+    files: list[list[dict]] = []
+    for a in range(len(colonnes)):
+        for b in range(a + 1, len(colonnes)):
+            ca, cb = colonnes[a], colonnes[b]
+            file: list[dict] = []
+            for va, eta in enumerate(ca["valeurs"]):
+                for vb, etb in enumerate(cb["valeurs"]):
+                    file.append({
+                        "i": ca["index"], "vi": va, "j": cb["index"], "vj": vb,
+                        "nom": f'{ca["libelle"]}={eta} x {cb["libelle"]}={etb}',
+                    })
+            if file:
+                files.append(file)
+    possibles = sum(len(f) for f in files)
+    retenues: list[dict] = []
+    rang = 0
+    while len(retenues) < plafond and any(rang < len(f) for f in files):
+        for f in files:
+            if rang < len(f):
+                retenues.append(f[rang])
+                if len(retenues) >= plafond:
+                    break
+        rang += 1
+    return retenues, possibles
+
+
+def jouer_paires(page, url: str, js: str, plafond: int, capture_timeout: int,
+                 png_dir: Path, stem: str, width: int) -> dict:
+    """Joue les croisements par paires sur la page deja ouverte, et rend ce qu'il a couvert.
+
+    Chaque croisement REPART d'une page neuve, comme les etats de TF-0493 : un croisement qui
+    heriterait du precedent ne serait plus le croisement qu'il pretend etre.
+    """
+    page.goto(url)
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(200)
+    resultat: dict = {"jouees": 0, "possibles": 0, "plafond": plafond, "colonnes": 0,
+                      "combinaisons": {}, "bloquants": 0, "motif": ""}
+    try:
+        colonnes = page.evaluate(INVENTAIRE_FACETTES_JS)
+    except Exception as erreur:  # noqa: BLE001 — une panne se declare, elle n'arrete rien
+        resultat["motif"] = (f"inventaire des facettes impossible ({type(erreur).__name__}) : "
+                             "aucun croisement n'a pu etre enumere")
+        return resultat
+    colonnes = [c for c in (colonnes or []) if c.get("valeurs")]
+    resultat["colonnes"] = len(colonnes)
+    if len(colonnes) < 2:
+        resultat["motif"] = (f"{len(colonnes)} colonne(s) a facette trouvee(s) — il en faut DEUX "
+                             "pour croiser. Page sans tableau a filtres croises")
+        return resultat
+    retenues, possibles = _combinaisons_par_paires(colonnes, plafond)
+    resultat["possibles"] = possibles
+    resultat["jouees"] = len(retenues)
+    for rang, combo in enumerate(retenues, start=1):
+        page.goto(url)
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(150)
+        try:
+            applique = page.evaluate(APPLIQUER_PAIRE_JS, combo)
+        except Exception as erreur:  # noqa: BLE001
+            applique = {"applique": False,
+                        "motif": f"le declencheur a leve {type(erreur).__name__}"}
+        if not applique.get("applique"):
+            resultat["combinaisons"][combo["nom"]] = {"applique": False,
+                                                      "motif": applique.get("motif", "")}
+            continue
+        page.wait_for_timeout(200)
+        iss = page.evaluate(js)
+        try:
+            vu = page.evaluate(VERIF_PAIRE_JS)
+        except Exception:  # noqa: BLE001
+            vu = None
+        if vu and vu.get("lignes") == 0 and not vu.get("dit"):
+            iss.setdefault("etat_muet", []).append({
+                "what": f"croisement « {combo['nom']} »",
+                "detail": "l'intersection de DEUX filtres ne laisse plus aucune ligne, et pas "
+                          "un mot pour le dire. Chaque filtre pris SEUL laisse des lignes : "
+                          "aucun etat unitaire ne montre ce vide. Le socle prescrit la forme du "
+                          "message : .tf-count en zone vivante (aria-live) avec la classe zero, "
+                          "ou .tf-vide-msg — et il doit se calculer sur les lignes RESTANTES, "
+                          "pas sur le nombre de valeurs cochees d'une seule facette. "
+                          "Loi n 3 : un etat vide se declare",
+            })
+        png = png_dir / f"{stem}-w{width}-paire{rang:02d}.png"
+        cap = {"faite": True, "motif": ""}
+        try:
+            page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+        except Exception as erreur:  # noqa: BLE001
+            cap = {"faite": False,
+                   "motif": f"capture impossible : {type(erreur).__name__} — les familles du "
+                            "DOM restent jugees"}
+        bloq = compter_bloquants(iss)
+        resultat["bloquants"] += bloq
+        resultat["combinaisons"][combo["nom"]] = {
+            "applique": True, "png": str(png) if cap["faite"] else None,
+            "capture": cap, "issues": iss, "blocking": bloq,
+        }
+    return resultat
+
+
+# ---------------------------------------------------------------------------
 # LES FAMILLES DE CONSTATS, ET LEUR POIDS — SOURCE UNIQUE (23/08/2026, choix humain).
 #
 # POURQUOI CETTE TABLE EXISTE. Le poids d'une famille était écrit à TROIS endroits dans ce fichier
@@ -2344,11 +2537,15 @@ def compter_bloquants(issues: dict) -> int:
     return total
 
 
-def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json: bool,
+def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool,
         out_dir: Path | None = None, etats_ouverts: bool = False,
         capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None,
         matrice_etats: bool = False, matrice_toutes_largeurs: bool = False,
-        hauteur_max: int = CAPTURE_HAUTEUR_MAX) -> int:
+        hauteur_max: int = CAPTURE_HAUTEUR_MAX, matrice_paires: bool = False,
+        paires_max: int = PAIRES_MAX_DEFAUT, origine_distante: bool = False) -> int:
+    # TF-1093 — un chemin, une URL servie ou une Cible deja construite entrent tous ici. Le
+    # mode fichier reste le defaut : sans URL, `cibler` rend exactement l'ancien comportement.
+    cible = html_path if isinstance(html_path, Cible) else cibler(html_path, origine_distante)
     ensure_browser_path()
     ensure_local_fonts()
     try:
@@ -2383,10 +2580,12 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 .replace("__V18_TABLE_LIGNES__", str(V18_TABLE_MIN_LIGNES))
                 .replace("__V18_TABLE_COLONNES__", str(V18_TABLE_MIN_COLONNES)))
 
-    png_dir = _dossier_captures(html_path, out_dir)
+    png_dir = _dossier_captures(cible, out_dir)
     png_dir.mkdir(parents=True, exist_ok=True)
 
-    report: dict = {"file": str(html_path), "png_dir": str(png_dir),
+    report: dict = {"file": cible.url if cible.servie else str(cible.chemin),
+                    "url": cible.url, "servie": cible.servie, "origine": cible.origine,
+                    "png_dir": str(png_dir),
                     "breakpoints": {}, "verdict": None, "non_juge": []}
     blocking_total = 0
     captures_manquees: list[int] = []
@@ -2396,7 +2595,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
         for width in widths:
             page = browser.new_page(viewport={"width": width, "height": 900},
                                     device_scale_factor=scale)
-            page.goto(html_path.resolve().as_uri())
+            page.goto(cible.url)
             page.wait_for_load_state("networkidle")
             page.evaluate("document.fonts && document.fonts.ready")
             page.wait_for_timeout(250)
@@ -2459,7 +2658,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             # TF-1143 — V9 doit savoir a quelle echelle elle regarde : sous l echelle 1, ce
             # qu elle lit est la rasterisation et non le livrable.
             mesurer_actifs_visuels(page, issues, capture_timeout, scale)
-            png = png_dir / f"{html_path.stem}-w{width}.png"
+            png = png_dir / f"{cible.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None
             # TF-1139 — LA HAUTEUR SE MESURE AVANT D'ESSAYER. Elle est publiée dans tous les cas :
             # un auteur doit pouvoir lire la marge qui lui reste avant de perdre le jugement
@@ -2491,7 +2690,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                 else:
                     page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
                     # TF-1131 : au-delà de 4:1, des tuiles d'un écran, produites d'office.
-                    capture.update(produire_tuiles(page, png_dir, html_path.stem, width,
+                    capture.update(produire_tuiles(page, png_dir, cible.stem, width,
                                                    capture_timeout))
                 # TF-0422 : une capture PAR SECTION — un panneau d'onglet masqué est rendu
                 # visible le temps de sa capture, puis remis dans son état.
@@ -2499,7 +2698,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                     for i, handle in enumerate(page.query_selector_all(sections), start=1):
                         etait_cache = handle.evaluate("el => { const h = el.hidden; el.hidden = false; return h; }")
                         try:
-                            handle.screenshot(path=str(png_dir / f"{html_path.stem}-w{width}-section{i:02d}.png"),
+                            handle.screenshot(path=str(png_dir / f"{cible.stem}-w{width}-section{i:02d}.png"),
                                               timeout=capture_timeout)
                         finally:
                             if etait_cache:
@@ -2538,7 +2737,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
             if matrice_etats and (matrice_toutes_largeurs or width == max(widths)):
                 etats: dict = {}
                 for nom, action in ETATS_MATRICE:
-                    page.goto(html_path.resolve().as_uri())
+                    page.goto(cible.url)
                     page.wait_for_load_state("networkidle")
                     page.wait_for_timeout(150)
                     try:
@@ -2553,7 +2752,7 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                         continue
                     page.wait_for_timeout(250)
                     iss_e = page.evaluate(js)
-                    png_e = png_dir / f"{html_path.stem}-w{width}-etat-{nom}.png"
+                    png_e = png_dir / f"{cible.stem}-w{width}-etat-{nom}.png"
                     cap_e = {"faite": True, "motif": ""}
                     try:
                         page.screenshot(path=str(png_e), full_page=True, timeout=capture_timeout)
@@ -2585,10 +2784,54 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                                   "png": str(png_e) if cap_e["faite"] else None,
                                   "capture": cap_e, "issues": iss_e, "blocking": bloq_e}
                 report["breakpoints"][width]["etats"] = etats
+
+            # ---- TF-1093 · les filtres CROISES, par paires ------------------------------
+            # Meme borne de largeur que la matrice : a la plus grande largeur demandee, sauf
+            # `--matrice-toutes-largeurs`. Chaque croisement repart d'une page neuve.
+            if matrice_paires and (matrice_toutes_largeurs or width == max(widths)):
+                paires = jouer_paires(page, cible.url, js, paires_max, capture_timeout,
+                                      png_dir, cible.stem, width)
+                blocking_total += paires["bloquants"]
+                report["breakpoints"][width]["paires"] = paires
+                if paires["motif"]:
+                    report["non_juge"].append(
+                        f"FILTRES CROISES NON JOUES a {width} px : {paires['motif']}")
+                else:
+                    reste = paires["possibles"] - paires["jouees"]
+                    ligne = (f"FILTRES CROISES : {paires['jouees']} paire(s) jouee(s) sur "
+                             f"{paires['possibles']} possible(s) a {width} px, sur "
+                             f"{paires['colonnes']} colonne(s) a facette (plafond "
+                             f"{paires['plafond']}, `--paires-max`). Enumeration par PAIRES : "
+                             "les croisements de trois facettes et plus ne sont pas juges")
+                    if reste:
+                        ligne += (f". {reste} croisement(s) NON JOUE(S) — ne pas lire ce verdict "
+                                  "comme une couverture complete des croisements")
+                    report["non_juge"].append(ligne)
+            elif matrice_etats and width == max(widths):
+                report["non_juge"].append(
+                    "FILTRES CROISES NON JOUES : la matrice d'etats ne pose qu'UN filtre a la "
+                    "fois. Une intersection vide que chaque facette prise seule ne montre pas "
+                    "reste invisible ici — `--matrice-paires` l'enumere (TF-1093)")
             page.close()
         browser.close()
 
     report["verdict"] = "PASS" if blocking_total == 0 else "FAIL"
+
+    # TF-1093 — CE QUI A ETE OUVERT SE DIT. Un verdict pris sur `file://` et un verdict pris sur
+    # une instance servie ne portent pas sur la meme page : l'un ne voit pas les actifs en chemin
+    # absolu ni ce qui depend de `location.protocol`, l'autre ne vaut que pour l'instance jugee.
+    if cible.servie:
+        report["non_juge"].append(
+            f"INSTANCE SERVIE : page jugee telle qu'elle est SERVIE par {cible.origine}. Ce "
+            "verdict ne vaut que pour CETTE instance et cet instant — un contenu servi change "
+            "sans que le fichier bouge. La page distante, si elle l'est, est une DONNEE TIERCE : "
+            "lue, jamais authentifiee, aucun secret saisi")
+    else:
+        report["non_juge"].append(
+            "OUVERTE EN `file://` : les actifs references en chemin ABSOLU (`/…`) ne resolvent "
+            "pas ici et disparaissent sans bruit, et tout comportement garde par "
+            "`location.protocol` ne s'execute pas. Ne pas lire ce PASS comme un verdict sur le "
+            "livrable SERVI : le rejouer sur une instance servie (TF-1093)")
 
     # TF-0365 — ce qui n a pas pu etre mesure se DIT, dans la sortie machine autant qu au
     # terminal. Un PASS qui tairait l absence des images serait plus faible que celui d hier en
@@ -2739,6 +2982,24 @@ def run(html_path: Path, widths: list[int], selector: str, scale: float, as_json
                     kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "info")
                     for item in e["issues"].get(key, []) or []:
                         print(f"      [{kind}] {title} : {item['what']} — {item['detail']}")
+            # TF-1093 — la COUVERTURE des croisements s'imprime avant leurs constats : un
+            # lecteur doit savoir sur quelle part du possible le verdict porte.
+            paires = data.get("paires")
+            if paires:
+                if paires.get("motif"):
+                    print(f"  — filtres croisés NON JOUÉS : {paires['motif']}")
+                else:
+                    print(f"  — filtres croisés : {paires['jouees']} paire(s) jouée(s) sur "
+                          f"{paires['possibles']} possible(s) (plafond {paires['plafond']}), "
+                          f"{paires['bloquants']} bloquant(s)")
+                for nom, c in (paires.get("combinaisons") or {}).items():
+                    if not c.get("applique"):
+                        print(f"      croisement « {nom} » NON JOUÉ : {c.get('motif', '')}")
+                        continue
+                    for key, title, sev in FAMILLES:
+                        kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "info")
+                        for item in c["issues"].get(key, []) or []:
+                            print(f"      [{kind}] {title} : {item['what']} — {item['detail']}")
         print(f"\nVerdict : {report['verdict']}")
         for note in report["non_juge"]:
             print(f"  non jugé — {note}")
@@ -2794,11 +3055,75 @@ def produire_tuiles(page, png_dir: Path, stem: str, width: int, timeout_ms: int)
 DOSSIERS_LIVRAISON = {"output", "old", "livrables", "dist", "public"}
 
 
-def _dossier_captures(html_path: Path, out_dir: Path | None) -> Path:
+# ---------------------------------------------------------------------------
+# TF-1093 (20/09/2026) — LA CIBLE : UN FICHIER, OU UNE INSTANCE SERVIE.
+#
+# LE FAIT. Restes archivés de TF-0480 et TF-0493 : les contrôles visuels et d'interaction
+# n'étaient JAMAIS joués sur une instance servie. Tout ce que cet oracle mesure, il le
+# mesurait sur `file://`. Or `file://` n'est pas le contexte de livraison : un actif référencé
+# en chemin ABSOLU (`/tokens.css`) n'y résout pas et disparaît sans bruit, un script gardé par
+# `location.protocol` ne s'exécute pas, et la page rendue est une page qui n'existe nulle part
+# ailleurs que sur le poste de l'auditeur. Un verdict vert obtenu là ne dit rien de ce que le
+# lecteur reçoit.
+#
+# CE QU'EST UNE INSTANCE SERVIE ICI : une URL `http(s)://` donnée à la place d'un chemin.
+# Par défaut, SEULES les origines locales sont acceptées (`localhost`, `127.0.0.1`, `::1`) —
+# une page distante est une DONNÉE TIERCE : on la lit, on ne s'y authentifie pas, on n'y saisit
+# aucun secret, et l'ouvrir exige un drapeau explicite (`--origine-distante`) pour qu'aucune
+# chaîne automatisée n'aille toucher un site de production par accident.
+#
+# LE MODE FICHIER RESTE LE DÉFAUT et son comportement ne bouge pas : sans URL, rien de ce
+# bloc ne s'active.
+SCHEMES_SERVIS = ("http", "https")
+HOTES_LOCAUX = {"localhost", "127.0.0.1", "::1"}
+
+
+class Cible(NamedTuple):
+    """Ce que l'oracle va ouvrir, d'où qu'il vienne. `url` est la seule porte du navigateur."""
+    url: str                    # ce qui est passé à `page.goto` — `file://…` ou `http://…`
+    stem: str                   # racine du nom des PNG (jamais un chemin, jamais une URL brute)
+    servie: bool                # True = instance servie par un serveur HTTP
+    chemin: Path | None         # le fichier, quand il y en a un (None si servie)
+    origine: str                # `file://` ou `http(s)://hôte:port` — publié au rapport
+
+
+def cibler(entree, origine_distante: bool = False) -> Cible:
+    """Un chemin de fichier ou une URL servie, ramenés à une Cible unique.
+
+    Sous Windows, `C:\\dossier\\page.html` s'analyse en schéma « c » : seuls `http` et `https`
+    basculent en mode servi, tout le reste est un chemin. Une origine non locale sans drapeau
+    ARRÊTE l'outil au lieu d'ouvrir la page : le défaut sûr est de ne pas aller sur le réseau.
+    """
+    brut = str(entree)
+    decoupe = urlsplit(brut)
+    if decoupe.scheme in SCHEMES_SERVIS:
+        hote = (decoupe.hostname or "").lower()
+        if hote not in HOTES_LOCAUX and not origine_distante:
+            sys.exit(
+                f"ERREUR : origine NON LOCALE refusee ({decoupe.scheme}://{decoupe.netloc}). "
+                f"Le mode servi n'accepte par defaut que {', '.join(sorted(HOTES_LOCAUX))} — "
+                "servir la page en local est le geste attendu (`python -m http.server` dans son "
+                "dossier). Pour juger une origine distante malgre tout : `--origine-distante`, "
+                "et la page reste une DONNEE TIERCE — lecture seule, aucune authentification, "
+                "aucune saisie de secret, aucune action qui ecrit")
+        segment = decoupe.path.rstrip("/").rsplit("/", 1)[-1]
+        brute = Path(segment).stem or hote or "instance"
+        stem = "".join(c if (c.isalnum() or c in "._-") else "_" for c in brute) or "instance"
+        return Cible(brut, stem, True, None, f"{decoupe.scheme}://{decoupe.netloc}")
+    chemin = Path(brut)
+    return Cible(chemin.resolve().as_uri(), chemin.stem, False, chemin, "file://")
+
+
+def _dossier_captures(cible: Cible, out_dir: Path | None) -> Path:
     """Où déposer les PNG. `--out` explicite fait foi ; sinon, jamais un arbre de livraison."""
     if out_dir is not None:
         return out_dir
-    resolu = html_path.resolve()
+    # Une instance servie n'a PAS de dossier d'accueil : ses captures sont un artefact
+    # d'atelier, elles vont dans un temporaire nommé dont le chemin est imprimé.
+    if cible.servie:
+        import tempfile
+        return Path(tempfile.gettempdir()) / "digit-ai-render" / cible.stem
+    resolu = cible.chemin.resolve()
     parents = {p.name.lower() for p in resolu.parents}
     if parents & DOSSIERS_LIVRAISON:
         import tempfile
@@ -2810,7 +3135,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Rendu + mesures : V1/V2/V4 et L2-largeur bloquants, V3/V7 avertissements")
     # Optionnel : `--familles` publie la table des poids et ne rend aucune page. Sans ce
     # nargs, argparse refusait la commande avant meme d'atteindre le drapeau.
-    ap.add_argument("html", type=Path, nargs="?")
+    # TF-1093 — le positionnel n'est plus force en `Path` : il accepte AUSSI une URL
+    # `http(s)://` d'instance servie. La conversion se fait dans `cibler`, seule porte.
+    ap.add_argument("html", nargs="?",
+                    help="chemin du fichier HTML, OU url http(s) d'une INSTANCE SERVIE "
+                         "(localhost / 127.0.0.1 par defaut ; toute autre origine exige "
+                         "--origine-distante)")
     ap.add_argument("--widths", default=",".join(map(str, DEFAULT_WIDTHS)),
                     help="largeurs de viewport, séparées par des virgules")
     ap.add_argument("--selector", default="body", help="ex. .diagram-wrap pour un schéma")
@@ -2860,6 +3190,24 @@ def main() -> None:
     ap.add_argument("--matrice-toutes-largeurs", action="store_true", dest="matrice_toutes_largeurs",
                     help="joue la matrice d'états à CHAQUE largeur (coût : autant de "
                          "chargements de page que d'états × largeurs)")
+    ap.add_argument("--matrice-paires", action="store_true", dest="matrice_paires",
+                    help="TF-1093 : enumere les FILTRES CROISES par PAIRES — (colonne A = "
+                         "valeur a) x (colonne B = valeur b), chaque croisement sur une page "
+                         "neuve, mesure et capture. C'est la qu'une intersection devient vide "
+                         "alors que chaque facette prise seule laisse des lignes : aucun etat "
+                         "unitaire de --matrice-etats ne peut le montrer. La couverture est "
+                         "TOUJOURS affichee (« N paires jouees sur M possibles ») — une borne "
+                         "tue n'est pas une borne. Par defaut a la plus GRANDE largeur demandee")
+    ap.add_argument("--paires-max", type=int, default=PAIRES_MAX_DEFAUT, dest="paires_max",
+                    help=f"plafond de croisements joues (defaut {PAIRES_MAX_DEFAUT}). Les "
+                         "croisements sont servis en TOUR DE ROLE entre paires de colonnes : "
+                         "chacune recoit son premier croisement avant qu'aucune n'en recoive un "
+                         "deuxieme. Le total possible est publie a cote du plafond")
+    ap.add_argument("--origine-distante", action="store_true", dest="origine_distante",
+                    help="TF-1093 : autorise une instance servie hors localhost/127.0.0.1. Une "
+                         "page distante est une DONNEE TIERCE — lecture seule, aucune "
+                         "authentification, aucune saisie de secret, aucune action qui ecrit. "
+                         "Sans ce drapeau, une origine non locale ARRETE l'outil")
     ap.add_argument("--sections", default=None,
                     help="TF-0422 : sélecteur CSS des sections à capturer UNE PAR UNE en plus "
                          "de la page (ex. [role=tabpanel], section.chap) — un panneau masqué "
@@ -2873,14 +3221,18 @@ def main() -> None:
         return 0
     if args.html is None:
         sys.exit("ERREUR : aucun fichier HTML donne (le positionnel n'est optionnel que pour --familles)")
-    if not args.html.is_file():
+    # TF-1093 — la cible se construit UNE fois : un fichier introuvable et une origine refusee
+    # s'arretent ici, avant tout lancement de navigateur.
+    cible = cibler(args.html, args.origine_distante)
+    if not cible.servie and not cible.chemin.is_file():
         sys.exit(f"ERREUR : fichier introuvable : {args.html}")
     widths = [int(w) for w in str(args.widths).split(",") if w.strip()]
-    raise SystemExit(run(args.html, widths, args.selector, args.scale,
+    raise SystemExit(run(cible, widths, args.selector, args.scale,
                          args.output == "json", args.out_dir, args.etats_ouverts,
                          args.capture_timeout, args.sections,
                          args.matrice_etats, args.matrice_toutes_largeurs,
-                         args.hauteur_max))
+                         args.hauteur_max, args.matrice_paires, args.paires_max,
+                         args.origine_distante))
 
 
 if __name__ == "__main__":

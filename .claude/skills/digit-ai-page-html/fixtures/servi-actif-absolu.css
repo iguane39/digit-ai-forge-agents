@@ -1,0 +1,13 @@
+/* TF-1093, sens ROUGE — la feuille que `file://` ne voit JAMAIS.
+   Referencee en chemin ABSOLU (`/servi-actif-absolu.css`), elle ne resout que sous une origine
+   HTTP dont la racine est le dossier des fixtures. Ouverte en `file://`, l URL devient la racine
+   du disque, la requete echoue en silence, et la page rendue n est pas la page servie.
+   La regle ci-dessous fixe une largeur superieure a tout viewport juge : V1 (debordement
+   horizontal) la voit SERVIE, et ne peut pas la voir sur fichier. */
+
+.bandeau-large {
+  width: 4200px;
+  background: #EFF6FF;
+  border: 1px solid #2563EB;
+  padding: 12px;
+}
