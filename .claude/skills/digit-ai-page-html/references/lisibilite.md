@@ -65,6 +65,24 @@ de champ ne sont pas du contenu) ; (b) tout nœud de texte commençant par `. , 
 l'élément qui le précède est **de niveau bloc** selon le CSS de la page. Un élément inline
 suivi d'une virgule est légitime, un élément en bloc ne l'est jamais.
 
+**Ce que « de niveau bloc selon le CSS de la page » veut dire, et ce qu'il ne veut pas
+(TF-1144, 16/09/2026).** L1 évalue les sélecteurs qu'il sait lire — balise, classe, identifiant
+et **sélecteurs d'attribut** (`[hidden]`, `[role="tabpanel"]`, `[data-x^="v"]`…) — chaîne
+d'ancêtres comprise. Ce qui reste hors de portée (pseudo-classe, `*`, forme d'attribut non
+reconnue) garde une voie permissive, mais **un compound sans le moindre point d'ancrage
+vérifiable ne retient plus aucun élément** — il en retenait *tous*.
+
+Le fait payé : L16 refuse une page à onglets tant que la feuille ne porte pas la règle qu'il
+nomme lui-même, `[role="tabpanel"][hidden] { display: block }` sous `@media print`. La règle a
+été posée **mot pour mot**, et le contrôle suivant a rendu **six échecs bloquants L1** sur de la
+prose intacte : le compound ne portait ni balise ni classe ni identifiant, la voie permissive
+renvoyait vrai pour tout élément, et chaque `<a>`, `<strong>` et `<code>` devenait un bloc. Le
+contournement subi — préfixer le sélecteur d'une classe — n'était écrit nulle part, et n'a pas
+à l'être : c'est l'oracle qui doit évaluer ce qu'il sait lire. **Mesure avant / après** sur
+`l16-regle-impression-prescrite.html` : **3 échecs bloquants L1 → 0**, et les six fixtures rouges
+de L1 mordent toujours. Contre-épreuve à double sens : `l1-attribut-retenu-rouge.html` (le
+porteur porte l'attribut, L1 mord) et `l1-attribut-ecarte-vert.html` (il ne le porte pas).
+
 **Revue de lecture.** Qu'un texte non tronqué soit pour autant compréhensible.
 
 ## L2 — Largeur de lecture pleine
@@ -302,6 +320,30 @@ classe `toc-d` (l'annonce), de **12 caractères au moins**.
 
 **Contrôle mécanique.** `L6` — (a) toute ancre `#id` du sommaire dont l'`id` n'existe pas ;
 (b) toute entrée sans élément `.toc-d` d'au moins 12 caractères.
+
+**Plusieurs navigations sur une même page : laquelle porte quoi (TF-1145, 16/09/2026).** Le
+destinataire humain demande, mot pour mot : « Les textes dans le menu ne sont pas nécessaires,
+cela laissera plus d'espace entre les titres ». Le menu passe en titres seuls, et L6 refuse
+aussitôt **onze fois**. Le sommaire jugé était **le premier** `<nav>` du document — et
+`render_page.py` faisait le même choix, avec le même sélecteur, pour sa famille `sommaire_perdu`,
+à laquelle il demande l'inverse : tenir dans la fenêtre aux 60 % de la page.
+
+**Les deux exigences ne tiennent pas ensemble sur un document long.** Une barre collante peut
+rester visible, mais onze annonces de douze caractères y tiennent la place que le lecteur a
+demandé de rendre ; un sommaire **en cartes**, où l'annonce se lit, ne peut pas être collant —
+c'est une grille. La page livrée portait **trois** navigations, et chaque oracle n'en regardait
+qu'une, en rendant son verdict comme si elle était seule. Mesure du repli réel, prise au
+navigateur : la barre à onze entrées est `position: sticky`, haut 0 / bas 194 px, et reste dans
+la fenêtre **après 20 000 px de défilement**, script actif comme script coupé.
+
+**Ce qui est jugé maintenant.** Les deux contrôles collectent **tous** les navs candidats. L6
+juge les ancres de **chacun** — une ancre morte est un défaut sur n'importe quelle navigation, et
+ce contrôle-là s'élargit — et n'exige les annonces que du sommaire **qui les porte** ; une page
+qui n'en porte nulle part échoue comme avant. `sommaire_perdu` passe dès qu'**une** des
+navigations reste atteignable. Une page qui offre les deux passe les deux, et un avertissement
+dit laquelle porte quoi. **Mesure avant / après** : 3 échecs L6 → 0 sur la fixture qui offre les
+deux, 3 → 3 sur celle qui n'annonce nulle part ; côté rendu, 1 bloquant → 0 quand une barre
+permanente existe, 1 → 1 quand aucune ne tient.
 
 **Revue de lecture.** Que l'annonce dise le contenu et non le titre reformulé.
 
@@ -987,17 +1029,6 @@ liste n'attrape que ce qui a réellement coûté un aller-retour, et elle grossi
 sommaire** et sur les descendants **directs** : ce qui vit sous un sous-chapitre lui-même ciblé
 appartient à ce sous-chapitre, jamais à son parent (même partage que L7 depuis TF-0931).
 
-**Un terme se cherche sur FRONTIÈRE DE MOT, jamais en sous-chaîne (TF-0969, 08/09/2026).**
-« gate » était trouvé dans `aggregate_type`, une valeur relevée et affichée en clair dans une
-cellule, et le chapitre accusé d'employer un terme absent ; la parade du produit a été de gloser
-un mot qu'aucun de ses textes n'emploie, ce qui ajoute du bruit au lecteur. Le terme n'est
-employé que s'il n'est ni précédé ni suivi d'une lettre, d'un chiffre ou d'un `_` : un
-identifiant technique (`aggregate_type`, snake_case) ne compte jamais. Même classe que la porte
-de publication (TF-0880) et les gardes lexicales (TF-0799, TF-0805). Mesure sur les 1 022 pages
-HTML suivies du parc : 135 accusations avant, 12 après ; les 123 retirées étaient toutes des
-sous-chaînes (`navigateur`, `Gateway`, `gate_declare`, « requête money »). Fixtures :
-`l30-terme-sous-chaine.html` (vert) et `l30-terme-mot-entier.html` (rouge, même page).
-
 ## L26 — Une page de DONNÉES prend toute la largeur ; la colonne de lecture est pour la prose (TF-0771 + TF-0778, 02/09/2026)
 
 **Le fait payé, deux fois.** Une console de données a été livrée dans une colonne de lecture de
@@ -1271,6 +1302,39 @@ chaque changement de filtre.
 
 **Bruit mesuré avant de poser la règle**, sur les dépôts qui consomment le socle : 362 pages
 HTML suivies de huit dépôts du parc — **zéro tableau touché**.
+
+## L32 / L33 — Un identifiant SVG référençable est unique, et se résout chez lui (TF-1147, 16/09/2026)
+
+**Le fait payé.** Un générateur a produit huit schémas SVG dans un même document. Chacun
+définissait sa pointe de flèche sous le même identifiant — `<defs><marker id="pointe">` et
+`<line marker-end="url(#pointe)">`. Dans un document unique, `url(#pointe)` résout vers le
+**premier** élément portant cet identifiant. Les onze vues du guide étant peintes une à la fois
+(`display: none` sur les dix autres), dès qu'une autre vue s'affiche le marqueur référencé vit
+dans un sous-arbre masqué et les flèches deviennent des traits nus. Mesure sur les captures :
+pointes présentes sur le schéma de la vue peinte au chargement, **absentes sur les sept autres**,
+sur un fichier que `check_html.py` et `render_page.py` déclaraient PASS.
+
+**Pourquoi rien ne pouvait le voir.** Le balisage est syntaxiquement correct et l'identifiant
+existe : toute lecture du fichier innocente. Rien ne déborde, rien ne se recouvre, rien ne manque
+de contraste : toute sonde de rendu innocente aussi. Le défaut n'apparaît qu'en **regardant** la
+capture de la vue concernée — c'est-à-dire pendant la revue de lecture, et seulement là.
+
+**Les deux règles**, de marquage pur, sans jugement à rendre :
+
+- **L32** — dans un document portant plusieurs `<svg>`, un identifiant porté par un élément
+  référençable (`marker`, `linearGradient`, `radialGradient`, `clipPath`, `filter`, `pattern`,
+  `mask`, `symbol`) est **unique**. Le geste : préfixer par le schéma — `pointe-vue1`.
+- **L33** — un `url(#id)` écrit dans un `<svg>` résout vers un élément du **même** `<svg>`. Un
+  identifiant qui ne résout nulle part est signalé au même titre : la référence est morte.
+
+**Le dépôt mutualisé se déclare** : `data-defs-partagees` sur le `<svg>` qui porte les
+définitions, et L33 admet qu'on y renvoie. Une exemption se déclare, elle ne se devine pas.
+
+**Bruit mesuré avant de poser les règles**, sur les dépôts qui consomment le socle : 467 pages
+HTML de onze dépôts du parc, dont les 208 du skill — **zéro fichier touché**.
+
+Fixtures : `l32-marqueur-svg-duplique.html` (rouge), `l32-marqueurs-svg-uniques.html` (verte),
+`l33-reference-hors-de-son-svg.html` (rouge), `l33-defs-partagees-declarees.html` (verte).
 
 ## Lancer le contrôle
 

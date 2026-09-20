@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V15 tableau court bride par sa fin — 20260914a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;
+ /* La pile collante MESUREE : en-tete 104 + bande de sommaire 115 = 219 px, et le thead s'y pose. */
+ --hh-tab:219px}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{margin:0;padding:0 20px 1200px}
+header.doc.colle{position:sticky;top:0;z-index:20;background:var(--bg);height:104px;display:flex;align-items:center}
+nav.toc.colle{position:sticky;top:104px;z-index:10;background:var(--surface);height:115px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);height:20px}
+thead.colle th{position:sticky;top:var(--hh-tab);z-index:5;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de V15, TF-0968 et TF-1060 — LE TABLEAU COURT, BRIDE PAR SA PROPRE FIN.
+
+  La pile collante est mesuree et le `top` du thead vaut exactement son bas (219 px). Le tableau
+  mesure ~340 px : au defilement de la sonde d'avant correctif (recul = hauteur - 250), il ne
+  restait que 250 px de tableau a l'ecran, l'en-tete etait tire vers le haut par la fin de son
+  bloc conteneur a 250 - 41 = 209 px, et la sonde rendait « 10 px masques » par la bande de
+  sommaire. C'est la specification CSS, pas un defaut.
+
+  Attendu a 1440 px : 0 `entete_masque_par_collants`. Le constat, s'il existe, est rendu dans la
+  famille informative `entete_bride_par_tableau`.
+-->
+<body>
+<header class="doc colle"><strong>Console des volumes</strong></header>
+<nav class="toc colle" aria-label="Sommaire"><a href="#c1">1 Volumes</a><a href="#c2">2 Marches</a></nav>
+<main class="wrap">
+<h1 id="c1">Volumes par marche</h1>
+<table><thead class="colle"><tr><th>Rattachement</th><th>Ligne de mapping</th><th>Volume</th></tr></thead><tbody>
+<tr><td>Region nord</td><td>lot_cle vers silver_lot</td><td>1 000</td></tr>
+<tr><td>Region centre</td><td>lot_surface vers silver_lot</td><td>12 500</td></tr>
+<tr><td>Region sud</td><td>bail_debut vers silver_bail</td><td>250</td></tr>
+<tr><td>Region est</td><td>bail_fin vers silver_bail</td><td>45 000</td></tr>
+<tr><td>Region ouest</td><td>loyer vers silver_loyer</td><td>8 200</td></tr>
+<tr><td>Region nord-est</td><td>charge vers silver_charge</td><td>3 400</td></tr>
+<tr><td>Region sud-ouest</td><td>indexation vers silver_index</td><td>6 900</td></tr>
+<tr><td>Region centre-est</td><td>franchise vers silver_franchise</td><td>2 100</td></tr>
+</tbody></table>
+<h2 id="c2">Marches</h2>
+<p>Texte de suite, pour que la page defile au-dela du tableau.</p>
+</main></body></html>

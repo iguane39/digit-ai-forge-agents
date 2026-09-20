@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — cartes filtrantes · une carte ne filtre que son tableau — 20260914a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-0970 (08/09), fixture À DOUBLE SENS jouée par self_test (run_kpi_perimetre).
+
+  Deux tableaux, deux groupes de cartes, et surtout DEUX ATTRIBUTS différents : le mapping filtre
+  sur data-statut, les mesures sur data-famille. L'ancien composant appliquait l'attribut et la
+  valeur de LA carte active à tous les tableaux du périmètre : un clic sur « À corriger » du
+  mapping masquait toutes les mesures, qui ne portent pas data-statut. Le défaut restait invisible
+  tant que tous les tableaux partageaient le même attribut — c'est pourquoi les deux diffèrent ici.
+
+  La page calcule aussi ce que l'ANCIEN couplage aurait laissé visible (window.__visiblesCouples) :
+  le test exige que le rendu en DIFFÈRE — c'est le sens rouge.
+-->
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  .wrap { max-width:min(92vw,1680px); margin:0 auto; padding:24px; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); margin-bottom:24px; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  [hidden] { display:none !important; }
+  @media print { tr[hidden] { display:table-row !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Deux tableaux, deux groupes de cartes</h1>
+  <div class="kpis">
+    <button type="button" data-kpi-filtre data-kpi-table="mapping" data-kpi-attr="statut" data-kpi-valeur="a-corriger" aria-pressed="false">À corriger · 2</button>
+    <button type="button" data-kpi-filtre data-kpi-table="mapping" data-kpi-attr="statut" data-kpi-valeur="valide" aria-pressed="false">Validés · 3</button>
+  </div>
+  <table id="mapping">
+    <caption>Mapping — exemple inventé.</caption>
+    <thead><tr><th>Colonne</th><th>Statut</th></tr></thead>
+    <tbody>
+      <tr data-statut="a-corriger"><td>lot_cle</td><td>à corriger</td></tr>
+      <tr data-statut="valide"><td>lot_surface</td><td>validé</td></tr>
+      <tr data-statut="valide"><td>bail_debut</td><td>validé</td></tr>
+      <tr data-statut="a-corriger"><td>bail_fin</td><td>à corriger</td></tr>
+      <tr data-statut="valide"><td>loyer</td><td>validé</td></tr>
+    </tbody>
+  </table>
+  <div class="kpis">
+    <button type="button" data-kpi-filtre data-kpi-table="mesures" data-kpi-attr="famille" data-kpi-valeur="stock" aria-pressed="false">Stock · 2</button>
+  </div>
+  <table id="mesures">
+    <caption>Mesures — exemple inventé.</caption>
+    <thead><tr><th>Mesure</th><th>Famille</th></tr></thead>
+    <tbody>
+      <tr data-famille="stock"><td>Surface louée</td><td>stock</td></tr>
+      <tr data-famille="flux"><td>Loyer encaissé</td><td>flux</td></tr>
+      <tr data-famille="stock"><td>Lots vacants</td><td>stock</td></tr>
+      <tr data-famille="flux"><td>Charges refacturées</td><td>flux</td></tr>
+    </tbody>
+  </table>
+</main>
+<script src="../assets/kpi-filter.js"></script>
+<script>
+  window.__kpi = DigitAIKpiFilter.init(document);
+  window.__visibles = function (id) {
+    return [...document.querySelectorAll('#' + id + ' tbody tr')].filter(tr => !tr.hidden).length;
+  };
+  /* Ce que l'ANCIEN couplage aurait laissé visible dans `id` après un clic sur `carte` : la
+     valeur de la carte active, cherchée dans l'attribut de la carte active, sur TOUT tableau. */
+  window.__visiblesCouples = function (id, carte) {
+    var attr = 'data-' + carte.getAttribute('data-kpi-attr'), val = carte.getAttribute('data-kpi-valeur');
+    return [...document.querySelectorAll('#' + id + ' tbody tr')].filter(tr => tr.getAttribute(attr) === val).length;
+  };
+</script>
+</body>
+</html>

@@ -48,6 +48,7 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from html.parser import HTMLParser
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Le JARGON À GLOSER (TF-0932) — une DONNÉE, pas du code (loi transverse n° 4).
@@ -600,7 +601,7 @@ def check_charte(html: str):
     if not re.search(r"@media\s+print", low):
         fails.append("@media print absent (robustesse export PDF).")
 
-    if re.search(r"\bsyne\b", low):
+    if police_syne_declaree(html):
         fails.append("Police Syne détectée — interdite par la charte.")
 
     for decl in re.findall(r"font-family\s*:\s*([^;}{]+)", low):
@@ -683,12 +684,44 @@ def _lignes_tbody(table: Noeud) -> int:
     return sum(1 for n in cible.descendants() if n.tag == "tr")
 
 
+def _sommaires(a: Arbre):
+    """TOUS les navs candidats au titre de sommaire, dans l'ordre du document (TF-1145).
+
+    LE FAIT PAYÉ, 16/09/2026 (lot Produit-64 20260916a, retour RD-5). Le destinataire humain
+    demande, mot pour mot : « Les textes dans le menu ne sont pas nécessaires, cela laissera plus
+    d'espace entre les titres ». Le menu passe en titres seuls ; `check_html.py` refuse aussitôt
+    ONZE fois — « L6 entrée sans annonce ». Le sommaire jugé était choisi par un `return` sur LE
+    PREMIER nav du document, et `render_page.py` faisait le MÊME choix, avec le MÊME sélecteur,
+    pour sa famille `sommaire_perdu` — à laquelle il demande, lui, de rester dans la fenêtre aux
+    60 % de la page.
+
+    LES DEUX EXIGENCES NE TIENNENT PAS ENSEMBLE sur un document long. Une barre COLLANTE peut
+    rester visible, mais onze annonces de douze caractères y tiennent la place que le lecteur a
+    explicitement demandé de rendre ; un sommaire EN CARTES, où l'annonce se lit, ne peut pas
+    être collant — c'est une grille. La page livrée portait donc TROIS navigations (barre
+    collante de onze vues en titres seuls, menu latéral collant des chapitres, sommaire en cartes
+    avec ses onze annonces), et chaque oracle n'en regardait QU'UNE, en rendant son verdict comme
+    si elle était seule. Mesure du repli réel, prise au navigateur : le bandeau à onze entrées est
+    `position: sticky`, haut 0 / bas 194 px, et reste dans la fenêtre après 20 000 px de
+    défilement, script actif comme script coupé. Aucun lecteur ne perdait la navigation ;
+    `sommaire_perdu` rendait pourtant BLOQUANT aux six largeurs, en désignant les cartes.
+
+    LA SORTIE, ET ELLE RENFORCE. Les deux contrôles collectent désormais TOUS les candidats.
+    L6 juge les ancres de CHACUN — une ancre morte est un défaut sur n'importe quelle
+    navigation, et ce contrôle-là s'élargit — et n'exige les annonces que du sommaire QUI LES
+    PORTE ; une page qui n'en porte nulle part échoue comme avant. `sommaire_perdu` passe dès
+    qu'UNE des navigations reste atteignable. Une page qui offre les deux passe les deux ; rien
+    n'est désactivé.
+    """
+    return [n for n in a.racine.descendants()
+            if n.tag == "nav" and ("toc" in n.classes()
+                                   or (n.att("aria-label") or "").lower().startswith("sommaire"))]
+
+
 def _sommaire(a: Arbre):
-    for n in a.racine.descendants():
-        if n.tag == "nav" and ("toc" in n.classes()
-                               or (n.att("aria-label") or "").lower().startswith("sommaire")):
-            return n
-    return None
+    """Le premier nav candidat — conservé pour les règles qui désignent UN sommaire (L7, L10)."""
+    tous = _sommaires(a)
+    return tous[0] if tous else None
 
 
 # TF-0771/0777/0778/0783 (02/09) — LA PAGE DE DONNEES SE DECLARE.
@@ -788,6 +821,151 @@ def _contenu_cite(porteur) -> bool:
     return any("data-cite" in n.attrs for n in [porteur, *porteur.ancetres()])
 
 
+# --- L32 / L33 · identifiants SVG (TF-1147, lot Produit-64 20260916a, retour RD-7) -----------
+#
+# Éléments SVG dont l'unique raison d'être est d'être RÉFÉRENCÉS par un `url(#…)`. Deux d'entre
+# eux portant le MÊME identifiant dans un même document, le second n'est jamais servi.
+SVG_DEFS_REFERENCABLES = {"marker", "lineargradient", "radialgradient", "clippath",
+                          "filter", "pattern", "mask", "symbol"}
+RE_SVG_JALON = re.compile(r"<(/?)svg\b[^>]*?(/?)>", re.I)
+RE_BALISE_AVEC_ATTRS = re.compile(r"<(\w+)\b([^>]*)>", re.S)
+RE_ID_VAL = re.compile(r"\bid\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))", re.I)
+RE_URL_FRAGMENT = re.compile(r"url\(\s*(?:\"|')?#([^)\"'\s]+)(?:\"|')?\s*\)")
+RE_DEFS_PARTAGEES = re.compile(r"\bdata-defs-partagees\b", re.I)
+
+
+def _svg_spans(html: str):
+    """Les portions `<svg>…</svg>` de PREMIER niveau, en couples (début, fin) dans `html`.
+
+    Segmentation TEXTUELLE, et non par l'arbre : un `<circle>` laissé non refermé fait dériver
+    le parseur permissif, et une règle de marquage qui se tromperait de `<svg>` porteur serait
+    pire que pas de règle du tout. Un `<svg>` jamais refermé porte jusqu'à la fin du document.
+    """
+    spans, profondeur, debut = [], 0, None
+    for m in RE_SVG_JALON.finditer(html):
+        if m.group(1):                       # </svg>
+            profondeur = max(0, profondeur - 1)
+            if profondeur == 0 and debut is not None:
+                spans.append((debut, m.end()))
+                debut = None
+        elif not m.group(2):                 # <svg …>, et non <svg …/>
+            if profondeur == 0:
+                debut = m.start()
+            profondeur += 1
+    if debut is not None:
+        spans.append((debut, len(html)))
+    return spans
+
+
+def check_svg_identifiants(html: str):
+    """L32 / L33 — la référence SVG juste DANS LE FICHIER et morte DANS L'INSTANCE SERVIE.
+
+    LE FAIT PAYÉ, ET IL EST MESURÉ. Un générateur a produit huit schémas SVG dans un même
+    document ; chacun définissait sa pointe de flèche sous le MÊME identifiant —
+    `<defs><marker id="pointe">` et `<line marker-end="url(#pointe)">`. Dans un document
+    unique, `url(#pointe)` résout vers le PREMIER élément portant cet identifiant, celui du
+    schéma de la vue d'entrée. Les onze vues du guide étant peintes une à la fois
+    (`display: none` sur les dix autres), dès qu'une autre vue s'affiche le marqueur référencé
+    vit dans un sous-arbre masqué : les flèches deviennent des traits nus. Mesure sur les
+    captures : pointes présentes sur le schéma de la vue peinte au chargement, ABSENTES sur les
+    sept autres — sur un fichier que check_html.py et render_page.py déclaraient PASS.
+
+    POURQUOI AUCUN CONTRÔLE NE POUVAIT LE VOIR. Le balisage est syntaxiquement correct et
+    l'identifiant existe : toute lecture du fichier innocente. Rien ne déborde, rien ne se
+    recouvre, rien ne manque de contraste : toute sonde de rendu innocente aussi. Le défaut
+    n'apparaît qu'en REGARDANT la capture de la vue concernée.
+
+    DEUX RÈGLES DE MARQUAGE PUR, à zéro faux positif par construction :
+      · L32 — dans un document portant plusieurs `<svg>`, un identifiant porté par un élément
+        RÉFÉRENÇABLE (marker, gradient, clipPath, filter, pattern, mask, symbol) est unique ;
+      · L33 — un `url(#id)` écrit dans un `<svg>` résout vers un élément du MÊME `<svg>`.
+    Le magasin de définitions partagé se DÉCLARE : un `<svg data-defs-partagees>` est un dépôt
+    de pièces, et L33 admet qu'on y renvoie. Une exemption se déclare, elle ne se devine pas.
+
+    BRUIT MESURÉ AVANT DE POSER LES RÈGLES, sur les dépôts qui CONSOMMENT le socle : 467 pages
+    HTML de onze dépôts du parc (dont les 208 du skill lui-même) — ZÉRO fichier touché. Les
+    règles ne rougissent aucun livrable existant ; elles ferment une porte pour ceux à venir.
+    """
+    fails, warns = [], []
+    html = _sans_commentaires(html)
+    spans = _svg_spans(html)
+    if not spans:
+        return fails, warns
+
+    partagees = set()
+    for i, (d, _f) in enumerate(spans):
+        fin_ouvrant = html.find(">", d)
+        if fin_ouvrant != -1 and RE_DEFS_PARTAGEES.search(html[d:fin_ouvrant + 1]):
+            partagees.add(i)
+
+    def _svg_de(pos):
+        for i, (d, f) in enumerate(spans):
+            if d <= pos < f:
+                return i
+        return None
+
+    ids_par_svg = [set() for _ in spans]
+    defs_par_id: dict = {}
+    for mb in RE_BALISE_AVEC_ATTRS.finditer(html):
+        mi = RE_ID_VAL.search(mb.group(2))
+        if not mi:
+            continue
+        ident = next(g for g in mi.groups() if g is not None).strip()
+        if not ident:
+            continue
+        i = _svg_de(mb.start())
+        if i is None:
+            continue
+        ids_par_svg[i].add(ident)
+        balise = mb.group(1).lower()
+        if balise in SVG_DEFS_REFERENCABLES:
+            defs_par_id.setdefault(ident, []).append((i, balise))
+
+    if len(spans) >= 2:
+        for ident, porteurs in sorted(defs_par_id.items()):
+            svgs = sorted({i for i, _ in porteurs})
+            if len(svgs) < 2:
+                continue
+            balises = ", ".join(sorted({t for _, t in porteurs}))
+            fails.append(
+                f"L32 identifiant SVG référençable dupliqué : « #{ident} » est défini par "
+                f"{len(porteurs)} élément(s) <{balises}> répartis dans {len(svgs)} des "
+                f"{len(spans)} <svg> de la page. Un `url(#…)` y résout vers le PREMIER : un seul "
+                "schéma est servi complet, les autres perdent la pièce dès que le premier est "
+                "masqué (une vue à la fois). Invisible à la lecture du fichier — le balisage est "
+                "correct — et invisible aux sondes de rendu : rien ne déborde, rien ne manque de "
+                f"contraste. Préfixer l'identifiant par celui de son schéma (`{ident}-<schéma>`) "
+                "et reporter le préfixe dans ses `url(#…)` (lisibilite.md L32).")
+
+    for i, (d, f) in enumerate(spans):
+        deja = set()
+        for mu in RE_URL_FRAGMENT.finditer(html[d:f]):
+            ident = mu.group(1)
+            if ident in deja or ident in ids_par_svg[i]:
+                continue
+            deja.add(ident)
+            ailleurs = sorted(j for j, s in enumerate(ids_par_svg) if ident in s)
+            if ailleurs and all(j in partagees for j in ailleurs):
+                continue                     # magasin de définitions DÉCLARÉ
+            if ailleurs:
+                fails.append(
+                    f"L33 `url(#{ident})` écrit dans le <svg> n° {i + 1} résout vers un élément "
+                    f"défini dans le <svg> n° {ailleurs[0] + 1} : la pièce vit HORS du schéma qui "
+                    "l'emploie. Dès que ce schéma-là est masqué — une vue à la fois, "
+                    "`display: none` sur les autres — la référence n'est plus servie et le trait "
+                    "perd sa pointe. Définir la pièce dans le <svg> qui s'en sert, ou déclarer le "
+                    "dépôt partagé (`data-defs-partagees` sur le <svg> qui porte les définitions) "
+                    "(lisibilite.md L33).")
+            else:
+                fails.append(
+                    f"L33 `url(#{ident})` écrit dans le <svg> n° {i + 1} ne résout vers AUCUN "
+                    "identifiant de ce document : la référence est morte et l'attribut qui la "
+                    "porte est sans effet — le trait se peint nu, sans que rien ne le signale "
+                    "(lisibilite.md L33).")
+
+    return fails, warns
+
+
 def check_lisibilite(html: str, a: Arbre):
     fails, warns = [], []
     ids = index_ids(a)
@@ -882,6 +1060,67 @@ def check_lisibilite(html: str, a: Arbre):
             parties.append(tampon.strip())
         return parties, comb
 
+    # TF-1144 (16/09/2026, lot Produit-64 20260916a, retour RD-4) — LA RÈGLE QUE L16 PRESCRIT
+    # DANS SON MESSAGE DE REFUS FAISAIT ÉCHOUER L1 SUR SIX PASSAGES DE PROSE INTACTS.
+    #
+    # LE FAIT. Une fenêtre modale à deux onglets déclare le motif ARIA attendu. L16 refuse la page
+    # tant que la feuille ne porte pas la règle qu'il nomme lui-même : `[role="tabpanel"][hidden]
+    # { display: block }` sous `@media print`. La règle a été posée MOT POUR MOT. Au contrôle
+    # suivant : SIX échecs bloquants L1 « ponctuation orpheline », tous sur de la prose intacte,
+    # chacun nommant ce même sélecteur « retenu SANS vérification de sa contrainte d'ancêtre ».
+    #
+    # LE MÉCANISME. Un compound portant `[ ] : ( ) *` était déclaré NON ÉVALUABLE, donc traité en
+    # PERMISSIF, et `_compound_matche` décidait seul. Sur `[role="tabpanel"][hidden]` cette
+    # fonction ne trouvait NI balise NI classe NI identifiant à vérifier et renvoyait VRAI POUR
+    # TOUT ÉLÉMENT du document : chaque <a>, <strong> et <code> devenait un bloc, et L1 accusait
+    # la prose qui les entourait. Le contournement subi a été de préfixer le sélecteur d'une
+    # classe — un geste écrit NULLE PART, trouvé en lisant la source de l'oracle, pas son message.
+    #
+    # LE REMÈDE, ET IL RENFORCE. Un sélecteur d'attribut n'est pas un état inconnu : l'arbre porte
+    # les attributs. On les ÉVALUE donc, au lieu de renoncer — la chaîne d'ancêtres redevient
+    # vérifiée sur ces sélecteurs-là, et le contrôle devient plus précis, pas plus indulgent. Ce
+    # qui reste hors de portée (pseudo-classes, `*`, forme d'attribut non reconnue) garde la voie
+    # permissive, mais celle-ci n'a plus le droit de retenir TOUT : un compound sans le moindre
+    # point d'ancrage vérifiable ne retient plus rien (G-2 : c'est le choix sûr, l'inverse de
+    # l'ancien).
+    RE_ATTR_SEL = re.compile(
+        r"\[\s*([\w:.-]+)\s*(?:([~|^$*]?=)\s*(\"[^\"]*\"|'[^']*'|[^\]\s]+)\s*)?"
+        r"(?:[iIsS]\s*)?\]")
+
+    def _contraintes_attr(compound):
+        """Les contraintes d'attribut d'un compound, ou None si l'une n'est pas lisible."""
+        if "[" not in compound and "]" not in compound:
+            return []
+        if RE_ATTR_SEL.sub("", compound).count("[") or RE_ATTR_SEL.sub("", compound).count("]"):
+            return None                      # forme non reconnue : on ne devine pas
+        out = []
+        for m in RE_ATTR_SEL.finditer(compound):
+            val = m.group(3) or ""
+            if val[:1] in ("\"", "'") and val[-1:] == val[:1]:
+                val = val[1:-1]
+            out.append((m.group(1).lower(), m.group(2), val))
+        return out
+
+    def _attr_matche(n, nom, op, val):
+        brut = n.attrs.get(nom)
+        if brut is None:
+            return False
+        if op is None:
+            return True                      # [hidden] : la présence suffit
+        if op == "=":
+            return brut == val
+        if op == "^=":
+            return bool(val) and brut.startswith(val)
+        if op == "$=":
+            return bool(val) and brut.endswith(val)
+        if op == "*=":
+            return bool(val) and val in brut
+        if op == "~=":
+            return bool(val) and val in brut.split()
+        if op == "|=":
+            return brut == val or brut.startswith(val + "-")
+        return False
+
     def _compound_matche(n, compound):
         mt = re.match(r"^([a-zA-Z][\w-]*)", compound)
         if mt and n.tag != mt.group(1).lower():
@@ -892,12 +1131,25 @@ def check_lisibilite(html: str, a: Arbre):
         for idv in re.findall(r"#([A-Za-z_][\w-]*)", compound):
             if n.att("id") != idv:
                 return False
+        for nom, op, val in (_contraintes_attr(compound) or []):
+            if not _attr_matche(n, nom, op, val):
+                return False
         return True
 
-    # Un compound n'est évaluable que s'il ne porte QUE tag, classes et id. Une pseudo-classe ou un
-    # sélecteur d'attribut dépend d'un état que ce contrôle ne connaît pas.
+    # Un compound est évaluable s'il ne porte que tag, classes, id et sélecteurs d'attribut
+    # LISIBLES. Une pseudo-classe ou `*` dépend d'un état que ce contrôle ne connaît pas.
     def _evaluable(compound):
-        return not re.search(r"[\[\]:()*]", compound)
+        if re.search(r"[:()*]", compound):
+            return False
+        return _contraintes_attr(compound) is not None
+
+    def _ancre_quelque_chose(compound):
+        """Le compound porte-t-il de quoi retenir un élément PLUTÔT QUE TOUS ? (TF-1144)"""
+        if re.match(r"^[a-zA-Z][\w-]*", compound):
+            return True
+        if re.search(r"[.#][A-Za-z_][\w-]*", compound):
+            return True
+        return bool(_contraintes_attr(compound))
 
     regles = []          # (parties, combinateurs, sélecteur source, vérifiable)
     for sel, d in css:
@@ -935,7 +1187,12 @@ def check_lisibilite(html: str, a: Arbre):
             if verifiable and _chaine_matche(n, parties, comb):
                 return source, True
         for parties, comb, source, verifiable in regles:
-            if not verifiable and _compound_matche(n, parties[-1]):
+            # TF-1144 — la voie permissive n'a plus le droit de retenir TOUT. Un compound sans le
+            # moindre point d'ancrage vérifiable (ni balise, ni classe, ni identifiant, ni
+            # contrainte d'attribut lisible) ne retient plus aucun élément : six échecs bloquants
+            # L1 sur de la prose intacte ont été payés pour l'inverse.
+            if not verifiable and _ancre_quelque_chose(parties[-1]) \
+                    and _compound_matche(n, parties[-1]):
                 return source, False
         return None, False
 
@@ -2129,25 +2386,48 @@ def check_lisibilite(html: str, a: Arbre):
                          "doit rester inline pour ne pas casser le flux du mot.")
 
     # --- L6 : sommaire ----------------------------------------------------
-    if toc is None:
+    # TF-1145 — L6 ne lit plus LE PREMIER nav du document, mais TOUS. Les ancres se jugent sur
+    # chacun : une ancre morte est un défaut sur n'importe quelle navigation, et ce contrôle-là
+    # s'élargit. Les ANNONCES ne sont exigées que du sommaire QUI LES PORTE — une page qui offre
+    # une barre collante en titres seuls ET un sommaire en cartes annoté satisfait les deux
+    # doctrines, et onze échecs sur un menu que le destinataire a explicitement demandé sans
+    # annonces disparaissent. Une page qui n'en porte nulle part échoue exactement comme avant.
+    tocs = _sommaires(a)
+    if not tocs:
         warns.append("L6 aucun sommaire détecté (nav.toc ou aria-label=\"Sommaire\").")
     else:
-        liens = [n for n in toc.descendants() if n.tag == "a"]
-        if not liens:
-            fails.append("L6 sommaire sans aucune entrée.")
-        for lien in liens:
-            href = (lien.att("href") or "").strip()
-            if not href.startswith("#") or len(href) < 2:
-                fails.append(f"L6 entrée de sommaire sans ancre exploitable : "
-                             f"« {lien.texte_propre()[:40]} » (href={href!r}).")
-                continue
-            if href[1:] not in ids:
-                fails.append(f"L6 ancre morte : {href} ne résout vers aucun id "
-                             f"(entrée « {lien.texte_propre()[:40]} »).")
-            annonce = [e for e in lien.descendants() if "toc-d" in e.classes()]
-            if not annonce or max(len(e.texte_propre()) for e in annonce) < 12:
-                fails.append(f"L6 entrée sans annonce : « {lien.texte_propre()[:40]} » — "
-                             "un élément .toc-d d'au moins 12 caractères est attendu.")
+        def _annonces_de(nav):
+            return [e for lien in nav.descendants() if lien.tag == "a"
+                    for e in lien.descendants() if "toc-d" in e.classes()]
+
+        porteur = next((n for n in tocs
+                        if any(len(e.texte_propre()) >= 12 for e in _annonces_de(n))), None)
+        cible_annonces = porteur or tocs[0]
+        if len(tocs) > 1 and porteur is not None:
+            warns.append(
+                f"L6 {len(tocs)} navigations candidates au titre de sommaire sur cette page — les "
+                "annonces (.toc-d) sont exigées de CELLE QUI LES PORTE, les ancres sont jugées "
+                "sur toutes. Une barre permanente en titres seuls et un sommaire annoté ne "
+                "s'excluent pas (TF-1145).")
+        for nav in tocs:
+            liens = [n for n in nav.descendants() if n.tag == "a"]
+            if not liens:
+                fails.append("L6 sommaire sans aucune entrée.")
+            for lien in liens:
+                href = (lien.att("href") or "").strip()
+                if not href.startswith("#") or len(href) < 2:
+                    fails.append(f"L6 entrée de sommaire sans ancre exploitable : "
+                                 f"« {lien.texte_propre()[:40]} » (href={href!r}).")
+                    continue
+                if href[1:] not in ids:
+                    fails.append(f"L6 ancre morte : {href} ne résout vers aucun id "
+                                 f"(entrée « {lien.texte_propre()[:40]} »).")
+                if nav is not cible_annonces:
+                    continue
+                annonce = [e for e in lien.descendants() if "toc-d" in e.classes()]
+                if not annonce or max(len(e.texte_propre()) for e in annonce) < 12:
+                    fails.append(f"L6 entrée sans annonce : « {lien.texte_propre()[:40]} » — "
+                                 "un élément .toc-d d'au moins 12 caractères est attendu.")
 
     # --- L7 / L10 : chapitres --------------------------------------------
     cibles = []
@@ -2304,15 +2584,13 @@ def check_lisibilite(html: str, a: Arbre):
             for t in e.enfants if isinstance(t, str))
         gloses = " ".join(e.texte_propre() for e in sec.descendants()
                           if e.tag == "dfn" or (e.classes() & {"termes", "glossaire"}))
-        # TF-0969 (08/09) — LE TERME SE CHERCHE SUR FRONTIERE DE MOT, jamais en sous-chaine.
-        # Mesure : « gate » trouve 17 fois dans `aggregate_type` (valeur relevee, affichee en
-        # clair dans une cellule), 0 fois comme mot — et trois chapitres glosaient deja un mot
-        # absent pour faire taire le controle. Meme classe que TF-0880 (porte de publication) et
-        # TF-0799/TF-0805 (gardes lexicales) : ni lettre, ni chiffre, ni `_` de part et d'autre
-        # (\w est Unicode en Python 3), donc un identifiant snake_case ne compte jamais.
         for terme in termes_jargon:
-            if not re.search(r"(?<!\w)" + re.escape(terme.lower()) + r"(?!\w)",
-                             texte_chapitre.lower()):
+            # TF-0969 (08/09) — frontiere de mot Unicode, comme la porte de publication
+            # (TF-0880) et les gardes lexicales (TF-0799, TF-0805) : en sous-chaine, « gate »
+            # etait trouve dans `aggregate_type` et le chapitre accuse d'un terme absent. `\w`
+            # couvre le souligne : un identifiant technique (snake_case) ne compte jamais.
+            if not re.search(r"(?<!\w)" + re.escape(terme) + r"(?!\w)", texte_chapitre,
+                             re.I):
                 continue
             if terme.lower() in gloses.lower():
                 continue
@@ -2889,6 +3167,103 @@ RE_BALISE = re.compile(r"<(\w+)\b([^>]*)>", re.S)
 RE_ATTR = re.compile(r"([\w-]+)\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)")
 
 
+# --- S2 · un même ensemble n'est énuméré qu'UNE fois par page (TF-1036, 11/09/2026) ----------
+#
+# LE FAIT. Retour humain direct : « pas de double listing qui ne sert a rien si ce n'est dupliquer
+# l'information ». Mesure sur le rapport vise : 19 identifiants de constat apparaissaient CHACUN
+# deux fois — en ligne du tableau filtrable du chapitre 03, et en summary d'un details du
+# chapitre 04. Le squelette prescrivait les deux composants sans dire qu'ils ne se cumulent pas ;
+# dix-huit domaines d'oracles joues, aucun ne l'a vu. Symetrique de « liste de renvois sans
+# detail » : ici le detail existe, mais dans une seconde liste.
+# LA MESURE : un identifiant (forme SIGLE-123) qui ouvre a la fois une ligne de corps de tableau
+# et le summary d'un details HORS de ce tableau. Un details place DANS la ligne (ligne depliable)
+# est la forme prescrite : il n'est pas compte.
+RE_ID_ENTREE = re.compile(r"^\s*([A-Z][A-Z0-9]{0,7}-\d{1,5}[a-z]?)\b")
+
+
+def check_double_listing(a: Arbre):
+    """S2 — un identifiant énuméré à la fois en ligne de tableau et en summary hors du tableau."""
+    fails, warns = [], []
+    cles = {}
+    for i, t in enumerate((n for n in a.racine.descendants() if n.tag == "table"), 1):
+        for tr in t.descendants():
+            if tr.tag != "tr" or next((x for x in tr.ancetres() if x.tag == "table"), None) is not t:
+                continue
+            if any(x.tag == "thead" for x in tr.ancetres()):
+                continue
+            cellule = next((c for c in tr.descendants() if c.tag in ("td", "th")), None)
+            m = RE_ID_ENTREE.match(" ".join(cellule.texte().split())) if cellule is not None else None
+            if m:
+                cles.setdefault(m.group(1), i)
+    doubles = []
+    for s in a.racine.descendants():
+        if s.tag != "summary" or any(x.tag == "table" for x in s.ancetres()):
+            continue
+        m = RE_ID_ENTREE.match(" ".join(s.texte().split()))
+        if m and m.group(1) in cles and m.group(1) not in doubles:
+            doubles.append(m.group(1))
+    if doubles:
+        fails.append(
+            f"S2 double listing : {len(doubles)} élément(s) énuméré(s) DEUX fois — en ligne de "
+            f"tableau ET en summary d'un details hors du tableau ({', '.join(doubles[:5])}"
+            + (f" et {len(doubles) - 5} autre(s)" if len(doubles) > 5 else "") + "). Un même "
+            "ensemble ne s'énumère qu'une fois par page : le détail vit DANS la ligne (ligne "
+            "dépliable), ce qui garde le filtrage et gagne le détail (TF-1036).")
+    return fails, warns
+
+
+# --- S3 · une colonne RELEVÉE porte sa source, et la page cite son garde-fou (TF-1053) ---------
+#
+# LE FAIT. Une colonne « Issuer OIDC » etait remplie par une CONSTANTE reconstruite, pas par la
+# valeur relevee de chaque ligne ; juste par accident (22 connexions, 1 emetteur). Seize controles
+# verts : tous jugent la forme, aucun la PROVENANCE. Un oracle generique ne connait pas la source
+# d'un produit ; il controle donc la DECLARATION : une colonne qui se dit relevee
+# (`<th data-provenance="releve">`) porte `data-source` sur chacune de ses cellules, et la page
+# cite le garde-fou qui l'a verifiee (`data-garde-provenance="…"` sur un element, ou
+# `<meta name="garde-provenance" content="…">`). Une colonne qui ne se declare pas n'est pas jugee.
+def check_provenance(a: Arbre):
+    """S3 — colonne déclarée relevée : source par ligne, et garde-fou cité par la page."""
+    fails, warns = [], []
+    noeuds = list(a.racine.descendants())
+    garde = any((n.att("data-garde-provenance") or "").strip() for n in noeuds) or any(
+        n.tag == "meta" and (n.att("name") or "").strip().lower() == "garde-provenance"
+        and (n.att("content") or "").strip() for n in noeuds)
+    declarees = 0
+    for i, t in enumerate((n for n in noeuds if n.tag == "table"), 1):
+        propres = [tr for tr in t.descendants() if tr.tag == "tr"
+                   and next((x for x in tr.ancetres() if x.tag == "table"), None) is t]
+        entete = next((tr for tr in propres if any(x.tag == "thead" for x in tr.ancetres())), None)
+        if entete is None:
+            continue
+
+        def cellules(tr):
+            return [c for c in tr.descendants() if c.tag in ("td", "th")
+                    and next((x for x in c.ancetres() if x.tag == "tr"), None) is tr]
+        ths = cellules(entete)
+        releves = [(k, th) for k, th in enumerate(ths)
+                   if (th.att("data-provenance") or "").strip().lower() in ("releve", "relevé", "relevee")]
+        if not releves:
+            continue
+        declarees += len(releves)
+        corps = [tr for tr in propres if tr is not entete
+                 and not any(x.tag == "thead" for x in tr.ancetres())]
+        for k, th in releves:
+            nues = sum(1 for tr in corps
+                       if k < len(cellules(tr)) and not (cellules(tr)[k].att("data-source") or "").strip())
+            if nues:
+                fails.append(
+                    f"S3 colonne relevée sans source : tableau {i}, colonne « "
+                    f"{' '.join(th.texte().split())[:32]} » — {nues} cellule(s) sans `data-source`. "
+                    "Une valeur qui se dit relevée dit d'où elle vient, ligne par ligne (TF-1053).")
+    if declarees and not garde:
+        fails.append(
+            f"S3 garde-fou de provenance non cité : {declarees} colonne(s) se déclarent relevées et "
+            "la page ne nomme pas le contrôle qui a comparé chaque cellule à sa source "
+            "(`data-garde-provenance` ou `<meta name=\"garde-provenance\">`). Seize contrôles de "
+            "forme verts n'ont pas vu une colonne entière reconstruite (TF-1053).")
+    return fails, warns
+
+
 def check_structure(a: Arbre):
     """S1 — cohérence de tableau : chaque ligne du corps porte autant de cellules que l'en-tête.
 
@@ -2966,7 +3341,37 @@ def check_structure(a: Arbre):
         warns.append("S1 non jugé sur " + ", ".join(ecartes[:4])
                      + (f" et {len(ecartes) - 4} autre(s)" if len(ecartes) > 4 else "")
                      + " — un tableau non comptable se déclare, il ne se juge pas à tort.")
+    # S2 (TF-1036) et S3 (TF-1053) : deux défauts de STRUCTURE de page, jugés au même appel.
+    for regle in (check_double_listing, check_provenance):
+        f, w = regle(a)
+        fails += f
+        warns += w
     return fails, warns
+
+
+# --- Police Syne : une DÉCLARATION, jamais un mot du texte (TF-1049, 11/09/2026) -----------------
+#
+# LE FAIT. La règle cherchait « syne » dans TOUT le document : la page générée du registre du
+# pilot rendait une candidature qui CITE la règle « jamais Syne », et le self-test du pilot est
+# resté rouge une journée sur ce seul faux positif. Une règle qui juge une police juge ce qui
+# DÉCLARE une police : les feuilles de style (commentaires retirés — y compris un jeton
+# `--head: "Syne"` qu'un `var()` consommerait), les attributs `style` et `font-family` (SVG), les
+# liens et `@import` de police. Le texte de la page et les scripts ne déclarent rien.
+RE_SYNE = re.compile(r"(?<![a-z0-9])syne(?![a-z0-9])", re.I)
+
+
+def police_syne_declaree(html: str) -> bool:
+    """TF-1049 — Syne est-elle DÉCLARÉE (feuille, style, font-family, lien de police) ?"""
+    feuilles = re.findall(r"<style\b[^>]*>(.*?)</style\s*>", html, re.I | re.S)
+    css = re.sub(r"/\*.*?\*/", " ", " ".join(feuilles), flags=re.S)
+    if RE_SYNE.search(css):
+        return True
+    hors_script = re.sub(r"<script\b[^>]*>.*?</script\s*>", " ", html, flags=re.I | re.S)
+    attributs = re.findall(
+        r"\s(?:style|font-family)\s*=\s*(\"[^\"]*\"|'[^']*')", hors_script, re.I)
+    if any(RE_SYNE.search(v) for v in attributs):
+        return True
+    return any(RE_SYNE.search(lien) for lien in re.findall(r"<link\b[^>]*>", hors_script, re.I))
 
 
 # --- A5 · la feuille de style se PARSE (TF-0896, lot Produit-10 20260907c) ------------------
@@ -2994,6 +3399,14 @@ def check_structure(a: Arbre):
 RE_RESIDU_BALISE = re.compile(r"-->|<!--|<\s*/?\s*[a-z]", re.I)
 A5_TAILLE_MINI = 1000        # caractères — sous ce seuil, la densité ne veut rien dire
 A5_DENSITE_PLANCHER = 0.5    # règles pour 1 000 caractères (plus faible mesurée : 3,39)
+# TF-0984 (08/09) — le DÉNOMINATEUR exclut ce que le socle impose par ailleurs. A1 exige
+# l'autoportance, donc des polices embarquées en `url(data:…)` : ~320 Ko de base64 dans la
+# feuille du gabarit de modèle de données, comptés comme du texte — 0,28 règle pour 1 000
+# caractères, FAIL permanent sur une page conforme à A1. Tenir A1 faisait échouer A5 par
+# construction. La charge utile est remplacée par `url()` avant la mesure ; la feuille
+# réellement diluée par du texte reste rouge (fixture a5-polices-et-feuille-ecrasee.html).
+RE_A5_URL_DATA = re.compile(
+    r"url\(\s*(?:\"data:[^\"]*\"|'data:[^']*'|data:[^)]*)\s*\)", re.I)
 
 
 def check_feuille_parsable(a: Arbre):
@@ -3001,7 +3414,7 @@ def check_feuille_parsable(a: Arbre):
     fails, warns = [], []
     for i, bloc in enumerate(a.styles, 1):
         regles = regles_css([bloc])
-        taille = len(bloc)
+        taille = len(RE_A5_URL_DATA.sub("url()", bloc))
         residu = next((sel for sel, _d in regles if RE_RESIDU_BALISE.search(sel)), None)
         if residu is not None:
             extrait = " ".join(residu.split())[:70]
@@ -3349,6 +3762,13 @@ def check(html: str, regles: str = "tout", source=None):
             f = gardes
         fails += f
         warns += w
+        # L32 / L33 (TF-1147) : les identifiants SVG se jugent sur le TEXTE du document, pas sur
+        # l'arbre — un `<circle>` non refermé fait dériver le parseur permissif, et se tromper de
+        # `<svg>` porteur serait pire que se taire. Hors du champ des exemptions L : une pointe de
+        # flèche absente n'est pas une question de gabarit.
+        f, w = check_svg_identifiants(html)
+        fails += f
+        warns += w
     return fails, warns
 
 
@@ -3379,6 +3799,134 @@ def jeu_de_regles(source_py=None) -> dict:
     codes = sorted({m.group(1) for m in _CODE_REGLE.finditer(texte)})
     empreinte = hashlib.sha256("|".join(codes).encode("utf-8")).hexdigest()[:12]
     return {"regles": codes, "nombre": len(codes), "empreinte": empreinte}
+
+
+# ---------------------------------------------------------------------------
+# PÉRIMÈTRE DE NON-MESURE — ce que ce contrôle NE regarde pas, dit à chaque exécution.
+# ---------------------------------------------------------------------------
+# TF-1148 (lot Produit-64 20260916a, retour RD-8) — UNE ÉTAPE OBLIGATOIRE QUI N'EXISTE PAS POUR
+# QUI CONSOMME LE SOCLE DIRECTEMENT. `SKILL.md` écrit « la revue de lecture — OBLIGATOIRE avant
+# toute livraison (TF-0422) », et le gabarit ajoute « aucune livraison sans REVUE.md, et
+# run-oracles / l'orchestrateur le vérifient ». Un produit qui n'exécute pas run-oracles consomme
+# le socle par ses trois scripts : AUCUN des trois ne demandait REVUE.md, et aucun ne le
+# mentionnait dans sa sortie.
+#
+# CONSÉQUENCE MESURÉE : un indice livré le 15/09 avec trois verdicts verts — check_html.py PASS
+# sur 40 règles, render_page.py PASS sur 6 largeurs, check_markdown.py --style PASS. Le
+# destinataire humain a ouvert le fichier et relevé SEPT défauts, dont CINQ qu'une lecture de
+# captures montre en une minute. La revue faite le 16/09 les a tous retrouvés, plus trois autres.
+# Trois PASS se lisaient comme un travail fini.
+#
+# Le remède n'est pas d'exiger REVUE.md ici — ce script juge un fichier, il ne connaît pas le run
+# qui l'entoure, et un contrôle qui accuserait un livrable de ne pas être accompagné se ferait
+# éteindre. Il est de DIRE que l'étape existe et qu'elle n'a pas été jouée ici.
+#
+# Le bloc est PERMANENT : il sort sur un PASS comme sur un FAIL, en texte comme en JSON, au même
+# format que celui de render_page.py (`  non jugé — …`, clé `non_juge`).
+#
+# TF-1141 (lot Produit-64 20260915b) — ET IL DIT LE RESTE DU PÉRIMÈTRE, pas seulement l'étape
+# manquante. Fait mesuré le 15/09 : un livrable de 11 pages passe check_html.py (PASS, 40 règles,
+# empreinte 695359b17ff5) et render_page.py (PASS, 6 largeurs). Le destinataire humain relève
+# ensuite HUIT défauts, tous hors du champ des deux contrôles — la largeur UTILE d'une colonne
+# par rapport à son contenu, la densité d'information d'un schéma et son étirement au-delà de sa
+# taille naturelle, le SENS d'un libellé de navigation pour un lecteur neuf, l'APPARTENANCE d'un
+# chapitre à son lecteur déclaré. Ce n'est pas une défaillance : c'est un périmètre. Le défaut
+# est qu'il n'était publié nulle part.
+#
+# ASYMÉTRIE AGGRAVANTE, ET C'EST ELLE QUI A TROMPÉ. render_page.py publie son bloc non_juge à
+# chaque exécution, et il est précis — il a déclaré lui-même, le même jour, que les familles
+# d'image n'étaient pas jugées faute de capture. check_html.py rendait « Verdict : PASS » et un
+# nombre de règles, SANS UNE LIGNE sur ce qu'il ne regarde pas. Quand l'un des deux oracles
+# publie honnêtement ses limites, le silence de l'autre se lit comme une ABSENCE DE LIMITE, pas
+# comme une absence de publication. Un verdict sans périmètre de non-mesure n'est pas complet.
+#
+# TF-1173 (lot Produit-64 20260916b, retour RD-9) — QUATRE ORACLES JUGENT CETTE MÊME PAGE, ET LE
+# SOCLE NE LES NOMMAIT NULLE PART. `SKILL.md` prescrivait trois scripts et une revue de lecture ;
+# `digit-ai-forge-design` fait vivre quatre oracles qui jugent le MÊME artefact, et aucune
+# référence du socle ne les citait. Un producteur ne joue pas ce qu'il ne sait pas exister, et il
+# croit sa chaîne complète parce qu'elle est écrite comme telle (loi transverse n° 1 : toute
+# affordance est câblée ou n'existe pas).
+#
+# MESURE DU 16/09/2026 : sur un guide développeur que les trois scripts du socle déclaraient PASS,
+# TROIS des quatre étaient rouges — `oracle-slop` 4 règles dures S1 (filets latéraux de 2, 3 et
+# 4 px, marqueurs de page générée), `oracle-tokens` 59 écarts dont 3 bloquants T1 (couleurs en dur),
+# `oracle-mobile` 1 bloquant M3 (barre fixe sans `env(safe-area-inset-*)`), `oracle-images` PASS.
+# Aucun de ces défauts n'est visible aux trois scripts du socle : le filet de 3 px ne déborde pas,
+# la couleur en dur contraste correctement, la barre fixe ne recouvre rien au rendu de bureau.
+GABARIT_REVUE = "references/gabarit-revue-de-lecture.md"
+
+# Les quatre oracles de `digit-ai-forge-design` qui jugent une page du socle, avec leur domaine.
+# Cette table est la SOURCE du renvoi : `SKILL.md` la recopie, `render_page.py` l'importe, et le
+# self-test la rejoue dans les deux sens (nommés → PASS ; retirés → le manque est localisé).
+ORACLES_FORGE_DESIGN = (
+    ("oracle-slop", "S1–S10", "marqueurs de design généré"),
+    ("oracle-tokens", "T1–T8", "traçabilité des jetons, parité des thèmes, contraste"),
+    ("oracle-mobile", "M1–M8", "viewport, cibles tactiles, encoche, reflow, paysage"),
+    ("oracle-images", "I1–I7", "alt, plafonds, zéro réseau, variantes réellement différentes"),
+)
+ORCHESTRATEUR_FORGE_DESIGN = "oracles/run-oracles-design.mjs"
+
+
+def renvoi_forge_design() -> str:
+    """La phrase de renvoi aux quatre oracles de `digit-ai-forge-design` (TF-1173)."""
+    liste = " · ".join(f"{nom} ({regles} — {domaine})" for nom, regles, domaine in ORACLES_FORGE_DESIGN)
+    return (
+        "LES QUATRE ORACLES DE `digit-ai-forge-design` JUGENT CETTE MÊME PAGE ET N'ONT PAS ÉTÉ "
+        f"JOUÉS ICI : {liste}. Mesure du 16/09/2026 (lot Produit-64 20260916b, RD-9) : sur une "
+        "page que les trois scripts du socle déclaraient PASS, TROIS d'entre eux étaient rouges "
+        "— 4 règles dures S1, 59 écarts de jetons dont 3 bloquants T1, 1 bloquant M3. Les jouer : "
+        f"`node <racine digit-ai-forge-design>/{ORCHESTRATEUR_FORGE_DESIGN} <page.html>`, ou un "
+        "par un `node <racine digit-ai-forge-design>/oracles/<oracle>.mjs <page.html>`"
+    )
+
+
+def manques_du_renvoi_forge_design(texte: str) -> list:
+    """Ce qui manque à un texte pour renvoyer aux quatre oracles (TF-1173).
+
+    Sert au self-test dans les DEUX sens : liste vide sur un texte qui les nomme tous avec la
+    commande qui les joue, liste des manques localisés sur un texte amputé.
+    """
+    manques = [nom for nom, _, _ in ORACLES_FORGE_DESIGN if nom not in texte]
+    if ORCHESTRATEUR_FORGE_DESIGN not in texte and "run-oracles-design" not in texte:
+        manques.append("commande qui les joue")
+    return manques
+
+
+def non_juge() -> list:
+    """Ce que check_html.py ne mesure pas — publié à chaque exécution, PASS ou FAIL."""
+    gabarit = Path(__file__).resolve().parent.parent / "references" / "gabarit-revue-de-lecture.md"
+    ou = str(gabarit) if gabarit.is_file() else f"{GABARIT_REVUE} (INTROUVABLE depuis ce script)"
+    return [
+        "LA REVUE DE LECTURE N'A PAS ÉTÉ JOUÉE ICI. Elle est OBLIGATOIRE avant toute livraison "
+        "(TF-0422) et ce script ne la remplace pas : il lit un fichier, elle regarde des "
+        "captures comme le fait le destinataire. Sur le cas fondateur, trois oracles verts et "
+        "SEPT défauts relevés à l'ouverture, dont cinq visibles en une minute sur des captures. "
+        f"Produire la matière (`render_page.py <page> --sections \"…\"`) et consigner chaque "
+        f"constat dans REVUE.md, au gabarit : {ou}",
+        "LA LARGEUR UTILE d'une colonne par rapport à son CONTENU n'est pas jugée. Ce script lit "
+        "les largeurs DÉCLARÉES dans la feuille, jamais le rapport entre la place prise et la "
+        "place offerte : une prose à 840 px dans une colonne de 1 144 passe ici (mesure du "
+        "15/09/2026). `render_page.py` en mesure une part (L2, V18) ; le reste se voit sur "
+        "capture, et nulle part ailleurs",
+        "LA DENSITÉ ET LA PROPORTION D'UNE FIGURE ne sont pas jugées : un schéma trop dense pour "
+        "être lu, ou étiré au-delà de sa taille naturelle, reste du balisage valide",
+        "LE SENS D'UN LIBELLÉ pour un lecteur neuf n'est pas jugé. L6 et L30 exigent qu'une "
+        "annonce EXISTE et fasse une longueur minimale — jamais qu'elle veuille dire quelque "
+        "chose. Un intitulé de navigation juste et incompréhensible passe",
+        "L'ADÉQUATION DU CONTENU À SON LECTEUR DÉCLARÉ n'est pas jugée : qu'un chapitre "
+        "appartienne au public que la page annonce est un jugement, pas une mesure",
+        "LE RENDU N'EST PAS JUGÉ ICI. Débordements, contrastes, chevauchements, croisements et "
+        "images relèvent de `render_page.py`, qui publie son propre périmètre de non-mesure. Un "
+        "PASS de ce seul script ne dit rien de ce que le lecteur voit",
+        renvoi_forge_design(),
+        # TF-1174 (lot Produit-64 20260916b, RD-10) — LA GRANDEUR CORRÉLÉE PRISE POUR L'INVARIANT.
+        "LA COMPLÉTUDE N'EST PAS JUGÉE ICI : que la page rendue porte ce que sa SOURCE dit n'est "
+        "mesuré par aucune règle de ce script, ni par aucun des six oracles de forme. Mesure du "
+        "16/09/2026 : une page ayant perdu les trois quarts de son texte (11 996 → ~3 000 mots "
+        "visibles, neuf encadrés tombés à zéro) restait PARFAITEMENT CONFORME — ni débordement, "
+        "ni contraste faible, ni couleur en dur. Le compter : "
+        "`python scripts/check_completude.py <page.html> --source <source.md>`",
+    ]
 
 
 def main():
@@ -3413,7 +3961,8 @@ def main():
     if args.output == "json":
         print(json.dumps(
             {"source": source, "regles": args.regles, "verdict": verdict,
-             "version_regles": jeu_de_regles(), "fails": fails, "warns": warns},
+             "version_regles": jeu_de_regles(), "fails": fails, "warns": warns,
+             "non_juge": non_juge()},
             ensure_ascii=False, indent=2))
     else:
         print(f"Source  : {source}")
@@ -3432,6 +3981,11 @@ def main():
                 print(f"  ! {x}")
         if not fails and not warns:
             print("\nAucun problème détecté.")
+        # Le périmètre de non-mesure sort TOUJOURS, et il sort en dernier : c'est là que le
+        # lecteur s'arrête. Un « aucun problème détecté » sans lui se lit comme un travail fini.
+        print("\nPérimètre de NON-MESURE (ce verdict ne dit rien de ceci) :")
+        for note in non_juge():
+            print(f"  non jugé — {note}")
 
     sys.exit(0 if not fails else 1)
 

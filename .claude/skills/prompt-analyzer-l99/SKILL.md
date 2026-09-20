@@ -2,11 +2,11 @@
 name: prompt-analyzer-l99
 description: >
   Analyse approfondie de prompts en 8 couches stratégiques (OODA, Chainlogic, Blindspots, Factcheck, Premortem, Wargame, Deepthink, Synthèse). Utiliser ce skill dès que l'utilisateur demande d'analyser, auditer, améliorer, optimiser, décortiquer ou stress-tester un prompt, que ce soit un prompt personnel ou un prompt client. Aussi déclencher quand l'utilisateur mentionne L99, analyse de prompt, prompt review, audit de prompt, améliore ce prompt, optimise ce prompt, ou colle un prompt en demandant de le passer au crible. Fonctionne sur tout type de prompt, y compris system prompts, user prompts, chaînes de prompts, templates, instructions agent.
-# TF-0475 : le noyau declare ce skill APPELE PAR MOT-CLE (lexique d'invocation RV-6).
-# Le modele ne le charge donc pas de lui-meme ; l'appel direct reste entier.
+# TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
+# oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.3.0"
-  updated: "2026-09-02"
+  version: "2.4.0"
+  updated: "2026-09-19"
 ---
 
 # Prompt Analyzer L99
@@ -42,6 +42,13 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    lisibilité, et l'**oracle** qui les vérifie. Exiger « tri et filtres » sans nommer la règle a
    coûté un aller-retour humain complet le 02/09. L99 **cite** ces règles, il ne les exécute
    jamais.
+8. **Prémisse d'accès — mesurer avant de classer** (TF-1185) : si le prompt analysé désigne une
+   ressource que l'exécutant devra ouvrir (URL, dépôt, base, point d'API, chemin), l'accès se
+   **mesure** par l'appel le moins coûteux et en lecture seule **avant** d'être classé au Ch4 —
+   code de retour, horodatage, identité, contrôle positif, familles d'accès énumérées. *Un refus
+   prouve qu'une porte est fermée, jamais qu'il n'y en a qu'une.* Le Ch1 pose alors l'accès en
+   prérequis vérifié et le prompt réécrit (Ch8) ouvre par une « ÉTAPE 0 — prérequis d'accès ».
+   Détail et bornes : `references/couches.md`, Chapitre 4.
 
 ## Les 8 couches (vue d'ensemble)
 

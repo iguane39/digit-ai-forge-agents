@@ -47,15 +47,12 @@
     /* DECLARER SES ATTRIBUTS, jamais deviner ceux des autres : c'est tout le contrat. */
     var V = arbitrage();
     if (V) { MIENS.forEach(function (a) { V.register(a); }); }
-    /* UNE CARTE ACTIVE PAR TABLEAU, jamais une pour la page (TF-0970, 08/09/2026). L'etat etait
-       un `actif` unique, applique a TOUS les tableaux du perimetre avec l'attribut et la valeur
-       de la carte active : un clic sur « A corriger » du mapping (47 -> 3 lignes) vidait aussi
-       le tableau des 160 mesures, qui ne porte pas cet attribut, sans un mot au lecteur. Le
-       defaut restait invisible tant que tous les tableaux partageaient `data-statut`. Une carte
-       ne filtre desormais QUE le tableau qu'elle designe (`data-kpi-table`), et `init(document)`
-       est sur sur une page a plusieurs groupes de cartes. */
+    /* TF-0970 (08/09) — UNE CARTE ACTIVE PAR TABLEAU, jamais une pour la page. `actif` etait
+       unique : l'attribut et la valeur de la carte active s'appliquaient a TOUS les tableaux du
+       perimetre. Mesure sur une page livree : un clic sur une carte du mapping faisait passer les
+       mesures DAX de 160 lignes a 0, sans un mot. Une carte ne filtre QUE le tableau qu'elle
+       designe (data-kpi-table) ; init(document) redevient sur. */
     var actifs = {};
-    function tableDe(k) { return k.getAttribute('data-kpi-table') || ''; }
 
     function lignesDe(kpi) {
       var t = document.getElementById(kpi.getAttribute('data-kpi-table') || '');
@@ -67,12 +64,12 @@
 
     function appliquer() {
       kpis.forEach(function (k) {
-        k.setAttribute('aria-pressed', actifs[tableDe(k)] === k ? 'true' : 'false');
+        k.setAttribute('aria-pressed', actifs[k.getAttribute('data-kpi-table')] === k ? 'true' : 'false');
       });
       var vues = {};
-      kpis.forEach(function (k) { vues[tableDe(k)] = k; });
+      kpis.forEach(function (k) { vues[k.getAttribute('data-kpi-table')] = k; });
       Object.keys(vues).forEach(function (idTable) {
-        var actif = actifs[idTable] || null;       // la carte active de CE tableau, et elle seule
+        var actif = actifs[idTable] || null;
         lignesDe(vues[idTable]).forEach(function (tr) {
           var ok = !actif
             || tr.getAttribute('data-' + actif.getAttribute('data-kpi-attr'))
@@ -96,8 +93,8 @@
 
     kpis.forEach(function (k) {
       k.addEventListener('click', function () {
-        var id = tableDe(k);
-        actifs[id] = (actifs[id] === k) ? null : k;
+        var idTable = k.getAttribute('data-kpi-table');
+        actifs[idTable] = (actifs[idTable] === k) ? null : k;
         appliquer();
       });
     });

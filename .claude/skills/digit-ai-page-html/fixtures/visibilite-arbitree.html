@@ -174,7 +174,7 @@ window.addEventListener('load', function () {
 <!-- COMPOSANT-EMBARQUE:DEBUT kpi-filter.js — copie du socle digit-ai-page-html/assets/kpi-filter.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="kpi-filter.js" data-empreinte="sha256:ef5b3958c5663b716be217b7e877e9815e480b3c5c3ad2c4ae7cd02bc53f383a">
+<script data-composant="kpi-filter.js" data-empreinte="sha256:2e92c39793cfe1d19680e633402f9f8b0a8bb5af14ab5ed650453c5f1ce7f930">
 /* Digit-AI — KPI cliquables filtrant une liste (standard H3, delta n°6 — 14/08).
    Un KPI qui compte des éléments AFFICHÉS dans la page les filtre au clic ; re-clic = tout.
    Un KPI d'éléments hors page ne se branche PAS ici : il reste un div et dit où ils vivent.
@@ -224,15 +224,12 @@ window.addEventListener('load', function () {
     /* DECLARER SES ATTRIBUTS, jamais deviner ceux des autres : c'est tout le contrat. */
     var V = arbitrage();
     if (V) { MIENS.forEach(function (a) { V.register(a); }); }
-    /* UNE CARTE ACTIVE PAR TABLEAU, jamais une pour la page (TF-0970, 08/09/2026). L'etat etait
-       un `actif` unique, applique a TOUS les tableaux du perimetre avec l'attribut et la valeur
-       de la carte active : un clic sur « A corriger » du mapping (47 -> 3 lignes) vidait aussi
-       le tableau des 160 mesures, qui ne porte pas cet attribut, sans un mot au lecteur. Le
-       defaut restait invisible tant que tous les tableaux partageaient `data-statut`. Une carte
-       ne filtre desormais QUE le tableau qu'elle designe (`data-kpi-table`), et `init(document)`
-       est sur sur une page a plusieurs groupes de cartes. */
+    /* TF-0970 (08/09) — UNE CARTE ACTIVE PAR TABLEAU, jamais une pour la page. `actif` etait
+       unique : l'attribut et la valeur de la carte active s'appliquaient a TOUS les tableaux du
+       perimetre. Mesure sur une page livree : un clic sur une carte du mapping faisait passer les
+       mesures DAX de 160 lignes a 0, sans un mot. Une carte ne filtre QUE le tableau qu'elle
+       designe (data-kpi-table) ; init(document) redevient sur. */
     var actifs = {};
-    function tableDe(k) { return k.getAttribute('data-kpi-table') || ''; }
 
     function lignesDe(kpi) {
       var t = document.getElementById(kpi.getAttribute('data-kpi-table') || '');
@@ -244,12 +241,12 @@ window.addEventListener('load', function () {
 
     function appliquer() {
       kpis.forEach(function (k) {
-        k.setAttribute('aria-pressed', actifs[tableDe(k)] === k ? 'true' : 'false');
+        k.setAttribute('aria-pressed', actifs[k.getAttribute('data-kpi-table')] === k ? 'true' : 'false');
       });
       var vues = {};
-      kpis.forEach(function (k) { vues[tableDe(k)] = k; });
+      kpis.forEach(function (k) { vues[k.getAttribute('data-kpi-table')] = k; });
       Object.keys(vues).forEach(function (idTable) {
-        var actif = actifs[idTable] || null;       // la carte active de CE tableau, et elle seule
+        var actif = actifs[idTable] || null;
         lignesDe(vues[idTable]).forEach(function (tr) {
           var ok = !actif
             || tr.getAttribute('data-' + actif.getAttribute('data-kpi-attr'))
@@ -273,8 +270,8 @@ window.addEventListener('load', function () {
 
     kpis.forEach(function (k) {
       k.addEventListener('click', function () {
-        var id = tableDe(k);
-        actifs[id] = (actifs[id] === k) ? null : k;
+        var idTable = k.getAttribute('data-kpi-table');
+        actifs[idTable] = (actifs[idTable] === k) ? null : k;
         appliquer();
       });
     });
@@ -288,7 +285,7 @@ window.addEventListener('load', function () {
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="table-filters.js" data-empreinte="sha256:7720228fcc8649c1faa33c55954b17b65ffcb7f8dfdeda27833f7dcbd0dc076b">
+<script data-composant="table-filters.js" data-empreinte="sha256:9af4ae15d11d04634690232aa93e99aa8ab8c68545144f65f3386404a9cbacf9">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
@@ -705,6 +702,11 @@ window.addEventListener('load', function () {
         if (e.bouton && e.bouton.parentNode) e.bouton.parentNode.removeChild(e.bouton);
         var p = document.getElementById(e.bouton.getAttribute('aria-controls'));
         if (p && p.parentNode) p.parentNode.removeChild(p);
+        var th = e.col && e.col.th;
+        if (th) {
+          th.removeAttribute('data-tf-forme');
+          var u = th.querySelector('.tf-unique'); if (u) u.parentNode.removeChild(u);
+        }
       });
       etats.length = 0;
     }
@@ -738,6 +740,17 @@ window.addEventListener('load', function () {
           posThCalculee = (window.getComputedStyle(col.th).position || 'static');
         } catch (e) { posThCalculee = col.th.style.position || 'static'; }
         if (posThCalculee === 'static') col.th.style.position = 'relative';
+        /* TF-1052 (08/09) : la forme se publie AUSSI sur le `<th>`, la ou un oracle et un test
+           cherchent la colonne — posee sur le seul panneau, une sonde de l'en-tete lisait `null`
+           sur 9 colonnes sur 9. TF-1051 : une colonne a valeur UNIQUE le dit dans l'en-tete,
+           sans clic — un destinataire a lu vingt fois la meme chaine et conclu a une panne. */
+        col.th.setAttribute('data-tf-forme', col.forme);
+        if (col.forme === 'unique') {
+          var u = document.createElement('span');
+          u.className = 'tf-unique';
+          u.textContent = 'une seule valeur';
+          col.th.appendChild(u);
+        }
         col.th.appendChild(b);
         col.th.appendChild(ui.panneau);
         Array.prototype.forEach.call(ui.options.querySelectorAll('.tf-opt'), function (cb) {

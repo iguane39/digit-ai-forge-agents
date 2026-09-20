@@ -21,10 +21,16 @@
 //        La table est une DONNÉE et vit HORS de tout dépôt publié (loi transverse n° 4) :
 //        elle est résolue à l'exécution, jamais embarquée — un contrôle qui embarquerait la
 //        liste publierait exactement ce qu'il protège. Son ABSENCE rend SKIP, jamais PASS.
+//   C3 — le tableau de `references/presets-livrables.md` porte au moins 8 presets (TF-1155,
+//        17/09/2026 : ajout du preset « Publication réseau »), ce preset y figure nommément,
+//        et il porte une section de contrat de sortie détectable. Un preset ajouté sans son
+//        contrat de sortie, ou un compte de presets qui régresse sous le seuil, est un FAIL :
+//        c'est exactement le défaut qu'un preset « décoratif » (aucun critère vérifiable)
+//        laisserait passer sans bruit.
 //
-// DOUBLE SENS. C1 est rejoué sur une FIXTURE ROUGE synthétique (un SKILL.md temporaire qui
-// cite un fichier absent) : si la fixture rouge ne rougit pas, le contrôle est aveugle et le
-// self-test échoue de lui-même. La fixture VERTE est le skill réel.
+// DOUBLE SENS. C1 et C3 sont rejoués sur des FIXTURES ROUGES synthétiques : si une fixture
+// rouge ne rougit pas, le contrôle correspondant est aveugle et le self-test échoue de
+// lui-même. La fixture VERTE est le skill réel.
 //
 // Sortie : JSON {verdict, findings, non_juge} sur stdout. Exit 0 (PASS) / 1 (FAIL) / 2 (SKIP).
 // Usage : node scripts/self-test.mjs [--skill=<dir>] [--referentiel=<chemin table>]
@@ -114,6 +120,30 @@ function verifierChemins(dirSkill, texteSkillMd, etiquette) {
   return findings;
 }
 
+// ---------------------------------------------------------------- C3 : presets (TF-1155)
+// Compte les lignes de DONNÉES du tableau principal de presets-livrables.md (une ligne de
+// preset commence par « | ** » — le nom du livrable en gras, première colonne) et vérifie
+// que le preset « Publication réseau » y figure avec une section de contrat de sortie.
+const MIN_PRESETS_ATTENDU = 8;
+
+function compterLignesPresets(texte) {
+  return texte.split(/\r?\n/).filter((l) => /^\|\s*\*\*/.test(l)).length;
+}
+
+function verifierPresets(texte, etiquette) {
+  const findings = [];
+  const nb = compterLignesPresets(texte);
+  if (nb < MIN_PRESETS_ATTENDU) {
+    findings.push(`${etiquette} — ${nb} preset(s) dans le tableau, ${MIN_PRESETS_ATTENDU} attendus au minimum depuis TF-1155 (« Publication réseau »)`);
+  }
+  if (!/Publication réseau/.test(texte)) {
+    findings.push(`${etiquette} — preset « Publication réseau » absent du tableau`);
+  } else if (!/Contrat de sortie, binaire/.test(texte)) {
+    findings.push(`${etiquette} — preset « Publication réseau » sans section de contrat de sortie détectable (attendu : « Contrat de sortie, binaire »)`);
+  }
+  return findings;
+}
+
 // ---------------------------------------------------------------- C2 : noms interdits
 function chargerTable() {
   for (const p of PISTES_TABLE) {
@@ -184,6 +214,51 @@ try {
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* rien */ }
 }
 
+// C3 — fixture VERTE : le tableau réel de presets-livrables.md
+const presetsPath = path.join(SKILL_DIR, 'references', 'presets-livrables.md');
+let c3Jouee = false;
+if (!fs.existsSync(presetsPath)) {
+  nonJuge.push('C3 NON JOUÉE : references/presets-livrables.md introuvable.');
+} else {
+  c3Jouee = true;
+  findings.push(...verifierPresets(fs.readFileSync(presetsPath, 'utf8'), 'digit-ai-communication/references/presets-livrables.md'));
+
+  // C3 — fixture ROUGE 1 : compte de presets faux (sous le seuil, preset absent) DOIT rougir
+  const rougeCompte = [
+    '# Fixture rouge — compte faux', '',
+    '| Livrable | Objectif | Curseur E / L / P | Structure | Patterns prioritaires | Piège à éviter |',
+    '|---|---|---|---|---|---|',
+    '| **Propale** | x | 1/1/1 | x | x | x |',
+    '| **Conférence** | x | 1/1/1 | x | x | x |',
+    '| **Formation** | x | 1/1/1 | x | x | x |',
+  ].join('\n');
+  const frCompte = verifierPresets(rougeCompte, 'fixture-rouge-compte');
+  if (!frCompte.length) {
+    findings.push('fixture-rouge — C3 est AVEUGLE sur un compte de presets faux : 3 lignes n\'ont pas été détectées comme insuffisantes');
+  }
+
+  // C3 — fixture ROUGE 2 : 8 presets, dont « Publication réseau », mais SANS section de
+  // contrat de sortie — DOIT rougir spécifiquement sur ce manque, pas sur le compte.
+  const rougeContrat = [
+    '# Fixture rouge — preset sans contrat de sortie', '',
+    '| Livrable | Objectif | Curseur E / L / P | Structure | Patterns prioritaires | Piège à éviter |',
+    '|---|---|---|---|---|---|',
+    ...Array.from({ length: 7 }, (_, i) => `| **Livrable ${i}** | x | 1/1/1 | x | x | x |`),
+    '| **Publication réseau** | x | 1/1/1 | x | x | x |',
+    '',
+    '(aucune section de contrat de sortie plus bas dans ce fichier)',
+  ].join('\n');
+  const frContrat = verifierPresets(rougeContrat, 'fixture-rouge-contrat');
+  const attrapeContratManquant = frContrat.some((x) => x.includes('sans section de contrat de sortie'));
+  const neRougitPasSurLeCompte = !frContrat.some((x) => x.includes('preset(s) dans le tableau'));
+  if (!attrapeContratManquant) {
+    findings.push('fixture-rouge — C3 est AVEUGLE : un preset « Publication réseau » sans contrat de sortie n\'a pas été détecté');
+  }
+  if (!neRougitPasSurLeCompte) {
+    findings.push('fixture-rouge — C3 se trompe de motif : 8 presets présents, le FAIL doit porter sur le contrat de sortie, pas sur le compte');
+  }
+}
+
 // C2 — noms interdits
 const table = chargerTable();
 let c2Jouee = false;
@@ -217,14 +292,18 @@ if (!table) {
 }
 
 if (findings.length) verdict = 'FAIL';
-else if (!c2Jouee) verdict = 'SKIP';
+else if (!c2Jouee || !c3Jouee) verdict = 'SKIP';
 
 const code = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2;
 process.stdout.write(JSON.stringify({
   oracle: 'self-test-skill',
   skill: NOM_SKILL,
   artefact: SKILL_DIR.replace(/\\/g, '/'),
-  controles: { C1_liens_relatifs: 'jouée', C2_noms_interdits: c2Jouee ? 'jouée' : 'NON jouée (table absente)' },
+  controles: {
+    C1_liens_relatifs: 'jouée',
+    C2_noms_interdits: c2Jouee ? 'jouée' : 'NON jouée (table absente)',
+    C3_presets_reseau: c3Jouee ? 'jouée' : 'NON jouée (presets-livrables.md absent)',
+  },
   verdict,
   findings,
   non_juge: nonJuge,

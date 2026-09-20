@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digit-AI — Guide de lecture des indicateurs — 20260917a</title>
+<style>
+  :root { --bg: #FFFFFF; --texte: #0F172A; }
+  body { background: var(--bg); color: var(--texte); }
+</style>
+</head>
+<body>
+<!-- Fixture ROUGE de completude (TF-1174) : le defaut REEL du 16/09/2026 reproduit — un
+     `append` sorti de la boucle de regroupement de prose ne laisse que le DERNIER
+     paragraphe de chaque chapitre. La page reste parfaitement conforme : meme charte, meme
+     structure, meme sommaire, aucun debordement, aucune couleur en dur. Elle est vide.
+     Les six oracles de forme rendent PASS dessus. -->
+<header>
+  <h1>Guide de lecture des indicateurs</h1>
+  <nav aria-label="Sommaire">
+    <ul>
+      <li><a href="#montre">Ce que la page montre</a></li>
+      <li><a href="#lire">Comment lire un chapitre</a></li>
+      <li><a href="#limites">Ce que la page ne dit pas</a></li>
+    </ul>
+  </nav>
+</header>
+<main>
+<section id="montre">
+  <h2>Ce que la page montre</h2>
+  <p>Rien n'est calculé dans la page. Les valeurs arrivent du référentiel, la page les met en
+  forme et les explique ; toute correction se fait à la source, jamais dans le rendu.</p>
+</section>
+<section id="lire">
+  <h2>Comment lire un chapitre</h2>
+  <p>Un encadré « Exemple de lecture » suit chaque tableau. Il prend une ligne réelle et la lit
+  à voix haute, avec les mots du métier : c'est ce qui permet à un lecteur neuf de vérifier
+  qu'il comprend la même chose que l'équipe qui a construit le tableau.</p>
+</section>
+<section id="limites">
+  <h2>Ce que la page ne dit pas</h2>
+  <p>Enfin, elle ne dit rien de la qualité des données amont. Une valeur juste au regard de sa
+  formule peut reposer sur une saisie incomplète, et ce risque se traite dans la chaîne de
+  collecte, pas dans la restitution.</p>
+</section>
+</main>
+<footer><p>Page générée depuis le référentiel — version 20260917a.</p></footer>
+<script>
+  document.title = document.title;
+</script>
+</body>
+</html>

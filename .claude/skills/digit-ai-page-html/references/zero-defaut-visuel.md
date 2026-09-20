@@ -18,20 +18,20 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | V1 | Texte ou élément qui sort de son cadre / de la page | Aucun débordement horizontal du document ; aucun contenu hors de la zone de son conteneur | **Mesuré** — `render_page.py` (scrollWidth vs clientWidth, bounding boxes vs viewport) |
 | V2 | Texte illisible — clair sur fond clair, sombre sur sombre | Ratio de contraste **≥ 4.5:1** (WCAG AA) pour le texte courant ; ≥ 3:1 pour le texte large (≥ 24px, ou ≥ 18.66px gras) | **Mesuré** — `render_page.py` (couleur effective vs fond effectif, formule WCAG) |
 | V3 | Éléments non alignés | Les éléments frères d'un même groupe partagent leur bord d'alignement (écart ≤ 2px) | **Mesuré (avertissement)** — `render_page.py` ; l'arbitrage final reste visuel (un décalage peut être voulu) |
-| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok` |
+| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok="<id de l'élément recouvert>"` — une **paire**, pas un interrupteur (TF-1146). La forme nue exempte encore l'élément entier, mais elle est **recensée** (famille `overlap_en_bloc`, avertissement) |
 | V5 | Flèches ou filets qui croisent un élément | Aucun connecteur à travers un nœud ou un texte ; routage en L pur (règle `digit-ai-schemas`) | **Visuel** — rendu + inspection (boucle render-view-fix) |
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
-| **V9** | **Actif visuel indiscernable de son fond** | Aucun `<img>` ni `<svg>` visible dont AUCUN pixel n'atteint **1,2:1** de contraste contre le fond effectivement peint derrière lui | **Mesuré (bloquant)** — `render_page.py` ; capture de l'élément et mesure au pixel, jamais sur le fichier source. Nomme le meilleur ratio atteint et la couleur dominante de l'actif |
+| **V9** | **Actif visuel indiscernable de son fond** | Aucun `<img>` ni `<svg>` visible dont AUCUN pixel n'atteint **1,2:1** de contraste contre le fond effectivement peint derrière lui ; ni dont la surface **dominante** (≥ 70 % des pixels opaques) est sous 1,2:1 alors que son meilleur contraste plafonne sous **3:1** — l'accent minoritaire ne sauve pas (TF-1087) | **Mesuré (bloquant)** — `render_page.py` ; capture de l'élément et mesure au pixel, jamais sur le fichier source. Nomme le meilleur ratio atteint, la part et le ratio de la surface dominante |
 | **V10** | **Verdict rendu sur un cadre qui ne contient pas le défaut** | Tout verdict visuel PORTANT SUR UNE PAGE s'appuie sur **au moins une capture pleine page**, et la revue **nomme ses captures avec leurs dimensions** | **Mesuré (bloquant)** — `oracle-verdict-visuel.mjs` du pilot (W1–W4) ; les captures par fenêtre jugent la ligne de flottaison et le défilement, **jamais la page** |
 | **V11** | **Contrôles d'une même rangée désalignés** | Les contrôles (`input`, `select`, `textarea`, `button`) d'une même rangée de grille partagent leur bord haut à **2 px près** | **Mesuré (bloquant)** — `render_page.py` ; écart voulu déclaré par `data-alignement-ok`. Cause la plus fréquente, et nommée dans le message : une étiquette qui passe sur deux lignes parce qu'elle porte son statut dans son libellé |
 | **V12** | **Tableau rogné dans un conteneur défilant** | À partir de **1 280 px** de fenêtre, aucun conteneur `overflow-x: auto\|scroll` portant un `<table>` ne rogne son contenu | **Mesuré (bloquant)** — `render_page.py` ; nomme les pixels hors champ. Un conteneur qui défile rend un tableau *consultable*, pas *lisible* — écart assumé déclaré par `data-rognage-assume`, jamais classé « acceptable » en revue |
 | **V13** | **Bloc de texte étriqué sur une page de données** | Sur une page `data-page="donnees"`, tout bloc de texte occupe **≥ 70 %** de la largeur que son conteneur lui offre | **Mesuré (bloquant)** — `render_page.py` ; colonne de lecture voulue déclarée par `data-mesure-lecture`. Complète L2, qui ne regarde que six sélecteurs et manquait `.chapo` |
-| **V14** | **Sommaire perdu au défilement** | Une page de plus de trois chapitres et de plus de deux écrans garde son sommaire **dans la fenêtre** après défilement | **Mesuré (bloquant)** — `render_page.py` (mesure aux 60 % de la page) ; l'existence du sommaire est jugée en amont par `L25` de `check_html.py` |
+| **V14** | **Sommaire perdu au défilement** | Une page de plus de trois chapitres et de plus de deux écrans garde **au moins une** de ses navigations **dans la fenêtre** après défilement | **Mesuré (bloquant)** — `render_page.py` (mesure aux 60 % de la page) ; l'existence du sommaire est jugée en amont par `L25` de `check_html.py`. **TF-1145** : la famille collecte **tous** les navs candidats, plus le premier du document — elle lisait le même que `L6`, à qui elle demandait l'inverse (des annonces de douze caractères contre une barre qui tient dans la fenêtre), et rendait bloquant aux six largeurs sur une page dont la barre restait mesurée en fenêtre après 20 000 px de défilement. Une barre en titres seuls et un sommaire annoté ne s'excluent pas : il suffit qu'**une** tienne |
 | **V15** | **En-tête de tableau posé sur ses lignes** | Au repos, aucun `<th>` de `<thead>` ne recouvre une ligne du corps (2 px de tolérance) ; après défilement, un `<th>` `sticky` se tient à son `top` déclaré (4 px) tant que le corps du tableau est à l'écran | **Mesuré** — `render_page.py`, après défilement : **bloquant** pour le recouvrement au repos, **avertissement** pour le décollement (la cause est nommée, le geste appartient à la page). Complément statique : `L29` de `check_html.py` signale un script qui pose `style.position` **sans garde** alors que la feuille déclare un `<th>` collant |
 | **V16** | **Deux états indiscernables l'un de l'autre** | Dans un jeu d'au moins **trois** badges d'une même classe de base portant au moins trois fonds distincts, aucune paire de fonds n'est à la fois sous **20** d'écart de couleur (Delta-E CIE76) **et** sous **0,25** d'écart de luminance relative | **Mesuré (bloquant)** — `render_page.py` ; nomme les deux libellés, les deux fonds et les deux écarts. Un jeu d'états exige en outre un **indice non colorimétrique** (WCAG 1.4.1) : la sonde le signale quand deux badges indiscernables portent le **même** libellé — la couleur est alors le seul porteur |
 | **V17** | **Conteneur bridé sur une page de données** | Sur une page `data-page="donnees"`, à partir de **1 280 px** de fenêtre, le conteneur principal (`.wrap`, `main`, ou l'élément porteur de `data-page`) occupe **≥ 96 %** de la largeur de la fenêtre | **Mesuré (bloquant)** — `render_page.py` ; nomme la largeur mesurée, celle de la fenêtre et le `max-width` calculé. Troisième angle de la page de données : V12 juge le tableau dans sa boîte, V13 le bloc dans son conteneur, V17 le conteneur dans la fenêtre — un plafond de confort (`--w: clamp(75vw, 1680px, 92vw)`) rendait PASS aux deux premiers |
-| **V18** | **Ce que le 4K montre et que 1920 taisait** | À partir de **2 560 px** de fenêtre, **(a)** aucun paragraphe de prose que rien ne tient ne dépasse **100 caractères par ligne** (mesure : caractères du bloc ÷ lignes réellement peintes, `Range.getClientRects`) ; **(b)** sur une page de données (`data-page="donnees"`, `data-restitution="registre|suivi"`, ou tableau dominant d'au moins 8 lignes et 4 colonnes), le tableau principal occupe **≥ 85 %** de la largeur que son conteneur lui offre (L26) | **Mesuré (bloquant)** — `render_page.py`, **uniquement aux largeurs ≥ 2 560 px** : les deux défauts n'existent pas en deçà, et la grille par défaut les couvre (3840, 2560, 1920, 1280, 768, 390). Règle amont : **E5** du pilot (`references/BEST-PRACTICES-HTML.md` § E, 12/09/2026) — une page se conçoit à 1920 et se vérifie jusqu'à 3840. **Frontière déclarée** : un paragraphe TENU par un conteneur de lecture (`.lire`, `[data-mesure-lecture]`) n'est jamais bloqué — le token `.chap.lire` du socle (1 080 px, E4) mesure **134** caractères par ligne en 16 px, et condamner la forme qu'un gabarit prescrit met le gabarit en défaut, jamais l'auteur. Sa mesure est publiée en **non mesurable** pour que l'arbitrage (resserrer `.chap.lire`, ou porter le plafond à 135) se fasse sur un chiffre |
+| **V18** | **Ce que le 4K montre et que 1920 taisait** | À partir de **2 560 px** de fenêtre, **(a)** aucun paragraphe de prose que rien ne tient ne dépasse **135 caractères par ligne** (mesure : caractères du bloc ÷ lignes réellement peintes, `Range.getClientRects`) ; **(b)** sur une page de données (`data-page="donnees"`, `data-restitution="registre|suivi"`, ou tableau dominant d'au moins 8 lignes et 4 colonnes), le tableau principal occupe **≥ 85 %** de la largeur que son conteneur lui offre (L26) | **Mesuré (bloquant)** — `render_page.py`, **uniquement aux largeurs ≥ 2 560 px** : les deux défauts n'existent pas en deçà, et la grille par défaut les couvre (3840, 2560, 1920, 1280, 768, 390). Règle amont : **E5** du pilot (`references/BEST-PRACTICES-HTML.md` § E, 12/09/2026) — une page se conçoit à 1920 et se vérifie jusqu'à 3840. **Arbitrage tranché** (décision humaine du 15/09/2026, « 13a », TF-1069) : le plafond posé le 12/09 était 100 caractères par ligne, sous le token `.chap.lire` du socle (1 080 px, E4), mesuré à **134** caractères par ligne en 16 px — condamner la forme qu'un gabarit prescrit mettait le gabarit en défaut, jamais l'auteur. L'étude d'opportunité du 14/09 (TF-1069) a arbitré entre resserrer `.chap.lire` et porter le plafond à 135 ; la décision retient la seconde option, la moins destructrice pour l'existant : `.chap.lire` reste à 1 080 px, son token (134 cpl) passe désormais SOUS le plafond. **Frontière restante** : un paragraphe TENU par un conteneur de lecture (`.lire`, `[data-mesure-lecture]`) plus large que ce token reste, lui, jamais bloqué même au-delà de 135 — sa mesure est publiée en **non mesurable**, la même frontière qu'avant l'arbitrage |
 | **V15 ter** | **En-tête de tableau masqué par l'empilement des collants** | Après défilement, un `<th>` `sticky` se pose au **bas du dernier élément collant qui le surplombe**, à 4 px près | **Mesuré (bloquant)** — `render_page.py` ; nomme l'élément coupable et les pixels masqués. Troisième branche de V15 : l'en-tête se tient à son `top` déclaré (les deux autres branches rendent PASS) et reste illisible, parce que `--hh` est un **token** et non une mesure. Jugé à chaque largeur — c'est la largeur qui décide du nombre de lignes de l'en-tête |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
 
@@ -54,6 +54,78 @@ aucune valeur sur ce cas — le défaut de portée exact que décrit la règle N
 accuserait tout aplat décoratif se ferait éteindre. V9 ne juge donc que l'**indiscernable** : aucun
 pixel n'atteint 1,2 de contraste. À ce niveau il n'y a plus de jugement à rendre — l'actif n'est pas
 là. Ce qui vit **entre 1,2 et 3,0 est déclaré non jugé**, jamais tu.
+
+*V9 ne bloque plus sous `--scale 1` (TF-1143, 16/09/2026).* Même fichier, même largeur de
+fenêtre : `--scale 1` rendait PASS et `--scale 0.5` rendait FAIL, avec un bloquant V9 à 1,10:1 sur
+un SVG mesuré à 18,1:1 à l'échelle native (chiffres du lot). L'option est pourtant documentée
+comme un réglage de **performance** — « 0.4 sur une page très haute, moins de pixels à encoder » —
+et c'est pour cela qu'elle avait été employée. **Contre-mesure du socle**, page inchangée à
+1280 px, capture de l'actif et meilleur contraste : **17,85:1** à l'échelle 1, **10,85:1** à 0,5,
+**6,39:1** à 0,4, **3,66:1** à 0,25. Le contraste mesuré perd un facteur cinq sans qu'un pixel de
+la page ait bougé : sous l'échelle 1, ce que V9 lit est la rastérisation, pas le livrable.
+
+**Règle.** À l'échelle 1 et au-dessus — dont l'échelle 2 par défaut — V9 est inchangée, seuil
+compris. **Sous** l'échelle 1, elle ne rend plus de bloquant : le constat part au **non jugé**
+avec sa raison, et la sortie dit que la capture a été réduite. Ne pas lire un PASS obtenu à
+`--scale 0.4` comme un contraste d'actif vérifié — rejouer à `--scale 1`. Le coût de l'ancien
+comportement était direct : le premier réflexe devant un bloquant V9 est de foncer la charte du
+livrable, et ce geste aurait dégradé huit schémas pour satisfaire un artefact.
+
+**Banc** (`self_test.py`, `run_v9_echelles`) : la fixture conforme est rejouée à **chacune des
+échelles documentées** (1 / 0,5 / 0,4) et ne rend aucun bloquant ; la fixture vraiment invisible
+bloque toujours à l'échelle 1 — la garde n'a pas éteint V9 — et part au non jugé en dessous.
+
+*Un accent minoritaire ne sauve plus un actif à 90 % invisible (TF-1087, 17/09/2026).* V9 retenait
+le **meilleur pixel** de l'actif. Le livrable E-06 du banc des défauts échappés — un fichier de
+variante blanche portant le contenu de la variante couleur — passait donc, posé sur un bandeau de
+sa propre couleur dominante : 90 % de sa surface à 1,00:1, et un accent de marque à 2,16:1, assez
+pour franchir le seuil de 1,2. Le témoin monocolore, lui, échouait : la règle ne marchait que sur
+l'actif d'une seule couleur.
+
+*Pourquoi juger la dominance ne suffisait pas, et la mesure qui le dit.* Le geste écrit le
+14/09 — « juger la couleur dominante ou un contraste pondéré par la surface » — avait été retiré.
+Mesure du 17/09/2026, capture Playwright à 1280 px, échelle 1 :
+
+| Actif | Meilleur | Part dominante | Pondéré par surface | Part ≥ 1,2 |
+|---|---|---|---|---|
+| Logo monocolore sur son fond (témoin rouge) | 1,00 | 99,4 % | 1,00 | 0,0 % |
+| Logo bicolore 90/10 sur son fond (E-06) | 2,16 | 90,0 % | 1,12 | 10,0 % |
+| Logo blanc sur bandeau sombre (témoin vert) | 10,85 | 73,5 % | 3,09 | 25,7 % |
+| Dessin au trait du gabarit multi-bandes | 9,12 | 86,7 % | 1,02 | 3,2 % |
+
+Le dessin au trait **conforme** est plus dominant et moins contrasté en surface que le logo
+**défectueux** : aucun seuil de surface ne les sépare, et c'est mécanique — un dessin au trait est
+fait de fond et de traits. Ce qui les sépare est le **niveau** du contraste qui dépasse.
+
+**Règle ajoutée.** Un actif dont la surface dominante couvre **≥ 70 %** des pixels opaques à moins
+de 1,2:1, et dont le meilleur contraste reste **sous 3:1** (WCAG 2.2 SC 1.4.11), est signalé
+« sauvé par un accent minoritaire ». La règle historique est inchangée et bloque toujours seule :
+la clause neuve n'ajoute de constat que dans la bande **[1,2 ; 3,0[**. Bruit mesuré avant mise en
+service, sur les six gabarits de `digit-ai-schemas` et son exemple de référence : **zéro constat**.
+
+*Un bandeau collant n'est pas le fond de ce qu'il recouvre (TF-1192, 17/09/2026).* `render_page.py
+--etats-ouverts` rendait FAIL à 3 840 et 2 560 px sur le premier schéma d'un guide — « actif
+INDISCERNABLE de son fond, meilleur contraste 1,00:1 sur 39 494 pixels opaques » — et PASS aux
+cinq autres largeurs. Le schéma n'était pas blanc : boîtes teintées, traits et textes contrastés.
+La recherche remplie par `--etats-ouverts` faisait défiler la page jusqu'à son premier résultat, et
+le bandeau `position: sticky` se retrouvait peint **à la hauteur du schéma** ; `el.screenshot()`
+capture la région de l'écran où vit l'élément, donc le bandeau. Le verdict dépendait de la position
+d'un résultat de recherche, pas de l'actif jugé — vrai sur l'image, faux sur la page.
+
+**Règle.** Les éléments `position: sticky | fixed` qui ne sont **ni un ancêtre ni un descendant**
+de l'actif sont rendus invisibles **le temps de sa capture**, puis restaurés à l'identique
+(`visibility: hidden` : la boîte garde sa place, aucune mise en page ne bouge). Un actif **posé
+dans** un bandeau collant garde le sien — c'est bien son fond, et c'est le cas fondateur de V9.
+La neutralisation est déclarée au `non_juge` de chaque exécution. Mesure avant / après sur la
+fixture `v9-schema-sous-bandeau-collant.html`, à 1 440 px : **1 constat à 1,06:1, puis 0** ; sur
+`v9-schema-indiscernable-sous-bandeau-collant.html`, le même fichier à la couleur du dessin près :
+**1 constat à 1,00:1 avant comme après**. Les six cas de la clause de surface dominante restent
+verts.
+
+**Banc** (`self_test.py`, `run_v9_surface_dominante`) : le logo bicolore rend un constat et son
+motif est celui de la clause neuve ; le témoin monocolore rend un constat sur la règle historique ;
+le témoin blanc reste vert ; le dessin au trait **et le gabarit réel `template-multi-bandes.html`**
+restent verts — ce sont eux qui interdisent de rouvrir la régression du 14/09.
 
 ### V8 mérite son paragraphe : c'est le seul défaut qu'un oracle VISUEL ne peut pas voir
 
@@ -171,25 +243,6 @@ correctif**.
 Bruit mesuré avant mise en bloquant : **0 constat** sur les 159 documents HTML du skill, hors
 les deux fixtures rouges qui le portent par construction.
 
-**La branche c distingue ses causes, sans se désarmer (TF-0968, TF-0973, 08/09/2026).** Le recul
-d'avant, `min(400, hauteur - 250)`, laissait **toujours** 250 px de tableau en vue ; un `sticky`
-étant borné par son bloc conteneur, un en-tête de 41 px ne dépassait pas 209 px, et une bande de
-sommaire descendant à 219 le « masquait » de 10-11 px — trois faux bloquants sur des tableaux de
-370 à 585 px, les mêmes sur une page déjà livrée. Le recul place désormais le tableau en position
-de **lecture** (au plus un tiers de sa hauteur), et le verdict se partage en trois signatures :
-
-- **recouvert alors qu'il pouvait atteindre son `top`** — la fin du tableau laissait la place :
-  `entete_masque_par_collants`, **bloquant**, inchangé (`l29q-empilement-token.html`) ;
-- **bridé par la fin de son propre tableau** — comportement prescrit d'un `sticky` :
-  `entete_bride_par_tableau`, **information**, jamais bloquant (`v15-tableau-bride-par-sa-fin.html` :
-  3 bloquants avant, 0 après, 1 information) ;
-- **bridé au-dessus d'un tableau SANS LIGNE visible** — le cas du 08/09, 276 lignes annoncées et
-  0 rendue par un filtre en amont, qu'aucune autre sonde n'avait vu : `entete_tableau_vide`,
-  **bloquant** (`v15-tableau-vide.html`).
-
-Aucun constat n'est ajouté : l'ancien bloquant se partage, et une règle qui sépare ses causes
-dans son texte ne s'apprend pas à ignorer.
-
 ### V16 — le défaut vit ENTRE deux mesures, pas dans une mesure (TF-0910, 08/09/2026)
 
 Les cinq teintes d'état du socle — `--green-fill` #DCFCE7, `--teal-fill`, `--amber-fill`
@@ -230,6 +283,73 @@ jugées à cette largeur. Levier connu quand la capture ne passe pas : `--timeou
 navigateur). Preuve à double sens dans `self_test.py` (`run_capture_manquee`) : la même page
 jouée au délai normal puis à **1 ms**, et le banc exige qu'aucun traceback ne sorte et que le
 verdict soit rendu dans les deux cas.
+
+### Seuil de hauteur : au-delà, la page n'est plus jugeable visuellement (TF-1139, 15/09/2026)
+
+**Le seuil est `50 000 px` de `scrollHeight` CSS**, mesuré **avant** toute tentative de capture,
+à chaque largeur. Au-delà, `render_page.py` ne tente rien et rend immédiatement un constat nommé
+et chiffré — « page trop haute pour etre jugee visuellement a `<largeur>` px : `N` px de haut,
+seuil `M` px ». Les familles lues au DOM (V1, V2, V4, V3, V7, L2, V18) restent jugées et comptent
+dans le verdict ; V5 et V6 sont déclarées non jugées. Le seuil employé et la hauteur mesurée
+sortent dans le bloc `non jugé` **à chaque exécution**, seuil atteint ou non : un auteur doit
+pouvoir lire la marge qui lui reste, pas la découvrir.
+
+**Le geste de remède est de DÉCOUPER la page** — un document par chapitre ou par vue. Ce n'est
+pas un réglage d'échelle : sur le cas fondateur, six échelles ont été essayées (0,4 / 0,35 / 0,3
+/ 0,25 / 0,2 / 0,12) et aucune n'a produit d'image. `--hauteur-max` déplace la borne pour tenter
+quand même, et la valeur employée est publiée.
+
+**Le fait payé.** Page de référence de 15 228 mots. Hauteurs relevées par l'oracle lui-même :
+**54 793 px** à 2560 px de large, **62 127** à 1280, **98 079** à 768, **123 822** à 390. Quatre
+exécutions successives, six échelles, délais de 45 s à 300 s : **aucune n'a produit d'image**, et
+**deux ont tourné plus de trente minutes** avant d'être arrêtées à la main — pour un verdict
+d'image jamais rendu. L'oracle se comportait honnêtement ; ce qui manquait était la borne, et
+qu'elle soit publiée.
+
+**Où le seuil est posé, et sur quelles mesures.** Sous le plus bas **échec** mesuré (54 793 px)
+et au-dessus du plus haut **succès** mesuré (22 740 px CSS — la capture 780 × 45 480 de TF-1131,
+à 390 px et échelle 2). Entre 22 740 et 50 000 px, aucune mesure : la tentative a donc bien lieu,
+délibérément — un seuil posé trop bas retirerait la capture à des pages qui l'obtiennent.
+
+**Preuve à double sens** dans `self_test.py` (`run_capture_tuiles`) : `capture-page-au-dela-du-seuil.html`
+(60 210 px à 1280) rend le constat **sans tenter**, et `capture-page-tres-haute.html` (12 381 px)
+reste capturée avec ses tuiles. Le banc mesure aussi la **durée** — c'est elle, pas le message,
+qui prouve qu'aucune tentative n'a eu lieu : **2,4 s** contre les dizaines de minutes payées.
+
+### `data-overlap-ok` est une PAIRE DÉCLARÉE, plus un interrupteur (TF-1146, 16/09/2026)
+
+**Le fait payé.** Dans le schéma des trois couches, le libellé de flèche « expose ses sorties à »
+était imprimé **à l'intérieur de la boîte voisine**, sous son sous-titre : un lecteur y lisait une
+troisième ligne de légende de la couche, pas le sens d'une flèche. Le défaut a traversé **deux
+livraisons** et quatre exécutions des trois oracles, et a été trouvé **en regardant une capture**.
+
+**Aucun contrôle ne pouvait le voir.** V1 ne voit rien — le texte est dans le cadre du SVG. V2 ne
+voit rien — le texte est lisible, c'est sa *place* qui est fausse. L1 ne voit rien — c'est du
+texte SVG, hors du modèle de prose. Et V4 ne voyait rien parce que le `<text>` portait
+`data-overlap-ok` et était exempté **en bloc**.
+
+**L'invariant mesuré n'était pas le bon.** V4 mesure « deux rectangles se recouvrent », grandeur
+*corrélée* ; l'invariant est « un libellé appartient à l'élément qu'il annote ». Tant que la
+corrélation tient, V4 a raison ; le jour où un libellé change d'élément **sans changer de
+géométrie**, elle est muette. L'exemption reste indispensable — un libellé posé sur sa boîte la
+recouvre par construction, et sans elle V4 crierait sur chaque boîte de chaque schéma — mais elle
+s'appliquait à l'**élément**, donc elle couvrait aussi le recouvrement *non voulu*.
+
+**La forme.** `data-overlap-ok="<id de l'élément recouvert>"`, plusieurs identifiants séparés par
+des espaces. Un recouvrement avec un **autre** élément que ceux déclarés redevient un constat.
+Coût : un attribut à renseigner là où le schéma le pose déjà.
+
+**La forme nue continue d'exempter, et n'est plus silencieuse.** **1 716 occurrences** de
+`data-overlap-ok=""` mesurées le 16/09 dans dix pages HTML de deux dépôts du parc : les rendre
+bloquantes d'un coup rougirait tout ce qui existe. Elles sont donc **recensées** — famille
+`overlap_en_bloc`, **avertissement**, une ligne agrégée par page qui donne le compte, trois
+exemples et le geste de migration. Une exemption qui ne se voit pas est un angle mort qui ne se
+corrige jamais.
+
+**Preuve à double sens** : `v4-libelle-dans-la-boite-voisine.html` (paire déclarée, libellé dans
+l'autre boîte → **constat**, mesure avant / après : **0 puis 1**), `v4-libelle-sur-sa-boite.html`
+(même fichier, une coordonnée près → **aucun constat** : apparier n'a pas rendu l'exemption
+inopérante), `v4-exemption-en-bloc-recensee.html` (forme nue → toujours exemptée, **recensée**).
 
 ### V11 à V14 : quatre angles morts nommés par un lecteur, pas par un oracle (02/09/2026)
 
@@ -272,6 +392,8 @@ manquant.
    conforme à l'arbitrage à charge de `la-boucle`.
 2. **Corriger à la source, jamais masquer** : un contraste insuffisant se corrige dans les tokens
    `:root`, pas par une ombre portée ; un chevauchement se corrige dans la géométrie, pas en
-   déclarant `data-overlap-ok` (réservé aux superpositions par construction : badges, rubans).
+   déclarant `data-overlap-ok` (réservé aux superpositions par construction : badges, rubans,
+   libellé posé sur sa propre boîte de schéma). **Cette exemption est une PAIRE, pas un
+   interrupteur** — voir ci-dessous.
 3. **Cette liste s'étend ici et seulement ici.** Un nouveau défaut récurrent constaté sur un
    livrable = une ligne V8+ ajoutée dans ce fichier, jamais une règle locale dans un autre skill.

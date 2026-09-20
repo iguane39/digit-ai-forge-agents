@@ -19,9 +19,15 @@ de la loi qualité et la porte P1 (« un oracle qui ne sait pas échouer n'est p
 ## Commande
 
 ```bash
-node scripts/scaffold-oracle.mjs --nom mon-domaine --domaine "Libellé du domaine" \
-  --ext ".md,.html" --skilldir ~/.claude/skills/quality-oracles
+node scripts/scaffold-oracle.mjs --nom mon-domaine --domaine "Libellé du domaine" --ext ".md,.html"
 ```
+
+**Où cela s'écrit, et nulle part ailleurs.** Sans `--skilldir`, le scaffolder vise la **source
+versionnée** voisine — `digit-ai-forge-agents/.claude/skills/quality-oracles`. Viser la copie
+installée sous `~/.claude/skills/` est **refusé** (exit 2, aucune écriture, la source nommée dans
+le message) : la propagation d'ouverture de session recopie le versionné par-dessus l'installé, et
+une remontée §4 écrite dans la copie disparaît à la session suivante sans un mot. C'est arrivé le
+10/09/2026 à un oracle complet, ses huit règles et ses fixtures (TF-1006).
 
 Produit, en une commande, dans le skill `quality-oracles` visé :
 1. `scripts/oracle-<nom>.mjs` — squelette CLI : contrat JSON commun pré-câblé, exit 0/1/2,
@@ -33,8 +39,10 @@ Produit, en une commande, dans le skill `quality-oracles` visé :
    et l'entrée de **manifest** (`quality-oracles/fixtures/manifest.json`) — sauvegardes `.bak`
    des deux fichiers modifiés.
 
-Refus sûrs : oracle déjà existant, domaine déjà au registre, skilldir sans registre → exit 2,
-aucune modification partielle.
+Refus sûrs : oracle déjà existant, domaine déjà au registre, skilldir sans registre, **skilldir
+sous la copie installée** → exit 2, aucune modification partielle. Les quatre sont éprouvés par
+`scripts/self-test.mjs`, rejoué par le self-test de `quality-oracles` — dont le cas qui exécute la
+commande de rattrapage que le refus propose, et vérifie qu'elle passe.
 
 ## Après le scaffold — durcissement (l'essentiel du travail)
 1. Remplacer le contrôle-marqueur par les **vrais contrôles** du domaine : déterministes,

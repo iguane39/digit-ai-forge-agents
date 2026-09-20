@@ -15,19 +15,20 @@ metadata:
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
 
-**1.22.0 (14/09/2026)** — **quatre items, et une seule leçon : un contrôle qui accuse à tort
-s'apprend à ignorer, donc on le corrige sans le désarmer.** · **L30 cherche ses termes sur
-frontière de mot** (TF-0969) : « gate » était trouvé dans `aggregate_type` ; mesuré sur 1 022 pages
-HTML suivies du parc, 135 accusations avant, 12 après, et les 123 retirées étaient toutes des
-sous-chaînes. · **V15 mesure l'en-tête en position de LECTURE** (TF-0968, TF-0973) : son recul
-laissait toujours 250 px de tableau en vue, d'où trois faux bloquants par arithmétique ; sa
-troisième branche dit maintenant laquelle de ses trois causes elle a vue — recouvert (bloquant),
-bridé par la fin de son propre tableau (information), tableau sans ligne visible (bloquant). Sur
-82 pages consommatrices, 3 bloquants avant, 3 après. · **Une carte filtrante ne filtre que le
-tableau qu'elle désigne** (TF-0970) : l'état actif se tient par tableau ; avant, un clic sur le
-mapping vidait le tableau des mesures. · **`contenu_rogne` n'accuse plus un champ de saisie**
-(TF-0847) : sa valeur défile, elle n'est pas perdue ; une carte figée reste accusée. Fixtures à
-double sens pour chacun ; recette 264 → 276 cas.
+**1.22.0 (14/09/2026)** — **le socle cesse d'accuser ce qu'il impose, et ses composants disent ce
+qu'ils font.** · Trois règles de `check_html` jugeaient le mauvais objet : A5 comptait les polices
+embarquées que A1 exige (TF-0984), la police Syne se cherchait dans le texte au lieu des
+déclarations (TF-1049), L30 trouvait « gate » dans `aggregate_type` (TF-0969). · Deux règles de
+STRUCTURE naissent : **S2** refuse un même ensemble énuméré deux fois, en tableau et en fiches
+(TF-1036), **S3** exige qu'une colonne déclarée relevée porte sa source par ligne et que la page
+cite son garde-fou (TF-1053). · `render_page` sépare l'en-tête bridé par la fin de son tableau
+(informatif) de l'en-tête recouvert (bloquant), sans désarmer le tableau vide (TF-0968, TF-0973,
+TF-1060), laisse survoler une barre collante opaque (TF-1061) et n'accuse plus un champ de saisie
+(TF-0847). · Les composants : une carte ne filtre que son tableau (TF-0970), une colonne à valeur
+unique le dit dans son en-tête et sa forme se lit sur le `<th>` (TF-1051, TF-1052), plus aucune
+balise fermante en clair dans un asset inlinable (TF-1062), zéro couleur en dur, espacement hors
+échelle ou focus improvisé dans les feuilles des composants (TF-1059). **Version MINEURE** : jouée
+contre 301 pages des dépôts consommateurs, **zéro accusation nouvelle**, six faux positifs retirés.
 
 **1.20.0 (08/09/2026, soir)** — **six items d'une seconde campagne, et une seule leçon : ce que
 personne ne RENDAIT, personne ne le mesurait.** · **Deux gabarits du parc échouaient aux quatre
@@ -442,7 +443,7 @@ Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de l
 qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'une grille —
 la mesure de lecture se règle sur le conteneur, pas sur le paragraphe),
 **V1** (débordement horizontal), **V2** (contraste WCAG AA : ≥ 4.5:1,
-≥ 3:1 en texte large) et **V4** (chevauchements — superposition voulue = `data-overlap-ok`),
+≥ 3:1 en texte large) et **V4** (chevauchements — superposition voulue = `data-overlap-ok="<id de l'élément recouvert>"`, une **paire** et non un interrupteur depuis TF-1146 ; la forme nue exempte encore mais elle est recensée),
 signale **L2-frères** (TF-0491), **V3** et **V7** en avertissements — L2-frères compare la
 largeur d'un bloc de texte à celle de son **frère empilé** : trois mesures L2 ne voyaient que
 le rapport d'un bloc à son propre conteneur, et une prose bornée ET CENTRÉE au-dessus de
@@ -479,15 +480,107 @@ trois oracles précédents validaient — chacune a sa fixture rouge.
 Ce qui suppose de LIRE (clarté du propos, pertinence, justesse d'un chapeau) n'est pas
 mécanisé : c'est la **revue de lecture — OBLIGATOIRE avant toute livraison (TF-0422)**.
 Capturer (`render_page.py`, 3840/2560/1920/1280/768/390 + `--sections`), **ouvrir et lire** les
-captures, consigner chaque constat dans `REVUE.md` au gabarit
+captures — au-delà de 4:1, les **tuiles d'un écran** que le script produit d'office, jamais la
+seule capture pleine page, illisible une fois réduite (TF-1131) —, consigner chaque constat dans `REVUE.md` au gabarit
 [references/gabarit-revue-de-lecture.md](references/gabarit-revue-de-lecture.md) (largeur ·
 section · constat · suite · preuve) ou la mention « aucun constat » datée. Une page verte à
 tous les oracles a été refusée par son client à l'ouverture : les oracles mesurent des
 propriétés locales, la revue regarde la page comme un lecteur. Règles, conventions de
 marquage et partage mécanique / revue : [references/lisibilite.md](references/lisibilite.md).
 
+**Le socle le dit lui-même désormais (TF-1148, 16/09/2026).** Cette étape était déclarée
+obligatoire ici et vérifiée par le seul `run-oracles` : pour un produit qui consomme le socle
+par ses trois scripts, elle n'existait pas. `check_html.py` publie donc à chaque exécution, PASS
+ou FAIL, un bloc **« Périmètre de NON-MESURE »** (clé `non_juge` en JSON, au format de celui de
+`render_page.py`) dont la première ligne nomme la revue de lecture, dit qu'elle n'a pas été jouée
+et donne le chemin du gabarit. Mesure du défaut fermé : un indice livré le 15/09 avec trois
+verdicts verts, **sept défauts** relevés à l'ouverture par son destinataire, dont **cinq**
+visibles en une minute sur des captures.
+
+Le même bloc nomme ensuite **ce que `check_html.py` ne regarde pas** (TF-1141) : la largeur
+*utile* d'une colonne par rapport à son contenu, la densité et la proportion d'une figure, le
+sens d'un libellé pour un lecteur neuf, l'appartenance d'un chapitre à son lecteur déclaré, et
+le rendu — qui appartient à `render_page.py`. Onze pages **doublement vertes** ont été remises à
+un humain qui y a relevé **huit défauts**, tous hors du champ des deux contrôles ; la session qui
+les produisait n'avait aucun moyen de savoir ce qui n'était pas mesuré. Quand l'un des deux
+oracles publie ses limites et l'autre se tait, le silence se lit comme une absence de limite.
+
+## Compter ce qui est RENDU contre ce que la source DIT — la complétude (TF-1174)
+
+**Le fait payé, 16/09/2026 (lot Produit-64 20260916b, RD-10).** Une édition d'un générateur a sorti
+un `append` de sa boucle de regroupement de prose : toute la prose sauf le dernier fragment de
+chaque chapitre a disparu de la page rendue. Le livrable est passé de **11 996 à environ 3 000 mots
+visibles**, et les neuf encadrés « Exemple de lecture » sont tombés à **zéro**. Les six oracles
+joués dessus : `render_page.py` PASS · `check_markdown.py --style` PASS (il juge la source, qui n'a
+pas bougé) · `oracle-slop` PASS · `oracle-tokens` PASS · `oracle-mobile` PASS · `check_html.py` FAIL,
+mais sur L7 et L10 seulement — l'absence d'un chapeau et d'un exemple de lecture, jamais la
+disparition du texte. Une page amputée n'a en effet ni débordement, ni contraste faible, ni couleur
+en dur : **elle est parfaitement conforme et presque vide.**
+
+Les six mesurent la FORME. Aucun ne mesurait la COMPLÉTUDE — une grandeur *corrélée* prise pour
+l'invariant : tant qu'un générateur ne perd rien, forme et contenu vont ensemble ; le jour où la
+corrélation se rompt, six verdicts verts couvrent une page vide.
+
+Le contrôle ne demande aucune finesse, il demande de **compter** :
+
+```bash
+python scripts/check_completude.py page.html --source source.md     # exit 0 PASS · 1 FAIL · 2 SKIP
+python scripts/check_completude.py page.html --source a.md --source b.md --output json
+```
+
+    rendu  = mots visibles du corps HTML (balises, commentaires, scripts et styles retirés)
+    source = mots visibles du ou des Markdown dont il sort
+    si rendu < source : ARRÊT — la page porte moins de texte que sa source
+
+Le seuil est grossier à dessein : un rendu porte EN PLUS les libellés du générateur (menus,
+inventaires, légendes de schéma), il est donc normalement **plus riche** que sa source. Un rendu
+plus pauvre est une perte, sans jugement à rendre. `--seuil` sous 1.0 reste possible, mais la
+**dérogation est écrite au périmètre de non-mesure de chaque exécution** — jamais silencieuse.
+
+À lancer dès qu'une chaîne **transforme une source en page** : un gabarit rendu, une synthèse
+publiée, un rapport d'audit. Une page écrite à la main n'a pas de source à laquelle se comparer, et
+ce contrôle ne s'y applique pas.
+
+## La chaîne ne s'arrête pas à ce socle : quatre oracles de `digit-ai-forge-design` jugent la même page (TF-1173)
+
+**Le fait mesuré, 16/09/2026 (lot Produit-64 20260916b, RD-9).** Un guide développeur déclaré PASS
+par les trois scripts ci-dessus a été soumis pour la première fois aux oracles de
+`digit-ai-forge-design` : **trois verdicts rouges sur quatre.** Aucun de ces défauts n'est visible
+aux trois scripts du socle — le filet de 3 px ne déborde pas, la couleur en dur contraste
+correctement, la barre fixe ne recouvre rien au rendu de bureau. Le défaut était **entre** les deux
+forges : le socle ne disait pas que quatre autres oracles jugent cette même page, et un producteur
+ne joue pas ce qu'il ne sait pas exister.
+
+| Oracle | Règles | Ce qu'il juge | Trouvé le 16/09 sur une page « conforme » |
+|---|---|---|---|
+| `oracle-slop` | S1–S10 | marqueurs de design généré | **FAIL** — 4 règles dures S1 (filets latéraux de 2, 3 et 4 px, marqueurs de page générée) |
+| `oracle-tokens` | T1–T8 | traçabilité des jetons, parité des thèmes, contraste | **FAIL** — 59 écarts durs, dont 3 bloquants T1 (couleurs en dur) et 56 T3 (espacements hors échelle 4 pt) |
+| `oracle-mobile` | M1–M8 | viewport, cibles tactiles, encoche, reflow, paysage | **FAIL** — M3 bloquant : barre fixe sans `env(safe-area-inset-*)`, passage sous l'encoche |
+| `oracle-images` | I1–I7 | alt, plafonds, zéro réseau, variantes réellement différentes | PASS |
+
+Les jouer, d'un coup ou un par un :
+
+```bash
+# Les quatre (et les autres oracles applicables), avec verdict agrégé — exit 0 PASS / 1 FAIL / 2 indéterminé
+node <racine digit-ai-forge-design>/oracles/run-oracles-design.mjs page.html
+# Un seul, quand on corrige une famille
+node <racine digit-ai-forge-design>/oracles/oracle-slop.mjs page.html
+node <racine digit-ai-forge-design>/oracles/oracle-tokens.mjs page.html
+node <racine digit-ai-forge-design>/oracles/oracle-mobile.mjs page.html   # --mobile côté orchestrateur si le châssis n'est pas détecté
+node <racine digit-ai-forge-design>/oracles/oracle-images.mjs page.html
+```
+
+`check_html.py` et `render_page.py` **le rappellent à chaque exécution**, PASS ou FAIL, dans leur
+bloc « Périmètre de NON-MESURE » : le renvoi n'est pas seulement écrit ici, il est prononcé par les
+contrôles que le producteur lance de toute façon.
+
 ## Référentiel détaillé
 
+- Complétude rendu vs source, pour toute page issue d'un générateur : `scripts/check_completude.py`
+  (TF-1174) — section ci-dessus ; registre : `quality-oracles/references/registre-oracles.md`
+- Les quatre oracles de `digit-ai-forge-design` qui jugent cette même page, et leur ligne de
+  commande : section ci-dessus (TF-1173) — `oracle-slop`, `oracle-tokens`, `oracle-mobile`,
+  `oracle-images`, lancés ensemble par `oracles/run-oracles-design.mjs`
 - Charte & tokens : [references/charte-et-tokens.md](references/charte-et-tokens.md)
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)

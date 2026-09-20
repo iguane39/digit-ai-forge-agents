@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.20.0, alignée sur le JSON le 12/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.24.0, alignée sur le JSON le 19/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -9,8 +9,9 @@
 
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
-| Rendu HTML / visuel | `render_page.py` (digit-ai-page-html) — V1–V18 ; **V18** (TF-1066, 12/09/2026, règle E5 du pilot) ne se joue qu'aux largeurs ≥ 2560 px : mesure de lecture au-delà de 100 caractères par ligne sur une prose que rien ne tient, tableau principal d'une page de données sous 85 % de la largeur offerte. Grille par défaut : 3840, 2560, 1920, 1280, 768, 390 | cli (délégué) | ✅ |
+| Rendu HTML / visuel | `render_page.py` (digit-ai-page-html) — V1–V18 ; **V18** (TF-1066, 12/09/2026, règle E5 du pilot ; plafond porté à 135 par la décision humaine du 15/09/2026, « 13a », TF-1069) ne se joue qu'aux largeurs ≥ 2560 px : mesure de lecture au-delà de 135 caractères par ligne sur une prose que rien ne tient, tableau principal d'une page de données sous 85 % de la largeur offerte. Grille par défaut : 3840, 2560, 1920, 1280, 768, 390 | cli (délégué) | ✅ |
 | Conformité charte HTML (charte, sémantique, print) | `check_html.py` (digit-ai-page-html) — DOCTYPE, `lang="fr"`, charset prioritaire, viewport, `<h1>` unique, `:root`, `<title>`, `@media print`, police Syne interdite | cli (délégué) | ✅ |
+| Complétude d'un rendu par rapport à sa source (texte perdu à la génération) | `check_completude.py <page.html> --source <source.md>` (digit-ai-page-html) — **invocation explicite** : rendu = mots visibles du corps HTML, source = mots visibles du Markdown dont il sort, `rendu < source` ⇒ ARRÊT. Seuil par défaut 1.0 ; `--seuil` en dessous reste possible mais la dérogation est écrite au `non_juge` de chaque exécution. **TF-1174** : une page ayant perdu les trois quarts de son texte (11 996 → ~3 000 mots) passait les SIX oracles de forme — ils mesurent une grandeur *corrélée*, pas l'invariant | cli (délégué) | ✅ |
 | Filtres de colonne sur tableaux de données | `scripts/oracle-filtres-tableau.mjs <page.html>` — G1 marquage ou exemption motivée, G2 asset référencé, G3 initialisation, G4 id + thead, G5 compteur aria-live, G6 réaffichage à l'impression | cli | ✅ |
 | Rendu PPTX (structure & compatibilité) | `scripts/oracle-pptx.mjs` — zip, [Content_Types].xml 1re entrée, zéro transition/JPEG, smoke-test LibreOffice ; charte sémantique → gate digit-ai-pptx | cli | ⚙️ |
 | Accessibilité (WCAG structurel) | `scripts/oracle-a11y.py` — lang, alt, labels, titres, id, zoom (Playwright) | cli | ✅ |
@@ -18,11 +19,12 @@
 | Format / livraison / versioning | `scripts/oracle-format.mjs` — UTF-8, ZIP, placeholders, autoportance | cli | ✅ |
 | Code source | `scripts/oracle-code.mjs` — compilation `node --check`/`py_compile`/`tsc` | cli | ✅ |
 | Sécurité / secrets | `scripts/oracle-secrets.mjs` — clés/tokens/PAT (+ gitleaks) | cli | ✅ |
-| Sécurité : dépendances (SCA) | `scripts/oracle-sca.mjs` — pip-audit / npm audit / OSV | cli | ✅ |
+| Sécurité : dépendances (SCA) | `scripts/oracle-sca.mjs` — pip-audit / npm audit / OSV ; fixtures jouées sur données OSV figées (`--osv-fige`), ressource injoignable = SKIP nommé (TF-1107) | cli | ✅ |
 | Sécurité : SAST (injection/exécution) | `scripts/oracle-sast.mjs` — injection SQL/commande, eval/exec, désérialisation (semgrep/bandit + repli) | cli | ✅ |
 | Sortie LLM / IA générative | `scripts/oracle-llm.mjs` — schéma JSON (auto) + checklist véracité | cli | ⚙️ |
 | Programme de formation (structure pédagogique) | `scripts/oracle-programme-formation.mjs` — C1 sommes de durées, C2 part de pratique déclarée, C3 couverture vs référence, C4 segment ≤ 50 min, C5 évaluation par bloc (.md/.docx) | cli | ✅ |
-| Charte PPTX sémantique (sommaire, kicker, logos, footer) | `scripts/oracle-charte-pptx-semantique.mjs` — S1 bijection sommaire↔intercalaires, S2 kicker, S3 logos hors couverture/interlocuteurs, S4 footer+pagination | cli | ✅ |
+| Support de diapositives (parité de format par profil) | `scripts/oracle-pptx.mjs --profil <profil>` — P1 format (`pptx.format`), P2 polices (`pptx.polices`), P3 couleurs de texte (`pptx.palette`), plus l'hygiène du paquet ; règles propres à un type de séance = invocation locale au produit (TF-1130) | cli | ⚙️ |
+| Charte PPTX sémantique (sommaire, kicker, logos, footer) | `scripts/oracle-charte-pptx-semantique.mjs` — S1 bijection sommaire↔intercalaires, S2 kicker, S3 logos hors couverture/interlocuteurs, S4 footer+pagination, S5 lexique du destinataire sur textes **et notes** (`lib-lexique.mjs` du pilot, celui d'EC-7 et de S46) | cli | ✅ |
 | État de la forge (versions, couverture, fixtures, dormance) | `scripts/oracle-etat-forge.mjs versions-livrees.json [--restitution <fichier>] [--ledger <run.jsonl>]` — F1 versions montées vs livrées, F2 fixtures présentes, F3 corpus résolus, F4 ligne de couverture, F5 dormance, **F6 maquette validée avant le code d'une vue**, **F7 l'auteur du contrat de sortie n'est pas son exécutant** | cli | ✅ |
 | Traçabilité exigences AO → réponse | `scripts/oracle-exigences-ao.mjs <réponse.md> --exigences <référentiel>` — X1 exigences tracées, X2 rubriques à l'identique, X3 pièces livrées (invocation explicite par dossier) | cli | ✅ |
 | Simulateur JS (KPI vs modèle de référence) | `scripts/oracle-simulateur-js.mjs <page.html> --attendus <json>` — J1 autoportance des libs, J2 KPI aux valeurs par défaut vs attendus à tolérance déclarée | cli | ✅ |
@@ -35,6 +37,7 @@
 | Données / dataset | skill `data-quality-auditor` (profilage : complétude, cohérence, distributions, anomalies, model-readiness) | skill | ✅ |
 | Schémas / diagrammes | skill `digit-ai-schemas` (marque paramétrable — un engagement client ne se forke plus) | skill | ✅ |
 | Prompts | skill `prompt-analyzer-l99` | skill | ✅ |
+| Prémisse d'accès mesurée avant d'être classée (analyse L99) | `scripts/oracle-premisse-acces.mjs <analyse.md>` — A1 « invérifiable » sans mesure ni test manquant déclaré, A2 refus sans contrôle positif à identité égale, A3 mesure sans horodatage ni identité, A4 conclusion d'indisponibilité sans énumération des familles d'accès (*scopes*, points d'entrée parallèles). **Invocation explicite** sur une analyse L99 ou son chapitre 4 — aucun déclenchement automatique sur `.md`. TF-1185 : un refus prouve qu'une porte est fermée, jamais qu'il n'y en a qu'une | cli | ✅ |
 | Versions de dépendances | `maj-versions.mjs` (kit RefAudit) | kit | ✅ |
 | Conformité rapport d'audit | `verifier-rapport-audit.mjs` (kit RefAudit) — checks 1-10 | kit | ✅ |
 | Clôture de remédiation | `verifier-remediation.mjs --status` (kit RefAudit) | kit | ✅ |
@@ -56,7 +59,6 @@
 | Couverture de la surface fonctionnelle | `node c:/dev/digit-ai-forge-conception/oracles/oracle-surface.mjs <EXIGENCES.json> [--seuil 95]` — S1 tout élément non couvert est NOMMÉ, S2 ratio publié avec sa liste, S3 lien de surface valide ou raison `hors_surface` | cli | ✅ |
 | Affirmations chiffrées d'un référentiel d'exigences | `node c:/dev/digit-ai-forge-conception/oracles/oracle-claims.mjs <EXIGENCES.json>` — A1 chiffre d'un champ narratif tracé à une source ou marqué « à vérifier », A2 périmètre écarté déclaré (un chiffre de critère est une cible, pas une affirmation) | cli | ✅ |
 | Style rédactionnel d'un texte Markdown (plancher E-1..E-12 du pilot) | `node {pilot}/oracles/oracle-ecriture.mjs <texte.md>` — **EC-1** densité par famille (huit familles de tournures creuses, seuils en ‰ de mots de prose) · **EC-2** phrases > 35 mots en série · **EC-3** puces ≤ 2 niveaux · **EC-4** gras de phrase et puces emoji · **EC-5** attaques répétées (avertissement) · **EC-6** antériorité (un texte normatif antérieur à la doctrine rend SKIP, jamais FAIL). La doctrine (`references/ECRITURE.md`, E-1 à E-12), la donnée (`references/tics-redactionnels.json`, datée et sourcée) et l'oracle vivent chez le **pilot** : ce registre les INDEXE, il ne les réimplémente pas (R3). `{pilot}` = `FORGE_ROOT/digit-ai-factory`, sinon le dépôt **frère** `../../../../digit-ai-factory` du skill ; introuvable → **SKIP motivé** qui nomme les pistes, jamais un PASS. **`ext` vide à dessein** : invocation explicite, hook `ecriture` du pilot, ou `check_markdown.py --style` — brancher tout `.md` du parc n'est pas mandaté au 12/09/2026, faute de mesure de bruit sur les produits | cli (délégué) | ⚙️ |
-| Transparence d'un contenu généré destiné au public (AI Act, article 50) | `scripts/oracle-transparence-ia.mjs <livrable.html\|.md\|.txt> [--diffusion public\|prive]` — **TR-1** mention lisible par un humain dans le texte visible (un commentaire, un bloc de code ne comptent pas) · **TR-2** marquage lisible par machine (méta `ai-generated` ou IPTC `digitalsourcetype` en HTML, clé de frontmatter en Markdown ; non jugé sur un `.txt`, TR-1 y reste exigé). La diffusion se lit dans le livrable ou par `--diffusion` : **privé → SKIP motivé** (propale, mémoire technique : hors portée, la règle le dit), **non déclarée → SKIP**, jamais un PASS. Formulations et marqueurs : donnée datée `references/transparence-ia.json` (revue au 2026-12-02). TF-1030, 14/09/2026 | cli | ✅ |
 | Dossier CAB (DOCX, template Client-A) | `scripts/oracle-dossier-cab.mjs <dossier.docx> [--depot AAAA-MM-JJ] [--couleur-titres RRGGBB]` — C1 sections du template, C2 tableau d'en-tête renseigné, C3 zéro placeholder, C4 sections non vides, C5 date du nom == date prévue, C6 règle Easyvista J+5, C7 numérotation Word (numId non partagé), C8 marqueurs [À COMPLÉTER] recensés, C9 couleur de titres de la charte | cli | ✅ |
 | Nom de client dans un dépôt publiable | `scripts/oracle-nom-client-publie.mjs <dépôt|bundle> [--referentiel=<chemin HORS dépôt>] [--produits=<chemin HORS dépôt>]` — C1 contenus des fichiers suivis, C2 noms des fichiers suivis, C3 messages de commit de tout l'historique, C4 noms et contenus dans tout l'historique (fichiers retirés de l'arbre compris), C5 **noms de produits** de la table des pseudonymes dans les contenus, les noms de fichiers et les messages de commit (TF-0820), chaque graphie **bornée par des non-alphanumériques** (TF-0880 : une clé courte cherchée sans frontière accusait des blobs base64). Les deux référentiels sont des **données vivant hors des dépôts publiés** — sans celui des clients l'oracle rend SKIP, jamais PASS ; sans la table des produits il joue C1-C4 et **déclare** « C5 non jouée : table absente ». **Pistes par défaut** (TF-0887) : `--referentiel`/`--produits`, puis `FORGE_NOMS_INTERDITS`/`FORGE_PRODUITS_PSEUDO`, puis le **canal confidentiel** `<racine>/_confidentiel/tables/{noms-interdits,produits-pseudonymes}.json`, puis les anciens fichiers libres `<racine>/_*.json` en dernier recours — la racine étant `FORGE_ROOT` quand elle est posée, sinon le parent du dépôt jugé puis le parent de la forge. La table **retenue** est nommée au `non_juge` (« table lue : … »). **Borne de date** (TF-0982) : les deux tables portent un bloc `depuis` — `{ "<clé>": "AAAA-MM-JJ" }` — et une occurrence de l'**HISTOIRE** antérieure à la date d'inscription de son terme est déclarée **antériorité** : nommée dans le rapport, comptée à part au `non_juge`, **non bloquante**. L'**arbre courant** et les **messages de commit** restent jugés **sans borne** (ils se corrigent par une édition), et un terme absent du bloc `depuis` ou porteur d'une date malformée aussi — l'absence de date ne vaut jamais exemption. La date d'une occurrence est celle d'**auteur** de sa révision, jamais celle de validation, qu'une réécriture d'historique remet à zéro. Motif mesuré : chaque extension de table rendait le passé fautif **rétroactivement** — trois réécritures d'historique en douze jours | cli | ✅ |
 | ↳ *câblage* du contrôle ci-dessus | `scripts/installer-hamecon-publication.mjs <dépôt…> [--retirer] [--verifier]` — pose un `pre-push` qui REFUSE la publication sur FAIL **et sur SKIP** (un oracle qui ne mesure pas ne laisse pas passer) ; contournement explicite par `git push --no-verify`. Sur SKIP il **répète le motif de la porte en clair** (« porte SKIP : … ») avant de refuser, et il ne grave **aucun chemin de table** : la porte les résout à chaque appel (TF-0887). Prouvé par `scripts/self-test-hamecon-publication.mjs` : 5 cas sur de vrais dépôts et de vrais push (porteur refusé, propre accepté, contournement effectif, référentiel absent refusé **avec son motif en clair**, tables dans le canal et **aucune variable d'environnement** → porteur refusé et propre accepté) | cli | ✅ |
@@ -358,6 +360,44 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
   (énoncé, traçabilité, couverture, affirmations chiffrées) : un référentiel qui passe
   les quatre est celui que les forges aval peuvent consommer.
 
+## Oracles de la forge data (chantier forge-data, remontée §4 le 17/09/2026, v2.23.0)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Périmètre d'un livrable migré : ce que les visuels lisent, excédent non motivé refusé | `node c:/dev/digit-ai-forge-data/oracles/oracle-delimiter.mjs <perimetre.json> --json-only` — format `forge-data/perimetre@1` ; DL1 forme, DL2 relevé identifié (par/date/source), DL3 rien de ce que le lecteur voyait n'est perdu, DL4 excédent non motivé BLOQUE, DL5 déclarations résolvent, DL6 taux recalculé (TF-1180) | cli | ✅ |
+| Chaîne de travail déclarée : étapes ordonnées, chacune avec un porteur qui existe | `node c:/dev/digit-ai-forge-data/oracles/oracle-enchainer.mjs <chaine.json> --json-only` — format `forge-data/chaine@1` ; CH1 forme, CH2 rangs contigus, CH3 porteur existant, CH4 règles retrouvées chez leur porteur, CH5 geste humain enregistré, CH6 document ↔ étapes (TF-1179) | cli | ✅ |
+| Reconstruction d'un rapport existant : mise en page conservée, jamais réinventée | `node c:/dev/digit-ai-forge-data/oracles/oracle-reconstruire.mjs <reconstruction.json> --json-only` — format `forge-data/reconstruction@1` ; RS1 forme, RS2 doctrine du repli (motif ≥ 6 mots), RS3 bijection des pages, RS4 bijection des visuels au pixel, RS5 écarts motivés, RS6 ressources portées et référencées (TF-1176) | cli | ✅ |
+| Livrable dont l'usage est un rendu : liaisons, mesures, visuels vides, geste de vérification déclaré | `node c:/dev/digit-ai-forge-data/oracles/oracle-rendre.mjs <rendu.json> --json-only` — format `forge-data/rendu@1` ; RN1 forme, RN2 liaisons visuel → modèle, RN3 mesures existantes et typées, RN4 visuels vides dits, RN5 geste de vérification du rendu réel déclaré (TF-1175) | cli | ✅ |
+
+Les quatre oracles ci-dessus vivent hors `~/.claude/skills` : leur source est
+`c:/dev/digit-ai-forge-data/oracles/`, avec fixtures verte/rouge et self-test
+(`node oracles/self-test.mjs` — 324 PASS, 0 FAIL au 17/09/2026, sur l'ensemble des oracles du
+dépôt). Mêmes conséquences assumées que pour les forges design et conception :
+
+- **Chemins absolus dans `cmd`.** Ces oracles ne sont pas empaquetés dans un skill ;
+  déplacer le dépôt casse l'invocation — la remonter ici le jour où ça arrive.
+- **Déclenchement par contenu, pas par extension.** `ext` est vide et `content_patterns`
+  matche la signature `"format": "forge-data/<nom>@1"` de chaque artefact JSON — router
+  tout `.json` du parc ferait juger n'importe quel fichier de configuration par un oracle
+  qui n'attend qu'un périmètre, une chaîne, une reconstruction ou un rendu.
+- **Frontières croisées, déclarées dans chaque `non_juge`.** Les quatre oracles se
+  découpent le même incident (retour Produit-62, RF-21/RF-22/RF-24/RF-25) sans se
+  recouvrir : `oracle-rendre` juge les liaisons du rapport CONSTRUIT, `oracle-reconstruire`
+  juge la fidélité de sa mise en page à un rapport d'origine, `oracle-delimiter` juge le
+  périmètre AVANT que le rapport existe (le symétrique d'`oracle-couvrir`, déjà au
+  registre), `oracle-enchainer` juge que la procédure qui enchaîne ces étapes est écrite et
+  que chaque étape nomme un porteur qui existe — y compris ces quatre oracles eux-mêmes.
+- **Non inscrits au registre** (constat, pas objet de cette remontée) : les autres oracles
+  du même dépôt (`oracle-tracer`, `oracle-profiler`, `oracle-restituer`, `oracle-modeliser`,
+  `oracle-contractualiser`, `oracle-couvrir`, `oracle-evoluer`, `oracle-rapprocher`,
+  `oracle-reconcilier`, `oracle-transformer`) suivent la même convention d'invocation mais
+  n'ont pas d'entrée ici — candidature à ouvrir séparément.
+- **`fixtures/manifest.json` de ce skill non modifié.** Convention constatée sur les deux
+  précédents de ce type (forge-design, forge-conception) : un oracle délégué vivant dans un
+  dépôt frère prouve sa paire rouge/verte par le self-test de CE dépôt, pas par le manifest
+  de `quality-oracles` — aucune des entrées forge-design/forge-conception déjà au registre
+  n'y figure. Reconduit ici plutôt qu'inventé.
+
 ## Injection du 15/08/2026 — restitution lisible (TF-0235, v2.11.0-v2.11.1)
 
 | Domaine | Oracle (invocation) | Type | Statut |
@@ -381,3 +421,35 @@ conséquences assumées, alignées sur celles déjà consignées pour la forge d
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
 | Support Design Authority Client-A (parité de format avec le deck de référence + faits portés) | `node c:/dev/_Client-A/Produit-64/tools/design-authority/oracle-da-pptx.mjs <deck.pptx> --faits <faits.json>` — F1 format 16:9, F2 polices ⊆ {Century Gothic, Arial, Courier New}, F3 couleurs de texte ⊆ palette relevée, F4 pied de page + pagination continue, F5 couverture / intercalaires / MERCI, F6 faits attendus présents, F7 débordement probable (heuristique), F8 zip ([Content_Types].xml 1re entrée, zéro JPEG/transition). Oracle visuel de confirmation : `tools/design-authority/rendre-pptx.ps1` (export PNG par PowerPoint COM — remplace le smoke-test LibreOffice absent du poste) | cli | ✅ |
+
+## Injection du 17/09/2026 — transparence des contenus publics générés (TF-1030, v2.21.0)
+
+| Domaine | Oracle (invocation) | Type | Statut |
+|---|---|---|---|
+| Transparence des contenus publics générés par IA (article 50 du règlement européen sur l'IA) | `scripts/oracle-transparence.mjs <fichier.md .html .txt> [--mentions <mentions.json>] [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]` — **TR1** mention d'assistance par IA dans le texte **lisible par un humain**, formules **fournies** par `--mentions` (aucune formule d'émetteur codée dans l'oracle), bloquant **sans échéance** · **TR2** marquage **lisible par machine** sur une page HTML, sévérité pilotée par une échéance en donnée · **TR3** contenu déclaré non généré (`--non-genere`, ou frontmatter `genere: false`) → **SKIP motivé, jamais PASS** | cli | ✅ |
+
+- **L'obligation existait, le contrôle n'existait pas.** L'article 50 s'applique depuis le
+  2026-08-02. La règle de transparence a été écrite le 11/09/2026 dans la règle de marque d'un
+  émetteur, et elle citait un contrôle exécutable — `scripts/controler-transparence.mjs`, appelé
+  **17 fois dans 9 fichiers** d'un produit et présent nulle part (mesure du 14/09/2026). Cette
+  entrée est ce contrôle, écrit une fois pour le parc au lieu d'une fois par produit.
+- **Agnostique de l'émetteur.** Les formules admises sont une **donnée** passée par `--mentions`
+  (tableau de chaînes, ou objet à champs `mentions` et `expressions`) ; sans fichier, un jeu
+  **générique** français et anglais s'applique. La fixture verte porte une formule **inventée**
+  qui ne correspond à aucun motif par défaut : son PASS prouve que l'oracle lit ce qu'on lui
+  donne. Une marque qui change sa formule change son fichier, pas cet oracle.
+- **La date vit en donnée, et le banc le prouve.** L'échéance du marquage machine — 2026-12-02,
+  report réglementaire **rapporté et non vérifié**, source `references/PLATEFORME-LINKEDIN.md` §3
+  du pilot — vit dans `references/echeances.json`, au format `echeances@1` **repris** du socle
+  `digit-ai-page-html` et non redécoupé. Le banc joue une donnée d'essai à date **différente**
+  (2026-10-15) : un oracle qui coderait la vraie date en dur ferait rougir le self-test.
+- **La convention de marquage est INTERNE, pas une norme.** Une balise meta `ai-generated` au
+  contenu non vide dans le `<head>`, la forme la plus simple qu'une machine sache lire ; la balise
+  meta `generator` portant un marqueur d'IA est admise, parce que c'est la forme que **nomment**
+  les règles de marque rencontrées dans le parc. Aucun texte publié n'impose l'une ou l'autre.
+- **`ext` vide à dessein.** Le contrôle porte sur les contenus **destinés au public**, et rien
+  dans une extension ne dit qu'un fichier est public : router tout `.md` du parc ferait rougir
+  chaque note interne. Invocation explicite, comme `oracle-exigences-ao` ou `oracle-post-linkedin`.
+- **Appel historique côté produit.** Un produit qui appelle encore son
+  `scripts/controler-transparence.mjs` invoque désormais celui-ci, sans rien créer chez lui :
+  `node <racine>/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/oracle-transparence.mjs <fichier> --mentions <formules de la marque>.json`

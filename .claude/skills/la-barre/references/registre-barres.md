@@ -343,6 +343,116 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
   justification: condition posée par l'analyse L99 du 07/09/2026 pour qu'un verbe soit exerçable par un agent (formats texte, lignes de commande, API) ; sans ce format, les oracles M4 et M6 de l'étude n'ont rien à lire
   statut: ok (validée humain, 07/09/2026 — décision D-6 option (a) « 6a », tour dédié au pas 5 : les quatre références recommandées retenues telles quelles, candidats survivants conservés en mémoire de choix)
 
+# ---- TF-1028 (17/09/2026) : barre externe « publication réseau ». Pas 1 à 4 joués le
+# ---- 17/09/2026 (test d'existence : 4/4 candidats atteignables, HTTP 200, exécuté par
+# ---- scripts/test_existence.py --liste) ; niveaux décomposés (pas 6) en anticipation. Le
+# ---- pas 5 — validation humaine en un tour, non sautable — a eu lieu le 17/09/2026
+# ---- (décision D-4 option (a)) : statut ok.
+
+- cible: >
+    publication réseau professionnelle (LinkedIn), 150 à 300 mots — deux écritures : profil
+    d'une personne (première voix) et page d'une organisation (voix de marque)
+  reference: >
+    Paire — LinkedIn Top Voices (programme éditorial officiel de LinkedIn, corpus nommé et
+    daté d'exemples reconnus) pour l'écriture profil ; LinkedIn Pages Best Practices
+    (recommandations officielles de LinkedIn pour les organisations) pour l'écriture page.
+    Complément transversal de structure : LinkedIn Help — « Tips for writing articles on
+    LinkedIn » (bornée : porte sur les articles longs, pas les posts courts — seule sa
+    discipline de structure et de voix est importée, jamais sa longueur).
+  candidats_survivants: >
+    (1) https://www.linkedin.com/help/linkedin/answer/a776208 — « LinkedIn Top Voices »,
+    critères de sélection (recommandée, écriture profil) ; test le 17/09/2026, HTTP 200,
+    41 343+ octets, page datée « Last updated: 8 months ago » (relatif — texte exact relevé
+    dans le HTML). (2) https://www.linkedin.com/news/story/meet-the-linkedin-top-voices-class-of-january-2026-6924764/
+    — classe nommée « Top Voices » du 27/01/2026 (métadonnée `datePublished:
+    2026-01-27T20:13:10.955Z`), auteure Devin Banerjee sous LinkedIn News (rédacteur en chef
+    Daniel Roth) — exemple concret cité, post de Kim Scott, corpus illustratif de la même
+    référence (1), pas une barre à part ; test le 17/09/2026, HTTP 200, 65 536+ octets.
+    (3) https://business.linkedin.com/marketing-solutions/linkedin-pages/best-practices
+    (recommandée, écriture page) — datée « © LinkedIn Corporation 2026 » (texte exact relevé,
+    aucune date de mise à jour plus précise trouvée) ; test le 17/09/2026, HTTP 200,
+    65 536+ octets. Retenue UNIQUEMENT pour ses éléments d'identité et de format (image de
+    couverture, mise en avant des salariés) — ses statistiques d'engagement non sourcées
+    (« 2x », « 5x », « 24x ») sont explicitement HORS barre, voir frontière. (4)
+    https://www.linkedin.com/help/linkedin/answer/a516913 — « Tips for writing articles on
+    LinkedIn » — datée « Last updated: 3 years ago » (texte exact relevé) ; test le
+    17/09/2026, HTTP 200, 45 569+ octets. Retenue en complément transversal pour sa
+    discipline de structure (un seul sujet, opinion assumée, en-tête écrit en dernier) ;
+    écartée comme barre autonome car elle vise les articles longs (600-1 200 mots selon la
+    page), hors du format court demandé (150-300 mots).
+  test_existence: python scripts/test_existence.py --liste candidats.txt (4 candidats)
+  dernier_test: 2026-09-17 — PASS (4/4 références atteignables, HTTP 200, exécuté par
+    scripts/test_existence.py --liste, exit 0)
+  niveaux:
+    structure: >
+      S1 la première phrase porte, à elle seule, le sujet ET l'intérêt du post — fondé sur
+      (4) : « Write the headline last… find the sharpest sentence in the whole thing, then
+      ask whether it belongs at the top ». S2 un seul sujet par post, aucune juxtaposition de
+      sujets — fondé sur (4) : « Keep your writing focused. Avoid covering too many topics in
+      the same article ». S3 longueur 150 à 300 mots — DONNÉE PAR LE MANDAT de cette entrée
+      (cible demandée), non issue d'une référence testée ; à dire tel quel, jamais fondue dans
+      la barre comme si elle était sourcée. S4 clôture qui appelle une réponse (question ou
+      invitation explicite) — fondé sur (4), structure attendue « introduction → implications
+      → solutions et un appel à l'action ».
+    vocabulaire: >
+      V1 un fait concret nommé (chiffre, exemple vécu, référence datée) plutôt qu'une
+      généralité — fondé sur (1) : « professional topics, including specific industry
+      insights, news analysis and knowledge that can inform others ». V2 aucun remplissage :
+      chaque phrase apporte une information neuve, pas un lieu commun — fondé sur (2), post
+      cité de la classe de janvier 2026 : « Share what they're still figuring out, not just
+      what worked once ». V3 mention de transparence si le texte est généré ou assisté par
+      IA, conforme à la règle de marque de l'émetteur — fondé sur `references\PLATEFORME-LINKEDIN.md`
+      §3 du pilot (obligation datée du 2026-08-02, article 50 du règlement européen sur l'IA ;
+      lignes directrices de la Commission mises à jour le 2026-08-06) — référence interne au
+      pilot, distincte des quatre candidats web, citée telle quelle.
+    artefacts: >
+      A1 écriture profil = première personne assumée, une opinion exprimée depuis une
+      expérience nommée — fondé sur (4) : « Don't shy away from expressing your opinion » et
+      sur (2), post Kim Scott : « Say the hard thing with care ». A2 écriture page = voix de
+      marque cohérente, l'organisation nommée comme sujet, jamais un porte-parole anonyme, un
+      élément d'identité visible (logo ou image de couverture) quand le format le permet —
+      fondé sur (3) : « cover image to bring your Page to life ». A3 la page nomme des
+      personnes réelles de l'organisation plutôt qu'un « nous » désincarné, quand le sujet s'y
+      prête — fondé sur (3) : « employees to humanize your brand », « personalized
+      shout-outs from your Page ».
+    comportement: >
+      B1 le post reste lisible et complet indépendamment de tout lien externe : le lien n'est
+      jamais la seule source du fait annoncé (déduit de S1/V1, pas d'une référence à part). B2
+      le choix profil vs page est déclaré avant rédaction et gouverne A1/A2 — pas de mélange
+      des deux voix dans un même post.
+  frontiere: >
+    Fixe le NIVEAU d'un post court professionnel (accroche, un fait, une voix, une clôture) —
+    n'autorise NI la copie du contenu, NI la reproduction de l'identité de marque LinkedIn, NI
+    l'emprunt de la voix d'un Top Voice nommé : on mesure l'exigence à son corpus, on ne le
+    recopie pas. EXPLICITEMENT HORS barre (exclusion tenue de `references\PLATEFORME-LINKEDIN.md`
+    §4 du pilot, dernière partie, qui refuse tout recueil de « règles d'algorithme » sans
+    source primaire datée) : heure de publication idéale, fréquence hebdomadaire optimale,
+    nombre de hashtags, emplacement des liens, et les multiplicateurs d'engagement non
+    sourcés de (3) (« 2x », « 5x », « 24x » — LinkedIn ne publie pas la méthodologie derrière
+    ces chiffres). La fourchette de longueur en articles de (4) (600-1 200 mots) n'est pas
+    transposée au post court : seule sa discipline de structure l'est. La charte de voix déjà
+    définie par l'émetteur, le cas échéant, prime et reste la contrainte de forme.
+  justification: >
+    Les deux références recommandées adressent chacune une des deux écritures demandées.
+    LinkedIn Top Voices est le programme par lequel LinkedIn — l'opérateur de la plateforme,
+    organisation publique citée comme source — désigne publiquement, par nom et par date, les
+    publications qu'il reconnaît comme incarnant la voix personnelle professionnelle
+    (sélection par son équipe éditoriale, direction Daniel Roth) : un corpus cité en exemple
+    par une source nommée, au sens exact du protocole. LinkedIn Pages Best Practices est la
+    recommandation officielle de LinkedIn pour l'écriture d'une organisation. Aucune des deux
+    n'est un recueil de règles d'algorithme sans méthode : (1)+(2) documentent des critères de
+    sélection éditoriaux (qualité, originalité, expertise) et un exemple nommé et daté ; (3)
+    documente des éléments d'identité et de format, sa partie « performance » étant
+    explicitement écartée de la barre (voir frontière). Aucun nom de personne privée n'entre
+    au registre : LinkedIn (organisation) porte la référence ; l'exemple nommé (Kim Scott) est
+    une autrice publique déjà mise en avant, par son nom, dans le corpus officiel et daté cité.
+  statut: ok (validée humain, 17/09/2026 — décision D-4 option (a) « 4a », tour dédié au pas 5 : les quatre références retenues telles quelles, frontière conservée. Réserve dite par l'humain dans le même message : la barre ne couvre que LinkedIn ; d'autres réseaux demanderont leur propre entrée, jamais une extension par analogie)
+
+# ---- Fusion du 20/09/2026 (décision humaine D-1 (b)) : le lot local du 14/09 ci-dessous portait
+# ---- une troisième entrée « publication réseau B2B » en `todo` ; elle est retirée au profit de la
+# ---- barre « publication réseau » ci-dessus, publiée et validée par l'humain le 17/09/2026.
+# ---- Les deux entrées qui suivent n'ont pas d'équivalent publié et restent en `todo`.
+
 # ---- Lot M8 de l'étude d'opportunité du 11/09/2026 (TF-1028, décision D-3 (a)) : trois barres
 # ---- pour les livrables de COMMUNICATION, qui n'en avaient aucune (grep propale, communication,
 # ---- marketing, pitch, LinkedIn : 0 au 11/09). Les oracles de propale jugent la forme et la
@@ -399,24 +509,3 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
   frontiere: fixe le NIVEAU de conformité et de preuve ; n'autorise aucune reprise de texte d'une réponse tierce ; la trame imposée par l'acheteur prime sur la barre
   justification: à faire valider (pas 5) — proposée parce que ce sont des réponses complètes à des trames imposées, publiées avec leur issue ; l'écart de juridiction est déclaré ci-dessus
   statut: todo (pas 5 en attente — décision humaine requise, et source française à chercher)
-
-- cible: publication réseau B2B (post, article, étude courte publiés par Digit-AI)
-  reference: à retenir au pas 5 — candidat recommandé ci-dessous
-  candidats_survivants: >
-    (1) LinkedIn B2B Institute — « B2B Edge » (https://business.linkedin.com/marketing-solutions/b2b-institute/blog) :
-    publications de recherche B2B d'un institut reconnu, dont la règle 95:5 (recommandé : un
-    niveau de preuve et de clarté sur exactement le public visé) ; (2) Marketing Week —
-    « The 95:5 rule is the new 60:40 rule » (https://www.marketingweek.com/peter-weinberg-jon-lombardo-95-5-rule/) :
-    un article B2B de référence, court, une idée, sourcé ; (3) Nielsen Norman Group — « How Users
-    Read on the Web » (https://www.nngroup.com/articles/how-users-read-on-the-web/) : niveau de
-    lisibilité à l'écran (complément, pas une barre de contenu).
-  test_existence: python scripts/test_existence.py https://business.linkedin.com/marketing-solutions/b2b-institute/blog https://www.marketingweek.com/peter-weinberg-jon-lombardo-95-5-rule/ https://www.nngroup.com/articles/how-users-read-on-the-web/
-  dernier_test: 2026-09-14 — PASS (3/3, HTTP 200)
-  niveaux:
-    structure: une idée par publication, énoncée dans la première ligne ; la preuve suit l'idée (chiffre sourcé, cas daté) ; une action ou une question en clôture
-    vocabulaire: aucun chiffre sans source nommée ; aucun superlatif non prouvé ; le jargon est glosé ou retiré
-    composants: la mention de contenu généré de l'article 50 quand la publication est générée (oracle-transparence-ia, TF-1030) ; les contraintes de plateforme (oracle-post-linkedin L1-L5)
-    comportement: un décideur qui lit les deux premières lignes sait de quoi parle la publication et pourquoi il devrait lire la suite
-  frontiere: fixe le NIVEAU de preuve et de clarté ; n'autorise ni la reprise d'une idée sans la citer, ni celle d'une voix d'auteur ; la voix de l'émetteur (MARQUE.md) prime
-  justification: à faire valider (pas 5) — proposée parce que l'institut de recherche B2B de la plateforme même où Digit-AI publie fixe un niveau de preuve que ses publications n'ont aucune barre pour atteindre aujourd'hui
-  statut: todo (pas 5 en attente — décision humaine requise)

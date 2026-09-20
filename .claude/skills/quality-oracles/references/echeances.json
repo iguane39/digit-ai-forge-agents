@@ -1,0 +1,26 @@
+{
+  "format": "quality-oracles/echeances@1",
+  "version": "1.0.0",
+  "date": "2026-09-17",
+  "mecanisme_reutilise": "digit-ai-page-html/references/echeances.json (format echeances@1, 16/09/2026) — mêmes champs, même lecture : avant la date l'oracle AVERTIT et dit les jours restants, après il BLOQUE. Ce fichier n'invente pas un second mécanisme : il porte les échéances qui relèvent des oracles de quality-oracles, celles du socle HTML restant chez le socle.",
+  "pourquoi_une_donnee_et_pas_du_code": "Loi transverse n° 4 du noyau — une donnée volatile est une donnée, pas du code. Une échéance se décale, s'avance ou se lève ; l'écrire en dur dans l'oracle obligerait à republier le skill pour changer une date, et personne ne saurait où la lire.",
+  "regle": "Une forme ANCIENNE qu'on ne peut pas casser d'un commit est admise jusqu'à une date, recensée d'ici là, et refusée après. L'oracle lit cette date à chaque exécution. Une échéance sans décision écrite — humaine ou réglementaire sourcée — n'entre pas ici.",
+  "echeances": [
+    {
+      "cle": "marquage_machine_absent",
+      "quoi": "l'absence de MARQUAGE LISIBLE PAR MACHINE sur une page HTML publique dont le contenu est généré ou assisté par IA (règle TR2 d'oracle-transparence)",
+      "admise_jusqu_au": "2026-12-02",
+      "decidee_par": "réglementaire, non décidée par Digit-AI — article 50 du règlement européen sur l'IA, accord Omnibus de 2026-05 qualifié de provisoire le 2026-06-22, qui laisse jusqu'au 2026-12-02 aux systèmes déjà sur le marché",
+      "source": "digit-ai-factory/references/PLATEFORME-LINKEDIN.md §3, relevé le 17/09/2026 : « Marquage lisible par machine : reporté au 2026-12-02 pour les systèmes déjà sur le marché, sous un accord qualifié de provisoire le 2026-06-22. Adoption finale non vérifiée : à relire à la péremption. »",
+      "valeur_rapportee_non_verifiee": true,
+      "pourquoi_cette_date": "Elle n'est pas choisie : c'est la date du report réglementaire. L'INFORMATION DU LECTEUR (règle TR1), elle, est due depuis le 2026-08-02 et ne bénéficie d'aucun report — elle est bloquante sans échéance.",
+      "geste_de_migration": "ajouter dans le <head> de la page la balise `<meta name=\"ai-generated\" content=\"…\">` (convention interne, voir l'en-tête d'oracle-transparence.mjs), ou une balise `<meta name=\"generator\">` dont le contenu porte le marqueur d'IA — forme nommée par la règle de marque de l'émetteur",
+      "fonde_par": "TF-1030"
+    }
+  ],
+  "non_juge": [
+    "la JUSTESSE d'une date : elle est décidée ailleurs (humain ou texte réglementaire) et consignée ici ; l'oracle la lit et ne la discute pas",
+    "l'ADOPTION FINALE de l'accord de report du 2026-06-22 : non vérifiée au 17/09/2026, la source le dit elle-même — la date est rapportée, pas établie ici",
+    "l'AVANCEMENT de la migration entre deux exécutions : l'oracle juge un fichier à l'instant où il le juge, il ne garde aucune mémoire d'un passage au suivant"
+  ]
+}

@@ -10,7 +10,16 @@
 //   S3 aucun logo hors couverture (slide 1) et slide « interlocuteurs » — logo = image de
 //      largeur ≤ 2 000 000 EMU (~5,5 cm), seuil documenté ici ;
 //   S4 footer + pagination présents sur les slides de contenu (placeholders ftr/sldNum ou champ
-//      slidenum au niveau slide).
+//      slidenum au niveau slide) ;
+//   S5 aucun terme proscrit par le LEXIQUE DU DESTINATAIRE, ni dans les textes de slide, ni dans
+//      les notes du présentateur (TF-1152). La règle ne réimplémente rien : elle appelle le module
+//      partagé `lib-lexique.mjs` du pilot, celui que lisent déjà EC-7 d'oracle-ecriture (tout .md
+//      écrit) et S46 d'oracle-synthese (toute restitution). Motif : le 16/09/2026, un lexique
+//      rempli n'aurait arrêté aucun titre de deck — les deux seuls juges qui le lisaient ne
+//      voyaient que du Markdown, et le support de présentation, celui que le client LIT, passait
+//      à côté du seul contrôle qui porte son vocabulaire. Écrire ici une liste maison aurait
+//      fabriqué la classe `oracle-remplace-par-controle-maison` que ce registre compte par
+//      ailleurs : deux listes à tenir, une seule tenue.
 // Conventions de détection (déterministes, versionnées ici) : slide « Sommaire » = titre
 // contenant « sommaire » ou « agenda » ; entrée = paragraphe « NN Intitulé » / « NN. Intitulé » ;
 // intercalaire = slide contenant un paragraphe-numéro isolé (1-2 chiffres) et l'intitulé.
@@ -20,8 +29,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolvePython } from './lib/python.mjs';
+import { resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 
+const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
 const DOM = 'Charte PPTX sémantique (sommaire, kicker, logos, footer)';
 const findings = [];
@@ -29,7 +41,8 @@ const non_juge = [
   'distinction logo vs image de contenu par TAILLE uniquement (≤ 2 000 000 EMU) — pas d analyse visuelle du contenu',
   'footers/pagination hérités des layouts/masters non inspectés (contrôle au niveau slide)',
   'structure zip, transitions, JPEG, compatibilité → oracle-pptx',
-  'rendu visuel (débordements, contraste) → pipeline d inspection digit-ai-pptx'
+  'rendu visuel (débordements, contraste) → pipeline d inspection digit-ai-pptx',
+  'S5 : le texte vivant dans une IMAGE (capture, schéma embarqué) échappe au lexique — seuls les <a:t> des slides et des notes sont lus'
 ];
 const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-charte-pptx-semantique', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
@@ -63,9 +76,16 @@ for idx, target in enumerate(order):
         ext = re.search(r'<a:ext cx="(\\d+)" cy="(\\d+)"', pic)
         if ext: imgs.append({"cx": int(ext.group(1))})
     has_media = bool(re.search(r'Target="\\.\\./media/', srels))
+    # S5 — les NOTES du présentateur sont du texte livré : elles partent avec le fichier et
+    # s'impriment en mode notes. Un terme proscrit y vit aussi longtemps que sur la slide.
+    notes = ""
+    mnotes = re.search(r'Target="([^"]*notesSlide[^"]*)"', srels)
+    if mnotes:
+        nname = "ppt/" + mnotes.group(1).lstrip("/").replace("../", "")
+        notes = " ".join(re.findall(r"<a:t>([^<]*)</a:t>", read(nname)))
     has_ftr = bool(re.search(r'<p:ph type="ftr"', xml))
     has_num = bool(re.search(r'<p:ph type="sldNum"', xml) or re.search(r'type="slidenum"', xml))
-    slides.append({"n": idx + 1, "file": name.split("/")[-1], "shapes": shapes, "imgs": imgs, "has_media": has_media, "has_ftr": has_ftr, "has_num": has_num})
+    slides.append({"n": idx + 1, "file": name.split("/")[-1], "shapes": shapes, "imgs": imgs, "has_media": has_media, "has_ftr": has_ftr, "has_num": has_num, "notes": notes})
 print(json.dumps(slides))
 `;
 const r = spawnSync(py[0], [...py.slice(1), '-c', script, file], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
@@ -119,6 +139,54 @@ for (const s of slides) {
   if (!s.has_num) findings.push({ sev: 'bloquant', msg: 'S4 — pagination absente (placeholder sldNum au niveau slide)', where: s.file });
 }
 
+// S5 — le lexique du destinataire (TF-1152, 16/09/2026).
+// La règle N'EMBARQUE AUCUNE LISTE : elle appelle `lib-lexique.mjs` du pilot, le module que lisent
+// déjà EC-7 (tout .md écrit) et S46 (toute restitution). Le lexique vit chez le PRODUIT, jamais au
+// pilot — le terme fondateur d'un retour client est souvent un mot juste ailleurs, et un contrôle
+// qui crie sur l'usage légitime se fait désactiver dans la semaine. Absent, la règle le DIT au
+// non_juge : un deck n'est jamais déclaré conforme au vocabulaire par le silence du lexique.
+let s5Etat = null;
+{
+  const pilot = resolvePilot(SKILLDIR);
+  let lexmod = null;
+  if (!pilot) {
+    non_juge.push(`S5 — vocabulaire du destinataire NON jugé : ${motifPilotAbsent(SKILLDIR)} ; `
+      + 'le module partagé `oracles/lib-lexique.mjs` est injoignable depuis ce poste');
+  } else {
+    try { lexmod = await import(pathToFileURL(path.join(pilot, 'oracles', 'lib-lexique.mjs')).href); }
+    catch (e) {
+      non_juge.push('S5 — vocabulaire du destinataire NON jugé : module partagé illisible ('
+        + path.join(pilot, 'oracles', 'lib-lexique.mjs') + ') — ' + String(e.message).slice(0, 120));
+    }
+  }
+  if (lexmod) {
+    const lex = lexmod.chargerLexique({ cheminJuge: file });
+    if (!lex.trouve) non_juge.push('S5 — aucun lexique du destinataire dans le socle du projet de ce deck (forge\\LEXIQUE.json, docs\\projet\\LEXIQUE.json ou references\\LEXIQUE.json) : vocabulaire non jugé');
+    else if (lex.illisible) non_juge.push(`S5 — lexique ILLISIBLE (${lex.chemin}) : ${lex.illisible} — ce n'est pas un constat sur le deck`);
+    else if (!lex.termes.length) non_juge.push(`S5 — lexique présent et VIDE (${lex.chemin}) : aucun terme n'a encore coûté d'aller-retour`);
+    else {
+      let employesTotal = 0;
+      for (const s of slides) {
+        const texte = [...s.shapes.map(x => x.text || ''), s.notes || ''].join('\n');
+        const employes = lexmod.termesEmployes(texte, lex.termes);
+        if (!employes.length) continue;
+        employesTotal += employes.length;
+        findings.push({
+          sev: 'bloquant',
+          msg: `S5 — ${employes.length} terme(s) proscrit(s) par le lexique du destinataire (${lex.chemin}) : `
+            + employes.map(t => `« ${t.proscrit} » (${t.occurrences}) → « ${t.remplacer_par || 'à remplacer'} »`).join(' · ')
+            + " — un mot qui a coûté un aller-retour au client se remplace avant la livraison, pas après le second retour",
+          where: s.file,
+        });
+      }
+      s5Etat = employesTotal
+        ? `${employesTotal} emploi(s) proscrit(s)`
+        : `aucun des ${lex.termes.length} terme(s) proscrit(s) de ${lex.chemin} employé, textes et notes lus`;
+    }
+  }
+}
+
 if (findings.length) out('FAIL', 1);
-findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), S1-S4 vérifiés`, where: path.basename(file) });
+findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), S1-S4 vérifiés`
+  + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)'), where: path.basename(file) });
 out('PASS', 0);

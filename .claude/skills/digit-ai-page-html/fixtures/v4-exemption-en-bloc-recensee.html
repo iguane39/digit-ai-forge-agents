@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — exemption posee en bloc, recensee — 20260916a</title>
+<!--
+  Fixture de TF-1146 — LA FORME NUE CONTINUE D EXEMPTER, ET ELLE N EST PLUS SILENCIEUSE.
+
+  Meme page que `v4-libelle-dans-la-boite-voisine.html` a une valeur d attribut pres : ici
+  data-overlap-ok est pose SANS valeur, la forme qu emploie tout le parc — 1 716 occurrences
+  mesurees le 16/09 dans dix pages de deux depots. La casser rendrait tout le parc rouge d un
+  coup : elle exempte donc toujours, et V4 ne rend aucun constat. Mais elle est RECENSEE, famille
+  overlap_en_bloc, avec son geste de migration — une exemption qui ne se voit pas est un angle
+  mort qui ne se corrige jamais.
+
+  Attendu : zero v4_overlap, UN constat overlap_en_bloc.
+-->
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#CBD5E1;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — un libelle de fleche appartient a l element qu il annote</h1>
+<p>Le libelle ci-dessous n annote rien de declare : il est exempte en bloc, et le recensement le dit.</p>
+<svg width="520" height="260" viewBox="0 0 520 260" role="img" aria-label="Trois couches et le libelle de leur relation">
+  <rect id="couche-haut" x="20" y="20" width="480" height="90" rx="8" fill="#F1F5F9" stroke="#CBD5E1"></rect>
+  <rect id="couche-bas" x="20" y="160" width="480" height="90" rx="8" fill="#F1F5F9" stroke="#CBD5E1"></rect>
+  <text data-overlap-ok="" x="40" y="80" font-family="DM Sans, sans-serif" font-size="14" fill="#475569">expose ses sorties a</text>
+</svg>
+</main></body></html>

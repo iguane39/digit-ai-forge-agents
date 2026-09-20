@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.15.1"
+  version: "2.15.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -74,19 +74,32 @@ Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
    - un banc qui éprouve un **câblage** (hook, gate, lanceur posé) **épingle la version sous test**
      — en déposant la SOURCE au repli que le câblage cherche — le câblage gardant son ordre de
      recherche réel. Sans cela il éprouve la copie installée, pas ce qu'on vient de corriger.
+7. **Une règle de DENSITÉ exclut de son dénominateur ce que le socle impose ailleurs** (TF-0984,
+   08/09/2026). A5 comptait comme du texte les polices en `url(data:…)` que A1 exige : tenir A1
+   faisait échouer A5, et le gabarit de modèle de données rougissait en permanence. Toute règle qui
+   mesure une densité, une proportion ou un ratio retire de sa mesure les charges imposées par une
+   règle voisine. Et une règle neuve se joue contre un artefact qui applique DÉJÀ toutes les règles
+   voisines, pas seulement contre sa propre fixture.
 
 ## 4. Règle de remontée (la liste grandit)
 Domaine sans oracle au registre → **définir** (scaffold en une commande : skill compagnon **`write-an-oracle`** —
-squelette + fixtures + entrées registre/manifest), **enregistrer**, **appliquer**. Chaque audit enrichit la bibliothèque — un domaine n'est jamais « jugé à l'œil » deux fois.
-**Quel fichier éditer (TF-1006, 14/09/2026)** : la remontée s'écrit dans la **source versionnée**
-— `digit-ai-forge-agents/.claude/skills/quality-oracles/references/registre-oracles.md` et
-`registre-oracles.json` (plus le manifest et les fixtures) —, **jamais** dans la copie installée
-`~/.claude/skills/quality-oracles/`, qui est celle qui s'exécute et qui est **réécrite** depuis la
-source à chaque propagation (`oracle-skills --appliquer`, joué par `bootstrap.mjs --pull` à
-l'ouverture d'une session). Fait payé le 10/09/2026 : une remontée juste, écrite dans la copie
-installée, a été effacée en silence par la propagation suivante ; elle n'a survécu que dans une
-lecture du pilot. Une remontée qui vient d'un engagement se **pseudonymise** avant d'entrer dans la
-source (nom du client, chemin du produit) : la source est publiable, la copie installée ne l'est pas.
+squelette + fixtures + entrées registre/manifest), **enregistrer**, **appliquer**.
+
+> **OÙ ENREGISTRER, ET NULLE PART AILLEURS (TF-1006, 16/09/2026).** La remontée s'écrit dans la
+> **source versionnée** du skill — `digit-ai-forge-agents/.claude/skills/quality-oracles/references/registre-oracles.json`
+> puis sa vue `registre-oracles.md` —, **jamais dans la copie installée** sous `~/.claude/skills/`.
+> *Le fait* : le 10/09/2026, une remontée §4 exemplaire — un domaine réellement découvert, son
+> oracle, ses huit règles — a été écrite dans la copie qui s'exécute. Elle était juste ; seule sa
+> localisation était fautive, et cela suffisait à la condamner. La copie installée est **écrasée à
+> chaque propagation** (`node bootstrap.mjs --pull` du pilot, à chaque ouverture de session) : un
+> travail qui n'y vit que là disparaît sans bruit, et le dépôt qui le porte ne l'a jamais vu.
+> Deux conséquences pratiques : on édite la **source**, puis on propage ; et une remontée écrite
+> dans la copie installée se **rapatrie** vers la source avant toute propagation — le pilot relève
+> l'écart (`oracle-skills`, règle K11) et refuse d'écraser une copie en avance sur sa source.
+> Depuis le 16/09/2026 la règle est tenue par deux gestes, plus par la seule lecture : le
+> générateur de `write-an-oracle` **refuse** (exit 2) d'écrire un registre sous `~/.claude/skills/`
+> et nomme la source à viser, et le self-test de ce skill échoue si un domaine vit au registre
+> INSTALLÉ sans vivre à la source. Chaque audit enrichit la bibliothèque — un domaine n'est jamais « jugé à l'œil » deux fois.
 **Signalement = écriture (M1, D1, 23/07/2026)** : tout contrôle manuel sur un domaine hors registre produit **dans le tour même** une entrée dans la **file des candidats** (`file-candidats.md` du repo forge ; côté claude.ai : `/areas/forge-file-candidats.md`) — domaine, chantier, contrôle fait, défaut observé, date. Scaffold **obligatoire** (N1) dès : 2e occurrence **du même candidat** dans la file · rejeu d'un contrôle ad hoc dans un même fil · angle A1/A2 vide en contre-expertise d'un livrable client.
 **Règle de famille (M1, D1, 08/08/2026)** — le compteur porte sur le **candidat**, jamais sur le libellé exact du domaine. Deux entrées comptent pour le même candidat si elles partagent **(a)** le **préfixe de domaine** — segment avant le premier tiret : `cadrage-reponse-ao`, `cadrage-acquisition` et `cadrage-programme-formation` forment la famille `cadrage` —, **ou (b)** la **même classe de défaut** consignée, quels que soient les libellés. Motif : trois occurrences d'un même motif sous trois noms différents ne déclenchaient jamais N1, le candidat restait gelé indéfiniment (constaté le 08/08/2026 sur `gabarits de cadrage A0 par famille de livrable`, en attente depuis le 24/07/2026). Le critère (a) est mécanique et s'applique seul ; le critère (b) est un rattrapage, à instruire quand les préfixes divergent.
 
@@ -195,6 +208,10 @@ et son seuil**. Un contrôle qui accuse un tiers du parc se fait désactiver dan
 aurait eu raison (R-33 bis).
 
 ## Ce que la campagne du 03/09/2026 a ajouté (registre v2.16.0)
+
+Quatre trous de couverture ont été comblés ce jour-là. Chaque ligne dit ce qui n'était surveillé
+par rien, l'oracle qui le juge désormais, et le bruit que cet oracle produit sur le corpus réel du
+dépôt — un contrôle dont personne n'a mesuré les faux positifs n'est pas prêt à être branché.
 
 | Ce qui manquait | Où c'est désormais | Bruit mesuré (corpus du dépôt) |
 |---|---|---|

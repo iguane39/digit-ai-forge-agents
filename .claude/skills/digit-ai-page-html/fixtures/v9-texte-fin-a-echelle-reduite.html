@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V9 — texte fin de schema a echelle reduite — 20260916a</title>
+<!--
+  Fixture de TF-1143 (lot Produit-64 20260916a, retour RD-3) — LE FACTEUR D ECHELLE, DOCUMENTE
+  COMME UNE AIDE A LA CAPTURE, RENDAIT UN VERDICT BLOQUANT SUR UNE PAGE CONFORME.
+
+  Meme fichier, meme largeur de fenetre : --scale 1 rend PASS, --scale 0.5 rend FAIL avec un
+  bloquant V9 « actif visuel indiscernable de son fond ». La cause n est pas la page : a echelle
+  reduite le rasteriseur noie une police de 13 px rendue a moins de deux pixels, et il ne reste
+  que du quasi-blanc a mesurer. L option est pourtant presentee comme un reglage de
+  PERFORMANCE — « 0.4 sur une page tres haute, moins de pixels a encoder ».
+
+  Cout du defaut : le premier reflexe devant un bloquant V9 est de foncer la charte du livrable
+  jusqu a passer le seuil. Ce geste aurait degrade huit schemas pour satisfaire un artefact de
+  rasterisation.
+
+  Cette page porte un libelle de schema a l identique du cas fondateur : texte de 13 px en
+  rgb(15,23,42) sur fond blanc, encre eparse dans une boite large. Attendu : a l echelle 1 et
+  au-dessus, AUCUN constat V9 ; sous l echelle 1, aucun BLOQUANT non plus — le constat part au
+  non juge avec sa raison, comme le socle le fait deja pour les captures impossibles.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#FFFFFF}
+main{max-width:70ch;margin:0 auto;padding:24px}
+figure{margin:24px 0;background:#FFFFFF}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<main>
+  <h1>V9 — un libelle de schema en corps de treize pixels</h1>
+  <p>Le libelle ci-dessous tient largement le seuil de contraste a l echelle native. C est la
+  reduction de la capture, et elle seule, qui le fait disparaitre de la mesure.</p>
+  <figure>
+    <svg width="314" height="20" viewBox="0 0 314 20" role="img" aria-label="Libelle de fleche du schema">
+      <text x="0" y="14" font-family="DM Sans, sans-serif" font-size="13" fill="rgb(15,23,42)">expose ses sorties a la couche suivante</text>
+    </svg>
+    <figcaption>Libelle de fleche, corps 13 px, encre rgb(15,23,42) sur fond blanc.</figcaption>
+  </figure>
+</main>
+</body></html>

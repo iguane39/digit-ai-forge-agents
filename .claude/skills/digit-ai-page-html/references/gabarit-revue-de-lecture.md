@@ -12,6 +12,11 @@ sans `REVUE.md`**, et `run-oracles`/l'orchestrateur le vérifient (fichier prés
 1. `python scripts/render_page.py <page> --sections "<sélecteur de section>"` — une capture
    par largeur (**1920, 1280, 768, 390** par défaut) **et** une capture par section (onglet,
    chapitre, panneau) : une page longue ne se lit pas sur une seule capture pleine page.
+   **Au-delà d'un rapport hauteur/largeur de 4:1**, le script produit d'office des **tuiles d'un
+   écran** (`<page>-w<largeur>-ecranNN.png`) et l'annonce dans sa sortie : ce sont elles qu'on lit.
+   Une revue qui ne cite que des captures pleine page au-delà de 4:1 est **non tenue**, jamais
+   verte — réduite à l'écran, une telle capture ne laisse rien lire (TF-1131 : 3840 × 19012 px
+   rendus à 404 × 2000, un corps de 16 px sur moins de deux pixels, cinq défauts passés).
 2. **Ouvrir chaque capture** et lire comme le destinataire : la question de chaque ligne de la
    table « Ce qui n'est PAS mécanisable » de `lisibilite.md`.
 3. Consigner **chaque constat** avec la largeur où il se voit, la suite décidée, et la preuve

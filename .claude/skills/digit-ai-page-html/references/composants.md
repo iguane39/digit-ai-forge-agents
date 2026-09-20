@@ -267,6 +267,13 @@ après renormalisation est un tableau qui a trop de colonnes : le replier, ou en
 
 - **Recherche in-page** (surlignage insensible aux accents) : composant dédié déjà fourni,
   voir [composant-recherche.md](composant-recherche.md).
+- **Embarquer un composant, c'est le POSER, jamais le coller** (TF-1059). Une copie collée à la
+  main perd l'exemption du socle : les oracles de forge-design (`oracles/lib/socle.mjs`)
+  n'exemptent que les blocs marqués `COMPOSANT-EMBARQUE` et scellés par leur empreinte, et la
+  jugent donc sur tout son CSS. Poser avec
+  `node scripts/embarquer-composants.mjs --poser <page.html> --composants table-filters.js,table-filters.css`,
+  vérifier avec `--constat <page.html>`. Un défaut du composant se corrige ici, à la source ;
+  une copie éditée sur place perd son sceau et redevient une fourche.
 - Tous les composants ci-dessus supposent le bloc `:root` du boilerplate. Après intégration,
   **relancer les oracles** (`check_html.py` puis `render_page.py`) : ne jamais juger un rendu
   depuis le seul code (cf. `zero-defaut-visuel.md`).
@@ -280,13 +287,11 @@ page ne se branche pas — il reste un `div` et dit où vivent ses éléments. C
 marquage : `<button data-kpi-filtre data-kpi-table="id" data-kpi-attr="statut"
 data-kpi-valeur="candidat">` + `data-<attr>` sur chaque ligne. Masquage par
 `data-kpi-cache`, composable avec la recherche et les facettes D-12 (visibilité dérivée).
-**Périmètre : une carte ne filtre QUE le tableau qu'elle désigne** (`data-kpi-table`) — l'état
-actif se tient par tableau (TF-0970, 08/09/2026). Avant, la carte active s'appliquait à TOUS les
-tableaux de la page avec son attribut et sa valeur : un clic sur « À corriger » du mapping
-vidait le tableau des 160 mesures, qui ne porte pas cet attribut, sans un mot au lecteur.
-`init(document)` est donc sûr sur une page à plusieurs groupes de cartes ; le banc
-`run_kpi_perimetre` de `self_test.py` vérifie qu'un clic ne change le nombre de lignes vues que
-du tableau désigné, et rejoue le défaut d'avant en sens rouge.
+**Une carte ne filtre QUE le tableau qu'elle désigne** (`data-kpi-table`, TF-0970) : l'état
+actif se tient par tableau, donc `init(document)` est sûr sur une page à plusieurs groupes de
+cartes, même quand ils filtrent sur des attributs différents. Règle vérifiée par
+`self_test.py` (`run_kpi_perimetre`) : un clic sur une carte ne change le nombre de lignes
+visibles que du tableau désigné.
 La règle **L13** de `check_html` exige la recherche statique dès 8 lignes et signale les
 KPI non cliquables au-dessus d'une liste. Modèles éprouvés : `todo/TODO.html` (pilot,
 oracle 13/13) et le dashboard forge-tests (tuiles).

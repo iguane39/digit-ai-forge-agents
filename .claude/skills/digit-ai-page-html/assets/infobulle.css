@@ -13,7 +13,7 @@
   z-index: 9999;
   max-width: 520px;
   margin: 0;
-  padding: 10px 14px;
+  padding: 8px 12px;   /* echelle 4 pt (T3 d'oracle-tokens) : 10/14 faisaient rougir toute page */
   border: 1px solid var(--line, #E6EAF2);
   border-radius: var(--r-sm, 8px);
   background: var(--surface, #FFFFFF);

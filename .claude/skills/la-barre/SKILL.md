@@ -13,8 +13,8 @@ description: >
   déclencher pour itérer sur le livrable (→ la-boucle), analyser un prompt
   (→ prompt-analyzer-l99), juger un livrable fini (→ quality-oracles), ni orchestrer
   constructeur/critique (→ forge-agents).
-# TF-0475 : le noyau declare ce skill APPELE PAR MOT-CLE (lexique d'invocation RV-6).
-# Le modele ne le charge donc pas de lui-meme ; l'appel direct reste entier.
+# TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
+# oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 ---
 
 # La Barre

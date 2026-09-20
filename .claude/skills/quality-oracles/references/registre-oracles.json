@@ -1,5 +1,5 @@
 {
- "version": "2.21.0",
+ "version": "2.24.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -43,6 +43,31 @@
     "rendu réel (débordement, contraste, chevauchement) — délégué à render_page.py",
     "pertinence éditoriale du contenu"
    ]
+  },
+  {
+   "domaine": "Complétude d'un rendu par rapport à sa source (texte perdu à la génération)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skillsroot}/digit-ai-page-html/scripts/check_completude.py",
+    "{file}",
+    "--source",
+    "{source}",
+    "--output",
+    "json"
+   ],
+   "checklist": "Un seul invariant, et il se COMPTE : rendu = mots visibles du corps HTML (balises, commentaires, scripts et styles retirés) ; source = mots visibles du ou des Markdown dont il sort ; si rendu < source, ARRÊT. Le seuil est grossier à dessein — un rendu porte EN PLUS les libellés du générateur (menus, inventaires, légendes), il est normalement PLUS riche que sa source ; plus pauvre, il a PERDU quelque chose.",
+   "statut": "ok",
+   "commande": "digit-ai-page-html/scripts/check_completude.py <page.html> --source <source.md> [--source …] [--seuil <ratio>] [--output json]",
+   "provenance": "TF-1174 (lot Produit-64 20260916b, retour RD-10, 16/09/2026) — une édition d'un générateur a sorti un append de sa boucle de regroupement de prose : le livrable est passé de 11 996 à environ 3 000 mots visibles et les neuf encadrés « Exemple de lecture » sont tombés à ZÉRO. SIX oracles joués dessus : render_page.py PASS, check_markdown.py --style PASS (il juge la source, qui n a pas bougé), oracle-slop PASS, oracle-tokens PASS, oracle-mobile PASS, check_html.py FAIL mais sur L7 et L10 seulement — l absence d un chapeau et d un exemple de lecture, jamais la disparition du texte. Classe controle-vrai-sur-le-mauvais-invariant : les six mesurent la FORME, aucun ne mesure la COMPLÉTUDE.",
+   "non_juge": [
+    "LA FIDÉLITÉ : ce contrôle compte des mots, il ne dit pas que ce sont LES MÊMES mots, ni qu ils sont au bon endroit — une page qui remplacerait chaque paragraphe par un autre de longueur égale passerait",
+    "LA FORME (débordement, contraste, chevauchement, jetons, marqueurs) — check_html.py, render_page.py et les quatre oracles de digit-ai-forge-design",
+    "LE TEXTE INJECTÉ PAR LE JAVASCRIPT à l ouverture : le script lit le fichier, il ne l exécute pas — faux positif assumé, levé en fournissant le rendu après exécution",
+    "LA SOURCE elle-même : que les Markdown fournis soient bien ceux dont la page sort est une déclaration de l appelant, jamais une mesure"
+   ],
+   "note": "ext VIDE À DESSEIN : ce contrôle COMPARE deux fichiers, et rien dans une extension ne dit de quelle source une page sort — l invocation est explicite, l appelant nomme la source. Le seuil par défaut est 1.0 ; --seuil sous 1.0 reste possible mais la DÉROGATION est écrite au non_juge de chaque exécution, jamais silencieuse. Vaut pour toute chaîne qui transforme une source en page : un gabarit rendu, une synthèse publiée, un rapport d audit."
   },
   {
    "domaine": "Lisibilité d'un document (Markdown)",
@@ -209,7 +234,9 @@
    "checklist": "pip-audit / npm audit / OSV sur versions épinglées",
    "statut": "ok",
    "non_juge": [
-    "dépendances transitives non épinglées"
+    "dépendances transitives non épinglées",
+    "ressource distante injoignable (pip-audit sans sortie, OSV hors d'atteinte) ou aucune dépendance épinglée → SKIP motivé et nommé, jamais un PASS (TF-1107)",
+    "sous --osv-fige : verdict sur données figées datées et sourcées, rien des vulnérabilités publiées depuis (fixtures, TF-1107)"
    ],
    "note": "cibler un dossier projet ou un manifeste (requirements.txt / package.json)"
   },
@@ -498,6 +525,30 @@
    ]
   },
   {
+   "domaine": "Support de diapositives (parité de format par profil)",
+   "ext": [
+    ".pptx",
+    ".potx"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{file}",
+    "--profil",
+    "{profil}"
+   ],
+   "checklist": "oracle-pptx piloté par la politique pptx du profil : P1 format (pptx.format, ex. 16:9), P2 polices ⊆ pptx.polices, P3 couleurs de texte explicites ⊆ pptx.palette — plus l'hygiène du paquet ([Content_Types].xml en 1re entrée, zéro transition, zéro JPEG). Chaque règle P n'est jouée que si le profil la déclare",
+   "statut": "partiel",
+   "non_juge": [
+    "débordement de texte hors cadre — le rendu PowerPoint le montre (TF-1130)",
+    "couleurs héritées du thème ou des masques (schemeClr)",
+    "règles propres à un type de séance (pied de page attendu, mot de couverture, faits portés) → invocation locale au produit, en plus de cet oracle",
+    "pied de page et pagination → oracle-charte-pptx-semantique S4"
+   ],
+   "note": "TF-1130 (lot Produit-64 20260913a) : un produit avait dupliqué son oracle de format de support faute de domaine ; les règles de marque passent par SON profil (format, polices, palette relevés sur son deck de référence), qui vit chez lui"
+  },
+  {
    "domaine": "Charte PPTX sémantique (sommaire, kicker, logos, footer)",
    "ext": [
     ".pptx"
@@ -508,13 +559,14 @@
     "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
     "{file}"
    ],
-   "checklist": "S1-S4 en tête d oracle-charte-pptx-semantique.mjs (bijection sommaire↔intercalaires, kicker, logos hors couverture/interlocuteurs, footer+pagination)",
+   "checklist": "S1-S5 en tête d oracle-charte-pptx-semantique.mjs (bijection sommaire↔intercalaires, kicker, logos hors couverture/interlocuteurs, footer+pagination, lexique du destinataire sur textes et notes via lib-lexique.mjs du pilot — le module que lisent déjà EC-7 et S46)",
    "statut": "ok",
    "non_juge": [
     "logo vs image de contenu distingués par taille seule (seuil 2000000 EMU documenté)",
     "footers hérités des layouts/masters non inspectés",
     "structure zip/transitions/JPEG → oracle-pptx",
-    "rendu visuel → digit-ai-pptx"
+    "rendu visuel → digit-ai-pptx",
+    "S5 : texte enfermé dans une image (capture, schéma embarqué) ; lexique absent du socle du projet → non jugé et dit, jamais PASS par silence"
    ]
   },
   {
@@ -952,6 +1004,94 @@
    "timeout_ms": 600000
   },
   {
+   "domaine": "Périmètre d'un livrable migré : ce que les visuels lisent, excédent non motivé refusé (DL1-DL6)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/perimetre@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-delimiter.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "DL1 forme (format, id, mise en page avec pages, usage au format forge-data/usage-restitution@1 exigé, périmètre livré non vide) · DL2 relevé identifié (par, date ISO, source = fichier d'origine) · DL3 rien de ce que le lecteur voyait n'est perdu (résolution insensible à la casse, avertissement sur colonne lue sans être affichée) · DL4 excédent non motivé BLOQUE (objet livré lu, ou exclusion motivée ≥ 4 mots) · DL5 les déclarations (correspondance / lecture / exclusion) résolvent à un objet du périmètre livré · DL6 taux_declare recalculé et confronté à 0,1 point près",
+   "statut": "ok",
+   "non_juge": [
+    "la JUSTESSE du relevé d'usage : un visuel oublié au relevé rend ses objets excédentaires à tort, un champ inventé les rend nécessaires à tort — d'où DL2 (qui a relevé, quand, sur quel fichier) et la chaîne `traduire-modele-semantique --usage-restitution` qui produit l'usage sans transcription à la main",
+    "la COMPLÉTUDE du livrable vers sa source — le défaut symétrique (ce que la source contient et que le livrable a oublié) appartient à `oracles/oracle-couvrir.mjs` de ce dépôt",
+    "les liaisons du rapport CONSTRUIT et le geste de vérification du rendu — `oracles/oracle-rendre.mjs` (RN2-RN5) ; la fidélité de sa mise en page — `oracles/oracle-reconstruire.mjs`",
+    "la pertinence métier d'une exclusion : l'oracle exige un motif écrit, il ne l'arbitre pas (convention CV4)"
+   ]
+  },
+  {
+   "domaine": "Chaîne de travail déclarée : étapes ordonnées, chacune avec un porteur qui existe (CH1-CH6)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/chaine@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-enchainer.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "CH1 forme (format, id, document, étapes avec id/libellé ≥ 4 mots/entrée/sortie) · CH2 rangs entiers contigus de 1 à n sans doublon · CH3 porteur dans {oracle, script, geste_humain} au chemin qui EXISTE · CH4 règles citées par un porteur oracle retrouvées dans le fichier de cet oracle · CH5 geste_humain nommé (≥ 6 mots) avec son enregistreur (contrôle existant + règle) · CH6 le document lu par les humains cite chaque étape par son id",
+   "statut": "ok",
+   "non_juge": [
+    "que la procédure ait été SUIVIE : aucune trace d'exécution n'est lue ici — un contrôle ne remplace pas un geste",
+    "la JUSTESSE de la procédure : l'oracle exige que l'ordre soit écrit et contigu, il n'arbitre pas l'ordre choisi",
+    "ce que chaque porteur juge de son côté — ses règles et ses fixtures lui appartiennent ; ici seule leur EXISTENCE est vérifiée",
+    "la COMPLÉTUDE de la chaîne : une étape absente à la fois de la déclaration et du document n'est visible d'aucune règle de forme — c'est la limite structurelle, et c'est elle qui a coûté les 3 jours du retour"
+   ]
+  },
+  {
+   "domaine": "Reconstruction d'un rapport existant : mise en page conservée, géométrie au pixel, repli déclaré (RS1-RS6)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/reconstruction@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-reconstruire.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RS1 forme (format, id, mode dans le jeu fermé, tolerance_px entier ≥ 0, source et produit avec pages, source nommant origine et releve_par) · RS2 mode repli_genere exige un motif ≥ 6 mots, écarts RS3-RS6 comptés et nommés en avertissement sous ce mode · RS3 bijection des pages (largeur, hauteur, ordre, visibilité) · RS4 bijection des visuels par page (type, x, y, largeur, hauteur à tolerance_px près) · RS5 tout écart source/produit porte un motif ≥ 4 mots dans ecarts_assumes · RS6 chaque ressource de la source est portée (depuis) ET référencée (referencee: true) par le produit",
+   "statut": "ok",
+   "non_juge": [
+    "le RENDU lui-même — ce que le lecteur voit à l'écran (polices, couleurs, données affichées) : une géométrie fidèle ne dit rien de ce qui s'affiche dedans ; `oracles/oracle-rendre.mjs` de ce dépôt (TF-1175) pour ce qui se mécanise, et le geste de vérification qu'il exige déclaré pour le reste",
+    "la justesse du relevé de la source : il se produit en lisant le fichier d'origine chez le produit, jamais ici — cet oracle compare deux relevés, il n'en lit aucun fichier natif",
+    "les objets de FORMATAGE fins (polices, couleurs, largeurs de colonnes, tri) au-delà de la géométrie et des ressources déclarées ici",
+    "un rapport construit sans rapport d'origine : il n'y a rien à conserver, et ce domaine ne s'applique pas"
+   ]
+  },
+  {
+   "domaine": "Livrable dont l'usage est un rendu : liaisons, mesures, visuels vides, et geste de vérification du rendu déclaré (RN1-RN5)",
+   "ext": [],
+   "content_patterns": [
+    "\"format\"\\s*:\\s*\"forge-data/rendu@1\""
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "c:/dev/digit-ai-forge-data/oracles/oracle-rendre.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RN1 forme (format, id, mise_en_page au format forge-data/mise-en-page@1, inventaire non vide inline ou via inventaire_ref) · RN2 liaisons : toute projection porteuse de données résout à un objet de l'inventaire (comparaison insensible à la casse) · RN3 une projection Table[Mesure] existe à l'inventaire et y est typée mesure · RN4 un visuel porteur de données sans projection AFFICHÉE n'affiche rien, et l'est dit · RN5 au moins un geste de vérification du rendu réel déclaré (libellé ≥ 4 mots, date AAAA-MM-JJ, résultat)",
+   "statut": "ok",
+   "non_juge": [
+    "CE QUE LE LECTEUR VOIT : le rendu réel (pages affichées, données, polices, couleurs, libellés d'erreur du service, durée et poids d'un export) ne s'obtient qu'en ouvrant le rapport ou en l'exportant depuis le service — c'est le geste que RN5 exige DÉCLARÉ, daté et résulté, jamais une case à cocher",
+    "la forme native des expressions du rapport (référence de source, alias du From, en-têtes de colonnes) — profil Power BI de forge-audit, jamais jugé ici",
+    "la FIDÉLITÉ de la mise en page à un rapport d'origine fourni en entrée — `oracles/oracle-reconstruire.mjs` de ce dépôt (TF-1176)",
+    "la justesse des valeurs affichées — `oracles/oracle-reconcilier.mjs` de ce dépôt, sur deux lots de mesures sous tolérance"
+   ]
+  },
+  {
    "domaine": "Style rédactionnel d'un texte Markdown (plancher E-1..E-12 du pilot)",
    "ext": [],
    "type": "cli",
@@ -1156,26 +1296,50 @@
    "note": "Juge une ARBORESCENCE (defaut : la racine des skills), pas un fichier isole ; SKIP si le socle est introuvable, jamais PASS. BRUIT MESURE le 03/09/2026 sur les 178 pages .html du depot forge-agents : 6 detections, 6 vraies (2 copies dans digit-ai-schemas/assets/exemple-reference.html, 3 copies de source-reader.js dans les fixtures du socle, 1 CSS), ZERO faux positif — le detecteur reconnait une copie a la premiere ligne de la source, signal qu'un copier-coller conserve et qu'aucune prose ne reproduit. Poseur associe : digit-ai-page-html/scripts/embarquer-composants.mjs (--constat / --ecrire)."
   },
   {
-   "domaine": "Transparence d'un contenu généré destiné au public (AI Act, article 50)",
+   "domaine": "Transparence des contenus publics générés par IA (article 50 du règlement européen sur l'IA)",
    "ext": [],
    "type": "cli",
    "cmd": [
     "node",
-    "{skilldir}/scripts/oracle-transparence-ia.mjs",
+    "{skilldir}/scripts/oracle-transparence.mjs",
     "{file}"
    ],
-   "checklist": "TR-1 mention lisible par un humain dans le texte visible · TR-2 marquage lisible par machine (méta HTML ou clé de frontmatter ; non jugé sur un .txt) · diffusion lue dans le livrable (`<meta name=\"diffusion\">`, frontmatter `diffusion`) ou par --diffusion — privé → SKIP motivé, non déclaré → SKIP, jamais PASS",
+   "checklist": "TR1 MENTION — le contenu porte dans son texte LISIBLE PAR UN HUMAIN une formule admise d'assistance par IA ; bloquant sans échéance (information du lecteur due depuis le 2026-08-02). Les formules sont FOURNIES par `--mentions <fichier.json>` (tableau de chaînes, ou objet `mentions`/`expressions`) ; à défaut, jeu générique français et anglais. AUCUNE formule d'émetteur n'est codée dans l'oracle · TR2 MARQUAGE MACHINE (.html seulement) — `<meta name=\"ai-generated\" content=\"…\">` non vide (CONVENTION INTERNE, pas une norme), ou `<meta name=\"generator\">` dont le contenu porte un marqueur d'IA (forme nommée par les règles de marque du parc) ; sévérité pilotée par l'échéance en donnée `references/echeances.json` clé `marquage_machine_absent` — AVERTISSEMENT avant la date avec les jours restants, BLOQUANT après, BLOQUANT aussi si aucune échéance n'est déclarée · TR3 NON GÉNÉRÉ — `--non-genere` ou frontmatter `genere: false` rend SKIP MOTIVÉ, jamais PASS",
    "statut": "ok",
    "non_juge": [
-    "l'ORIGINE réelle du contenu : l'oracle vérifie la présence de la mention et du marquage, il ne sait pas si le texte a été généré",
-    "la visibilité RENDUE de la mention (CSS, hors écran) : render_page.py",
-    "les exceptions de l'article 50 (relecture sous responsabilité éditoriale, usage autorisé par la loi) : arbitrage humain au GO de publication",
-    "le marquage des médias embarqués (C2PA, IPTC dans les métadonnées des images, vidéos, sons)",
-    "les livrables PRIVÉS (propale, mémoire technique, support client) : hors portée selon la décision du 11/09/2026 — SKIP motivé, jamais un PASS"
+    "la SINCÉRITÉ de la déclaration (un contenu déclaré non généré est cru sur parole)",
+    "la SUFFISANCE JURIDIQUE de la formule (présence mesurée, validité en droit non jugée)",
+    "la DÉTECTION d'un texte généré mais NON déclaré (aucune analyse de style ni de provenance)",
+    "le caractère PUBLIC du contenu (c'est l'invocation qui le décide)",
+    "la VISIBILITÉ RÉELLE de la mention à l'écran (→ render_page.py du socle digit-ai-page-html)",
+    "les formats BUREAUTIQUES (.docx, .pptx, .pdf), dont le marquage par propriété de document",
+    "la JUSTESSE de la date d'échéance (donnée datée et sourcée, lue sans être discutée)"
    ],
-   "commande": "node <skilldir>/scripts/oracle-transparence-ia.mjs <livrable.html|.md|.txt> [--diffusion public|prive] [--donnee <transparence-ia.json>]",
-   "provenance": "TF-1030 (décision humaine du 11/09/2026, D-3 (a) puis D-4 : la règle vit dans le MARQUE.md de l'émetteur, le contrôle exécutable chez forge-agents). Écrit le 14/09/2026 sous le mandat « traite tous les todos et retours ». Aucun skill de rendu ne marquait ses sorties, aucun oracle ne le vérifiait ; la spécification du produit marketing (EX-13) exige mention ET marquage sur tout contenu public généré.",
-   "note": "Les formulations de mention, les marqueurs acceptés et le vocabulaire de diffusion sont une DONNÉE datée et sourcée (references/transparence-ia.json, à revoir le 2026-12-02 ou dès la publication du code de bonnes pratiques de l'article 50) : recalibrer ne republie pas l'oracle. `ext` vide à dessein : invocation explicite sur un livrable destiné à la publication (output/03-publications du produit marketing) — brancher tout .html du parc n'est pas mandaté et condamnerait les pages privées qui ne déclarent pas leur diffusion."
+   "commande": "scripts/oracle-transparence.mjs <fichier.md|.html|.txt> [--mentions <mentions.json>] [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]",
+   "provenance": "TF-1030 (11/09/2026, décisions humaines D-3 (a) puis D-4) — l'article 50 du règlement européen sur l'IA s'applique depuis le 2026-08-02 ; la règle de transparence est écrite dans la règle de marque de l'émetteur, mais le contrôle exécutable qu'elle CITE était appelé 17 fois dans 9 fichiers d'un produit sans exister nulle part (mesure du 14/09/2026).",
+   "note": "`ext` VIDE À DESSEIN : le contrôle porte sur les contenus DESTINÉS AU PUBLIC, et rien dans une extension ne dit qu'un fichier est public — router tout `.md` du parc rougirait chaque note interne. L'invocation est explicite. La DATE de TR2 vit en DONNÉE (`references/echeances.json`, mécanisme `echeances@1` repris du socle digit-ai-page-html, jamais dupliqué) et `--date AAAA-MM-JJ` la fige pour un rejeu déterministe ; `--echeances` désigne la donnée du banc (TF-0912). La convention `meta name=\"ai-generated\"` est INTERNE à ce contrôle : aucune norme publiée ne l'impose, et l'oracle admet la forme `generator` que nomment les règles de marque rencontrées."
+  },
+  {
+   "domaine": "Prémisse d'accès mesurée avant d'être classée (analyse L99)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-premisse-acces.mjs",
+    "{file}"
+   ],
+   "checklist": "A1 prémisse d acces classee « inverifiable » sans mesure ni test manquant declare · A2 refus mesure sans controle positif avec la meme identite · A3 mesure sans horodatage ni identite · A4 conclusion d indisponibilite sans enumeration des familles d acces (scopes, points d entree paralleles). Invocation EXPLICITE sur une analyse L99 (ou son chapitre 4), pas de declenchement auto sur .md.",
+   "statut": "ok",
+   "non_juge": [
+    "la VERACITE des codes rapportes : l oracle lit ce que l analyse ecrit, il n emet aucun appel reseau",
+    "la pertinence des familles d acces enumerees (leur existence sur la plateforme visee n est pas contre-verifiee)",
+    "les premisses qui ne portent pas sur l acces (reste du Ch4, jugement humain)",
+    "un bloc qui parle d acces sans employer le vocabulaire reconnu par l oracle n est pas vu",
+    "une mesure ecrite SANS son code de retour n est pas reconnue comme une mesure (le code est la premiere des quatre pieces dues)",
+    "la suffisance de la mesure : un seul appel peut satisfaire A1-A4 et rester une mesure pauvre"
+   ],
+   "provenance": "TF-1185, lot Produit-62 - RETOURS - 20260917e (RF-26) — la fixture rouge est la forme qu avait l analyse du 17/09/2026 AVANT la regle : deux premisses d acces classees inverifiables sans qu aucun des quatre appels REST en lecture seule ait ete emis.",
+   "note": "TF-1185 (19/09/2026) : joue la regle ecrite au Ch4 de prompt-analyzer-l99 (« Premisse d ACCES : la mesurer avant de la classer »). Doctrine : un refus prouve qu une porte est fermee, jamais qu il n y en a qu une."
   }
  ]
 }

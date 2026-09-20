@@ -21,12 +21,23 @@ coexistent dans le parc, et ils ne rendent pas la même chose :
 | Rendu | cartes HTML positionnées + calque SVG pour les arêtes | SVG pur |
 | Colonnes | badges PK / UK / FK / NN | texte « `[PK] nom *` », 🔒 pour les PII |
 | Arêtes | ancrées **sur la ligne de la colonne** | de carte à carte |
-| Mise à l'échelle | `fitSchema` (tient toujours dans la largeur) | aucune |
-| Dictionnaire | dictionnaire compagnon | aucun |
+| Mise à l'échelle | `fitSchema` (tient toujours dans la largeur) | aucune : `overflow-x:auto` et `min-width` jusqu'à 1200 px, donc défilement |
+| Dictionnaire | dictionnaire compagnon | dictionnaire compagnon lui aussi — table Table / Colonnes / PII / Note, filtrable au-delà du seuil |
+| Langue | français seulement | **fr et en**, par les tables de chaînes `STR` et `RES` du moteur |
 
 **Celui-ci fait foi**, et la raison est écrite dans sa propre référence : il est *dérivé du socle
 D16 des rapports d'audit, amélioré*. Le rapport d'audit rend donc l'ANCIENNE version pendant que
 la capture donnée comme modèle est la nouvelle — deux moteurs, deux rendus, **un seul nom**.
+
+**Ce que la reprise coûterait, et il faut le dire avant de la demander (mesuré le 16/09/2026).**
+Ce canevas est une page française en dur ; `renderERD` rend le schéma dans les deux langues du
+rapport d'audit. Importer ce canevas tel quel ferait donc perdre l'anglais à tout rapport produit
+en anglais — un gain de rendu payé par une régression de portée. La reprise n'est pas un
+copier-coller : les quatre fonctions du gabarit (`renderDbSchema`, `renderDbLegend`,
+`renderDbDictionary`, `fitSchema`) doivent sortir du `<script>` vers un module partagé qui prend
+ses libellés en paramètre, comme `renderERD` le fait déjà. **Arbitrage à rendre par l'humain**,
+côté propriétaire du rapport : extraire ce module, ou garder deux moteurs et le dire dans les deux
+dépôts. Ce qui est faux aujourd'hui, c'est le silence, pas le choix.
 
 **Ce qui reste à faire, et ce n'est pas de ce côté-ci du parc.** Le rapport d'audit doit
 consommer ce canevas — import, ou copie conforme déclarée avec son empreinte, comme le socle des

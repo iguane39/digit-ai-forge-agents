@@ -47,11 +47,32 @@ const args = process.argv.slice(2);
 const cible = args.find((a) => !a.startsWith('--'));
 const optRef = (args.find((a) => a.startsWith('--referentiel=')) || '').split('=')[1];
 const optProduits = (args.find((a) => a.startsWith('--produits=')) || '').split('=')[1];
+// TF-1071 : juger le SEUL message de commit (hameçon commit-msg). Le dépôt reste l'artefact qui
+// sert à résoudre les tables.
+const optMessage = (args.find((a) => a.startsWith('--message=')) || '').slice('--message='.length);
 
-const out = (verdict, findings, nj, code, artefact) => {
+// TF-0991 (08/09) — LE TOTAL EST UN CHAMP, PAS UNE PHRASE. La sortie bornée à 200 constats
+// poussait son vrai total dans une ligne du `non_juge` ; le pilot a compté les entrées de
+// `findings` et publié 200 pour un passif de 939 (facteur 3,8), puis une « invariance 200 avant,
+// 200 après » dont les deux termes butaient sur le même plafond. `total`, `rendus` et `bornee`
+// sont désormais frères de `findings` (la phrase reste en doublon lisible), et le plafond se
+// pilote par FORGE_PORTE_PLAFOND (entier, ou « tout ») pour mesurer un passif sans patcher.
+const plafondDe = (brut, defaut) => {
+  if (brut === undefined || brut === '') return defaut;
+  if (String(brut).toLowerCase() === 'tout') return Infinity;
+  const n = Math.floor(Number(brut));
+  return n > 0 ? n : defaut;
+};
+const PLAFOND = plafondDe(process.env.FORGE_PORTE_PLAFOND, 200);
+const PLAFOND_ANTERIORITES = plafondDe(process.env.FORGE_PORTE_PLAFOND_ANTERIORITES, 50);
+
+const out = (verdict, findings, nj, code, artefact, compte) => {
+  const total = compte ? compte.total : findings.length;
   process.stdout.write(JSON.stringify({
     oracle: 'oracle-nom-client-publie', domaine: DOM, artefact: artefact ?? cible ?? null,
-    verdict, findings, non_juge: nj,
+    verdict, findings, total, rendus: findings.length, bornee: total > findings.length,
+    ...(compte && compte.detail ? { comptes: compte.detail } : {}),
+    non_juge: nj,
   }));
   process.exit(code);
 };
@@ -306,6 +327,10 @@ function formesDeclarees(valeur) {
   return f.length ? f : null;
 }
 
+/** Le pseudonyme d'une clé de la table : la valeur elle-même, ou son champ `pseudo` (TF-0825). */
+const pseudoDe = (valeur) => (typeof valeur === 'string' ? valeur
+  : (valeur && typeof valeur === 'object' && typeof valeur.pseudo === 'string' ? valeur.pseudo : null));
+
 function termesProduits(table) {
   const termes = [];
   let ignorees = 0;
@@ -319,12 +344,12 @@ function termesProduits(table) {
     if (formes) {
       // Les formes déclarées REMPLACENT la clé nue. Chacune est bornée comme la clé l'aurait
       // été : une forme qui vivrait au milieu d'un mot n'est pas une mention, c'est un blob.
-      termes.push({ cle, formes, litt: null, re: null,
+      termes.push({ cle, formes, litt: null, re: null, pseudo: pseudoDe(produits[cle]),
                     bornees: formes.map(litteralProduit), depuis: borneDe(depuis, cle) });
       continue;
     }
     termes.push({ cle, formes: null, litt: litteralProduit(cle), re: variantesProduit(cle),
-                  depuis: borneDe(depuis, cle) });
+                  pseudo: pseudoDe(produits[cle]), depuis: borneDe(depuis, cle) });
   }
   return { termes, ignorees };
 }
@@ -457,6 +482,30 @@ if (!prodPath) {
     prodMotif = "C5 NON JOUÉE : table des produits illisible (" + prodPath + ") : " + e.message
       + " — les noms de produits n'ont PAS été cherchés";
   }
+}
+
+// TF-1071 (13/09) — LE MESSAGE SE JUGE AU COMMIT, PAS AU PUSH. Un nom de produit réel est entré
+// dans un message au commit, y a survécu deux jours, et ne s'est corrigé qu'en réécrivant 23
+// enregistrements de l'histoire locale. Le pre-push le voyait — après coup. En mode `--message`,
+// la porte juge le SEUL message (lignes de commentaire de git exclues), au moment où l'auteur a
+// encore le mot sous les yeux, et propose le pseudonyme de la table. Le pre-push reste le filet.
+if (optMessage) {
+  let texte = '';
+  try { texte = fs.readFileSync(optMessage, 'utf8'); }
+  catch (e) { out('SKIP', [], ['message de commit illisible (' + optMessage + ') : ' + e.message], 2, 'message de commit'); }
+  const fm = [];
+  texte.split('\n').forEach((l, i) => {
+    if (l.startsWith('#')) return;                   // commentaires ajoutés par git : jamais publiés
+    for (const t of T) if (chercheTexte(l, t)) fm.push({ sev: 'bloquant', regle: 'C3',
+      msg: `${t.genre} interdit « ${t.mot} » dans le MESSAGE de commit — le remplacer par son pseudonyme de rôle (Client-X) avant de valider`,
+      where: `message:${i + 1}` });
+    for (const pr of P) if (porteProduit(l, pr)) fm.push({ sev: 'bloquant', regle: 'C5',
+      msg: `nom de produit interdit « ${pr.cle} » dans le MESSAGE de commit — pseudonyme proposé par la table : ${pr.pseudo || '(aucun : à inscrire à la table)'}`,
+      where: `message:${i + 1}` });
+  });
+  const njm = ['mode --message : SEUL le message est jugé — contenus, noms de fichiers et histoire restent au pre-push, qui garde son filet entier'];
+  if (prodMotif) njm.push(prodMotif);
+  out(fm.length ? 'FAIL' : 'PASS', fm, njm, fm.length ? 1 : 0, 'message de commit');
 }
 
 const { repo, temporaire, erreur } = ouvrir(cible);
@@ -850,20 +899,26 @@ if (anteriorites.length) {
 if (bloquants.length) {
   // Une sortie qui déroulerait 648 occurrences ne se lit pas : on borne, ET ON DIT qu'on borne —
   // un plafond silencieux se lit comme « tout est là », ce qui est le contraire d'un contrôle.
-  const montres = bloquants.slice(0, 200);
-  if (bloquants.length > montres.length) nj.push(`${bloquants.length} constat(s) BLOQUANT(S) au total, ${montres.length} listés ici — sortie bornée, le reste existe`);
+  const montres = bloquants.slice(0, PLAFOND);
+  if (bloquants.length > montres.length) nj.push(`${bloquants.length} constat(s) BLOQUANT(S) au total, ${montres.length} listés ici — sortie bornée, le reste existe (champs total/rendus/bornee ; FORGE_PORTE_PLAFOND=tout pour tout lister)`);
   // Les antériorités suivent les bloquants, bornées à leur tour : elles ne doivent ni noyer les
   // constats qui refusent la publication, ni disparaître de la sortie.
-  const anterMontrees = anteriorites.slice(0, 50);
+  const anterMontrees = anteriorites.slice(0, PLAFOND_ANTERIORITES);
   if (anteriorites.length > anterMontrees.length) nj.push(`${anteriorites.length} antériorité(s) au total, ${anterMontrees.length} listée(s) ici — sortie bornée, le reste existe`);
-  out('FAIL', montres.concat(anterMontrees), nj, 1, cible);
+  out('FAIL', montres.concat(anterMontrees), nj, 1, cible, {
+    total: bloquants.length + anteriorites.length,
+    detail: { bloquants: { total: bloquants.length, rendus: montres.length },
+              anteriorites: { total: anteriorites.length, rendus: anterMontrees.length } } });
 }
 out('PASS', [{ sev: 'info', regle: P.length ? 'C1-C5' : 'C1-C4',
   msg: `aucun des ${T.length} terme(s) du référentiel`
     + (P.length ? `, ni des ${P.length} nom(s) de produit de la table,` : ' (C5 non jouée)')
     + ' dans les contenus, les noms de fichiers ni les messages de commit'
     + (anteriorites.length ? ` — hors ${anteriorites.length} antériorité(s) de l'historique, déclarée(s) et non bloquante(s)` : ''),
-  where: path.basename(cible) }].concat(anteriorites.slice(0, 50)), nj, 0, cible);
+  where: path.basename(cible) }].concat(anteriorites.slice(0, PLAFOND_ANTERIORITES)), nj, 0, cible, {
+  total: 1 + anteriorites.length,
+  detail: { bloquants: { total: 0, rendus: 0 },
+            anteriorites: { total: anteriorites.length, rendus: Math.min(anteriorites.length, PLAFOND_ANTERIORITES) } } });
 
 // NOTE, ET ELLE EST LA MEILLEURE PREUVE QUE CET ORACLE JUGE : sa PREMIÈRE exécution sur le dépôt
 // qui le porte a rendu FAIL — sur CE fichier, ligne 94, où un commentaire illustrait la règle de

@@ -114,6 +114,30 @@
    ]
   },
   {
+   "nom": "pptx-format",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/fixtures/profil-pptx-format.json"
+   ],
+   "red": "pptx-format-red.pptx",
+   "green": "pptx-format-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "P1",
+    "P2",
+    "P3"
+   ],
+   "provenance": "TF-1130 (lot Produit-64 20260913a) : un oracle de format de support de diapositives dupliqué par un produit, faute de domaine au registre ; les règles de format pilotées par profil entrent dans oracle-pptx"
+  },
+  {
    "nom": "llm",
    "cmd": [
     "node",
@@ -136,19 +160,18 @@
    "cmd": [
     "node",
     "{skilldir}/scripts/oracle-sca.mjs",
-    "{fixture}"
+    "{fixture}",
+    "--osv-fige={skilldir}/fixtures/sca-osv-fige.json"
    ],
    "red": "sca-red/requirements.txt",
    "green": "sca-green/requirements.txt",
    "attendu_red": [
-    "FAIL",
-    "SKIP"
+    "FAIL"
    ],
    "attendu_green": [
-    "PASS",
-    "SKIP"
+    "PASS"
    ],
-   "dependant_outil": "pip-audit / npm audit / OSV (réseau)"
+   "dependant_outil": "aucun sous --osv-fige (TF-1107 : données figées datées) ; en usage réel pip-audit / npm audit / OSV (réseau)"
   },
   {
    "nom": "a11y",
@@ -409,6 +432,28 @@
     "PASS"
    ],
    "provenance": "Propales PPTX tous clients — règles kicker/logo/bijection nées de renders fautifs (charte v2, legacy renders to discard) ; overrides slideMaster fantômes découverts après livraison le 08/06/2026 (inventaire P2 §2-§3 O2) ; comble le non_juge charte sémantique déclaré par oracle-pptx"
+  },
+  {
+   "nom": "charte-pptx-lexique",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-lexique-red/deck.pptx",
+   "green": "charte-pptx-lexique-green/deck.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S5",
+    "« ticket » (2) → « demande »",
+    "« workflow » (1) → « chaine de traitement »"
+   ],
+   "provenance": "TF-1152 (retour humain du 16/09/2026) : le lexique du destinataire n'était joué sur aucun texte de présentation — EC-7 d'oracle-ecriture ne lit que des .md, S46 d'oracle-synthese que des restitutions. Les deux decks sont identiques à quatre chaînes près. Le terme « workflow » ne vit QUE dans les notes du présentateur : sans lecture des notes, le message attendu manque et la règle n'est plus prouvée. La VERTE applique mot pour mot la correction que le message de la rouge propose (TF-1013) — un remède recommandé se joue au banc. Les deux termes sont synthétiques : aucun retour client réel n'est publié ici"
   },
   {
    "nom": "etat-forge",
@@ -1027,14 +1072,18 @@
    "note": "`{pilot}` se résout par `FORGE_ROOT/digit-ai-factory`, sinon par le dépôt frère `../../../../digit-ai-factory` du skill (scripts/lib/pilot.mjs). Pilot introuvable → SKIP MOTIVÉ nommant les pistes : un marqueur non résolu ferait échouer le lancement, et un lancement en échec se lit comme un FAIL — donc comme la preuve attendue sur la fixture rouge."
   },
   {
-   "nom": "transparence-ia",
+   "nom": "transparence",
    "cmd": [
     "node",
-    "{skilldir}/scripts/oracle-transparence-ia.mjs",
-    "{fixture}"
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--date",
+    "2026-09-17"
    ],
-   "red": "transparence-red.html",
-   "green": "transparence-green.html",
+   "red": "transparence-red.md",
+   "green": "transparence-green.md",
    "attendu_red": [
     "FAIL"
    ],
@@ -1042,10 +1091,190 @@
     "PASS"
    ],
    "attendu_messages_red": [
-    "TR-1 — aucune MENTION",
-    "TR-2 — aucun MARQUAGE"
+    "TR1",
+    "AUCUNE MENTION"
    ],
-   "provenance": "TF-1030 (décision humaine du 11/09/2026, D-3 (a) et D-4 ; oracle écrit le 14/09/2026) — aucun livrable public de Digit-AI ne portait la mention ni le marquage de l'article 50 de l'AI Act, applicable depuis le 2026-08-02, et aucun contrôle ne le disait. La rouge est une fiche offre (livrable L5 de la spécification du produit marketing) qui déclare sa diffusion publique et ne porte ni mention visible ni méta ; sa seule mention est dans un COMMENTAIRE, que l'oracle doit ignorer. La verte est la même page, mention en pied et méta `ai-generated`. Les deux messages attendus verrouillent TR-1 ET TR-2 : sans eux, la rouge resterait FAIL par une seule règle et l'autre pourrait mourir en silence (leçon TF-0362)."
+   "commentaire": "MÊME publication dans les deux sens, à UNE ligne près : la verte est la rouge PLUS la mention. Le remède que le message de la rouge propose est donc EXÉCUTÉ par la verte, et il passe (TF-1013). La formule de la verte est INVENTÉE et ne matche AUCUNE expression du jeu par défaut : son PASS prouve que l'oracle lit les formules qu'on lui FOURNIT au lieu de retomber sur les siennes — c'est l'agnosticisme de marque, mesuré.",
+   "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-mention-par-defaut",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--date",
+    "2026-09-17"
+   ],
+   "red": "transparence-red.md",
+   "green": "transparence-defaut-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR1"
+   ],
+   "commentaire": "SANS `--mentions` : le jeu générique par défaut (français et anglais) doit suffire à reconnaître une formule courante. Sans ce cas, un défaut du jeu par défaut resterait invisible, toutes les autres entrées passant un fichier de formules.",
+   "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-html-apres-echeance",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--echeances",
+    "{skilldir}/fixtures/transparence-echeances.json",
+    "--date",
+    "2026-10-16"
+   ],
+   "red": "transparence-html-red.html",
+   "green": "transparence-html-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR2",
+    "ÉCHÉANCE DÉPASSÉE"
+   ],
+   "commentaire": "MÊME page, au seul `<meta>` de marquage près. La donnée d'échéance du banc porte une date INVENTÉE (2026-10-15), DIFFÉRENTE de l'échéance réelle (2026-12-02) : un oracle qui coderait la vraie date en dur rendrait PASS ici et ferait rougir le self-test. C'est la preuve exécutée que la date vit en DONNÉE.",
+   "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-html-avant-echeance",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--echeances",
+    "{skilldir}/fixtures/transparence-echeances.json",
+    "--date",
+    "2026-10-01"
+   ],
+   "red": "transparence-html-sans-mention-red.html",
+   "green": "transparence-html-red.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR1",
+    "AUCUNE MENTION"
+   ],
+   "attendu_messages_green": [
+    "TR2",
+    "reste admise"
+   ],
+   "commentaire": "Les DEUX bords de l'échéance sur la MÊME page. La VERTE est la page SANS marquage machine jugée AVANT la date : elle passe, avec un avertissement qui dit les jours restants — `attendu_messages_green` tient cet avertissement, faute de quoi rien ne le prouverait (TF-0362). La ROUGE porte le marquage machine mais PLUS la mention humaine : conforme pour un robot, muette pour son lecteur — et TR1 ne bénéficie d'AUCUN report.",
+   "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-non-genere-drapeau",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--non-genere",
+    "--date",
+    "2026-09-17"
+   ],
+   "red": "transparence-red.md",
+   "green": "transparence-green.md",
+   "attendu_red": [
+    "SKIP"
+   ],
+   "attendu_green": [
+    "SKIP"
+   ],
+   "dependant_outil": "aucun — TR3 : un contenu déclaré NON généré rend SKIP MOTIVÉ, jamais PASS. Les DEUX sens sont le SKIP à dessein : le même fichier rouge qui échoue sans le drapeau doit sortir en SKIP avec lui, et le vert aussi — un contrôle qui ne s'applique pas ne délivre pas de certificat de conformité.",
+   "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-non-genere-frontmatter",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--date",
+    "2026-09-17"
+   ],
+   "red": "transparence-non-genere.md",
+   "green": "transparence-non-genere.md",
+   "attendu_red": [
+    "SKIP"
+   ],
+   "attendu_green": [
+    "SKIP"
+   ],
+   "attendu_messages_red": [
+    "TR3"
+   ],
+   "attendu_messages_green": [
+    "TR3"
+   ],
+   "dependant_outil": "aucun — TR3 par le FRONTMATTER (`genere: false`), sans drapeau en ligne de commande : le fichier n'a aucune mention et sortirait en FAIL sans sa déclaration.",
+   "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "completude-rendu-source",
+   "cmd": [
+    "python3",
+    "{skillsroot}/digit-ai-page-html/scripts/check_completude.py",
+    "{fixture}",
+    "--source",
+    "{skillsroot}/digit-ai-page-html/fixtures/completude-source.md",
+    "--output",
+    "json"
+   ],
+   "red": "../../digit-ai-page-html/fixtures/completude-amputee.html",
+   "green": "../../digit-ai-page-html/fixtures/completude-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "PERTE DE TEXTE"
+   ],
+   "provenance": "TF-1174 (lot Produit-64 20260916b, RD-10, 16/09/2026) — la fixture rouge REPRODUIT le defaut reel : un append sorti de la boucle de regroupement de prose ne laisse que le DERNIER paragraphe de chaque chapitre. Les deux pages rendent le MEME verdict et les MEMES huit constats a check_html.py : la chaine de forme est aveugle a l amputation."
+  },
+  {
+   "nom": "premisse-acces",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-premisse-acces.mjs",
+    "{fixture}"
+   ],
+   "red": "premisse-acces-red.md",
+   "green": "premisse-acces-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "A1 —",
+    "A4 —"
+   ],
+   "provenance": "TF-1185, lot Produit-62 - RETOURS - 20260917e (RF-26) — la fixture rouge est la forme qu avait l analyse du 17/09/2026 AVANT la regle : deux premisses d acces classees inverifiables sans qu aucun des quatre appels REST en lecture seule ait ete emis."
   }
  ]
 }

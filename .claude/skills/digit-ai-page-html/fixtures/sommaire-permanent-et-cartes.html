@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — sommaire permanent et sommaire en cartes — 20260916a</title>
+<!--
+  Fixture de TF-1145 (lot Produit-64 20260916a, retour RD-5) — LA FAMILLE sommaire_perdu NE LIT
+  PLUS LE PREMIER NAV, MAIS TOUS.
+
+  Le livrable portait TROIS navigations, et chaque oracle n en regardait QU UNE en rendant son
+  verdict comme si elle etait seule. Mesure du repli reel, prise au navigateur : la barre a onze
+  entrees est position: sticky, et reste dans la fenetre apres 20 000 px de defilement, script
+  actif comme script coupe. Aucun lecteur ne perdait la navigation ; sommaire_perdu rendait
+  pourtant BLOQUANT aux six largeurs, en designant les cartes.
+
+  Le sommaire EN CARTES est place AVANT la barre dans le document : c est ce qui reproduit le
+  defaut, puisque l ancien selecteur retenait le premier nav rencontre. Les cartes sortent de la
+  fenetre au defilement — c est leur nature, une grille ne colle pas — et la barre reste.
+  Attendu : AUCUN constat sommaire_perdu. Le pendant rouge est
+  `sommaire-perdu-aucune-permanente.html`, ou la barre n est pas collante.
+-->
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+nav.toc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:20px 0}
+nav.toc a{display:block;border:1px solid var(--line);border-radius:8px;padding:14px;
+ color:var(--ink);text-decoration:none}
+.toc-d{display:block;color:var(--muted);font-size:14px;margin-top:6px}
+nav.barre{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);
+ display:flex;gap:18px;padding:14px 20px;z-index:20}
+nav.barre a{color:var(--ink);text-decoration:none;font-weight:600}
+section{min-height:1200px;border-top:1px solid var(--line);padding-top:16px}
+.ch-apprend{color:var(--muted);margin:0 0 10px}
+@media (max-width:640px){.wrap{padding:10px}nav.toc{grid-template-columns:1fr}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>Un sommaire en cartes, et une barre qui reste</h1>
+<nav class="toc" aria-label="Sommaire annote">
+  <a href="#ch1">Cadrage<span class="toc-d">Ce qui a ete demande, et par qui.</span></a>
+  <a href="#ch2">Mesures<span class="toc-d">Les hauteurs relevees, largeur par largeur.</span></a>
+  <a href="#ch3">Suites<span class="toc-d">Le geste retenu et son cout constate.</span></a>
+  <a href="#ch4">Preuves<span class="toc-d">Les sorties d oracle citees en entier.</span></a>
+  <a href="#ch5">Restes<span class="toc-d">Ce qui n est pas ferme, et par qui.</span></a>
+</nav>
+<nav class="barre" aria-label="Sommaire permanent"><a href="#ch1">Cadrage</a><a href="#ch2">Mesures</a><a href="#ch3">Suites</a><a href="#ch4">Preuves</a><a href="#ch5">Restes</a></nav>
+<section id="ch1"><h2>Cadrage</h2><p class="ch-apprend">Ce chapitre vous apprend qui a demande quoi, a quelle date, et dans quels termes exacts.</p><p class="contenu">La demande d origine et le nom de son emetteur.</p></section>
+<section id="ch2"><h2>Mesures</h2><p class="ch-apprend">Ce chapitre vous apprend les hauteurs relevees par l oracle, largeur de fenetre par largeur.</p><p class="contenu">Les quatre releves et leur date.</p></section>
+<section id="ch3"><h2>Suites</h2><p class="ch-apprend">Ce chapitre vous apprend le geste retenu, son cout constate et ce qu il a permis d eviter.</p><p class="contenu">Le geste, et sa mesure.</p></section>
+<section id="ch4"><h2>Preuves</h2><p class="ch-apprend">Ce chapitre vous apprend ou lire les sorties d oracle, citees en entier et datees.</p><p class="contenu">Les sorties, sans coupure.</p></section>
+<section id="ch5"><h2>Restes</h2><p class="ch-apprend">Ce chapitre vous apprend ce qui n est pas ferme, et a quel acteur le reste appartient.</p><p class="contenu">Le reste a faire, par acteur.</p></section>
+</main></body></html>

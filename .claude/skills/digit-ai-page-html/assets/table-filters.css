@@ -5,18 +5,21 @@
    composant — JAMAIS de balise écrite en toutes lettres dans ce commentaire (même famille
    de piège que RA-1 : un « script » ouvrant en commentaire fausse toute lecture paresseuse
    du document). Ne consomme que les tokens :root du socle (--surface, --ink, --muted,
-   --line, --blue, --r-sm) : aucune couleur en dur, les deux thèmes sont servis. */
+   --line, --blue, --r-sm) : aucune couleur en dur, les deux thèmes sont servis. TF-1059
+   (11/09) : deux couleurs en dur restaient (texte du bouton actif, repli du survol), treize
+   espacements sortaient de l'échelle 4pt et quatre anneaux de focus n'étaient pas prescrits —
+   corrigés ici, à la source, plutôt que dans chaque produit. */
 
 .tf-btn {
   font: inherit; font-size: .72rem; line-height: 1;
   color: var(--blue); background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--r-sm);
-  padding: 3px 7px; margin-left: 6px; cursor: pointer; vertical-align: middle;
+  padding: 4px 8px; margin-left: 8px; cursor: pointer; vertical-align: middle;
 }
 .tf-btn:hover { border-color: var(--blue); }
-.tf-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-btn:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 /* filtre ACTIF : l'état se voit sans ouvrir le panneau */
-.tf-btn.tf-on { background: var(--blue); color: #fff; border-color: var(--blue); }
+.tf-btn.tf-on { background: var(--blue); color: var(--surface); border-color: var(--blue); }
 
 .tf-panel {
   position: absolute; z-index: 30; top: calc(100% + 4px); left: 0;
@@ -24,36 +27,42 @@
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: var(--r-sm);
   box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
-  padding: 10px 12px; text-align: left; text-transform: none;
+  padding: 12px; text-align: left; text-transform: none;
   font-family: var(--sans); font-size: .85rem; font-weight: 400;
   letter-spacing: normal; cursor: default;
 }
 .tf-search {
   width: 100%; font: inherit; color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--r-sm);
-  padding: 6px 10px; margin: 0 0 8px;
+  padding: 8px 12px; margin: 0 0 8px;
 }
-.tf-search:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-search:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 .tf-actions {
-  display: flex; gap: 14px; border-bottom: 1px solid var(--line);
+  display: flex; gap: 16px; border-bottom: 1px solid var(--line);
   padding-bottom: 8px; margin-bottom: 8px;
 }
 .tf-actions button {
   font: inherit; font-weight: 600; color: var(--blue);
-  background: none; border: none; cursor: pointer; padding: 2px 4px;
+  background: none; border: none; cursor: pointer; padding: 0 4px;
 }
-.tf-actions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-.tf-opts { display: flex; flex-direction: column; gap: 2px; }
+.tf-actions button:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
+.tf-opts { display: flex; flex-direction: column; gap: 4px; }
 .tf-opts label {
   display: flex; align-items: center; gap: 8px;
-  padding: 4px 2px; border-radius: 4px; cursor: pointer;
+  padding: 4px; border-radius: 4px; cursor: pointer;
 }
-.tf-opts label:hover { background: var(--bg, #f6f8fc); }
+.tf-opts label:hover { background: var(--bg); }
 .tf-opts input[type="checkbox"] { accent-color: var(--blue); }
 /* TF-0782 (02/09) : la cardinalite decide de la FORME du panneau, pas de son existence — et
    une forme qui change sans le dire est une affordance muette. Le panneau ouvert sur sa
    recherche (plus de 15 valeurs) ou reduit a une valeur unique porte sa note. */
 .tf-forme-note { margin: 0 0 8px; color: var(--muted); font-size: .78rem; font-style: italic; }
+/* TF-1051 (08/09) : une colonne a valeur UNIQUE le dit dans son en-tete, la ou on la lit —
+   repliee dans le panneau, la note n'etait vue par personne et le lecteur concluait a une panne. */
+.tf-unique {
+  display: block; margin-top: 4px; color: var(--muted);
+  font-size: .72rem; font-weight: 400; font-style: italic; text-transform: none;
+}
 
 /* TF-0431 : panneau aligne a droite quand la place manque (choisi par le composant) ;
    le conteneur defilant porteur d'un panneau ouvert ne rogne plus (data-tf-ouvert). */
@@ -63,15 +72,15 @@
 /* TF-0430 : etat vide — un filtre qui ne laisse rien le DIT dans le tableau, et offre la
    seule action utile a ce moment. */
 tr[data-tf-empty] td {
-  padding: 18px 12px; text-align: center; color: var(--muted);
+  padding: 16px 12px; text-align: center; color: var(--muted);
   font-style: italic; border-bottom: 1px solid var(--line);
 }
 .tf-reset {
   font: inherit; font-style: normal; font-weight: 600; color: var(--blue);
   background: none; border: 1px solid var(--line); border-radius: var(--r-sm);
-  padding: 4px 10px; margin-left: 10px; cursor: pointer;
+  padding: 4px 12px; margin-left: 12px; cursor: pointer;
 }
 .tf-reset:hover { border-color: var(--blue); }
-.tf-reset:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.tf-reset:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 
 @media print { .tf-btn, .tf-panel, tr[data-tf-empty] { display: none; } }

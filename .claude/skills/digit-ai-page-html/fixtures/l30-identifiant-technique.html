@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Digit-AI — L30 terme en sous-chaine d un identifiant — 20260914a</title>
+<title>Digit-AI — L30 identifiant technique hors jargon — 20260914a</title>
 <style>
 :root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--mark:#FEF08A;
  --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
@@ -17,25 +17,23 @@ nav.toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));ga
 .termes dfn{font-style:normal;font-weight:600;color:var(--ink)}
 @media (max-width:640px){.wrap{padding:10px}}
 @media print{body{background:#fff}}
-</style></head>
-<!--
-  Fixture VERTE de L30, seconde moitie — TF-0969 : UN TERME DU REFERENTIEL CONTENU DANS UN
-  IDENTIFIANT N EST PAS EMPLOYE.
+</style><!--
+  Fixture VERTE de L30, TF-0969 — UN IDENTIFIANT N'EST PAS UN TERME.
 
-  Le chapitre Mapping cite la colonne aggregate_type et sa valeur LEASE, relevees telles
-  quelles dans le catalogue. « gate » (terme du referentiel jargon-a-gloser.json) y figure en
-  SOUS-CHAINE, jamais comme mot. Avant TF-0969 la regle cherchait en sous-chaine et accusait
-  le chapitre d employer un terme absent ; la parade du produit etait de gloser un mot qu il
-  n emploie pas. Le chapitre Mesures emploie DAX et le glose : la regle reste armee.
+  Le chapitre Mapping cite la colonne aggregate_type, relevee telle quelle. Le referentiel
+  porte « gate », et en sous-chaine « gate » etait trouve dans aggregate_type : le chapitre
+  etait accuse d'employer un terme absent. Avec la frontiere de mot Unicode, le souligne
+  compte comme une lettre et l'identifiant ne declenche rien.
 
-  Attendu : PASS (aucune regle en echec). Sens rouge : l30-terme-mot-entier.html.
+  Attendu : aucun echec.
+-->L30.
 -->
 <body><main class="wrap">
-<h1>L30 — terme en sous-chaine d un identifiant</h1>
+<h1>L30 — terme technique non glose</h1>
 <nav class="toc" aria-label="Sommaire"><ol>
 <li><a href="#mapping"><span class="toc-t">1 Mapping</span><span class="toc-d">la correspondance champ a champ</span></a></li>
 <li><a href="#mesures"><span class="toc-t">2 Mesures</span><span class="toc-d">les grandeurs calculees a la volee</span></a></li>
 </ol></nav>
-<section id="mapping"><h2>Mapping</h2><p class="contenu">Ce chapitre contient la correspondance champ a champ des seules colonnes reprises ; le chapitre suivant, lui, porte les grandeurs calculees, qui n existent dans aucune source.</p><p class="ch-apprend">Vous repartez d ici en sachant quelle colonne d origine alimente chaque colonne servie.</p><p>La colonne <code>aggregate_type</code> vaut LEASE sur toutes les lignes du cumul des dettes.</p></section>
+<section id="mapping"><h2>Mapping</h2><p class="contenu">Ce chapitre contient la correspondance champ a champ des seules colonnes reprises ; le chapitre suivant, lui, porte les grandeurs calculees, qui n existent dans aucune source.</p><p class="ch-apprend">Vous repartez d ici en sachant quelle colonne d origine alimente chaque colonne servie.</p><p>La colonne aggregate_type vaut LEASE sur toutes les lignes reprises.</p></section>
 <section id="mesures"><h2>Mesures</h2><p class="contenu">Ce chapitre contient les six grandeurs calculees a la volee et la formule de chacune ; aucune d elles n existe dans une source.</p><p class="termes">Termes employes — <dfn>DAX</dfn> : le langage de formules du rapport, dans lequel ces grandeurs sont ecrites.</p><p class="ch-apprend">Vous repartez d ici en sachant comment chaque grandeur est calculee et sur quel perimetre.</p><p>Chaque formule DAX est donnee telle qu elle est evaluee.</p></section>
 </main></body></html>

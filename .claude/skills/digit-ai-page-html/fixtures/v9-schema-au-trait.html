@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V9 rendu — dessin au trait conforme du gabarit de schema — 20260917a</title>
+<!--
+  TF-1087 — LE TEMOIN QUI INTERDIT DE ROUVRIR LA REGRESSION DU 14/09/2026.
+
+  Le geste propose pour corriger V9 etait « juger la couleur dominante, ou un contraste pondere par
+  la part de surface ». Il a ete ecrit puis RETIRE le 14/09, parce qu il condamnait les dessins au
+  trait — et la mesure le confirme. Chiffres du 17/09/2026, capture Playwright a 1280 px :
+
+    actif                                   meilleur  part dominante  pondere  part >= 1,2
+    logo bicolore defectueux (E-06)           2,16        90,0 %        1,12     10,0 %
+    dessin au trait du gabarit multi-bandes   9,12        86,7 %        1,02      3,2 %
+
+  Le dessin CONFORME est plus « dominant » et moins « contraste en surface » que le logo
+  DEFECTUEUX : aucun seuil de dominance ni de surface ne les separe. Ce qui les separe est le
+  NIVEAU du contraste qui depasse — 9,12:1 contre 2,16:1.
+
+  Cette fixture reprend l idiome du gabarit `digit-ai-schemas/assets/template-multi-bandes.html` :
+  conteneur `.diagram-wrap` en --bg-soft, boites remplies --bg avec un trait --c-slate-fg,
+  libelles en --ink. Elle est CONFORME et doit rester VERTE : zero constat v9_actif_invisible.
+-->
+<style>
+:root{
+  --bg:#ffffff; --bg-soft:#f7f8fa; --ink:#0f172a; --ink-soft:#334155;
+  --line:#e2e8f0; --c-slate-fg:#475569; --c-blue-fg:#1d4ed8;
+  --sans:'DM Sans',system-ui,sans-serif; --head:'Roboto',system-ui,sans-serif;
+}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--bg)}
+main{max-width:1100px;margin:0 auto;padding:24px}
+.diagram-wrap{background:var(--bg-soft);border:1px solid var(--line);border-radius:12px;padding:28px 20px;margin:20px 0 12px}
+.svg-th{font-family:var(--head);font-weight:700;fill:var(--ink)}
+.svg-tlabel{font-family:var(--sans);font-size:11px;fill:var(--ink-soft)}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<main>
+<h1>V9 rendu — un dessin au trait conforme reste vert</h1>
+<div class="diagram-wrap">
+  <svg viewBox="0 0 900 260" width="860" height="248" role="img" aria-label="Chaine de traitement en trois etapes">
+    <defs>
+      <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" style="fill:var(--c-slate-fg)"/>
+      </marker>
+    </defs>
+    <rect x="20" y="10" width="300" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
+    <text x="32" y="26" class="svg-tlabel" style="fill:var(--c-slate-fg)">1 · Chaine de traitement</text>
+
+    <rect x="30" y="60" width="220" height="90" rx="8" stroke-width="1" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
+    <text x="140" y="92" text-anchor="middle" class="svg-th" style="font-size:14px">Collecte</text>
+    <text x="140" y="114" text-anchor="middle" class="svg-tlabel">Depot de fichiers</text>
+    <text x="140" y="132" text-anchor="middle" class="svg-tlabel">Cadence : horaire</text>
+
+    <rect x="340" y="60" width="220" height="90" rx="8" stroke-width="1" style="fill:var(--bg);stroke:var(--c-blue-fg)"/>
+    <text x="450" y="92" text-anchor="middle" class="svg-th" style="font-size:14px">Controle</text>
+    <text x="450" y="114" text-anchor="middle" class="svg-tlabel">Schema et unicite</text>
+    <text x="450" y="132" text-anchor="middle" class="svg-tlabel">Rejet trace</text>
+
+    <rect x="650" y="60" width="220" height="90" rx="8" stroke-width="1" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
+    <text x="760" y="92" text-anchor="middle" class="svg-th" style="font-size:14px">Restitution</text>
+    <text x="760" y="114" text-anchor="middle" class="svg-tlabel">Page autoportante</text>
+    <text x="760" y="132" text-anchor="middle" class="svg-tlabel">Signee et datee</text>
+
+    <line x1="250" y1="105" x2="334" y2="105" stroke-width="1.6" marker-end="url(#fleche)" style="stroke:var(--c-slate-fg)"/>
+    <line x1="560" y1="105" x2="644" y2="105" stroke-width="1.6" marker-end="url(#fleche)" style="stroke:var(--c-slate-fg)"/>
+
+    <text x="30" y="200" class="svg-tlabel">Lecture : chaque etape rend son verdict avant de passer la main a la suivante.</text>
+    <text x="30" y="222" class="svg-tlabel">Un rejet arrete la chaine et reste trace dans le journal de collecte.</text>
+  </svg>
+</div>
+<p>Le dessin ci-dessus est majoritairement fait de fond, comme tout dessin au trait. Ses traits et
+ses libelles, eux, sont franchement contrastes : c est cela qui le rend lisible, et c est cela que
+V9 doit mesurer.</p>
+</main>
+</body></html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — libelle de fleche dans la boite voisine — 20260916a</title>
+<!--
+  Fixture de TF-1146 (lot Produit-64 20260916a, retour RD-6) — L EXEMPTION V4 S APPLIQUAIT A L
+  ELEMENT, PAS A LA PAIRE.
+
+  Le fait paye : dans le schema des trois couches, le libelle de fleche « expose ses sorties a »
+  etait imprime A L INTERIEUR de la boite voisine, sous son sous-titre. Un lecteur y lisait une
+  troisieme ligne de legende de la couche, pas le sens d une fleche. Le defaut a traverse DEUX
+  livraisons et quatre executions des trois oracles, et a ete trouve en regardant une capture.
+
+  Aucun controle ne pouvait le voir : V1 ne voit rien, le texte est dans le cadre du SVG ; V2 ne
+  voit rien, le texte est lisible — c est sa PLACE qui est fausse ; L1 ne voit rien, c est du
+  texte SVG hors du modele de prose ; et V4 ne voyait rien parce que le <text> portait
+  data-overlap-ok et etait exempte EN BLOC.
+
+  Ici le libelle DECLARE sa paire — il annote la couche du bas — et tombe dans la couche du
+  haut. Attendu : un constat v4_overlap, celui que l exemption en bloc avalait. Sa jumelle verte
+  est le meme fichier, le libelle pose sur la boite qu il declare.
+-->
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#CBD5E1;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — un libelle de fleche appartient a l element qu il annote</h1>
+<p>Le libelle ci-dessous declare annoter la couche du bas, et il est peint dans celle du haut.</p>
+<svg width="520" height="260" viewBox="0 0 520 260" role="img" aria-label="Trois couches et le libelle de leur relation">
+  <rect id="couche-haut" x="20" y="20" width="480" height="90" rx="8" fill="#F1F5F9" stroke="#CBD5E1"></rect>
+  <rect id="couche-bas" x="20" y="160" width="480" height="90" rx="8" fill="#F1F5F9" stroke="#CBD5E1"></rect>
+  <text data-overlap-ok="couche-bas" x="40" y="80" font-family="DM Sans, sans-serif" font-size="14" fill="#475569">expose ses sorties a</text>
+</svg>
+</main></body></html>

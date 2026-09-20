@@ -115,6 +115,14 @@ Structurer en 4 sous-sections + 1 étalon noté :
 - **Act** : Approche concrète recommandée, justifiée.
 - **Étalon** : Avant toute critique, poser à quoi ressemble le **prompt idéal** pour cette intention — les **critères de réussite** explicites (format, audience, contraintes, garde-fous attendus). C'est le mètre-étalon que les couches suivantes utilisent pour mesurer l'écart. On ne critique pas un écart sans avoir posé la cible.
 
+**Ressource distante : l'accès est un prérequis VÉRIFIÉ de l'étalon (TF-1185).** Dès que le prompt
+désigne une ressource que l'exécutant devra ouvrir — URL, dépôt, base, point d'API, chemin de
+fichier —, l'étalon pose l'accès en **prérequis mesuré**, pas en hypothèse : le prompt idéal ouvre
+par une « **ÉTAPE 0 — prérequis d'accès** » qui mesure l'accès avant tout travail et porte sa
+branche d'échec. La mesure elle-même appartient au **Ch4** (section « Prémisse d'accès : la mesurer
+avant de la classer ») ; elle est due **avant** la notation, car un accès faux plafonne la dimension
+*Ancrage / contexte* et déclenche la règle d'arrimage des bloquants.
+
 **Rubrique de notation (le score, pas un mot).** L'étalon est noté sur 100, réparti en 6 dimensions. C'est le chiffre de référence du Chapitre 8 (score avant → après).
 
 | Dimension | Pts | Ce qu'on mesure |
@@ -172,6 +180,53 @@ Si la condition est remplie :
 - Pour chaque prémisse **invérifiable** : la remonter au Chapitre 3 taguée **majeur** + recommander une vérification (source à exiger, recherche à lancer).
 - Ne pas trancher au doigt mouillé : si la véracité dépend d'un fait hors de portée, le dire et le classer invérifiable plutôt que d'inventer un verdict.
 
+#### Prémisse d'ACCÈS : la mesurer avant de la classer (TF-1185, 17/09/2026)
+
+**Le fait mesuré.** Un prompt désignait deux rapports distants par leur URL et affirmait de l'un
+« accessible ici ». Quatre lectures REST émises avec la même identité, dans la même seconde, ont
+rendu `200` (liste des espaces : **un seul** visible), `200` (50 rapports dans cet espace),
+`401` et `401` sur l'espace visé. La prémisse était **fausse pour l'exécutant**, et les deux
+réponses positives prouvaient que le refus portait sur l'appartenance à l'espace, pas sur le
+jeton. Sans ces quatre appels, l'analyse aurait rendu « accès à vérifier » : le défaut le plus
+grave du prompt serait passé de **bloquant** à *majeur*, et l'exécution serait tombée dans la
+substitution silencieuse d'ancre — comparer contre un instantané de neuf mois en l'appelant
+« le rapport en ligne ». La règle du doigt mouillé protège contre l'invention ; elle ne dispense
+pas de mesurer.
+
+**Règle (étape obligatoire du Ch4).** Toute prémisse d'**accès** à une ressource désignée — URL,
+chemin de fichier, dépôt, base, point d'API, boîte aux lettres, espace de travail — **se mesure
+par l'appel le moins coûteux et en lecture seule AVANT d'être classée**. « Invérifiable » est
+réservé à ce qui n'a **pas** de test bon marché ; le classement porte alors le test qui manque,
+l'identité qu'il exigerait et son coût. *Une prémisse qu'on peut mesurer et qu'on classe
+invérifiable n'est pas prudente : elle est non mesurée.*
+
+**Ce que porte le verdict d'une prémisse d'accès** — sans ces quatre pièces, le verdict ne vaut
+rien et reste « non mesuré » :
+
+1. le **code de retour** (ou l'erreur exacte) et l'appel qui l'a produit ;
+2. l'**horodatage** et l'**identité** employée (compte, jeton, profil, machine) ;
+3. un **contrôle positif** avec la même identité, sur une ressource comparable — sans lui, un
+   refus ne se distingue pas d'un jeton mort ;
+4. l'**énumération des familles d'accès de la plateforme visée** — ses *scopes* et ses points
+   d'entrée parallèles : espace personnel, espace partagé, API d'administration, export, partage
+   par lien, copie locale, lecture déléguée — avec celles qui ont été essayées et celles qui
+   restent ouvertes.
+
+**Doctrine, en une phrase : un refus prouve qu'une porte est fermée, jamais qu'il n'y en a
+qu'une.** Un `401` sur un point d'API ferme ce point d'API, pas la ressource : conclure
+« inaccessible » sans avoir énuméré les autres familles d'accès, c'est prendre une porte pour un
+mur.
+
+**Bornes.** La mesure reste en **lecture seule** et n'emploie que les accès **déjà détenus** par
+l'exécutant : aucune demande de jeton, aucune création de compte, aucun contournement d'un refus,
+aucune dépense. Si aucun appel n'est émissible (aucune identité, réseau fermé, plateforme payante),
+la prémisse est classée invérifiable **avec** le test qui manque et ce qu'il exigerait — c'est le
+seul usage légitime de « invérifiable » pour une prémisse d'accès.
+
+**Vérification.** Le chapitre 4 d'une analyse qui porte une prémisse d'accès se juge par
+`oracle-premisse-acces.mjs` de `quality-oracles` (domaine « Prémisse d'accès mesurée avant d'être
+classée »), avec sa paire de fixtures rouge/verte.
+
 Si non (aucune prémisse factuelle) : une ligne « aucune affirmation factuelle vérifiable, couche non déclenchée ».
 
 ---
@@ -226,6 +281,11 @@ Ce chapitre est le livrable principal. Il contient :
    - **Clôturer explicitement chaque défaut bloquant et majeur** de l'inventaire (Ch3), faussetés du Ch4 et mitigations du Ch5 incluses.
    - Atteindre l'étalon posé au Ch1.
    - Être directement utilisable (pas de placeholder sauf si le prompt original en contenait).
+   - **Ouvrir par une « ÉTAPE 0 — prérequis d'accès » dès que le prompt désigne une ressource
+     distante** (TF-1185) : l'appel de mesure à émettre, le contrôle positif qui l'accompagne,
+     les familles d'accès à essayer avant de conclure, et la **branche d'échec explicite** — ne
+     pas contourner en silence, déclarer le repli **avec sa date** et ce qu'il ne permet plus de
+     juger, ouvrir la décision d'accès avec son mode opératoire (qui la prend, auprès de qui).
 4. **Contrat de sortie** : critères d'acceptation **vérifiables** que la réponse produite par le prompt réécrit devra satisfaire (ex. « doit contenir X », « ≤ N mots », « cite ses sources », « pas de Y »). L'étalon Ch1 cadre le *prompt* ; le contrat cadre la *sortie*. Embarquer ce contrat dans le prompt réécrit chaque fois que c'est possible, et le rappeler ici en clair.
 5. **Changelog tracé** : chaque modification est rattachée au défaut qu'elle corrige (ex. « +audience → bloquant Ch3 #2 / cause d'échec Ch5 #1 »). Aucune correction ne sort du chapeau : tout se rattache à un défaut nommé.
 5 bis. **Écarts à la lettre (obligatoire, TF-0176 du 13/08)** : quand le prompt d'origine porte une demande humaine, le Ch8 liste EXPLICITEMENT chaque endroit où le prompt réécrit s'écarte du texte littéral de cette demande (seuil ajouté, périmètre restreint, condition introduite, formulation adoucie) — un tableau « vous avez écrit → je propose → pourquoi », soumis à validation poste par poste. Un affaiblissement noyé dans un prompt long que l'humain valide en bloc N'EST PAS un écart validé : le 13/08, « pour chaque liste, des filtres » devenu « dès 8 lignes » a traversé une validation humaine sans être vu, et le livrable a été refusé. Aucun écart = le dire (« aucun écart à la lettre »).

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — capture au-dela du seuil de hauteur — 20260916a</title>
+<!--
+  Fixture de TF-1139 (lot Produit-64 20260915a) — UNE PAGE AU-DELA DU SEUIL DE JUGEMENT VISUEL.
+
+  Le fait paye : une page de reference de 15 228 mots mesurait 54 793 px a 2560, 62 127 a 1280,
+  98 079 a 768, 123 822 a 390. Quatre executions, six echelles (0,4 a 0,12), delais de 45 s a
+  300 s : aucune image produite, deux arrets a la main apres plus de trente minutes. Rien ne
+  disait a l auteur qu il avait depasse une borne, ni ou elle etait.
+
+  Attendu ici : la hauteur est mesuree AVANT toute tentative, AUCUNE capture n est tentee, le
+  constat sort nomme et chiffre (hauteur, seuil), et le remede annonce est de DECOUPER la page.
+  Le pendant vert est `capture-page-tres-haute.html` : tres haute, sous le seuil, capturee.
+-->
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--bg:#FAFBFF;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:16px;line-height:1.6;color:var(--ink);background:var(--bg)}
+main{max-width:72ch;margin:0 auto;padding:24px}
+.tres-haut{height:60000px;border-top:1px solid var(--line)}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>Page au-dela du seuil de hauteur</h1>
+<p>La hauteur est posee en dur : elle depasse le seuil a toutes les largeurs de la grille, sans
+dependre du repli du texte ni de la police disponible sur le poste.</p>
+<div class="tres-haut" aria-hidden="true"></div>
+</main></body></html>

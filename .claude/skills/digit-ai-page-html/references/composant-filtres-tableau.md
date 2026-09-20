@@ -261,7 +261,7 @@ CSS : adapter aux tokens du livrable (voir `charte-et-tokens.md`), aucun hex en 
 | **G4** | Chaque tableau `data-filterable` a un `id` et un `<thead>` porteur de `<th>` — prérequis du composant | bloquant |
 | **G5** | Un compteur `data-tf-count-for` avec `aria-live` existe pour chaque tableau `data-filterable` | bloquant |
 | **G6** | Une règle `@media print` réaffiche les lignes masquées (`tr[data-tf-hidden]`) | bloquant |
-| **G7** | Chaque `<th>` porte sa facette, ou une exemption `data-filter-col="off"` **avec** `data-filter-reason` — la cardinalité ne décide que de la forme (`data-tf-forme`) | bloquant |
+| **G7** | Chaque `<th>` porte sa facette, ou une exemption `data-filter-col="off"` **avec** `data-filter-reason` — la cardinalité ne décide que de la forme, publiée en `data-tf-forme` sur le `<th>` **et** sur son panneau (TF-1052) ; une colonne à valeur unique le dit dans l'en-tête, sans clic (`.tf-unique`, TF-1051). Forme et note sont jugées à l'exécution par `self_test.py` (`run_filtres_runtime`) ; l'oracle statique ne peut pas les voir | bloquant |
 | **G8** | Toute colonne ordonnée (temps, paliers, montants formatés) porte une valeur d'ordre `data-v` sur ses cellules — sans elle, ni le tri ni la facette ne peuvent être justes | bloquant |
 | **G9** | Sur une page de données, chaque `<th>` porte sa définition (`data-definition`, `title` ou lien de glossaire) — définition, **unité**, source ; source unique : le dictionnaire de colonnes | bloquant |
 

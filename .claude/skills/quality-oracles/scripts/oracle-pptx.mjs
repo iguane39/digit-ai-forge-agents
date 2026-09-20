@@ -35,9 +35,9 @@ if (!py) skip('python indisponible (lecture zip impossible)');
 
 // 1-4 : inspection de l'archive via zipfile (ordre réel des entrées + contenu des slides)
 const script = `
-import sys, zipfile, json
+import sys, zipfile, json, re
 p = sys.argv[1]
-r = {"ok": True, "first": None, "bad": None, "transitions": [], "jpegs": []}
+r = {"ok": True, "first": None, "bad": None, "transitions": [], "jpegs": [], "sldsz": None, "polices": {}, "couleurs": {}}
 try:
     z = zipfile.ZipFile(p)
     r["bad"] = z.testzip()
@@ -48,6 +48,19 @@ try:
         if low.startswith("ppt/slides/") and low.endswith(".xml"):
             if b"<p:transition" in z.read(n): r["transitions"].append(n)
         if low.startswith("ppt/media/") and (low.endswith(".jpg") or low.endswith(".jpeg")): r["jpegs"].append(n)
+        # TF-1130 : de quoi juger le FORMAT d'un support (taille, polices, couleurs de texte)
+        if low == "ppt/presentation.xml":
+            m = re.search(rb'<p:sldSz\\b[^>]*?cx="(\\d+)"[^>]*?cy="(\\d+)"', z.read(n))
+            if m: r["sldsz"] = [int(m.group(1)), int(m.group(2))]
+        if low.endswith(".xml") and low.startswith(("ppt/slides/slide", "ppt/slidelayouts/", "ppt/slidemasters/", "ppt/theme/")):
+            data = z.read(n)
+            for tf in re.findall(rb'<a:(?:latin|ea|cs)\\b[^>]*?typeface="([^"]*)"', data):
+                t = tf.decode("utf-8", "replace")
+                if t and not t.startswith("+"): r["polices"].setdefault(t, n)
+            if low.startswith("ppt/slides/slide"):
+                for rpr in re.findall(rb'<a:rPr\\b[^>]*?>(.*?)</a:rPr>', data, re.S):
+                    for c in re.findall(rb'<a:srgbClr val="([0-9A-Fa-f]{6})"', rpr):
+                        r["couleurs"].setdefault(c.decode().upper(), n)
 except Exception as e:
     r["ok"] = False; r["err"] = str(e)
 print(json.dumps(r))
@@ -62,6 +75,38 @@ else {
   if (z.first !== '[Content_Types].xml') findings.push({ sev: 'bloquant', msg: '[Content_Types].xml n\'est pas la première entrée (trouvé : ' + z.first + ') — casse certains viewers', where: base });
   for (const t of z.transitions) findings.push({ sev: POL.transitions_interdites ? 'bloquant' : 'warn', msg: '<p:transition> présent' + (POL.transitions_interdites ? ' (interdit par le profil)' : ' (toléré par le profil — avertissement)'), where: base + ':' + t });
   for (const j of z.jpegs) findings.push({ sev: POL.jpeg_interdit ? 'bloquant' : 'warn', msg: 'média JPEG présent' + (POL.jpeg_interdit ? ' (interdit par le profil — PNG attendu)' : ' (toléré par le profil)'), where: base + ':' + j });
+}
+
+// TF-1130 (15/09/2026) — LE FORMAT D'UN SUPPORT DE DIAPOSITIVES, PILOTÉ PAR LE PROFIL. Faute de
+// domaine au registre, un produit a dû écrire son oracle de format, puis le DUPLIQUER pour un second
+// type de séance : cinq règles identiques sur huit dans deux fichiers du même dépôt. L'hygiène du
+// paquet vivait déjà ici ; les trois règles de format qui ne dépendent que de la marque y entrent,
+// chacune active SEULEMENT si le profil la déclare (`pptx.format`, `pptx.polices`,
+// `pptx.palette`) — un appel sans ces clés juge exactement comme avant. Les règles propres à un
+// type de séance (pied de page, couverture, faits) restent des invocations locales au produit.
+if (z.ok) {
+  if (POL.format) {
+    const [a, b] = String(POL.format).split(':').map(Number);
+    if (!z.sldsz) findings.push({ sev: 'bloquant', regle: 'P1', msg: `format attendu ${POL.format} : taille de diapositive introuvable (ppt/presentation.xml, p:sldSz)`, where: base });
+    else {
+      const ratio = z.sldsz[0] / z.sldsz[1];
+      if (!(a > 0 && b > 0) || Math.abs(ratio - a / b) > 0.01 * (a / b))
+        findings.push({ sev: 'bloquant', regle: 'P1', msg: `format ${ratio.toFixed(3)}:1 (${z.sldsz[0]} × ${z.sldsz[1]} EMU) au lieu du ${POL.format} du profil`, where: base + ':ppt/presentation.xml' });
+    }
+  }
+  if (Array.isArray(POL.polices)) {
+    const admises = new Set(POL.polices.map(s => String(s).toLowerCase()));
+    for (const [police, ou] of Object.entries(z.polices))
+      if (!admises.has(police.toLowerCase())) findings.push({ sev: 'bloquant', regle: 'P2', msg: `police « ${police} » hors du jeu du profil (${POL.polices.join(', ')})`, where: base + ':' + ou });
+  }
+  if (Array.isArray(POL.palette)) {
+    const admises = new Set(POL.palette.map(s => String(s).replace('#', '').toUpperCase()));
+    for (const [couleur, ou] of Object.entries(z.couleurs))
+      if (!admises.has(couleur)) findings.push({ sev: 'bloquant', regle: 'P3', msg: `couleur de texte #${couleur} hors de la palette du profil`, where: base + ':' + ou });
+  }
+  if (POL.format || Array.isArray(POL.polices) || Array.isArray(POL.palette)) non_juge.push(
+    'débordement de texte hors de son cadre : non jugé par heuristique — le rendu PowerPoint le montre (TF-1130 : les deux défauts réels du support l’ont été au rendu)',
+    'couleurs héritées du thème ou des masques (schemeClr) : seules les couleurs EXPLICITES des runs de texte sont jugées par P3');
 }
 
 // 5 : smoke-test de conversion LibreOffice (si présent) — un échec de conversion = FAIL

@@ -62,6 +62,46 @@ for (const d of fs.readdirSync(SKILLSROOT, { withFileTypes: true })) {
   else ok(`${d.name} : frontmatter OK (description ${fm.description.length}/1024)`);
 }
 
+// (1b) TF-1022 (11/09) — CHAQUE CHEMIN CITÉ PAR UN SKILL.md SE RÉSOUT. L'archive de digit-ai-pptx
+// chargeait « toujours » trois références qu'elle ne contenait pas : un agent produisait un deck sans
+// charte, sans que rien ne le signale. Un chemin se résout dans le skill, dans un skill voisin (un
+// renvoi entre skills du socle est légitime) ou chez le pilot. Sens rouge : une citation fantôme.
+const RE_CHEMIN_CITE = /(?<![\w/.-])((?:references|scripts|assets|fixtures|templates|profils)\/[\w./-]+\.[A-Za-z0-9]+)/g;
+const voisins = fs.readdirSync(SKILLSROOT, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => path.join(SKILLSROOT, d.name));
+const citesAbsents = (dir, txt) => [...new Set([...txt.matchAll(RE_CHEMIN_CITE)].map(m => m[1]))]
+  .filter(rel => !fs.existsSync(path.join(dir, rel)) && !voisins.some(v => fs.existsSync(path.join(v, rel)))
+    && !(PILOT && fs.existsSync(path.join(PILOT, rel))));
+let citesJuges = 0;
+for (const v of voisins) {
+  const sf = path.join(v, 'SKILL.md');
+  if (!fs.existsSync(sf)) continue;
+  const absents = citesAbsents(v, fs.readFileSync(sf, 'utf8'));
+  citesJuges++;
+  if (absents.length) ko(`${path.basename(v)} : SKILL.md cite ${absents.length} chemin(s) introuvable(s) — ${absents.slice(0, 4).join(', ')} (TF-1022)`);
+}
+const fantome = citesAbsents(SKILLDIR, 'Charger `references/charte-fantome-tf1022.md` — toujours.');
+fantome.length === 1 ? ok(`TF-1022 : chemins cités résolus sur ${citesJuges} SKILL.md, et une citation fantôme est bien vue (sens rouge)`)
+  : ko('TF-1022 : la citation fantôme n est pas vue — le contrôle des chemins cités est aveugle');
+
+// (1c) TF-1021 (11/09) — un AGENT compilé qui dit charger un skill le trouve. Quatre agents du
+// pipeline de propale chargeaient des skills qu'aucune forge ne versionnait. Sens rouge : un agent
+// synthétique qui cite un skill inexistant.
+const RE_SKILL_CITE = /skills? `([a-z0-9][a-z0-9-]+)`/g;
+const skillsCitesAbsents = (txt) => [...new Set([...txt.matchAll(RE_SKILL_CITE)].map(m => m[1]))]
+  .filter(n => !fs.existsSync(path.join(SKILLSROOT, n, 'SKILL.md')));
+const AGENTS = path.join(SKILLSROOT, '..', 'agents');
+if (fs.existsSync(AGENTS)) {
+  let n = 0;
+  for (const f of fs.readdirSync(AGENTS).filter(x => x.endsWith('.md'))) {
+    const abs = skillsCitesAbsents(fs.readFileSync(path.join(AGENTS, f), 'utf8'));
+    n++;
+    if (abs.length) ko(`agent ${f} : charge ${abs.join(', ')}, absent(s) de ${SKILLSROOT} (TF-1021)`);
+  }
+  skillsCitesAbsents('mandat opératoire : charger le skill `skill-fantome-tf1021`').length === 1
+    ? ok(`TF-1021 : skills cités par ${n} agent(s) présents, et un skill fantôme est bien vu (sens rouge)`)
+    : ko('TF-1021 : le skill fantôme n est pas vu — le contrôle agents → skills est aveugle');
+} else ok('TF-1021 : aucun dossier agents/ à côté des skills — contrôle agents → skills non applicable ici');
+
 // (2) registre JSON
 let reg = null;
 try { reg = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8')); ok('registre-oracles.json : JSON valide (' + reg.oracles.length + ' oracles)'); }
@@ -74,6 +114,71 @@ else {
   const t = fs.readFileSync(reglesPath, 'utf8');
   const missing = Array.from({ length: 10 }, (_, i) => 'R' + (i + 1) + '.').filter(r => !t.includes(r));
   missing.length ? ko('regles-oracles.md incomplet : règles manquantes ' + missing.join(' ')) : ok('regles-oracles.md : référentiel R1-R10 complet');
+}
+
+// (2c) TF-1006 (16/09/2026) — UN REGISTRE ÉDITÉ HORS DE SA SOURCE EST DÉTECTABLE.
+// Le 10/09, une remontée §4 exemplaire a été écrite dans la COPIE INSTALLÉE du registre. Elle
+// était juste ; sa localisation la condamnait, la propagation d'ouverture de session recopiant le
+// versionné par-dessus l'installé. Aucun contrôle ne l'a dit à son auteur, et le seul qui voyait
+// l'écart (K2/K11 du pilot) ne se joue qu'à l'ouverture d'un run, pas là où l'on écrit.
+// LA COMPARAISON EST DIRECTIONNELLE, et c'est tout ce qui la rend utilisable : la source EN AVANCE
+// sur la copie est l'état NORMAL après une édition, jusqu'à la propagation suivante — l'accuser
+// ferait rougir le banc à chaque commit et le contrôle serait désarmé dans la semaine. Un domaine
+// présent à l'INSTALLÉ et absent de la SOURCE, lui, n'a qu'une explication : quelqu'un a écrit
+// dans la copie, et son travail est à une propagation de sa disparition.
+// CE QUE CE CONTRÔLE NE VOIT PAS : une entrée EXISTANTE retouchée dans la copie sans domaine neuf.
+// Séparer cette retouche d'une source légitimement en avance demande un journal de propagation,
+// qui vit chez le pilot (K11 d'oracle-skills, TF-1012) — ici on tient le geste qui a coûté, la
+// remontée §4 d'un domaine NOUVEAU, qui est la forme qu'une remontée prend toujours.
+const domainesEnTrop = (source, installe) => installe.filter(d => !source.includes(d));
+{
+  const RACINE_INSTALLEE = path.resolve(path.join(os.homedir(), '.claude', 'skills'));
+  const sousInstalle = p => { const r = path.relative(RACINE_INSTALLEE, path.resolve(p)); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)); };
+  const lireDomaines = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')).oracles.map(o => o.domaine); } catch { return null; } };
+  const REG = path.join('references', 'registre-oracles.json');
+  const cote = sousInstalle(SKILLDIR) ? 'installé' : 'source';
+  // Le côté d'en face : depuis la source, la copie installée ; depuis la copie, la source
+  // versionnée, cherchée sur les pistes du parc (mêmes pistes que lib/pilot.mjs, dépôt voisin).
+  const pistesSource = [
+    process.env.FORGE_ROOT && path.join(process.env.FORGE_ROOT, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'),
+    path.join('c:\\dev', 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'),
+    path.join(os.homedir(), '.digit-ai-forge', 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles'),
+  ].filter(Boolean).filter(p => !sousInstalle(p));
+  const cheminInstalle = path.join(RACINE_INSTALLEE, 'quality-oracles', REG);
+  const cheminSource = cote === 'source' ? path.join(SKILLDIR, REG)
+    : (pistesSource.map(p => path.join(p, REG)).find(f => fs.existsSync(f)) || null);
+  const dSource = cheminSource ? lireDomaines(cheminSource) : null;
+  const dInstalle = fs.existsSync(cheminInstalle) ? lireDomaines(cheminInstalle) : null;
+  if (!dSource) ok(`TF-1006 : source versionnée du registre introuvable depuis ce poste (pistes : ${pistesSource.join(' · ') || '(aucune)'}) — comparaison non jouée, et dite`);
+  else if (!dInstalle) ok(`TF-1006 : aucune copie installée du registre sous ${RACINE_INSTALLEE} — comparaison sans objet sur ce poste`);
+  else {
+    const enTrop = domainesEnTrop(dSource, dInstalle);
+    enTrop.length
+      ? ko(`TF-1006 : ${enTrop.length} domaine(s) au registre INSTALLÉ et absent(s) de la SOURCE — « ${enTrop.join(' » · « ')} ». `
+        + `Le registre a été édité dans la copie (${cheminInstalle}) : la prochaine propagation l'écrasera en silence. Rapatrier vers ${cheminSource}`)
+      : ok(`TF-1006 : le registre installé (${dInstalle.length} domaine(s)) n'ajoute rien à sa source (${dSource.length}) — aucune édition hors source`);
+  }
+  // Sens ROUGE et sens VERT sur la MÊME fonction : sans eux, le vert ci-dessus serait indiscernable
+  // d'un contrôle aveugle, et la tolérance à « source en avance » d'une tolérance à tout.
+  const rouge = domainesEnTrop(['A', 'B'], ['A', 'B', 'C']);
+  const vert = domainesEnTrop(['A', 'B', 'C'], ['A', 'B']);
+  (rouge.length === 1 && rouge[0] === 'C' && vert.length === 0)
+    ? ok('TF-1006 : un domaine ajouté à la copie est VU (sens rouge), et une source en avance sur sa copie ne fait pas rougir (sens vert)')
+    : ko(`TF-1006 : la comparaison directionnelle ne tient pas ses deux sens — rouge ${JSON.stringify(rouge)}, vert ${JSON.stringify(vert)}`);
+}
+
+// (2d) TF-1006 — le banc du GÉNÉRATEUR d'oracles est joué ici. `scaffold-oracle` est le chemin
+// par lequel passe une remontée §4 : son refus d'écrire dans la copie installée est le juge qui
+// empêche la récidive, et un juge dont le banc n'est joué nulle part ne juge rien.
+{
+  const bancWao = path.join(SKILLSROOT, 'write-an-oracle', 'scripts', 'self-test.mjs');
+  if (!fs.existsSync(bancWao)) ok('TF-1006 : write-an-oracle absent de ce parc — banc du générateur non joué, et dit');
+  else {
+    const r = spawnSync(process.execPath, [bancWao], { encoding: 'utf8', timeout: 120000 });
+    const derniere = (r.stdout || '').trim().split('\n').pop() || '';
+    r.status === 0 ? ok(`TF-1006 : banc de write-an-oracle vert — ${derniere.replace(/^\s*[✅❌]\s*/, '')}`)
+      : ko(`TF-1006 : banc de write-an-oracle en échec (exit ${r.status}) — ${((r.stdout || '') + (r.stderr || '')).split('\n').filter(l => l.includes('❌')).join(' · ').slice(0, 300)}`);
+  }
 }
 
 // (3) oracles CLI : script présent + compile (.mjs via node --check, .py via py_compile)
@@ -652,6 +757,30 @@ else {
     else if (jsans.verdict !== 'PASS') ko(`TF-0820 C5 absente : l oracle ne rend plus PASS sur C1-C4 faute de la SECONDE table (${jsans.verdict}) — une table de produits absente ne doit pas éteindre la porte entière`);
     else if (!/C5 NON JOUÉE : table absente/.test((jsans.non_juge || []).join(' '))) ko('TF-0820 C5 absente : l angle est ÉTEINT EN SILENCE — un angle muet se lit comme un angle vert, et c est le défaut du 05/09');
     else ok('TF-0820 C5 absente : le même dépôt porteur rend PASS sur C1-C4, et l oracle DÉCLARE « C5 non jouée : table absente » — jamais tue');
+
+    // TF-0991 (08/09) — LE TOTAL EST UN CHAMP. Le pilot a publié 200 pour un passif de 939 : le vrai
+    // total vivait dans une phrase du non_juge. Deux sens, sur le MÊME dépôt rouge (≥ 2 constats) :
+    // plafond 1 → la sortie est bornée et le total se lit SANS PROSE ; plafond par défaut →
+    // total = rendus, bornee faux.
+    const jouerPlafond = (plafond) => {
+      const a = [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), rouge,
+        '--referentiel=' + tClients, '--produits=' + tProduits];
+      const env = { ...envNu };
+      if (plafond === undefined) delete env.FORGE_PORTE_PLAFOND; else env.FORGE_PORTE_PLAFOND = plafond;
+      const r = spawnSync(process.execPath, a, { encoding: 'utf8', timeout: 180000, env });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const jb = jouerPlafond('1');
+    if (!jb) ko('TF-0991 bornée : sortie de l oracle inexploitable');
+    else if (!(jb.bornee === true && jb.rendus === jb.findings.length && jb.total > jb.rendus
+               && jb.comptes && jb.comptes.bloquants.rendus === 1))
+      ko(`TF-0991 bornée : total/rendus/bornee absents ou faux (total=${jb.total}, rendus=${jb.rendus}, bornee=${jb.bornee}) — le vrai total ne se lirait que dans la prose`);
+    else ok(`TF-0991 bornée : plafond 1 → bornee vrai, total ${jb.total} > rendus ${jb.rendus}, lisibles SANS lire le non_juge`);
+    const jn = jouerPlafond(undefined);
+    if (!jn) ko('TF-0991 non bornée : sortie de l oracle inexploitable');
+    else if (!(jn.bornee === false && jn.total === jn.rendus && jn.rendus === jn.findings.length))
+      ko(`TF-0991 non bornée : sous le plafond, total (${jn.total}) et rendus (${jn.rendus}) devraient être égaux et bornee faux (${jn.bornee})`);
+    else ok(`TF-0991 non bornée : sous le plafond, total = rendus = ${jn.total}, bornee faux`);
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
@@ -1032,6 +1161,23 @@ else {
     else if (!c5m.length) ko('TF-0880 mot entier : aucun constat C5 sur une mention franche — la frontiere est trop large');
     else if (!c5m.every(f => f.sev && f.msg && f.where)) ko('TF-0880 mot entier : un constat C5 ne porte pas le contrat findings[] (sev, msg, where) — le contrat de sortie devait etre inchange');
     else ok('TF-0880 mot entier : la cle bornee d espaces fait toujours FAIL, ' + c5m.length + ' constat(s) C5 au contrat findings[] inchange');
+
+    // TF-1002 (09/09) — LA FRONTIÈRE ET LA LOCALISATION, sur le MÊME fichier. Le constat du 09/09
+    // accusait un commentaire qui citait la clé DANS un mot, et le localisait 29 lignes plus bas.
+    // Lignes 1 et 2 : la clé collée à une lettre (« …c », comme « escc ») — aucun constat. Ligne 3 :
+    // la clé nue — un constat, et son `where` porte LA ligne du terme, pas une autre.
+    const ligne = batir('ligne', 'notes.md', [
+      '// exemple de faux positif : « ' + CLE.toLowerCase() + 'c » dans un mot ordinaire',
+      '// et encore d' + CLE.toLowerCase() + 'client, colle a sa suite',
+      'Le connecteur de ' + CLE + ' reste a brancher.',
+      '',
+    ].join('\n'));
+    const jl = jouer(ligne);
+    const c5l = c5de(jl);
+    if (!jl) ko('TF-1002 localisation : sortie de l oracle inexploitable');
+    else if (c5l.length !== 1) ko(`TF-1002 localisation : ${c5l.length} constat(s) C5 au lieu d UN — la cle collee dans un mot est accusee, ou la cle nue ne l est plus`);
+    else if (!/^notes\.md:3$/.test(c5l[0].where)) ko(`TF-1002 localisation : le constat pointe « ${c5l[0].where} » au lieu de notes.md:3 — un where est une promesse de localisation`);
+    else ok('TF-1002 localisation : la cle collee dans un mot (lignes 1-2) ne fait aucun constat, la cle nue en fait UN, localise a notes.md:3');
 
     const jc = jouer(colle);
     if (!jc) ko('TF-0880 collee : sortie de l oracle inexploitable');
