@@ -1741,6 +1741,42 @@ def run_matrice_etats():
     return out
 
 
+def run_mesure_prete():
+    """TF-1093 (20/09/2026) — LA MESURE SE PUBLIE PRETE, JAMAIS EN GABARIT.
+
+    LE FAIT, trouve en branchant les croisements chez forge-tests. `MEASURE_JS` porte des jetons
+    (`__ALIGN_TOL__`, `__L2_MIN_VIEWPORT__`…) que `run()` remplacait chez lui. Un consommateur
+    qui importe le module pour ne PAS recopier la formule — c'est exactement ce que fait le pan
+    `contraste`/`plancher` de forge-tests — recevait le GABARIT, et son evaluation levait
+    `ReferenceError: __ALIGN_TOL__ is not defined`. Cote consommateur, la levee devenait un
+    motif par route (« visitee mais non mesuree ») : un pan qui ne mesure plus rien, sans que
+    le mot « panne » soit prononce nulle part.
+
+    DOUBLE SENS : la constante brute PORTE ses jetons (sinon ce cas ne prouve rien), et ce que
+    la porte publique rend n'en porte AUCUN.
+    """
+    import re
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import render_page as rp  # noqa: PLC0415
+    out = []
+    for nom, fn, brut in (("mesure_js (V1/V2/V4/L2)", rp.mesure_js, rp.MEASURE_JS),
+                          ("mesure_large_js (V18)", rp.mesure_large_js, rp.MESURE_LARGE_JS)):
+        jetons_brut = sorted(set(re.findall(r"__[A-Z0-9_]+__", brut)))
+        out.append({"fixture": f"{nom} · le gabarit porte ses jetons (sens rouge)",
+                    "verdict": "OK" if jetons_brut else "ECHEC",
+                    "attendu": "au moins 1 jeton dans la constante brute",
+                    "obtenu": len(jetons_brut), "regle": "TF-1093 mesure prete",
+                    "detail": "" if jetons_brut else "sans jeton, ce cas ne prouve rien"})
+        restants = sorted(set(re.findall(r"__[A-Z0-9_]+__", fn())))
+        out.append({"fixture": f"{nom} · la mesure publiee n'en porte aucun",
+                    "verdict": "OK" if not restants else "ECHEC",
+                    "attendu": 0, "obtenu": len(restants), "regle": "TF-1093 mesure prete",
+                    "detail": "" if not restants else
+                              f"jetons non remplaces : {', '.join(restants)} — cette mesure "
+                              "leve dans un navigateur"})
+    return out
+
+
 def run_instance_servie():
     """TF-1093 (20/09/2026) — CE QUI NE SE VOIT QUE SUR UNE INSTANCE SERVIE, ET LES CROISEMENTS.
 
@@ -3497,7 +3533,7 @@ def main():
            + run_assets_inlinables() + run_assets_echelle_4pt() + run_fins_de_ligne_declarees()
            + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
-           + run_echeance_forme_ancienne())
+           + run_echeance_forme_ancienne() + run_mesure_prete())
     rendu = run_rendu()
     if rendu:
         res += rendu

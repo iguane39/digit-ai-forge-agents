@@ -32,8 +32,14 @@ seule ne montre pas lui échappe entièrement. Fixture `paires-croisement-muet.h
 `--matrice-etats` seule — c'est la preuve du trou —, **FAIL** avec 2 `etat_muet` sous
 `--matrice-paires` ; sa corrigée passe. La **borne est affichée**, toujours : « N paires jouées sur
 M possibles », plafond `--paires-max` (24), croisements servis en **tour de rôle** entre paires de
-colonnes pour qu'un plafond ne soit jamais dépensé sur un seul couple. · Le banc sert lui-même ses
-fixtures (serveur HTTP de la bibliothèque standard, port libre, fermé en `finally`) : **17 cas
+colonnes pour qu'un plafond ne soit jamais dépensé sur un seul couple. · **La mesure se publie
+PRÊTE** (`mesure_js()`, `mesure_large_js()`) : `MEASURE_JS` est un **gabarit** — il porte
+`__ALIGN_TOL__`, `__L2_MIN_VIEWPORT__`… que `run()` remplaçait chez lui. Un consommateur qui
+importe le module pour ne **pas** recopier la formule recevait le gabarit, et son évaluation levait
+`ReferenceError: __ALIGN_TOL__ is not defined` — mesuré le 20/09 sur le pan `plancher` de
+forge-tests, dont chaque route devenait « visitée mais non mesurée ». La constante reste exportée ;
+la préparation devient une **porte publique**, comme `--familles`. · Le banc sert lui-même ses
+fixtures (serveur HTTP de la bibliothèque standard, port libre, fermé en `finally`) : **21 cas
 neufs**, aucune dépendance ajoutée, aucun accès réseau externe. **Version MINEURE** : le mode
 fichier reste le défaut et son comportement ne change pas.
 

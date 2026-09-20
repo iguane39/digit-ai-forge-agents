@@ -1934,6 +1934,54 @@ VERIF_ETATS = {
 # inatteignable ; on s'arrete aux PAIRES, et le rapport dit toujours « N paires jouees sur M
 # possibles ». Une borne tue n'est pas une borne, c'est un mensonge par omission : le verdict
 # doit se lire avec sa couverture.
+# ---------------------------------------------------------------------------
+# TF-1093 (20/09/2026) — LA MESURE SE DONNE PRETE, JAMAIS EN GABARIT.
+#
+# LE FAIT MESURE, le 20/09 en branchant les croisements chez forge-tests. `MEASURE_JS` est un
+# GABARIT : il porte des jetons `__ALIGN_TOL__`, `__L2_MIN_VIEWPORT__`… que `run()` remplacait
+# chez lui, en une expression privee. Un consommateur qui lit `MEASURE_JS` depuis le module —
+# c'est ce que fait le pan `contraste`/`plancher` de forge-tests, par import de chemin, pour ne
+# PAS recopier la formule — recoit donc le gabarit, et son evaluation leve :
+#   Page.evaluate: ReferenceError: __ALIGN_TOL__ is not defined
+# Mesure jouee sur une page servie : le gabarit brut LEVE, la version preparee mesure.
+#
+# La constante reste exportee telle quelle (personne ne casse), et la PREPARATION devient une
+# fonction publique. Un consommateur a desormais une porte qui rend une mesure jouable ; c'est
+# la meme discipline que `--familles` (TF-0513) : ce qu'un autre depot doit lire, le socle le
+# PUBLIE au lieu de le laisser deviner.
+def mesure_js() -> str:
+    """`MEASURE_JS` avec ses seuils POSES — la seule forme evaluable dans un navigateur."""
+    return (MEASURE_JS
+            .replace("__ECHEANCE_OVERLAP__", _phrase_echeance("overlap_en_bloc"))
+            .replace("__OVERLAP_MIN_RATIO__", str(OVERLAP_MIN_RATIO))
+            .replace("__ALIGN_TOL__", str(ALIGN_TOLERANCE_PX))
+            .replace("__V7_MAX__", str(V7_MAX_DETAILS))
+            .replace("__L2_MIN_RATIO__", str(L2_MIN_RATIO))
+            .replace("__L2C_MIN_RATIO__", str(L2C_MIN_RATIO))
+            .replace("__L2_MIN_VIEWPORT__", str(L2_MIN_VIEWPORT))
+            .replace("__L2_MIN_CHARS__", str(L2_MIN_CHARS))
+            .replace("__L2F_MIN_RATIO__", str(L2_FRERES_MIN_RATIO))
+            .replace("__L2F_MIN_LARGEUR__", str(L2_FRERES_MIN_LARGEUR))
+            .replace("__L2_COL_MAX__", str(L2_COL_MAX))
+            .replace("__L2_ETIQUETTE_MAX__", str(L2_ETIQUETTE_MAX))
+            .replace("__DONNEES_PROSE_MIN__", str(DONNEES_PROSE_MIN_RATIO))
+            .replace("__ROGNAGE_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
+            .replace("__DONNEES_CONTENEUR_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
+            .replace("__DONNEES_CONTENEUR_MIN__", str(DONNEES_CONTENEUR_MIN_RATIO))
+            .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
+            .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
+
+
+def mesure_large_js() -> str:
+    """`MESURE_LARGE_JS` (V18) avec ses seuils POSES. Meme raison, meme porte."""
+    return (MESURE_LARGE_JS
+            .replace("__V18_MAX_CPL__", str(V18_MAX_CPL))
+            .replace("__V18_MIN_CHARS__", str(V18_MIN_CHARS))
+            .replace("__V18_TABLE_MIN__", str(V18_TABLE_MIN_RATIO))
+            .replace("__V18_TABLE_LIGNES__", str(V18_TABLE_MIN_LIGNES))
+            .replace("__V18_TABLE_COLONNES__", str(V18_TABLE_MIN_COLONNES)))
+
+
 PAIRES_MAX_DEFAUT = 24
 
 # L'inventaire OUVRE puis REFERME chaque panneau : plusieurs composants ne peuplent leurs
@@ -2553,32 +2601,8 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
     except ImportError:
         sys.exit("ERREUR : playwright non installé.\n  pip install playwright && playwright install chromium")
 
-    js = (MEASURE_JS
-          .replace("__ECHEANCE_OVERLAP__", _phrase_echeance("overlap_en_bloc"))
-          .replace("__OVERLAP_MIN_RATIO__", str(OVERLAP_MIN_RATIO))
-          .replace("__ALIGN_TOL__", str(ALIGN_TOLERANCE_PX))
-          .replace("__V7_MAX__", str(V7_MAX_DETAILS))
-          .replace("__L2_MIN_RATIO__", str(L2_MIN_RATIO))
-          .replace("__L2C_MIN_RATIO__", str(L2C_MIN_RATIO))
-          .replace("__L2_MIN_VIEWPORT__", str(L2_MIN_VIEWPORT))
-          .replace("__L2_MIN_CHARS__", str(L2_MIN_CHARS))
-          .replace("__L2F_MIN_RATIO__", str(L2_FRERES_MIN_RATIO))
-          .replace("__L2F_MIN_LARGEUR__", str(L2_FRERES_MIN_LARGEUR))
-          .replace("__L2_COL_MAX__", str(L2_COL_MAX))
-          .replace("__L2_ETIQUETTE_MAX__", str(L2_ETIQUETTE_MAX))
-          .replace("__DONNEES_PROSE_MIN__", str(DONNEES_PROSE_MIN_RATIO))
-          .replace("__ROGNAGE_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
-          .replace("__DONNEES_CONTENEUR_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
-          .replace("__DONNEES_CONTENEUR_MIN__", str(DONNEES_CONTENEUR_MIN_RATIO))
-          .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
-          .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
-
-    js_large = (MESURE_LARGE_JS
-                .replace("__V18_MAX_CPL__", str(V18_MAX_CPL))
-                .replace("__V18_MIN_CHARS__", str(V18_MIN_CHARS))
-                .replace("__V18_TABLE_MIN__", str(V18_TABLE_MIN_RATIO))
-                .replace("__V18_TABLE_LIGNES__", str(V18_TABLE_MIN_LIGNES))
-                .replace("__V18_TABLE_COLONNES__", str(V18_TABLE_MIN_COLONNES)))
+    js = mesure_js()
+    js_large = mesure_large_js()
 
     png_dir = _dossier_captures(cible, out_dir)
     png_dir.mkdir(parents=True, exist_ok=True)
