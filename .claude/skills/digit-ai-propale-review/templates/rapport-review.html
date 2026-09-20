@@ -1,76 +1,303 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<!-- A3 — charset PUIS viewport en toute première position (socle digit-ai-page-html). -->
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- meta-version: v1 -->
-<title>Digit-AI — Review Propale {{CLIENT}} — {{SCOPE}}</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- M3 : `viewport-fit=cover` est la condition pour que env(safe-area-inset-*) vaille
+     autre chose que 0 — le sommaire collant en depend. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- S-G1 (1/4, R-30) — thème posé AVANT la première peinture, clair par défaut. -->
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  var theme = stocke === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  var meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) { meta.setAttribute('content', theme); }
+})();
+</script>
+<!-- A4 : l'indice de version DATÉ ({{INDICE_VERSION}} = {YYYYMMDD}{a,b,c…}) appartient à
+     l'INSTANCE produite, jamais au gabarit — exemption déclarée au registre de check_html.py
+     (FAMILLE_A4_VERSION), à l'identique du canevas template-multi-bandes.html. -->
+<title>Digit-AI — Review Propale {{CLIENT}} · {{SCOPE}} — {{INDICE_VERSION}}</title>
+<meta name="description" content="Audit interne pré-envoi d'une proposition commerciale Digit-AI : score par dimension, red flags bloquants et corrections priorisées.">
+<meta name="theme-color" content="#2563EB">
+<meta name="color-scheme" content="light">
+<!-- A2 — favicon-lettre en data: URI ; remplacer R par l'initiale du client. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<!-- A1/D-10 — AUCUN chargement réseau : Roboto / DM Sans s'affichent si installées
+     localement, sinon les replis système des jetons --head / --sans prennent le relais. -->
 <style>
-:root{--blue:#2563EB;--bg:#FAFBFF;--ink:#1E293B;--muted:#64748B;--line:#E2E8F0;
---green:#059669;--amber:#D97706;--red:#DC2626;--card:#FFFFFF;}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;padding:40px 24px}
-.wrap{max-width:980px;margin:0 auto}
-h1,h2,h3{font-family:'Roboto',sans-serif}
-header{border-bottom:3px solid var(--blue);padding-bottom:18px;margin-bottom:28px}
-.brand{color:var(--blue);font-family:'Roboto',sans-serif;font-weight:900;font-size:14px;letter-spacing:.12em;text-transform:uppercase}
-h1{font-weight:800;font-size:30px;margin:6px 0 4px}
-.meta{color:var(--muted);font-size:14px}
-.verdict{display:flex;align-items:center;gap:18px;background:var(--card);border:1px solid var(--line);
-border-left:6px solid var(--blue);border-radius:10px;padding:20px 24px;margin-bottom:28px}
-.score{font-family:'Roboto',sans-serif;font-weight:900;font-size:42px;color:var(--blue);white-space:nowrap}
-.badge{font-family:'Roboto',sans-serif;font-weight:800;font-size:15px;padding:6px 14px;border-radius:999px;color:#fff;display:inline-block;margin-bottom:6px}
-.b-go{background:var(--green)}.b-rework{background:var(--amber)}.b-stop{background:var(--red)}
-section{margin-bottom:32px}
-h2{font-weight:800;font-size:20px;color:var(--blue);margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid var(--line)}
-.dim{display:grid;grid-template-columns:240px 1fr 56px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line);font-size:14px}
-.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--blue);border-radius:5px}
-.dim .n{font-family:'Roboto',sans-serif;font-weight:800;text-align:right}
-.dim small{display:block;color:var(--muted)}
-.rf{background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:16px 20px}
-.rf ul{margin-left:18px}.rf li{margin:4px 0}
-.rf.empty{background:#ECFDF5;border-color:#A7F3D0}
-.fix{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
-.fix h3{font-size:15px;font-weight:800}
-.fix .tag{font-size:12px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-.ba{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;font-size:13.5px}
-.ba div{border-radius:8px;padding:12px 14px}
-.ba .av{background:#FEF2F2;border:1px solid #FECACA}
-.ba .ap{background:#ECFDF5;border:1px solid #A7F3D0}
-.ba b{display:block;font-family:'Roboto',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-.check{font-size:14px}.check li{list-style:none;margin:4px 0}
-table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card)}
-th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
-th{font-family:'Roboto',sans-serif;font-weight:700;background:#EFF6FF}
-footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between}
-@media print{body{padding:0;background:#fff}.fix,.verdict{break-inside:avoid}}
-@media (max-width:680px){.dim{grid-template-columns:1fr 56px}.dim .bar{grid-column:1/-1}.ba{grid-template-columns:1fr}}
+  :root {
+    /* Couleurs — marque & surfaces (jetons du socle digit-ai-page-html) */
+    --blue: #2563EB;
+    --bg: #FAFBFF;
+    --surface: #FFFFFF;
+    --card: #FFFFFF;
+    --focus-anneau: 2px solid var(--blue);
+    --focus-decalage: 2px;
+    /* Encres */
+    --ink: #0F172A;
+    --muted: #64748B;
+    --faint: #94A3B8;
+    --line: #E6EAF2;
+    /* Accents sémantiques — les quatre registres du socle, jamais réinventés */
+    --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;
+    --teal:  #0E9488; --teal-fill:  #EFFDFB; --teal-line:  #C7F0EA;
+    --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
+    --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
+    --bleu-fill: #EFF4FE;
+    --hh: 64px; --hh-tab: 64px;
+    --r: 12px; --r-sm: 8px;
+    --w: clamp(75vw, 1680px, 92vw);
+    --head: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B1220; --surface: #121B2E; --card: #121B2E;
+    --ink: #EEF2F8; --muted: #A9B4C4; --faint: #7C8AA0; --line: #263248;
+    --blue: #7DA2F5;
+    --amber: #FBBF6D; --amber-fill: #2B2210; --amber-line: #4A3A18;
+    --teal:  #5FE6D6; --teal-fill:  #0E2A27; --teal-line:  #164E48;
+    --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
+    --red:   #F5A3A3; --red-fill:   #2C1416; --red-line:   #4C1F22;
+    --bleu-fill: #16243D;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55; font-size: 16px; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: var(--w); margin: 0 auto; padding: 32px 24px 64px; }
+
+  h1, h2, h3, h4 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+  h1 { font-size: 2rem; margin: 0 0 .25em; }
+  h2 { font-size: 1.4rem; font-weight: 700; margin: 2em 0 .5em; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.1rem; font-weight: 700; margin: 1.5em 0 .4em; }
+  p, li { margin: 0 0 1em; }
+  a { color: var(--blue); }
+  a:focus-visible, button:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
+  code, pre { font-family: var(--mono); }
+  /* Regle E4 du socle : la mesure de lecture se pose sur le CONTENEUR, jamais sur le
+     paragraphe. `.chap.lire` enveloppe le PASSAGE de prose qui ouvre un chapitre ; la
+     grille de notes, les cartes et le tableau qui suivent restent en pleine largeur. */
+  .chap.lire { max-width: 1080px; margin-left: auto; margin-right: auto; }
+  .ch-apprend { margin: .2em 0 .4em; font-size: 1.02em; color: var(--ink); }
+  .contenu { margin: .2em 0 .8em; color: var(--muted); }
+  .termes { margin: 0 0 1em; font-size: .92em; color: var(--muted); }
+  .termes dfn { font-style: normal; font-weight: 600; color: var(--ink); }
+
+  header.doc { border-bottom: 2px solid var(--blue); padding-bottom: 16px; margin-bottom: 24px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 4px; }
+  .meta { color: var(--muted); font-size: .88rem; margin: 4px 0 0; }
+
+  /* S-G1 (3/4, R-30) — bascule de thème */
+  .theme-toggle { appearance: none; border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); border-radius: 999px; width: 36px; height: 36px; flex: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; }
+  .theme-toggle:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
+  .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+
+  /* L25 — sommaire visible en permanence, collant sous l'en-tête au-dessus de 900 px. */
+  nav.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 16px 20px; margin: 0 0 24px; }
+  /* L25 / famille `sommaire_perdu` : cinq chapitres sur 2,7 ecrans — une navigation au
+     moins reste ATTEIGNABLE apres defilement. Bornee en hauteur pour qu'un sommaire
+     annote ne prenne pas l'ecran sur un telephone. */
+  /* M3 : colle a un bord, donc borne par la zone sure — sinon le sommaire passe sous
+     l'encoche ou l'indicateur de retour a l'accueil. */
+  nav.toc.colle { position: sticky; top: max(0px, env(safe-area-inset-top, 0px));
+    z-index: 10; max-height: 38vh; overflow: auto;
+    scroll-padding-top: env(safe-area-inset-top, 0px); }
+  nav.toc ol { margin: 0; padding-left: 20px; }
+  nav.toc li { margin: 0 0 8px; }
+  nav.toc .toc-d { display: block; color: var(--muted); font-size: .86rem; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 20px 24px; margin: 16px 0; }
+
+  /* Le verdict : la note, la bascule, la synthèse. Aucun bandeau latéral épais (S1) —
+     l'accent se porte par le registre de couleur du badge, pas par un filet de 6 px. */
+  .verdict { display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 20px 24px; margin-bottom: 28px; }
+  /* V1 : `white-space: nowrap` a 2,6rem poussait le bloc a 748 px dans un viewport de
+     390 px. La note se replie, et ne retrecit qu'a la largeur ou elle ne tient plus. */
+  .score { font-family: var(--head); font-weight: 800; font-size: clamp(1.1rem, 4.5vw, 2.6rem);
+    color: var(--blue); line-height: 1.1; }
+  .score .sur { white-space: nowrap; }
+  .verdict .dit { flex: 1 1 280px; }
+  .badge { font-family: var(--head); font-weight: 700; font-size: .95rem; padding: 4px 16px;
+    border-radius: 999px; display: inline-block; margin-bottom: 8px; border: 1px solid transparent; }
+  .b-go { background: var(--green-fill); border-color: var(--green-line); color: var(--green); }
+  /* T5 : --amber sur --amber-fill plafonne a 3,07:1 — sous le seuil TEXTE de 4,5:1 du
+     socle. Le registre reste lisible (fond et filet ambre) ; le libelle prend l'encre. */
+  .b-rework { background: var(--amber-fill); border-color: var(--amber-line); color: var(--ink); }
+  .b-stop { background: var(--red-fill); border-color: var(--red-line); color: var(--red); }
+
+  /* Scores par dimension. La colonne d'intitulé est en minmax : à 390 px elle ne force
+     plus la grille au-delà du viewport (V1). */
+  .dim { display: grid; grid-template-columns: minmax(12ch, 240px) 1fr 56px; gap: 12px;
+    align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: .92rem; }
+  .dim .bar { height: 12px; background: var(--line); border-radius: 999px; overflow: hidden; }
+  .dim .bar i { display: block; height: 100%; background: var(--blue); border-radius: 999px; }
+  .dim .n { font-family: var(--head); font-weight: 700; text-align: right; }
+  .dim small { display: block; color: var(--muted); }
+
+  .rf { background: var(--red-fill); border: 1px solid var(--red-line); border-radius: var(--r); padding: 16px 20px; }
+  .rf ul { margin: 0; padding-left: 20px; }
+  .rf li { margin: 4px 0; }
+  .rf.empty { background: var(--green-fill); border-color: var(--green-line); }
+
+  .fix { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 20px 24px; margin-bottom: 16px; }
+  .fix h3 { font-size: 1rem; margin: 4px 0 8px; }
+  .fix .tag { font-size: .78rem; color: var(--blue); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; font-size: .88rem; }
+  .ba > div { border-radius: var(--r-sm); padding: 12px 16px; }
+  .ba .av { background: var(--red-fill); border: 1px solid var(--red-line); }
+  .ba .ap { background: var(--green-fill); border: 1px solid var(--green-line); }
+  .ba b { display: block; font-family: var(--head); font-size: .72rem; text-transform: uppercase;
+    letter-spacing: .08em; margin-bottom: 8px; }
+
+  .check { font-size: .92rem; margin: 0; padding: 0; }
+  .check li { list-style: none; margin: 4px 0; display: flex; gap: 8px; align-items: baseline; }
+  /* Le statut d'un contrôle se DESSINE (S6 : pas d'emoji dans l'interface) et se DIT
+     (le texte du <span class="sr"> est lu par les lecteurs d'écran). */
+  .statut { flex: none; width: 16px; height: 16px; }
+  .statut.tenu { color: var(--green); }
+  .statut.manque { color: var(--red); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .table-hote { overflow-x: visible; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 8px 0; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--head); font-weight: 700; background: var(--bleu-fill); }
+
+  footer.doc { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .85rem; display: flex; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; }
+
+  /* M4 — repli en cartes sous 900 px : aucun tableau ne force le défilement horizontal. */
+  @media (max-width: 900px) {
+    .table-hote { overflow-x: auto; }
+    table.repli-cartes thead { display: none; }
+    table.repli-cartes tr { display: block; border: 1px solid var(--line); border-radius: var(--r-sm);
+      margin: 0 0 12px; padding: 8px 12px; break-inside: avoid; }
+    table.repli-cartes td { display: grid; grid-template-columns: minmax(9ch, 38%) 1fr; gap: 8px;
+      border: 0; padding: 4px 0; }
+    table.repli-cartes td::before { content: attr(data-label); font-weight: 700; color: var(--muted); }
+    table.repli-cartes td:not([data-label])::before { content: none; }
+  }
+  @media (max-width: 680px) {
+    .dim { grid-template-columns: 1fr 56px; }
+    .dim .bar { grid-column: 1 / -1; }
+    .ba { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 24px 16px 48px; }
+    h1 { font-size: 1.6rem; }
+  }
+  /* M5 — le rendu paysage est traité explicitement : sur un écran bas et large, l'en-tête
+     et le verdict cessent de manger la première page. */
+  @media (orientation: landscape) and (max-height: 520px) {
+    .wrap { padding-top: 16px; }
+    header.doc { margin-bottom: 16px; padding-bottom: 12px; }
+    .verdict { margin-bottom: 16px; padding: 12px 16px; }
+    nav.toc { margin-bottom: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  }
+
+  @page { size: A4; margin: 18mm 16mm; }
+  @page :first { margin-top: 22mm; }
+  @media print {
+    :root, :root[data-theme="dark"] {
+      --bg:#FFFFFF; --surface:#FFFFFF; --card:#FFFFFF; --ink:#0F172A;
+      --muted:#64748B; --faint:#94A3B8; --line:#E6EAF2; --blue:#2563EB;
+      --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
+      --teal:#0E9488;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
+      --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
+      --red:#B91C1C;   --red-fill:#FEF2F2;   --red-line:#F6CFCF;
+      --bleu-fill:#EFF4FE;
+    }
+    body { background: var(--surface); }
+    .wrap { max-width: none; padding: 0; }
+    .card, .fix, .verdict { break-inside: avoid; page-break-inside: avoid; }
+    .theme-toggle { display: none; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<header>
-  <div class="brand">Digit-AI · L'IA à taille humaine</div>
-  <h1>Review Propale — {{CLIENT}}</h1>
-  <div class="meta">{{SCOPE}} · Document audité : {{FICHIER_PROPALE}} · {{DATE_FR}} · Audit v{{VERSION}}</div>
+<header class="doc">
+  <div>
+    <!-- TF-1023 : la position de la marque (en tête, au-dessus du titre) est CONSERVÉE telle
+         quelle — c'est un arbitrage humain ouvert, non tranché par cette réécriture. -->
+    <p class="eyebrow">Digit-AI · L'IA à taille humaine</p>
+    <h1>Review Propale — {{CLIENT}}</h1>
+    <p class="meta">{{SCOPE}} · Document audité : {{FICHIER_PROPALE}} · {{DATE_FR}} · Audit v{{VERSION}}</p>
+  </div>
+  <!-- S-G1 (3/4, R-30) — bouton de bascule thème sombre -->
+  <button id="theme-toggle" class="theme-toggle" type="button"
+          aria-label="Bascule thème sombre" aria-pressed="false">
+    <svg class="icon-moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+    </svg>
+    <svg class="icon-sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="12" r="4.5"/>
+      <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"
+            stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </button>
 </header>
 
 <div class="verdict">
-  <div class="score">{{SCORE}}/{{TOTAL_EVALUABLE}}</div>
-  <div>
+  <div class="score" id="score-verdict" aria-describedby="score-bareme">{{SCORE}}<span class="sur">/{{TOTAL_EVALUABLE}}</span></div>
+  <div class="dit">
     <!-- Classe du badge : b-go (Envoyer) / b-rework (Retravailler) / b-stop (Refondre) -->
-    <span class="badge {{BADGE_CLASSE}}">{{VERDICT}}</span>
+    <span class="badge {{BADGE_CLASSE}}" id="badge-verdict" aria-describedby="score-bareme">{{VERDICT}}</span>
     <p>{{SYNTHESE_2_PHRASES}}</p>
+    <p class="meta" id="score-bareme">Barème : somme des notes des dimensions évaluables, sur 5 points
+      chacune. Envoyer à partir de 80 %, Retravailler entre 55 % et 80 %, Refondre en dessous.</p>
   </div>
 </div>
 
-<section>
+<nav class="toc colle" aria-label="Sommaire">
+  <ol>
+    <li><a href="#sec-dimensions">Scores par dimension
+      <span class="toc-d">La note de D1 à D7, son constat court et la barre de progression.</span></a></li>
+    <li><a href="#sec-redflags">Red flags bloquants
+      <span class="toc-d">Ce qui interdit l'envoi en l'état, règle par règle, avec sa slide.</span></a></li>
+    <li><a href="#sec-corrections">Top 5 corrections priorisées
+      <span class="toc-d">Les cinq gestes classés par impact et effort, avec leur avant/après.</span></a></li>
+    <li><a href="#sec-forme">Conformité de forme
+      <span class="toc-d">Les cinq contrôles D8, hors score, renvoyés au skill digit-ai-pptx.</span></a></li>
+    <li><a href="#sec-contexte">Contexte d'audit
+      <span class="toc-d">Les entrants lus, ce qui n'a pas pu être évalué et pourquoi.</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="sec-dimensions">
   <h2>Scores par dimension</h2>
+  <div class="chap lire">
+  <p class="ch-apprend">Vous apprenez ici où la propale est solide et où elle est faible, dimension par dimension, et de combien.</p>
+  <p class="contenu">Ce chapitre contient la note de chacune des sept dimensions de la grille d'audit,
+    assortie du constat qui la justifie en une ligne ; il se distingue du chapitre suivant en ce qu'il
+    note l'ensemble, quand le suivant n'isole que ce qui bloque.</p>
+  </div>
   <!-- DUPLIQUER le bloc .dim pour D1 à D7. PCT = note × 20.
-       Dimension non évaluable : note "n/a", barre à 0, préciser en small. -->
+       Dimension non évaluable : note « n/a », barre à 0, préciser en small. -->
   <div class="dim">
     <div>{{D_CODE}} — {{D_NOM}}<small>{{D_CONSTAT_COURT}}</small></div>
     <div class="bar"><i style="width:{{PCT}}%"></i></div>
@@ -78,9 +305,15 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
   </div>
 </section>
 
-<section>
-  <!-- Si aucun red flag : classe "rf empty" et message « Aucun red flag bloquant détecté. » -->
+<section id="sec-redflags">
   <h2>Red flags bloquants</h2>
+  <div class="chap lire">
+  <p class="ch-apprend">Vous apprenez ici s'il existe une raison de ne pas envoyer ce document en l'état, et laquelle exactement.</p>
+  <p class="contenu">Ce chapitre contient les constats qui interdisent l'envoi en l'état, chacun avec
+    son numéro de règle et la slide où il se lit ; il se distingue du chapitre précédent en ce qu'il
+    ne note rien — un red flag n'a pas de degré.</p>
+  </div>
+  <!-- Si aucun red flag : classe « rf empty » et message « Aucun red flag bloquant détecté. » -->
   <div class="rf {{RF_CLASSE}}">
     <ul>
       <!-- DUPLIQUER li par red flag : n° de règle, slide, extrait -->
@@ -89,11 +322,17 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
   </div>
 </section>
 
-<section>
+<section id="sec-corrections">
   <h2>Top 5 corrections priorisées</h2>
+  <div class="chap lire">
+  <p class="ch-apprend">Vous apprenez ici par quoi commencer : les cinq gestes qui rapportent le plus pour le temps qu'ils coûtent.</p>
+  <p class="contenu">Ce chapitre contient les cinq corrections au meilleur rapport impact sur effort,
+    chacune avec le texte tel qu'il est et le texte proposé ; il se distingue des deux précédents en ce
+    qu'il n'énonce aucun constat, seulement des gestes à faire.</p>
+  </div>
   <!-- DUPLIQUER le bloc .fix, trié par impact × effort décroissant (max 5) -->
   <div class="fix">
-    <div class="tag">#{{RANG}} · {{DIM_REF}} · Slide {{FIX_SLIDE}} · Impact {{IMPACT}}/5 · Effort {{EFFORT}}/5</div>
+    <p class="tag">#{{RANG}} · {{DIM_REF}} · Slide {{FIX_SLIDE}} · Impact {{IMPACT}}/5 · Effort {{EFFORT}}/5</p>
     <h3>{{FIX_TITRE}}</h3>
     <p>{{FIX_POURQUOI_CA_COUTE}}</p>
     <div class="ba">
@@ -103,28 +342,91 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:v
   </div>
 </section>
 
-<section>
-  <h2>Conformité forme (hors score — renvoi digit-ai-pptx)</h2>
+<section id="sec-forme">
+  <h2>Conformité de forme</h2>
+  <div class="chap lire">
+  <p class="ch-apprend">Vous apprenez ici si le support tient la charte de la maison, et ce qu'il reste à reprendre côté rendu.</p>
+  <p class="contenu">Ce chapitre contient les cinq contrôles de forme D8, qui n'entrent pas dans le
+    score ; il se distingue des corrections ci-dessus en ce que sa remise en conformité est déléguée
+    au skill de rendu, et non à l'auteur de la propale.</p>
+  <p class="termes">Termes employés — <dfn>D8</dfn> : la huitième dimension de la grille d'audit,
+    qui juge la forme du support (charte, gabarit, nommage) et se corrige par le skill
+    <code>digit-ai-pptx</code> plutôt que par une réécriture du fond.</p>
+  </div>
   <ul class="check">
-    <!-- DUPLIQUER : ✅ ou ❌ + libellé des 5 contrôles D8 -->
-    <li>{{D8_ICONE}} {{D8_CONTROLE}}</li>
+    <!-- DUPLIQUER par contrôle D8. Statut TENU : garder le premier <svg> et retirer le second.
+         Statut MANQUE : l'inverse. Le <span class="sr"> suit le statut choisi. -->
+    <li>
+      <svg class="statut tenu" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 8.5 6.5 12 13 4"/>
+      </svg>
+      <svg class="statut manque" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4l8 8M12 4l-8 8"/>
+      </svg>
+      <span><span class="sr">{{D8_STATUT_DIT}} — </span>{{D8_CONTROLE}}</span>
+    </li>
   </ul>
 </section>
 
-<section>
+<section id="sec-contexte">
   <h2>Contexte d'audit</h2>
-  <table>
-    <tr><th>Entrants utilisés</th><td>{{ENTRANTS}}</td></tr>
-    <tr><th>Dimensions non évaluables</th><td>{{NON_EVALUABLES}}</td></tr>
-    <tr><th>Objections probables du deal (D6)</th><td>{{OBJECTIONS_PROBABLES}}</td></tr>
-  </table>
+  <div class="chap lire">
+  <p class="ch-apprend">Vous apprenez ici sur quoi cet audit s'appuie, et donc jusqu'où son verdict engage — et où il s'arrête.</p>
+  <p class="contenu">Ce chapitre contient ce qui a été lu pour produire cet audit et ce qui n'a pas pu
+    l'être ; il se distingue de tout ce qui précède en ce qu'il ne juge pas la propale, mais la portée
+    du jugement lui-même.</p>
+  </div>
+  <div class="table-hote">
+    <table class="repli-cartes">
+      <caption>Périmètre réellement couvert par cet audit.</caption>
+      <thead>
+        <tr><th scope="col">Élément de contexte</th><th scope="col">Valeur relevée</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Élément de contexte">Entrants utilisés</td>
+          <td data-label="Valeur relevée">{{ENTRANTS}}</td>
+        </tr>
+        <tr>
+          <td data-label="Élément de contexte">Dimensions non évaluables</td>
+          <td data-label="Valeur relevée">{{NON_EVALUABLES}}</td>
+        </tr>
+        <tr>
+          <td data-label="Élément de contexte">Objections probables du deal (D6)</td>
+          <td data-label="Valeur relevée">{{OBJECTIONS_PROBABLES}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
-<footer>
+</main>
+
+<footer class="doc">
   <span>Digit-AI — audit interne pré-envoi, ne pas diffuser au client</span>
-  <span>© 2026 Digit-AI · {{DATE_FR}}</span>
+  <span>Digit-AI, {{DATE_FR}}</span>
 </footer>
 
 </div>
+
+<!-- S-G1 (4/4, R-30) — câblage de la bascule : persistance + aria-pressed. -->
+<script>
+(function () {
+  var bouton = document.getElementById('theme-toggle');
+  var racine = document.documentElement;
+  if (!bouton) { return; }
+  function appliquer(theme) {
+    racine.setAttribute('data-theme', theme);
+    try { localStorage.setItem('digitai-theme', theme); } catch (e) {}
+    bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+  }
+  bouton.setAttribute('aria-pressed', racine.getAttribute('data-theme') === 'dark' ? 'true' : 'false');
+  bouton.addEventListener('click', function () {
+    appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
 </body>
 </html>

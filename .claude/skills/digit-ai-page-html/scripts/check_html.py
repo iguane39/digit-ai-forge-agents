@@ -3667,6 +3667,19 @@ EXEMPTIONS_DECLAREES = (
     ("digit-ai-schemas/assets/template-topologie.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
     ("digit-ai-schemas/assets/template-schema-differentiel.html", FAMILLE_L11_GABARIT,
      _MOTIF_GABARIT),
+    # TF-1032 (b), 20/09/2026 — le gabarit de rapport d'audit de `digit-ai-propale-review`,
+    # reecrit sur le boilerplate du socle. Meme nature que les canevas ci-dessus et MEME
+    # arbitrage, mot pour mot : ses {{PLACEHOLDER}} sont son objet, et l'indice de version date
+    # du titre appartient au rapport produit, jamais au gabarit qui l'attend. Tout le reste est
+    # tenu et reste juge — squelette, charset, favicon, aucune requete reseau, sommaire, repli
+    # en cartes. L'exemption s'apparie au CHEMIN : un rapport produit depuis ce gabarit ne l'a
+    # pas, et se fait juger par L3, L11 et A4 en entier.
+    ("digit-ai-propale-review/templates/rapport-review.html", FAMILLE_L11_GABARIT, _MOTIF_GABARIT),
+    ("digit-ai-propale-review/templates/rapport-review.html", FAMILLE_L3_GABARIT, _MOTIF_L3_GABARIT),
+    ("digit-ai-propale-review/templates/rapport-review.html", FAMILLE_A4_VERSION,
+     "gabarit a trous : le titre porte « {{INDICE_VERSION}} » et l'indice date appartient au "
+     "rapport PRODUIT, jamais au canevas — les autres regles A (squelette, charset, favicon, "
+     "aucune requete reseau) sont tenues et restent jugees"),
 )
 
 
