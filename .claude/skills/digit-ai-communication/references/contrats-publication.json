@@ -1,0 +1,61 @@
+{
+  "schema": "digit-ai-communication/contrats-publication@1",
+  "version": "1.0.0",
+  "date": "2026-09-21",
+  "role": "Part MECANISABLE du contrat de sortie de chaque modele de publication. La prose de references/presets-livrables.md fait foi pour le reste ; le self-test (C4) tient les deux alignes, dans les deux sens. Lu par oracles/oracle-run-reseau.mjs du pilot (regle RR2).",
+  "regle": "Aucun plafond de plateforme ici : les bornes sont des CONVENTIONS DE FORME du skill. Les plafonds et regles de chaque plateforme vivent, dates et sources, au referentiel de plateformes du pilot.",
+  "champs": {
+    "mots": "[minimum, maximum], hashtags exclus",
+    "accroche_min_caracteres": "longueur minimale de la premiere ligne ; 0 = non exigee",
+    "cloture": "question_ou_appel | libre",
+    "hashtags_max": "nombre maximal de hashtags",
+    "piece_requise": "fichier qui doit accompagner la publication dans le dossier de la semaine, ou null"
+  },
+  "modeles": {
+    "publication-reseau": {
+      "libelle": "Publication réseau",
+      "reseaux": ["linkedin"],
+      "mots": [150, 300],
+      "accroche_min_caracteres": 20,
+      "cloture": "question_ou_appel",
+      "hashtags_max": 5,
+      "piece_requise": null
+    },
+    "legende-image": {
+      "libelle": "Légende d'image",
+      "reseaux": ["instagram", "facebook"],
+      "mots": [30, 150],
+      "accroche_min_caracteres": 20,
+      "cloture": "question_ou_appel",
+      "hashtags_max": 5,
+      "piece_requise": "visuel"
+    },
+    "texte-court": {
+      "libelle": "Texte court",
+      "reseaux": ["threads", "x", "bluesky"],
+      "mots": [8, 40],
+      "accroche_min_caracteres": 0,
+      "cloture": "libre",
+      "hashtags_max": 2,
+      "piece_requise": null
+    },
+    "reponse-avis": {
+      "libelle": "Réponse à un avis",
+      "reseaux": ["fiche-etablissement"],
+      "mots": [20, 120],
+      "accroche_min_caracteres": 0,
+      "cloture": "libre",
+      "hashtags_max": 0,
+      "piece_requise": "avis"
+    },
+    "nouvelle-fiche": {
+      "libelle": "Nouvelle de la fiche",
+      "reseaux": ["fiche-etablissement"],
+      "mots": [30, 120],
+      "accroche_min_caracteres": 20,
+      "cloture": "question_ou_appel",
+      "hashtags_max": 0,
+      "piece_requise": null
+    }
+  }
+}

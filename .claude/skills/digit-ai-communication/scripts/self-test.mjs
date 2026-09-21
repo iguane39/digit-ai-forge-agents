@@ -26,9 +26,17 @@
 //        et il porte une section de contrat de sortie détectable. Un preset ajouté sans son
 //        contrat de sortie, ou un compte de presets qui régresse sous le seuil, est un FAIL :
 //        c'est exactement le défaut qu'un preset « décoratif » (aucun critère vérifiable)
-//        laisserait passer sans bruit.
+//        laisserait passer sans bruit. Seuil porté à 11 le 21/09/2026 (TF-1277 : légende
+//        d'image, texte court, avis et fiche d'établissement).
+//   C4 — le contrat lisible par machine et sa prose disent la même chose (TF-1277,
+//        21/09/2026). `references/contrats-publication.json` porte la part mécanisable du
+//        contrat de sortie de chaque modèle de publication ; le contrôle de la semaine du
+//        pilot (`oracle-run-reseau`, RR2) le lit. Un contrat écrit deux fois diverge en
+//        silence : C4 exige, dans les DEUX sens, que chaque modèle du fichier ait son
+//        identifiant et ses bornes de longueur dans la prose, que chaque identifiant déclaré
+//        en prose existe au fichier, et que le plafond de hashtags soit le même.
 //
-// DOUBLE SENS. C1 et C3 sont rejoués sur des FIXTURES ROUGES synthétiques : si une fixture
+// DOUBLE SENS. C1, C3 et C4 sont rejoués sur des FIXTURES ROUGES synthétiques : si une fixture
 // rouge ne rougit pas, le contrôle correspondant est aveugle et le self-test échoue de
 // lui-même. La fixture VERTE est le skill réel.
 //
@@ -124,7 +132,7 @@ function verifierChemins(dirSkill, texteSkillMd, etiquette) {
 // Compte les lignes de DONNÉES du tableau principal de presets-livrables.md (une ligne de
 // preset commence par « | ** » — le nom du livrable en gras, première colonne) et vérifie
 // que le preset « Publication réseau » y figure avec une section de contrat de sortie.
-const MIN_PRESETS_ATTENDU = 8;
+const MIN_PRESETS_ATTENDU = 11;
 
 function compterLignesPresets(texte) {
   return texte.split(/\r?\n/).filter((l) => /^\|\s*\*\*/.test(l)).length;
@@ -134,12 +142,48 @@ function verifierPresets(texte, etiquette) {
   const findings = [];
   const nb = compterLignesPresets(texte);
   if (nb < MIN_PRESETS_ATTENDU) {
-    findings.push(`${etiquette} — ${nb} preset(s) dans le tableau, ${MIN_PRESETS_ATTENDU} attendus au minimum depuis TF-1155 (« Publication réseau »)`);
+    findings.push(`${etiquette} — ${nb} preset(s) dans le tableau, ${MIN_PRESETS_ATTENDU} attendus au minimum depuis TF-1277 (8 depuis TF-1155, puis 3 modèles de publication)`);
   }
   if (!/Publication réseau/.test(texte)) {
     findings.push(`${etiquette} — preset « Publication réseau » absent du tableau`);
   } else if (!/Contrat de sortie, binaire/.test(texte)) {
     findings.push(`${etiquette} — preset « Publication réseau » sans section de contrat de sortie détectable (attendu : « Contrat de sortie, binaire »)`);
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------- C4 : contrats (TF-1277)
+// Confronte references/contrats-publication.json à la prose de presets-livrables.md, dans les
+// deux sens. La prose déclare un identifiant par « Identifiant du contrat : `x` » ou
+// « l'identifiant `x` » ; elle écrit la longueur « Longueur : N à M mots ».
+function verifierContrats(prose, contratsTexte, etiquette) {
+  const findings = [];
+  let contrats;
+  try { contrats = JSON.parse(contratsTexte); } catch (e) {
+    return [`${etiquette} — contrats-publication.json illisible : ${e.message}`];
+  }
+  const modeles = contrats && typeof contrats.modeles === 'object' ? contrats.modeles : null;
+  if (!modeles || !Object.keys(modeles).length) return [`${etiquette} — aucun modèle au fichier de contrats`];
+  const declares = [...prose.matchAll(/[Ii]dentifiant(?: du contrat)?\s*:?\s*`([a-z0-9-]+)`/g)].map((m) => m[1]);
+  for (const [id, c] of Object.entries(modeles)) {
+    const [min, max] = Array.isArray(c.mots) ? c.mots : [];
+    if (!Number.isInteger(min) || !Number.isInteger(max) || min >= max) {
+      findings.push(`${etiquette} — modèle « ${id} » : bornes de longueur invalides au fichier (${JSON.stringify(c.mots)})`);
+      continue;
+    }
+    if (!declares.includes(id)) findings.push(`${etiquette} — modèle « ${id} » du fichier sans identifiant déclaré en prose`);
+    if (!prose.includes(`Longueur : ${min} à ${max} mots`)) {
+      findings.push(`${etiquette} — modèle « ${id} » : la prose n'écrit nulle part « Longueur : ${min} à ${max} mots »`);
+    }
+    if (c.hashtags_max > 0 && !prose.includes(`${c.hashtags_max} hashtags au plus`)) {
+      findings.push(`${etiquette} — modèle « ${id} » : la prose n'écrit nulle part « ${c.hashtags_max} hashtags au plus »`);
+    }
+    if (!['question_ou_appel', 'libre'].includes(c.cloture)) {
+      findings.push(`${etiquette} — modèle « ${id} » : clôture hors ensemble fermé (${JSON.stringify(c.cloture)})`);
+    }
+  }
+  for (const id of declares) {
+    if (!modeles[id]) findings.push(`${etiquette} — identifiant « ${id} » déclaré en prose, absent du fichier de contrats`);
   }
   return findings;
 }
@@ -237,13 +281,13 @@ if (!fs.existsSync(presetsPath)) {
     findings.push('fixture-rouge — C3 est AVEUGLE sur un compte de presets faux : 3 lignes n\'ont pas été détectées comme insuffisantes');
   }
 
-  // C3 — fixture ROUGE 2 : 8 presets, dont « Publication réseau », mais SANS section de
+  // C3 — fixture ROUGE 2 : le compte de presets attendu, dont « Publication réseau », mais SANS section de
   // contrat de sortie — DOIT rougir spécifiquement sur ce manque, pas sur le compte.
   const rougeContrat = [
     '# Fixture rouge — preset sans contrat de sortie', '',
     '| Livrable | Objectif | Curseur E / L / P | Structure | Patterns prioritaires | Piège à éviter |',
     '|---|---|---|---|---|---|',
-    ...Array.from({ length: 7 }, (_, i) => `| **Livrable ${i}** | x | 1/1/1 | x | x | x |`),
+    ...Array.from({ length: MIN_PRESETS_ATTENDU - 1 }, (_, i) => `| **Livrable ${i}** | x | 1/1/1 | x | x | x |`),
     '| **Publication réseau** | x | 1/1/1 | x | x | x |',
     '',
     '(aucune section de contrat de sortie plus bas dans ce fichier)',
@@ -255,7 +299,43 @@ if (!fs.existsSync(presetsPath)) {
     findings.push('fixture-rouge — C3 est AVEUGLE : un preset « Publication réseau » sans contrat de sortie n\'a pas été détecté');
   }
   if (!neRougitPasSurLeCompte) {
-    findings.push('fixture-rouge — C3 se trompe de motif : 8 presets présents, le FAIL doit porter sur le contrat de sortie, pas sur le compte');
+    findings.push('fixture-rouge — C3 se trompe de motif : le compte de presets est tenu, le FAIL doit porter sur le contrat de sortie, pas sur le compte');
+  }
+}
+
+// C4 — fixture VERTE : le fichier de contrats réel contre la prose réelle
+const contratsPath = path.join(SKILL_DIR, 'references', 'contrats-publication.json');
+let c4Jouee = false;
+if (!fs.existsSync(contratsPath) || !fs.existsSync(presetsPath)) {
+  nonJuge.push('C4 NON JOUÉE : references/contrats-publication.json ou presets-livrables.md introuvable.');
+} else {
+  c4Jouee = true;
+  const proseReelle = fs.readFileSync(presetsPath, 'utf8');
+  const contratsReels = fs.readFileSync(contratsPath, 'utf8');
+  findings.push(...verifierContrats(proseReelle, contratsReels, 'digit-ai-communication/references/contrats-publication.json'));
+
+  // C4 — fixtures ROUGES, dérivées du RÉEL par UNE altération chacune : seule forme qui prouve
+  // que le contrôle juge ce qu'il dit juger et non le reste du fichier.
+  const reel = JSON.parse(contratsReels);
+  const premier = Object.keys(reel.modeles)[0];
+  // (a) une borne du fichier change, la prose non → le modèle est NOMMÉ
+  const borne = JSON.parse(contratsReels);
+  borne.modeles[premier].mots = [borne.modeles[premier].mots[0], borne.modeles[premier].mots[1] + 1];
+  const frBorne = verifierContrats(proseReelle, JSON.stringify(borne), 'fixture-rouge-borne');
+  if (!(frBorne.length === 1 && frBorne[0].includes(`« ${premier} »`) && frBorne[0].includes('Longueur'))) {
+    findings.push('fixture-rouge — C4 est AVEUGLE ou bavard : une borne de longueur divergente doit rendre 1 constat, nommant le modèle');
+  }
+  // (b) un modèle au fichier que la prose ne déclare pas
+  const orphelin = JSON.parse(contratsReels);
+  orphelin.modeles['modele-fantome'] = { ...orphelin.modeles[premier] };
+  const frOrphelin = verifierContrats(proseReelle, JSON.stringify(orphelin), 'fixture-rouge-orphelin');
+  if (!frOrphelin.some((x) => x.includes('« modele-fantome »') && x.includes('sans identifiant déclaré'))) {
+    findings.push('fixture-rouge — C4 est AVEUGLE : un modèle du fichier sans identifiant en prose n\'a pas été détecté');
+  }
+  // (c) un identifiant en prose que le fichier ne porte pas
+  const frProse = verifierContrats(proseReelle + '\n\nIdentifiant du contrat : `modele-de-prose-seule`.\n', contratsReels, 'fixture-rouge-prose');
+  if (!(frProse.length === 1 && frProse[0].includes('« modele-de-prose-seule »'))) {
+    findings.push('fixture-rouge — C4 est AVEUGLE : un identifiant déclaré en prose et absent du fichier n\'a pas été détecté');
   }
 }
 
@@ -292,7 +372,7 @@ if (!table) {
 }
 
 if (findings.length) verdict = 'FAIL';
-else if (!c2Jouee || !c3Jouee) verdict = 'SKIP';
+else if (!c2Jouee || !c3Jouee || !c4Jouee) verdict = 'SKIP';
 
 const code = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2;
 process.stdout.write(JSON.stringify({
@@ -303,6 +383,7 @@ process.stdout.write(JSON.stringify({
     C1_liens_relatifs: 'jouée',
     C2_noms_interdits: c2Jouee ? 'jouée' : 'NON jouée (table absente)',
     C3_presets_reseau: c3Jouee ? 'jouée' : 'NON jouée (presets-livrables.md absent)',
+    C4_contrats_publication: c4Jouee ? 'jouée' : 'NON jouée (contrats-publication.json ou presets-livrables.md absent)',
   },
   verdict,
   findings,

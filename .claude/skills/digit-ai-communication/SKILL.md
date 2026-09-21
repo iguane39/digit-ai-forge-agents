@@ -1,6 +1,6 @@
 ---
 name: digit-ai-communication
-description: Coach la communication et la prise de parole Digit-AI — analyse l'audience, l'objectif et l'enjeu pour régler le curseur ethos/logos/pathos, choisit la structure (Minto, SCQA, sparkline, AIDA, BLUF…) et 3 patterns rhétoriques, puis produit un plan actionnable (accroche, objection, closing, scripts). Encode un corpus de patterns reconnus et des presets de réglage par type de livrable — propale, conférence, formation, COPIL, pitch, note/email, négociation, publication réseau. Use when / déclencher dès que l'utilisateur veut préparer, structurer, muscler ou scénariser une prise de parole, un pitch, une présentation, un argumentaire ou un message à fort enjeu, ou cherche comment dire les choses, dans quel ordre et avec quel dosage pour convaincre. Ne pas déclencher pour le rendu visuel d'un PowerPoint (→ digit-ai-pptx) ni pour rédiger ou chiffrer une proposition commerciale (→ digit-ai-propale) — ce skill travaille le message, pas le fichier ni le prix.
+description: Coach la communication et la prise de parole Digit-AI — analyse l'audience, l'objectif et l'enjeu pour régler le curseur ethos/logos/pathos, choisit la structure (Minto, SCQA, sparkline, AIDA, BLUF…) et 3 patterns rhétoriques, puis produit un plan actionnable (accroche, objection, closing, scripts). Encode un corpus de patterns reconnus et des presets de réglage par type de livrable — propale, conférence, formation, COPIL, pitch, note/email, négociation, publication réseau, légende d'image, texte court, avis client. Use when / déclencher dès que l'utilisateur veut préparer, structurer, muscler ou scénariser une prise de parole, un pitch, une présentation, un argumentaire ou un message à fort enjeu, ou cherche comment dire les choses, dans quel ordre et avec quel dosage pour convaincre. Ne pas déclencher pour le rendu visuel d'un PowerPoint (→ digit-ai-pptx) ni pour rédiger ou chiffrer une proposition commerciale (→ digit-ai-propale) — ce skill travaille le message, pas le fichier ni le prix.
 ---
 
 # Communication à impact (Digit-AI)
@@ -64,4 +64,5 @@ Sortie : preset COPIL -> curseur E 30 / L 60 / P 10, pyramide DROITE.
 ## Références
 
 - [references/corpus-patterns.md](references/corpus-patterns.md) — bibliothèque de patterns (les 7 leviers d'origine + standards reconnus, tagués structure / narratif / live / langage).
-- [references/presets-livrables.md](references/presets-livrables.md) — presets de réglage par type de livrable (curseur, structure, patterns, piège).
+- [references/presets-livrables.md](references/presets-livrables.md) — presets de réglage par type de livrable (curseur, structure, patterns, piège), et le contrat de sortie binaire de chaque modèle de publication.
+- [references/contrats-publication.json](references/contrats-publication.json) — part lisible par machine de ces contrats de sortie ; lue par le contrôle de la semaine du pilot, tenue alignée sur la prose par le self-test (C4).
