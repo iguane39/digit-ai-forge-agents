@@ -40,6 +40,20 @@ dupliquer charte ou pipeline ici**.
    uniquement** — persona introuvable = question à l'étape 1, jamais d'invention. Puis
    **une passe unique** de `digit-ai-communication` (phase contenu, avant tout PPTX)
    produit la **ligne éditoriale** (cover) et un **message-clé par slide** (sous-titres).
+3 bis. **Fixer le NIVEAU avant d'écrire — barre externe en pré-vol** (TF-1028, barres validées
+   par l'humain le 22/09/2026, décision D-8 (a)). Appeler `la-barre` en mode **pré-vol** sur la
+   cible du livrable : « propale privée » pour une proposition commerciale, « mémoire technique
+   de réponse à un appel d'offres public » pour une réponse sur trame imposée — cette cible porte
+   DEUX entrées, une par dimension (la réponse complète avec son issue ; l'attente d'un acheteur
+   public français, rubrique par rubrique), et les deux s'injectent. Une barre `ok` du registre
+   est servie au pas 1 de `la-barre`, qui rejoue d'abord son test d'existence (péremption) ; une
+   cible sans barre `ok` déroule le protocole complet, validation humaine comprise. **La barre
+   fixe un NIVEAU** — structure, vocabulaire, composants, comportement —, jamais un gabarit,
+   un texte ou une identité de cabinet à reprendre : sa `frontiere` le dit, et la grammaire
+   commerciale ci-dessous reste la contrainte de forme. *Pourquoi ici* : les oracles de propale
+   jugent la forme et la traçabilité, jamais le niveau — le précédent de forge-design (une
+   direction artistique verte à tous les oracles et rejetée en bloc) montre ce que coûte un
+   livrable conforme et médiocre.
 4. **Rédiger le plan de slides** (titres + sous-titres narratifs + points clés par slide)
    en appliquant `references/grammaire-commerciale.md` — y compris le **test du deck
    fantôme** (§7) et le **test de lisibilité des lots** (titre + sous-titre suffisent à
@@ -77,6 +91,13 @@ jugée par l'oracle existant `quality-oracles/scripts/oracle-exigences-ao.mjs --
 referentiel.md` (X1 exigences tracées, X2 rubriques à l'identique, X3 pièces livrées). Preuve
 double sens : `node scripts/construire-referentiel-ao.mjs --self-test`, sur le règlement
 synthétique de `fixtures/ao/`.
+
+Le référentiel juge la **conformité** d'une réponse, pas son **niveau**. Le niveau se fixe en
+pré-vol (étape 3 bis) par la barre « mémoire technique de réponse à un appel d'offres public »
+du registre de `la-barre` : deux entrées validées le 22/09/2026, une par dimension, dont une
+source française et officielle — l'annexe du guide de l'Observatoire économique de l'achat
+public (2012), avec ses réserves écrites (trame commentée et non réponse rédigée, marché de
+travaux). La trame imposée par l'acheteur du marché visé prime toujours sur la barre.
 
 ## Règles dures
 

@@ -37,6 +37,16 @@ forme → `digit-ai-pptx`). Sources : grammaire commerciale, market-proposal, de
    Chaque note citée : n° de slide + extrait. D8 (forme) = checklist binaire **hors score**,
    incluant un contrôle de **rendu visuel** (rasteriser + inspecter) : un chevauchement ou
    débordement n'apparaît **pas** dans l'extract texte et **bloque le verdict ✅ Envoyer**.
+3 bis. **Confronter au NIVEAU de la barre externe — `la-barre` en mode en ligne** (TF-1028,
+   barre « propale privée » validée par l'humain le 22/09/2026, décision D-8 (a)). Les critères
+   de la barre — structure, vocabulaire, composants, comportement, décomposés depuis des
+   propositions réelles de cabinets — sont confrontés au livrable. Un écart au niveau se cite
+   comme toute note (n° de slide + extrait + critère de la barre) dans la dimension de la grille
+   qu'il touche ; il ne crée ni dimension ni red flag à lui seul, et le verdict se lit toujours
+   dans le tableau ci-dessous. *Pourquoi* : la grille note une propale contre ses propres
+   règles ; sans repère externe, une propale conforme et moyenne sort « Envoyer ». Pour une
+   réponse à un appel d'offres, la cible est « mémoire technique de réponse à un appel d'offres
+   public », à deux dimensions.
 4. **Passer les red flags** (liste dans la grille). Un seul red flag ⇒ verdict forcé
    **Refondre — ne pas envoyer**, quel que soit le score.
 5. **Produire le livrable** :

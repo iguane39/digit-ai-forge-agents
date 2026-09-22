@@ -466,7 +466,7 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
 # ---- applytosupply.digitalmarketplace (404).
 
 - cible: propale privée (proposition commerciale de conseil, envoyée à un prospect)
-  reference: à retenir au pas 5 — candidat recommandé ci-dessous
+  reference: Slideworks — « 14 Real Consulting Proposals », collection de propositions RÉELLES de cabinets de conseil — https://slideworks.io/resources/10-real-consulting-proposals-free-to-download
   candidats_survivants: >
     (1) Slideworks — « 14 Real Consulting Proposals » (https://slideworks.io/resources/10-real-consulting-proposals-free-to-download) :
     collection de propositions RÉELLES de cabinets de conseil, dont des propositions devenues
@@ -480,18 +480,19 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
     la proposition) — atteignables, mais ce sont des ORGANISATIONS, pas des artefacts : écartés
     comme barre, gardés comme source de méthode.
   test_existence: python scripts/test_existence.py https://slideworks.io/resources/10-real-consulting-proposals-free-to-download
-  dernier_test: 2026-09-21 — PASS (1/1, HTTP 200) ; le 14/09/2026 : PASS (2/2), le second candidat étant tombé depuis
+  dernier_test: 2026-09-22 — PASS (1/1), rejoué au tour du pas 5 ; le 21/09/2026 : PASS (1/1, HTTP 200) ; le 14/09/2026 : PASS (2/2), le second candidat étant tombé depuis
   niveaux:
     structure: le problème du client ouvre le document, dans ses mots, avant toute présentation du cabinet ; le plan de travail est détaillé par phase (durée, livrables, jalons) ; le prix se lit en décomposition par phase ou par lot, jamais en un montant unique
     vocabulaire: chaque promesse est testable (un résultat, un délai, un indicateur) ; l'expérience citée est RATTACHÉE au projet visé, jamais un catalogue de références
     composants: une synthèse d'une page lisible seule ; des hypothèses et exclusions écrites ; l'équipe nommée avec son rôle sur la mission
     comportement: un lecteur décideur qui ne lit que la synthèse et la page de prix sait quoi signer, pour combien et pour quand
   frontiere: fixe le NIVEAU de rigueur et de complétude d'une propale ; n'autorise ni la reprise d'un gabarit, ni celle d'un texte, ni celle d'une identité de cabinet ; la charte (tokens-diapositives.css) et la grammaire commerciale de digit-ai-propale restent la contrainte de forme
-  justification: à faire valider (pas 5) — proposée parce que ce sont des propositions réelles de cabinets, inspectables, et non des guides d'écriture ; le niveau d'un livrable se mesure à un livrable
-  statut: todo (pas 5 SOUMIS à l'humain le 21/09/2026, un seul survivant — décision humaine requise)
+  justification: validée au pas 5 — ce sont des propositions réelles de cabinets, inspectables, et non des guides d'écriture ; le niveau d'un livrable se mesure à un livrable
+  statut: ok (validée humain, 22/09/2026 — décision D-8 option (a) « 8a », tour dédié au pas 5 : le seul survivant retenu tel quel ; le candidat éliminé au pas 3 reste nommé ci-dessus, en mémoire de choix)
 
 - cible: mémoire technique de réponse à un appel d'offres public (trame imposée)
-  reference: à retenir au pas 5 — candidat recommandé ci-dessous
+  dimension: réponse complète à une trame imposée, avec son issue
+  reference: Open Grants — collection publique de propositions de financement réellement soumises, lauréates et non lauréates, publiées par leurs auteurs — https://www.ogrants.org/
   candidats_survivants: >
     (1) Open Grants (https://www.ogrants.org/) : collection publique de propositions de
     financement réellement soumises, lauréates et non lauréates, publiées par leurs auteurs
@@ -514,12 +515,26 @@ un FAIL la repasse en `todo`, il ne la supprime pas.
     dimension « réponse complète à une trame imposée, avec son issue » portée par (1), dimension
     « attente d'un acheteur public français, rubrique par rubrique » portée par (3).
   test_existence: python scripts/test_existence.py https://www.ogrants.org/ https://www.digitalmarketplace.service.gov.uk/g-cloud/search https://www.marche-public.info/wp-content/uploads/2020/05/exemple-memoire-technique-oeap.pdf https://www.cclpa.fr/sites/cclpa.fr/files/inline-files/Exemple%20de%20trame%20de%20m%C3%A9moire%20technique.pdf
-  dernier_test: 2026-09-21 — PASS (4/4, HTTP 200) au second passage ; au premier passage du même jour, ogrants.org a rendu « injoignable : URLError » puis HTTP 200 quelques minutes après (script et curl) : panne passagère, dite et non tue. Le 14/09/2026 : PASS (2/2)
+  dernier_test: 2026-09-22 — PASS pour la référence de cette dimension (ogrants.org) et pour les deux miroirs de l'annexe de l'Observatoire, rejoués au tour du pas 5 ; le catalogue G-Cloud, candidat non retenu, n'a pas été rejoué ce jour ; le 21/09/2026 — PASS (4/4, HTTP 200) au second passage ; au premier passage du même jour, ogrants.org a rendu « injoignable : URLError » puis HTTP 200 quelques minutes après (script et curl) : panne passagère, dite et non tue. Le 14/09/2026 : PASS (2/2)
   niveaux:
     structure: chaque rubrique imposée par le règlement de consultation est reprise À L'IDENTIQUE et dans l'ordre ; chaque exigence du CCTP reçoit une réponse localisable (oracle-exigences-ao X1-X3)
     vocabulaire: la réponse reprend les termes de l'acheteur ; chaque engagement est chiffré ou daté ; aucune affirmation sans preuve jointe (référence, certificat, CV)
     composants: un tableau de conformité exigence → réponse → page ; des moyens humains nommés ; un planning et une méthode de pilotage
     comportement: un évaluateur retrouve la réponse à un critère de notation en moins d'une minute, sans lire le mémoire en entier
   frontiere: fixe le NIVEAU de conformité et de preuve ; n'autorise aucune reprise de texte d'une réponse tierce ; la trame imposée par l'acheteur prime sur la barre
-  justification: à faire valider (pas 5) — proposée parce que ce sont des réponses complètes à des trames imposées, publiées avec leur issue ; l'écart de juridiction est déclaré ci-dessus
-  statut: todo (pas 5 SOUMIS à l'humain le 21/09/2026 ; source française cherchée et trouvée le 21/09 — une trame officielle, pas une réponse rédigée)
+  justification: validée au pas 5 — ce sont des réponses complètes à des trames imposées, publiées avec leur issue ; l'écart de juridiction est déclaré ci-dessus, et c'est pourquoi la seconde dimension, française, a sa propre entrée juste en dessous
+  statut: ok (validée humain, 22/09/2026 — décision D-8 option (a) « 8a », tour dédié au pas 5 : la proposition retenue telle quelle, deux entrées de même cible, une par dimension (RB-1) ; celle-ci porte la réponse complète à une trame imposée)
+
+- cible: mémoire technique de réponse à un appel d'offres public (trame imposée)
+  dimension: attente d'un acheteur public français, rubrique par rubrique
+  reference: Observatoire économique de l'achat public, guide de décembre 2012, « Annexe 1 — Aide à la rédaction d'un mémoire technique » (pages 47 et suivantes) — https://www.marche-public.info/wp-content/uploads/2020/05/exemple-memoire-technique-oeap.pdf (l'annexe, 5 pages) ; miroir : https://www.cclpa.fr/sites/cclpa.fr/files/inline-files/Exemple%20de%20trame%20de%20m%C3%A9moire%20technique.pdf (9 pages)
+  test_existence: python scripts/test_existence.py https://www.marche-public.info/wp-content/uploads/2020/05/exemple-memoire-technique-oeap.pdf https://www.cclpa.fr/sites/cclpa.fr/files/inline-files/Exemple%20de%20trame%20de%20m%C3%A9moire%20technique.pdf
+  dernier_test: 2026-09-22 — PASS (2/2), rejoué au tour du pas 5 ; le 21/09/2026 — PASS, texte extrait et lu (pypdf, 10 149 et 13 670 caractères)
+  niveaux:
+    structure: chaque rubrique que l'annexe attend d'un mémoire est traitée, dans l'ordre de la trame imposée par l'acheteur lorsqu'il en impose une ; une rubrique sans objet le dit en une ligne, elle ne disparaît pas
+    vocabulaire: la réponse reprend les termes de l'acheteur ; chaque engagement est chiffré ou daté ; aucune affirmation sans preuve jointe (référence, certificat, CV)
+    composants: un tableau de conformité exigence → réponse → page ; des moyens humains nommés ; un planning et une méthode de pilotage
+    comportement: un évaluateur retrouve la réponse à un critère de notation en moins d'une minute, sans lire le mémoire en entier
+  frontiere: fixe ce qu'un acheteur public FRANÇAIS attend de trouver, rubrique par rubrique ; n'autorise aucune reprise de texte ; la trame imposée par l'acheteur du marché visé prime toujours sur celle de l'annexe. Réserves écrites et tenues : c'est une TRAME commentée, pas une réponse rédigée ; elle vise un marché de TRAVAUX, pas une prestation intellectuelle ; elle date de 2012
+  justification: validée au pas 5 — seule source française et officielle trouvée, deux fois, de ce qu'un acheteur public attend d'un mémoire ; aucune réponse rédigée française n'est ouverte, les mémoires lauréats n'étant communicables qu'au cas par cas
+  statut: ok (validée humain, 22/09/2026 — décision D-8 option (a) « 8a », tour dédié au pas 5 : seconde entrée de la même cible, dimension française, telle que proposée le 21/09)

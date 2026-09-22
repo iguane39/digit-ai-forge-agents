@@ -133,7 +133,7 @@ Identifiant du contrat : `nouvelle-fiche`.
 - Aucun hashtag.
 
 ## Combiner avec l'écosystème Digit-AI
-- **Propale** — coupler avec `digit-ai-propale` (narratif, objections pré-traitées, chiffrage) et `digit-ai-pptx` (rendu du deck). Ce skill règle le message ; il ne produit ni le fichier ni le prix.
+- **Propale** — coupler avec `digit-ai-propale` (narratif, objections pré-traitées, chiffrage) et `digit-ai-pptx` (rendu du deck). Ce skill règle le message ; il ne produit ni le fichier ni le prix. Le NIVEAU se fixe en pré-vol par la barre « propale privée » de `la-barre` (validée par l'humain le 22/09/2026, TF-1028) ; pour une réponse à un appel d'offres, par la barre « mémoire technique de réponse à un appel d'offres public », à deux dimensions. Une barre fixe un niveau, jamais un texte à reprendre.
 - **COPIL / restitution** — le rendu visuel reste `digit-ai-pptx` ; les schémas éventuels passent par `digit-ai-schemas`.
 - **Note / email** — la mise en forme du message écrit peut s'appuyer sur le compositeur de messages.
 - **Publication réseau** — la barre externe et le contrôle de transparence sont portés par `la-barre` et `quality-oracles` ; la cadence hebdomadaire est tenue par le type de run `RUN-RESEAU.md` du pilot, pas par ce skill.
