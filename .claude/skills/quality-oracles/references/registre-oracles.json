@@ -1,5 +1,5 @@
 {
- "version": "2.25.0",
+ "version": "2.26.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -779,10 +779,14 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-design/oracles/oracle-slop.mjs",
+    "{pilot}/../digit-ai-forge-design/oracles/run-oracles-design.mjs",
     "{file}",
+    "--oracle",
+    "slop",
+    "--contrat-runner",
     "--json-only"
    ],
+   "emprunt": "TF-1241 (22/09/2026) — ce domaine emprunte le POINT D'ENTRÉE de forge-design au lieu d'appeler oracle-slop directement. Mesuré le 19/09 sur une même page : appel direct NON CONFORME (constats portés par un composant embarqué du socle, que l'auteur n'a pas le droit de modifier), point d'entrée PASS (passe d'imputation au socle de TF-0830). `--oracle slop --contrat-runner` ne joue que ce juge et rend la forme d'entrée de ce lanceur ; les constats du socle restent RENDUS dans `socle_exempte`. Prouvé par la recette de forge-design (bloc « socle d'essai ») : direct FAIL, point d'entrée PASS, sceau altéré FAIL. Chemin : `{pilot}/../digit-ai-forge-design`, la forge sœur du pilot, au lieu de `c:/dev/…` figé sur un poste ; pilot introuvable → SKIP motivé, jamais un PASS.",
    "checklist": "S1-S10 en tête d oracle-slop.mjs (bandeau latéral, texte en dégradé, polices réflexes, noir/blanc purs, palette IA, emojis, grille clonée, easing daté, rayon uniforme, sparkline décoratif)",
    "statut": "ok",
    "non_juge": [
@@ -802,10 +806,14 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-design/oracles/oracle-tokens.mjs",
+    "{pilot}/../digit-ai-forge-design/oracles/run-oracles-design.mjs",
     "{file}",
+    "--oracle",
+    "tokens",
+    "--contrat-runner",
     "--json-only"
    ],
+   "emprunt": "TF-1241 (22/09/2026) — même emprunt que le domaine « marqueurs de slop » : le point d'entrée de forge-design, `--oracle tokens --contrat-runner`, pour que la passe d'imputation au socle s'applique aussi quand c'est ce lanceur qui juge — et c'est lui qui écrit le journal de la page. Recette de forge-design, socle d'essai : direct FAIL, point d'entrée PASS avec 5 constats au compte du socle, sceau altéré FAIL.",
    "checklist": "T1-T6 en tête d oracle-tokens.mjs (couleur en dur, police en dur, échelle 4pt, parité clair/sombre, contraste 4.5:1, chroma aux extrêmes)",
    "statut": "ok",
    "non_juge": [
@@ -1364,6 +1372,51 @@
    "commande": "node <pilot>/oracles/oracle-ecriture.mjs <fichier.md> [--donnee <tics.json>] [--chemin-relatif <x>] | --baseline <dossier> | --self-test",
    "provenance": "TF-1064 (12/09/2026) — lot de travaux du pilot. Relevé du 11/09 : aucun domaine de STYLE déterministe au registre (ligne 47 : le LLM-juge n'est « jamais promu en verdict » ; ligne 48 : oracle-slop déclare la prose en `non_juge`), et `check_markdown.py` déclarait L3/L12 « revue de lecture, jamais mécanisées ». Le plancher vit chez le pilot (doctrine `references/ECRITURE.md`, donnée `references/tics-redactionnels.json` calibrée sur 204 textes, oracle `oracles/oracle-ecriture.mjs`) ; ce registre l'INDEXE, il ne le réimplémente pas (règle R3).",
    "note": "Le marqueur `{pilot}` se résout par `FORGE_ROOT/digit-ai-factory`, sinon par le dépôt frère `../../../../digit-ai-factory` du skill (`scripts/lib/pilot.mjs`). Pilot introuvable → SKIP MOTIVÉ nommant les pistes, jamais un PASS : un marqueur non résolu ferait échouer le lancement, et un lancement en échec se lit comme un FAIL — donc comme la preuve attendue sur la fixture rouge. Les seuils de densité sont une DONNÉE datée et sourcée (loi transverse n° 4), pas du code : recalibrer ne republie pas l'oracle."
+  },
+  {
+   "domaine": "Traduction : invariants et langue effective",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{pilot}/oracles/oracle-invariants-traduction.mjs",
+    "--paires",
+    "{file}",
+    "--langue-cible",
+    "pt"
+   ],
+   "checklist": "F1 nombres conservés (séparateurs neutralisés) · F2 mois nommés conservés (table fermée fr/pt/es/en/it/de) · F3 URL et courriels à l'identique · F4 invariants déclarés verbatim · F5 langue effective (pas de recopie, densité de mots-outils de la langue cible)",
+   "statut": "partiel",
+   "non_juge": [
+    "la FIDÉLITÉ DU SENS — sans référence humaine, aucune machine ne la mesure sans rendre un avis déguisé en verdict (TF-1232, troisième issue retenue)",
+    "le registre, le ton et la terminologie hors des invariants déclarés",
+    "les nombres écrits en toutes lettres, les noms propres non déclarés",
+    "DÉCLENCHEMENT : `ext` VIDE à dessein — l'entrée n'est pas un fichier de page mais un fichier de PAIRES {id, source, cible} ; la langue cible par défaut du registre est `pt`, le cas qui a fait naître le domaine — toute autre langue s'appelle en direct avec `--langue-cible`"
+   ],
+   "commande": "node <pilot>/oracles/oracle-invariants-traduction.mjs --paires <paires.json> --langue-cible <code> [--langue-source fr] [--invariants <liste.json>] | --self-test",
+   "provenance": "TF-1232 (22/09/2026, mandat humain sur les huit rangs, rang 7). Relevé du 16/09 : aucun des 57 domaines ne couvrait une traduction, et le juge rédactionnel n'accepte aucun texte de référence. L'item nommait trois issues recevables ; la troisième est retenue : sans référence humaine, l'oracle se limite aux invariants et à la langue effective, et le DÉCLARE. Déterministe, sans modèle, sans dépense. Recette : 8 cas, chaque rouge ne changeant qu'UN élément de la paire verte.",
+   "note": "Même résolution de `{pilot}` que les autres oracles du pilot (`scripts/lib/pilot.mjs`) : pilot introuvable → SKIP motivé, jamais un PASS."
+  },
+  {
+   "domaine": "Livrable d'un run de conseil (diagnostic d'exploitation, démarche ROI)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{pilot}/oracles/oracle-livrable-conseil.mjs",
+    "{file}"
+   ],
+   "checklist": "LC1 sections du gabarit du type · LC2 tout montant ou pourcentage sourcé ou « à vérifier » · LC3 (diagnostic) chaque recommandation cite une mesure M-xx existante · LC4 (démarche ROI) chaque lot porte utile / utilisable / utilisé et un jalon daté · LC5 plan de revue daté",
+   "statut": "partiel",
+   "non_juge": [
+    "tout document dont le titre n'est ni « Diagnostic d'exploitation » ni « Démarche ROI » : l'oracle rend exit 2 (NON JUGEABLE), jamais PASS — en particulier un PLAN D'AMÉLIORATION multi-domaines, que le bloc « recommander » du run de conseil peut produire et qu'aucune règle de cet oracle ne couvre (TF-1237 ; son juge naîtra avec le skill plan-d-amelioration, TF-1234)",
+    "la JUSTESSE d'une recommandation ou d'une hypothèse ROI : l'oracle vérifie qu'elle cite une mesure et qu'un chiffre porte sa source, il ne juge ni la mesure ni la source",
+    "la frontière entre une remédiation d'audit et une amélioration, la couverture des domaines, la complétude d'une fiche : aucune règle ne les joue ici (relevé du 19/09/2026, étude plan-d-amelioration-post-audit)",
+    "DÉCLENCHEMENT : `ext` est VIDE à dessein — le domaine s'invoque sur le livrable nommé par le run de conseil (references/RUN-CONSEIL.md, blocs C2 et C4), jamais sur tout `.md` du parc"
+   ],
+   "commande": "node <pilot>/oracles/oracle-livrable-conseil.mjs <livrable.md> | --self-test",
+   "provenance": "TF-1237, point (4) (22/09/2026, mandat humain sur les huit rangs de verdicts favorables, rang 1). L'oracle existe chez le pilot depuis le GO humain du 19/08 sur le run de conseil (étude 20260819c), mais n'était INDEXÉ nulle part : relevé du 22/09, zéro occurrence dans registre-oracles.json comme dans registre-oracles.md. Un oracle absent du registre n'est ni routé ni découvrable par le lanceur général — il n'existe que pour qui connaît son chemin. Ce registre l'INDEXE, il ne le réimplémente pas (règle R3).",
+   "note": "Même résolution de `{pilot}` que le domaine précédent (`scripts/lib/pilot.mjs`) : pilot introuvable → SKIP MOTIVÉ, jamais un PASS. Statut « partiel » et non « ok » parce que le périmètre déclaré est étroit : deux types de livrable reconnus au titre, et le plan d'amélioration que le run produit aussi n'en fait pas partie."
   },
   {
    "domaine": "Dossier CAB (DOCX, template Client-A)",
