@@ -99,6 +99,29 @@ check("ledger TF-0385 : `oracles_verdict` conforme sous schéma déclaré → PA
   if (!v.includes("forme vérifiée sur 1 entrée")) throw new Error("le verdict doit DIRE ce qu il a vérifié : " + v);
 });
 
+// TF-1204 (13/09, retour produit) — UNE CLOTURE D ETAPE DIT CE QU ELLE FERME. Un appel lance
+// pour lire l usage du journal a ecrit une entree `etape_close` sans etape ni resume ; le contrat
+// nommait les champs, rien ne les exigeait, et le journal en ajout seul garde l entree vide.
+check("ledger TF-1204 : `etape_close` sans `etape` ni `resume` → FAIL qui NOMME les deux champs", () => {
+  const lf = join(out, "ledger-cloture-rouge.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_close" })]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "verify", lf], { stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stderr || "") + String(e.stdout || ""); }
+  if (sortie === null) throw new Error("une cloture d etape vide a ete acceptee — c est le fait mesure du 13/09");
+  if (!sortie.includes("`etape`")) throw new Error("l echec ne NOMME pas le champ etape : " + sortie);
+  if (!sortie.includes("`resume`")) throw new Error("l echec ne NOMME pas le champ resume : " + sortie);
+});
+
+check("ledger TF-1204 : une `etape_close` complete passe — la regle ne deborde pas", () => {
+  const lf = join(out, "ledger-cloture-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_close", etape: "tests", resume: "audit forge_tests exit 0, 3 seuils tenus" })]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("une cloture complete doit passer : " + v);
+});
+
 check("ledger TF-0385 : `oracles_verdict` sans `oracle` → FAIL qui NOMME le champ", () => {
   const lf = join(out, "ledger-schema-rouge.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);

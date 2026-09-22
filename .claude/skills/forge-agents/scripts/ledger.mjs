@@ -97,6 +97,16 @@ const CHAMPS_DUS = {
     ["oracle", "le NOM de l oracle qui a rendu le verdict — sans lui, aucun juge ne peut savoir ce qui a tourne"],
     ["verdict", "le VERDICT rendu (PASS | FAIL | SKIP | NA | PARTIEL) — un releve sans verdict n est pas un verdict"],
   ],
+  //: TF-1204, decision humaine D-25 (a) du 22/09/2026 — la table s etend, et c est bien une
+  //: decision, pas un reflexe. LE FAIT : le 13/09 a 08:55 UTC, chez un produit, un appel lance
+  //: pour LIRE l usage du journal a ecrit une entree de cloture d etape SANS etape ni resume.
+  //: Le contrat d interface §3 nomme ces deux champs ; rien ne les exigeait a l ecriture, et le
+  //: journal etant en ajout seul, l entree vide y reste pour toujours. Une regle ecrite que
+  //: personne ne joue n est pas une regle.
+  etape_close: [
+    ["etape", "l ETAPE qui se ferme — une cloture qui ne dit pas ce qu elle ferme ne se relit pas"],
+    ["resume", "ce qui a ete fait a cette etape — sans lui, la cloture est un evenement sans contenu"],
+  ],
 };
 
 //: Type d'entrée qui déclare des écarts d'horodatage antérieurs, et les champs dus de chaque
