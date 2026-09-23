@@ -42,6 +42,11 @@ Le catalogue consolidé des dix forges vit chez le pilot :
   public) — prompt à coller dans une session Claude Code neuve pour démarrer un run
   forge-agents. Cet espace local porte aussi les briefs oracles/experts, la spec des gates
   anti-serial-collapse et les skills sources importés dans `.claude/skills/`.
+- **Découverte des oracles** (TF-1319) : `node oracles/decouvrir-oracles.mjs` rend, au contrat
+  commun du parc `digit-ai/decouverte-oracles@1`, tous les oracles de la forge LUS SUR LE DISQUE —
+  par leur nom (`oracle-*` des `scripts/` de skills), plus ceux que le registre de quality-oracles
+  déclare sans que leur nom le dise (le socle HTML). Le juge d'enclenchement du pilot l'appelle ;
+  recette à double sens : `node oracles/self-test.mjs`.
 
 ## Scripts (forge-agents) — commandes exactes
 
