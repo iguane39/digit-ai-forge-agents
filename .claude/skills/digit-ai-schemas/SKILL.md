@@ -1,6 +1,6 @@
 ---
 name: digit-ai-schemas
-description: "Génère des schémas d'architecture, de topologie réseau, de flux temporel ou de tableau de bord aux standards graphiques Digit-AI. À utiliser systématiquement dès qu'un schéma technique est demandé dans un contexte de livrable (Digit-AI, ou un engagement client dont la marque est paramétrée) (architecture cloud, topologie Azure, pipeline CI/CD, flux applicatif, comparatif visuel) — même si le mot 'schéma' n'est pas employé explicitement (ex. 'comment s'articulent les composants', 'dessine la chaîne', 'visualise la promotion'). Couvre cinq canevas standardisés — multi-bandes (architecture par couches), topologie (réseau hub-and-spoke), flux temporel (timeline avec swimlanes), tableau de bord (KPI portfolio), modèle de données (ERD avec classification PII). Garantit la charte Roboto / DM Sans / JetBrains Mono, la palette sémantique, le routage des flèches sans superposition et les tooltips structurés. Use when a technical diagram is requested in a Digit-AI or client-engagement context."
+description: "Génère des schémas d'architecture, de topologie réseau, de flux temporel ou de tableau de bord aux standards graphiques Digit-AI. À utiliser systématiquement dès qu'un schéma technique est demandé dans un contexte de livrable (Digit-AI, ou un engagement client dont la marque est paramétrée) (architecture cloud, topologie Azure, pipeline CI/CD, flux applicatif, comparatif visuel) — même si le mot 'schéma' n'est pas employé explicitement (ex. 'comment s'articulent les composants', 'dessine la chaîne', 'visualise la promotion'). Couvre cinq canevas standardisés — multi-bandes (architecture par couches), topologie (réseau hub-and-spoke), flux temporel (timeline avec swimlanes), tableau de bord (KPI portfolio), modèle de données (ERD avec classification PII). Garantit la charte Montserrat / Inter / JetBrains Mono, la palette sémantique, le routage des flèches sans superposition et les tooltips structurés. Use when a technical diagram is requested in a Digit-AI or client-engagement context."
 ---
 
 # Skill Digit-AI Schemas · génération de schémas Digit-AI aux standards graphiques
@@ -31,7 +31,7 @@ Si plusieurs canevas semblent applicables, multi-bandes est le défaut. Si aucun
 Quel que soit le canevas, **toujours lire `references/conventions-communes.md`** avant de produire du SVG. Règles non négociables :
 
 - Palette sémantique (violet pâle, bleu, teal, corail, ambré, gris) avec hex exacts fond / texte / bordure
-- Typographies : Roboto 700/800 (titres), DM Sans (corps), JetBrains Mono (code) — **jamais Syne**
+- Typographies : Montserrat 700/800 (titres), Inter (corps), JetBrains Mono (code) — Roboto / DM Sans en premier repli (D-5 (a)/D-11 (a), 23/09/2026) — **jamais Syne**
 - Classes CSS scopées au SVG (`svg-c-purple`, `svg-arr`, `svg-tband`…) réutilisées telles quelles
 - Flèches en L pur, jamais en escalier multiple, jamais à travers un nœud ; couloirs verticaux dédiés pour les flux descendants
 - Titres de bande dans des pastilles blanches encadrées, hors couloirs de flèches
@@ -53,7 +53,7 @@ Gabarit minimal d'un nœud et d'une flèche avec tooltips :
 
 ## Page hôte et nommage
 
-Le SVG est toujours encapsulé dans une page HTML autonome Digit-AI : eyebrow majuscules espacées + H1 Roboto 800 (42px) + sous-titre DM Sans + bloc méta `V{n}{indice} · {date longue}` ; diagram-wrap (fond gris très clair, bordure, radius 12px, padding 28px 20px, overflow-x auto) ; caption `Figure N — Description courte.` en italique gris 13px ; footer flex space-between avec brand à gauche. Détails (variables CSS, responsive, print) dans `references/conventions-communes.md`.
+Le SVG est toujours encapsulé dans une page HTML autonome Digit-AI : eyebrow majuscules espacées + H1 Montserrat 800 (42px) + sous-titre Inter + bloc méta `V{n}{indice} · {date longue}` ; diagram-wrap (fond gris très clair, bordure, radius 12px, padding 28px 20px, overflow-x auto) ; caption `Figure N — Description courte.` en italique gris 13px ; footer flex space-between avec brand à gauche. Détails (variables CSS, responsive, print) dans `references/conventions-communes.md`.
 
 Nommage : `{Marque} - {TypeDoc} {Client} - {Scope} - {YYYYMMDD}{indice}.{ext}` (ex. `Digit-AI - Brief POC-Hub - Architecture detaillee - 20260527d.html`). Indice alphabétique incrémenté à chaque itération du jour, redémarre à `a` chaque jour. Numéro de version (V0, V1…) affiché dans le bloc méta du contenu, **jamais dans le nom de fichier**.
 

@@ -35,9 +35,15 @@ const ASSETS = path.join(ICI, '..', 'assets');
 // Les graisses relevées dans les gabarits le 18/08 : 400, 500, 600, 700, 800.
 // JetBrains Mono n'existe pas en 600/800 au bundle — on ne déclare que ce qui existe, jamais
 // une face qu'un navigateur devrait synthétiser en croyant l'avoir.
+//
+// Montserrat et Inter (23/09/2026, D-5 (a)/D-11 (a)) reprennent ici la tête de pile que
+// tenaient Roboto et DM Sans, aux MÊMES graisses qu'eux — le besoin n'a pas changé, seule la
+// famille de tête change ; Roboto et DM Sans restent déclarés en repli CSS (voir --head/--sans
+// dans assets/*.html), et leurs WOFF2 restent sur disque, non embarqués. Provenance des deux
+// paquets npm : fonts/PROVENANCE.md.
 const FACES = [
-  ['Roboto', 'roboto', [400, 500, 700, 800, 900]],
-  ['DM Sans', 'dm-sans', [400, 500, 600, 700]],
+  ['Montserrat', 'montserrat', [400, 500, 700, 800, 900]],
+  ['Inter', 'inter', [400, 500, 600, 700]],
   ['JetBrains Mono', 'jetbrains-mono', [400, 500, 700]],
 ];
 

@@ -21,15 +21,20 @@ La couleur encode le **type fonctionnel** du nœud, pas un choix esthétique arb
 
 Trois familles, jamais plus. **Jamais de Syne.**
 
+**Depuis le 23/09/2026 (D-5 (a) du 22/09, exécutée par D-11 (a)) : la charte de police est celle
+des présentations de l'émetteur.** Montserrat et Inter passent en tête de pile ; Roboto et DM
+Sans, la charte d'avant, restent en premier repli — un schéma produit avant l'alignement n'est
+pas fautif. Détail des jetons : `--head`/`--sans` en §8 ci-dessous.
+
 | Famille | Usage | Poids typiques |
 |---|---|---|
-| `Roboto` | Titres H1/H2/H3, titres de nœuds dans le SVG | 700 (titres médians), 800 (H1, titres principaux) |
-| `DM Sans` | Corps de texte, sous-titres, légendes, prose | 400 (corps), 500 (emphase légère) |
+| `Montserrat` (Roboto en repli) | Titres H1/H2/H3, titres de nœuds dans le SVG | 700 (titres médians), 800 (H1, titres principaux) |
+| `Inter` (DM Sans en repli) | Corps de texte, sous-titres, légendes, prose | 400 (corps), 500 (emphase légère) |
 | `JetBrains Mono` | Code inline (noms de pipelines, paths, identifiants Azure), eyebrows, labels SVG | 400 |
 
 Tailles indicatives dans le SVG :
-- Titre de nœud : `font-size: 12-13px; font-weight: 700; font-family: Roboto`
-- Sous-titre : `font-size: 10.5-11px; font-family: DM Sans`
+- Titre de nœud : `font-size: 12-13px; font-weight: 700; font-family: Montserrat`
+- Sous-titre : `font-size: 10.5-11px; font-family: Inter`
 - Label monospace (code, eyebrow) : `font-size: 9.5-10px; font-family: JetBrains Mono; letter-spacing: 0.06em`
 - Titre de bande : `font-size: 9.5-10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase`
 
@@ -212,9 +217,9 @@ Toujours déclarer ces variables dans `:root` de la page hôte pour permettre le
   --c-amber-mid: #b45309;
   --ink-strong: #1e293b;
   --bg-soft-2: #f1f5f9;
-  /* Jetons de police (oracle-tokens T2, TF-0856). */
-  --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
-  --head: 'Roboto', system-ui, sans-serif;
+  /* Jetons de police (oracle-tokens T2, TF-0856 ; tête de pile alignée D-5 (a)/D-11 (a), 23/09/2026). */
+  --sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
+  --head: 'Montserrat', 'Roboto', system-ui, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 ```

@@ -56,7 +56,7 @@ def ensure_browser_path() -> None:
 def ensure_local_fonts() -> None:
     """Installe les WOFF2 bundlés dans le cache fontconfig local (best-effort).
 
-    Permet à Chromium headless de rendre Roboto / DM Sans / JetBrains Mono même
+    Permet à Chromium headless de rendre Montserrat / Inter / JetBrains Mono même
     quand fonts.googleapis.com est bloqué (sandbox web). Idempotent et silencieux :
     si fc-cache est absent ou si fonts/ n'existe pas, on ne fait rien -- sur une
     machine Claude Code avec réseau, les polices Google chargent de toute façon.
