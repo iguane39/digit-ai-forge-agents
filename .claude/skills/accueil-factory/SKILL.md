@@ -1,20 +1,18 @@
 ---
 name: accueil-factory
 description: >
-  Ouvre correctement une session qui mentionne la forge Digit-AI depuis un dossier qui n'est pas
-  encore instrumenté : localise le pilot `digit-ai-factory` sur le poste, pose la phase 0, puis
-  déroule le protocole d'accueil du pilot jusqu'à l'accord explicite de l'humain — sans rien
-  improviser et sans rien supposer installé. Porte les DEUX voies d'entrée : produit NEUF (dossier
-  vide, prompt canonique) et projet DÉJÀ EXISTANT qui adopte le dispositif (phase 0 idempotente et
-  non destructive, aucun fichier déplacé sans le dire). Ne recopie aucune doctrine : il RÉSOUT le
-  pilot et lit ses références, qui font foi. Use when / déclencher dès qu'un message nomme la forge
-  Digit-AI, le pilot `digit-ai-factory`, une de ses forges, ou l'adresse `github.com/iguane39/digit-ai…` ;
-  dès qu'une session s'ouvre dans un projet SANS dossier `forge\` et qu'on lui demande d'y produire
-  un livrable, d'y ouvrir un run, d'y suivre la doctrine ou d'y appliquer des conventions ; et dès
+  Ouvre une session qui mentionne la forge Digit-AI depuis un dossier non instrumenté : localise le
+  pilot `digit-ai-factory`, pose la phase 0 et déroule son protocole d'accueil jusqu'à l'accord
+  explicite de l'humain, sans rien supposer installé. Deux voies : produit NEUF (dossier vide) et
+  projet DÉJÀ EXISTANT (phase 0 idempotente et non destructive). Ne recopie aucune doctrine : il
+  lit celle du pilot. Use when / déclencher dès qu'un message nomme la forge Digit-AI, le pilot
+  `digit-ai-factory`, une de ses forges, ou l'adresse `github.com/iguane39/digit-ai…` ; dès qu'une
+  session s'ouvre dans un projet SANS dossier `forge\` et qu'on lui demande d'y produire un
+  livrable, d'y ouvrir un run, d'y suivre la doctrine ou d'y appliquer des conventions ; et dès
   qu'un dépôt préexistant veut adopter le dispositif. Ne pas déclencher dans un projet déjà
-  instrumenté — son `CLAUDE.md` et ses hameçons font le travail —, ni pour un « factory pattern »
-  ou une « AbstractFactory », qui sont du vocabulaire de conception logicielle sans rapport.
-version: 1.0.0
+  instrumenté (son `CLAUDE.md` et ses hameçons font le travail), ni pour un « factory pattern »
+  ou une « AbstractFactory » (conception logicielle, sans rapport).
+version: 1.0.1
 ---
 
 # Accueil de la forge Digit-AI
