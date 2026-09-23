@@ -107,12 +107,15 @@ function motifExemption(cible, contenu) {
 // delta, trois lignes plus bas. Et une page SANS charte déclarée reste accusée comme avant.
 const CHARTES = [{
   nom: 'digit-ai-page-html',
-  fontes: ['roboto', 'dm sans', 'jetbrains mono'],
+  // TF-1023 (D-11 (a) du 23/09/2026) : la charte de police des pages est celle des présentations de
+  // l'émetteur — Montserrat, Inter —, Roboto et DM Sans restant en premier repli dans les piles du
+  // socle. Même liste, alignée le même jour, dans le profil `digit-ai` (polices.chartes).
+  fontes: ['montserrat', 'inter', 'roboto', 'dm sans', 'jetbrains mono'],
   // Ce qui vaut DÉCLARATION de charte : un token de police du socle, une police de la charte
   // posée en `font-family`, ou la charte nommée en clair.
   marqueurs: [
     /--font-(?:titres?|corps|mono|display|body)\s*:/i,
-    /font-family\s*:[^;]{0,120}(?:Roboto|DM\s+Sans|JetBrains\s+Mono)/i,
+    /font-family\s*:[^;]{0,120}(?:Montserrat|Inter|Roboto|DM\s+Sans|JetBrains\s+Mono)/i,
     /charte\s*:\s*digit-ai-page-html|socle\s+digit-ai-page-html|digit-ai-page-html/i,
   ],
 }];
@@ -725,9 +728,14 @@ function selfTest() {
     ['ROUGE  page SANS charte declaree : le constat de police TIENT, la regle generique s applique',
       () => constatDePoliceNeutralise('❌ L2 police reflexe : « DM Sans » x 4',
               '<style>body { font-family: Arial; }</style>') === false],
-    ['ROUGE  fonte HORS charte dans un fichier charte : le constat TIENT (« Inter » n est pas de la charte)',
-      () => constatDePoliceNeutralise('❌ S3 polices reflexes : « Inter »',
+    // TF-1023 (D-11 (a) du 23/09/2026) : Inter est ENTRÉE dans la charte — le cas rouge prend une
+    // fonte qui n'y est pas, et le cas vert prouve que la nouvelle paire est couverte.
+    ['ROUGE  fonte HORS charte dans un fichier charte : le constat TIENT (« Poppins » n est pas de la charte)',
+      () => constatDePoliceNeutralise('❌ S3 polices reflexes : « Poppins »',
               ':root { --font-corps: "DM Sans", sans-serif; }') === false],
+    ['VERTE  la charte des presentations (« Montserrat », « Inter ») est couverte depuis le 23/09',
+      () => constatDePoliceNeutralise('❌ S3 polices reflexes : « Inter », « Montserrat »',
+              'font-family: "Inter", "DM Sans", sans-serif;') === true],
     ['ROUGE  constat de police qui ne NOMME aucune fonte : jamais neutralise (« je ne sais pas » ne vaut pas « c est bon »)',
       () => constatDePoliceNeutralise('❌ L2 police reflexe x 7',
               ':root { --font-corps: "DM Sans", sans-serif; }') === false],

@@ -89,7 +89,7 @@ SAMPLE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Digit-AI — Exemple de page conforme · Socle — 20260817a</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%232563EB'%3ED%3C/text%3E%3C/svg%3E">
-<style>:root{--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;}
+<style>:root{--head:"Montserrat","Roboto",system-ui,sans-serif;--sans:"Inter","DM Sans",system-ui,sans-serif;}
 @media (max-width:640px){body{font-size:15px;}}
 @media print{body{background:#fff;}}</style></head>
 <body><main><h1>Titre</h1><h2>Section</h2><p>Contenu</p></main></body></html>"""

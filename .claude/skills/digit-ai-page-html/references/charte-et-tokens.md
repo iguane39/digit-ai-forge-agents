@@ -7,8 +7,9 @@ Séparation volontaire entre **principes** (règles stables) et **valeurs param�
 
 | # | Règle |
 |---|---|
-| C1 | Titres & sections en **Roboto**, font-weight 700/800. |
-| C2 | Corps de texte en **DM Sans** (sans-serif standard en repli). |
+| C1 | Titres & sections en **Montserrat**, font-weight 700/800 ; Roboto en premier repli. |
+| C2 | Corps de texte en **Inter** ; DM Sans en premier repli, puis sans-serif standard. |
+| C1-C2 · source | Depuis le 23/09/2026, la charte de police des pages EST celle des présentations de l'émetteur (décision humaine D-5 (a) du 22/09, « la charte des présentations fait foi, les pages s'y alignent », exécutée par D-11 (a)). Elle se LIT dans le dossier de marque (`tokens-diapositives`, lu par `digit-ai-pptx/scripts/lire-marque.mjs`) ; la recette de quality-oracles vérifie que ce gabarit la suit. Roboto / DM Sans, la charte d'avant, restent en premier repli : une page livrée avant l'alignement n'est pas fautive. |
 | C3 | Police **Syne strictement interdite**, partout. |
 | C4 | **Light theme** systématique (jamais de dark par défaut). |
 | C5 | Code/mono en **JetBrains Mono** quand un bloc technique est présent. |
@@ -55,9 +56,9 @@ Séparation volontaire entre **principes** (règles stables) et **valeurs param�
   /* Rayons */
   --r: 12px; --r-sm: 8px;
 
-  /* Familles (repli système obligatoire) */
-  --head: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Familles (repli système obligatoire) — charte des présentations (D-5 (a), D-11 (a)) */
+  --head: "Montserrat", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sans: "Inter", "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
 
   /* Année de référence (C6) — seule valeur datée, volontairement isolée ici */

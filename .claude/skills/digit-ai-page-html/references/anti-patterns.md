@@ -36,10 +36,10 @@ tokens. Relevé dans des rapports réels. Casse la charte (une évolution de pal
 pilotable en un point) et empêche tout audit de cohérence. **Tout** en `:root` (cf.
 `charte-et-tokens.md`, bonnes-pratiques §3).
 
-## Pile de police sans DM Sans / Roboto
+## Pile de police hors charte
 
 `font-family: "Segoe UI", Roboto, system-ui, …` sur le corps de texte : le corps doit être en
-**DM Sans** et les titres en **Roboto** (C1/C2). Une pile qui saute DM Sans sort de la charte
+**Inter** et les titres en **Montserrat** (C1/C2, charte des présentations depuis le 23/09/2026). Une pile qui saute Inter sort de la charte
 même si le rendu « ressemble ». Corriger via les tokens `--head`/`--sans`.
 
 ## Composant interactif sans accessibilité

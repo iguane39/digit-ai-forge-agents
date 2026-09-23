@@ -98,14 +98,17 @@
       {
         "nom": "digit-ai-page-html",
         "fontes": [
+          "Montserrat",
+          "Inter",
           "Roboto",
           "DM Sans",
           "JetBrains Mono"
         ],
+        "_fontes": "TF-1023, decision humaine D-11 (a) du 23/09/2026 : la charte de police des pages est celle des presentations de l emetteur (Montserrat titres, Inter corps, lues au dossier de marque) ; Roboto et DM Sans, la charte d avant, restent en premier repli dans les piles du socle et restent donc de la charte. Les motifs ci-dessous avaient perdu leurs antislash (s* pour \\s*) : retablis le meme jour. La copie EFFECTIVE de cette liste vit dans hooks/qo-gate-write.mjs (CHARTES) : les deux s alignent a la main.",
         "marqueurs": [
-          "--font-(?:titres?|corps|mono|display|body)s*:",
-          "font-familys*:[^;]{0,120}(?:Roboto|DMs+Sans|JetBrainss+Mono)",
-          "chartes*:s*digit-ai-page-html|socles+digit-ai-page-html|digit-ai-page-html"
+          "--font-(?:titres?|corps|mono|display|body)\\s*:",
+          "font-family\\s*:[^;]{0,120}(?:Montserrat|Inter|Roboto|DM\\s+Sans|JetBrains\\s+Mono)",
+          "charte\\s*:\\s*digit-ai-page-html|socle\\s+digit-ai-page-html|digit-ai-page-html"
         ]
       }
     ],

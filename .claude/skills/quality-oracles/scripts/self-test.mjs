@@ -1629,6 +1629,65 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// ── TF-1023 (décision humaine D-11 (a) du 23/09/2026) — LE SOCLE DES PAGES SUIT LA CHARTE LUE À LA SOURCE ──
+//
+// LE FAIT. La marque Digit-AI était portée par deux chartes : les pages (socle digit-ai-page-html,
+// Roboto / DM Sans) et les présentations (digit-ai-pptx, Montserrat / Inter). La décision humaine
+// D-5 (a) du 22/09 a tranché — « la charte des présentations fait foi, les pages s'y alignent » —, et
+// D-11 (a) l'a exécutée le 23/09 en alignant le gabarit du socle. Un alignement fait à la main se
+// défait en silence à la prochaine retouche d'un des deux côtés : c'est ce qui avait laissé deux
+// chartes coexister trois semaines.
+//
+// LE CONTRÔLE lit la charte là où les présentations la lisent — le dossier de marque de l'émetteur,
+// par le lecteur OFFICIEL (`digit-ai-pptx/scripts/lire-marque.mjs`), jamais une seconde lecture — et
+// exige que chaque pile de police du gabarit du socle COMMENCE par les familles nommées de la charte
+// (les replis génériques du système n'en font pas partie). Dossier de marque absent du poste : la
+// parité est déclarée NON JUGÉE, avec le motif du lecteur ; jamais un vert de complaisance.
+{
+  const GENERIQUES = new Set(['system-ui', '-apple-system', 'segoe ui', 'sans-serif', 'serif', 'monospace', 'ui-monospace', 'consolas']);
+  const nommees = (pile) => pile.map((f) => String(f).trim().replace(/^["']|["']$/g, '')).filter((f) => f && !GENERIQUES.has(f.toLowerCase()));
+  const pileDuSocle = (html, jeton) => {
+    const m = new RegExp(jeton + '\\s*:\\s*([^;]+);').exec(html);
+    return m ? m[1].split(',').map((f) => f.trim().replace(/^["']|["']$/g, '')) : null;
+  };
+  /** Rend la liste des écarts entre la charte lue et le gabarit ; vide = alignés. Pure : le banc l'éprouve. */
+  const ecartsDeCharte = (polices, html) => {
+    const ecarts = [];
+    for (const [cle, jeton] of [['head', '--head'], ['sans', '--sans'], ['mono', '--mono']]) {
+      const attendu = nommees((polices[cle] && polices[cle].pile) || []);
+      const socle = pileDuSocle(html, jeton);
+      if (!attendu.length) continue;
+      if (!socle) { ecarts.push(`${jeton} absent du gabarit`); continue; }
+      const tete = nommees(socle).slice(0, attendu.length);
+      if (tete.join('|').toLowerCase() !== attendu.join('|').toLowerCase()) ecarts.push(`${jeton} : charte « ${attendu.join(', ')} », gabarit « ${nommees(socle).join(', ')} »`);
+    }
+    return ecarts;
+  };
+  const gabarit = path.join(SKILLSROOT, 'digit-ai-page-html', 'assets', 'boilerplate.html');
+  const lecteur = path.join(SKILLSROOT, 'digit-ai-pptx', 'scripts', 'lire-marque.mjs');
+  // Sens rouge d'abord, sur une charte d'essai : un gabarit resté à l'ancienne paire DOIT être refusé.
+  const chartEssai = { head: { pile: ['Montserrat', 'Roboto', 'system-ui'] }, sans: { pile: ['Inter', 'DM Sans', 'system-ui'] } };
+  const rouge = ecartsDeCharte(chartEssai, ':root{--head: "Roboto", system-ui, sans-serif;--sans: "DM Sans", system-ui, sans-serif;}');
+  if (rouge.length === 2) ok('TF-1023 sens rouge : un gabarit resté à Roboto / DM Sans face à la charte Montserrat / Inter est refusé sur --head ET --sans');
+  else ko(`TF-1023 sens rouge : ${rouge.length} écart(s) au lieu de 2 — le contrôle de parité ne refuse pas l'ancienne paire`);
+  const vert = ecartsDeCharte(chartEssai, ':root{--head: "Montserrat", "Roboto", system-ui, sans-serif;--sans: "Inter", "DM Sans", system-ui, sans-serif;}');
+  if (!vert.length) ok('TF-1023 sens vert : un gabarit qui ouvre ses piles par les familles de la charte, puis ajoute les replis système, est accepté');
+  else ko('TF-1023 sens vert : ' + vert.join(' · '));
+  // Puis le parc réel : la charte du dossier de marque de ce poste, contre le gabarit versionné.
+  const r = spawnSync(process.execPath, [lecteur, '--compact'], { encoding: 'utf8' });
+  if (r.status === 2) ok('TF-1023 parité socle ↔ charte des présentations NON JUGÉE sur ce poste — ' + String(r.stderr || '').split('\n')[0].slice(0, 160));
+  else {
+    let lu = null;
+    try { lu = JSON.parse(r.stdout); } catch { /* illisible : dit ci-dessous */ }
+    if (!lu || !lu.polices) ko('TF-1023 : le lecteur de marque n\'a rendu aucune police lisible — la parité ne se juge pas sur une sortie illisible');
+    else {
+      const ecarts = ecartsDeCharte(lu.polices, fs.readFileSync(gabarit, 'utf8'));
+      if (ecarts.length) ko('TF-1023 : le gabarit du socle s\'écarte de la charte des présentations lue au dossier de marque — ' + ecarts.join(' · '));
+      else ok(`TF-1023 : le gabarit du socle suit la charte des présentations lue au dossier de marque (${lu.source && lu.source.dossier_marque}) — ${lu.polices.head.pile[0]} / ${lu.polices.sans.pile[0]} / ${lu.polices.mono.pile[0]}`);
+    }
+  }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

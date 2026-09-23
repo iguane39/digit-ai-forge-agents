@@ -45,8 +45,11 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3E{L}%3C/text%3E%3C/svg%3E">
 
   <!-- Polices : AUCUN chargement réseau (A1/D-10 — confidentialité, durabilité,
-       lecture hors ligne). Roboto/DM Sans s'affichent si installées localement,
-       sinon les replis système des tokens --head/--sans/--mono prennent le relais. -->
+       lecture hors ligne). La charte est celle des PRÉSENTATIONS de l'émetteur (décision
+       humaine D-5 (a) du 22/09/2026, exécutée par D-11 (a) le 23/09 ; source : dossier de
+       marque, tokens-diapositives) : Montserrat en titres, Inter en corps. Elles s'affichent
+       si installées localement ; Roboto et DM Sans, la charte d'avant, restent en premier
+       repli, puis les replis système des tokens --head/--sans/--mono prennent le relais. -->
 
   <style>
     :root {
@@ -101,9 +104,9 @@
          jamais lu n'est pas neutre, c'est la trace visible d'une doctrine abandonnee, en tete
          du fichier que tout auteur de page copie. Le prochain le rebrancherait. */
       --w: clamp(75vw, 1680px, 92vw);
-      /* Familles (repli système obligatoire) */
-      --head: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
-      --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      /* Familles (repli système obligatoire) — charte des présentations (D-5 (a), D-11 (a)) */
+      --head: "Montserrat", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --sans: "Inter", "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
       --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
       /* Année de référence (token isolé) */
       --annee-ref: "2026";

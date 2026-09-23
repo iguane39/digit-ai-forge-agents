@@ -1,19 +1,35 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Roboto titres / DM Sans corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L30 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L30 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.24.0"
+  version: "1.25.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.25.0 (23/09/2026)** — **la charte de police des pages est celle des présentations de
+l'émetteur.** Décision humaine D-5 (a) du 22/09 (« la charte des présentations fait foi, les pages
+s'y alignent »), exécutée par D-11 (a) le 23/09 (TF-1023). La marque Digit-AI était portée par deux
+chartes depuis le 11/09 : Roboto / DM Sans pour les pages, Montserrat / Inter pour les
+présentations. · Le gabarit ouvre désormais ses piles par **Montserrat** (titres) et **Inter**
+(corps), les familles que `digit-ai-pptx/scripts/lire-marque.mjs` lit au dossier de marque ;
+**Roboto et DM Sans restent en premier repli**, si bien qu'une page livrée avant l'alignement n'est
+pas fautive. · La recette de `quality-oracles` **relit la charte à la source** et refuse un gabarit
+dont une pile ne commence pas par les familles de la charte (non jugé, motif écrit, quand le dossier
+de marque n'est pas sur le poste). · Les juges qui exemptent les polices de la charte suivent :
+`oracle-slop` (forge-design) lit la paire dans ce gabarit installé, le profil `digit-ai` et le gate
+d'écriture reconnaissent Montserrat et Inter. · Les composants embarqués (`infobulle.css` et ses
+voisins) ne changent **pas** : leur empreinte scelle chaque page qui les porte, et leur repli « DM
+Sans » reste une famille de la pile. **Version MINEURE** : les jetons et leurs noms ne changent pas,
+seules les familles de tête des piles.
 
 **1.24.0 (20/09/2026)** — **l'oracle cesse de juger une page qui n'existe que sur le poste de
 l'auditeur, et il croise enfin deux filtres.** Restes archivés de TF-0480 et TF-0493, rouverts par
@@ -290,7 +306,9 @@ si la page vise aussi le PDF.
 
 ## Règles non négociables (charte)
 
-- **Roboto** (700/800) pour titres et sections · **DM Sans** pour le corps · **jamais Syne**.
+- **Montserrat** (700/800) pour titres et sections · **Inter** pour le corps · **jamais Syne** — la charte des
+  présentations de l'émetteur, lue au dossier de marque (D-5 (a) du 22/09/2026, exécutée par D-11 (a) le 23/09) ;
+  Roboto et DM Sans, la charte d'avant, restent en premier repli (voir `charte-et-tokens.md`, C1-C2).
 - **Light theme par défaut, STRICTEMENT** (G1, décision R-30/TF-0131 amendée TF-0158 le
   13/08) : un livrable circule et s'ouvre identique chez tous ses lecteurs — l'auto-sombre
   hérité de l'OS (`prefers-color-scheme` à la première visite) est retiré, il a produit un

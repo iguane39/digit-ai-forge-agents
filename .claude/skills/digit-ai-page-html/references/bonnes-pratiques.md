@@ -27,10 +27,10 @@ Cibles : **Viewer** (navigateur) et **PDF** (WeasyPrint) ; les divergences sont 
 
 ## 3 — Typographie & charte visuelle
 
-- 🔴 Appliquer la charte (voir `charte-et-tokens.md` : Roboto / DM Sans / jamais Syne / light).
+- 🔴 Appliquer la charte (voir `charte-et-tokens.md` : Montserrat / Inter / jamais Syne / light).
 - 🔴 Centraliser **toutes** couleurs, polices, rayons en `:root` ; aucun hex ni famille en dur.
 - 🔴 **Pile de repli système** derrière chaque web font (`system-ui, -apple-system, "Segoe UI", sans-serif`).
-- 🟡 Charger Roboto + DM Sans (+ JetBrains Mono si code) en une requête Google Fonts groupée, `display=swap`.
+- 🟡 Charger Montserrat + Inter (+ JetBrains Mono si code) en une requête Google Fonts groupée, `display=swap`.
 - 🟡 Précéder le `<link>` fonts de `preconnect` vers `fonts.googleapis.com` et `fonts.gstatic.com` (`crossorigin`).
 - ⚪ `line-height` corps ~1.5, lignes ≤ ~80 caractères.
 
