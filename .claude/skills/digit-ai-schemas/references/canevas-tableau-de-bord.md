@@ -20,8 +20,8 @@ C'est plus économique en place mémoire et plus accessible aux lecteurs d'écra
 ### Bandeau supérieur · KPIs principaux (4 tuiles)
 
 Quatre tuiles horizontales (`grid-template-columns: repeat(4, 1fr)`) pour les KPIs principaux. Chaque tuile :
-- Valeur en gros (`font-family: Roboto; font-weight: 800; font-size: 28px`) dans la couleur sémantique
-- Libellé en dessous (`font-family: DM Sans; font-size: 13px; color: var(--ink-soft)`)
+- Valeur en gros (`font-family: var(--head); font-weight: 800; font-size: 28px` — Montserrat, charte des présentations) dans la couleur sémantique
+- Libellé en dessous (`font-family: var(--sans); font-size: 13px; color: var(--ink-soft)` — Inter)
 - Bordure gauche colorée de 3px pour la sémantique (purple pour pipelines, teal pour observabilité, etc.)
 
 Exemple HTML :
@@ -62,7 +62,7 @@ CSS associé :
   padding: 18px 20px;
 }
 .kpi-value {
-  font-family: 'Roboto', sans-serif;
+  font-family: var(--head);
   font-weight: 800;
   font-size: 28px;
   color: var(--c-purple-fg);
@@ -70,7 +70,7 @@ CSS associé :
   margin-bottom: 6px;
 }
 .kpi-label {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 13px;
   color: var(--ink-soft);
   line-height: 1.35;
@@ -80,16 +80,16 @@ CSS associé :
 ### Section · vue par POC (cards en grille)
 
 Une carte par POC du portfolio. Grille responsive avec `minmax(280px, 1fr)`. Chaque carte contient :
-- Nom du POC (titre Roboto 700 16px)
+- Nom du POC (titre Montserrat 700 16px)
 - Tag de palier (pilule colorée : gray pour P1, amber pour P2, purple pour P3)
 - Petit graphe radar SVG inline pour les 4 axes : conformité, observabilité, sécurité, FinOps
-- Score global (Roboto 800 24px)
+- Score global (Montserrat 800 24px)
 - Tags supplémentaires (Squad responsable, dernière MEP, etc.)
 
 ### Section · trajectoire Crawl / Walk / Run
 
 Trois colonnes côte à côte avec :
-- En-tête de palier (numéro en `JetBrains Mono` + nom du palier en Roboto 800)
+- En-tête de palier (numéro en `JetBrains Mono` + nom du palier en Montserrat 800)
 - Liste des composants attendus à ce palier (puces sobres)
 - Barre de progression du palier (% d'éléments effectivement en place)
 
