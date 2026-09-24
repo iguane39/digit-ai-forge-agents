@@ -360,6 +360,57 @@
    ]
   },
   {
+   "nom": "coherence-fond",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-coherence.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "coherence-fond-red",
+   "green": "coherence-fond-green",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "CF1 contradiction intra-ligne",
+    "CF2 affirmation absolue démentie",
+    "CF3 compte figé",
+    "CF4 préséance non déclarée"
+   ],
+   "provenance": "TF-1352, lot Produit-70 - RETOURS - 20260924a du 24/09/2026 — « ces documents sont-ils coherents entre eux ? » a recu un OUI sur la foi d un grep de noms d objets ; le lendemain, une relecture humaine a trouve 6 ecarts de fond dans les 5 memes documents (ligne rangee « a reutiliser » disant « pas a reutiliser », « 0 colonne inventee » contre une source introuvable, comptes figes, deux granularites sans preseance). Donnees des fixtures INVENTEES."
+  },
+  {
+   "nom": "coherence-fond-fichier",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-coherence.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "coherence-fond-fichier-red.md",
+   "green": "coherence-fond-fichier-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "CF1 contradiction intra-ligne",
+    "en cours de phrase",
+    "contraire connu du statut",
+    "CF2 affirmation absolue démentie",
+    "CF3 compte figé"
+   ],
+   "provenance": "TF-1352 — la meme famille de defauts sur une cible FICHIER : un document peut se contredire seul, et c est le signal le moins cher. Le vert porte les formes qui ne doivent PAS accuser (antonyme nie, compte partiel, compte en preambule, section a deux statuts). Donnees INVENTEES."
+  },
+  {
    "nom": "visual",
    "cmd": [
     "python3",

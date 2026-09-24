@@ -178,7 +178,7 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   format (UTF-8, zip, placeholders) · code (compilation) · perf (budgets du profil) · **calculs** (re-somme exécutée des
   lignes Total, **sous-totaux et Total général**, répartitions % totalisées — tables md/html) · **claims** (montant, **TJM ou charge
   j.h en contexte d'engagement** sans source ni « à vérifier » = FAIL ; dates d'échéance = warn ; incohérence intra-document, unités €/%/j/j.h) ·
-  **coherence** (`oracle-coherence.mjs <dossier>` : divergences de grandeurs **entre livrables** d'un dossier, versions antérieures exclues par la convention de nommage) ·
+  **coherence** (`oracle-coherence.mjs <dossier|fichier>` : divergences de grandeurs **entre livrables** d'un dossier, versions antérieures exclues par la convention de nommage ; et le **fond** — statut d'une ligne nié par son texte, affirmation absolue démentie, compte figé, préséance non déclarée : un « cohérent » ne se prononce jamais sur un grep de noms) ·
   **visual-diff** (`oracle-visual-diff.py` : rendu vs **goldens** versionnés `.oracles-goldens/`, masques de zones dynamiques,
   entérinement **hors boucle uniquement** via `--accepter` — refusé après un FAIL non re-jugé, R5) ·
   **nommage** (convention du profil) · **pptx** ([Content_Types].xml 1re entrée, transitions/JPEG selon profil, smoke-test LibreOffice) ·

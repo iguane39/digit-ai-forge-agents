@@ -265,6 +265,25 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
         : ok('TF-0437 : oracle-perf publie le DOM en deux temps (total / hors zones repliées-citées)');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
+// TF-1352 (24/09/2026) : oracle-coherence ne s'emballe pas sur une page dont une table tient sur
+// UNE ligne. Masquée, elle laisse des centaines de milliers d'espaces sur la ligne, et une
+// expression ancrée en fin y devenait quadratique : une page d'audit de 479 Ko a tenu l'oracle plus
+// de 9 minutes sans verdict. Cible fichier ET cible dossier, sous 20 secondes chacune.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-coh-perf-'));
+  const ligne = '<p>Les mesures suivantes :</p><table>' + '<tr><td>mesure</td><td>12</td></tr>'.repeat(12000) + '</table><p>fin de la page</p>';
+  fs.writeFileSync(path.join(tmp, 'page-longue.html'), '<!doctype html><html><body>\n' + ligne + '\n<p>Budget : 10 k€</p></body></html>\n');
+  fs.writeFileSync(path.join(tmp, 'note.md'), '# Note\n\nBudget : 10 k€\n');
+  for (const [nom, cible] of [['fichier', path.join(tmp, 'page-longue.html')], ['dossier', tmp]]) {
+    const t0 = Date.now();
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-coherence.mjs'), cible], { encoding: 'utf8', timeout: 20000 });
+    let j = null; try { j = JSON.parse(r.stdout); } catch {}
+    r.error || r.signal ? ko(`TF-1352 : oracle-coherence sans verdict après ${Date.now() - t0} ms sur une ligne de ${ligne.length} caractères (cible ${nom}) — emballement`)
+      : !j ? ko(`TF-1352 : oracle-coherence, sortie illisible sur la page longue (cible ${nom})`)
+        : ok(`TF-1352 : oracle-coherence rend ${j.verdict} en ${Date.now() - t0} ms sur une ligne de ${ligne.length} caractères (cible ${nom})`);
+  }
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
 // TF-0428 (lot Produit-05 20260820a) : sous un arbre de LIVRAISON (output/, old/, dist/), run-oracles
 // n'écrit AUCUN sidecar à côté du livrable — journaux dans un dossier frère _oracles/.
 {

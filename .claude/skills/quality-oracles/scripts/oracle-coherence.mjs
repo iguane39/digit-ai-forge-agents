@@ -1,6 +1,15 @@
 #!/usr/bin/env node
-// oracle-coherence — Domaine « Cohérence inter-documents » (v1, déterministe).
-// Détecte qu'une même grandeur diverge entre les livrables d'un même DOSSIER :
+// oracle-coherence — Domaine « Cohérence inter-documents » (v2, déterministe).
+// v2 (TF-1352, 24/09/2026) — LE FOND, PAS SEULEMENT LES GRANDEURS. Un « oui, ces documents sont
+// cohérents » a été rendu sur la foi d'un grep de noms, et démenti le lendemain par 6 écarts de
+// fond qu'aucun chiffre ne portait. Quatre formes s'y ajoutent, déléguées à lib/coherence-fond.mjs :
+// CF1 contradiction intra-ligne (statut d'une ligne nié par son propre texte), CF2 affirmation
+// absolue démentie (« 0 colonne inventée » contre une ligne « source introuvable »), CF3 compte
+// figé (« 9 notions » contre une table qui en porte 10), CF4 préséance non déclarée entre deux
+// documents qui décrivent les mêmes objets. CF1-CF3 se jugent AUSSI sur une cible fichier : un
+// document peut se contredire seul, et c'est le signal le moins cher. CF4 et les grandeurs
+// restent des jugements de dossier.
+// v1 — Détecte qu'une même grandeur diverge entre les livrables d'un même DOSSIER :
 // affirmations labellisées « Libellé : valeur + unité » hors tables (lib/claims-extract,
 // unités €/k€/%/j/j.h) + lignes de total de tables (lib/tables : clé = libellé du total
 // enrichi de l'en-tête de colonne). Divergence sur une même clé entre ≥ 2 fichiers → BLOQUANT,
@@ -9,13 +18,15 @@
 // nommage du profil et ne différant que par le bloc {AAAAMMJJ}{suffixe}, seule la plus
 // récente est comparée ; les écartées sont tracées en non_juge. Fichiers hors convention :
 // tous comparés (conservateur). ignore_patterns du profil respectés.
-// Verdicts : SKIP si cible fichier ou < 2 fichiers porteurs · PASS = concordances, 0
-// divergence · FAIL = ≥ 1 divergence. Contrat JSON commun · exit 0/1/2.
+// Verdicts : FAIL = ≥ 1 constat bloquant (divergence de grandeur ou CF1-CF4) · PASS = ≥ 1
+// rapprochement vérifié, 0 bloquant · SKIP = rien de comparable (ni grandeur commune, ni ligne
+// classée, ni affirmation, ni compte, ni paire de documents). Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
 import { extractLabelled, normLabel } from './lib/claims-extract.mjs';
 import { parseNum, uniteOf, isTotalLabel, isGrandTotalLabel } from './lib/num.mjs';
 import { extractTables } from './lib/tables.mjs';
+import { jugerFond, NON_JUGE_FOND } from './lib/coherence-fond.mjs';
 
 const args = process.argv.slice(2);
 const target = args.find(a => !a.startsWith('--'));
@@ -23,12 +34,13 @@ const pArg = args.includes('--profil') ? args[args.indexOf('--profil') + 1] : nu
 const DOM = 'Cohérence inter-documents';
 const NJ_BASE = [
   'cohérence des binaires (pptx, xlsx) — extension possible après couverture des tables OOXML',
-  'divergences sémantiques non chiffrées (formulations, engagements textuels)',
-  'libellés de total d\'un seul mot : rapprochés au sein du fichier seulement (anti-collision)'
+  'divergences sémantiques hors des quatre formes CF1-CF4 (formulations, engagements textuels)',
+  'libellés de total d\'un seul mot : rapprochés au sein du fichier seulement (anti-collision)',
+  ...NON_JUGE_FOND
 ];
 const out = (verdict, findings, nj, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-coherence', domaine: DOM, artefact: target || null, verdict, findings, non_juge: nj })); process.exit(code); };
 if (!target || !fs.existsSync(target)) out('SKIP', [], ['cible absente'], 2);
-if (fs.statSync(target).isFile()) out('SKIP', [], ['cible fichier : la cohérence inter-documents se juge sur un dossier'], 2);
+const estFichier = fs.statSync(target).isFile();
 
 let profil = {}; if (pArg) { try { profil = JSON.parse(fs.readFileSync(pArg, 'utf8')); } catch {} }
 const IGNORE_RX = (profil.ignore_patterns || []).map(p => { try { return new RegExp(p); } catch { return null; } }).filter(Boolean);
@@ -46,10 +58,12 @@ function walk(p) {
   }
   return outF;
 }
-let files = walk(target);
+let files = estFichier ? [target] : walk(target);
+if (estFichier && !TEXT_EXT.has(path.extname(target).toLowerCase())) out('SKIP', [], ['cible fichier d\'extension non gérée : ' + path.extname(target)], 2);
 
 // ---- exclusion des versions antérieures d'un même livrable (convention du profil) ------------
 const nj = [...NJ_BASE];
+if (estFichier) nj.push('cible fichier : grandeurs inter-documents et préséance (CF4) se jugent sur un dossier — seules CF1-CF3 sont jouées');
 const VERBLOC = /(\d{8})([a-z])(?=(?: [^.]*)?\.[A-Za-z0-9]+$)/;
 if (nommageRx) {
   const groups = new Map();                              // clé = nom sans bloc version → [{f, date, suf}]
@@ -76,13 +90,17 @@ if (nommageRx) {
 // ---- extraction par fichier : labellisés hors tables + lignes de total de tables -------------
 const claims = [];                                       // { key, v, file, line, brut }
 let carriers = 0;
-for (const f of files) {
+// Les grandeurs se comparent ENTRE fichiers : sur une cible fichier, l'extraction ne sert à rien
+// (et elle coûtait jusqu'à l'emballement sur une page HTML de 479 Ko, 24/09/2026).
+for (const f of estFichier ? [] : files) {
   let text; try { text = fs.readFileSync(f, 'utf8'); } catch { continue; }
   const ext = path.extname(f).toLowerCase();
   text = text.replace(/```[\s\S]*?```/g, m => m.replace(/[^\n]/g, ' '));
-  const lines = (ext === '.html' || ext === '.htm')
+  // Suites d'espaces repliées (numéros de ligne conservés) : une table masquée sur une seule ligne
+  // y laissait des centaines de milliers d'espaces, et l'extraction devenait quadratique.
+  const lines = ((ext === '.html' || ext === '.htm')
     ? text.replace(/<table[\s\S]*?<\/table>/gi, m => m.replace(/[^\n]/g, ' ')).replace(/<[^>]+>/g, ' ').split('\n')
-    : text.split('\n');
+    : text.split('\n')).map(l => l.replace(/[ \t]{2,}/g, ' '));
   const isTableLine = l => /^\s*\|/.test(l);
   const before = claims.length;
   for (const e of extractLabelled(lines, isTableLine)) claims.push({ ...e, file: path.basename(f) });
@@ -103,21 +121,31 @@ for (const f of files) {
   }
   if (claims.length > before) carriers++;
 }
-if (carriers < 2) out('SKIP', [], [...nj, `moins de 2 fichiers porteurs d'affirmations comparables (${carriers})`], 2);
-
-// ---- rapprochement inter-fichiers ------------------------------------------------------------
-const byKey = new Map();
-for (const c of claims) { if (!byKey.has(c.key)) byKey.set(c.key, []); byKey.get(c.key).push(c); }
+// ---- rapprochement inter-fichiers (dossier seulement) ----------------------------------------
 const findings = []; let concord = 0;
-for (const [, occ] of byKey) {
-  const filesOf = [...new Set(occ.map(o => o.file))];
-  if (filesOf.length < 2) continue;                      // intra-document → oracle-claims
-  const vals = [...new Set(occ.map(o => o.v))];
-  if (vals.length > 1) {
-    const a = occ[0], b = occ.find(o => o.v !== a.v) || occ[occ.length - 1];
-    findings.push({ sev: 'bloquant', msg: `divergence inter-documents « ${a.brut} » vs « ${b.brut} » (${vals.join(' ≠ ')})`, where: `${a.file}:${a.line} ↔ ${b.file}:${b.line}` });
-  } else concord++;
+if (!estFichier && carriers < 2) nj.push(`grandeurs : moins de 2 fichiers porteurs d'affirmations comparables (${carriers})`);
+if (!estFichier && carriers >= 2) {
+  const byKey = new Map();
+  for (const c of claims) { if (!byKey.has(c.key)) byKey.set(c.key, []); byKey.get(c.key).push(c); }
+  for (const [, occ] of byKey) {
+    const filesOf = [...new Set(occ.map(o => o.file))];
+    if (filesOf.length < 2) continue;                    // intra-document → oracle-claims
+    const vals = [...new Set(occ.map(o => o.v))];
+    if (vals.length > 1) {
+      const a = occ[0], b = occ.find(o => o.v !== a.v) || occ[occ.length - 1];
+      findings.push({ sev: 'bloquant', msg: `divergence inter-documents « ${a.brut} » vs « ${b.brut} » (${vals.join(' ≠ ')})`, where: `${a.file}:${a.line} ↔ ${b.file}:${b.line}` });
+    } else concord++;
+  }
+  if (!concord && !findings.length) nj.push('grandeurs : aucune grandeur commune entre les fichiers du dossier');
 }
-if (findings.length) out('FAIL', findings, nj, 1);
-if (!concord) out('SKIP', [], [...nj, 'aucune grandeur commune entre les fichiers du dossier'], 2);
-out('PASS', [{ sev: 'info', msg: concord + ' grandeur(s) commune(s) concordante(s) entre ' + carriers + ' fichiers, 0 divergence', where: path.basename(target) }], nj, 0);
+
+// ---- le fond (v2, TF-1352) -------------------------------------------------------------------
+const fond = jugerFond(files, { profil, dossier: !estFichier });
+findings.push(...fond.findings);
+if (findings.some(f => f.sev === 'bloquant')) out('FAIL', findings, nj, 1);
+if (!concord && !fond.verifies) out('SKIP', findings, nj, 2);
+const d = fond.detail;
+const bilan = (concord ? concord + ' grandeur(s) commune(s) concordante(s) entre ' + carriers + ' fichiers, 0 divergence ; ' : '')
+  + `fond : ${d.cf1_lignes} ligne(s) classée(s) confrontée(s) à leur statut (CF1), ${d.cf2_affirmations} affirmation(s) absolue(s) tenue(s) (CF2), `
+  + `${d.cf3_comptes} compte(s) recalculé(s) juste(s) (CF3)` + (estFichier ? '' : `, ${d.cf4_paires} paire(s) de documents à préséance déclarée (CF4)`) + ', 0 bloquant';
+out('PASS', [...findings, { sev: 'info', msg: bilan, where: path.basename(target) }], nj, 0);

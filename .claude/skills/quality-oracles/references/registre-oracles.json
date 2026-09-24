@@ -474,12 +474,18 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "même grandeur labellisée ou total de table = même valeur dans tous les livrables du dossier (versions antérieures exclues par convention de nommage)",
+   "checklist": "même grandeur labellisée ou total de table = même valeur dans tous les livrables du dossier (versions antérieures exclues par convention de nommage) · v2 (TF-1352, 24/09/2026) le FOND, aussi sur une cible fichier : CF1 une ligne classée par un statut (section « … à <verbe> » ou colonne Statut) dont le propre texte nie ce statut — bloquant quand la négation ouvre sa cellule, majeur en cours de phrase ou par antonyme connu ; CF2 une affirmation absolue (« 0 colonne inventée », « aucune hypothèse », « 100 % sourcé ») démentie par une cellule-valeur d'une table de sa portée (sa section, ou tout le document depuis le préambule) ; CF3 un compte écrit dans la dernière phrase de l'amorce d'une table (paragraphe finissant par « : » ou titre juste au-dessus) dont le nom est celui de la première colonne, recalculé depuis la table ou la somme d'une colonne de groupes — formules et tables de groupes exclues ; CF4 (dossier, MAJEUR) deux documents dont les tables ont au moins 5 clés de ligne snake_case communes sans qu'aucun document ne dise lequel fait foi — versions d'un même nom et livrables datés exclus",
    "statut": "ok",
    "non_juge": [
     "cohérence des binaires (pptx, xlsx)",
-    "divergences sémantiques non chiffrées"
-   ]
+    "divergences sémantiques hors des quatre formes CF1-CF4",
+    "CF1 : contradictions hors lexique, lignes sans contexte de classement",
+    "CF2 : affirmations hors des trois familles, marqueurs écrits dans une phrase longue, tables hors de la section de l'affirmation",
+    "CF3 : comptes qui ne sont pas dans la dernière phrase de l'amorce de leur table (préambule, prose éloignée, autre document), comptes pris dans une formule, tables de groupes sans somme lisible",
+    "CF4 : objets nommés hors snake_case ; versions d'un même nom et livrables datés ; la justesse de la préséance déclarée",
+    "la vérité d'une ligne au regard de sa source"
+   ],
+   "note": "BRUIT MESURÉ le 24/09/2026, cible fichier (v1 rendait SKIP partout) : 694 documents .md/.html suivis du pilot → 134 PASS, 3 FAIL, 557 SKIP, après correction du gabarit de restitution du pilot qui était le 4e (« Les quatre exemptions » au-dessus d'une table qui en porte cinq) ; 1 450 documents de 8 produits → 236 PASS, 8 FAIL, 1 206 SKIP. Tous les FAIL sont des comptes figés, 2 vérifiés à la main (« 22 routes » pour 23, « Deux environnements » pour 3). Cible dossier : 131 dossiers de produits → 81 CF4 majeurs, dont des modèles de données face à leurs mappings sans préséance. Les bornes anti-bruit nées de ces mesures sont commentées à leur endroit dans lib/coherence-fond.mjs : CF3 par dernière phrase d'amorce (37 faux sur 38 par section ou préambule), tables de groupes et formules exclues ; CF2 par cellule-valeur (3 sur 3 dans des phrases de règle) et par section (33 faux à l'échelle du document) ; CF1 lu sur le texte accentué (342 faux, « a déclaré » plié en « à déclarer ») ; CF4 par clés de ligne (5 407 paires accusées par le vocabulaire des outils), sans les versions ni les livrables datés, et majeur. PERFORMANCE : la même mesure chez les produits a trouvé un emballement — une page d'audit de 479 Ko, dont une table masquée laissait 410 699 caractères sur une ligne, tenait l'oracle plus de 9 minutes (l'extraction v1 des grandeurs y était déjà quadratique en cible dossier). Suites d'espaces repliées, extraction v1 réservée au dossier, numéros de ligne des tables HTML par dichotomie : 0,3 s ; garde à double sens dans scripts/self-test.mjs (ancienne version sans verdict après 20 s, nouvelle sous la seconde)."
   },
   {
    "domaine": "Régression visuelle (golden diff)",

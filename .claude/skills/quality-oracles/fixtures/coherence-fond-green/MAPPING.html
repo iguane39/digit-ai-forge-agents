@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Mapping colonne par colonne</title></head>
+<body>
+<!-- Fixture VERTE d'oracle-coherence v2 (TF-1352). Données INVENTÉES. Même domaine que le
+     registre des notions, à la finesse de la colonne, la préséance est écrite dans le registre des notions. -->
+<h1>Mapping colonne par colonne</h1>
+<h2>Colonnes Gold et leur source</h2>
+<table>
+<thead><tr><th>Colonne Gold</th><th>Table Gold</th><th>Source Silver</th></tr></thead>
+<tbody>
+<tr><td>montant_loyer_ht</td><td>fact_loyer_mensuel</td><td>slv_quittancement.mt_ht</td></tr>
+<tr><td>taux_vacance</td><td>fact_vacance_mensuelle</td><td>slv_lots.jours_vacants</td></tr>
+<tr><td>surface_m2</td><td>dim_lot_locatif</td><td>slv_lots.surface</td></tr>
+<tr><td>encours_ttc</td><td>agg_encours_locataire</td><td>slv_ecritures_client.solde</td></tr>
+<tr><td>indice_base</td><td>ref_indice_revision</td><td>slv_indices.valeur</td></tr>
+</tbody>
+</table>
+</body>
+</html>

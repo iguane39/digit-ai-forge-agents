@@ -16,7 +16,8 @@
 // ≥ 2, porté par un titre ou une ligne s'achevant par « : », et l'ancre doit suivre immédiatement.
 import { isTotalLabel, isGrandTotalLabel } from './num.mjs';
 
-const LETTRES = {
+// Exporté pour lib/coherence-fond.mjs (CF3) : une seule table des nombres en lettres.
+export const LETTRES = {
   deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10,
   onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16,
   'dix-sept': 17, 'dix-huit': 18, 'dix-neuf': 19, vingt: 20, 'vingt-et-un': 21,
