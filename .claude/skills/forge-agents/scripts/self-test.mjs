@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * self-test.mjs — rejoue les fixtures du compilateur (1 verte, 3 rouges) et le cycle ledger.
+ * self-test.mjs — rejoue les fixtures du compilateur (1 verte, 3 rouges), le champ `modele`
+ * (D-1 (a) du pilot, 25/09/2026 : 3 vertes, 1 rouge), le cycle ledger et le relevé de la
+ * version servie.
  * Exit 0 si tous les contrôles passent, 1 sinon. À rejouer après toute modification du skill.
  */
 import { execFileSync, spawn } from "node:child_process";
-import { readFileSync, writeFileSync, rmSync, mkdtempSync, appendFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, rmSync, mkdtempSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -735,6 +737,90 @@ check("oracle-agent-evals : cas.json absent ou invalide → SKIP motivé, jamais
     return;
   }
   throw new Error("aurait dû sortir SKIP (exit 2)");
+});
+
+// ---- D-1 (a) du pilot, 25/09/2026 : un agent désigne son modèle par FAMILLE, et le ledger note la
+// version SERVIE. Le fait : les 8 agents compilés de la forge ne déclaraient aucun modèle et
+// héritaient de la session (Opus 5.5, effort max), et le ledger ne notait que la famille.
+function ecrireDef(nom, supplement) {
+  const base = readFileSync(join(fixtures, "verte-review.yaml"), "utf8").replace(/^id: .*$/m, `id: ${nom}`);
+  const chemin = join(out, `${nom}.yaml`);
+  writeFileSync(chemin, base.replace(/\s*$/, "\n") + (supplement ? `${supplement}\n` : ""));
+  return chemin;
+}
+function compilerUn(nom, supplement) {
+  const outM = mkdtempSync(join(tmpdir(), "fa-modele-"));
+  try { run(compile, [ecrireDef(nom, supplement), "--out", outM]); return readFileSync(join(outM, `${nom}.md`), "utf8"); }
+  finally { rmSync(outM, { recursive: true, force: true }); }
+}
+check("D-1 : `modele: haiku` compile en `model: haiku` dans le frontmatter", () => {
+  if (!/^model: haiku$/m.test(compilerUn("modele-haiku", "modele: haiku"))) throw new Error("`model: haiku` absent du frontmatter");
+});
+check("D-1 : sans `modele`, l'agent compile sur `model: sonnet`, le défaut du routage, et le DIT — il n'hérite plus en silence de la session", () => {
+  const md = compilerUn("modele-absent", "");
+  if (!/^model: sonnet$/m.test(md)) throw new Error("`model: sonnet` absent du frontmatter");
+  if (!md.includes("défaut du routage")) throw new Error("le défaut n'est pas dit dans le corps de l'agent");
+});
+check("D-1 : `modele: inherit` reste possible, par choix déclaré", () => {
+  const md = compilerUn("modele-inherit", "modele: inherit");
+  if (!/^model: inherit$/m.test(md) || !md.includes("celui de la session")) throw new Error("`inherit` mal compilé");
+});
+check("D-1 rouge : un identifiant (`claude-opus-5-5`) épinglerait une version → refus qui exige le NOM DE FAMILLE", () =>
+  mustRefuse(compile, [ecrireDef("modele-identifiant", "modele: claude-opus-5-5"), "--out", out], "NOM DE FAMILLE"));
+
+const SID = "00000000-aaaa-bbbb-cccc-000000000001";
+function racineTranscripts(principal, sousAgent) {
+  const racine = mkdtempSync(join(tmpdir(), "fa-transcripts-"));
+  const projet = join(racine, "projects", "projet-essai");
+  mkdirSync(join(projet, SID, "subagents"), { recursive: true });
+  const ligne = (m) => JSON.stringify({ parentUuid: "p", message: { model: m, role: "assistant", content: [] }, type: "assistant" });
+  if (principal) writeFileSync(join(projet, `${SID}.jsonl`), principal.map(ligne).join("\n") + "\n");
+  if (sousAgent) writeFileSync(join(projet, SID, "subagents", "agent-essai.jsonl"), sousAgent.map(ligne).join("\n") + "\n");
+  return racine;
+}
+function appendAvec(lf, obj, env) {
+  return execFileSync(process.execPath, [ledger, "append", lf, JSON.stringify(obj)], { encoding: "utf8", env: { ...process.env, ...env } });
+}
+const OUVERTURE_D1 = { type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["digit-ai-forge-agents"] };
+check("D-1 : `append` relève `modele_version` dans le transcript de la session — sous-agent sonnet, fil principal opus [1m]", () => {
+  const racine = racineTranscripts(["claude-opus-5-5[1m]"], ["claude-sonnet-5"]);
+  const lf = join(out, "ledger-version.jsonl");
+  const env = { FORGE_TRANSCRIPTS_RACINE: racine, CLAUDE_CODE_SESSION_ID: SID };
+  try {
+    appendAvec(lf, OUVERTURE_D1, env);
+    const sortie = appendAvec(lf, { type: "invocation", forge: "agents", modele: "sonnet" }, env);
+    appendAvec(lf, { type: "invocation", forge: "agents", modele: "opus" }, env);
+    const e = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    if (e[1].modele_version !== "claude-sonnet-5") throw new Error(`sonnet : ${e[1].modele_version} au lieu de claude-sonnet-5`);
+    if (e[2].modele_version !== "claude-opus-5-5") throw new Error(`opus : ${e[2].modele_version} au lieu de claude-opus-5-5`);
+    if (!sortie.includes("[VERSION]")) throw new Error("le relevé n'est pas annoncé");
+    run(ledger, ["verify", lf]);
+  } finally { rmSync(racine, { recursive: true, force: true }); }
+});
+check("D-1 : sans transcript de la famille, l'entrée est écrite SANS version et c'est dit `[NON VÉRIFIÉ]` — jamais refusée", () => {
+  const racine = racineTranscripts(["claude-opus-5-5"], null);
+  const lf = join(out, "ledger-sans-version.jsonl");
+  const env = { FORGE_TRANSCRIPTS_RACINE: racine, CLAUDE_CODE_SESSION_ID: SID };
+  try {
+    appendAvec(lf, OUVERTURE_D1, env);
+    const sortie = appendAvec(lf, { type: "invocation", forge: "agents", modele: "haiku" }, env);
+    const e = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    if ("modele_version" in e[1]) throw new Error("une version a été inventée");
+    if (!sortie.includes("[NON VÉRIFIÉ] modele_version")) throw new Error("l'absence n'est pas dite");
+  } finally { rmSync(racine, { recursive: true, force: true }); }
+});
+check("D-1 : une version déjà fournie par le payload est gardée telle quelle, et la forme imbriquée `invocation.modele` est complétée", () => {
+  const racine = racineTranscripts(null, ["claude-sonnet-5"]);
+  const lf = join(out, "ledger-version-fournie.jsonl");
+  const env = { FORGE_TRANSCRIPTS_RACINE: racine, CLAUDE_CODE_SESSION_ID: SID };
+  try {
+    appendAvec(lf, OUVERTURE_D1, env);
+    appendAvec(lf, { type: "invocation", modele: "opus", modele_version: "claude-opus-5" }, env);
+    appendAvec(lf, { type: "invocation", invocation: { forge: "agents", modele: "sonnet" } }, env);
+    const e = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    if (e[1].modele_version !== "claude-opus-5") throw new Error("la version fournie a été réécrite");
+    if (e[2].invocation.modele_version !== "claude-sonnet-5") throw new Error("la forme imbriquée n'est pas complétée");
+  } finally { rmSync(racine, { recursive: true, force: true }); }
 });
 
 rmSync(out, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

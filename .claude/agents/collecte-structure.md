@@ -2,9 +2,12 @@
 name: collecte-structure
 description: Inventorie l'arborescence racine du projet et produit run/structure.md pour l'agent de synthèse — mérite un agent par la condition 3 du critère (parallélisable sans dépendance d'entrée avec collecte-scripts)
 tools: Read, Glob, Write
+model: haiku
 ---
 
 # collecte-structure
+
+Modèle : famille `haiku` ; le nom suit la dernière version, et la version servie se lit au ledger du run (`modele_version`).
 
 ## Mandat
 Inventorie l'arborescence racine du projet et produit run/structure.md pour l'agent de synthèse — mérite un agent par la condition 3 du critère (parallélisable sans dépendance d'entrée avec collecte-scripts)

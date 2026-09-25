@@ -5,6 +5,15 @@
  * en subagents `.claude/agents/<id>.md`. Fail-closed : champ obligatoire manquant, champ
  * inconnu, liste d'outils vide ou id invalide => refus (exit 1), aucune écriture partielle.
  *
+ * MODÈLE — décision humaine D-1 (a) du pilot, 25/09/2026. Un agent compilé ne déclarait aucun
+ * modèle : Claude Code lui donnait celui de la session, effort compris, et le tableau de routage
+ * du pilot (CONTRAT-INTERFACE §4 : Sonnet par défaut, Haiku pour le mécanique) ne s'appliquait à
+ * aucun agent de la forge. Mesuré le 24/09 : les 2 agents d'inventaire tournaient sur Opus 5.5 à
+ * l'effort maximal. Le champ optionnel `modele` porte désormais un NOM DE FAMILLE (haiku, sonnet,
+ * opus, fable) ou `inherit`, compilé en `model:` ; absent, il vaut `sonnet`, le défaut du tableau.
+ * Un identifiant (`claude-opus-5-5`, `claude-sonnet-4-5-20250929`) est REFUSÉ : il épinglerait une
+ * version, et l'agent ne suivrait plus la suivante.
+ *
  * Usage : node compile-agent-def.mjs <def1.yaml> [def2.yaml ...] --out <dir>
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -12,7 +21,10 @@ import { join, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MANDATORY = ["id", "mandat", "outils", "arbitre", "entrees", "sorties"];
-const OPTIONAL = ["parallel", "skill", "expert_refs", "provenance"];
+const OPTIONAL = ["parallel", "skill", "expert_refs", "provenance", "modele"];
+// Noms de famille admis (CONTRAT-INTERFACE §4 du pilot) ; `inherit` reprend le modèle de la session.
+export const MODELES = ["haiku", "sonnet", "opus", "fable", "inherit"];
+export const MODELE_DEFAUT = "sonnet";
 
 function fail(msg) { console.error(`[REFUS] ${msg}`); process.exit(1); }
 
@@ -84,6 +96,14 @@ export function validate(def, file) {
     for (const e of def[side])
       if (typeof e !== "object" || !e.artefact)
         fail(`${file}: ${side} — chaque élément doit être { artefact: …, ${side === "entrees" ? "de" : "vers"}: … }`);
+  // modele (optionnel) — un nom de famille, jamais un identifiant qui épinglerait une version.
+  if (def.modele !== undefined) {
+    const m = typeof def.modele === "string" ? def.modele.trim() : "";
+    if (!MODELES.includes(m))
+      fail(`${file}: modele « ${def.modele} » refusé — un agent désigne son modèle par NOM DE FAMILLE ` +
+        `(${MODELES.join(" | ")}), jamais par identifiant : un identifiant épingle une version et l'agent ` +
+        `ne suit plus la suivante (CONTRAT-INTERFACE §4 du pilot, décision D-1 (a) du 25/09/2026)`);
+  }
   // provenance (optionnel) — traçabilité d'une capacité importée d'une source externe.
   // { source, author, confidence, date } ; confidence ∈ [0,1]. Fail-closed si présent mais mal formé.
   if (def.provenance !== undefined) {
@@ -105,9 +125,15 @@ function render(def) {
   lines.push(`name: ${def.id}`);
   lines.push(`description: ${def.mandat}`);
   lines.push(`tools: ${def.outils.join(", ")}`);
+  const modele = def.modele ? def.modele.trim() : MODELE_DEFAUT;
+  lines.push(`model: ${modele}`);
   lines.push("---");
   lines.push("");
   lines.push(`# ${def.id}`);
+  lines.push("");
+  lines.push(modele === "inherit"
+    ? "Modèle : celui de la session (`inherit`), effort compris, par choix explicite de la définition ; la version servie se lit au ledger du run (`modele_version`)."
+    : `Modèle : famille \`${modele}\`${def.modele ? "" : " (défaut du routage, aucun modèle déclaré)"} ; le nom suit la dernière version, et la version servie se lit au ledger du run (\`modele_version\`).`);
   lines.push("");
   lines.push(`## Mandat`);
   lines.push(def.skill ? `${def.mandat} — mandat opératoire : charger le skill \`${def.skill}\`.` : def.mandat);

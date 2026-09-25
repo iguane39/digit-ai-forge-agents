@@ -9,3 +9,4 @@ entrees:
   - { artefact: "run/scripts.md", de: "collecte-scripts" }
 sorties:
   - { artefact: "run/rapport-jouet.md", vers: "livrable-final" }
+modele: sonnet

@@ -9,3 +9,4 @@ entrees:
 sorties:
   - { artefact: "run/scripts.md", vers: "synthese-rapport" }
 parallel: { min_agents: 2 }
+modele: haiku

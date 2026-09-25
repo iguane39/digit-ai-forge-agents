@@ -16,6 +16,7 @@ parallel:     # gates anti-serial-collapse : min_agents + critères binaires fig
 skill:        # skill de la forge chargé comme mandat opératoire (ex. digit-ai-pptx)
 expert_refs:  # fiches du registre experts-forge consommées par l'agent (statut « ok » uniquement)
 provenance:   # capacité importée d'une source externe : { source: …, author: …, confidence: 0-1, date: … }
+modele:       # NOM DE FAMILLE du modèle : haiku | sonnet | opus | fable | inherit ; absent = sonnet
 ```
 
 ## Règles
@@ -36,6 +37,15 @@ provenance:   # capacité importée d'une source externe : { source: …, author
   source externe (idée, workflow, skill tiers), déclarer `{ source, author, confidence, date }`.
   `confidence ∈ [0,1]` mesure la fiabilité de la source — une capacité importée reste une
   hypothèse pondérée, jamais une vérité. Fail-closed si le bloc est présent mais mal formé.
+
+- **`modele`** *(décision humaine D-1 (a) du pilot, 25/09/2026)* : le rôle de l'agent choisit sa
+  famille dans le tableau de routage du pilot (`CONTRAT-INTERFACE.md` §4) — `haiku` pour le
+  mécanique (extraction, inventaire, reformatage), `sonnet` pour la production standard, `opus`
+  pour la construction complexe, `fable` sur escalade mesurée. Absent, il vaut `sonnet`, le
+  défaut du tableau ; `inherit` reprend le modèle et l'effort de la session, par choix déclaré.
+  Compilé en `model:`. **Un identifiant (`claude-opus-5-5`) est refusé** : il épinglerait une
+  version, et l'agent ne suivrait plus la suivante. La version réellement servie se lit au ledger
+  du run (`modele_version`, relevée par `ledger.mjs append`).
 
 ## Contrôle de cohérence du lot
 

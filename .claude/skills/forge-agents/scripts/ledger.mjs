@@ -100,6 +100,16 @@
  * déclare `1.0` reste jugé selon SES règles, pour toujours — une version ne durcit jamais un
  * journal qui en a déclaré une antérieure, elle ne s'applique qu'à qui la déclare.
  *
+ * VERSION SERVIE — DÉCISION HUMAINE D-1 (a) DU PILOT, 25/09/2026. Le schéma d'invocation portait
+ * `modele: haiku | sonnet | opus | fable`, la FAMILLE du routage, jamais la version : une escalade
+ * mesurée sur Opus 5 et une autre sur Opus 5.5 se confondaient, et Fable 5.1 comme Opus 5.5 sont
+ * entrées en service sans que le ledger le montre. `append` relève donc `modele_version` quand
+ * l'entrée (ou son objet `invocation`) porte une famille sans version : la dernière réponse de
+ * cette famille dans les transcripts de LA session courante (`CLAUDE_CODE_SESSION_ID`, fil
+ * principal et sous-agents), lue par la fin. Faute de transcript lisible, l'entrée est écrite
+ * sans, et c'est dit `[NON VÉRIFIÉ]` : un journal ne refuse pas un fait parce qu'il lui manque une
+ * précision. `FORGE_TRANSCRIPTS_RACINE` remplace les racines de Claude Code, pour le banc.
+ *
  * --fichier : le passage du payload JSON en argument shell est pénible sous PowerShell 5.1
  * (échappement des guillemets, longueur de ligne). --fichier lit le même JSON depuis un
  * fichier — mêmes validations, même verrou, même format de sortie (RA-1, 05/08/2026).
@@ -108,7 +118,9 @@
  * pour toute la section lecture-du-dernier-seq → écriture. Zéro dépendance : retry borné avec
  * délai (Atomics.wait, sommeil synchrone) puis erreur explicite si le verrou reste pris.
  */
-import { readFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSync } from "node:fs";
+import { readFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSync, readdirSync, statSync, readSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 
 const rest = process.argv.slice(2);
 const [cmd, file] = rest;
@@ -120,6 +132,81 @@ const [cmd, file] = rest;
 const argsRestants = rest.slice(2);
 const USAGE_APPEND = "usage : append <ledger.jsonl> ('<json>' | --fichier <payload.json>)";
 const USAGE_VERIFY = "usage : verify <ledger.jsonl>";
+// ---- VERSION SERVIE (D-1 (a) du pilot, 25/09/2026) -------------------------------------------
+const FAMILLES_MODELE = ["haiku", "sonnet", "opus", "fable"];
+const FIN_LUE_TRANSCRIPT = 512 * 1024;
+function normaliserModele(id) {
+  if (typeof id !== "string") return null;
+  const s = id.trim().toLowerCase().replace(/\[[^\]]*\]$/, "").replace(/^anthropic\./, "").replace(/[-@]20\d{6}$/, "");
+  return /^claude-[a-z0-9][a-z0-9.-]*$/.test(s) ? s : null;
+}
+function racinesDesTranscripts() {
+  if (process.env.FORGE_TRANSCRIPTS_RACINE) return [process.env.FORGE_TRANSCRIPTS_RACINE];
+  const racines = new Set();
+  if (process.env.CLAUDE_CONFIG_DIR) racines.add(process.env.CLAUDE_CONFIG_DIR);
+  try {
+    for (const e of readdirSync(homedir(), { withFileTypes: true }))
+      if (e.isDirectory() && /^\.claude/.test(e.name)) racines.add(join(homedir(), e.name));
+  } catch { /* pas de dossier personnel lisible : aucune racine */ }
+  return [...racines];
+}
+/** Les transcripts de LA session : son fil principal et ceux de ses sous-agents. */
+function transcriptsDeLaSession(sid) {
+  const fichiers = [];
+  for (const racine of racinesDesTranscripts()) {
+    const projets = join(racine, "projects");
+    let dossiers;
+    try { dossiers = readdirSync(projets, { withFileTypes: true }); } catch { continue; }
+    for (const d of dossiers) {
+      if (!d.isDirectory()) continue;
+      const principal = join(projets, d.name, `${sid}.jsonl`);
+      if (existsSync(principal)) fichiers.push(principal);
+      const sous = join(projets, d.name, sid, "subagents");
+      try { for (const f of readdirSync(sous)) if (f.endsWith(".jsonl")) fichiers.push(join(sous, f)); } catch { /* aucun sous-agent */ }
+    }
+  }
+  return fichiers;
+}
+/** Dernière version servie à la session pour une famille, lue par la fin des transcripts ; null sinon. */
+function versionServie(famille, sid = process.env.CLAUDE_CODE_SESSION_ID) {
+  if (!sid || !FAMILLES_MODELE.includes(famille)) return null;
+  let meilleure = null;
+  for (const f of transcriptsDeLaSession(sid)) {
+    let st;
+    try { st = statSync(f); } catch { continue; }
+    const n = Math.min(FIN_LUE_TRANSCRIPT, st.size);
+    if (!n) continue;
+    const tampon = Buffer.alloc(n);
+    let fd;
+    try { fd = openSync(f, "r"); readSync(fd, tampon, 0, n, st.size - n); } catch { continue; } finally { if (fd !== undefined) closeSync(fd); }
+    const lignes = tampon.toString("utf8").split("\n");
+    for (let i = lignes.length - 1; i >= 0; i--) {
+      if (!lignes[i].includes('"type":"assistant"')) continue;
+      const m = /"model":"([^"]+)"/.exec(lignes[i]);
+      const id = m ? normaliserModele(m[1]) : null;
+      if (!id || !id.startsWith(`claude-${famille}-`)) continue;
+      if (!meilleure || st.mtimeMs > meilleure.mtime || (st.mtimeMs === meilleure.mtime && i > meilleure.i)) meilleure = { id, mtime: st.mtimeMs, i };
+      break;
+    }
+  }
+  return meilleure ? meilleure.id : null;
+}
+/** Complète `modele_version` d'une entrée (ou de son objet `invocation`) qui porte une famille sans version. */
+function completerVersion(obj, annonces) {
+  const cibles = [obj, obj && typeof obj.invocation === "object" && !Array.isArray(obj.invocation) ? obj.invocation : null].filter(Boolean);
+  for (const c of cibles) {
+    if (!FAMILLES_MODELE.includes(c.modele) || c.modele_version) continue;
+    const v = versionServie(c.modele);
+    if (v) {
+      c.modele_version = v;
+      annonces.push(`[VERSION] modele_version relevée dans le transcript de la session : ${v} (famille ${c.modele})`);
+    } else {
+      annonces.push(`[NON VÉRIFIÉ] modele_version non relevée pour la famille ${c.modele} : aucun transcript de cette session ` +
+        `n'en porte de réponse (CLAUDE_CODE_SESSION_ID ${process.env.CLAUDE_CODE_SESSION_ID ? "présent" : "absent"}) ; l'entrée est écrite sans`);
+    }
+  }
+}
+
 //: Version du schéma de payload. Déclarée par `run_open` (`schema_ledger`), elle dit sous
 //: quelle forme le ledger a été écrit — comme l'empreinte de règles d'un journal d'oracles.
 //: TF-1366/D-18 (a), 26/09/2026 — la version COURANTE ; une version antérieure DÉCLARÉE
@@ -248,6 +335,10 @@ if (cmd === "append") {
   if (Object.prototype.hasOwnProperty.call(obj, "seq")) {
     fail(`entrée refusée : le payload porte \`seq\` (${JSON.stringify(obj.seq)}) — le numéro d'une entrée est attribué par l'outil sous verrou, jamais fourni ; un seq recopié ferait porter le même numéro à deux entrées (TF-1367)`);
   }
+  // D-1 (a) du pilot (25/09/2026) : une famille sans version se complète par la version servie,
+  // lue dans les transcripts de la session — sur une entrée que les refus ci-dessus ont admise.
+  const annoncesVersion = [];
+  completerVersion(obj, annoncesVersion);
   const clesUtiles = Object.keys(obj).filter((k) => k !== "type" && k !== "ts");
   if (clesUtiles.length === 0) {
     fail(`entrée refusée : aucun contenu au-delà de \`type\` (${JSON.stringify(obj.type)}) — une entrée sans contenu reste pour toujours dans un journal en ajout seul, et se lit ensuite comme une preuve (TF-1366)`);
@@ -326,6 +417,7 @@ if (cmd === "append") {
     fail(e.message);
   }
   releaseLock(lockFile);
+  for (const a of annoncesVersion) console.log(a);
   // TF-1366 (d) : l'écho NOMME le type et les champs écrits — un « [OK] » muet sur le contenu ne
   // permet pas de relire, depuis la seule sortie de la commande, ce qui vient d'être ajouté.
   console.log(`[OK] entrée ${seq} ajoutée (type ${obj.type} ; champs : ${clesUtiles.join(", ")})`);

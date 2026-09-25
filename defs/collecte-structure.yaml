@@ -9,3 +9,4 @@ entrees:
 sorties:
   - { artefact: "run/structure.md", vers: "synthese-rapport" }
 parallel: { min_agents: 2 }
+modele: haiku

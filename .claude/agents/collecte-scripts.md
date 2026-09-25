@@ -2,9 +2,12 @@
 name: collecte-scripts
 description: Inventorie les scripts du skill forge-agents (nom, usage, rôle) et produit run/scripts.md pour l'agent de synthèse — mérite un agent par la condition 3 du critère (parallélisable sans dépendance d'entrée avec collecte-structure)
 tools: Read, Glob, Write
+model: haiku
 ---
 
 # collecte-scripts
+
+Modèle : famille `haiku` ; le nom suit la dernière version, et la version servie se lit au ledger du run (`modele_version`).
 
 ## Mandat
 Inventorie les scripts du skill forge-agents (nom, usage, rôle) et produit run/scripts.md pour l'agent de synthèse — mérite un agent par la condition 3 du critère (parallélisable sans dépendance d'entrée avec collecte-structure)
