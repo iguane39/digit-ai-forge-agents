@@ -1,6 +1,6 @@
 {
- "version": "2.26.1",
- "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
+ "version": "2.27.0",
+ "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {forges}=racine des forges soeurs (TF-1334, 26/09/2026 : FORGE_ROOT, sinon le parent du depot digit-ai-forge-agents, sinon — copie installee — le parent du pilot resolu ; racine introuvable ou script absent de ce poste → SKIP motive, jamais un FAIL muet — scripts/lib/forges.mjs ; plus aucun chemin absolu dans une commande, controle a double sens dans scripts/self-test.mjs), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
    "domaine": "Rendu HTML / visuel",
@@ -839,7 +839,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-design/oracles/oracle-mobile.mjs",
+    "{forges}/digit-ai-forge-design/oracles/oracle-mobile.mjs",
     "{file}",
     "--json-only",
     "--si-cible-mobile"
@@ -863,7 +863,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-design/oracles/oracle-images.mjs",
+    "{forges}/digit-ai-forge-design/oracles/oracle-images.mjs",
     "{file}",
     "--json-only"
    ],
@@ -883,7 +883,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-design/oracles/oracle-corpus.mjs",
+    "{forges}/digit-ai-forge-design/oracles/oracle-corpus.mjs",
     "{dir}",
     "--json-only"
    ],
@@ -903,7 +903,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-design/oracles/oracle-motion.mjs",
+    "{forges}/digit-ai-forge-design/oracles/oracle-motion.mjs",
     "{file}",
     "--json-only"
    ],
@@ -950,7 +950,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-conception/oracles/oracle-exigences.mjs",
+    "{forges}/digit-ai-forge-conception/oracles/oracle-exigences.mjs",
     "{file}"
    ],
    "checklist": "E1 champs obligatoires · E2 identifiant unique et non réaffecté · E3 critère chiffré avec unité ou binaire observable · E4 liste noire de termes subjectifs · E5 palier valide · E6 énoncé atomique",
@@ -969,7 +969,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-conception/oracles/oracle-tracabilite.mjs",
+    "{forges}/digit-ai-forge-conception/oracles/oracle-tracabilite.mjs",
     "{file}"
    ],
    "checklist": "T1 aucun orphelin des deux côtés · T2 exactement un critère par exigence · T3 vue alignée sur l'empreinte sha256 de sa source · T4 statut épistémique porteur de sa source ou de son mode de validation",
@@ -989,7 +989,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-conception/oracles/oracle-surface.mjs",
+    "{forges}/digit-ai-forge-conception/oracles/oracle-surface.mjs",
     "{file}"
    ],
    "checklist": "S1 chaque élément de surface non couvert est NOMMÉ · S2 ratio publié avec sa liste (seuil 95 % par défaut, --seuil) · S3 lien de surface valide ou raison hors_surface déclarée",
@@ -1007,7 +1007,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-conception/oracles/oracle-claims.mjs",
+    "{forges}/digit-ai-forge-conception/oracles/oracle-claims.mjs",
     "{file}"
    ],
    "checklist": "A1 tout chiffre d'un champ narratif (besoin, énoncé) est tracé à une source ou marqué « à vérifier » · A2 périmètre écarté déclaré : un chiffre de critère est une cible fixée, pas une affirmation sur le monde",
@@ -1027,7 +1027,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-delimiter.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-delimiter.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1049,7 +1049,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-enchainer.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-enchainer.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1071,7 +1071,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-reconstruire.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-reconstruire.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1093,7 +1093,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-rendre.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-rendre.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1115,7 +1115,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-tracer.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-tracer.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1140,7 +1140,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-profiler.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-profiler.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1162,7 +1162,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-restituer.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-restituer.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1186,7 +1186,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-modeliser.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-modeliser.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1210,7 +1210,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-contractualiser.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-contractualiser.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1231,7 +1231,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-couvrir.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-couvrir.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1253,7 +1253,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-evoluer.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-evoluer.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1278,7 +1278,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-rapprocher.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-rapprocher.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1300,7 +1300,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-reconcilier.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-reconcilier.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1321,7 +1321,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-transformer.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-transformer.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1342,7 +1342,7 @@
    "type": "cli",
    "cmd": [
     "node",
-    "c:/dev/digit-ai-forge-data/oracles/oracle-qualifier.mjs",
+    "{forges}/digit-ai-forge-data/oracles/oracle-qualifier.mjs",
     "{file}",
     "--json-only"
    ],
@@ -1650,6 +1650,116 @@
    ],
    "provenance": "TF-1185, lot Produit-62 - RETOURS - 20260917e (RF-26) — la fixture rouge est la forme qu avait l analyse du 17/09/2026 AVANT la regle : deux premisses d acces classees inverifiables sans qu aucun des quatre appels REST en lecture seule ait ete emis.",
    "note": "TF-1185 (19/09/2026) : joue la regle ecrite au Ch4 de prompt-analyzer-l99 (« Premisse d ACCES : la mesurer avant de la classer »). Doctrine : un refus prouve qu une porte est fermee, jamais qu il n y en a qu une."
+  },
+  {
+   "domaine": "Validité d'un paquet DOCX avant remise",
+   "ext": [
+    ".docx"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skillsroot}/digit-ai-docx/scripts/oracle-docx.mjs",
+    "{file}"
+   ],
+   "checklist": "D1 archive lisible · D2 [Content_Types].xml declare le document principal et type chaque partie · D3 chaque relation interne designe une partie presente · D4 chaque partie XML bien formee · D5 ordre des enfants exige par Word (w:sectPr dernier de w:body ; w:pPr, w:rPr, w:tcPr premiers ; w:tblPr puis w:tblGrid avant tout w:tr) · D6 ordre DrawingML delegue a scripts/verifier-ooxml.py du pilot",
+   "statut": "ok",
+   "non_juge": [
+    "l'OUVERTURE réelle dans Word : aucun Word sur le poste de recette — l'oracle contrôle les causes connues de réparation (D1-D6), pas l'exhaustivité du schéma OOXML",
+    "la validité complète contre les schémas XSD de WordprocessingML : D5 attrape les ordres dont le défaut est connu",
+    "la CHARTE du document (polices, couleurs, grille) : relevée avant d'écrire (`rendre-docx.mjs --relever`), jugée à l'œil ou par un rendu",
+    "D6 quand le pilot ou Python est introuvable : NON JUGÉE et dite par l oracle, jamais un PASS silencieux"
+   ],
+   "note": "TF-1334 (26/09/2026) : oracle de digit-ai-docx (TF-1027), recette dans scripts/self-test.mjs de ce skill, qu aucune commande du lanceur general ne jouait faute d entree au registre — constat du 23/09 par la decouverte des oracles de la forge (oracles/decouvrir-oracles.mjs)."
+  },
+  {
+   "domaine": "Régression de qualité des sorties d'agents (fixtures versionnées, juge distinct de l'exécutant)",
+   "ext": [],
+   "trigger_files": [
+    "cas.json"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skillsroot}/forge-agents/scripts/oracle-agent-evals.mjs",
+    "{file}"
+   ],
+   "checklist": "un dossier-cas (cas.json + artefact) : chaque critere fige du cas est rejoue sur la sortie de l agent — EXISTS, CONTAINS, REGEX mecaniques ; un critere non mecanique passe au juge distinct (CLI claude -p), indisponible → SKIP motive de tout l oracle",
+   "statut": "ok",
+   "non_juge": [
+    "la sémantique hors des critères déclarés dans cas.json : le juge n évalue jamais librement",
+    "un critère non mécanique quand la CLI claude est indisponible : SKIP motivé, jamais simulé",
+    "le coût et la latence réels de l agent jugé",
+    "une cible qui n est pas un dossier-cas (cas.json absent à sa racine) : SKIP motivé par l oracle"
+   ],
+   "note": "TF-1334 (26/09/2026) : oracle de forge-agents (TF-0106), recette dans .claude/skills/forge-agents/scripts/self-test.mjs, qu aucune commande du lanceur general ne jouait faute d entree au registre. Declencheur : un fichier cas.json dans la cible, qui est alors passee entiere (le dossier-cas)."
+  },
+  {
+   "domaine": "Cohérence du graphe des définitions d'agents (de:/vers:)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skillsroot}/forge-agents/scripts/oracle-defs.mjs",
+    "{file}"
+   ],
+   "content_patterns": [
+    "^mandat:[\\s\\S]*^arbitre:"
+   ],
+   "checklist": "chaque def valide au compilateur (compile-agent-def.mjs, porte fail-closed) · id uniques · un lien de:/vers: entre deux defs du lot est reciproque (la def amont produit l artefact, la def aval le lit) · aucun cycle",
+   "statut": "ok",
+   "non_juge": [
+    "les liens de:/vers: vers un non-agent (entrant humain, orchestrateur, livrable-final)",
+    "la sémantique métier des mandats et des critères d arbitre",
+    "l'existence réelle des artefacts sur disque au moment du run",
+    "passé fichier par fichier par le lanceur, un lien vers une def qui n est pas dans le lot n est pas jugé : la cohérence du graphe entier se joue sur le DOSSIER des defs (node oracle-defs.mjs <dossier>)"
+   ],
+   "note": "TF-1334 (26/09/2026) : oracle de forge-agents, recette dans .claude/skills/forge-agents/scripts/self-test.mjs, qu aucune commande du lanceur general ne jouait faute d entree au registre. Declencheur : un YAML qui porte les cles mandat: puis arbitre: en debut de ligne — la forme d une def d agent (defs/)."
+  },
+  {
+   "domaine": "Remise d'une chaîne de traduction : relecture native, ancres, arbitrages, verdicts cités (T1-T4 ; T5-T8 pour une remise d'audit)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{pilot}/oracles/oracle-remise-traduction.mjs",
+    "{file}"
+   ],
+   "content_patterns": [
+    "^\\s*role\\s*:.*(remise|livraison).*(traduction|multilingue)"
+   ],
+   "commande": "node <pilot>/oracles/oracle-remise-traduction.mjs <FICHE-REMISE.md> [--racine <dossier>] [--catalogue <dossier>] | --self-test",
+   "checklist": "T1 relecture native declaree, faite ou refusee avec son motif · T2 100 % des ancres verbatim existent dans le fichier vise · T3 arbitrages poses a l humain non vides · T4 verdicts des controles mecaniques cites · pour une remise d AUDIT (role: … audit) : T5 chaque etape B1-B10 porte son verdict · T6 chaque locale servie couverte ou declaree non couverte · T7 carte des sources de verite tenue · T8 verdict de la confrontation aux donnees cite",
+   "statut": "ok",
+   "non_juge": [
+    "la QUALITÉ d une relecture : T1 rend l absence bruyante, rien de plus",
+    "les contrôles qu il exige de citer ne sont pas rejoués (T4 et T8 vérifient qu un verdict est rapporté, pas qu il est vrai)",
+    "T6 contre les locales réelles du catalogue : seulement avec --catalogue, que le lanceur général ne passe pas",
+    "pilot introuvable sur ce poste : SKIP motivé par le lanceur, jamais un FAIL muet"
+   ],
+   "note": "TF-1318 (decision humaine D-17 (a) du 26/09/2026) et TF-1334 : le juge de remise des traductions du pilot, indexe par chemin resolu ({pilot} : FORGE_ROOT d abord, lib/pilot.mjs). Declencheur : le frontmatter role: … remise|livraison … traduction|multilingue, celui que l oracle exige lui-meme."
+  },
+  {
+   "domaine": "Glossaire : preuve de marché rejouable et périssable (sondes scellées, péremption déclarée)",
+   "ext": [],
+   "trigger_files": [
+    "GLOSSAIRE.md"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{pilot}/scripts/verifier-sonde-glossaire.mjs",
+    "{file}"
+   ],
+   "commande": "node <pilot>/scripts/verifier-sonde-glossaire.mjs <GLOSSAIRE.md|dossier> [--rejouer] [--rejouer-hors-depot] [--delai <ms>] [--peremption <jours>] [--le <AAAA-MM-JJ>]",
+   "checklist": "S-3 une ligne de visibilite dont verifie_le depasse la duree DECLAREE (peremption_preuves_jours au frontmatter, aucune duree par defaut — D-17 (a)) est ECHUE · S-4 une duree declaree illisible est un constat · le rejeu des sondes scellees (FRAIS / PERIME) ne se joue QUE sur appel explicite --rejouer",
+   "statut": "ok",
+   "non_juge": [
+    "le REJEU des sondes : le lanceur général n exécute AUCUNE commande tirée d un glossaire — une cellule preuve est une donnée ; rejouer se fait sur appel explicite (--rejouer, et --rejouer-hors-depot pour un glossaire hors du pilot)",
+    "l âge d une preuve dans un glossaire qui ne déclare aucune durée : compté sans_peremption, jamais jugé",
+    "pilot introuvable sur ce poste : SKIP motivé par le lanceur, jamais un FAIL muet"
+   ],
+   "note": "TF-1318 (decision humaine D-17 (a) du 26/09/2026) et TF-1334 : le verbe des sondes du pilot (etape B4 de la chaine « audite les traductions »), indexe par chemin resolu ({pilot}). Joue SANS --rejouer par le lanceur : il ne juge alors que l age (S-3, S-4), une soustraction de dates, et n execute rien. Declencheur : un fichier GLOSSAIRE.md dans la cible."
   }
  ]
 }

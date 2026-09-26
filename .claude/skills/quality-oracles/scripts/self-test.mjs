@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolvePython } from './lib/python.mjs';
 import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
+import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
@@ -19,6 +20,8 @@ const SKILLSROOT = path.resolve(SKILLDIR, '..');
 // DÉCLARENT alors un SKIP motivé — un marqueur non résolu ferait échouer le lancement, et un
 // lancement en échec se lit comme un FAIL, donc comme la preuve attendue sur une fixture rouge.
 const PILOT = resolvePilot(SKILLDIR);
+// TF-1334 — la racine des forges sœurs, résolue comme au lanceur (lib/forges.mjs).
+const FORGES = resolveForges(SKILLDIR);
 const fails = [], oks = [];
 const ok = m => oks.push(m);
 const ko = m => fails.push(m);
@@ -191,8 +194,12 @@ if (reg) for (const o of reg.oracles) {
     ok('oracle du pilot : SKIP motivé (' + path.basename(script) + ') — ' + motifPilotAbsent(SKILLDIR));
     continue;
   }
+  if (script.includes(MARQUEUR_FORGES) && !FORGES) {
+    ok('oracle d une forge sœur : SKIP motivé (' + path.basename(script) + ') — ' + motifForgesAbsentes(SKILLDIR));
+    continue;
+  }
   const p = script.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT)
-    .replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT);
+    .replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace(MARQUEUR_FORGES, FORGES || MARQUEUR_FORGES);
   const base = path.basename(p);
   if (!fs.existsSync(p)) { ko('oracle absent : ' + base); continue; }
   if (!p.startsWith(SKILLDIR)) { ok('oracle délégué présent : ' + base); continue; }   // ex. render_page.py (autre skill)
@@ -218,6 +225,73 @@ if (reg) for (const o of reg.oracles) {
   if (o.statut === 'ok' && !present) ko(`délégué déclaré ok mais absent de l'environnement : ${o.skill} (${o.domaine})`);
   else if (['todo', 'manuel'].includes(o.statut) && present) ko(`délégué présent mais marqué ${o.statut} — registre périmé : ${o.skill} (${o.domaine})`);
   else ok(`délégué cohérent registre↔environnement : ${o.skill} (${o.statut}${present ? ', présent' : ', absent assumé'})`);
+}
+
+// (3c) TF-1334 (26/09/2026) — PLUS AUCUN CHEMIN ABSOLU DANS UNE COMMANDE DU REGISTRE, et la
+// racine des forges sœurs se résout par `{forges}`. LE FAIT : 23 commandes sur 71 portaient
+// `c:/dev/…` — vraies sur un poste, fausses sur tout autre, et fausses EN SILENCE : un script
+// introuvable échouait au lancement, que le lanceur lisait comme un FAIL. Trois preuves, chacune
+// dans ses deux sens : le registre lui-même, le résolveur sur des arbres jetables, et le lanceur
+// sur un registre jouet (forge présente → elle juge ; forge absente → SKIP motivé).
+{
+  const RE_ABSOLU = /(?:^|=)(?:[A-Za-z]:[\\/]|\\\\|\/(?!\/))/;
+  const absolus = (oracles) => oracles.flatMap((o) => (o.cmd || [])
+    .filter((s) => typeof s === 'string' && RE_ABSOLU.test(s)).map((s) => `${o.domaine} → ${s}`));
+  if (reg) {
+    const trouves = absolus(reg.oracles);
+    trouves.length
+      ? ko(`TF-1334 : ${trouves.length} commande(s) du registre portent un chemin ABSOLU — ${trouves.slice(0, 3).join(' · ')} ; `
+        + 'passer par {forges}, {pilot}, {skillsroot} ou {skilldir}')
+      : ok(`TF-1334 : aucune des ${reg.oracles.filter((o) => o.cmd).length} commandes du registre ne porte de chemin absolu`);
+  }
+  const rouge = absolus([{ domaine: 'jouet', cmd: ['node', 'c:/dev/digit-ai-forge-x/oracles/o.mjs', '{file}'] }]);
+  const vert = absolus([{ domaine: 'jouet', cmd: ['node', '{forges}/digit-ai-forge-x/oracles/o.mjs', '{file}'] }]);
+  (rouge.length === 1 && vert.length === 0)
+    ? ok('TF-1334 : un chemin absolu est VU (sens rouge), un chemin par {forges} ne l est pas (sens vert)')
+    : ko(`TF-1334 : le contrôle des chemins absolus ne tient pas ses deux sens — rouge ${rouge.length}, vert ${vert.length}`);
+
+  const tmpF = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-forges-'));
+  try {
+    // Le résolveur : FORGE_ROOT d'abord, sinon le parent du dépôt digit-ai-forge-agents. Sens
+    // rouge : le parent d'un dépôt qui N'EST PAS la forge des outils ne définit pas la racine.
+    const racineA = path.join(tmpF, 'racine-a');
+    fs.mkdirSync(racineA);
+    const skillB = path.join(tmpF, 'racine-b', 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles');
+    const skillC = path.join(tmpF, 'racine-c', 'un-autre-depot', '.claude', 'skills', 'quality-oracles');
+    fs.mkdirSync(skillB, { recursive: true });
+    fs.mkdirSync(skillC, { recursive: true });
+    const parEnv = resolveForges(skillB, { FORGE_ROOT: racineA });
+    const parParent = resolveForges(skillB, {});
+    const horsForge = resolveForges(skillC, {});
+    (parEnv === racineA && parParent === path.join(tmpF, 'racine-b') && horsForge !== path.join(tmpF, 'racine-c'))
+      ? ok('TF-1334 : {forges} se résout par FORGE_ROOT, à défaut par le parent du dépôt digit-ai-forge-agents — et jamais par le parent d un autre dépôt (sens rouge)')
+      : ko(`TF-1334 : résolution de {forges} fausse — FORGE_ROOT → ${parEnv}, parent de la forge → ${parParent}, autre dépôt → ${horsForge}`);
+
+    // Le lanceur, sur un registre jouet : le script d'une forge PRÉSENTE juge ; celui d'une forge
+    // ABSENTE rend un SKIP motivé — avant TF-1334, le même lancement se lisait comme un FAIL.
+    const racineJ = path.join(tmpF, 'racine-jouet');
+    const oraclesJ = path.join(racineJ, 'digit-ai-forge-jouet', 'oracles');
+    fs.mkdirSync(oraclesJ, { recursive: true });
+    fs.writeFileSync(path.join(oraclesJ, 'oracle-jouet.mjs'),
+      "process.stdout.write(JSON.stringify({ oracle: 'oracle-jouet', verdict: 'PASS', findings: [] }));\n");
+    const cibleJ = path.join(tmpF, 'cible.md');
+    fs.writeFileSync(cibleJ, '# jouet\n');
+    const regJ = path.join(tmpF, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [
+      { domaine: 'forge présente', ext: ['.md'], type: 'cli', statut: 'ok',
+        cmd: ['node', '{forges}/digit-ai-forge-jouet/oracles/oracle-jouet.mjs', '{file}'] },
+      { domaine: 'forge absente', ext: ['.md'], type: 'cli', statut: 'ok',
+        cmd: ['node', '{forges}/digit-ai-forge-absente/oracles/oracle-jouet.mjs', '{file}'] },
+    ] }));
+    const rj = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), cibleJ, '--json',
+      '--registre', regJ, '--no-cache'], { encoding: 'utf8', env: { ...process.env, FORGE_ROOT: racineJ } });
+    let jr = null; try { jr = JSON.parse(rj.stdout); } catch { /* sortie illisible : dite ci-dessous */ }
+    const resultat = (d) => (jr?.resultats || []).find((x) => x.domaine === d) || {};
+    const present = resultat('forge présente'), absent = resultat('forge absente');
+    (present.verdict === 'PASS' && absent.verdict === 'SKIP' && /introuvable/.test(absent.detail || ''))
+      ? ok('TF-1334 : au lanceur, le script d une forge sœur présente JUGE (PASS), celui d une forge absente rend un SKIP motivé — jamais un FAIL muet')
+      : ko(`TF-1334 : lanceur — forge présente ${present.verdict || '?'}, forge absente ${absent.verdict || '?'} (${(absent.detail || rj.stderr || '').slice(0, 160)})`);
+  } finally { fs.rmSync(tmpF, { recursive: true, force: true }); }
 }
 
 // (4) couverture du registre (gouvernance)

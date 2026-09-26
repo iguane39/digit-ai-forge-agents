@@ -14,7 +14,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { MARQUEUR_PILOT, resolvePilot } from './lib/pilot.mjs';
+import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
+import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
@@ -73,7 +74,10 @@ const rel = f => path.relative(process.cwd(), f) || f;
 // (`oracle-ecriture.mjs`). Non résolu, le marqueur reste tel quel : le lancement échoue et
 // `runCli` le déclare, plutôt qu'un verdict inventé.
 const PILOT = resolvePilot(SKILLDIR);
-const resolveCmd = (arr, file) => arr.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace('{profil}', profilPath).replace('{file}', file));
+// TF-1334 — `{forges}` : la RACINE des forges sœurs (FORGE_ROOT, sinon le parent de la forge des
+// outils, sinon celui du pilot — lib/forges.mjs). Plus aucun chemin absolu au registre.
+const FORGES = resolveForges(SKILLDIR);
+const resolveCmd = (arr, file) => arr.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace(MARQUEUR_FORGES, FORGES || MARQUEUR_FORGES).replace('{profil}', profilPath).replace('{file}', file));
 
 // ---- C2 : magic bytes — le type réel ne doit pas contredire l'extension déclarée ---------------
 const MAGIC = [[Buffer.from('504b0304', 'hex'), 'zip', ['.zip', '.pptx', '.potx', '.docx', '.xlsx', '.jar', '.epub', '.odt', '.ods', '.odp']],
@@ -194,7 +198,7 @@ const fileHash = new Map();
 const hashOf = f => { if (!fileHash.has(f)) { try { fileHash.set(f, sha(fs.readFileSync(f))); } catch { fileHash.set(f, 'ERR'); } } return fileHash.get(f); };
 function cacheKey(o, file) {
   const script = (o.cmd || []).find(x => /\.(mjs|py)$/.test(x)) || '';
-  const sp = script.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT);
+  const sp = script.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT).replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace(MARQUEUR_FORGES, FORGES || MARQUEUR_FORGES);
   const scriptH = fs.existsSync(sp) ? sha(fs.readFileSync(sp)) : 'noscript';
   return [o.domaine, hashOf(file), scriptH, profilHash, NIVEAU].join('|');   // §6 — un PASS de niveau inférieur n'est jamais recyclé à un niveau supérieur
 }
@@ -203,6 +207,19 @@ function cacheKey(o, file) {
 function runCli(o, file) {
   return new Promise(res => {
     const parts = resolveCmd(o.cmd, file);
+    // TF-1334 — UN ORACLE D'UN AUTRE DÉPÔT (forge sœur, pilot) ABSENT DE CE POSTE EST UN SKIP
+    // MOTIVÉ. Un marqueur non résolu, ou un script résolu qui n'existe pas, faisait échouer le
+    // lancement, et un lancement en échec se lisait comme un FAIL — sans un mot sur le dépôt
+    // manquant. Les scripts du skill (`{skilldir}`, `{skillsroot}`) gardent leur comportement.
+    const iScript = o.cmd.findIndex(x => typeof x === 'string' && /\.(mjs|py)$/.test(x));
+    const brut = iScript >= 0 ? o.cmd[iScript] : '';
+    if (brut.includes(MARQUEUR_FORGES) || brut.includes(MARQUEUR_PILOT)) {
+      const script = parts[iScript];
+      const motif = script.includes(MARQUEUR_FORGES) ? motifForgesAbsentes(SKILLDIR)
+        : script.includes(MARQUEUR_PILOT) ? motifPilotAbsent(SKILLDIR)
+        : !fs.existsSync(script) ? `script introuvable sur ce poste : ${script} — le dépôt qui le porte n'est pas cloné sous cette racine` : null;
+      if (motif) { res({ verdict: 'SKIP', detail: motif, nWarn: 0 }); return; }
+    }
     execFile(parts[0], parts.slice(1), { encoding: 'utf8', timeout: o.timeout_ms || 120000, maxBuffer: 16 * 1024 * 1024 }, (error, stdout) => {
       let obj = null; const out = (stdout || '').trim();
       try { obj = JSON.parse(out); } catch { const i = out.indexOf('{'); if (i >= 0) { try { obj = JSON.parse(out.slice(i)); } catch {} } }
