@@ -1833,15 +1833,56 @@ MESURE_LARGE_JS = r"""
 #
 # Les selecteurs sont ceux du socle (references/composant-filtres-tableau.md) : `.tf-btn`
 # ouvre un panneau, `.tf-none` decoche tout, `.tf-search` filtre la liste de valeurs.
+#
+# TF-1341 (23/09/2026) — « TOUT DEPLIE » N'OUVRAIT PAS LES LIGNES DU COMPOSANT 10.
+# LE FAIT MESURE : `render_page.py <vue> --widths 1280 --matrice-etats` rendait PASS et
+# `"tout-deplie": {"applique": true, "motif": "0 <details> ouvert(s), premier panneau deplie"}`
+# alors que la vue portait 11 lignes `tr[data-detail]` restees FERMEES. L'etat ouvrait les
+# `<details>` et le premier panneau, jamais les lignes depliables de `table-detail.js` (regle
+# L17) : ce qu'une ligne fermee cache n'etait mesure par aucun etat, et l'etat se disait joue.
+# `--etats-ouverts` portait le meme trou dans sa propre copie du script. Trois corrections :
+#   1. les lignes s'ouvrent par LEUR bouton (`button[aria-controls]` dont la cible porte
+#      `data-detail`), comme un lecteur — seules les fermees : un clic sur une ouverte la ferme ;
+#   2. le motif dit combien de lignes ont ete ouvertes, sur combien ;
+#   3. chaque ouverture se CONSTATE apres coup au lieu d'etre deduite du clic : un etat qui
+#      n'ouvre rien de ce qu'il nomme est NON JOUE, et un declencheur de panneau qui ne deplie
+#      rien ne vaut plus « premier panneau deplie ».
+# Le panneau s'ouvre en DERNIER : un clic hors de son tableau le referme (`table-filters.js`).
+# Un seul script sert l'etat de la matrice ET `--etats-ouverts` : deux copies avaient le trou.
+TOUT_DEPLIER_JS = """() => {
+    const d = [...document.querySelectorAll('details')];
+    d.forEach((x) => { x.open = true; });
+    const details = d.filter((x) => x.open).length;
+    const cible = (b) => document.getElementById(b.getAttribute('aria-controls') || '');
+    const vue = (el) => !el.hidden && getComputedStyle(el).display !== 'none';
+    const lignes = [...document.querySelectorAll('tr[data-detail]')];
+    [...document.querySelectorAll('button[aria-controls]')]
+      .filter((x) => { const c = cible(x); return c && c.hasAttribute('data-detail'); })
+      .forEach((x) => { if (x.getAttribute('aria-expanded') !== 'true') x.click(); });
+    const ouvertes = lignes.filter(vue).length;
+    const b = document.querySelector('.tf-btn, .dd-btn');
+    let panneau = false;
+    if (b) {
+      b.click();
+      const p = cible(b);
+      panneau = b.getAttribute('aria-expanded') === 'true' || (!!p && vue(p))
+        || [...document.querySelectorAll('.tf-panel')].some(vue);
+    }
+    const lignes_detail = { ouvertes, total: lignes.length };
+    const dit = [`${details} <details> ouvert(s)`];
+    if (b) dit.push(panneau ? 'premier panneau deplie' : 'premier declencheur de panneau actionne SANS effet');
+    if (lignes.length) dit.push(`${ouvertes}/${lignes.length} ligne(s) de detail (tr[data-detail]) ouverte(s)`
+      + (ouvertes < lignes.length ? ` — ${lignes.length - ouvertes} restee(s) FERMEE(S), aucun bouton ne les ouvre` : ''));
+    if (!details && !panneau && !ouvertes) {
+      return { applique: false, lignes_detail, motif: (d.length || b || lignes.length)
+        ? `l etat n ouvre rien de ce qu il nomme : ${dit.join(', ')}`
+        : 'aucun <details>, ni panneau de filtre, ni ligne de detail (tr[data-detail]) dans la page' };
+    }
+    return { applique: true, lignes_detail, motif: dit.join(', ') };
+}"""
+
 ETATS_MATRICE = [
-    ("tout-deplie", """() => {
-        const d = [...document.querySelectorAll('details')];
-        d.forEach((x) => { x.open = true; });
-        const b = document.querySelector('.tf-btn, .dd-btn');
-        if (b) b.click();
-        if (!d.length && !b) return { applique: false, motif: 'aucun <details> ni panneau de filtre dans la page' };
-        return { applique: true, motif: `${d.length} <details> ouvert(s)${b ? ', premier panneau deplie' : ''}` };
-    }"""),
+    ("tout-deplie", TOUT_DEPLIER_JS),
     ("filtre-premiere-colonne", """() => {
         const b = [...document.querySelectorAll('.tf-btn')];
         if (!b.length) return { applique: false, motif: 'aucun declencheur de filtre (.tf-btn) — page sans tableau filtrable' };
@@ -2629,15 +2670,24 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             # (un panneau non stylé, illisible, est sorti « tous oracles verts »). Le flag
             # ouvre tout <details>, le premier panneau de filtre/dropdown, et remplit le
             # premier champ de recherche — puis mesure et capture CET état.
+            # TF-1341 — le MÊME script que l'état « tout-deplie » : les lignes `tr[data-detail]`
+            # s'ouvrent aussi, ce qui a été ouvert se compte, et un flag qui n'ouvre rien est
+            # déclaré NON JOUÉ au lieu de mesurer en silence la page fermée.
+            etat_ouvert = None
             if etats_ouverts:
-                page.evaluate("""() => {
-                  document.querySelectorAll('details').forEach(d => d.open = true);
-                  const btn = document.querySelector('.tf-btn, .dd-btn');
-                  if (btn) btn.click();
-                }""")
+                try:
+                    etat_ouvert = page.evaluate(TOUT_DEPLIER_JS)
+                except Exception as erreur:  # noqa: BLE001
+                    etat_ouvert = {"applique": False,
+                                   "motif": f"le declencheur a leve {type(erreur).__name__}"}
                 champ = page.query_selector("input[type='search'], .tf-search")
                 if champ:
                     champ.fill("a")
+                    etat_ouvert["applique"] = True
+                    etat_ouvert["motif"] = etat_ouvert.get("motif", "") + ", premier champ de recherche rempli"
+                if not etat_ouvert.get("applique"):
+                    report["non_juge"].append(
+                        f"etats ouverts NON JOUES a {width} px : {etat_ouvert.get('motif', '')}")
                 page.wait_for_timeout(250)
 
             issues = page.evaluate(js)
@@ -2752,6 +2802,8 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                 "png": str(png) if capture["faite"] else None,
                 "capture": capture, "issues": issues, "blocking": blocking,
             }
+            if etat_ouvert is not None:  # TF-1341 — ce que --etats-ouverts a ouvert, compté
+                report["breakpoints"][width]["etats_ouverts"] = etat_ouvert
 
             # ---- TF-0493 · la matrice d'etats -------------------------------------------
             # Chaque etat REPART d'une page neuve : un etat qui heriterait du precedent ne
@@ -2769,8 +2821,10 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                     except Exception as erreur:  # noqa: BLE001
                         applique = {"applique": False,
                                     "motif": f"le declencheur a leve {type(erreur).__name__}"}
+                    # TF-1341 — les lignes de detail ouvertes par l'etat, comptees, joue ou non.
+                    compte = {"lignes_detail": applique["lignes_detail"]} if "lignes_detail" in applique else {}
                     if not applique.get("applique"):
-                        etats[nom] = {"applique": False, "motif": applique.get("motif", "")}
+                        etats[nom] = {"applique": False, "motif": applique.get("motif", ""), **compte}
                         report["non_juge"].append(
                             f"etat « {nom} » NON JOUE a {width} px : {applique.get('motif', '')}")
                         continue
@@ -2806,7 +2860,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                     blocking_total += bloq_e
                     etats[nom] = {"applique": True, "motif": applique.get("motif", ""),
                                   "png": str(png_e) if cap_e["faite"] else None,
-                                  "capture": cap_e, "issues": iss_e, "blocking": bloq_e}
+                                  "capture": cap_e, "issues": iss_e, "blocking": bloq_e, **compte}
                 report["breakpoints"][width]["etats"] = etats
 
             # ---- TF-1093 · les filtres CROISES, par paires ------------------------------
@@ -2986,6 +3040,10 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                       + (f" ; {reste} écran(s) au-delà de la borne NON capturé(s)" if reste else ""))
             if not data.get("png"):
                 print(f"  [capture] {data['capture'].get('motif', 'capture impossible')}")
+            # TF-1341 — ce que --etats-ouverts a ouvert se lit, et un flag qui n'a rien ouvert aussi.
+            eo = data.get("etats_ouverts")
+            if eo:
+                print(f"  [états ouverts] {eo.get('motif', '')}" + ("" if eo.get("applique") else " — NON JOUÉS"))
             for key, title, sev in FAMILLES:
                 kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "à vérifier visuellement")
                 for item in iss.get(key, []) or []:
@@ -3195,9 +3253,11 @@ def main() -> None:
                          "temporaire si la page vit dans un arbre de LIVRAISON — "
                          "output/, old/, dist/… : un livrable ne reçoit jamais de captures)")
     ap.add_argument("--etats-ouverts", action="store_true", dest="etats_ouverts",
-                    help="TF-0176 : ouvre details + premier panneau de filtre + remplit la "
-                         "première recherche AVANT mesures et captures — l'état fermé cache "
-                         "les défauts des composants interactifs")
+                    help="TF-0176 : ouvre details + lignes de détail tr[data-detail] (TF-1341) + "
+                         "premier panneau de filtre + remplit la première recherche AVANT "
+                         "mesures et captures — l'état fermé cache les défauts des composants "
+                         "interactifs ; ce qui a été ouvert se compte, et un flag qui n'ouvre "
+                         "rien est déclaré NON JOUÉ")
     ap.add_argument("--familles", action="store_true",
                     help="publie la table des familles de constats et leur POIDS, en JSON : "
                          "un consommateur la LIT au lieu d'en tenir une copie (source unique, "

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — matrice d etats — lignes depliables que rien n ouvre — 20260926a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+.td-btn,.tf-btn{border:0;background:none;cursor:pointer;font:inherit;color:var(--muted)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff} tr[data-detail][hidden]{display:table-row}}
+</style></head>
+<!--
+  TF-1341, sens ROUGE — une vue dont les depliables ne s ouvrent pas : trois lignes du
+  composant 10 dont le composant n est PAS charge, et un declencheur de filtre sans panneau.
+  Avant TF-1341, « tout-deplie » cliquait le declencheur et se declarait JOUE avec le motif exact
+  du 23/09 — « 0 <details> ouvert(s), premier panneau deplie » — sans que rien se soit ouvert.
+
+  Attendu : « tout-deplie » NON JOUE, et son motif compte les 3 lignes restees fermees ;
+  `--etats-ouverts` NON JOUE lui aussi, declare au non_juge.
+-->
+<body><main class="wrap">
+<h1>Controles du lot</h1>
+<table id="t"><thead><tr><th>Id <button type="button" class="tf-btn" aria-expanded="false">›</button></th><th>Etat</th><th>Motif</th></tr></thead>
+<tbody>
+  <tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-1">›</button> C1</td><td>ok</td><td>aucun</td></tr>
+  <tr data-detail id="det-1" hidden><td colspan="3">Controle passe a 1 280 px.</td></tr>
+  <tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-2">›</button> C2</td><td>ko</td><td>delai</td></tr>
+  <tr data-detail id="det-2" hidden><td colspan="3">Delai de 3,2 s mesure le 23/09.</td></tr>
+  <tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-3">›</button> C3</td><td>ok</td><td>aucun</td></tr>
+  <tr data-detail id="det-3" hidden><td colspan="3">Controle passe a 390 px.</td></tr>
+</tbody></table>
+</main>
+</body></html>

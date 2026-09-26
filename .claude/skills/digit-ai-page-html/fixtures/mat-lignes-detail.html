@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — matrice d etats — lignes depliables ouvertes par « tout deplie » — 20260926a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+.td-btn{border:0;background:none;cursor:pointer;font:inherit;color:var(--muted)}
+.trace{display:block;width:2400px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff} tr[data-detail][hidden]{display:table-row}}
+</style></head>
+<!--
+  TF-1341, sens VERT — la configuration mesuree le 23/09 : une vue qui porte des lignes
+  depliables du composant 10 (`table-detail.js`, regle L17) ET un autre depliable. L etat
+  « tout-deplie » ouvrait le `<details>`, se declarait donc JOUE, et laissait les lignes fermees :
+  le defaut cache dans une ligne n etait mesure par personne.
+
+  Le defaut cache ici : la trace de la ligne C2 est un bloc de 2 400 px, qui fait deborder la page
+  des que la ligne est ouverte. Attendu :
+    · rendu par defaut (lignes fermees) : AUCUN constat v1_overflow — le defaut est invisible ;
+    · etat « tout-deplie » : JOUE, 3/3 lignes de detail ouvertes, et au moins 1 constat
+      v1_overflow — l etat mesure enfin ce que les lignes cachent ;
+    · `--etats-ouverts` : les memes 3 lignes ouvertes, le meme debordement mesure.
+-->
+<body><main class="wrap">
+<h1>Controles du lot</h1>
+<details><summary>Methode</summary><p>Trois controles, rejoues le 23/09 a trois largeurs.</p></details>
+<table id="t"><thead><tr><th>Id</th><th>Etat</th><th>Motif</th></tr></thead>
+<tbody>
+  <tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-1">›</button> C1</td><td>ok</td><td>aucun</td></tr>
+  <tr data-detail id="det-1" hidden><td colspan="3">Controle passe a 1 280 px.</td></tr>
+  <tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-2">›</button> C2</td><td>ko</td><td>delai</td></tr>
+  <tr data-detail id="det-2" hidden><td colspan="3"><span class="trace">Trace brute du controle C2 : delai de 3,2 s mesure le 23/09 sur la vue de synthese.</span></td></tr>
+  <tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-3">›</button> C3</td><td>ok</td><td>aucun</td></tr>
+  <tr data-detail id="det-3" hidden><td colspan="3">Controle passe a 390 px.</td></tr>
+</tbody></table>
+</main>
+<script>
+window.addEventListener('load', function () { window.DigitAITableDetail.initAll(); });
+</script>
+<!-- COMPOSANT-EMBARQUE:DEBUT table-detail.js — copie du socle digit-ai-page-html/assets/table-detail.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="table-detail.js" data-empreinte="sha256:01c776363c9e69b148089ba2a20f1fa9b83b3498fb76281f17be0a54c0d97a5d">
+/* Digit-AI — Ligne de tableau depliable (TF-0432, lot Produit-05 20260820b, 21/08).
+   La convention data-detail existait cote CONSOMMATEUR (table-filters exclut tr[data-detail]
+   du comptage et la fait voyager avec sa ligne mere) ; ce composant la PRODUIT.
+   Contrat de marquage :
+     <tr><td><button type="button" class="td-btn" aria-expanded="false" aria-controls="det-1">›</button> Libelle</td>…</tr>
+     <tr data-detail id="det-1" hidden><td colspan="N">… detail …</td></tr>
+   Comportement : clic = bascule aria-expanded + hidden ; a l'impression TOUTES les lignes de
+   detail sont visibles (regle @media print du livrable — L17 la juge) ; un #hash qui vise un
+   element dans une ligne de detail fermee l'ouvre ; le filtrage (table-filters) masque la ligne
+   de detail avec sa ligne mere. Le chevron est U+203A, present dans toute pile de repli (TF-0435). */
+(function (root) {
+  'use strict';
+
+  function detailDe(btn) { return document.getElementById(btn.getAttribute('aria-controls') || ''); }
+
+  function basculer(btn, ouvrir) {
+    var det = detailDe(btn);
+    if (!det) return;
+    var etat = typeof ouvrir === 'boolean' ? ouvrir : btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', etat ? 'true' : 'false');
+    det.hidden = !etat;
+    var mere = btn.closest ? btn.closest('tr') : null;
+    if (mere) mere.classList.toggle('td-ouverte', etat);
+  }
+
+  function init(table) {
+    if (!table || table.getAttribute('data-td-ready') === '1') return null;
+    var boutons = Array.prototype.slice.call(table.querySelectorAll('button[aria-controls]')).filter(function (b) {
+      var d = detailDe(b);
+      return d && d.hasAttribute('data-detail');
+    });
+    if (!boutons.length) return null;
+    boutons.forEach(function (b) {
+      if (!b.classList.contains('td-btn')) b.classList.add('td-btn');
+      if (!b.textContent.trim()) b.textContent = '›';
+      b.addEventListener('click', function () { basculer(b); });
+      var det = detailDe(b);
+      det.hidden = b.getAttribute('aria-expanded') !== 'true';
+    });
+
+    function ouvrirDepuisHash() {
+      var h = location.hash ? location.hash.slice(1) : '';
+      if (!h) return;
+      var cible = document.getElementById(h);
+      if (!cible) return;
+      var det = cible.closest ? cible.closest('tr[data-detail]') : null;
+      if (!det || !table.contains(det)) return;
+      var b = boutons.filter(function (x) { return detailDe(x) === det; })[0];
+      if (b) { basculer(b, true); if (cible.scrollIntoView) cible.scrollIntoView(); }
+    }
+    window.addEventListener('hashchange', ouvrirDepuisHash);
+    ouvrirDepuisHash();
+
+    table.setAttribute('data-td-ready', '1');
+    return { ouvrirTout: function () { boutons.forEach(function (b) { basculer(b, true); }); },
+             fermerTout: function () { boutons.forEach(function (b) { basculer(b, false); }); } };
+  }
+
+  function initAll(racine) {
+    var scope = racine || document;
+    return Array.prototype.map.call(scope.querySelectorAll('table'), init).filter(Boolean);
+  }
+
+  root.DigitAITableDetail = { init: init, initAll: initAll };
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN table-detail.js -->
+</body></html>

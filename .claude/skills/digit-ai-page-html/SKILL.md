@@ -483,7 +483,10 @@ Ce que la matrice ajoute au-delà de V1/V2/V4 : **un état vide se déclare** (l
 ligne visible et pas un mot pour le dire → **bloquant** `etat_muet` ; le socle prescrit déjà la
 forme du message (`.tf-count` en zone vivante avec la classe `zero`, ou `.tf-vide-msg`). Et un état
 qui ne trouve pas son déclencheur est déclaré **NON JOUÉ**, jamais vert : un composant absent est
-une réponse, un état muet serait un mensonge. La preuve qui justifie d'ouvrir **les deux**
+une réponse, un état muet serait un mensonge. « Tout déplié » (et `--etats-ouverts`, même script)
+ouvre aussi les **lignes de détail** `tr[data-detail]` du composant 10 par leur bouton, **compte**
+ce qu'il a ouvert (« 3/3 ligne(s) de détail ») et, s'il n'ouvre rien de ce qu'il nomme, se déclare
+NON JOUÉ (TF-1341). La preuve qui justifie d'ouvrir **les deux**
 colonnes : sur la même page, le panneau rend 0 constat sur la première et 2 sur la dernière — un
 panneau ne déborde pas du même côté à droite qu'à gauche.
 

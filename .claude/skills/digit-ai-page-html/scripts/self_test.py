@@ -1741,6 +1741,107 @@ def run_matrice_etats():
     return out
 
 
+def run_matrice_lignes_detail():
+    """TF-1341 (23/09/2026) — « TOUT DEPLIE » OUVRE LES LIGNES DU COMPOSANT 10, ET LE DIT.
+
+    LE FAIT MESURE. `render_page.py <vue> --widths 1280 --matrice-etats` rendait PASS et un etat
+    « tout-deplie » JOUE, motif « 0 <details> ouvert(s), premier panneau deplie », alors que la
+    vue portait 11 lignes `tr[data-detail]` restees fermees. `--etats-ouverts` avait le meme trou.
+
+    DOUBLE SENS, sur deux fixtures :
+      - VERT (`mat-lignes-detail.html`) : un defaut cache dans une ligne depliable, une trace de
+        2 400 px. Rendu ferme : 0 constat V1, c'est le temoin. Etat « tout-deplie » : joue, 3/3
+        lignes ouvertes, et le debordement MESURE ; `--etats-ouverts` : les memes lignes, le meme
+        debordement. Avant TF-1341, l'etat se disait joue (« 1 <details> ouvert(s) ») et ne
+        voyait rien ;
+      - ROUGE (`mat-lignes-detail-inertes.html`) : des lignes que rien n'ouvre et un declencheur
+        de panneau inerte. L'etat est NON JOUE, son motif compte les lignes restees fermees, et
+        `--etats-ouverts` est declare NON JOUE au non_juge. Avant : le motif du 23/09, mot pour mot.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    vert, rouge = "mat-lignes-detail.html", "mat-lignes-detail-inertes.html"
+    out = []
+    absentes = [n for n in (vert, rouge) if not (FIXTURES / n).exists()]
+    for n in absentes:
+        out.append({"fixture": n, "verdict": "ABSENTE", "attendu": "fixture présente",
+                    "obtenu": "absente", "regle": "TF-1341 tout-deplie", "detail": ""})
+    if absentes:
+        return out
+    captures = tempfile.mkdtemp(prefix="self-test-lignes-detail-")
+
+    def juger(nom, drapeau):
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(FIXTURES / nom), "--widths",
+                            "1280", drapeau, "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return json.loads(r.stdout)["breakpoints"]["1280"], json.loads(r.stdout), ""
+        except Exception:
+            return None, None, (r.stderr or r.stdout or "")[:160]
+
+    def cas(fixture, tenu, attendu, obtenu, detail):
+        out.append({"fixture": fixture, "verdict": "OK" if tenu else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1341", "detail": "" if tenu else detail})
+
+    def v1(issues):
+        return len((issues or {}).get("v1_overflow", []))
+
+    toutes = {"ouvertes": 3, "total": 3}
+    b, _, err = juger(vert, "--matrice-etats")
+    if b is None:
+        cas(f"{vert} · matrice", False, "matrice lisible", "illisible", err)
+    else:
+        e = (b.get("etats") or {}).get("tout-deplie") or {}
+        cas(f"{vert} · rendu fermé (témoin)", v1(b["issues"]) == 0,
+            "0 v1_overflow", v1(b["issues"]),
+            "le rendu fermé voit déjà le débordement : la démonstration tombe")
+        cas(f"{vert} · tout-deplie ouvre et compte les lignes",
+            bool(e.get("applique")) and e.get("lignes_detail") == toutes
+            and "3/3 ligne" in (e.get("motif") or ""),
+            "joué, 3/3 lignes", f"{e.get('applique')} {e.get('lignes_detail')}",
+            f"l'état n'ouvre pas les lignes du composant 10, ou ne le dit pas : {e.get('motif', '')[:120]}")
+        cas(f"{vert} · tout-deplie mesure la ligne ouverte", v1(e.get("issues")) >= 1,
+            ">=1 v1_overflow", v1(e.get("issues")),
+            "le débordement caché dans la ligne C2 n'est pas mesuré dans l'état déplié")
+    b, _, err = juger(vert, "--etats-ouverts")
+    if b is None:
+        cas(f"{vert} · --etats-ouverts", False, "rendu lisible", "illisible", err)
+    else:
+        eo = b.get("etats_ouverts") or {}
+        cas(f"{vert} · --etats-ouverts ouvre les lignes",
+            bool(eo.get("applique")) and eo.get("lignes_detail") == toutes and v1(b["issues"]) >= 1,
+            "3/3 lignes, v1 mesuré", f"{eo.get('lignes_detail')} v1={v1(b['issues'])}",
+            "--etats-ouverts garde le trou de TF-1341 : les lignes restent fermées")
+    b, j, err = juger(rouge, "--matrice-etats")
+    if b is None:
+        cas(f"{rouge} · matrice", False, "matrice lisible", "illisible", err)
+    else:
+        e = (b.get("etats") or {}).get("tout-deplie") or {}
+        declare = any("tout-deplie" in x and "NON JOUE" in x for x in j.get("non_juge", []))
+        cas(f"{rouge} · tout-deplie NON JOUÉ",
+            not e.get("applique") and e.get("lignes_detail") == {"ouvertes": 0, "total": 3}
+            and "0/3 ligne" in (e.get("motif") or "") and declare,
+            "NON JOUÉ, 0/3 dit", f"{e.get('applique')} {e.get('lignes_detail')}",
+            f"un état qui n'ouvre rien se dit encore joué, ou tait les lignes : {e.get('motif', '')[:120]}")
+    b, j, err = juger(rouge, "--etats-ouverts")
+    if b is None:
+        cas(f"{rouge} · --etats-ouverts", False, "rendu lisible", "illisible", err)
+    else:
+        eo = b.get("etats_ouverts") or {}
+        declare = any(x.startswith("etats ouverts NON JOUES") and "0/3 ligne" in x
+                      for x in j.get("non_juge", []))
+        cas(f"{rouge} · --etats-ouverts NON JOUÉ", not eo.get("applique") and declare,
+            "NON JOUÉ au non_juge", f"{eo.get('applique')} déclaré={declare}",
+            "--etats-ouverts mesure la page fermée sans dire qu'il n'a rien ouvert")
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_mesure_prete():
     """TF-1093 (20/09/2026) — LA MESURE SE PUBLIE PRETE, JAMAIS EN GABARIT.
 
@@ -3556,6 +3657,11 @@ def main():
     matrice = run_matrice_etats()
     if matrice:
         res += matrice
+    # TF-1341 — « tout-deplie » et --etats-ouverts ouvrent les lignes du composant 10, les
+    # comptent, et un etat qui n'ouvre rien de ce qu'il nomme est declare NON JOUE.
+    lignes_detail = run_matrice_lignes_detail()
+    if lignes_detail:
+        res += lignes_detail
     # TF-1093 — l'INSTANCE SERVIE et les FILTRES CROISES : un defaut qui n'existe que servi
     # (feuille en chemin absolu) et une intersection vide qu'aucun etat unitaire ne montre.
     # Le banc sert lui-meme ses fixtures, sur un port libre, et ferme son serveur en finally.
