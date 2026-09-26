@@ -294,6 +294,44 @@ if (reg) for (const o of reg.oracles) {
   } finally { fs.rmSync(tmpF, { recursive: true, force: true }); }
 }
 
+// (3d) TF-1326 (23/09/2026) — LE LANCEUR RÉSOUT L'INTERPRÉTEUR PYTHON, et un interpréteur
+// introuvable rend un SKIP MOTIVÉ. Le registre écrit `python3` ; sous Windows ce nom peut être
+// l'alias du Microsoft Store, qui répond « Python est introuvable » : le domaine « Régression
+// visuelle » rendait alors un FAIL sans explication. La recette résolvait déjà l'interpréteur
+// (lib/python.mjs), le lanceur non. Deux sens, sur un registre jouet dont la commande est
+// `python3` LITTÉRAL : un PATH sans aucun Python rend un SKIP qui NOMME l'interpréteur manquant
+// (avant : SKIP « oracle non exécutable », sans un mot sur Python) ; un poste qui a Python juge.
+{
+  const tmpP = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-python-'));
+  try {
+    const script = path.join(tmpP, 'oracle-jouet.py');
+    fs.writeFileSync(script, 'import json\nprint(json.dumps({"oracle": "oracle-jouet", "verdict": "PASS", "findings": []}))\n');
+    const cibleP = path.join(tmpP, 'cible.md');
+    fs.writeFileSync(cibleP, '# jouet\n');
+    const regP = path.join(tmpP, 'registre-jouet.json');
+    fs.writeFileSync(regP, JSON.stringify({ version: 'jouet', oracles: [
+      { domaine: 'python jouet', ext: ['.md'], type: 'cli', statut: 'ok', cmd: ['python3', script, '{file}'] },
+    ] }));
+    const lancer = (env) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), cibleP, '--json',
+        '--registre', regP, '--no-cache'], { encoding: 'utf8', env });
+      try { return (JSON.parse(r.stdout).resultats || [])[0] || {}; } catch { return { verdict: '?', detail: (r.stderr || '').slice(0, 160) }; }
+    };
+    const clePath = Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH') || 'PATH';
+    const sansPython = lancer({ ...process.env, [clePath]: path.dirname(process.execPath) });
+    (sansPython.verdict === 'SKIP' && /interpréteur Python introuvable/.test(sansPython.detail || ''))
+      ? ok('TF-1326 : PATH sans aucun Python — le domaine rend un SKIP qui NOMME l interpréteur manquant (sens rouge ; avant : « oracle non exécutable »)')
+      : ko(`TF-1326 : PATH sans Python → ${sansPython.verdict} « ${(sansPython.detail || '').slice(0, 120)} » — attendu un SKIP motivé`);
+    if (!resolvePython()) ok('TF-1326 : sens vert NON JOUÉ — aucun interpréteur Python sur ce poste : le jugement par l interpréteur résolu ne peut pas se montrer ici, et c est dit');
+    else {
+      const avecPython = lancer(process.env);
+      avecPython.verdict === 'PASS'
+        ? ok('TF-1326 : une commande `python3` LITTÉRALE est jouée par l interpréteur RÉSOLU — le domaine juge (PASS)')
+        : ko(`TF-1326 : commande python3 avec Python présent → ${avecPython.verdict} « ${(avecPython.detail || '').slice(0, 120)} »`);
+    }
+  } finally { fs.rmSync(tmpP, { recursive: true, force: true }); }
+}
+
 // (4) couverture du registre (gouvernance)
 if (reg) {
   const by = {}; reg.oracles.forEach(o => by[o.statut] = (by[o.statut] || 0) + 1);

@@ -16,6 +16,7 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
+import { resolvePython } from './lib/python.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
@@ -219,6 +220,21 @@ function runCli(o, file) {
         : script.includes(MARQUEUR_PILOT) ? motifPilotAbsent(SKILLDIR)
         : !fs.existsSync(script) ? `script introuvable sur ce poste : ${script} — le dépôt qui le porte n'est pas cloné sous cette racine` : null;
       if (motif) { res({ verdict: 'SKIP', detail: motif, nWarn: 0 }); return; }
+    }
+    // TF-1326 (23/09/2026) — L'INTERPRÉTEUR PYTHON SE RÉSOUT, IL NE SE DEVINE PAS. Le registre écrit
+    // `python3` ou `python` ; sous Windows, `python3` peut être l'alias du Microsoft Store, qui répond
+    // « Python est introuvable » et sort en erreur : le domaine « Régression visuelle » rendait alors
+    // un FAIL sans explication. Le lanceur résout désormais l'interpréteur comme la recette
+    // (lib/python.mjs : seul compte un candidat qui EXÉCUTE `import sys`) ; introuvable → SKIP motivé.
+    if (/^(python3?|py)$/i.test(parts[0])) {
+      const py = resolvePython();
+      if (!py) {
+        res({ verdict: 'SKIP', nWarn: 0, detail: 'interpréteur Python introuvable sur ce poste — essayés : '
+          + (process.platform === 'win32' ? 'py -3, python, python3' : 'python3, python')
+          + ", chacun devant exécuter « import sys » (un alias du Microsoft Store n'en est pas un) : installer Python 3, ou le mettre sur le PATH" });
+        return;
+      }
+      parts.splice(0, 1, ...py);
     }
     execFile(parts[0], parts.slice(1), { encoding: 'utf8', timeout: o.timeout_ms || 120000, maxBuffer: 16 * 1024 * 1024 }, (error, stdout) => {
       let obj = null; const out = (stdout || '').trim();
