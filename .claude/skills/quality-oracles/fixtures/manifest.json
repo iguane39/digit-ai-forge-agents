@@ -1326,6 +1326,53 @@
     "A4 —"
    ],
    "provenance": "TF-1185, lot Produit-62 - RETOURS - 20260917e (RF-26) — la fixture rouge est la forme qu avait l analyse du 17/09/2026 AVANT la regle : deux premisses d acces classees inverifiables sans qu aucun des quatre appels REST en lecture seule ait ete emis."
+  },
+  {
+   "nom": "promesses-annonces",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-promesses.mjs",
+    "{fixture}",
+    "--referentiel",
+    "{skilldir}/fixtures/promesses-referentiel.json"
+   ],
+   "red": "promesses-annonces-red.csv",
+   "green": "promesses-annonces-green.csv",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "équipement ABSENT",
+    "annonce 10 min",
+    "annonce 8 personnes"
+   ],
+   "provenance": "TF-1365, lot Produit-02 - RETOURS - 20260922a (RT-97) — deux mots-cles « spa » achetes alors que le domaine n a pas de spa, et la veille deux mots-cles « piscine privee » (la piscine est partagee) et une distance de 10 minutes pour 15 : la fixture rouge reprend ces trois formes sur des faits inventes."
+  },
+  {
+   "nom": "promesses-page",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-promesses.mjs",
+    "{fixture}",
+    "--referentiel",
+    "{skilldir}/fixtures/promesses-referentiel.json"
+   ],
+   "red": "promesses-page-red.html",
+   "green": "promesses-page-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "équipement ABSENT",
+    "annonce 10 min"
+   ],
+   "provenance": "TF-1365, lot Produit-02 - RETOURS - 20260922a (RT-97) — deux mots-cles « spa » achetes alors que le domaine n a pas de spa, et la veille deux mots-cles « piscine privee » (la piscine est partagee) et une distance de 10 minutes pour 15 : la fixture rouge reprend ces trois formes sur des faits inventes."
   }
  ]
 }

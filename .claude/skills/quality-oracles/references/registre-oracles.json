@@ -1,5 +1,5 @@
 {
- "version": "2.27.0",
+ "version": "2.28.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {forges}=racine des forges soeurs (TF-1334, 26/09/2026 : FORGE_ROOT, sinon le parent du depot digit-ai-forge-agents, sinon — copie installee — le parent du pilot resolu ; racine introuvable ou script absent de ce poste → SKIP motive, jamais un FAIL muet — scripts/lib/forges.mjs ; plus aucun chemin absolu dans une commande, controle a double sens dans scripts/self-test.mjs), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -1760,6 +1760,34 @@
     "pilot introuvable sur ce poste : SKIP motivé par le lanceur, jamais un FAIL muet"
    ],
    "note": "TF-1318 (decision humaine D-17 (a) du 26/09/2026) et TF-1334 : le verbe des sondes du pilot (etape B4 de la chaine « audite les traductions »), indexe par chemin resolu ({pilot}). Joue SANS --rejouer par le lanceur : il ne juge alors que l age (S-3, S-4), une soustraction de dates, et n execute rien. Declencheur : un fichier GLOSSAIRE.md dans la cible."
+  },
+  {
+   "domaine": "Promesses d'un texte dérivé des faits du produit : équipements absents, distances, capacités",
+   "ext": [
+    ".csv",
+    ".tsv"
+   ],
+   "trigger_files": [
+    "promesses.json"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-promesses.mjs",
+    "{file}"
+   ],
+   "checklist": "P1 un terme d un equipement ABSENT du referentiel apparait comme promesse (mot entier, sans casse ni accents ; mention niee et ligne d EXCLUSION d un fichier d annonces ecartees, et comptees) · P2 une distance annoncee plus COURTE que la distance declaree vers le meme lieu · P3 une capacite annoncee plus GRANDE que le maximum declare · referentiel promesses.json (format quality-oracles/promesses@1) declare par le produit, cherche au-dessus de la cible ; absent → SKIP motive",
+   "statut": "ok",
+   "non_juge": [
+    "la VÉRITÉ du référentiel : l oracle confronte les textes aux faits DÉCLARÉS, il ne les vérifie pas sur le terrain",
+    "une promesse formulée autrement que par les termes déclarés (synonyme, périphrase, image)",
+    "une promesse d un équipement PRÉSENT : seul ce qui manque, ce qui est rapproché ou agrandi est jugé",
+    "une négation plus lointaine que les trois mots qui précèdent le terme : elle compte comme une promesse (faux positif possible, jamais un faux négatif)",
+    "les textes hors .csv, .tsv, .html, .htm, .md, .txt (image, PDF, fiche d établissement lue en ligne) : à exporter en texte",
+    "une page .html ou .md passée SEULE au lanceur : elle se juge par l appel direct, ou via le dossier qui porte promesses.json"
+   ],
+   "provenance": "TF-1365, lot Produit-02 - RETOURS - 20260922a (RT-97) — deux mots-cles « spa » achetes alors que le domaine n a pas de spa, et la veille deux mots-cles « piscine privee » (la piscine est partagee) et une distance de 10 minutes pour 15 : la fixture rouge reprend ces trois formes sur des faits inventes.",
+   "note": "TF-1365 (26/09/2026) : une garde des promesses tenue UNE fois (le referentiel du produit, donnee datee et sourcee — loi n° 4) et jouee par chaque generateur de texte derive des memes faits — pages, annonces, fiche d etablissement, livrets. Declencheurs : un fichier d annonces (.csv, .tsv), ou un dossier qui porte promesses.json (tout le dossier est alors juge, pages .html, .htm, .md, .txt comprises)."
   }
  ]
 }

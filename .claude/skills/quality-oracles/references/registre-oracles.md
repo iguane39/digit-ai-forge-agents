@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.27.0, alignée sur le JSON le 26/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.28.0, alignée sur le JSON le 26/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -67,6 +67,7 @@
 | Validité d'un paquet DOCX avant remise | `node {skillsroot}/digit-ai-docx/scripts/oracle-docx.mjs <document.docx>` — **D1** archive lisible · **D2** `[Content_Types].xml` · **D3** relations internes résolues · **D4** XML bien formé · **D5** ordre des enfants exigé par Word · **D6** ordre DrawingML délégué à `verifier-ooxml.py` du pilot (introuvable → non jugée et dite). Recette dans digit-ai-docx. Indexé le 26/09/2026 (TF-1334) | cli | ✅ |
 | Régression de qualité des sorties d'agents (fixtures versionnées, juge distinct de l'exécutant) | `node {skillsroot}/forge-agents/scripts/oracle-agent-evals.mjs <dossier-cas>` — critères figés de `cas.json` rejoués sur la sortie de l'agent : EXISTS, CONTAINS, REGEX mécaniques, juge distinct (`claude -p`) pour le reste, indisponible → SKIP motivé. Déclenché par un fichier `cas.json` dans la cible. Recette dans forge-agents. Indexé le 26/09/2026 (TF-1334) | cli | ✅ |
 | Cohérence du graphe des définitions d'agents (de:/vers:) | `node {skillsroot}/forge-agents/scripts/oracle-defs.mjs <dossier-de-defs \| def.yaml…>` — chaque def valide au compilateur, id uniques, liens de:/vers: réciproques entre defs du lot, aucun cycle. Déclenché par un YAML qui porte `mandat:` puis `arbitre:` ; le graphe entier se juge sur le DOSSIER des defs. Recette dans forge-agents. Indexé le 26/09/2026 (TF-1334) | cli | ✅ |
+| Promesses d'un texte dérivé des faits du produit : équipements absents, distances, capacités | `scripts/oracle-promesses.mjs <fichier|dossier> [--referentiel <promesses.json>]` — **P1** un terme d'un équipement ABSENT au référentiel promis (mot entier, sans casse ni accents ; mention niée et ligne d'EXCLUSION d'un fichier d'annonces écartées et comptées) · **P2** une distance annoncée plus COURTE que la distance déclarée vers le même lieu · **P3** une capacité annoncée plus GRANDE que le maximum déclaré. Référentiel `promesses.json` (format `quality-oracles/promesses@1`) déclaré par le produit, cherché au-dessus de la cible ; absent → SKIP motivé. Déclenché par un fichier d'annonces (`.csv`, `.tsv`) ou un dossier qui porte `promesses.json`. Une garde tenue une fois, jouée par chaque générateur de texte dérivé des mêmes faits (TF-1365, lot Produit-02 20260922a, RT-97) | cli | ✅ |
 | Nom de client dans un dépôt publiable | `scripts/oracle-nom-client-publie.mjs <dépôt|bundle> [--referentiel=<chemin HORS dépôt>] [--produits=<chemin HORS dépôt>]` — C1 contenus des fichiers suivis, C2 noms des fichiers suivis, C3 messages de commit de tout l'historique, C4 noms et contenus dans tout l'historique (fichiers retirés de l'arbre compris), C5 **noms de produits** de la table des pseudonymes dans les contenus, les noms de fichiers et les messages de commit (TF-0820), chaque graphie **bornée par des non-alphanumériques** (TF-0880 : une clé courte cherchée sans frontière accusait des blobs base64). Les deux référentiels sont des **données vivant hors des dépôts publiés** — sans celui des clients l'oracle rend SKIP, jamais PASS ; sans la table des produits il joue C1-C4 et **déclare** « C5 non jouée : table absente ». **Pistes par défaut** (TF-0887) : `--referentiel`/`--produits`, puis `FORGE_NOMS_INTERDITS`/`FORGE_PRODUITS_PSEUDO`, puis le **canal confidentiel** `<racine>/_confidentiel/tables/{noms-interdits,produits-pseudonymes}.json`, puis les anciens fichiers libres `<racine>/_*.json` en dernier recours — la racine étant `FORGE_ROOT` quand elle est posée, sinon le parent du dépôt jugé puis le parent de la forge. La table **retenue** est nommée au `non_juge` (« table lue : … »). **Borne de date** (TF-0982) : les deux tables portent un bloc `depuis` — `{ "<clé>": "AAAA-MM-JJ" }` — et une occurrence de l'**HISTOIRE** antérieure à la date d'inscription de son terme est déclarée **antériorité** : nommée dans le rapport, comptée à part au `non_juge`, **non bloquante**. L'**arbre courant** et les **messages de commit** restent jugés **sans borne** (ils se corrigent par une édition), et un terme absent du bloc `depuis` ou porteur d'une date malformée aussi — l'absence de date ne vaut jamais exemption. La date d'une occurrence est celle d'**auteur** de sa révision, jamais celle de validation, qu'une réécriture d'historique remet à zéro. Motif mesuré : chaque extension de table rendait le passé fautif **rétroactivement** — trois réécritures d'historique en douze jours | cli | ✅ |
 | ↳ *câblage* du contrôle ci-dessus | `scripts/installer-hamecon-publication.mjs <dépôt…> [--retirer] [--verifier]` — pose un `pre-push` qui REFUSE la publication sur FAIL **et sur SKIP** (un oracle qui ne mesure pas ne laisse pas passer) ; contournement explicite par `git push --no-verify`. Sur SKIP il **répète le motif de la porte en clair** (« porte SKIP : … ») avant de refuser, et il ne grave **aucun chemin de table** : la porte les résout à chaque appel (TF-0887). Prouvé par `scripts/self-test-hamecon-publication.mjs` : 5 cas sur de vrais dépôts et de vrais push (porteur refusé, propre accepté, contournement effectif, référentiel absent refusé **avec son motif en clair**, tables dans le canal et **aucune variable d'environnement** → porteur refusé et propre accepté). Les trois hameçons posés ont **`trap '' PIPE` pour première commande** (TF-1360) : un refus tient même quand la sortie de `git push` ou de `git commit` part dans un filtre déjà fini — sans la ligne, le hameçon meurt de SIGPIPE à son premier écho et git, sous Windows, publie (cas 9 de la même recette : sens rouge publié, sens vert refusé, pour le `pre-push` comme pour le `commit-msg`) | cli | ✅ |
 | ↳ *avant commit* : frontmatter des skills de l'index | `scripts/frontmatter-skills-index.mjs [<dépôt>] [--tous] [--json]` — juge le frontmatter des SEULS skills dont un fichier est dans l'index git, lus DANS l'index, avec le lecteur de la recette (`scripts/lib/frontmatter.mjs`) : description de 1 024 caractères au plus, `name` et `description` présents. `--tous` juge tous les skills de l'index — la forme à jouer AVANT de propager les skills. Son hameçon `pre-commit` se pose sur demande seulement (`installer-hamecon-publication.mjs <dépôt> --seul=pre-commit-skills`), jamais par le jeu par défaut ; un dépôt qui porte déjà le pre-commit d'anonymisation le signale en CONFLIT. Prouvé par le cas 10 de `scripts/self-test-hamecon-publication.mjs` (rouge : description de 1 101 caractères refusée au commit ; vert : la même entrée sous la limite passe ; `--tous` rouge et vert) et par la recette de quality-oracles (le contrôle rapide refuse les mêmes skills qu'elle). Né de TF-1337 : `accueil-factory` est entré au dépôt le 22/09 avec une description de 1 244 caractères | cli | ✅ |
@@ -485,3 +486,31 @@ dépôt). Mêmes conséquences assumées que pour les forges design et conceptio
 - **Appel historique côté produit.** Un produit qui appelle encore son
   `scripts/controler-transparence.mjs` invoque désormais celui-ci, sans rien créer chez lui :
   `node <racine>/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/oracle-transparence.mjs <fichier> --mentions <formules de la marque>.json`
+
+## Injection du 26/09/2026 — une garde des promesses, tenue une fois (TF-1365, v2.28.0)
+
+Le lot `Produit-02 - RETOURS - 20260922a` (RT-97) : la garde de vocabulaire d'un produit refusait
+« spa » sur ses pages, mais le générateur de ses annonces ne l'appelait pas — deux mots-clés « spa »
+achetés pour un domaine sans spa, vus par l'exploitant. Même classe la veille, corrigée à la main :
+« piscine privée » pour une piscine partagée, 10 minutes annoncées pour 15. La réponse est une
+DONNÉE déclarée par le produit (loi n° 4), jugée par un seul oracle pour tous les textes dérivés des
+mêmes faits. Le format, le plus simple qui tienne les trois familles — chacune optionnelle :
+
+```json
+{
+  "format": "quality-oracles/promesses@1",
+  "source": "fiche d'exploitation du domaine, relevée le AAAA-MM-JJ",
+  "absents":   [ { "equipement": "spa", "termes": ["spa", "jacuzzi", "hot tub"], "motif": "pas de spa" } ],
+  "distances": [ { "lieu": "…", "termes": ["du Phare"], "valeur": 15, "unite": "min" } ],
+  "capacites": [ { "objet": "personnes", "termes": ["personnes", "voyageurs"], "max": 6 } ]
+}
+```
+
+- **Où le poser** : `promesses.json` (ou `donnees/promesses.json`) à la racine du produit ; l'oracle
+  le cherche au-dessus de la cible, ou le reçoit par `--referentiel`. Absent → SKIP motivé.
+- **Ce qui n'est pas une promesse** : une mention niée dans les trois mots qui la précèdent
+  (« pas de spa », « sans jacuzzi ») et une ligne d'EXCLUSION d'un fichier d'annonces (cellule
+  « Négatif… », « Negative… », « Exclusion ») — exclure « spa » est précisément la correction de RT-97.
+  Les deux sont comptées au `non_juge`.
+- **Preuve** : deux paires au manifest (`promesses-annonces`, `promesses-page`), rouge FAIL sur P1,
+  P2 et P3, verte PASS avec exclusions et négations écartées.

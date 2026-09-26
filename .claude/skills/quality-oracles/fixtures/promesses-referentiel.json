@@ -1,0 +1,14 @@
+{
+  "format": "quality-oracles/promesses@1",
+  "source": "jeu d'essai de la recette de quality-oracles (TF-1365) : faits INVENTÉS, sur la forme du lot Produit-02 - RETOURS - 20260922a (RT-97)",
+  "absents": [
+    { "equipement": "spa", "termes": ["spa", "spa privatif", "jacuzzi", "hot tub", "whirlpool"], "motif": "le domaine n'a pas de spa" },
+    { "equipement": "piscine privée", "termes": ["piscine privée", "piscine privative"], "motif": "la piscine est partagée" }
+  ],
+  "distances": [
+    { "lieu": "le Phare", "termes": ["du Phare", "au Phare"], "valeur": 15, "unite": "min" }
+  ],
+  "capacites": [
+    { "objet": "personnes", "termes": ["personnes", "voyageurs"], "max": 6 }
+  ]
+}

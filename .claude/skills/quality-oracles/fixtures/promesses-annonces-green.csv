@@ -1,0 +1,7 @@
+Campagne,Groupe,Mot-clé,Type,Texte
+Séjours,Gîte,gîte bord de mer,Expression,
+Séjours,Gîte,location gîte piscine,Expression,
+Séjours,Exclusions,spa,Négatif expression,
+Séjours,Exclusions,jacuzzi,Négatif expression,
+Séjours,Exclusions,piscine privée,Négatif expression,
+Séjours,Annonce,,Annonce,"Gîte à 15 minutes du Phare, jusqu'à 6 personnes, sans spa"
