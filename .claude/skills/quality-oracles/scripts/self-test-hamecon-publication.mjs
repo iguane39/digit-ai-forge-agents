@@ -116,6 +116,40 @@ function distantJetable(racine, nom) {
   return b;
 }
 
+/** TF-1360 — le `sh` qui rejoue le tuyau : celui qui accompagne git. Sous Windows, une session
+ *  PowerShell ne l'a pas sur son PATH, et `bash` y désigne le lanceur de WSL : il se cherche donc à
+ *  côté de git (`git --exec-path` → `<git>/mingw64/libexec/git-core` → `<git>/usr/bin/sh.exe`). */
+function trouverSh() {
+  if (process.platform !== 'win32') return fs.existsSync('/bin/sh') ? '/bin/sh' : null;
+  const exec = (spawnSync('git', ['--exec-path'], { encoding: 'utf8' }).stdout || '').trim();
+  if (!exec) return null;
+  const racineGit = path.resolve(exec, '..', '..', '..');
+  return [path.join(racineGit, 'usr', 'bin', 'sh.exe'), path.join(racineGit, 'bin', 'sh.exe')]
+    .find((c) => fs.existsSync(c)) || null;
+}
+
+/** TF-1360 — joue `commande` dans `d`, sa sortie ET sa sortie d'erreur envoyées dans un filtre qui
+ *  a DÉJÀ fini sans rien lire (`false`) : la situation du 24/09. La sonde écrit dans le tuyau
+ *  jusqu'à ce qu'il soit rompu (bornée à une dizaine de secondes) : la commande ne part qu'une fois
+ *  le lecteur disparu, le cas ne dépend d'aucune course entre les deux côtés du tuyau. */
+function jouerDansFiltreFini(shBanc, d, commande, env) {
+  const e = envBanc(env);
+  // Les outils du `sh` de git (sleep) vivent à côté de lui ; une session PowerShell ne les a pas.
+  const cle = Object.keys(e).find((k) => k.toUpperCase() === 'PATH') || 'PATH';
+  e[cle] = path.dirname(shBanc) + path.delimiter + (e[cle] || '');
+  const sonde = 'i=0; while [ "$i" -lt 200 ] && ( printf x ) 2>/dev/null; do i=$((i+1)); sleep 0.05; done';
+  return spawnSync(shBanc, ['-c', '{ ' + sonde + '; ' + commande + '; } 2>&1 | false'],
+    { cwd: d, encoding: 'utf8', env: e });
+}
+
+/** Retire la ligne `trap '' PIPE` d'un hameçon posé : le sens ROUGE de TF-1360, et lui seul. */
+function sansLigneTrap(fichier) {
+  const avant = fs.readFileSync(fichier, 'utf8');
+  const apres = avant.split('\n').filter((l) => l.trim() !== "trap '' PIPE").join('\n');
+  fs.writeFileSync(fichier, apres, { mode: 0o755 });
+  return apres !== avant;
+}
+
 const racine = fs.mkdtempSync(path.join(os.tmpdir(), 'self-test-hamecon-'));
 // Référentiel de jeu d'essai posé À CÔTÉ des dépôts : c'est la marche « frère de l'artefact »
 // de la résolution de l'oracle. Noms INVENTÉS, comme partout dans les fixtures.
@@ -234,6 +268,79 @@ try {
   if (c8v.status === 0 && sujet8() === 'Livraison du rapport Client-A')
     oks.push('cas 8 — commit-msg : le MÊME message pseudonymisé passe, le hameçon ne crie pas sur un travail juste');
   else kos.push('cas 8 — le message pseudonymisé est refusé à tort (exit ' + c8v.status + ') : ' + (c8v.stderr || '').trim().slice(0, 300));
+
+  // --- cas 9 : LA SORTIE PART DANS UN FILTRE QUI A DÉJÀ FINI (TF-1360) ---------
+  // LE FAIT PAYÉ, 24/09/2026 : 13 envois sont partis alors que leur sortie allait dans un `grep`
+  // en échec. Le hameçon refusait bien, mais son premier écho sur la sortie d'erreur, écrit dans un
+  // tuyau sans lecteur, l'a tué par SIGPIPE — et sous Windows git lit alors un code 0 (mesuré par
+  // trace2 : l'événement `child_exit` du hameçon porte "code":0) et PUBLIE. Les cas 1 à 8 lisent la
+  // sortie : ils ne pouvaient pas le voir. Ce cas fait le geste réel et juge sur la seule preuve
+  // qui compte, le DISTANT (la branche y est-elle arrivée ?) :
+  //   · sens ROUGE : le MÊME hameçon privé de sa ligne `trap '' PIPE` → publié malgré le refus ;
+  //   · sens VERT : le hameçon tel que l'installeur le pose → refusé, rien n'arrive au distant.
+  // Le commit-msg refuse de la même façon (écho puis exit 1) et le même trou y a été mesuré le
+  // 26/09 : un message porteur enregistré. Il se rejoue dans les deux sens, lui aussi.
+  const shBanc = trouverSh();
+  // Hors Windows, le défaut n'a pas été mesuré : le sens rouge y est DIT non reproduit, jamais tu.
+  const rougeAttendu = process.platform === 'win32';
+  if (!shBanc) kos.push('cas 9 — aucun `sh` trouvé à côté de git : le banc ne peut pas rejouer le tuyau rompu, TF-1360 n\'est pas éprouvé');
+  else {
+    const publie = (distant) => spawnSync('git', ['--git-dir=' + distant, 'rev-parse', '--verify', '-q', 'refs/heads/main'], { encoding: 'utf8' }).status === 0;
+
+    const d9r = depot(racine, 'filtre-rouge', true);
+    const r9r = distantJetable(racine, 'filtre-rouge-distant');
+    git(d9r, 'remote', 'add', 'origin', r9r);
+    sh(racine, 'node', [INSTALLEUR, d9r, '--seul=pre-push']);
+    const retiree = sansLigneTrap(path.join(d9r, '.git', 'hooks', 'pre-push'));
+    jouerDansFiltreFini(shBanc, d9r, 'git push origin main', ENV_JEU_ESSAI);
+    const publieRouge = publie(r9r);
+    if (!retiree) kos.push('cas 9 (sens rouge) — le pre-push posé ne porte pas la ligne trap \'\' PIPE : il n\'y a rien à retirer, le sens rouge ne se construit pas');
+    else if (publieRouge) oks.push('cas 9 (sens rouge) — pre-push SANS la ligne trap \'\' PIPE, sortie dans un filtre fini : PUBLIÉ malgré le refus — le défaut du 24/09 est vivant, et c\'est lui que le sens vert tue');
+    else if (rougeAttendu) kos.push('cas 9 (sens rouge) — le témoin ne reproduit rien : sans la ligne, rien n\'est publié (ou le banc n\'a pas rompu le tuyau) — le sens vert ne prouvera donc pas grand-chose');
+    else oks.push('cas 9 (sens rouge) — NON REPRODUIT sur ' + process.platform + ' : la publication malgré le refus n\'a été mesurée que sous Windows. La ligne reste posée et le sens vert est joué — dit, jamais tu');
+
+    const d9v = depot(racine, 'filtre-vert', true);
+    const r9v = distantJetable(racine, 'filtre-vert-distant');
+    git(d9v, 'remote', 'add', 'origin', r9v);
+    sh(racine, 'node', [INSTALLEUR, d9v, '--seul=pre-push']);
+    jouerDansFiltreFini(shBanc, d9v, 'git push origin main', ENV_JEU_ESSAI);
+    if (!publie(r9v)) oks.push('cas 9 (sens vert) — pre-push tel que l\'installeur le pose, sortie dans le MÊME filtre fini : push REFUSÉ, rien n\'est arrivé au distant');
+    else kos.push('cas 9 (sens vert) — le pre-push posé laisse PUBLIER quand la sortie part dans un filtre fini : son refus ne tient que si quelqu\'un lit la sortie');
+
+    // Le commit-msg, dans les deux sens : le message porte un nom de la table (jetable, inventé).
+    const sujet9 = (d) => (git(d, 'log', '-1', '--format=%s').stdout || '').trim();
+    const d9mr = depot(racine, 'filtre-message-rouge', false);
+    sh(racine, 'node', [INSTALLEUR, d9mr, '--seul=commit-msg']);
+    const retireeMsg = sansLigneTrap(path.join(d9mr, '.git', 'hooks', 'commit-msg'));
+    fs.writeFileSync(path.join(d9mr, 'suite.md'), 'suite du rapport\n');
+    git(d9mr, 'add', '-A');
+    jouerDansFiltreFini(shBanc, d9mr, "git commit -q -m 'Livraison du rapport Zorglub'", ENV_JEU_ESSAI);
+    const enregistreRouge = sujet9(d9mr) === 'Livraison du rapport Zorglub';
+    if (!retireeMsg) kos.push('cas 9 (commit-msg, sens rouge) — le commit-msg posé ne porte pas la ligne trap \'\' PIPE');
+    else if (enregistreRouge) oks.push('cas 9 (commit-msg, sens rouge) — SANS la ligne, sortie dans un filtre fini : le message porteur est ENREGISTRÉ malgré le refus');
+    else if (rougeAttendu) kos.push('cas 9 (commit-msg, sens rouge) — le témoin ne reproduit rien : sans la ligne, le message porteur n\'est pas enregistré');
+    else oks.push('cas 9 (commit-msg, sens rouge) — NON REPRODUIT sur ' + process.platform + ' : mesuré seulement sous Windows — dit, jamais tu');
+
+    const d9mv = depot(racine, 'filtre-message-vert', false);
+    sh(racine, 'node', [INSTALLEUR, d9mv, '--seul=commit-msg']);
+    fs.writeFileSync(path.join(d9mv, 'suite.md'), 'suite du rapport\n');
+    git(d9mv, 'add', '-A');
+    jouerDansFiltreFini(shBanc, d9mv, "git commit -q -m 'Livraison du rapport Zorglub'", ENV_JEU_ESSAI);
+    if (sujet9(d9mv) !== 'Livraison du rapport Zorglub') oks.push('cas 9 (commit-msg, sens vert) — AVEC la ligne, sortie dans le MÊME filtre fini : message porteur REFUSÉ, rien n\'est enregistré');
+    else kos.push('cas 9 (commit-msg, sens vert) — le commit-msg posé laisse ENREGISTRER un message porteur quand la sortie part dans un filtre fini');
+  }
+
+  // Les TROIS gabarits portent la ligne, et en PREMIÈRE commande : un écho placé avant elle
+  // rouvrirait le trou. Lu sur les hameçons réellement POSÉS, pas sur la source de l'installeur.
+  const d9s = depot(racine, 'trois-gabarits', false);
+  sh(racine, 'node', [INSTALLEUR, d9s]);
+  const premiereCommande = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '').split(/\r?\n/)
+    .map((l) => l.trim()).find((l) => l && !l.startsWith('#')) || '(aucune)';
+  const sansTrapEnTete = ['pre-push', 'pre-commit', 'commit-msg']
+    .map((h) => [h, premiereCommande(path.join(d9s, '.git', 'hooks', h))])
+    .filter(([, c]) => c !== "trap '' PIPE");
+  if (!sansTrapEnTete.length) oks.push('cas 9 — les TROIS hameçons posés (pre-push, pre-commit, commit-msg) ont trap \'\' PIPE pour première commande');
+  else kos.push('cas 9 — hameçon(s) posé(s) dont la première commande n\'est pas trap \'\' PIPE : ' + sansTrapEnTete.map(([h, c]) => h + ' → « ' + c.slice(0, 60) + ' »').join(' ; '));
 
   // --- cas 6 : LE HAMEÇON DE COMMIT (TF-0980) --------------------------------
   //

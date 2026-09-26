@@ -77,6 +77,13 @@ ${ligneSignature(SIGNATURE)}
 # pre-push — refuse une publication portant un nom de client (${MARQUE}).
 # Posé par installer-hamecon-publication.mjs. Contournement explicite : git push --no-verify.
 #
+# SIGPIPE IGNORÉ, EN PREMIÈRE COMMANDE (TF-1360, 24/09/2026). Quand la sortie de git push part
+# dans un filtre qui a déjà fini (un grep en échec), le premier écho de ce hameçon sur la sortie
+# d'erreur le tue par SIGPIPE ; sous Windows, git lit alors un code 0 et PUBLIE malgré le refus
+# (mesuré : 13 envois partis ainsi). Le signal ignoré, l'écho échoue sans rien tuer et le hameçon
+# va jusqu'à son exit 1. Aucune commande ne doit passer avant cette ligne.
+trap '' PIPE
+#
 # L'oracle est cherché d'abord dans la copie INSTALLÉE des skills, parce que c'est elle qui
 # s'exécute (même doctrine que le contrôle d'alignement des skills), puis dans la source.
 #
@@ -149,6 +156,10 @@ ${ligneSignature(SIGNATURE_COMMIT)}
 # pre-commit — le nom est retire AVANT que le commit n'existe (${MARQUE_COMMIT}).
 # Pose par installer-hamecon-publication.mjs. Contournement explicite : git commit --no-verify.
 #
+# SIGPIPE ignore, en premiere commande (TF-1360) : si la sortie du commit part dans un filtre deja
+# termine, un echo de refus tuerait ce hamecon par SIGPIPE, et git lirait (sous Windows) un code 0.
+trap '' PIPE
+#
 # Il CORRIGE le contenu indexe et le RE-INDEXE : dans le cas normal, aucun refus, aucune
 # interruption. Il ne refuse que dans deux cas -- tables illisibles, ou NOM de fichier porteur --
 # et le dit alors avec la commande exacte. Il ne juge que l'INDEX, jamais l'histoire : son cout est
@@ -183,6 +194,11 @@ ${ligneSignature(SIGNATURE_MSG)}
 # commit-msg — refuse un MESSAGE de commit portant un nom de client ou de produit (${MARQUE}).
 # Pose par installer-hamecon-publication.mjs. Contournement explicite : git commit --no-verify.
 # Le pre-push reste le filet : il juge toute l'histoire, messages compris.
+#
+# SIGPIPE ignore, en premiere commande (TF-1360) : si la sortie du commit part dans un filtre deja
+# termine, l'echo du refus tuerait ce hamecon par SIGPIPE, et git lirait (sous Windows) un code 0 :
+# le message porteur serait enregistre.
+trap '' PIPE
 RACINE="\${FORGE_ROOT:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
 ORACLE=""
 for CANDIDAT in \\
