@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L24 faux mots de trace colles — 20260926a</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--vert:#166534;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75rem;font-family:var(--head)}
+.badge.acte{background:#DCFCE7;color:var(--vert)}
+.legende{color:var(--faint);font-size:.8rem}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1333, sens ROUGE — la borne de mot tient. La note decrite ne se declare PAS decision : elle
+  porte « cadre », « acteurs » et « arbitrer », ou les quatre lettres d un mot de trace sont
+  COLLEES a d autres. Un correctif qui retirerait l octet BACKSPACE sans remettre l antislash-b
+  ferait reconnaitre « adr » dans « cadre » et rendrait ce badge vert : c est ce que cette fixture
+  interdit. Attendu : L24.
+-->
+<body><main class="wrap">
+<h1>L24 — une note qui ressemble a une trace</h1>
+<p><span class="badge acte" aria-describedby="note-cadre">retenu le 22/08</span>
+<span class="legende">Trois noeuds actifs et un noeud temoin.</span></p>
+<p id="note-cadre">Le cadre general de la mission, ses acteurs et le calendrier a arbitrer sont en page 12.</p>
+</main></body></html>

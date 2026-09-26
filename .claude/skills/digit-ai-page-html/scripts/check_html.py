@@ -2157,8 +2157,8 @@ def check_lisibilite(html: str, a: Arbre):
     CL_STATUT_ENGAGEANT = {"acte", "actee", "actée", "acté", "decide", "décide", "decidee",
                            "décidée", "decidée", "tranche", "tranché", "tranchee", "tranchée"}
     CL_BADGE = {"badge", "pastille", "statut", "status", "chip-val", "etiquette-statut"}
-    RE_TRACE = re.compile(r"(décision|decision|décidé|decide|décide|adr|arbitrage|arbitré|"
-                          r"arbitre|délibér|deliber|tranché|tranche|acté|acte)", re.I)
+    RE_TRACE = re.compile(r"(décision|decision|décidé|decide|décide|adr\b|arbitrage|arbitré|"
+                          r"arbitre\b|délibér|deliber|tranché|tranche\b|acté|acte\b)", re.I)
 
     def _trace_declaree(n):
         """La cible se DÉCLARE-t-elle décision ? Un texte de trace, ou `data-decision`."""

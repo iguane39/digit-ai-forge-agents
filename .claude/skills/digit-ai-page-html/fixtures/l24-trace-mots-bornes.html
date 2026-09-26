@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L24 trace reconnue par un mot borne — 20260926a</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--vert:#166534;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75rem;font-family:var(--head)}
+.badge.acte{background:#DCFCE7;color:var(--vert)}
+.legende{color:var(--faint);font-size:.8rem}
+.trace{border-left:3px solid var(--vert);padding-left:10px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1333, sens VERT — quatre badges engageants, chacun decrit par une trace dont le SEUL mot de
+  trace est l un des quatre que l expression RE_TRACE bornait par un antislash-b : ADR, arbitre,
+  tranche, acte. Du 02/09 au 26/09, l antislash-b etait devenu un octet BACKSPACE : ces quatre
+  branches ne reconnaissaient plus rien, et chacun de ces badges, pourtant resolu, sortait en L24.
+  Attendu : AUCUN constat L24.
+-->
+<body><main class="wrap">
+<h1>L24 — quatre traces, quatre mots bornes</h1>
+<p>Chaque badge ci-dessous renvoie a une trace qui se declare par un seul mot : la reference d un
+enregistrement d architecture, l avis d un arbitre, une direction qui tranche, un acte de comite.</p>
+<p><span class="badge acte" aria-describedby="t-adr">retenu le 22/08</span>
+<span class="legende">Trois noeuds actifs et un noeud temoin.</span></p>
+<p><span class="badge acte" aria-describedby="t-arbitre">retenu le 24/08</span>
+<span class="legende">Le lot 1 reste chez son titulaire.</span></p>
+<p><span class="badge acte" aria-describedby="t-tranche">retenu le 25/08</span>
+<span class="legende">Une publication par quinzaine.</span></p>
+<p><span class="badge acte" aria-describedby="t-acte">retenu le 26/08</span>
+<span class="legende">Le lot 2 part en recette le 1er octobre.</span></p>
+<h2>Les traces citees</h2>
+<p class="trace" id="t-adr">ADR-0042 : trois noeuds actifs et un noeud temoin, comite technique du 22/08.</p>
+<p class="trace" id="t-arbitre">Avis de l arbitre du comite de pilotage, rendu le 24/08 en seance.</p>
+<p class="trace" id="t-tranche">La direction tranche pour une publication par quinzaine, seance du 25/08.</p>
+<p class="trace" id="t-acte">Acte du comite de pilotage du 26/08 : le lot 2 part en recette le 1er octobre.</p>
+</main></body></html>

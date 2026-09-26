@@ -292,6 +292,16 @@ CAS = {
     "l24-badge-acte-sans-trace.html": {"L24"},
     "l24-badge-acte-resolu.html": set(),
     "l24-badge-propose-degrade.html": set(),
+    # TF-1333 (26/09) — du 02/09 au 26/09, l antislash-b de quatre branches de RE_TRACE (adr,
+    # arbitre, tranche, acte) etait un octet BACKSPACE : ces branches ne reconnaissaient plus
+    # rien, et un badge resolu par une trace qui ne se declare QUE par l un de ces mots sortait en
+    # L24. Les vertes ci-dessus passaient par « decision » ou « arbitrage », intacts : le trou leur
+    # etait invisible. Mesure : la verte rendait L24 x4 avant correction, 0 apres.
+    #   · verte : quatre badges, quatre traces, chacune declaree par un seul mot borne ;
+    #   · rouge : « cadre », « acteurs », « arbitrer » — un correctif qui retirerait l octet sans
+    #     remettre l antislash-b reconnaitrait « adr » dans « cadre » et rendrait ce badge vert.
+    "l24-trace-mots-bornes.html": set(),
+    "l24-trace-mots-colles.html": {"L24"},
 }
 
 # TF-0435 : L15 est un AVERTISSEMENT — jugé à part, sur les warns. La verte emploie un chevron
