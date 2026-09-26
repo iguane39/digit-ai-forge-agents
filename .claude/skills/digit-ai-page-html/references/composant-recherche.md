@@ -38,6 +38,7 @@ CSS (adapter aux tokens du livrable — voir `charte-et-tokens.md`) :
 ```css
 mark.find-hit { background: var(--amber-fill, #fde9c8); color: var(--ink, #1a1a1a);
                 border-radius: 2px; display: inline; padding: 0; margin: 0; }
+tspan.find-hit { fill: var(--amber-ink, #9a3412); text-decoration: underline; } /* texte d'un schéma SVG */
 .find-bar     { display: flex; flex-direction: column; gap: 4px; }
 .find-count   { margin-top: 4px; font-size: .72rem; color: var(--muted); min-height: 1em; }
 .find-count.zero { color: #c0392b; }
@@ -76,14 +77,21 @@ supprime la classe de défaut au lieu de la rattraper. Contrôle mécanique : `L
 
 ## Contenu qui change (panneau dynamique)
 
-Si le conteneur recharge son contenu (ex. un panneau de lecture qui ouvre un autre
-document), passer une fonction `getHTML` qui renvoie le HTML pristine courant, et vider
-le champ + le compteur au changement :
+🔴 **Le conteneur n'est jamais réécrit (TF-1340, 23/09/2026).** La recherche réaffectait
+`container.innerHTML` à chaque frappe : les attributs survivaient, les écouteurs des autres
+composants du socle (filtres de tableau, lignes dépliables, infobulles) non — mesuré au
+navigateur, un bouton de filtre n'ouvrait plus son panneau après une recherche puis son
+effacement. Sur l'exemple de référence de `digit-ai-schemas`, dont le champ de recherche vit
+DANS la zone fouillée, la première frappe remplaçait le champ lui-même : la recherche ne
+marchait qu'une fois. Le surlignage enveloppe désormais les nœuds texte trouvés, et la frappe
+suivante les désenveloppe : la recherche lit le contenu **vivant** du conteneur.
+
+Un conteneur qui recharge son contenu (ex. un panneau de lecture qui ouvre un autre document)
+n'a donc plus rien à déclarer : remplacer le contenu, puis vider le champ et le compteur.
+`getHTML` et `refresh()` restent acceptés pour les pages déjà câblées, sans effet :
 
 ```js
-var finder = DigitAIFindInPage.init(input, content, counter, function () {
-  return renderCourant(); // renvoie le HTML à jour du document affiché
-});
+var finder = DigitAIFindInPage.init(input, content, counter);
 // à l'ouverture d'un nouveau document :
 input.value = ''; counter.textContent = ''; counter.classList.remove('zero');
 ```
@@ -94,5 +102,10 @@ input.value = ''; counter.textContent = ''; counter.classList.remove('zero');
 - 🔴 **Viewer-only** : à l'export PDF (WeasyPrint), le JS ne s'exécute pas et le surlignage
   n'apparaît pas. C'est une aide de lecture à l'écran, jamais un porteur de contenu : si la
   même information doit exister en PDF, prévoir un équivalent statique (cf. bonnes-pratiques §6, §7).
-- Le surlignage ignore les nœuds `MARK`, `SCRIPT`, `STYLE` (pas de double-surlignage ni de
+- 🔴 **Dans un schéma SVG, le surlignage est un `<tspan>` (TF-1353, 24/09/2026)** : SVG ne peint
+  pas un `<mark>` HTML, et le mot trouvé DISPARAISSAIT du schéma pendant la recherche (mesuré sur
+  l'exemple de référence des schémas : 7 931 caractères peints, 7 844 pendant la recherche de
+  « pipeline »). Le style du surlignage SVG passe par `fill`, pas par `background`.
+- Le surlignage ignore les nœuds `MARK`, `SCRIPT`, `STYLE`, noms comparés sans casse — le
+  `<style>` d'un schéma SVG compris (pas de double-surlignage ni de
   corruption de scripts).

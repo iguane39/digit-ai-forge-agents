@@ -1852,6 +1852,154 @@ def run_matrice_lignes_detail():
     return out
 
 
+def run_recherche_composants():
+    """TF-1340 (23/09/2026) et TF-1353 (24/09/2026) — LA RECHERCHE ET SES VOISINS, JOUES DANS UN
+    NAVIGATEUR.
+
+    TF-1340. `find-in-page.js` reaffectait `container.innerHTML` a chaque frappe : les attributs
+    survivaient, les ecouteurs des autres composants non. Mesure au navigateur : apres une
+    recherche puis son effacement, un bouton de filtre n'ouvrait plus son panneau (0 au lieu
+    de 1). Le composant enveloppe desormais les noeuds texte trouves et les desenveloppe a la
+    frappe suivante. Trois sequences, chacune sur une page NEUVE : recherche effacee puis filtre,
+    recherche active puis filtre, recherche puis chevron d'une ligne depliable. Et une quatrieme,
+    qui garde l'avenir : une coupure d'hier (le texte decoupe par un surlignage retire) ne doit pas
+    cacher le terme d'aujourd'hui qui l'enjambe — c'est ce que le recollage des textes assure.
+
+    TF-1353. Dans le texte d'un schema SVG, le surlignage etait un <mark> HTML, que SVG ne peint
+    pas : le mot disparaissait du schema pendant la recherche. Le nombre de caracteres PEINTS
+    (`getNumberOfChars`) doit etre le meme avant, pendant et apres, et l'enveloppe est un <tspan>.
+
+    CHAQUE SONDE PORTE SON SENS ROUGE, joue sur la meme page : le mecanisme d'avant, reproduit a
+    la main (le conteneur reecrit par son propre HTML ; un <mark> HTML pose dans le texte SVG),
+    doit faire tomber la mesure. Sans lui, un 1 ou un nombre constant pourraient venir d'une
+    sonde aveugle.
+
+    Silencieux si playwright est absent : un comportement se mesure dans un navigateur.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from render_page import ensure_browser_path  # noqa: PLC0415
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001 — l'auto-detection du navigateur est un confort, pas un du
+        pass
+
+    nom = "recherche-composants.html"
+    if not (FIXTURES / nom).exists():
+        return [{"fixture": nom, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-1340", "detail": ""}]
+    out = []
+
+    def cas(etiquette, attendu, obtenu, regle):
+        ok = attendu == obtenu
+        out.append({"fixture": f"{nom} · {etiquette}", "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:120], "obtenu": str(obtenu)[:120], "regle": regle,
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"[:300]})
+
+    panneaux = ("() => [...document.querySelectorAll('.tf-panel')]"
+                ".filter((p) => !p.hidden && getComputedStyle(p).display !== 'none').length")
+    peints = "() => document.getElementById('legende').getNumberOfChars()"
+    filtre = "#t thead .tf-btn >> nth=0"
+
+    with sync_playwright() as pw:
+        navigateur = pw.chromium.launch()
+        page = navigateur.new_page(viewport={"width": 1280, "height": 900})
+
+        def neuve():
+            page.goto((FIXTURES / nom).resolve().as_uri())
+            page.wait_for_load_state("load")
+            page.wait_for_timeout(100)
+
+        def section(etiquette, regle, fn):
+            """Une section qui LEVE est un composant en echec, pas un banc casse."""
+            try:
+                fn()
+            except Exception as erreur:  # noqa: BLE001 — toute panne se compte, aucune n'arrete
+                out.append({"fixture": f"{nom} · {etiquette}", "verdict": "ECHEC",
+                            "attendu": "section jouee", "obtenu": type(erreur).__name__,
+                            "regle": regle, "detail": str(erreur).splitlines()[0][:300]})
+
+        def filtre_apres_effacement():
+            neuve()
+            page.fill("#find", "lot")
+            page.fill("#find", "")
+            page.click(filtre)
+            cas("recherche effacée puis filtre : panneau ouvert", 1, page.evaluate(panneaux),
+                "TF-1340")
+
+        def filtre_pendant_recherche():
+            neuve()
+            page.fill("#find", "lot")
+            page.click(filtre)
+            cas("recherche active puis filtre : panneau ouvert", 1, page.evaluate(panneaux),
+                "TF-1340")
+
+        def chevron_pendant_recherche():
+            neuve()
+            page.fill("#find", "lot")
+            page.click("button[aria-controls='det-1']")
+            cas("recherche puis chevron : la ligne s'ouvre", True,
+                page.evaluate("() => !document.getElementById('det-1').hidden"), "TF-1340")
+
+        def temoin_reecriture():
+            neuve()
+            page.evaluate("() => { const z = document.getElementById('zone');"
+                          " z.innerHTML = z.innerHTML; }")
+            page.click(filtre)
+            cas("témoin : conteneur RÉÉCRIT, le filtre n'ouvre plus rien (sens rouge)", 0,
+                page.evaluate(panneaux), "TF-1340 contre-épreuve")
+
+        def coupure_recollee():
+            neuve()
+            page.fill("#find", "schema")
+            page.fill("#find", "")
+            page.fill("#find", "schema de la")
+            cas("une coupure d'hier ne cache pas le terme qui l'enjambe", "1 occurrence",
+                page.evaluate("() => document.getElementById('findCount').textContent"),
+                "TF-1340")
+
+        def svg_peint():
+            neuve()
+            avant = page.evaluate(peints)
+            page.fill("#find", "schema")
+            pendant = page.evaluate(peints)
+            enveloppes = page.evaluate(
+                "() => ({ tspan: document.querySelectorAll('#schema tspan.find-hit').length,"
+                " mark: document.querySelectorAll('#schema mark').length })")
+            page.fill("#find", "")
+            apres = page.evaluate(peints)
+            cas("caractères peints du schéma avant / pendant / après", [avant, avant, avant],
+                [avant, pendant, apres], "TF-1353")
+            cas("le surlignage du schéma est un tspan, jamais un mark", {"tspan": 1, "mark": 0},
+                enveloppes, "TF-1353")
+
+        def temoin_mark_svg():
+            neuve()
+            avant = page.evaluate(peints)
+            apres = page.evaluate(
+                "() => { const t = document.getElementById('legende'); const n = t.firstChild;"
+                " const i = n.nodeValue.indexOf('schéma'); const mot = n.splitText(i);"
+                " mot.splitText(6); const mk = document.createElement('mark');"
+                " mk.textContent = mot.nodeValue; t.replaceChild(mk, mot);"
+                " return t.getNumberOfChars(); }")
+            cas("témoin : un mark HTML dans le texte SVG fait tomber les caractères peints "
+                "(sens rouge)", True, apres < avant, "TF-1353 contre-épreuve")
+
+        section("recherche effacée puis filtre", "TF-1340", filtre_apres_effacement)
+        section("recherche active puis filtre", "TF-1340", filtre_pendant_recherche)
+        section("recherche puis chevron", "TF-1340", chevron_pendant_recherche)
+        section("témoin réécriture", "TF-1340 contre-épreuve", temoin_reecriture)
+        section("coupure recollée", "TF-1340", coupure_recollee)
+        section("schéma SVG", "TF-1353", svg_peint)
+        section("témoin mark SVG", "TF-1353 contre-épreuve", temoin_mark_svg)
+        navigateur.close()
+    return out
+
 def run_mesure_prete():
     """TF-1093 (20/09/2026) — LA MESURE SE PUBLIE PRETE, JAMAIS EN GABARIT.
 
@@ -3672,6 +3820,11 @@ def main():
     lignes_detail = run_matrice_lignes_detail()
     if lignes_detail:
         res += lignes_detail
+    # TF-1340 / TF-1353 — la recherche dans la page ne reecrit plus son conteneur (les autres
+    # composants gardent leurs ecouteurs) et surligne un texte SVG par un tspan (le mot reste peint).
+    recherche = run_recherche_composants()
+    if recherche:
+        res += recherche
     # TF-1093 — l'INSTANCE SERVIE et les FILTRES CROISES : un defaut qui n'existe que servi
     # (feuille en chemin absolu) et une intersection vide qu'aucun etat unitaire ne montre.
     # Le banc sert lui-meme ses fixtures, sur un port libre, et ferme son serveur en finally.
