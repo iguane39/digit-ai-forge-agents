@@ -10,6 +10,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolvePython } from './lib/python.mjs';
+import { frontmatter } from './lib/frontmatter.mjs';
 import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
 
@@ -26,31 +27,8 @@ const fails = [], oks = [];
 const ok = m => oks.push(m);
 const ko = m => fails.push(m);
 
-// --- extraction du champ description d'un frontmatter YAML (folded > / | / inline / quoted) ---
-function frontmatter(txt) {
-  // CRLF toléré : un SKILL.md servi en CRLF (poste Windows, core.autocrlf, skill tiers)
-  // porte un frontmatter parfaitement valide ; sans normalisation le `\r` résiduel reste
-  // collé en fin de ligne et `name`/`description` étaient déclarés absents à tort.
-  // On normalise la lecture — aucun contrôle n'est assoupli.
-  txt = txt.replace(/\r\n/g, '\n');
-  const m = txt.match(/^---\s*\n([\s\S]*?)\n---/);
-  if (!m) return null;
-  const lines = m[1].split('\n');
-  const fm = { name: null, description: null };
-  for (let i = 0; i < lines.length; i++) {
-    const mn = lines[i].match(/^name:\s*(.*)$/); if (mn) fm.name = mn[1].trim().replace(/^["']|["']$/g, '');
-    const md = lines[i].match(/^description:\s*(.*)$/);
-    if (md) {
-      let v = md[1].trim();
-      if (v === '>' || v === '|' || v === '>-' || v === '|-') {
-        const buf = [];
-        for (let j = i + 1; j < lines.length; j++) { if (/^\S/.test(lines[j])) break; buf.push(lines[j].trim()); }
-        fm.description = buf.filter(Boolean).join(v[0] === '|' ? '\n' : ' ');
-      } else fm.description = v.replace(/^["']|["']$/g, '');
-    }
-  }
-  return fm;
-}
+// --- le lecteur de frontmatter vit dans lib/frontmatter.mjs depuis TF-1337 : le contrôle rapide des
+// skills de l'index (frontmatter-skills-index.mjs) l'importe aussi — les deux jugent avec le MÊME lecteur.
 
 // (1) frontmatter de tous les skills installés
 for (const d of fs.readdirSync(SKILLSROOT, { withFileTypes: true })) {
@@ -63,6 +41,29 @@ for (const d of fs.readdirSync(SKILLSROOT, { withFileTypes: true })) {
   if (fm.description == null) ko(`${d.name} : champ 'description' absent`);
   else if (fm.description.length > 1024) ko(`${d.name} : description ${fm.description.length} > 1024 caractères`);
   else ok(`${d.name} : frontmatter OK (description ${fm.description.length}/1024)`);
+}
+
+// (1-ter) TF-1337 (26/09/2026) — LE CONTRÔLE RAPIDE JUGE COMME LA RECETTE. `accueil-factory` est
+// entré au dépôt le 22/09 avec une description de 1 244 caractères, faute d'un contrôle joué AVANT
+// l'enregistrement. `frontmatter-skills-index.mjs` le joue sur les seuls skills de l'index, avec le
+// lecteur ci-dessus. Sur le dépôt qui porte ces skills, `--tous` doit refuser EXACTEMENT les skills
+// que (1) vient de refuser — ni plus, ni moins.
+{
+  const depotSkills = spawnSync('git', ['-C', SKILLSROOT, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  if (depotSkills.status !== 0) ok('TF-1337 : les skills jugés ne sont pas dans un dépôt git (copie installée) — le contrôle de l index est sans objet ici, et c est dit');
+  else {
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'frontmatter-skills-index.mjs'),
+      depotSkills.stdout.trim(), '--tous', '--json'], { encoding: 'utf8' });
+    let j = null; try { j = JSON.parse(r.stdout); } catch { /* sortie illisible : dite ci-dessous */ }
+    const RE_REFUS = /^([^ ]+) : (?:frontmatter illisible|champ '(?:name|description)' absent|description \d+ > 1024)/;
+    const parRecette = new Set(fails.map((m) => (m.match(RE_REFUS) || [])[1]).filter(Boolean));
+    const parControle = new Set((j?.defauts || []).map((d) => path.posix.basename(d.skill)));
+    const memes = !!j && parRecette.size === parControle.size && [...parRecette].every((s) => parControle.has(s));
+    memes
+      ? ok(`TF-1337 : le contrôle rapide (--tous, ${j.juges.length} skill(s) de l index) refuse exactement les skills que la recette refuse (${parControle.size})`)
+      : ko(`TF-1337 : contrôle rapide et recette divergent — recette : ${[...parRecette].join(', ') || 'aucun'} ; contrôle : ${[...parControle].join(', ') || 'aucun'}`
+        + (j ? '' : ` (sortie illisible : ${(r.stderr || '').slice(0, 120)})`));
+  }
 }
 
 // (1b) TF-1022 (11/09) — CHAQUE CHEMIN CITÉ PAR UN SKILL.md SE RÉSOUT. L'archive de digit-ai-pptx

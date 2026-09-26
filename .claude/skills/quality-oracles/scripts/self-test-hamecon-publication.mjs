@@ -57,6 +57,8 @@ const ORACLE_SOURCE = path.join(ICI, 'oracle-nom-client-publie.mjs');
 // TF-0980 — le lanceur du hameçon de COMMIT, et la racine du parc telle que ce dépôt la voit.
 // `<forge>/.claude/skills/quality-oracles/scripts` → `<forge>` → la racine du parc.
 const LANCEUR_SOURCE = path.join(ICI, 'pre-commit-anonymiser.mjs');
+// TF-1337 — le contrôle rapide du frontmatter des skills de l'index.
+const CONTROLE_SOURCE = path.join(ICI, 'frontmatter-skills-index.mjs');
 const RACINE_PARC = process.env.FORGE_ROOT || path.resolve(ICI, '..', '..', '..', '..', '..');
 const oks = [], kos = [];
 
@@ -93,6 +95,16 @@ function poserLanceurSource(racine) {
   const d = path.join(racine, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles', 'scripts');
   fs.mkdirSync(d, { recursive: true });
   fs.copyFileSync(LANCEUR_SOURCE, path.join(d, 'pre-commit-anonymiser.mjs'));
+  return d;
+}
+
+/** TF-1337 — le pendant pour le contrôle du frontmatter des skills : sa SOURCE et le lecteur
+ *  partagé qu'il importe (`lib/frontmatter.mjs`), au repli du hameçon, sous une racine jetable. */
+function poserControleSource(racine) {
+  const d = path.join(racine, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles', 'scripts');
+  fs.mkdirSync(path.join(d, 'lib'), { recursive: true });
+  fs.copyFileSync(CONTROLE_SOURCE, path.join(d, 'frontmatter-skills-index.mjs'));
+  fs.copyFileSync(path.join(ICI, 'lib', 'frontmatter.mjs'), path.join(d, 'lib', 'frontmatter.mjs'));
   return d;
 }
 
@@ -341,6 +353,82 @@ try {
     .filter(([, c]) => c !== "trap '' PIPE");
   if (!sansTrapEnTete.length) oks.push('cas 9 — les TROIS hameçons posés (pre-push, pre-commit, commit-msg) ont trap \'\' PIPE pour première commande');
   else kos.push('cas 9 — hameçon(s) posé(s) dont la première commande n\'est pas trap \'\' PIPE : ' + sansTrapEnTete.map(([h, c]) => h + ' → « ' + c.slice(0, 60) + ' »').join(' ; '));
+
+  // --- cas 10 : LE FRONTMATTER DES SKILLS TOUCHÉS, AVANT LE COMMIT (TF-1337) -----------
+  // LE FAIT : `accueil-factory` est entré au dépôt le 22/09 avec une description de plus de 1 024
+  // caractères — la recette de quality-oracles l'aurait refusé, rien ne la jouait avant
+  // l'enregistrement. Le contrôle rapide juge les SEULS skills de l'index, lus DANS l'index ; son
+  // hameçon ne se pose que sur demande. Les deux sens au commit, puis le contrôle appelé à la main
+  // avec `--tous` — la forme que le pilot joue avant de propager —, dans les deux sens aussi.
+  poserControleSource(racine);
+  const skillMd = (description) => `---\nname: jouet\ndescription: ${description}\n---\n\n# Jouet\n`;
+  const TROP_LONGUE = 'Skill de jeu d essai. ' + 'declencheur '.repeat(90).trim();
+  const ecrireSkill = (d, nom, description) => {
+    fs.mkdirSync(path.join(d, '.claude', 'skills', nom), { recursive: true });
+    fs.writeFileSync(path.join(d, '.claude', 'skills', nom, 'SKILL.md'), skillMd(description).replace('name: jouet', 'name: ' + nom));
+  };
+  const nbCommits = (d) => Number((git(d, 'rev-list', '--count', 'HEAD').stdout || '0').trim());
+
+  // (10a) le jeu par défaut ne le pose pas, et il ne s'impose pas à un pre-commit déjà là
+  const d10a = depot(racine, 'skills-defaut', false);
+  sh(racine, 'node', [INSTALLEUR, d10a]);
+  const hook10a = path.join(d10a, '.git', 'hooks', 'pre-commit');
+  const avant10a = fs.existsSync(hook10a) ? fs.readFileSync(hook10a, 'utf8') : '';
+  const p10a = sh(racine, 'node', [INSTALLEUR, d10a, '--seul=pre-commit-skills']);
+  if (!avant10a.includes('pre-commit-skills') && avant10a.includes('pre-commit-anonymiser')
+      && /CONFLIT/.test(p10a.stdout || '') && fs.readFileSync(hook10a, 'utf8') === avant10a)
+    oks.push('cas 10a — sans le drapeau, l\'installeur ne pose PAS le pre-commit des skills ; demandé sur un dépôt qui porte déjà le pre-commit du parc, il dit CONFLIT et ne touche à rien');
+  else kos.push('cas 10a — pose par défaut ou conflit mal tenu : ' + (p10a.stdout || '').trim().slice(0, 200));
+
+  // (10b) posé sur demande : première commande trap '' PIPE, comme ses trois frères
+  const d10 = depot(racine, 'skills', false);
+  const p10 = sh(racine, 'node', [INSTALLEUR, d10, '--seul=pre-commit-skills']);
+  const hook10 = path.join(d10, '.git', 'hooks', 'pre-commit');
+  const txt10 = fs.existsSync(hook10) ? fs.readFileSync(hook10, 'utf8') : '';
+  if (/POSE/.test(p10.stdout || '') && txt10.includes('# hamecon-parc: pre-commit-skills v1') && premiereCommande(hook10) === "trap '' PIPE")
+    oks.push('cas 10b — `--seul=pre-commit-skills` pose le hameçon, signé, trap \'\' PIPE en première commande');
+  else kos.push('cas 10b — hameçon des skills non posé ou mal formé : ' + (p10.stdout || '').trim().slice(0, 200));
+
+  // (10c) sens ROUGE : une description de plus de 1 024 caractères est REFUSÉE, rien n'est enregistré
+  ecrireSkill(d10, 'jouet', TROP_LONGUE);
+  git(d10, 'add', '-A');
+  const n10 = nbCommits(d10);
+  const c10r = sh(d10, 'git', ['commit', '-q', '-m', 'skill jouet'], ENV_JEU_ESSAI);
+  const e10r = c10r.stderr || '';
+  if (c10r.status !== 0 && /FRONTMATTER REFUS/.test(e10r) && /jouet/.test(e10r) && new RegExp(TROP_LONGUE.length + ' > 1024').test(e10r) && nbCommits(d10) === n10)
+    oks.push(`cas 10c (sens rouge) — description de ${TROP_LONGUE.length} caractères : commit REFUSÉ, le skill et la longueur sont nommés, rien n'est enregistré`);
+  else kos.push('cas 10c — la description trop longue passe au commit (exit ' + c10r.status + ') : ' + e10r.trim().slice(0, 300));
+
+  // (10d) sens VERT : la MÊME entrée, description ramenée sous la limite, passe
+  ecrireSkill(d10, 'jouet', 'Skill de jeu d essai, description courte.');
+  git(d10, 'add', '-A');
+  const c10v = sh(d10, 'git', ['commit', '-q', '-m', 'skill jouet'], ENV_JEU_ESSAI);
+  if (c10v.status === 0 && nbCommits(d10) === n10 + 1) oks.push('cas 10d (sens vert) — la même entrée sous la limite est ENREGISTRÉE');
+  else kos.push('cas 10d — un frontmatter recevable est refusé (exit ' + c10v.status + ') : ' + (c10v.stderr || '').trim().slice(0, 300));
+
+  // (10e) un commit qui ne touche aucun skill passe sans rien juger
+  fs.writeFileSync(path.join(d10, 'notes.md'), 'rien a voir avec les skills\n');
+  git(d10, 'add', '-A');
+  const c10e = sh(d10, 'git', ['commit', '-q', '-m', 'notes'], ENV_JEU_ESSAI);
+  if (c10e.status === 0) oks.push('cas 10e — un commit qui ne touche aucun skill passe');
+  else kos.push('cas 10e — un commit sans skill est refusé : ' + (c10e.stderr || '').trim().slice(0, 300));
+
+  // (10f) le contrôle appelé à la main, `--tous` : ce que le pilot joue avant de propager, quand
+  // rien n'est indexé. Vert sur l'histoire saine ; rouge dès qu'un skill trop long a été ENREGISTRÉ
+  // (ici en contournant le hameçon, exactement le cas du 22/09).
+  const tousVert = sh(racine, 'node', [CONTROLE_SOURCE, d10, '--tous']);
+  ecrireSkill(d10, 'autre', TROP_LONGUE);
+  git(d10, 'add', '-A');
+  sh(d10, 'git', ['commit', '-q', '--no-verify', '-m', 'skill autre, hameçon contourné'], ENV_JEU_ESSAI);
+  const tousRouge = sh(racine, 'node', [CONTROLE_SOURCE, d10, '--tous']);
+  if (tousVert.status === 0 && tousRouge.status === 1 && /autre/.test(tousRouge.stderr || '') && !/jouet\/SKILL/.test(tousRouge.stderr || ''))
+    oks.push('cas 10f — `--tous` rend 0 sur des skills recevables, et 1 en nommant le seul skill enregistré trop long (le hameçon contourné ne cache rien au contrôle de propagation)');
+  else kos.push(`cas 10f — --tous : vert exit ${tousVert.status}, rouge exit ${tousRouge.status} : ` + (tousRouge.stderr || tousRouge.stdout || '').trim().slice(0, 300));
+
+  // (10g) ce qui se pose se dépose
+  const r10 = sh(racine, 'node', [INSTALLEUR, d10, '--seul=pre-commit-skills', '--retirer']);
+  if (/RETIRE/.test(r10.stdout || '') && !fs.existsSync(hook10)) oks.push('cas 10g — le pre-commit des skills se retire');
+  else kos.push('cas 10g — retrait impossible : ' + (r10.stdout || '').trim().slice(0, 200));
 
   // --- cas 6 : LE HAMEÇON DE COMMIT (TF-0980) --------------------------------
   //

@@ -45,6 +45,8 @@
 // Usage : node installer-hamecon-publication.mjs <depot…> [--retirer] [--verifier]
 //         [--seul=pre-push|pre-commit|commit-msg] pour n'agir que sur l'un d'eux (le
 //         commit-msg de TF-1071 juge le seul message, à l'écriture) ;
+//         [--seul=pre-commit-skills] pose le pre-commit des dépôts qui portent des skills
+//         (TF-1337) — JAMAIS posé sans ce drapeau ;
 //         [--migrer] reprend un hameçon qui porte la marque SANS la signature (TF-0994).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -235,23 +237,72 @@ echo "  Corrigez le message, ou contournez EXPLICITEMENT : git commit --no-verif
 exit 1
 `;
 
-// LES DEUX HAMEÇONS PASSENT PAR LE MÊME GESTE, et c'est ce qui garantit qu'ils se posent, se
+// LE HAMEÇON DES DÉPÔTS QUI PORTENT DES SKILLS — TF-1337 (26/09/2026). Le skill `accueil-factory`
+// est entré au dépôt le 22/09 avec une description de plus de 1 024 caractères : la recette de
+// quality-oracles l'aurait refusé, mais rien ne la jouait avant l'enregistrement, et elle coûte
+// plus de six minutes. Ce hameçon joue le contrôle RAPIDE du frontmatter des seuls skills de
+// l'index (frontmatter-skills-index.mjs, même barème que la recette). Il N'EST PAS dans le jeu
+// par défaut : il se pose sur demande (`--seul=pre-commit-skills`), sur un dépôt qui porte des
+// skills. Un dépôt n'a qu'UN pre-commit : là où celui d'anonymisation est posé, l'installeur dit
+// CONFLIT et ne touche à rien — les chaîner est une décision du pilot.
+const MARQUE_SKILLS = 'frontmatter-skills-index';
+const SIGNATURE_SKILLS = 'pre-commit-skills';
+const HAMECON_SKILLS = `#!/bin/sh
+${ligneSignature(SIGNATURE_SKILLS)}
+# pre-commit — le frontmatter des skills TOUCHES est juge avant que le commit n'existe (${MARQUE_SKILLS}).
+# Pose par installer-hamecon-publication.mjs --seul=pre-commit-skills. Contournement explicite : git commit --no-verify.
+#
+# SIGPIPE ignore, en premiere commande (TF-1360) : si la sortie du commit part dans un filtre deja
+# termine, l'echo du refus tuerait ce hamecon par SIGPIPE, et git lirait (sous Windows) un code 0.
+trap '' PIPE
+#
+# Meme bareme que la recette de quality-oracles, lu dans l'INDEX : description de 1024 caracteres
+# au plus, name et description presents. Seuls les skills dont un fichier est indexe sont lus.
+RACINE="\${FORGE_ROOT:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
+CONTROLE=""
+for CANDIDAT in \\
+  "$HOME/.claude/skills/quality-oracles/scripts/${MARQUE_SKILLS}.mjs" \\
+  "$RACINE/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/${MARQUE_SKILLS}.mjs"
+do
+  [ -f "$CANDIDAT" ] && CONTROLE="$CANDIDAT" && break
+done
+
+if [ -z "$CONTROLE" ]; then
+  echo "COMMIT REFUSE — le controle du frontmatter des skills est introuvable." >&2
+  echo "  cherche dans : ~/.claude/skills/... puis \\$RACINE/digit-ai-forge-agents/..." >&2
+  echo "  Contournement explicite si vous savez ce que vous faites : git commit --no-verify" >&2
+  exit 1
+fi
+
+if node "$CONTROLE" "$(git rev-parse --show-toplevel)"; then
+  exit 0
+fi
+echo "  Corrigez le frontmatter, ou contournez EXPLICITEMENT : git commit --no-verify" >&2
+exit 1
+`;
+
+// LES HAMEÇONS PASSENT PAR LE MÊME GESTE, et c'est ce qui garantit qu'ils se posent, se
 // reposent, se vérifient et se retirent de la même façon. Un second hameçon traité par un second
-// bloc de code recopié dériverait du premier au premier correctif.
+// bloc de code recopié dériverait du premier au premier correctif. `id` distingue deux gabarits
+// d'un même hameçon git ; `surDemande` en retire un du jeu par défaut.
 const HAMECONS = [
   { nom: 'pre-push', marque: MARQUE, signature: ligneSignature(SIGNATURE), contenu: HAMECON },
   { nom: 'pre-commit', marque: MARQUE_COMMIT, signature: ligneSignature(SIGNATURE_COMMIT), contenu: HAMECON_COMMIT },
   { nom: 'commit-msg', marque: MARQUE, signature: ligneSignature(SIGNATURE_MSG), contenu: HAMECON_MSG },
+  { id: 'pre-commit-skills', nom: 'pre-commit', marque: MARQUE_SKILLS, signature: ligneSignature(SIGNATURE_SKILLS),
+    contenu: HAMECON_SKILLS, surDemande: true },
 ];
+const cle = (h) => h.id || h.nom;
 const migrer = args.includes('--migrer');
 // NÔTRE = la ligne de signature, entière, telle quelle. ANCIEN = la marque sans la signature :
 // un hameçon posé avant TF-0994, OU un étranger qui cite la marque — indiscernables par le texte,
 // d'où le geste explicite `--migrer` pour le reprendre.
 const estNotre = (txt, h) => txt.split(/\r?\n/).some((l) => l.trimEnd() === h.signature);
 const estAncien = (txt, h) => !estNotre(txt, h) && txt.includes(h.marque);
-const choisis = seul ? HAMECONS.filter((h) => h.nom === seul) : HAMECONS;
+// Sans `--seul`, le jeu par défaut ; `--retirer` emporte aussi un hameçon posé sur demande.
+const choisis = seul ? HAMECONS.filter((h) => cle(h) === seul) : HAMECONS.filter((h) => retirer || !h.surDemande);
 if (!choisis.length) {
-  console.error(`--seul=${seul} : hameçon inconnu. Attendu : ` + HAMECONS.map((h) => h.nom).join(' ou '));
+  console.error(`--seul=${seul} : hameçon inconnu. Attendu : ` + HAMECONS.map(cle).join(' ou '));
   process.exit(2);
 }
 
@@ -262,7 +313,7 @@ for (const d of depots) {
 
   for (const h of choisis) {
     const cible = path.join(hooks, h.nom);
-    const etiquette = `${h.nom.padEnd(10)} ${d}`;
+    const etiquette = `${cle(h).padEnd(10)} ${d}`;
 
     const txtCible = fs.existsSync(cible) ? fs.readFileSync(cible, 'utf8') : null;
     const reprendre = txtCible !== null && (estNotre(txtCible, h) || (migrer && estAncien(txtCible, h)));
@@ -287,8 +338,11 @@ for (const d of depots) {
     // semaines plus tard. Le conflit se DIT, il ne se résout pas tout seul.
     if (txtCible !== null) {
       if (!reprendre) {
+        // TF-1337 — deux gabarits du parc se disputent le même hameçon git : le dire tel quel.
+        const autre = txtCible.split(/\r?\n/).find((l) => l.startsWith('# hamecon-parc:') && l.trimEnd() !== h.signature);
         const motif = estAncien(txtCible, h)
           ? `porte la marque « ${h.marque} » sans la signature — ancien hameçon du parc, ou étranger qui la cite : --migrer pour le reprendre`
+          : autre ? `un autre ${h.nom} du parc est déjà posé (« ${autre.trim()} ») — un dépôt n'a qu'un ${h.nom}`
           : `un ${h.nom} ÉTRANGER existe déjà`;
         console.log(`  CONFLIT  ${etiquette} — ${motif}, rien touché`); absents++; continue;
       }
