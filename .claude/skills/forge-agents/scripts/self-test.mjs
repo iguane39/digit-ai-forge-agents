@@ -105,9 +105,25 @@ check("ledger TF-0385 : `oracles_verdict` conforme sous schéma déclaré → PA
 check("ledger TF-1204 : `etape_close` sans `etape` ni `resume` → FAIL qui NOMME les deux champs", () => {
   const lf = join(out, "ledger-cloture-rouge.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
-  run(ledger, ["append", lf, JSON.stringify({ type: "etape_close" })]);
+  // TF-1366 (b)/(c), 21/09/2026 : `append` refuse DÉSORMAIS cette entrée à l'écriture, avant
+  // même `verify` — une `etape_close` sans rien d'autre que son type est aussi une entrée « sans
+  // contenu » (b), et un type contraint auquel manque un champ dû sous schéma déclaré (c).
+  let refusApp = null;
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "etape_close" })], { stdio: "pipe" }); }
+  catch (e) { refusApp = String(e.stderr || ""); }
+  if (refusApp === null) throw new Error("append aurait dû refuser une `etape_close` sans contenu (TF-1366 b)");
+  if (!refusApp.includes("[LEDGER FAIL]")) throw new Error("refus attendu avec [LEDGER FAIL] : " + refusApp);
+
+  // Le fait mesuré le 13/09 reste possible via un AUTRE écrivain que cet `append` durci (un
+  // autre outil, un ledger antérieur au correctif) : `verify` doit continuer à le voir, après
+  // coup, sur un ledger qu'il n'a pas lui-même gardé — c'est le fait mesuré original, inchangé.
+  const lfTiers = join(out, "ledger-cloture-rouge-tiers.jsonl");
+  ecrireBrut(lfTiers, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", schema_ledger: "1.0" },
+    { seq: 2, ts: "2026-01-01T10:00:01Z", type: "etape_close" },
+  ]);
   let sortie = null;
-  try { execFileSync("node", [ledger, "verify", lf], { stdio: "pipe" }); }
+  try { execFileSync("node", [ledger, "verify", lfTiers], { stdio: "pipe" }); }
   catch (e) { sortie = String(e.stderr || "") + String(e.stdout || ""); }
   if (sortie === null) throw new Error("une cloture d etape vide a ete acceptee — c est le fait mesure du 13/09");
   if (!sortie.includes("`etape`")) throw new Error("l echec ne NOMME pas le champ etape : " + sortie);
@@ -126,11 +142,27 @@ check("ledger TF-0385 : `oracles_verdict` sans `oracle` → FAIL qui NOMME le ch
   const lf = join(out, "ledger-schema-rouge.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
   // La forme réellement rencontrée : un `oracles` imbriqué, aucun verdict de premier niveau.
-  run(ledger, ["append", lf, JSON.stringify({
-    type: "oracles_verdict", etape: "tests", oracles: { forge_tests: "PARTIEL" },
-  })]);
+  // TF-1366 (c), 21/09/2026 : `append` refuse DÉSORMAIS cette entrée à l'écriture, sous le
+  // schéma déclaré par le `run_open` qui précède — avant même `verify`.
+  let refusApp = null;
+  try {
+    execFileSync("node", [ledger, "append", lf, JSON.stringify({
+      type: "oracles_verdict", etape: "tests", oracles: { forge_tests: "PARTIEL" },
+    })], { stdio: "pipe" });
+  } catch (e) { refusApp = String(e.stderr || ""); }
+  if (refusApp === null) throw new Error("append aurait dû refuser un oracles_verdict sans oracle/verdict sous schéma déclaré (TF-1366 c)");
+  if (!refusApp.includes("`oracle`") || !refusApp.includes("`verdict`")) throw new Error("le refus d'append ne nomme pas les deux champs dus : " + refusApp);
+
+  // La forme réellement rencontrée le 19/08 reste possible via un AUTRE écrivain que cet
+  // `append` durci : `verify` doit continuer à la voir, après coup, sur un ledger qu'il n'a pas
+  // lui-même gardé — c'est le fait mesuré original (TF-0385), inchangé.
+  const lfTiers = join(out, "ledger-schema-rouge-tiers.jsonl");
+  ecrireBrut(lfTiers, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", schema_ledger: "1.0" },
+    { seq: 2, ts: "2026-01-01T10:00:01Z", type: "oracles_verdict", etape: "tests", oracles: { forge_tests: "PARTIEL" } },
+  ]);
   let sortie = null;
-  try { execFileSync("node", [ledger, "verify", lf], { stdio: "pipe" }); }
+  try { execFileSync("node", [ledger, "verify", lfTiers], { stdio: "pipe" }); }
   catch (e) { sortie = String(e.stderr || "") + String(e.stdout || ""); }
   if (sortie === null) throw new Error("une entrée sans `oracle` ni `verdict` a été acceptée");
   if (!sortie.includes("`oracle`")) throw new Error("l échec ne NOMME pas le champ manquant : " + sortie);
@@ -363,6 +395,224 @@ check("ledger TF-0410 : append refuse un `ts` de payload ANTÉRIEUR au maximum, 
   if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre après un ts imposé non décroissant");
   const lignes = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
   if (lignes.length !== 2) throw new Error(`2 entrées attendues, ${lignes.length} — le refus n a rien laissé passer`);
+});
+
+// ============================================================================================
+// TF-1366 (a) — ARGUMENT EN SURNOMBRE REFUSÉ. Fait mesuré chez un produit (21/09) : un script de
+// journal réécrit ignorait tout argument sans « -- ». `append <ledger> '<json>' --etape x` est
+// l'exemple exact du fait mesuré.
+// ============================================================================================
+check("ledger TF-1366 (a) : `append` avec un argument en surnombre → refus qui NOMME l'argument et redonne l'usage", () => {
+  const lf = join(out, "ledger-surnombre.jsonl");
+  let sortie = null;
+  try {
+    execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "run_open", substrat: "x" }), "--etape", "x"],
+      { encoding: "utf8", stdio: "pipe" });
+  } catch (e) { sortie = String(e.stderr || ""); }
+  if (sortie === null) throw new Error("append aurait dû refuser l'argument en surnombre --etape x");
+  if (!sortie.includes("[LEDGER FAIL]")) throw new Error("refus attendu avec [LEDGER FAIL] : " + sortie);
+  if (!sortie.includes("`--etape`") || !sortie.includes("`x`")) throw new Error("le refus ne NOMME pas l'argument en trop : " + sortie);
+  if (!sortie.toLowerCase().includes("usage")) throw new Error("le refus ne redonne pas l'usage : " + sortie);
+  if (existsSync(lf)) throw new Error("le fichier a été créé malgré le refus — un refus doit être sans écriture");
+});
+
+check("ledger TF-1366 (a) : `append` en forme reconnue (payload JSON seul) → accepté, non-régression", () => {
+  const lf = join(out, "ledger-surnombre-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "forme reconnue" })]);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("un append en forme reconnue doit rester accepté");
+});
+
+check("ledger TF-1366 (a) : `verify` avec un argument en surnombre → refus qui NOMME l'argument", () => {
+  const lf = join(out, "ledger-surnombre-verify.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "x" })]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "verify", lf, "--etape", "x"], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stderr || ""); }
+  if (sortie === null) throw new Error("verify aurait dû refuser l'argument en surnombre --etape x");
+  if (!sortie.includes("`--etape`")) throw new Error("le refus ne NOMME pas l'argument en trop : " + sortie);
+});
+
+// ============================================================================================
+// TF-1366 (b) — ENTRÉE SANS TYPE, OU SANS CONTENU AU-DELÀ DE SON TYPE (ET UN `ts` ÉVENTUEL) :
+// REFUSÉE À L'ÉCRITURE. Une entrée sans contenu reste pour toujours dans un journal en ajout
+// seul, et se lit ensuite comme une preuve — c'est le mécanisme exact du fait mesuré du 21/09.
+// ============================================================================================
+check("ledger TF-1366 (b) : `append` refuse une entrée sans `type`", () => {
+  const lf = join(out, "ledger-sans-type.jsonl");
+  let sortie = null;
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ substrat: "sans type" })], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stderr || ""); }
+  if (sortie === null) throw new Error("append aurait dû refuser une entrée sans `type`");
+  if (!sortie.includes("`type`")) throw new Error("le refus ne nomme pas le champ type : " + sortie);
+  if (existsSync(lf)) throw new Error("le fichier a été créé malgré le refus");
+});
+
+check("ledger TF-1366 (b) : `append` refuse une entrée réduite à son `type` (et un `ts` éventuel)", () => {
+  const lf = join(out, "ledger-reduite-type.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "amorce" })]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note" })], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stderr || ""); }
+  if (sortie === null) throw new Error("append aurait dû refuser une entrée réduite à son seul type");
+  if (!sortie.includes("aucun contenu")) throw new Error("le refus ne dit pas pourquoi (aucun contenu) : " + sortie);
+  // Le même refus vaut avec un `ts` fourni explicite — « et un ts éventuel » (b).
+  let sortie2 = null;
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note", ts: "2026-01-01T00:00:00Z" })], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortie2 = String(e.stderr || ""); }
+  if (sortie2 === null) throw new Error("append aurait dû refuser une entrée réduite à son type + ts");
+  const lignes = readFileSync(lf, "utf8").split("\n").filter(Boolean);
+  if (lignes.length !== 1) throw new Error(`1 entrée attendue (l amorce), ${lignes.length} — un refus a laissé passer une écriture`);
+});
+
+check("ledger TF-1366 (b) : une entrée avec du contenu au-delà de `type`/`ts` reste acceptée (la règle ne déborde pas)", () => {
+  const lf = join(out, "ledger-avec-contenu.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "x" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "un contenu" })]);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("une entrée avec contenu doit rester acceptée");
+});
+
+// TF-1366 (d) — l'écho `[OK]` NOMME le type et les champs écrits.
+check("ledger TF-1366 (d) : l'écho `[OK]` NOMME le type et les champs écrits", () => {
+  const lf = join(out, "ledger-echo.jsonl");
+  const okOut = run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0", substrat: "echo" })]);
+  if (!okOut.includes("type run_open")) throw new Error("l'écho ne nomme pas le type : " + okOut);
+  if (!okOut.includes("schema_ledger") || !okOut.includes("substrat")) throw new Error("l'écho ne nomme pas les champs écrits : " + okOut);
+});
+
+// ============================================================================================
+// TF-1366 (e) — `verify` SIGNALE LES ENTRÉES SANS CONTENU écrites par un AUTRE outil (ou avant ce
+// correctif, `append` les refusant désormais lui-même) : non bloquant sous un schéma absent ou
+// `1.0`, FAIL sous `1.1` (D-18) — on ne met JAMAIS en échec un journal existant.
+// ============================================================================================
+check("ledger TF-1366 (e) : entrée sans contenu, schéma ABSENT → [SANS CONTENU] non bloquant, PASS", () => {
+  const lf = join(out, "ledger-sanscontenu-absent.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "sans schema" },
+    { seq: 2, ts: "2026-01-01T10:00:01Z", type: "note" },
+  ]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("une entrée sans contenu ne doit PAS bloquer sans schéma déclaré : " + v);
+  if (!v.includes("[SANS CONTENU]")) throw new Error("l'entrée sans contenu doit être SIGNALÉE, pas tue : " + v);
+  if (!v.includes("1 entrée")) throw new Error("le compte doit être dit : " + v);
+});
+
+check("ledger TF-1366 (e) : entrée sans contenu, schéma 1.0 → [SANS CONTENU] non bloquant, PASS (D-18, sans rien de neuf)", () => {
+  const lf = join(out, "ledger-sanscontenu-1-0.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", schema_ledger: "1.0", substrat: "1.0" },
+    { seq: 2, ts: "2026-01-01T10:00:01Z", type: "note" },
+  ]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("un journal 1.0 existant ne doit PAS passer au rouge pour une entrée sans contenu (D-18) : " + v);
+  if (!v.includes("[SANS CONTENU]")) throw new Error("l'entrée sans contenu doit être SIGNALÉE, pas tue : " + v);
+});
+
+check("ledger TF-1366 (e) : entrée sans contenu, schéma 1.1 → FAIL bloquant", () => {
+  const lf = join(out, "ledger-sanscontenu-1-1.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents"], substrat: "1.1" },
+    { seq: 2, ts: "2026-01-01T10:00:01Z", type: "note" },
+  ]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stdout || "") + String(e.stderr || ""); }
+  if (sortie === null) throw new Error("une entrée sans contenu doit FAIL sous le schéma 1.1");
+  if (!sortie.includes("sans contenu")) throw new Error("le FAIL doit dire « sans contenu » : " + sortie);
+});
+
+// ============================================================================================
+// TF-1367, 21/09/2026 — DEUX ÉCRIVAINS, UN MÊME SEQ. `append` verrouille déjà l'écriture ; deux
+// appends CONCURRENTS DE CE SCRIPT reçoivent deux seq distincts (prouvé plus haut, test de
+// verrou). Le défaut visé ici est un ledger écrit par un AUTRE outil sans ce verrou commun.
+// ============================================================================================
+check("ledger TF-1367 : seq porté par deux entrées → NOMMÉ en tête des écarts, distinct d'une rupture ordinaire", () => {
+  const lf = join(out, "ledger-doublon-seq.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "deux ecrivains" },
+    { seq: 2, ts: "2026-01-01T10:00:01Z", type: "note", detail: "session a" },
+    { seq: 2, ts: "2026-01-01T10:00:02Z", type: "note", detail: "session b — meme seq" },
+    { seq: 3, ts: "2026-01-01T10:00:03Z", type: "note", detail: "suite" },
+  ]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stdout || "") + String(e.stderr || ""); }
+  if (sortie === null) throw new Error("un seq porté par deux entrées doit FAIL");
+  if (!sortie.includes("seq 2 porté par 2 entrées")) throw new Error("le défaut n'est pas NOMMÉ avec seq et compte : " + sortie);
+  if (!sortie.includes("lignes 2, 3")) throw new Error("les numéros de ligne ne sont pas cités : " + sortie);
+  if (!sortie.includes("deux écrivains sans verrou commun")) throw new Error("le sens du défaut n'est pas dit : " + sortie);
+  // EN TÊTE : le message du doublon précède toute autre rupture dans le rapport d'intégrité.
+  const idxDoublon = sortie.indexOf("porté par 2 entrées");
+  const idxRompu = sortie.indexOf("append-only rompu");
+  if (idxRompu >= 0 && idxDoublon > idxRompu) throw new Error("le doublon doit être nommé EN TÊTE, avant les ruptures génériques : " + sortie);
+});
+
+// ============================================================================================
+// D-18 (a), décision humaine du 26/09/2026 — SCHÉMA 1.1 : `forges_mobilisees` DEVIENT UN CHAMP
+// DÛ DE `run_open`. Un journal qui déclare `1.0` reste jugé selon SES règles, sans rien de neuf.
+// ============================================================================================
+check("ledger D-18 (a) : `run_open` en 1.1 SANS `forges_mobilisees` → refusé à l'écriture (c), et FAIL à verify sur un ledger tiers", () => {
+  const lf = join(out, "ledger-1-1-sans-forges.jsonl");
+  let sortie = null;
+  try {
+    execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.1", substrat: "x" })],
+      { encoding: "utf8", stdio: "pipe" });
+  } catch (e) { sortie = String(e.stderr || ""); }
+  if (sortie === null) throw new Error("append aurait dû refuser un run_open 1.1 sans forges_mobilisees");
+  if (!sortie.includes("forges_mobilisees")) throw new Error("le refus ne nomme pas le champ dû : " + sortie);
+
+  // Un ledger tiers (écrit hors de cet `append` durci, ex. avant le correctif) : `verify` doit
+  // continuer à voir le manque, après coup.
+  const lfTiers = join(out, "ledger-1-1-sans-forges-tiers.jsonl");
+  ecrireBrut(lfTiers, [{ seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", schema_ledger: "1.1", substrat: "x" }]);
+  let sortieV = null;
+  try { execFileSync("node", [ledger, "verify", lfTiers], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortieV = String(e.stdout || "") + String(e.stderr || ""); }
+  if (sortieV === null) throw new Error("verify aurait dû FAIL sur un run_open 1.1 sans forges_mobilisees");
+  if (!sortieV.includes("forges_mobilisees")) throw new Error("verify ne nomme pas le champ dû : " + sortieV);
+});
+
+check("ledger D-18 (a) : `run_open` en 1.1 avec `forges_mobilisees` (noms complets, courts, annotés) → accepté, PASS", () => {
+  const lf = join(out, "ledger-1-1-avec-forges.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({
+    type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents", "design (aval)"], substrat: "x",
+  })]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("un run_open 1.1 avec forges_mobilisees valide doit passer : " + v);
+});
+
+check("ledger D-18 (a) : `forges_mobilisees` tableau VIDE, ou avec un élément vide → refusé à l'écriture", () => {
+  const lfVide = join(out, "ledger-1-1-forges-vide.jsonl");
+  let s1 = null;
+  try {
+    execFileSync("node", [ledger, "append", lfVide, JSON.stringify({ type: "run_open", schema_ledger: "1.1", forges_mobilisees: [], substrat: "x" })],
+      { encoding: "utf8", stdio: "pipe" });
+  } catch (e) { s1 = String(e.stderr || ""); }
+  if (s1 === null) throw new Error("un tableau vide de forges_mobilisees doit être refusé");
+
+  const lfElemVide = join(out, "ledger-1-1-forges-elem-vide.jsonl");
+  let s2 = null;
+  try {
+    execFileSync("node", [ledger, "append", lfElemVide, JSON.stringify({ type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents", "  "], substrat: "x" })],
+      { encoding: "utf8", stdio: "pipe" });
+  } catch (e) { s2 = String(e.stderr || ""); }
+  if (s2 === null) throw new Error("un élément vide dans forges_mobilisees doit être refusé");
+  if (!s2.includes("element")) throw new Error("le refus ne dit pas ce qui est vide : " + s2);
+});
+
+check("ledger D-18 (a) : un journal qui déclare 1.0 reste jugé selon 1.0 — `run_open` SANS `forges_mobilisees` reste accepté", () => {
+  const lf = join(out, "ledger-1-0-sans-forges.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0", substrat: "x" })]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("un run_open 1.0 sans forges_mobilisees ne doit PAS être mis en échec (D-18, sans rien de neuf) : " + v);
+});
+
+check("ledger D-18 (a) : `schema_ledger` déclaré mais INCONNU de ce vérificateur → [NON VÉRIFIÉ], jamais mis en échec", () => {
+  const lf = join(out, "ledger-schema-inconnu.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "9.9", substrat: "version future" })]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("une version inconnue ne doit PAS être mise en échec : " + v);
+  if (!v.includes("[NON VÉRIFIÉ]")) throw new Error("la version inconnue doit être DITE : " + v);
+  if (!v.includes("9.9")) throw new Error("la version déclarée doit être citée : " + v);
 });
 
 check("oracle-defs : graphe def→def cohérent (fixture verte) → PASS", () => {

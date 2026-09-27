@@ -5,6 +5,8 @@
  *   node ledger.mjs append <ledger.jsonl> '<json>'          # payload en argument shell
  *   node ledger.mjs append <ledger.jsonl> --fichier <p.json> # payload lu depuis un fichier
  *   node ledger.mjs verify <ledger.jsonl>                   # vérifie l'intégrité append-only
+ * Aucune des deux formes n'accepte d'argument en surnombre : un argument non reconnu est REFUSÉ
+ * (sortie 1), NOMMÉ, avec cet usage redonné (TF-1366 a, 21/09/2026).
  * Vérifications d'INTÉGRITÉ : JSON valide par ligne, seq strictement croissant depuis 1,
  * horodatages non décroissants, première entrée de type run_open. Exit 0 = PASS, 1 = FAIL.
  * Les écarts d'horodatage sont TOUS relevés (jamais le premier seul) et chacun nomme les deux
@@ -21,8 +23,10 @@
  * ANTÉRIORITÉ DÉCLARÉE, sur le modèle exact de R-32 bis du pilot : la forme n'est exigée que si
  * `run_open` porte `schema_ledger`. Sans ce champ, le ledger PRÉCÈDE le schéma — ses entrées
  * sont déclarées non vérifiables, jamais mises en échec. Les trois ledgers du parc mesurés le
- * 19/08 échoueraient tous, et un contrôle qui met en échec tout l'existant se fait désactiver
- * (R-33 bis) : on ne juge que ce qui s'est déclaré jugeable.
+ * 19/08 échoueraient tous : un contrôle qui met en échec tout l'existant se fait désactiver —
+ * c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec (« armer un
+ * gate que personne n'a exercé le ferait désarmer au premier faux positif », REGLES-PROJET.md,
+ * TF-1332) : on ne juge que ce qui s'est déclaré jugeable.
  *
  * HORODATAGES — TROIS DÉFAUTS CORRIGÉS ENSEMBLE (TF-0410, 20/08/2026). Le fait mesuré : le
  * ledger de Produit-11 (138 entrées) portait DEUX reculs d'horodatage, et le second
@@ -61,6 +65,41 @@
  *   · un écart rectifié s'IMPRIME `[RECTIFIÉ]`, toujours, à chaque verify. Il ne disparaît
  *     pas : il cesse seulement de bloquer. Un écart NON déclaré reste FAIL.
  *
+ * SURNOMBRE ET ENTRÉE SANS CONTENU (TF-1366, 21/09/2026). Fait mesuré chez un produit (21/09) :
+ * un script de journal réécrit par le produit ignorait tout argument sans « -- », onze entrées
+ * écrites réduites à `{seq, ts, type}`, citées ensuite comme preuves dans 7 restitutions. Ce
+ * script-ci n'a pas ce défaut d'analyse (corps JSON), mais il en gardait trois voisins :
+ *   (a) tout argument NON RECONNU après <ledger.jsonl> est REFUSÉ (sortie 1, l'argument est
+ *       NOMMÉ, l'usage est redonné) — jamais silencieusement ignoré (voir Usage ci-dessus) ;
+ *   (b) `append` REFUSE à l'écriture une entrée sans `type`, ou réduite à son seul `type` (et un
+ *       `ts` éventuel) : une entrée sans contenu reste pour toujours dans un journal en ajout
+ *       seul, et se lit ensuite comme une preuve ;
+ *   (c) `append` REFUSE aussi une entrée d'un type contraint (table des champs dus, PAR VERSION
+ *       de schéma — voir CHAMPS_DUS_PAR_VERSION) à laquelle manque un champ dû, dès que le
+ *       journal a déclaré un schéma à son `run_open` — jusqu'ici seul `verify` le voyait, après
+ *       coup ;
+ *   (d) l'écho `[OK] entrée N ajoutée` NOMME désormais le type et les champs écrits, pour se
+ *       relire depuis la seule sortie de la commande ;
+ *   (e) `verify` signale, lui, les entrées SANS CONTENU déjà écrites par un AUTRE outil ou avant
+ *       ce correctif : ligne `[SANS CONTENU]` non bloquante, avec le compte, sous un schéma
+ *       absent ou `1.0` — FAIL sous `1.1` (ci-dessous) — on ne met jamais en échec un journal
+ *       existant (antériorité déclarée, ci-dessus).
+ *
+ * DEUX ÉCRIVAINS, UN MÊME SEQ (TF-1367, 21/09/2026). `append` verrouille déjà l'écriture
+ * (`<ledger>.lock`) : deux appels concurrents de CE script reçoivent deux seq distincts (prouvé
+ * par le self-test). Le fait qui reste, mesuré chez un produit dont le script de journal n'avait
+ * pas ce verrou commun : deux sessions simultanées ont écrit le même numéro de seq à quatre
+ * reprises, noyé dans 57 ruptures anciennes par le seul message générique d'append-only rompu.
+ * `verify` NOMME désormais un seq porté par plusieurs entrées (« seq N porté par K entrées,
+ * lignes a, b — deux écrivains sans verrou commun »), EN TÊTE des écarts, distinct de toute
+ * autre rupture.
+ *
+ * SCHÉMA 1.1 — FORGES MOBILISÉES (décision humaine D-18 (a), 26/09/2026). Sous 1.1, `run_open`
+ * doit porter `forges_mobilisees` (table CHAMPS_DUS_PAR_VERSION ci-dessous) — la forme que lit
+ * `oracle-enclenchement.mjs` du pilot. Les champs dus sont désormais PAR VERSION : un journal qui
+ * déclare `1.0` reste jugé selon SES règles, pour toujours — une version ne durcit jamais un
+ * journal qui en a déclaré une antérieure, elle ne s'applique qu'à qui la déclare.
+ *
  * --fichier : le passage du payload JSON en argument shell est pénible sous PowerShell 5.1
  * (échappement des guillemets, longueur de ligne). --fichier lit le même JSON depuis un
  * fichier — mêmes validations, même verrou, même format de sortie (RA-1, 05/08/2026).
@@ -73,26 +112,23 @@ import { readFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSy
 
 const rest = process.argv.slice(2);
 const [cmd, file] = rest;
-const fichierIdx = rest.indexOf("--fichier");
-let payload;
-if (fichierIdx >= 0) {
-  const payloadPath = rest[fichierIdx + 1];
-  if (!payloadPath) fail_usage();
-  try { payload = readFileSync(payloadPath, "utf8").replace(/^﻿/, ""); }
-  catch (e) { console.error(`[LEDGER FAIL] --fichier illisible (${payloadPath}) : ${e.message}`); process.exit(1); }
-  // BOM UTF-8 : Out-File/Set-Content PowerShell 5.1 l'écrivent par défaut — sans ce retrait,
-  // JSON.parse échoue sur « Unexpected token » (RA-1, cas réel visé par --fichier).
-} else {
-  payload = rest[2];
-}
+//: Tout ce qui suit <ledger> — la forme reconnue dépend de la commande (append : un payload
+//: JSON, ou --fichier <chemin> ; verify : rien). TF-1366 (a), 21/09/2026 : le fait mesuré chez
+//: un produit — un script de journal réécrit ignorait tout argument sans « -- », onze entrées
+//: écrites amputées de ce qu'il ignorait, citées ensuite comme preuves dans 7 restitutions. Ici,
+//: un argument NON RECONNU est REFUSÉ (sortie 1, nommé), jamais silencieusement ignoré.
+const argsRestants = rest.slice(2);
+const USAGE_APPEND = "usage : append <ledger.jsonl> ('<json>' | --fichier <payload.json>)";
+const USAGE_VERIFY = "usage : verify <ledger.jsonl>";
 //: Version du schéma de payload. Déclarée par `run_open` (`schema_ledger`), elle dit sous
 //: quelle forme le ledger a été écrit — comme l'empreinte de règles d'un journal d'oracles.
-const SCHEMA_LEDGER = "1.0";
+//: TF-1366/D-18 (a), 26/09/2026 — la version COURANTE ; une version antérieure DÉCLARÉE
+//: (`1.0`) reste jugée selon SES propres règles, pour toujours (table PAR VERSION ci-dessous).
+const SCHEMA_LEDGER = "1.1";
 
-//: Les champs dus, par type. Un seul type est contraint aujourd'hui : celui dont l'absence de
-//: forme rendait un fait incalculable. Étendre cette table est une décision, pas un réflexe —
-//: un ledger sur-contraint cesse d'accepter ce qu'un run a besoin de consigner.
-const CHAMPS_DUS = {
+//: Les champs dus des DEUX types nés de TF-0385 (19/08) et TF-1204 (22/09) — inchangés par le
+//: passage à 1.1, portés tels quels dans chaque version de CHAMPS_DUS_PAR_VERSION ci-dessous.
+const CHAMPS_DUS_1_0 = {
   oracles_verdict: [
     ["oracle", "le NOM de l oracle qui a rendu le verdict — sans lui, aucun juge ne peut savoir ce qui a tourne"],
     ["verdict", "le VERDICT rendu (PASS | FAIL | SKIP | NA | PARTIEL) — un releve sans verdict n est pas un verdict"],
@@ -109,6 +145,36 @@ const CHAMPS_DUS = {
   ],
 };
 
+//: TF-1366/D-18 (a), decision humaine du 26/09/2026 — sous 1.1, `run_open` doit porter
+//: `forges_mobilisees`. C'est la forme que lit `oracle-enclenchement.mjs` du pilot
+//: (`forgesMobilisees`/`forgeCanonique`) : nom complet (`digit-ai-forge-design`) ou court
+//: (`design`), une annotation apres le nom est admise. Ce validateur ne juge que la FORME
+//: (tableau non vide, elements non vides) — jamais que les noms designent des forges qui
+//: existent reellement : ce jugement-la appartient au juge de l enclenchement, pas a l ecriture.
+function validerForgesMobilisees(valeur) {
+  if (!Array.isArray(valeur)) return `doit etre un TABLEAU de chaines (recu ${typeof valeur})`;
+  const invalides = valeur.filter((v) => typeof v !== "string" || !v.trim());
+  if (invalides.length) return `contient ${invalides.length} element(s) non-chaine ou vide(s) sur ${valeur.length}`;
+  return null;
+}
+
+//: Les champs dus, PAR VERSION DE SCHÉMA (TF-1366/D-18, 26/09/2026). Un journal qui déclare
+//: `1.0` reste jugé selon les règles `1.0` SANS RIEN DE NEUF : une version ne durcit jamais un
+//: journal qui a déclaré une version antérieure, elle ne s'applique qu'à qui la déclare — sur
+//: le même modèle que l'antériorité déclarée (ci-dessus), un cran plus fin (par version, pas
+//: seulement par présence/absence de schéma). Chaque règle est `[champ, motif]` pour une simple
+//: présence, ou `[champ, motif, validateur]` quand la présence ne suffit pas à juger la forme
+//: (ex. tableau non vide plutôt que simple chaîne non vide).
+const CHAMPS_DUS_PAR_VERSION = {
+  "1.0": CHAMPS_DUS_1_0,
+  "1.1": {
+    ...CHAMPS_DUS_1_0,
+    run_open: [
+      ["forges_mobilisees", "la LISTE DES FORGES mobilisees par ce run — sans elle, le juge de l enclenchement ne sait pas ce qui devait tourner", validerForgesMobilisees],
+    ],
+  },
+};
+
 //: Type d'entrée qui déclare des écarts d'horodatage antérieurs, et les champs dus de chaque
 //: déclaration. Une déclaration incomplète ne couvre rien : ces quatre champs sont ce qui
 //: rend la rectification vérifiable (le seq visé, le ts fautif tel qu'il est écrit, l'heure
@@ -117,7 +183,7 @@ const TYPE_RECTIFICATION = "rectification_horodatage";
 const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "ts_reel_estime", "cause"];
 
 function fail(msg) { console.error(`[LEDGER FAIL] ${msg}`); process.exit(1); }
-function fail_usage() { fail("usage : append <ledger.jsonl> ('<json>' | --fichier <payload.json>)"); }
+function fail_usage() { fail(USAGE_APPEND); }
 
 function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -148,15 +214,43 @@ function releaseLock(lockFile) {
 }
 
 if (cmd === "append") {
-  if (!file || !payload) fail_usage();
+  if (!file) fail_usage();
+  // Forme reconnue : UN payload JSON positionnel, OU --fichier <chemin> — jamais les deux,
+  // jamais rien d'autre en surnombre (TF-1366 a) : l'argument en trop est NOMMÉ, pas absorbé.
+  const reconnu = argsRestants[0] === "--fichier" ? argsRestants.slice(0, 2) : argsRestants.slice(0, 1);
+  const enTrop = argsRestants.slice(reconnu.length);
+  if (enTrop.length) fail(`argument(s) non reconnu(s) : ${enTrop.map((a) => `\`${a}\``).join(", ")} — ${USAGE_APPEND}`);
+  let payload;
+  if (reconnu[0] === "--fichier") {
+    const payloadPath = reconnu[1];
+    if (!payloadPath) fail_usage();
+    try { payload = readFileSync(payloadPath, "utf8").replace(/^﻿/, ""); }
+    catch (e) { console.error(`[LEDGER FAIL] --fichier illisible (${payloadPath}) : ${e.message}`); process.exit(1); }
+    // BOM UTF-8 : Out-File/Set-Content PowerShell 5.1 l'écrivent par défaut — sans ce retrait,
+    // JSON.parse échoue sur « Unexpected token » (RA-1, cas réel visé par --fichier).
+  } else {
+    payload = reconnu[0];
+  }
+  if (!payload) fail_usage();
   let obj;
   try { obj = JSON.parse(payload); } catch { fail("payload JSON invalide"); }
+  // TF-1366 (b) : une entrée sans `type`, ou réduite à son seul `type` (et un `ts` éventuel),
+  // reste pour toujours dans un journal en ajout seul, et se lit ensuite comme une preuve —
+  // refusée ici, avant même le verrou (aucune écriture, aucun état partagé touché).
+  if (typeof obj.type !== "string" || !obj.type.trim()) {
+    fail("entrée refusée : champ `type` absent — une entrée sans type ne se relit jamais comme preuve (TF-1366)");
+  }
+  const clesUtiles = Object.keys(obj).filter((k) => k !== "type" && k !== "ts");
+  if (clesUtiles.length === 0) {
+    fail(`entrée refusée : aucun contenu au-delà de \`type\` (${JSON.stringify(obj.type)}) — une entrée sans contenu reste pour toujours dans un journal en ajout seul, et se lit ensuite comme une preuve (TF-1366)`);
+  }
   const lockFile = `${file}.lock`;
   acquireLock(lockFile);
   // Note : process.exit() (dans fail()) ne déroule pas les blocs finally — toute sortie en
   // erreur pendant la section verrouillée doit donc libérer le verrou explicitement avant
   // d'appeler fail(), plutôt que de compter sur un try/finally autour de process.exit().
   let seq = 1;
+  let schemaActif = null;
   try {
     let tsMax = "";
     if (existsSync(file)) {
@@ -166,12 +260,24 @@ if (cmd === "append") {
         // Maximum courant, pas dernier ts : sur un fichier qui porte déjà un recul, se
         // comparer au dernier autoriserait à consigner sous une heure déjà atteinte.
         for (const l of lines) {
-          const t = JSON.parse(l).ts;
+          const parsed = JSON.parse(l);
+          const t = parsed.ts;
           if (typeof t === "string" && t > tsMax) tsMax = t;
+          // Schéma ACTIF pour juger CETTE entrée (TF-1366 c) : celui du DERNIER run_open qui en
+          // déclare un dans le fichier — même lecture que verify (schemaDeclare), au sens d'un
+          // seul journal (un run de version ne change pas ce choix, pour rester simple).
+          if (parsed.type === "run_open" && typeof parsed.schema_ledger === "string" && parsed.schema_ledger.trim()) {
+            schemaActif = parsed.schema_ledger.trim();
+          }
         }
       }
     } else if (obj.type !== "run_open") {
       throw new Error("première entrée d'un ledger : type run_open exigé");
+    }
+    // L'entrée elle-même, si c'est un run_open qui déclare (ou redéclare) un schéma, DEVIENT le
+    // schéma actif — pour SE juger elle-même (cas du tout premier run_open d'un ledger neuf).
+    if (obj.type === "run_open" && typeof obj.schema_ledger === "string" && obj.schema_ledger.trim()) {
+      schemaActif = obj.schema_ledger.trim();
     }
     // Un `ts` fourni par le payload écrasait l'horodatage machine SANS AUCUNE GARDE (spread
     // après ts) : append pouvait créer le recul que verify reproche. Il reste accepté quand il
@@ -188,6 +294,21 @@ if (cmd === "append") {
         `l'horodatage machine. Si l'entrée doit constater un recul DÉJÀ écrit, c'est une ` +
         `entrée \`${TYPE_RECTIFICATION}\`, jamais une réécriture.`);
     }
+    // TF-1366 (c) : un type CONTRAINT (table des champs dus) auquel manque un champ dû est
+    // refusé À L'ÉCRITURE, sous le schéma ACTIF — jusqu'ici seul `verify` le voyait, après coup.
+    const champsDus = schemaActif && CHAMPS_DUS_PAR_VERSION[schemaActif];
+    if (champsDus && champsDus[obj.type]) {
+      const manquants = [];
+      for (const [champ, pourquoi, valider] of champsDus[obj.type]) {
+        const valeur = obj[champ];
+        const estVide = valeur === undefined || valeur === null || String(valeur).trim() === "";
+        if (estVide) { manquants.push(`\`${champ}\` ${champ in obj ? "vide" : "absent"} — ${pourquoi}`); continue; }
+        if (valider) { const probleme = valider(valeur); if (probleme) manquants.push(`\`${champ}\` ${probleme} — ${pourquoi}`); }
+      }
+      if (manquants.length) {
+        throw new Error(`entrée refusée (schéma ${schemaActif}, type \`${obj.type}\`) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
+      }
+    }
     const { ts: _tsPayload, ...corps } = obj;
     const tsEntree = tsFourni || new Date().toISOString();
     appendFileSync(file, JSON.stringify({ seq, ts: tsEntree, ...corps }) + "\n");
@@ -197,8 +318,11 @@ if (cmd === "append") {
     fail(e.message);
   }
   releaseLock(lockFile);
-  console.log(`[OK] entrée ${seq} ajoutée`);
+  // TF-1366 (d) : l'écho NOMME le type et les champs écrits — un « [OK] » muet sur le contenu ne
+  // permet pas de relire, depuis la seule sortie de la commande, ce qui vient d'être ajouté.
+  console.log(`[OK] entrée ${seq} ajoutée (type ${obj.type} ; champs : ${clesUtiles.join(", ")})`);
 } else if (cmd === "verify") {
+  if (argsRestants.length) fail(`argument(s) non reconnu(s) : ${argsRestants.map((a) => `\`${a}\``).join(", ")} — ${USAGE_VERIFY}`);
   if (!file || !existsSync(file)) fail("ledger introuvable");
   const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
   if (lines.length === 0) fail("ledger vide");
@@ -242,12 +366,32 @@ if (cmd === "append") {
     }
   });
 
+  // --- PASSE 1 bis : NUMÉROS PORTÉS PAR PLUSIEURS ENTRÉES (TF-1367, 21/09/2026). Fait mesuré :
+  // deux sessions simultanées ont écrit dans le même journal d'un produit ; les seq 262, 263,
+  // 265 et 266 y désignaient chacun deux entrées, noyées dans 57 ruptures anciennes par le seul
+  // message générique d'append-only rompu. Ce défaut est DISTINCT d'une rupture ordinaire (un
+  // gap, un désordre) : il signe DEUX ÉCRIVAINS SANS VERROU COMMUN, et se nomme EN TÊTE des
+  // écarts, avant toute autre rupture — `ledger.mjs` verrouille déjà l'écriture (`<ledger>.lock`),
+  // ce constat vise les entrées écrites AILLEURS (un autre outil, un autre poste) sans lui.
+  const lignesParSeq = new Map(); // seq -> [n° de ligne, ...]
+  entrees.forEach((e, i) => {
+    if (!Number.isInteger(e.seq)) return;
+    lignesParSeq.set(e.seq, [...(lignesParSeq.get(e.seq) || []), i + 1]);
+  });
+  const ecartsDoublons = [];
+  for (const [seqPorte, lignesDup] of lignesParSeq) {
+    if (lignesDup.length > 1) {
+      ecartsDoublons.push(`seq ${seqPorte} porté par ${lignesDup.length} entrées, lignes ${
+        lignesDup.join(", ")} — deux écrivains sans verrou commun`);
+    }
+  }
+
   // --- PASSE 2 : intégrité. Les écarts s'ACCUMULENT — un vérificateur qui sort au premier
   // ne dit pas « un défaut », il dit « au moins un défaut », et le reste n'est pas jugé.
   let prevSeq = 0, tsMax = "", seqTsMax = 0;
   let schemaDeclare = null;
-  const contraints = [];
-  const ecarts = [...ecartsRectif];
+  const sansContenu = []; // TF-1366 (e) : entrées réduites à {seq, ts, type} — jamais un contenu
+  const ecarts = [...ecartsDoublons, ...ecartsRectif];
   const rectifiesAppliques = new Set();
   entrees.forEach((e, i) => {
     if (e.seq !== prevSeq + 1) ecarts.push(`ligne ${i + 1} : seq ${e.seq} attendu ${prevSeq + 1} (append-only rompu)`);
@@ -272,7 +416,12 @@ if (cmd === "append") {
       }
     }
     if (e.type === "run_open" && e.schema_ledger) schemaDeclare = String(e.schema_ledger);
-    if (CHAMPS_DUS[e.type]) contraints.push({ ligne: i + 1, e });
+    // TF-1366 (e) : « sans contenu » = rien au-delà de seq/ts/type — le seul énoncé qu'`append`
+    // refuse désormais à l'écriture (b) ; un journal antérieur à ce refus, ou alimenté par un
+    // autre outil, peut encore en porter.
+    if (Object.keys(e).every((k) => k === "seq" || k === "ts" || k === "type")) {
+      sansContenu.push({ ligne: i + 1, seq: e.seq });
+    }
     prevSeq = e.seq;
     if (typeof e.ts === "string" && e.ts > tsMax) { tsMax = e.ts; seqTsMax = e.seq; }
   });
@@ -290,51 +439,85 @@ if (cmd === "append") {
       ecarts.map((x) => `\n         ${x}`).join(""));
   }
 
-  // FORME DU PAYLOAD — exigée seulement si le ledger s'est déclaré jugeable. L'antériorité se
-  // DIT (elle n'est ni devinée ni ignorée) : sans elle, ce contrôle mettrait en échec tout
-  // l'existant, et un contrôle qui met tout en échec se fait désactiver.
-  if (!schemaDeclare) {
-    if (contraints.length) {
+  // FORME DU PAYLOAD, PAR VERSION DE SCHÉMA (TF-1366/D-18 (a), 26/09/2026) — exigée seulement si
+  // le ledger s'est déclaré jugeable, et selon LA VERSION qu'il a déclarée : un journal qui
+  // déclare `1.0` reste jugé selon les règles `1.0`, POUR TOUJOURS — jamais celles d'une version
+  // plus récente (une version ne durcit jamais un journal qui en a déclaré une antérieure).
+  // L'antériorité se DIT (elle n'est ni devinée ni ignorée) : sans elle, ce contrôle mettrait en
+  // échec tout l'existant — c'est le motif que R-33 bis donne pour ne pas armer d'office le
+  // verdict websec (REGLES-PROJET.md).
+  const champsDusVersion = schemaDeclare ? CHAMPS_DUS_PAR_VERSION[schemaDeclare] : null;
+  const contraints = champsDusVersion
+    ? entrees.map((e, i) => ({ ligne: i + 1, e })).filter(({ e }) => champsDusVersion[e.type])
+    : [];
+  // Combien d'entrées ONT un type contraint sous la version COURANTE — pour dire, quand la forme
+  // n'est PAS jugée (aucun schéma déclaré, ou une version inconnue), qu'il existe une population
+  // qui le DEVIENDRAIT sous un schéma déclaré. Purement informatif : ne juge jamais CE ledger.
+  const contraintsSousCourant = champsDusVersion ? contraints
+    : entrees.map((e, i) => ({ ligne: i + 1, e })).filter(({ e }) => CHAMPS_DUS_PAR_VERSION[SCHEMA_LEDGER][e.type]);
+  // Item (e) : bloquant SOUS 1.1 SEULEMENT — sa table de champs dus est la première à rendre ce
+  // défaut jugeable. Pour un journal antérieur au schéma OU en 1.0, il reste NON BLOQUANT (on ne
+  // met jamais en échec un journal existant — section antériorité déclarée en tête de fichier) ;
+  // même traitement, par prudence, pour une version déclarée mais inconnue de ce vérificateur.
+  const sansContenuBloquant = schemaDeclare === "1.1" && sansContenu.length > 0;
+  const rapportSansContenu = () => `${sansContenu.length} entrée(s) sans contenu (rien d'autre ` +
+    `que seq/ts/type) — ${sansContenu.map((x) => `ligne ${x.ligne} (seq ${x.seq})`).join(", ")}`;
+
+  if (!champsDusVersion) {
+    if (contraintsSousCourant.length) {
       console.log(
-        `[NON VÉRIFIÉ] forme du payload — \`run_open\` ne déclare pas \`schema_ledger\` : ce ` +
-        `ledger PRÉCÈDE le schéma (courant ${SCHEMA_LEDGER}), ses ${contraints.length} entrée(s) ` +
-        `de type contraint ne sont pas jugées sur leur forme. Pour les rendre jugeables : ` +
-        `porter \`schema_ledger: "${SCHEMA_LEDGER}"\` au \`run_open\` du PROCHAIN run — jamais ` +
-        `réécrire un ledger existant, l'histoire ne se réécrit pas`);
+        schemaDeclare
+          ? `[NON VÉRIFIÉ] forme du payload — \`schema_ledger: ${schemaDeclare}\` déclaré, ` +
+            `version inconnue de ce vérificateur (connues : ${Object.keys(CHAMPS_DUS_PAR_VERSION).join(", ")}) ` +
+            `: ses ${contraintsSousCourant.length} entrée(s) de type contraint (sous ${SCHEMA_LEDGER}) ne sont pas jugées sur leur forme`
+          : `[NON VÉRIFIÉ] forme du payload — \`run_open\` ne déclare pas \`schema_ledger\` : ce ` +
+            `ledger PRÉCÈDE le schéma (courant ${SCHEMA_LEDGER}), ses ${contraintsSousCourant.length} entrée(s) ` +
+            `de type contraint ne sont pas jugées sur leur forme. Pour les rendre jugeables : ` +
+            `porter \`schema_ledger: "${SCHEMA_LEDGER}"\` au \`run_open\` du PROCHAIN run — jamais ` +
+            `réécrire un ledger existant, l'histoire ne se réécrit pas`);
     }
+    if (sansContenu.length) console.log(`[SANS CONTENU] ${rapportSansContenu()}`);
   } else {
     const ecartsForme = [];
     for (const { ligne, e } of contraints) {
-      for (const [champ, pourquoi] of CHAMPS_DUS[e.type]) {
+      for (const [champ, pourquoi, valider] of champsDusVersion[e.type]) {
         const valeur = e[champ];
-        if (valeur === undefined || valeur === null || String(valeur).trim() === "") {
+        const estVide = valeur === undefined || valeur === null || String(valeur).trim() === "";
+        if (estVide) {
           ecartsForme.push(`ligne ${ligne} (${e.type}, seq ${e.seq}) : champ \`${champ}\` ${
             champ in e ? "vide" : "absent"} — ${pourquoi}`);
+          continue;
+        }
+        if (valider) {
+          const probleme = valider(valeur);
+          if (probleme) ecartsForme.push(`ligne ${ligne} (${e.type}, seq ${e.seq}) : champ \`${champ}\` ${probleme} — ${pourquoi}`);
         }
       }
     }
+    if (sansContenuBloquant) ecartsForme.push(`${rapportSansContenu()} — schéma 1.1 : une entrée ` +
+      `sans contenu reste pour toujours dans un journal en ajout seul, et se lit ensuite comme une preuve (TF-1366)`);
+    else if (sansContenu.length) console.log(`[SANS CONTENU] ${rapportSansContenu()}`);
     if (ecartsForme.length) {
       fail(`forme du payload (schéma ${schemaDeclare}) — ${ecartsForme.length} écart(s) :` +
         ecartsForme.map((x) => `\n         ${x}`).join(""));
     }
-    if (schemaDeclare !== SCHEMA_LEDGER) {
-      console.log(
-        `[NON VÉRIFIÉ] \`schema_ledger: ${schemaDeclare}\` déclaré, ${SCHEMA_LEDGER} courant — ` +
-        `les champs dus de cette version ont été appliqués ; une version antérieure peut en ` +
-        `avoir exigé d'autres, et ce vérificateur ne les connaît pas`);
-    }
   }
 
-  const forme = schemaDeclare
+  const forme = champsDusVersion
     ? `forme vérifiée sur ${contraints.length} entrée(s) contrainte(s) (schéma ${schemaDeclare})`
-    : "forme NON vérifiée (ledger antérieur au schéma)";
+    : schemaDeclare
+      ? `forme NON vérifiée (schéma ${schemaDeclare} inconnu de ce vérificateur)`
+      : "forme NON vérifiée (ledger antérieur au schéma)";
   // « Intègre » ne veut pas dire « sans faute » : les écarts rectifiés sont comptés au verdict,
   // pas seulement imprimés au-dessus — un PASS muet sur eux serait un PASS qui ment.
   const rectifie = rectifiesAppliques.size
     ? ` · ${rectifiesAppliques.size} écart(s) d'horodatage DÉCLARÉ(S) et rectifié(s) (seq ${
       [...rectifiesAppliques].join(", ")})`
     : "";
-  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}`);
+  const sansContenuDit = !sansContenuBloquant && sansContenu.length
+    ? ` · ${sansContenu.length} entrée(s) SANS CONTENU (non bloquant, schéma ${schemaDeclare || "absent"})`
+    : "";
+  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${sansContenuDit}`);
 } else {
   fail("commande inconnue (append | verify)");
 }
