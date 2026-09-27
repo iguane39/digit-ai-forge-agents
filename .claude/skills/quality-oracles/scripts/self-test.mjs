@@ -1695,6 +1695,31 @@ else {
     else ok('TF-0982 (A) sens 2 : la MEME occurrence sous une borne au 2019-01-01 → FAIL, ' + b2.length + ' bloquant(s), zero anteriorite. La borne mord dans les DEUX sens');
 
     // ---------------------------------------------------------------------------------------
+    // (E) LA BORNE À L'INSTANT (27/09/2026, décision humaine D-28 (a)) — la MÊME occurrence, datée
+    //     du 2020-03-04 à 10:00 (+01:00), sous quatre bornes. Un instant plus tard le même jour :
+    //     antériorité. Un instant plus tôt : bloquant. Le JOUR même, sans heure : bloquant — la
+    //     borne au jour garde son sens. Un instant plus tard exprimé dans un AUTRE fuseau (09:30Z,
+    //     soit 10:30 à +01:00) : antériorité — l'alphabet dirait l'inverse, et la comparaison doit
+    //     porter sur des instants. Le fait qui l'a demandé : des enregistrements publiés le matin
+    //     d'une inscription faite à 17:23, bloqués pour toujours par une borne au jour.
+    // ---------------------------------------------------------------------------------------
+    const borneA = (depuis) => ecrireTable('_clients-instant-' + depuis.replace(/[^0-9A-Za-z]/g, '') + '.json',
+      { noms: [CLIENT], identifiants: [], sigles: [], depuis: { [CLIENT]: depuis } });
+    for (const [depuis, attendu, pourquoi] of [
+      ['2020-03-04T12:00:00+01:00', 'PASS', 'un instant PLUS TARD le meme jour : l occurrence de 10:00 lui est anterieure'],
+      ['2020-03-04T09:00:00+01:00', 'FAIL', 'un instant PLUS TOT le meme jour : l occurrence de 10:00 lui est posterieure'],
+      ['2020-03-04', 'FAIL', 'le JOUR meme, sans heure : la borne au jour garde son sens, le jour d inscription reste bloquant'],
+      ['2020-03-04T09:30:00Z', 'PASS', 'un instant plus tard exprime en UTC (09:30Z = 10:30 a +01:00) : l alphabet dirait l inverse'],
+    ]) {
+      const jE = jouer(histoire, borneA(depuis), tProduitsNu);
+      if (!jE) ko('27/09 borne a l instant (' + depuis + ') : sortie de l oracle inexploitable');
+      else if (jE.verdict !== attendu) ko('27/09 borne a l instant (' + depuis + ') : attendu ' + attendu + ', obtenu ' + jE.verdict + ' — ' + pourquoi);
+      else if (attendu === 'PASS' && ante(jE).length < 2) ko('27/09 borne a l instant (' + depuis + ') : ' + ante(jE).length + ' anteriorite(s) nommee(s), attendu au moins 2 (contenu du blob et nom du fichier disparu)');
+      else if (attendu === 'FAIL' && bloq(jE).length < 2) ko('27/09 borne a l instant (' + depuis + ') : ' + bloq(jE).length + ' bloquant(s), attendu au moins 2');
+      else ok('27/09 borne a l instant (' + depuis + ') → ' + attendu + ' : ' + pourquoi);
+    }
+
+    // ---------------------------------------------------------------------------------------
     // (B) L'ARBRE COURANT ET LES MESSAGES DE COMMIT NE SONT PAS BORNÉS — un seul dépôt, un seul
     //     terme, une borne au 2099-01-01 : TOUTE révision lui est antérieure. Si la borne
     //     s'appliquait partout, ce dépôt rendrait PASS alors qu'il porte le nom dans un fichier

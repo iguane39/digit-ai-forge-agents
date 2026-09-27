@@ -296,25 +296,60 @@ function litteralProduit(nom) {
  * sévérité `anteriorite`, et leur nombre est déclaré au `non_juge`, terme par terme. Une dette
  * qu'on cesse de bloquer et qu'on cesse de compter est une dette qu'on a effacée sans la payer :
  * un passif qui grossit doit rester VISIBLE au verdict, sinon la borne devient une amnistie. */
-const DATE_BORNE = /^\d{4}-\d{2}-\d{2}$/;
+/* 27/09/2026 — LA BORNE PEUT ÊTRE UN INSTANT, ET PAS SEULEMENT UN JOUR (décision humaine D-28 (a)).
+ *
+ * LE FAIT. Une adresse nominative, publiée depuis le 22/08 dans deux fichiers du pilot, a été
+ * inscrite à la table le 27/09 à 17:23:29 puis retirée de l'arbre courant. Les enregistrements
+ * publiés LE MATIN MÊME portaient encore les deux fichiers intacts : au jour près, ils tombaient
+ * « le jour même de l'inscription », donc bloquants — et ils ne se corrigent plus sans réécrire
+ * l'historique publié, que la décision excluait. La porte aurait refusé tout envoi du dépôt pour
+ * toujours, sur des enregistrements écrits avant que le terme ne soit connu.
+ *
+ * LA RÈGLE NE CHANGE PAS, SA RÉSOLUTION S'AFFINE. « Une occurrence de la date même de l'inscription
+ * reste bloquante : ce jour-là, le terme était connu » est vrai d'une borne au JOUR, qui ne dit pas
+ * l'heure. Une borne peut désormais porter l'INSTANT d'inscription, ISO 8601 avec son fuseau
+ * (`2026-09-27T17:23:29+02:00`) : une révision dont la date d'auteur lui est strictement antérieure
+ * est une antériorité ; une révision de l'instant même ou d'après reste bloquante. La comparaison
+ * se fait sur des INSTANTS, jamais sur des chaînes : deux fuseaux différents ne s'ordonnent pas par
+ * l'alphabet. Une borne au jour garde exactement son comportement, et une borne malformée reste
+ * jugée SANS borne — la direction sûre ne bouge pas. */
+const DATE_BORNE = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2}))?$/;
 
 /** La date d'inscription d'une clé au bloc `depuis`, ou `null` — clé absente, bloc absent, ou date
  *  malformée. `null` signifie « jugé SANS borne », jamais « exempté ». */
 function borneDe(depuis, cle) {
   const v = depuis && typeof depuis === 'object' ? depuis[cle] : undefined;
-  return typeof v === 'string' && DATE_BORNE.test(v.trim()) ? v.trim() : null;
+  if (typeof v !== 'string' || !DATE_BORNE.test(v.trim())) return null;
+  // Un instant qui ne se lit pas (heure impossible) n'est pas une borne : même direction sûre.
+  return v.trim().length > 10 && !Number.isFinite(Date.parse(v.trim())) ? null : v.trim();
 }
 
 /** L'occurrence est-elle une ANTÉRIORITÉ ? Seulement si le terme porte une borne ET que la date de
  *  l'occurrence est connue ET STRICTEMENT antérieure. Les trois conditions sont nécessaires : sans
- *  borne, sans date, ou le jour même de l'inscription, l'occurrence reste bloquante. */
+ *  borne, sans date, ou le jour même d'une inscription datée au JOUR — l'instant même d'une
+ *  inscription datée à l'INSTANT —, l'occurrence reste bloquante. `dateOcc` est la date d'auteur
+ *  entière (`%aI`, heure et fuseau compris). */
 function estAnteriorite(borne, dateOcc) {
-  return Boolean(borne && dateOcc && dateOcc < borne);
+  if (!borne || !dateOcc) return false;
+  if (borne.length === 10) return String(dateOcc).slice(0, 10) < borne;
+  const b = Date.parse(borne), o = Date.parse(dateOcc);
+  return Number.isFinite(b) && Number.isFinite(o) && o < b;
 }
 
 /** La sévérité d'un constat d'HISTOIRE — et de l'histoire SEULE : l'arbre courant et les messages
  *  de commit n'appellent jamais cette fonction. */
 const sevHisto = (borne, dateOcc) => (estAnteriorite(borne, dateOcc) ? 'anteriorite' : 'bloquant');
+
+/** De deux bornes, la plus STRICTE — celle qui exempte le moins. Jours différents : le plus ancien.
+ *  Même jour : une borne au jour couvre le jour entier, elle l'emporte sur un instant ; entre deux
+ *  instants, le plus ancien, comparé en instant et jamais par l'alphabet (27/09/2026). */
+function bornePlusStricte(a, b) {
+  const ja = a.slice(0, 10), jb = b.slice(0, 10);
+  if (ja !== jb) return ja < jb ? a : b;
+  if (a.length === 10) return a;
+  if (b.length === 10) return b;
+  return Date.parse(a) <= Date.parse(b) ? a : b;
+}
 
 /** Le suffixe qui NOMME l'antériorité dans le constat : sans lui, un lecteur voit une occurrence
  *  non bloquante sans savoir pourquoi elle ne bloque pas. */
@@ -601,7 +636,9 @@ try {
   // La date d'AUTEUR (`%aI`), jamais celle de validation — voir le bloc TF-0982 plus haut.
   const dateDeRev = new Map();
   for (const l of (git(repo, 'log', '--all', '--format=%H %aI').stdout || '').split('\n')) {
-    const m = l.match(/^([0-9a-f]{7,64}) (\d{4}-\d{2}-\d{2})/);
+    // La date d'auteur ENTIÈRE, heure et fuseau compris : une borne à l'instant la compare comme
+    // un instant, une borne au jour n'en lit que les dix premiers caractères (27/09/2026).
+    const m = l.match(/^([0-9a-f]{7,64}) (\d{4}-\d{2}-\d{2}\S*)/);
     if (m) dateDeRev.set(m[1], m[2]);
   }
   // LA DERNIÈRE PRÉSENCE D'UN CHEMIN, et le filtre n'est pas cosmétique : `--diff-filter=ACMRT`
@@ -613,11 +650,13 @@ try {
   const dernierePresence = new Map();
   for (const bloc of (git(repo, 'log', '--all', '--diff-filter=ACMRT', '--name-only', '--format=%x00%aI').stdout || '').split('\0')) {
     const lignes = bloc.split('\n').map((x) => x.trim()).filter(Boolean);
-    const d = lignes.length ? (lignes[0].match(/^(\d{4}-\d{2}-\d{2})/) || [])[1] : null;
+    const d = lignes.length ? (lignes[0].match(/^(\d{4}-\d{2}-\d{2}\S*)/) || [])[1] : null;
     if (!d) continue;
     for (const rel of lignes.slice(1)) {
       const prec = dernierePresence.get(rel);
-      if (!prec || d > prec) dernierePresence.set(rel, d);
+      // La plus TARDIVE des présences, comparée en instants : deux fuseaux ne s'ordonnent pas par
+      // l'alphabet (27/09/2026).
+      if (!prec || Date.parse(d) > Date.parse(prec)) dernierePresence.set(rel, d);
     }
   }
 
@@ -775,7 +814,7 @@ try {
     if (!aiguilles.includes(a)) { aiguilles.push(a); borneDAiguille.set(a, pr.depuis); continue; }
     const prec = borneDAiguille.get(a);
     if (!pr.depuis || !prec) borneDAiguille.set(a, null);
-    else if (pr.depuis < prec) borneDAiguille.set(a, pr.depuis);
+    else borneDAiguille.set(a, bornePlusStricte(pr.depuis, prec));
   }
   if (aiguilles.length) {
     const eGroupe = [];
