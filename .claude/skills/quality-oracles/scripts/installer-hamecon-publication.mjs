@@ -47,6 +47,8 @@
 //         commit-msg de TF-1071 juge le seul message, à l'écriture) ;
 //         [--seul=pre-commit-skills] pose le pre-commit des dépôts qui portent des skills
 //         (TF-1337) — JAMAIS posé sans ce drapeau ;
+//         [--seul=pre-push-canal] pose le pre-push du CANAL CONFIDENTIEL, qui joue son propre
+//         contrôle avant l'envoi (D-30 (a), 27/09/2026) — JAMAIS posé sans ce drapeau ;
 //         [--migrer] reprend un hameçon qui porte la marque SANS la signature (TF-0994).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -281,6 +283,74 @@ echo "  Corrigez le frontmatter, ou contournez EXPLICITEMENT : git commit --no-v
 exit 1
 `;
 
+// LE HAMEÇON D'ENVOI DU CANAL CONFIDENTIEL — décision D-30 (a) du 27/09/2026. La porte des noms ne
+// peut pas juger le canal : ses tables SONT les noms, et elle y rend 144 bloquants par construction
+// (mesuré le 27/09). Le pre-push du parc y refuserait donc chaque envoi, et le pre-commit
+// d'anonymisation réécrirait les tables elles-mêmes. Le risque propre au canal est ailleurs : qu'il
+// devienne PUBLIC et reçoive les noms, ou qu'un secret y entre. Son contrôle (`oracle-confidentiel.mjs`)
+// juge les deux — K1 dépôt privé chez l'hébergeur, K3 aucun secret, et ses autres règles —, mais il
+// n'était joué qu'à l'ouverture d'une session, jamais avant un envoi : un envoi vers un canal devenu
+// public serait parti, et l'ouverture suivante l'aurait vu trop tard.
+//
+// LE CONTRÔLE EST CELUI DU DÉPÔT, jamais une copie : il vit à la racine du canal et voyage avec lui.
+// Le hameçon ne le cherche ni dans les skills installés ni dans la forge. Un dépôt sans ce contrôle
+// n'est pas le canal : l'envoi est refusé, et le refus le dit.
+//
+// ACCEPTER SUR LE SEUL CODE DE SORTIE, C'EST FABRIQUER UN VERT (TF-1373, 27/09/2026) : un contrôle qui
+// sort en 0 sans rien juger a déjà rendu six PASS vides au pilot. Le hameçon exige donc les DEUX, le
+// code 0 ET le verdict PASS lu dans la sortie ; tout le reste refuse, sortie illisible comprise.
+//
+// Sur demande seulement (`--seul=pre-push-canal`), jamais dans le jeu par défaut : il n'a de sens que
+// sur le canal. Là où le pre-push du parc est déjà posé, l'installeur dit CONFLIT et ne touche à rien.
+const MARQUE_CANAL = 'oracle-confidentiel';
+const SIGNATURE_CANAL = 'pre-push-canal';
+const HAMECON_CANAL = `#!/bin/sh
+${ligneSignature(SIGNATURE_CANAL)}
+# pre-push du CANAL CONFIDENTIEL — refuse un envoi quand le controle du canal echoue (${MARQUE_CANAL}).
+# Pose par installer-hamecon-publication.mjs --seul=pre-push-canal (decision D-30 (a) du 27/09/2026).
+# Contournement explicite : git push --no-verify.
+#
+# SIGPIPE ignore, en premiere commande (TF-1360) : si la sortie de git push part dans un filtre deja
+# termine, l'echo du refus tuerait ce hamecon par SIGPIPE, et git lirait (sous Windows) un code 0.
+trap '' PIPE
+#
+# Le controle est celui du DEPOT : il vit a la racine du canal et voyage avec lui. Il juge que le
+# depot distant est PRIVE chez l'hebergeur (K1), qu'aucun fichier ne ressemble a un secret (K3), et
+# ses autres regles. L'envoi passe sur code 0 ET verdict PASS lu dans la sortie, jamais sur l'un seul.
+DEPOT="$(git rev-parse --show-toplevel)"
+CONTROLE="$DEPOT/${MARQUE_CANAL}.mjs"
+if [ ! -f "$CONTROLE" ]; then
+  echo "ENVOI REFUSE — le controle du canal est introuvable : $CONTROLE" >&2
+  echo "  Ce hamecon ne vaut que sur le canal confidentiel, dont le controle vit a la racine du depot." >&2
+  echo "  Contournement explicite si vous savez ce que vous faites : git push --no-verify" >&2
+  exit 1
+fi
+
+SORTIE="$(node "$CONTROLE" "$DEPOT" 2>&1)"
+CODE=$?
+VERDICT="$(printf '%s' "$SORTIE" | node -e '
+  let t = ""; process.stdin.on("data", (d) => (t += d)).on("end", () => {
+    try { process.stdout.write(String(JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)).verdict || "")); }
+    catch { process.stdout.write(""); }
+  });')"
+if [ "$CODE" -eq 0 ] && [ "$VERDICT" = "PASS" ]; then
+  exit 0
+fi
+
+echo "" >&2
+echo "ENVOI DU CANAL REFUSE — verdict \${VERDICT:-ILLISIBLE} du controle du canal (exit $CODE)." >&2
+printf '%s' "$SORTIE" | node -e '
+  let t = ""; process.stdin.on("data", (d) => (t += d)).on("end", () => {
+    try {
+      const o = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1));
+      for (const c of (o.constats || []).filter((x) => x.statut !== "PASS")) console.error("  " + (c.regle || "") + "  " + (c.message || ""));
+    } catch { console.error("  sortie illisible : " + t.slice(0, 2000)); }
+  });
+' >&2
+echo "  Corrigez, ou contournez EXPLICITEMENT : git push --no-verify" >&2
+exit 1
+`;
+
 // LES HAMEÇONS PASSENT PAR LE MÊME GESTE, et c'est ce qui garantit qu'ils se posent, se
 // reposent, se vérifient et se retirent de la même façon. Un second hameçon traité par un second
 // bloc de code recopié dériverait du premier au premier correctif. `id` distingue deux gabarits
@@ -291,6 +361,8 @@ const HAMECONS = [
   { nom: 'commit-msg', marque: MARQUE, signature: ligneSignature(SIGNATURE_MSG), contenu: HAMECON_MSG },
   { id: 'pre-commit-skills', nom: 'pre-commit', marque: MARQUE_SKILLS, signature: ligneSignature(SIGNATURE_SKILLS),
     contenu: HAMECON_SKILLS, surDemande: true },
+  { id: 'pre-push-canal', nom: 'pre-push', marque: MARQUE_CANAL, signature: ligneSignature(SIGNATURE_CANAL),
+    contenu: HAMECON_CANAL, surDemande: true },
 ];
 const cle = (h) => h.id || h.nom;
 const migrer = args.includes('--migrer');

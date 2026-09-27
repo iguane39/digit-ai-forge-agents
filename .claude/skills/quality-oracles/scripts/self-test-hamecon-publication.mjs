@@ -430,6 +430,117 @@ try {
   if (/RETIRE/.test(r10.stdout || '') && !fs.existsSync(hook10)) oks.push('cas 10g — le pre-commit des skills se retire');
   else kos.push('cas 10g — retrait impossible : ' + (r10.stdout || '').trim().slice(0, 200));
 
+  // --- cas 11 : L'ENVOI DU CANAL CONFIDENTIEL SE JUGE PAR SON PROPRE CONTRÔLE (D-30 a, 27/09) ---
+  // LE FAIT : la porte des noms ne peut pas juger le canal — ses tables SONT les noms, 144 bloquants
+  // par construction —, et son contrôle (`oracle-confidentiel.mjs`, à la racine du canal) n'était
+  // joué qu'à l'ouverture d'une session. Un envoi vers un canal devenu public serait parti. Le
+  // hameçon joue ce contrôle avant l'envoi. Ce banc prouve le CÂBLAGE, pas le contrôle : celui-ci
+  // vit dans le canal, dépôt privé, et sa recette y vit avec lui. Le contrôle est donc remplacé ici
+  // par un jouet qui rend le verdict voulu — PASS, FAIL, ou un code 0 SANS verdict, le vert fabriqué
+  // de TF-1373 —, et chaque sens se juge sur la seule preuve qui compte : la branche au distant.
+  const CONTROLE_PASS = 'console.log(JSON.stringify({ oracle: "oracle-confidentiel", verdict: "PASS", constats: '
+    + '[{ regle: "K1", statut: "PASS", message: "le depot distant est prive" }] }, null, 1));\n';
+  const CONTROLE_FAIL = 'console.log(JSON.stringify({ oracle: "oracle-confidentiel", verdict: "FAIL", constats: '
+    + '[{ regle: "K1", statut: "FAIL", message: "LE DEPOT DISTANT EST PUBLIC" }, { regle: "K3", statut: "PASS", message: "aucun secret" }] }, null, 1));\n'
+    + 'process.exit(1);\n';
+  const CONTROLE_MUET = 'process.exit(0);\n';
+  const depotCanal = (nom, controle) => {
+    const d = depot(racine, nom, false);
+    if (controle !== null) {
+      fs.writeFileSync(path.join(d, 'oracle-confidentiel.mjs'), controle);
+      git(d, 'add', '-A');
+      git(d, 'commit', '-q', '-m', 'Controle du canal (jeu d essai)');
+    }
+    const distant = distantJetable(racine, nom + '-distant');
+    git(d, 'remote', 'add', 'origin', distant);
+    return { d, distant };
+  };
+  const auDistant = (distant) => spawnSync('git', ['--git-dir=' + distant, 'rev-parse', '--verify', '-q', 'refs/heads/main'], { encoding: 'utf8' }).status === 0;
+  const poserCanal = (d) => sh(racine, 'node', [INSTALLEUR, d, '--seul=pre-push-canal']);
+
+  // (11a) le jeu par défaut ne le pose pas, et il ne s'impose pas au pre-push du parc déjà posé
+  const d11a = depot(racine, 'canal-conflit', false);
+  sh(racine, 'node', [INSTALLEUR, d11a]);
+  const hook11a = path.join(d11a, '.git', 'hooks', 'pre-push');
+  const avant11a = fs.existsSync(hook11a) ? fs.readFileSync(hook11a, 'utf8') : '';
+  const p11a = poserCanal(d11a);
+  if (avant11a.includes('# hamecon-parc: pre-push-nom-client v1') && !avant11a.includes('# hamecon-parc: pre-push-canal v1')
+      && /CONFLIT/.test(p11a.stdout || '') && fs.readFileSync(hook11a, 'utf8') === avant11a)
+    oks.push('cas 11a — le jeu par défaut ne pose PAS le pre-push du canal ; demandé sur un dépôt qui porte le pre-push du parc, il dit CONFLIT et ne touche à rien');
+  else kos.push('cas 11a — pose par défaut ou conflit mal tenu : ' + (p11a.stdout || '').trim().slice(0, 200));
+
+  // (11b) la pose : signé, trap '' PIPE en première commande, reconnu par --verifier
+  const c11 = depotCanal('canal', CONTROLE_PASS);
+  const p11 = poserCanal(c11.d);
+  const hook11 = path.join(c11.d, '.git', 'hooks', 'pre-push');
+  const v11 = sh(racine, 'node', [INSTALLEUR, c11.d, '--seul=pre-push-canal', '--verifier']);
+  if (/POSE/.test(p11.stdout || '') && fs.existsSync(hook11) && fs.readFileSync(hook11, 'utf8').includes('# hamecon-parc: pre-push-canal v1')
+      && premiereCommande(hook11) === "trap '' PIPE" && v11.status === 0 && /POSE/.test(v11.stdout || ''))
+    oks.push('cas 11b — `--seul=pre-push-canal` pose le hameçon, signé, trap \'\' PIPE en première commande, et `--verifier` le reconnaît');
+  else kos.push('cas 11b — hameçon du canal non posé, mal formé ou non reconnu : ' + ((p11.stdout || '') + (v11.stdout || '')).trim().slice(0, 300));
+
+  // (11c) sens VERT : le contrôle rend PASS, l'envoi part
+  const p11c = sh(c11.d, 'git', ['push', 'origin', 'main']);
+  if (p11c.status === 0 && auDistant(c11.distant)) oks.push('cas 11c (sens vert) — contrôle du canal PASS : envoi ACCEPTÉ, la branche est au distant');
+  else kos.push('cas 11c — un canal dont le contrôle rend PASS voit son envoi refusé (exit ' + p11c.status + ') : ' + (p11c.stderr || '').trim().slice(0, 300));
+
+  // (11d) sens ROUGE : le contrôle rend FAIL (canal devenu public), l'envoi est refusé et dit pourquoi
+  const c11d = depotCanal('canal-public', CONTROLE_FAIL);
+  poserCanal(c11d.d);
+  const p11d = sh(c11d.d, 'git', ['push', 'origin', 'main']);
+  const e11d = p11d.stderr || '';
+  if (p11d.status !== 0 && !auDistant(c11d.distant) && /ENVOI DU CANAL REFUSE/.test(e11d) && /verdict FAIL/.test(e11d)
+      && /K1\s+LE DEPOT DISTANT EST PUBLIC/.test(e11d) && !/K3/.test(e11d))
+    oks.push('cas 11d (sens rouge) — contrôle du canal FAIL (dépôt devenu public) : envoi REFUSÉ, rien au distant, et la seule règle en échec est imprimée');
+  else kos.push('cas 11d — un canal dont le contrôle rend FAIL n\'est pas refusé comme il faut (exit ' + p11d.status + ', au distant : ' + auDistant(c11d.distant) + ') : ' + e11d.trim().slice(0, 300));
+
+  // (11e) un code 0 SANS verdict n'est pas un vert (TF-1373)
+  const c11e = depotCanal('canal-muet', CONTROLE_MUET);
+  poserCanal(c11e.d);
+  const p11e = sh(c11e.d, 'git', ['push', 'origin', 'main']);
+  if (p11e.status !== 0 && !auDistant(c11e.distant) && /verdict ILLISIBLE/.test(p11e.stderr || ''))
+    oks.push('cas 11e — un contrôle qui sort en 0 SANS verdict : envoi REFUSÉ (ILLISIBLE), le code de sortie seul ne fabrique pas de vert');
+  else kos.push('cas 11e — un contrôle muet laisse partir l\'envoi (exit ' + p11e.status + ') : ' + (p11e.stderr || '').trim().slice(0, 300));
+
+  // (11f) un dépôt sans contrôle n'est pas le canal : refusé, et le refus le dit
+  const c11f = depotCanal('canal-sans-controle', null);
+  poserCanal(c11f.d);
+  const p11f = sh(c11f.d, 'git', ['push', 'origin', 'main']);
+  if (p11f.status !== 0 && !auDistant(c11f.distant) && /introuvable/.test(p11f.stderr || ''))
+    oks.push('cas 11f — contrôle du canal INTROUVABLE : envoi REFUSÉ, le refus nomme le fichier cherché');
+  else kos.push('cas 11f — sans contrôle, l\'envoi part ou le refus est muet (exit ' + p11f.status + ') : ' + (p11f.stderr || '').trim().slice(0, 300));
+
+  // (11g) la sortie part dans un filtre qui a déjà fini (TF-1360), dans les deux sens
+  if (!shBanc) kos.push('cas 11g — aucun `sh` trouvé à côté de git : le tuyau rompu n\'est pas rejoué pour le hameçon du canal');
+  else {
+    const c11gr = depotCanal('canal-filtre-rouge', CONTROLE_FAIL);
+    poserCanal(c11gr.d);
+    // Le hameçon absent se DIT : un banc qui plante sur un fichier manquant ne rend aucun verdict.
+    const hookRouge11 = path.join(c11gr.d, '.git', 'hooks', 'pre-push');
+    const retiree11 = fs.existsSync(hookRouge11) && sansLigneTrap(hookRouge11);
+    jouerDansFiltreFini(shBanc, c11gr.d, 'git push origin main', {});
+    const publieRouge11 = auDistant(c11gr.distant);
+    if (!retiree11) kos.push('cas 11g (sens rouge) — le hameçon du canal n\'est pas posé, ou ne porte pas la ligne trap \'\' PIPE : rien à retirer');
+    else if (publieRouge11) oks.push('cas 11g (sens rouge) — SANS la ligne trap \'\' PIPE, sortie dans un filtre fini : PUBLIÉ malgré le refus du contrôle');
+    else if (rougeAttendu) kos.push('cas 11g (sens rouge) — le témoin ne reproduit rien : sans la ligne, rien n\'est publié');
+    else oks.push('cas 11g (sens rouge) — NON REPRODUIT sur ' + process.platform + ' : mesuré seulement sous Windows — dit, jamais tu');
+    const c11gv = depotCanal('canal-filtre-vert', CONTROLE_FAIL);
+    poserCanal(c11gv.d);
+    jouerDansFiltreFini(shBanc, c11gv.d, 'git push origin main', {});
+    if (!auDistant(c11gv.distant)) oks.push('cas 11g (sens vert) — le hameçon du canal tel que posé, sortie dans le MÊME filtre fini : envoi REFUSÉ, rien au distant');
+    else kos.push('cas 11g (sens vert) — le hameçon du canal laisse PUBLIER quand la sortie part dans un filtre fini');
+  }
+
+  // (11h) le contournement explicite reste possible
+  const p11h = sh(c11d.d, 'git', ['push', '--no-verify', 'origin', 'main']);
+  if (p11h.status === 0 && auDistant(c11d.distant)) oks.push('cas 11h — contournement --no-verify : envoi ACCEPTÉ, le garde-fou reste levable en connaissance de cause');
+  else kos.push('cas 11h — --no-verify ne passe pas sur le canal (exit ' + p11h.status + ')');
+
+  // (11i) ce qui se pose se dépose
+  const r11 = sh(racine, 'node', [INSTALLEUR, c11.d, '--seul=pre-push-canal', '--retirer']);
+  if (/RETIRE/.test(r11.stdout || '') && !fs.existsSync(hook11)) oks.push('cas 11i — le pre-push du canal se retire');
+  else kos.push('cas 11i — retrait impossible : ' + (r11.stdout || '').trim().slice(0, 200));
+
   // --- cas 6 : LE HAMEÇON DE COMMIT (TF-0980) --------------------------------
   //
   // POURQUOI CES CAS EXISTENT. Le `pre-push` arrive après : quand il parle, le nom est déjà dans
