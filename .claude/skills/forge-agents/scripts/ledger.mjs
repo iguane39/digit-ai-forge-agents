@@ -240,6 +240,14 @@ if (cmd === "append") {
   if (typeof obj.type !== "string" || !obj.type.trim()) {
     fail("entrée refusée : champ `type` absent — une entrée sans type ne se relit jamais comme preuve (TF-1366)");
   }
+  // TF-1367 (27/09/2026) — LE NUMÉRO D'UNE ENTRÉE N'APPARTIENT QU'À L'OUTIL. Le spread
+  // `{ seq, ts, ...corps }` laissait un `seq` fourni par le payload écraser celui que l'outil
+  // calcule sous verrou : deux entrées pouvaient porter le même numéro sans aucune concurrence,
+  // le défaut même que le verrou existe pour empêcher. Relevé par l'agent de campagne de TF-1366 ;
+  // refusé ici, avant le verrou, sans rien écrire.
+  if (Object.prototype.hasOwnProperty.call(obj, "seq")) {
+    fail(`entrée refusée : le payload porte \`seq\` (${JSON.stringify(obj.seq)}) — le numéro d'une entrée est attribué par l'outil sous verrou, jamais fourni ; un seq recopié ferait porter le même numéro à deux entrées (TF-1367)`);
+  }
   const clesUtiles = Object.keys(obj).filter((k) => k !== "type" && k !== "ts");
   if (clesUtiles.length === 0) {
     fail(`entrée refusée : aucun contenu au-delà de \`type\` (${JSON.stringify(obj.type)}) — une entrée sans contenu reste pour toujours dans un journal en ajout seul, et se lit ensuite comme une preuve (TF-1366)`);

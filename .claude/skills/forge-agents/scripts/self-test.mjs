@@ -525,6 +525,27 @@ check("ledger TF-1366 (e) : entrée sans contenu, schéma 1.1 → FAIL bloquant"
 // appends CONCURRENTS DE CE SCRIPT reçoivent deux seq distincts (prouvé plus haut, test de
 // verrou). Le défaut visé ici est un ledger écrit par un AUTRE outil sans ce verrou commun.
 // ============================================================================================
+// TF-1367, 27/09/2026 — LE NUMÉRO N'APPARTIENT QU'À L'OUTIL. Un `seq` fourni par le payload
+// écrasait celui qu'`append` calcule sous verrou (spread après `seq`) : deux entrées pouvaient
+// porter le même numéro sans aucune concurrence. Rouge : refusé, rien d'écrit, verify reste
+// intègre. Vert : la même entrée sans `seq` reçoit le numéro suivant.
+check("ledger TF-1367 : `append` refuse un `seq` fourni par le payload, et la même entrée sans lui reçoit le numéro suivant", () => {
+  const lf = join(out, "ledger-seq-fourni.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "numero fourni" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "deuxieme" })]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note", detail: "recopie", seq: 2 })], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stderr || ""); }
+  if (sortie === null) throw new Error("append aurait dû refuser un `seq` fourni par le payload");
+  if (!sortie.includes("`seq`")) throw new Error("le refus ne nomme pas le champ seq : " + sortie);
+  const avant = readFileSync(lf, "utf8").split("\n").filter(Boolean);
+  if (avant.length !== 2) throw new Error(`2 entrées attendues après le refus, ${avant.length} — un refus a laissé passer une écriture`);
+  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "recopie" })]);
+  const apres = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l).seq);
+  if (apres.join(",") !== "1,2,3") throw new Error(`numéros attendus 1,2,3 — obtenus ${apres.join(",")}`);
+  run(ledger, ["verify", lf]);
+});
+
 check("ledger TF-1367 : seq porté par deux entrées → NOMMÉ en tête des écarts, distinct d'une rupture ordinaire", () => {
   const lf = join(out, "ledger-doublon-seq.jsonl");
   ecrireBrut(lf, [
