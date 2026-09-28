@@ -57,14 +57,29 @@
  * Une entrée ULTÉRIEURE de type `rectification_horodatage` porte donc
  * `entrees: [{seq, ts_consigne, ts_reel_estime, cause}]` et déclare des seq PRÉCIS. Bornes,
  * qui sont ce qui empêche ce mécanisme de devenir un effaceur :
- *   · elle ne couvre QUE des seq qui lui sont ANTÉRIEURS — on ne se dédouane pas d'avance ;
+ *   · elle ne couvre QUE des seq qui lui sont ANTÉRIEURS, et des entrées écrites AVANT elle dans
+ *     le fichier — on ne se dédouane pas d'avance ;
  *   · `ts_consigne` doit correspondre EXACTEMENT au ts de l'entrée visée : une déclaration
  *     qui ne colle pas à l'histoire ne couvre rien (et le dit) ;
  *   · les quatre champs sont dus — une déclaration incomplète est un écart, pas une couverture ;
- *   · elle n'agit QUE sur l'horodatage : seq rompu, JSON invalide, run_open absent, forme du
- *     payload restent des FAIL — rien ne les déclare rectifiables ;
+ *   · elle agit sur l'horodatage et, depuis TF-1425, sur un seq en double ou en recul : un seq
+ *     SAUTÉ (saut en avant), JSON invalide, run_open absent, forme du payload restent des FAIL —
+ *     rien ne les déclare rectifiables ;
  *   · un écart rectifié s'IMPRIME `[RECTIFIÉ]`, toujours, à chaque verify. Il ne disparaît
  *     pas : il cesse seulement de bloquer. Un écart NON déclaré reste FAIL.
+ *
+ * LA RECTIFICATION COUVRE AUSSI UNE COLLISION DE SEQ (TF-1425, 28/09/2026). Le contrat 3 du pilot
+ * (TF-0794, 03/09) tient deux sessions le même jour pour le cas NORMAL d'un produit actif, et R-42
+ * de son oracle de conformité consomme depuis la rectification d'une collision : le seq en double
+ * ou en recul nommé dans `entrees[]` devient [RECTIFIÉ], et la suite attendue reprend au plus haut
+ * seq vu. Ce vérificateur, lui, la refusait : mesuré chez un produit le 25/09 sur un ledger de six
+ * entrées (seq 1, 2, 3, puis 2 et 3 d'une branche parallèle, puis la rectification qui nomme 2 et
+ * 3 avec les quatre champs), R-42 rendait PASS et `verify` exit 1, la rectification [SANS OBJET].
+ * Le même fichier était intègre pour un juge et rompu pour l'autre. Désormais `verify` tient la
+ * même règle, avec deux bornes de plus, toutes deux déjà les siennes : la déclaration couvre
+ * l'entrée dont le ts est `ts_consigne` (c'est lui qui dit LAQUELLE des entrées au même seq est
+ * visée), et seulement si elle est écrite après elle. Le doublon de seq (TF-1367) dont chaque
+ * occurrence après la première est ainsi couverte s'imprime [RECTIFIÉ], en tête.
  *
  * DES INSTANTS, JAMAIS DES CHAÎNES (TF-1422, 28/09/2026). Le fait mesuré chez un produit le
  * 25/09 : `append` horodate en UTC (`toISOString`, suffixe `Z`), et ce produit écrit l'heure de
@@ -466,7 +481,10 @@ if (cmd === "append") {
   // --- PASSE 1 : recenser les RECTIFICATIONS DÉCLARÉES avant de juger les horodatages.
   // Deux passes sont nécessaires : une rectification est forcément POSTÉRIEURE à ce qu'elle
   // déclare (append-only), donc inconnue au moment où l'écart est rencontré.
-  const rectifs = new Map(); // seq visé -> { parSeq, ts_consigne, ts_reel_estime, cause }
+  // seq visé -> [{ seq, ts_consigne, ts_reel_estime, cause, parSeq, parLigne, applique }, ...] :
+  // TOUTES les déclarations d'un seq (TF-1425) — deux entrées au même seq se déclarent chacune,
+  // et c'est `ts_consigne` qui dit laquelle est visée.
+  const rectifs = new Map();
   const ecartsRectif = [];   // une déclaration fautive n'est pas une couverture : c'est un écart
   entrees.forEach((e, i) => {
     if (e.type !== TYPE_RECTIFICATION) return;
@@ -493,9 +511,21 @@ if (cmd === "append") {
           `rectification ne couvre jamais un seq postérieur ni elle-même : on ne se dédouane pas d'avance`);
         continue;
       }
-      if (!rectifs.has(d.seq)) rectifs.set(d.seq, { parSeq: e.seq, ...d });
+      // Ce que l'outil ajoute s'écrit APRÈS la déclaration : un champ `parLigne` écrit dans
+      // `entrees[]` ne doit pas pouvoir déplacer la rectification et couvrir d'avance.
+      if (!rectifs.has(d.seq)) rectifs.set(d.seq, []);
+      rectifs.get(d.seq).push({ ...d, parSeq: e.seq, parLigne: i + 1, applique: false });
     }
   });
+
+  // TF-1425 : la déclaration qui couvre UNE entrée — même seq, écrite APRÈS elle dans le fichier
+  // (avec deux entrées au même seq, le numéro seul ne situe plus rien), et `ts_consigne` égal au
+  // ts de l'entrée tel qu'il est écrit. `divergente` : une déclaration de ce seq existe en aval,
+  // mais ne correspond pas à l'histoire — elle ne couvre rien, et le message le dit.
+  const couverture = (e, ligne) => {
+    const enAval = (rectifs.get(e.seq) || []).filter((d) => d.parLigne > ligne);
+    return { r: enAval.find((d) => d.ts_consigne === e.ts) || null, divergente: enAval[0] || null };
+  };
 
   // --- PASSE 1 bis : NUMÉROS PORTÉS PAR PLUSIEURS ENTRÉES (TF-1367, 21/09/2026). Fait mesuré :
   // deux sessions simultanées ont écrit dans le même journal d'un produit ; les seq 262, 263,
@@ -504,29 +534,47 @@ if (cmd === "append") {
   // gap, un désordre) : il signe DEUX ÉCRIVAINS SANS VERROU COMMUN, et se nomme EN TÊTE des
   // écarts, avant toute autre rupture — `ledger.mjs` verrouille déjà l'écriture (`<ledger>.lock`),
   // ce constat vise les entrées écrites AILLEURS (un autre outil, un autre poste) sans lui.
+  // TF-1425 : le constat se forme APRÈS la passe 2, qui dit quelles collisions sont rectifiées.
   const lignesParSeq = new Map(); // seq -> [n° de ligne, ...]
   entrees.forEach((e, i) => {
     if (!Number.isInteger(e.seq)) return;
     lignesParSeq.set(e.seq, [...(lignesParSeq.get(e.seq) || []), i + 1]);
   });
-  const ecartsDoublons = [];
-  for (const [seqPorte, lignesDup] of lignesParSeq) {
-    if (lignesDup.length > 1) {
-      ecartsDoublons.push(`seq ${seqPorte} porté par ${lignesDup.length} entrées, lignes ${
-        lignesDup.join(", ")} — deux écrivains sans verrou commun`);
-    }
-  }
 
   // --- PASSE 2 : intégrité. Les écarts s'ACCUMULENT — un vérificateur qui sort au premier
   // ne dit pas « un défaut », il dit « au moins un défaut », et le reste n'est pas jugé.
-  let prevSeq = 0, tsMax = "", tsMaxMs = -Infinity, seqTsMax = 0;
+  // TF-1425 : la continuité se juge, elle aussi, contre le PLUS HAUT seq vu (le principe que
+  // TF-0410 a posé pour les horodatages) — comparer au précédent abaissait la barre juste après
+  // une collision, et la suite reprend au plus haut seq vu, comme R-42 du pilot.
+  let seqAttendu = 1, tsMax = "", tsMaxMs = -Infinity, seqTsMax = 0;
   let schemaDeclare = null;
   const sansContenu = []; // TF-1366 (e) : entrées réduites à {seq, ts, type} — jamais un contenu
-  const ecarts = [...ecartsDoublons, ...ecartsRectif];
+  const ecartsIntegrite = [];
   const rectifiesAppliques = new Set();
+  const collisionsAppliquees = new Set(); // seq dont une collision est rectifiée
+  const collisionsRectifiees = new Set(); // n° de ligne des entrées en collision rectifiées
   entrees.forEach((e, i) => {
-    if (e.seq !== prevSeq + 1) ecarts.push(`ligne ${i + 1} : seq ${e.seq} attendu ${prevSeq + 1} (append-only rompu)`);
-    if (i === 0 && e.type !== "run_open") ecarts.push("ligne 1 : première entrée — type run_open exigé");
+    if (e.seq !== seqAttendu) {
+      const quoi = `ligne ${i + 1} : seq ${e.seq} attendu ${seqAttendu}`;
+      // Un seq en double ou en recul (sous le plus haut seq vu) nommé par une rectification en
+      // aval est [RECTIFIÉ] (TF-0794 du pilot) ; un saut en avant ou un seq non nommé reste FAIL.
+      const enCollision = Number.isInteger(e.seq) && e.seq < seqAttendu;
+      const { r, divergente } = enCollision ? couverture(e, i + 1) : { r: null, divergente: null };
+      if (r) {
+        r.applique = true;
+        collisionsAppliquees.add(e.seq);
+        collisionsRectifiees.add(i + 1);
+        console.log(`[RECTIFIÉ] ${quoi} (seq en collision) — déclaré par la rectification du seq ${r.parSeq}, ` +
+          `heure réelle estimée ${r.ts_reel_estime} : ${r.cause}`);
+      } else if (divergente) {
+        ecartsIntegrite.push(`${quoi} (append-only rompu) — la rectification du seq ${divergente.parSeq} ` +
+          `déclare \`ts_consigne\` ${divergente.ts_consigne}, l'entrée porte ${e.ts} : une déclaration ` +
+          `qui ne correspond pas à l'histoire ne couvre rien`);
+      } else {
+        ecartsIntegrite.push(`${quoi} (append-only rompu)`);
+      }
+    }
+    if (i === 0 && e.type !== "run_open") ecartsIntegrite.push("ligne 1 : première entrée — type run_open exigé");
     // Monotonie jugée contre le MAXIMUM COURANT : après un recul, l'entrée fautive ne devient
     // pas la référence. Sinon un seul recul suffit à rendre invisible tout ce qui le suit.
     // TF-1422 : jugée sur des INSTANTS, et un `ts` dont on ne tire aucun instant est un écart.
@@ -536,16 +584,17 @@ if (cmd === "append") {
       const quoi = illisible
         ? `seq ${e.seq} : horodatage ${e.ts === undefined ? "absent" : `illisible (${JSON.stringify(e.ts)})`}, aucun instant à ordonner`
         : `seq ${e.seq} : horodatage décroissant (${e.ts} après ${tsMax})`;
-      const r = rectifs.get(e.seq);
-      if (!r) {
-        ecarts.push(illisible ? quoi : `${quoi} — maximum atteint au seq ${seqTsMax}`);
-      } else if (r.ts_consigne !== e.ts) {
-        ecarts.push(`${quoi} — la rectification du seq ${r.parSeq} déclare \`ts_consigne\` ` +
-          `${r.ts_consigne}, l'entrée porte ${e.ts} : une déclaration qui ne correspond pas à ` +
+      const { r, divergente } = couverture(e, i + 1);
+      if (divergente && !r) {
+        ecartsIntegrite.push(`${quoi} — la rectification du seq ${divergente.parSeq} déclare \`ts_consigne\` ` +
+          `${divergente.ts_consigne}, l'entrée porte ${e.ts} : une déclaration qui ne correspond pas à ` +
           `l'histoire ne couvre rien`);
+      } else if (!r) {
+        ecartsIntegrite.push(illisible ? quoi : `${quoi} — maximum atteint au seq ${seqTsMax}`);
       } else {
         // Rectifié n'est pas effacé : la ligne s'imprime à CHAQUE verify. L'écart cesse de
         // bloquer, il ne cesse pas d'exister.
+        r.applique = true;
         rectifiesAppliques.add(e.seq);
         console.log(`[RECTIFIÉ] ${quoi} — déclaré par la rectification du seq ${r.parSeq}, ` +
           `heure réelle estimée ${r.ts_reel_estime} : ${r.cause}`);
@@ -558,17 +607,32 @@ if (cmd === "append") {
     if (Object.keys(e).every((k) => k === "seq" || k === "ts" || k === "type")) {
       sansContenu.push({ ligne: i + 1, seq: e.seq });
     }
-    prevSeq = e.seq;
+    if (Number.isInteger(e.seq)) seqAttendu = Math.max(seqAttendu, e.seq + 1);
     if (tsMs > tsMaxMs) { tsMaxMs = tsMs; tsMax = e.ts; seqTsMax = e.seq; }
   });
 
+  // TF-1367, TF-1425 : un seq porté par plusieurs entrées se nomme EN TÊTE des écarts, sauf si
+  // chaque occurrence après la première est une collision rectifiée — il s'imprime alors
+  // [RECTIFIÉ] : il cesse de bloquer, il ne disparaît pas.
+  const ecartsDoublons = [];
+  for (const [seqPorte, lignesDup] of lignesParSeq) {
+    if (lignesDup.length < 2) continue;
+    const doublon = `seq ${seqPorte} porté par ${lignesDup.length} entrées, lignes ${
+      lignesDup.join(", ")} — deux écrivains sans verrou commun`;
+    if (lignesDup.slice(1).every((n) => collisionsRectifiees.has(n))) console.log(`[RECTIFIÉ] ${doublon}, collision déclarée`);
+    else ecartsDoublons.push(doublon);
+  }
+  const ecarts = [...ecartsDoublons, ...ecartsRectif, ...ecartsIntegrite];
+
   // Déclaration sans objet : dite à voix haute, jamais bloquante. Elle ne peut rien couvrir
-  // d'avance (les seq visés sont antérieurs, donc figés) — mais taire une déclaration inopérante
-  // laisserait croire qu'une couverture existe.
-  for (const [seqVise, r] of rectifs) {
-    if (!rectifiesAppliques.has(seqVise))
-      console.log(`[SANS OBJET] la rectification du seq ${r.parSeq} déclare le seq ${seqVise}, ` +
-        `qui ne porte aucun écart d'horodatage — déclaration conservée, sans effet`);
+  // d'avance (les entrées visées sont antérieures, donc figées) — mais taire une déclaration
+  // inopérante laisserait croire qu'une couverture existe.
+  for (const declarations of rectifs.values()) {
+    for (const r of declarations) {
+      if (!r.applique)
+        console.log(`[SANS OBJET] la rectification du seq ${r.parSeq} déclare le seq ${r.seq}, ` +
+          `qui ne porte en amont d'elle aucun écart d'horodatage ni de seq à ce ts — déclaration conservée, sans effet`);
+    }
   }
   if (ecarts.length) {
     fail(`intégrité — ${ecarts.length} écart(s) non rectifié(s) :` +
@@ -650,10 +714,14 @@ if (cmd === "append") {
     ? ` · ${rectifiesAppliques.size} écart(s) d'horodatage DÉCLARÉ(S) et rectifié(s) (seq ${
       [...rectifiesAppliques].join(", ")})`
     : "";
+  const collisions = collisionsRectifiees.size
+    ? ` · ${collisionsRectifiees.size} collision(s) de seq DÉCLARÉE(S) et rectifiée(s) (seq ${
+      [...collisionsAppliquees].join(", ")})`
+    : "";
   const sansContenuDit = !sansContenuBloquant && sansContenu.length
     ? ` · ${sansContenu.length} entrée(s) SANS CONTENU (non bloquant, schéma ${schemaDeclare || "absent"})`
     : "";
-  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${sansContenuDit}`);
+  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sansContenuDit}`);
 } else {
   fail("commande inconnue (append | verify)");
 }

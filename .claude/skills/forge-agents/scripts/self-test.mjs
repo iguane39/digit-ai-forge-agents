@@ -363,7 +363,7 @@ check("ledger TF-0410 : déclaration incomplète (cause absente) → écart, jam
   if (sortie.includes("[RECTIFIÉ] seq 3")) throw new Error("une déclaration incomplète ne couvre rien");
 });
 
-check("ledger TF-0410 : la rectification n'agit QUE sur les horodatages — un seq rompu reste FAIL", () => {
+check("ledger TF-0410 : un seq SAUTÉ (saut en avant) reste FAIL, même nommé par une rectification", () => {
   const lf = join(out, "ts-rectif-hors-perimetre.jsonl");
   ecrireBrut(lf, [
     { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-ts" },
@@ -639,6 +639,98 @@ check("ledger TF-1367 : seq porté par deux entrées → NOMMÉ en tête des éc
   const idxDoublon = sortie.indexOf("porté par 2 entrées");
   const idxRompu = sortie.indexOf("append-only rompu");
   if (idxRompu >= 0 && idxDoublon > idxRompu) throw new Error("le doublon doit être nommé EN TÊTE, avant les ruptures génériques : " + sortie);
+});
+
+// ============================================================================================
+// TF-1425, 28/09/2026 — LA RECTIFICATION COUVRE AUSSI UNE COLLISION DE SEQ, comme R-42 du pilot
+// la consomme depuis TF-0794. Le ledger jetable du lot « Produit-77 - RETOURS - 20260925b »
+// (deux branches parallèles fusionnées) rendait PASS chez R-42 et exit 1 ici. Le vert se joue
+// tel quel ; les rouges disent ce que la rectification ne couvre pas : rien sans elle, pas un seq
+// qu'elle ne nomme pas, pas une entrée dont elle ne cite pas le ts, pas une entrée écrite après.
+// ============================================================================================
+const COLLISION = [
+  { seq: 1, ts: "2026-09-25T09:00:00+02:00", type: "run_open" },
+  { seq: 2, ts: "2026-09-25T09:10:00+02:00", type: "retour" },
+  { seq: 3, ts: "2026-09-25T09:20:00+02:00", type: "retour" },
+  { seq: 2, ts: "2026-09-25T09:30:00+02:00", type: "retour" },
+  { seq: 3, ts: "2026-09-25T09:40:00+02:00", type: "retour" },
+];
+const DECL_COLLISION_2 = { seq: 2, ts_consigne: "2026-09-25T09:30:00+02:00", ts_reel_estime: "2026-09-25T09:30:00+02:00", cause: "deux branches, meme queue (1), fusionnees l'une apres l'autre" };
+const DECL_COLLISION_3 = { seq: 3, ts_consigne: "2026-09-25T09:40:00+02:00", ts_reel_estime: "2026-09-25T09:40:00+02:00", cause: "meme collision" };
+const rectifCollision = (declarations) => ({
+  seq: 4, ts: "2026-09-25T09:50:00+02:00", type: "rectification_horodatage",
+  resume: "collision de seq par deux branches paralleles", entrees: declarations,
+});
+
+check("ledger TF-1425 : le ledger du lot, collision des seq 2 et 3 rectifiée avec les quatre champs → PASS, chaque collision imprimée [RECTIFIÉ]", () => {
+  const lf = join(out, "collision-rectifiee.jsonl");
+  ecrireBrut(lf, [...COLLISION, rectifCollision([DECL_COLLISION_2, DECL_COLLISION_3])]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("la collision déclarée doit passer, comme chez R-42 : " + v);
+  for (const attendu of [
+    "[RECTIFIÉ] ligne 4 : seq 2 attendu 4 (seq en collision)",
+    "[RECTIFIÉ] ligne 5 : seq 3 attendu 4 (seq en collision)",
+    "[RECTIFIÉ] seq 2 porté par 2 entrées, lignes 2, 4",
+    "[RECTIFIÉ] seq 3 porté par 2 entrées, lignes 3, 5",
+    "2 collision(s) de seq DÉCLARÉE(S) et rectifiée(s) (seq 2, 3)",
+  ]) if (!v.includes(attendu)) throw new Error(`« ${attendu} » absent : rectifié n est pas effacé — ${v}`);
+  if (v.includes("[SANS OBJET]")) throw new Error("les deux déclarations couvrent une collision : aucune n est sans objet");
+});
+
+check("ledger TF-1425 : la même collision SANS rectification → FAIL, doublons en tête et les DEUX entrées nommées", () => {
+  const lf = join(out, "collision-nue.jsonl");
+  ecrireBrut(lf, COLLISION);
+  const { sortie } = verifyRouge(lf);
+  // La seconde entrée en collision (ligne 5) se juge contre le PLUS HAUT seq vu : comparée à la
+  // précédente, elle passait (3 après 2) et la collision n'était vue qu'à moitié.
+  for (const attendu of ["seq 2 porté par 2 entrées", "seq 3 porté par 2 entrées",
+    "ligne 4 : seq 2 attendu 4 (append-only rompu)", "ligne 5 : seq 3 attendu 4 (append-only rompu)", "4 écart(s)"])
+    if (!sortie.includes(attendu)) throw new Error(`« ${attendu} » absent : ${sortie}`);
+  if (sortie.includes("[RECTIFIÉ]")) throw new Error("rien n est déclaré : rien ne doit s imprimer rectifié");
+});
+
+check("ledger TF-1425 : ce que la rectification ne couvre pas — un seq non nommé, un ts non cité, une entrée écrite après elle", () => {
+  // (1) Partielle : seule la collision du seq 2 est nommée.
+  let lf = join(out, "collision-partielle.jsonl");
+  ecrireBrut(lf, [...COLLISION, rectifCollision([DECL_COLLISION_2])]);
+  let { sortie } = verifyRouge(lf);
+  if (!sortie.includes("[RECTIFIÉ] ligne 4 : seq 2")) throw new Error("la collision nommée reste rectifiée : " + sortie);
+  if (!sortie.includes("ligne 5 : seq 3 attendu 4 (append-only rompu)") || !sortie.includes("seq 3 porté par 2 entrées"))
+    throw new Error("la collision NON nommée doit rester un FAIL, doublon compris : " + sortie);
+  // (2) La déclaration cite le ts de la PREMIÈRE entrée au seq 2, pas celui de l'entrée en collision.
+  lf = join(out, "collision-ts-premiere.jsonl");
+  ecrireBrut(lf, [...COLLISION, rectifCollision([{ ...DECL_COLLISION_2, ts_consigne: "2026-09-25T09:10:00+02:00" }, DECL_COLLISION_3])]);
+  ({ sortie } = verifyRouge(lf));
+  if (!sortie.includes("ligne 4 : seq 2 attendu 4 (append-only rompu)") || !sortie.includes("ne correspond pas à"))
+    throw new Error("un ts_consigne qui ne cite pas l entrée en collision ne couvre rien, et le dit : " + sortie);
+  // (3) La rectification est écrite AVANT la collision qu'elle nomme : on ne se dédouane pas d'avance.
+  lf = join(out, "collision-couverte-d-avance.jsonl");
+  ecrireBrut(lf, [...COLLISION.slice(0, 3), rectifCollision([DECL_COLLISION_2]), { seq: 2, ts: "2026-09-25T09:30:00+02:00", type: "retour" }]);
+  ({ sortie } = verifyRouge(lf));
+  if (!sortie.includes("ligne 5 : seq 2 attendu 5 (append-only rompu)")) throw new Error("la collision écrite après la rectification doit rester un FAIL : " + sortie);
+  if (sortie.includes("[RECTIFIÉ]")) throw new Error("une rectification écrite avant la collision ne couvre rien : " + sortie);
+});
+
+check("ledger TF-1425 : une branche plus ancienne fusionnée après (collision ET recul) → une déclaration couvre les deux, la suite reprend au plus haut seq vu", () => {
+  const lf = join(out, "collision-et-recul.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-09-25T09:00:00Z", type: "run_open", substrat: "deux branches" },
+    { seq: 2, ts: "2026-09-25T09:10:00Z", type: "note", detail: "branche A" },
+    { seq: 3, ts: "2026-09-25T09:20:00Z", type: "note", detail: "branche A" },
+    { seq: 4, ts: "2026-09-25T09:30:00Z", type: "note", detail: "branche A" },
+    { seq: 2, ts: "2026-09-25T09:15:00Z", type: "note", detail: "branche B, fusionnée après A" },
+    { seq: 5, ts: "2026-09-25T09:40:00Z", type: "rectification_horodatage", entrees: [
+      { seq: 2, ts_consigne: "2026-09-25T09:15:00Z", ts_reel_estime: "2026-09-25T09:15:00Z", cause: "branche B fusionnée après la branche A" }] },
+    { seq: 6, ts: "2026-09-25T09:50:00Z", type: "note", detail: "la suite reprend au plus haut seq vu" },
+  ]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("collision et recul d une même entrée, déclarés, doivent passer : " + v);
+  for (const attendu of [
+    "[RECTIFIÉ] ligne 5 : seq 2 attendu 5 (seq en collision)",
+    "[RECTIFIÉ] seq 2 : horodatage décroissant (2026-09-25T09:15:00Z après 2026-09-25T09:30:00Z)",
+    "1 écart(s) d'horodatage DÉCLARÉ(S) et rectifié(s) (seq 2)",
+    "1 collision(s) de seq DÉCLARÉE(S) et rectifiée(s) (seq 2)",
+  ]) if (!v.includes(attendu)) throw new Error(`« ${attendu} » absent — ${v}`);
 });
 
 // ============================================================================================
