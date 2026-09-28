@@ -74,6 +74,37 @@ const FLUX = /(€|eur|euros?)\s*(?:\/|par)\s*(an|mois|trimestre|semaine)/i;
 // sejours ») etait elle-meme accusee — dernier faux positif de la mesure de bruit du 02/09.
 const MULTIPLICATION = /×|\s\*\s|\bx\b/;
 const COMPTE_EVENEMENT = /\b(s[ée]jours?|nuit[ée]?e?s?|visites?|transactions?|commandes?|r[ée]servations?|passages?)\b/i;
+// TF-1440 (28/09/2026) — LA NOTATION D'EFFORT PRESCRITE N'EST PAS UNE MULTIPLICATION. Le gabarit de
+// restitution du pilot (E8, TF-0408) écrit l'effort « complexité (simple | moyen | complexe | très
+// complexe) × durée (court | moyen | long | très long) ». U2 lisait ce × comme un produit : sur la
+// page d'une étude, 4 constats bloquants là où la source Markdown passait. Le × posé entre un mot
+// de complexité et un mot de durée est retiré AVANT de chercher une multiplication — un × entre un
+// nombre et une unité, lui, reste jugé.
+const EFFORT = /(?<![\p{L}\p{N}_])(?:complexit[ée](?:\s+(?:tr[èe]s\s+)?(?:simple|moyen(?:ne)?|complexe))?|(?:tr[èe]s\s+)?(?:simple|moyen(?:ne)?|complexe))\s*[×x]\s*(?:dur[ée]e(?:\s+(?:tr[èe]s\s+)?(?:court(?:e)?|moyen(?:ne)?|long(?:ue)?))?|(?:tr[èe]s\s+)?(?:court(?:e)?|moyen(?:ne)?|long(?:ue)?))(?![\p{L}\p{N}_])/giu;
+// TF-1440 — L'UNITÉ DE LECTURE : une cellule de tableau, un élément de liste, un bloc de texte.
+// Sur une page HTML, un tableau ou une liste entière tient souvent sur UNE ligne du source ; la
+// juger comme une ligne réunissait le × de la colonne d'effort, les « nuits » d'une autre et le
+// « €/mois » d'une troisième en une multiplication que personne n'avait écrite. Une ligne de
+// tableau Markdown se découpe de même en cellules. Le numéro rapporté reste celui du source.
+const FIN_D_UNITE = /<\/(?:td|th|li|p|h[1-6]|dt|dd|caption|div|tr|blockquote|figcaption)\s*>|<br\s*\/?>/i;
+function unitesDeLecture(text, ext) {
+  const unites = [];
+  if (ext === '.md') {
+    text.split('\n').forEach((l, i) => {
+      if (/^\s*\|.*\|\s*$/.test(l)) { for (const c of l.split('|')) if (c.trim()) unites.push({ texte: c, ligne: i + 1 }); }
+      else unites.push({ texte: l, ligne: i + 1 });
+    });
+    return unites;
+  }
+  // Même instantané que `nu` (scripts et styles retirés) : les numéros de ligne restent les siens.
+  text.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').split('\n').forEach((l, i) => {
+    for (const morceau of l.split(FIN_D_UNITE)) {
+      const t = morceau.replace(/<[^>]+>/g, ' ');
+      if (t.trim()) unites.push({ texte: t, ligne: i + 1 });
+    }
+  });
+  return unites;
+}
 
 const norme = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const sansUnite = (s) => norme(s).replace(/\([^)]*\)\s*$/, '').replace(/[€%]|\bk€\b/gi, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -178,10 +209,16 @@ export function verifierMesures(text, ext, base, dir, cfg = {}) {
     });
   }
   // U2 — une unité de FLUX consommée par une multiplication par un compte d'ÉVÉNEMENTS
-  lignesNu.forEach((l, i) => {
+  // TF-1440 : l'unité jugée est la CELLULE, l'ÉLÉMENT DE LISTE ou le BLOC (voir unitesDeLecture),
+  // jamais la ligne du source ; et la notation d'effort prescrite (« moyen × court ») n'est pas une
+  // multiplication. La ligne rapportée reste celle du source, là où l'unité se trouve.
+  const unites = unitesDeLecture(text, ext);
+  unites.forEach((u, k) => {
     // `x` doit être un MOT, jamais une lettre au milieu d'un mot : « faute de mieux » contient un
     // x, et la première écriture prenait cette phrase pour une multiplication — le constat était
     // alors porté par la mauvaise ligne, ce qui envoie corriger au mauvais endroit.
+    const l = u.texte.replace(EFFORT, ' ');
+    const i = u.ligne - 1;
     if (!MULTIPLICATION.test(l) || !COMPTE_EVENEMENT.test(l)) return;
     juges++;
     if (!FLUX.test(l)) {
@@ -195,13 +232,13 @@ export function verifierMesures(text, ext, base, dir, cfg = {}) {
       let cible = null, decl = null;
       for (const op of operandes) {
         const radicaux = (op.toLowerCase().match(/[a-zà-ÿ]{5,}/g) || []).map(w => w.slice(0, 6));
-        const d = lignesNu.find((x, j) => j !== i && FLUX.test(x) && radicaux.some(r => x.toLowerCase().includes(r)));
-        if (d) { cible = op; decl = d; break; }
+        const d = unites.find((x, j) => j !== k && FLUX.test(x.texte) && radicaux.some(r => x.texte.toLowerCase().includes(r)));
+        if (d) { cible = op; decl = d.texte; break; }
       }
       if (!decl) { verifies++; return; }
       findings.push({
         sev: 'bloquant', regle: 'N4',
-        msg: `unité de FLUX consommée comme unité unitaire — « ${norme(l).slice(0, 100) }» multiplie un COMPTE D'ÉVÉNEMENTS par « ${cible.slice(0, 50)} », `
+        msg: `unité de FLUX consommée comme unité unitaire — « ${norme(u.texte).slice(0, 100) }» multiplie un COMPTE D'ÉVÉNEMENTS par « ${cible.slice(0, 50)} », `
           + `grandeur déclarée ailleurs en flux (« ${norme(decl).slice(0, 70)} »). Multiplier une valeur PAR AN par un nombre de séjours ne produit pas des euros : `
           + `c'est le défaut du 02/09, resté SKIP à l'oracle des calculs.`,
         where: base + ':' + (i + 1),
@@ -210,7 +247,7 @@ export function verifierMesures(text, ext, base, dir, cfg = {}) {
     }
     findings.push({
       sev: 'bloquant', regle: 'N4',
-      msg: `unité de FLUX consommée comme unité unitaire — « ${norme(l).slice(0, 110)} » multiplie un compte d'événements par une valeur exprimée PAR AN (ou par mois). `
+      msg: `unité de FLUX consommée comme unité unitaire — « ${norme(u.texte).slice(0, 110)} » multiplie un compte d'événements par une valeur exprimée PAR AN (ou par mois). `
         + `Le produit n'a pas d'unité lisible : soit la valeur est unitaire, soit le compte est annuel, jamais les deux.`,
       where: base + ':' + (i + 1),
     });
@@ -261,6 +298,8 @@ export const NON_JUGE_MESURE = [
   'N3 : la JUSTESSE du dénominateur écrit — sa présence est vérifiée, jamais sa pertinence (« on ne mesure un acteur que sur ce qu\'il a eu l\'occasion de faire » reste une revue humaine)',
   'N3 : les pourcentages en pleine prose hors table et hors titre — les mécaniser produirait plus de bruit que de gain',
   'N4 : les unités hors de la liste connue (€, €/an, %, nuits, séjours, jours, j/h, h, km, m²) et les unités écrites en toutes lettres dans la prose',
+  'N4 (U2) : une multiplication et une unité de flux posées dans DEUX cellules d\'une même ligne de tableau ne se rapprochent que par le libellé de la grandeur (l\'en-tête ou la ligne qui la déclare en flux) — l\'unité jugée est la cellule, l\'élément de liste ou le bloc, jamais la ligne du source (TF-1440)',
+  'N4 (U2) : le × de la notation d\'effort prescrite (complexité × durée, « moyen × court ») n\'est pas lu comme une multiplication — un × entre un nombre et une unité reste jugé (TF-1440)',
   'N5 : le CALCUL lui-même — l\'oracle constate que la source déclarée contient la grandeur supposée, il ne recalcule rien et ne dit pas quelle valeur serait juste',
   'N5 : les sources de données NON déclarées dans le document — une source qu\'on ne nomme pas est invisible à ce contrôle',
   'l\'épreuve de l\'étonnement (faire lire les résultats à quelqu\'un qui connaît le terrain) : c\'est la pratique qui a trouvé le défaut du 31/08, et elle n\'est pas mécanisable',

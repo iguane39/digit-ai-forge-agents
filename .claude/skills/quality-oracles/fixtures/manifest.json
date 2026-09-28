@@ -1398,6 +1398,54 @@
     "« État au 2026-09-28 », « Délai »"
    ],
    "provenance": "TF-1445, lot Produit-78 - RETOURS - 20260928b (RQ-2) — T2 cherchait la glose d un en-tete par une expression ouverte sur \\b sans drapeau u : devant « É » elle ne tombait jamais, et « État au 2026-09-28 », defini en prose et relie a sa note par aria-describedby, etait declare non glose. La verte glose les trois en-tetes accentues (prose, aria-describedby vers une note non vide, glossaire) et echoue contre l oracle d avant (3 en-tetes sur 3 non gloses) ; la rouge laisse « État au 2026-09-28 » sans glose et relie « Délai » a une note VIDE : 2 sur 3, et « Écart », glose, n est plus accuse."
+  },
+  {
+   "nom": "calculs-effort",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "calculs-effort-red.html",
+   "green": "calculs-effort-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "N4",
+    "unité de FLUX",
+    "350 €/an × 12 nuits"
+   ],
+   "provenance": "TF-1440, lot Produit-78 - RETOURS - 20260928a (RQ-1) — U2 lisait le × de la notation d effort prescrite (complexite × duree, E8 du gabarit de restitution) comme une multiplication, et une page HTML dont le tableau et la liste tiennent chacun sur UNE ligne reunissait le × d une cellule, les nuits d une autre et le prix mensuel d une troisieme : 4 constats bloquants sur une page dont la source passait. La verte (effort, nuits, €/mois, ligne de total verifiee) passe et echoue contre l oracle d avant ; la rouge ajoute un vrai flux multiplie par un compte de nuits, dans un element de liste de la meme ligne du source."
+  },
+  {
+   "nom": "calculs-effort-md",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "calculs-effort-red.md",
+   "green": "calculs-effort-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "N4",
+    "unité de FLUX",
+    "350 €/an × 12 nuits"
+   ],
+   "provenance": "TF-1440 — la meme paire en Markdown : une ligne de tableau se juge cellule par cellule, et l element de liste qui porte « simple × très long », « 12 €/mois » et « 2 nuits » passe ; la rouge y pose « 350 €/an × 12 nuits », qui reste accuse."
   }
  ]
 }
