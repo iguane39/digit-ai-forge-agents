@@ -8,7 +8,8 @@
  * Aucune des deux formes n'accepte d'argument en surnombre : un argument non reconnu est REFUSÉ
  * (sortie 1), NOMMÉ, avec cet usage redonné (TF-1366 a, 21/09/2026).
  * Vérifications d'INTÉGRITÉ : JSON valide par ligne, seq strictement croissant depuis 1,
- * horodatages non décroissants, première entrée de type run_open. Exit 0 = PASS, 1 = FAIL.
+ * horodatages non décroissants (comparés comme des INSTANTS, TF-1422), première entrée de type
+ * run_open. Exit 0 = PASS, 1 = FAIL.
  * Les écarts d'horodatage sont TOUS relevés (jamais le premier seul) et chacun nomme les deux
  * horodatages et le seq.
  *
@@ -64,6 +65,19 @@
  *     payload restent des FAIL — rien ne les déclare rectifiables ;
  *   · un écart rectifié s'IMPRIME `[RECTIFIÉ]`, toujours, à chaque verify. Il ne disparaît
  *     pas : il cesse seulement de bloquer. Un écart NON déclaré reste FAIL.
+ *
+ * DES INSTANTS, JAMAIS DES CHAÎNES (TF-1422, 28/09/2026). Le fait mesuré chez un produit le
+ * 25/09 : `append` horodate en UTC (`toISOString`, suffixe `Z`), et ce produit écrit l'heure de
+ * Paris avec son décalage (`+02:00`) ; la monotonie se jugeait en comparant des CHAÎNES. Sur deux
+ * ledgers de deux entrées, une entrée écrite 15 minutes APRÈS la précédente, mais en UTC, était
+ * accusée de recul (exit 1) ; une entrée écrite 15 minutes AVANT, avec décalage, passait (exit 0).
+ * `verify` et la garde d'`append` comparent donc des INSTANTS (`Date.parse`) ; le texte écrit reste
+ * celui qu'on imprime. Un `ts` dont on ne tire aucun instant (absent, ou illisible) est NOMMÉ comme
+ * écart, lui qui échappait à tout jugement d'ordre, et `append` refuse d'en écrire un. Un `ts`
+ * illisible se rectifie comme un recul (`ts_consigne` le cite tel qu'il est écrit) ; un `ts` absent
+ * ne se cite pas, il reste FAIL. Limite dite : un `ts` sans fuseau est lu à l'heure locale du poste
+ * qui vérifie ; aucun des 1 581 horodatages des 12 ledgers du parc relevés le 28/09 n'a cette forme
+ * (1 439 en UTC, 142 avec décalage).
  *
  * SURNOMBRE ET ENTRÉE SANS CONTENU (TF-1366, 21/09/2026). Fait mesuré chez un produit (21/09) :
  * un script de journal réécrit par le produit ignorait tout argument sans « -- », onze entrées
@@ -269,6 +283,12 @@ const CHAMPS_DUS_PAR_VERSION = {
 const TYPE_RECTIFICATION = "rectification_horodatage";
 const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "ts_reel_estime", "cause"];
 
+//: TF-1422 (28/09/2026) : l'INSTANT que désigne un `ts`, en millisecondes, ou NaN s'il n'en
+//: désigne aucun (absent, vide, illisible). Deux écritures d'une même heure (`…T09:30:00+02:00`
+//: et `…T07:30:00.000Z`) désignent le même instant ; comparées comme chaînes, elles s'ordonnaient
+//: au hasard du fuseau, dans les deux sens.
+function instant(ts) { return typeof ts === "string" && ts.trim() ? Date.parse(ts) : NaN; }
+
 function fail(msg) { console.error(`[LEDGER FAIL] ${msg}`); process.exit(1); }
 function fail_usage() { fail(USAGE_APPEND); }
 
@@ -351,17 +371,19 @@ if (cmd === "append") {
   let seq = 1;
   let schemaActif = null;
   try {
-    let tsMax = "";
+    let tsMax = "", tsMaxMs = -Infinity;
     if (existsSync(file)) {
       const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
       if (lines.length > 0) {
         seq = JSON.parse(lines[lines.length - 1]).seq + 1;
         // Maximum courant, pas dernier ts : sur un fichier qui porte déjà un recul, se
         // comparer au dernier autoriserait à consigner sous une heure déjà atteinte.
+        // TF-1422 : le maximum est un INSTANT ; le texte gardé est celui qu'on imprime.
         for (const l of lines) {
           const parsed = JSON.parse(l);
           const t = parsed.ts;
-          if (typeof t === "string" && t > tsMax) tsMax = t;
+          const ms = instant(t);
+          if (ms > tsMaxMs) { tsMaxMs = ms; tsMax = t; }
           // Schéma ACTIF pour juger CETTE entrée (TF-1366 c) : celui du DERNIER run_open qui en
           // déclare un dans le fichier — même lecture que verify (schemaDeclare), au sens d'un
           // seul journal (un run de version ne change pas ce choix, pour rester simple).
@@ -383,7 +405,16 @@ if (cmd === "append") {
     // ne remonte pas — un run peut avoir une raison de fixer l'heure de consignation — mais il
     // est alors ANNONCÉ, et refusé dès qu'il passe sous le maximum du fichier.
     const tsFourni = typeof obj.ts === "string" && obj.ts.trim() ? obj.ts.trim() : null;
-    if (tsFourni && tsMax && tsFourni < tsMax) {
+    // TF-1422 : `append` n'écrit jamais le défaut que `verify` nomme — un `ts` dont on ne tire
+    // aucun instant ne s'ordonne pas, et resterait pour toujours dans un journal en ajout seul.
+    if (tsFourni && Number.isNaN(instant(tsFourni))) {
+      throw new Error(
+        `\`ts\` fourni par le payload (${tsFourni}) ILLISIBLE : aucun instant ne s'en tire ` +
+        `(forme attendue : ISO 8601 avec fuseau, ex. 2026-09-25T09:30:00+02:00 ou ` +
+        `2026-09-25T07:30:00.000Z) — refusé, aucune écriture. Sans \`ts\` dans le payload, ` +
+        `l'outil pose l'horodatage machine (TF-1422).`);
+    }
+    if (tsFourni && tsMax && instant(tsFourni) < tsMaxMs) {
       throw new Error(
         `\`ts\` fourni par le payload (${tsFourni}) ANTÉRIEUR au maximum du ledger (${tsMax}) — ` +
         `refusé, aucune écriture. Le champ \`ts\` est l'heure de CONSIGNATION de l'entrée : ` +
@@ -488,7 +519,7 @@ if (cmd === "append") {
 
   // --- PASSE 2 : intégrité. Les écarts s'ACCUMULENT — un vérificateur qui sort au premier
   // ne dit pas « un défaut », il dit « au moins un défaut », et le reste n'est pas jugé.
-  let prevSeq = 0, tsMax = "", seqTsMax = 0;
+  let prevSeq = 0, tsMax = "", tsMaxMs = -Infinity, seqTsMax = 0;
   let schemaDeclare = null;
   const sansContenu = []; // TF-1366 (e) : entrées réduites à {seq, ts, type} — jamais un contenu
   const ecarts = [...ecartsDoublons, ...ecartsRectif];
@@ -498,11 +529,16 @@ if (cmd === "append") {
     if (i === 0 && e.type !== "run_open") ecarts.push("ligne 1 : première entrée — type run_open exigé");
     // Monotonie jugée contre le MAXIMUM COURANT : après un recul, l'entrée fautive ne devient
     // pas la référence. Sinon un seul recul suffit à rendre invisible tout ce qui le suit.
-    if (tsMax && typeof e.ts === "string" && e.ts < tsMax) {
-      const quoi = `seq ${e.seq} : horodatage décroissant (${e.ts} après ${tsMax})`;
+    // TF-1422 : jugée sur des INSTANTS, et un `ts` dont on ne tire aucun instant est un écart.
+    const tsMs = instant(e.ts);
+    const illisible = Number.isNaN(tsMs);
+    if (illisible || tsMs < tsMaxMs) {
+      const quoi = illisible
+        ? `seq ${e.seq} : horodatage ${e.ts === undefined ? "absent" : `illisible (${JSON.stringify(e.ts)})`}, aucun instant à ordonner`
+        : `seq ${e.seq} : horodatage décroissant (${e.ts} après ${tsMax})`;
       const r = rectifs.get(e.seq);
       if (!r) {
-        ecarts.push(`${quoi} — maximum atteint au seq ${seqTsMax}`);
+        ecarts.push(illisible ? quoi : `${quoi} — maximum atteint au seq ${seqTsMax}`);
       } else if (r.ts_consigne !== e.ts) {
         ecarts.push(`${quoi} — la rectification du seq ${r.parSeq} déclare \`ts_consigne\` ` +
           `${r.ts_consigne}, l'entrée porte ${e.ts} : une déclaration qui ne correspond pas à ` +
@@ -523,7 +559,7 @@ if (cmd === "append") {
       sansContenu.push({ ligne: i + 1, seq: e.seq });
     }
     prevSeq = e.seq;
-    if (typeof e.ts === "string" && e.ts > tsMax) { tsMax = e.ts; seqTsMax = e.seq; }
+    if (tsMs > tsMaxMs) { tsMaxMs = tsMs; tsMax = e.ts; seqTsMax = e.seq; }
   });
 
   // Déclaration sans objet : dite à voix haute, jamais bloquante. Elle ne peut rien couvrir

@@ -399,6 +399,78 @@ check("ledger TF-0410 : append refuse un `ts` de payload ANTÉRIEUR au maximum, 
   if (lignes.length !== 2) throw new Error(`2 entrées attendues, ${lignes.length} — le refus n a rien laissé passer`);
 });
 
+// --- TF-1422 (28/09/2026) : DES INSTANTS, JAMAIS DES CHAÎNES. Le fait mesuré chez un produit le
+// 25/09 : `append` horodate en UTC, le produit écrit l'heure de Paris avec son décalage, et la
+// monotonie se jugeait en comparant des chaînes. Les deux ledgers jetables du lot, tels quels :
+// (a) seq 2 postérieure de 15 minutes mais écrite en UTC, accusée de recul à tort (exit 1) ;
+// (b) seq 2 antérieure de 15 minutes, écrite avec décalage, passée à tort (exit 0).
+check("ledger TF-1422 (a) : entrée POSTÉRIEURE écrite en UTC après une heure à décalage → PASS, aucun faux recul", () => {
+  const lf = join(out, "ts-instant-a.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-09-25T09:30:00+02:00", type: "run_open" },
+    { seq: 2, ts: "2026-09-25T07:45:00.000Z", type: "retour" },
+  ]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("07:45Z est postérieur de 15 minutes à 09:30+02:00 : aucun recul");
+});
+
+check("ledger TF-1422 (b) : entrée ANTÉRIEURE écrite avec décalage après une heure UTC → FAIL qui nomme le recul", () => {
+  const lf = join(out, "ts-instant-b.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-09-25T07:45:00.000Z", type: "run_open" },
+    { seq: 2, ts: "2026-09-25T09:30:00+02:00", type: "retour" },
+  ]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("seq 2 : horodatage décroissant (2026-09-25T09:30:00+02:00 après 2026-09-25T07:45:00.000Z)"))
+    throw new Error("le recul masqué par le fuseau doit être nommé avec ses deux horodatages : " + sortie);
+});
+
+check("ledger TF-1422 : `ts` illisible ou absent → FAIL qui nomme les deux, jamais un PASS muet", () => {
+  const lf = join(out, "ts-illisible-absent.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-09-25T07:45:00.000Z", type: "run_open", substrat: "self-test-ts" },
+    { seq: 2, ts: "25/09/2026 09:50", type: "note", detail: "heure écrite à la française" },
+    { seq: 3, type: "note", detail: "ts absent" },
+  ]);
+  const { sortie } = verifyRouge(lf);
+  for (const attendu of ['seq 2 : horodatage illisible ("25/09/2026 09:50")', "seq 3 : horodatage absent", "2 écart(s)"])
+    if (!sortie.includes(attendu)) throw new Error(`« ${attendu} » absent de la sortie : ${sortie}`);
+});
+
+check("ledger TF-1422 : un `ts` illisible cité tel quel par `ts_consigne` se rectifie → PASS avec [RECTIFIÉ]", () => {
+  const lf = join(out, "ts-illisible-rectifie.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-09-25T07:45:00.000Z", type: "run_open", substrat: "self-test-ts" },
+    { seq: 2, ts: "25/09/2026 09:50", type: "note", detail: "heure écrite à la française" },
+    { seq: 3, ts: "2026-09-25T08:10:00.000Z", type: "rectification_horodatage", entrees: [
+      { seq: 2, ts_consigne: "25/09/2026 09:50", ts_reel_estime: "2026-09-25T07:50:00.000Z", cause: "heure écrite à la main" }] },
+  ]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]") || !v.includes('[RECTIFIÉ] seq 2 : horodatage illisible ("25/09/2026 09:50")'))
+    throw new Error("la rectification qui cite l illisible doit le couvrir, et l imprimer : " + v);
+});
+
+check("ledger TF-1422 : la garde d'`append` compare des instants dans les deux sens, et refuse un `ts` illisible", () => {
+  const lf = join(out, "ts-append-instants.jsonl");
+  ecrireBrut(lf, [{ seq: 1, ts: "2026-09-25T09:30:00+02:00", type: "run_open", substrat: "self-test-ts" }]);
+  // Vert : 07:45Z est postérieur à 09:30+02:00 (07:30Z), alors que la chaîne est « plus petite ».
+  const ok = run(ledger, ["append", lf, JSON.stringify({ type: "note", ts: "2026-09-25T07:45:00.000Z", detail: "postérieur, écrit en UTC" })]);
+  if (!ok.includes("[OK] entrée 2")) throw new Error("un ts postérieur écrit en UTC doit être accepté : " + ok);
+  const avant = readFileSync(lf, "utf8");
+  // Rouge : 09:40+02:00 (07:40Z) précède le maximum 07:45Z, alors que la chaîne est « plus grande ».
+  for (const [ts, motif] of [["2026-09-25T09:40:00+02:00", "ANTÉRIEUR"], ["hier soir", "ILLISIBLE"]]) {
+    let err = null;
+    try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note", ts, detail: "refus attendu" })], { encoding: "utf8", stdio: "pipe" }); }
+    catch (e) { err = String(e.stderr || ""); }
+    if (err === null) throw new Error(`append aurait dû refuser le ts ${ts}`);
+    if (!err.includes("[LEDGER FAIL]") || !err.includes(motif)) throw new Error(`refus attendu nommant ${motif}, reçu : ${err.slice(0, 200)}`);
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("le fichier a été modifié malgré un refus — un refus doit être sans écriture");
+  // Le remède que le refus propose se joue (TF-1013) : sans `ts`, l'outil pose l'horodatage machine.
+  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "ts laissé à l outil" })]);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre après le remède");
+});
+
 // ============================================================================================
 // TF-1366 (a) — ARGUMENT EN SURNOMBRE REFUSÉ. Fait mesuré chez un produit (21/09) : un script de
 // journal réécrit ignorait tout argument sans « -- ». `append <ledger> '<json>' --etape x` est
