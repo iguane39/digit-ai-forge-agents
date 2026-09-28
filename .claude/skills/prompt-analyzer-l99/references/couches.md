@@ -102,6 +102,34 @@ redécouvre mal.
 **Borne** : L99 **cite** ces règles, il ne les vérifie pas et ne les exécute jamais. La
 vérification appartient au producteur du livrable, par les oracles nommés.
 
+## Nom du livrable : dans un projet de la factory, le Ch8 cite R-4 et R-25 (TF-1441, 28/09/2026)
+
+**Le fait mesuré.** Dans un projet de la factory, le Chapitre 8 d'une analyse a prescrit au
+prompt réécrit le nom « <Projet> - <Objet> - <Type> - AAAAMMJJa ». Le pilot exige le type en
+premier mot du deuxième segment (R-25) : le livrable produit a dû être renommé après ses
+contrôles, puis tous les contrôles rejoués. Même classe que TF-0765 : une règle de socle qui
+existait, était outillée, et que le prompt ne nommait pas.
+
+**Règle.** Quand le prompt s'exécutera dans un projet de la factory Digit-AI (un dossier `forge\`
+à sa racine, ou un `CLAUDE.md` qui renvoie au pilot `digit-ai-factory`) et produit un livrable
+documentaire daté, le **prompt réécrit** et le **contrat de sortie** nomment ce livrable ainsi, et
+citent les deux règles qui le fixent :
+
+- `<Projet> - <Type> - <Objet> - AAAAMMJJ<indice>.<ext>` ;
+- **R-4** : le nom du PROJET ouvre le nom, jamais l'émetteur ; les fichiers historiques ne se
+  renomment pas ;
+- **R-25** : le `<Type>` est le **premier mot du deuxième segment**, et il figure au registre des
+  types de forge-organization (comparaison insensible à la casse et aux accents) ; un type nouveau
+  s'ajoute au registre dans un commit motivé, jamais improvisé dans un nom.
+
+**Pourquoi le nommer** : « nommer le livrable selon la convention » est une intention ; « R-4 et
+R-25 : `<Projet> - Étude - <Objet> - 20260928a.md` » est une instruction qu'on tient du premier
+coup. Un nom composé par l'analyse n'a aucune autorité, et c'est lui qu'un exécutant suivra.
+
+**Borne** : hors factory, le Ch8 reprend la convention que le projet déclare, ou n'en prescrit
+aucune. L99 **cite** R-4 et R-25, il ne les vérifie pas : le contrôle appartient au producteur,
+par la conformité du pilot.
+
 
 ---
 
@@ -286,6 +314,8 @@ Ce chapitre est le livrable principal. Il contient :
      les familles d'accès à essayer avant de conclure, et la **branche d'échec explicite** — ne
      pas contourner en silence, déclarer le repli **avec sa date** et ce qu'il ne permet plus de
      juger, ouvrir la décision d'accès avec son mode opératoire (qui la prend, auprès de qui).
+   - **Nommer le livrable selon R-4 et R-25 dans un projet de la factory**, en citant les deux
+     règles (TF-1441 ; voir « Nom du livrable » plus haut) — jamais un gabarit de nom composé ici.
 4. **Contrat de sortie** : critères d'acceptation **vérifiables** que la réponse produite par le prompt réécrit devra satisfaire (ex. « doit contenir X », « ≤ N mots », « cite ses sources », « pas de Y »). L'étalon Ch1 cadre le *prompt* ; le contrat cadre la *sortie*. Embarquer ce contrat dans le prompt réécrit chaque fois que c'est possible, et le rappeler ici en clair.
 5. **Changelog tracé** : chaque modification est rattachée au défaut qu'elle corrige (ex. « +audience → bloquant Ch3 #2 / cause d'échec Ch5 #1 »). Aucune correction ne sort du chapeau : tout se rattache à un défaut nommé.
 5 bis. **Écarts à la lettre (obligatoire, TF-0176 du 13/08)** : quand le prompt d'origine porte une demande humaine, le Ch8 liste EXPLICITEMENT chaque endroit où le prompt réécrit s'écarte du texte littéral de cette demande (seuil ajouté, périmètre restreint, condition introduite, formulation adoucie) — un tableau « vous avez écrit → je propose → pourquoi », soumis à validation poste par poste. Un affaiblissement noyé dans un prompt long que l'humain valide en bloc N'EST PAS un écart validé : le 13/08, « pour chaque liste, des filtres » devenu « dès 8 lignes » a traversé une validation humaine sans être vu, et le livrable a été refusé. Aucun écart = le dire (« aucun écart à la lettre »).

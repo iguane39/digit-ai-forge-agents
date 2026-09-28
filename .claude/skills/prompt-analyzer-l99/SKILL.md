@@ -5,8 +5,8 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.4.0"
-  updated: "2026-09-19"
+  version: "2.5.0"
+  updated: "2026-09-28"
 ---
 
 # Prompt Analyzer L99
@@ -49,6 +49,15 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    prouve qu'une porte est fermée, jamais qu'il n'y en a qu'une.* Le Ch1 pose alors l'accès en
    prérequis vérifié et le prompt réécrit (Ch8) ouvre par une « ÉTAPE 0 — prérequis d'accès ».
    Détail et bornes : `references/couches.md`, Chapitre 4.
+9. **Nom du livrable dans un projet de la factory** (TF-1441) : quand le prompt s'exécute dans un
+   projet de la factory Digit-AI (un dossier `forge\` à sa racine, ou un `CLAUDE.md` qui renvoie
+   au pilot `digit-ai-factory`), le prompt réécrit et le contrat de sortie **nomment le livrable
+   selon R-4 et R-25** du pilot, et **citent les deux règles** : `<Projet> - <Type> - <Objet> -
+   AAAAMMJJ<indice>.<ext>`, le projet en tête (R-4), le **type en premier mot du 2ᵉ segment**, pris
+   au registre des types (R-25). Jamais un gabarit de nom composé par l'analyse : le 28/09,
+   « <Projet> - <Objet> - <Type> - AAAAMMJJa » a coûté un renommage et le rejeu de tous les
+   contrôles. Hors factory, le Ch8 reprend la convention du projet, ou n'en prescrit aucune.
+   Détail : `references/couches.md`, section « Nom du livrable ».
 
 ## Les 8 couches (vue d'ensemble)
 
