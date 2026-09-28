@@ -41,6 +41,9 @@
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
@@ -55,7 +58,7 @@ const non_juge = [
   'la date de référence : `--aujourdhui AAAA-MM-JJ` si fournie, sinon l\'horloge du poste. Sans le drapeau, deux exécutions à des jours différents ne rendent pas le même verdict — c\'est voulu (la fraîcheur est datée par nature), et les fixtures le passent pour être rejouables'
 ];
 const out = (verdict, code) => {
-  process.stdout.write(JSON.stringify({
+  process.stdout.write(contratJSON({
     oracle: 'oracle-cadence-de-mission', domaine: DOM, artefact: file || null,
     verdict, findings, non_juge,
   }));

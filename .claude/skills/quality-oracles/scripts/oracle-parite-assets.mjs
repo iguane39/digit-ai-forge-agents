@@ -45,6 +45,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ info: true });
 
 const DOM = "Parité d'une copie embarquée d'un asset du socle";
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -66,7 +69,7 @@ const NON_JUGE = [
 ];
 
 const out = (verdict, findings, nj, code) => {
-  process.stdout.write(JSON.stringify({
+  process.stdout.write(contratJSON({
     oracle: 'oracle-parite-assets', domaine: DOM, artefact: cible,
     verdict, findings, non_juge: nj,
   }));

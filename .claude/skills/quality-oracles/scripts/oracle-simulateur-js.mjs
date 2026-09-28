@@ -16,6 +16,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
 const opt = n => args.includes('--' + n) ? args[args.indexOf('--' + n) + 1] : null;
@@ -26,7 +29,7 @@ const non_juge = [
   'rendu visuel du simulateur (→ render_page / visual-diff)',
   'interactions utilisateur au-delà des valeurs par défaut (sliders, scénarios alternatifs)'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-simulateur-js', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-simulateur-js', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (!['.html', '.htm'].includes(path.extname(file).toLowerCase())) skip('extension non gérée');

@@ -47,6 +47,9 @@
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
 const DOM = 'Plan de mission (cohérence structurelle)';
 const findings = [];
@@ -59,7 +62,7 @@ const non_juge = [
   'W7 : la sincérité d\'une cible et l\'existence réelle de la source de mesure — aucun relevé n\'est effectué, aucune valeur n\'est confrontée à sa source',
   'la cadence de communication et les artefacts périodiques (revue RAID, rapport d\'avancement, REX, suivi des bénéfices) : hors périmètre de ce domaine — désormais JUGÉS par `oracle-cadence-de-mission` (C1-C5, TF-0324 du 18/08/2026), qui lit le MÊME état de mission et ne crée aucun second porteur d\'état. Une limite qui survit à son objet dit « personne ne juge ça » alors que quelqu\'un le juge, et on ne va pas chercher l\'oracle qui existe'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-plan-de-mission', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-plan-de-mission', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (path.extname(file).toLowerCase() !== '.md') skip('extension non gérée');

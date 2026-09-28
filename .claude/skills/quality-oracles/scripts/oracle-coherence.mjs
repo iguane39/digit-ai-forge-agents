@@ -27,6 +27,9 @@ import { extractLabelled, normLabel } from './lib/claims-extract.mjs';
 import { parseNum, uniteOf, isTotalLabel, isGrandTotalLabel } from './lib/num.mjs';
 import { extractTables } from './lib/tables.mjs';
 import { jugerFond, NON_JUGE_FOND } from './lib/coherence-fond.mjs';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ dernier: true });
 
 const args = process.argv.slice(2);
 const target = args.find(a => !a.startsWith('--'));
@@ -38,7 +41,7 @@ const NJ_BASE = [
   'libellés de total d\'un seul mot : rapprochés au sein du fichier seulement (anti-collision)',
   ...NON_JUGE_FOND
 ];
-const out = (verdict, findings, nj, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-coherence', domaine: DOM, artefact: target || null, verdict, findings, non_juge: nj })); process.exit(code); };
+const out = (verdict, findings, nj, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-coherence', domaine: DOM, artefact: target || null, verdict, findings, non_juge: nj })); process.exit(code); };
 if (!target || !fs.existsSync(target)) out('SKIP', [], ['cible absente'], 2);
 const estFichier = fs.statSync(target).isFile();
 
@@ -143,7 +146,8 @@ if (!estFichier && carriers >= 2) {
 const fond = jugerFond(files, { profil, dossier: !estFichier });
 findings.push(...fond.findings);
 if (findings.some(f => f.sev === 'bloquant')) out('FAIL', findings, nj, 1);
-if (!concord && !fond.verifies) out('SKIP', findings, nj, 2);
+// TF-1447 : ce SKIP ne disait pas sa raison ; elle ferme désormais le non_juge, où l'écrivain la prend.
+if (!concord && !fond.verifies) out('SKIP', findings, [...nj, 'rien de jugeable : aucune grandeur commune concordante entre fichiers, et aucun contrôle de fond vérifié'], 2);
 const d = fond.detail;
 const bilan = (concord ? concord + ' grandeur(s) commune(s) concordante(s) entre ' + carriers + ' fichiers, 0 divergence ; ' : '')
   + `fond : ${d.cf1_lignes} ligne(s) classée(s) confrontée(s) à leur statut (CF1), ${d.cf2_affirmations} affirmation(s) absolue(s) tenue(s) (CF2), `

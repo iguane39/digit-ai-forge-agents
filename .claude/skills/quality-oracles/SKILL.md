@@ -175,7 +175,10 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   d'écriture identifie un constat par cette ligne : tout changement de la sortie **incrémente la
   version** du contrat et se déclare au registre. La forme y est **opposable** — `self-test.mjs`
   la lit dans le document et la confronte à la ligne réellement rendue (TF-0824).
-- **Oracles CLI** (contrat d'ENTRÉE, JSON `{oracle,domaine,artefact,verdict,findings[],non_juge[]}`, exit 0/1/2) :
+- **Oracles CLI** (contrat d'ENTRÉE, JSON `{oracle,domaine,artefact,verdict,findings[],non_juge[]}`, exit 0/1/2 ;
+  **tout `SKIP` porte `motif`**, chaîne non vide, la raison pour laquelle l'oracle n'a pas jugé — un champ, jamais
+  une position dans `non_juge` : chaque oracle déclare son domicile à l'écrivain `scripts/lib/contrat.mjs`, et la
+  recette refuse un SKIP sans motif, TF-1447) :
   format (UTF-8, zip, placeholders) · code (compilation) · perf (budgets du profil) · **calculs** (re-somme exécutée des
   lignes Total, **sous-totaux et Total général**, répartitions % totalisées — tables md/html) · **claims** (montant, **TJM ou charge
   j.h en contexte d'engagement** sans source ni « à vérifier » = FAIL ; dates d'échéance = warn ; incohérence intra-document, unités €/%/j/j.h) ·

@@ -47,6 +47,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 
 const DOM = 'Nom de client dans un depot publiable';
 const args = process.argv.slice(2);
@@ -74,7 +77,7 @@ const PLAFOND_ANTERIORITES = plafondDe(process.env.FORGE_PORTE_PLAFOND_ANTERIORI
 
 const out = (verdict, findings, nj, code, artefact, compte) => {
   const total = compte ? compte.total : findings.length;
-  process.stdout.write(JSON.stringify({
+  process.stdout.write(contratJSON({
     oracle: 'oracle-nom-client-publie', domaine: DOM, artefact: artefact ?? cible ?? null,
     verdict, findings, total, rendus: findings.length, bornee: total > findings.length,
     ...(compte && compte.detail ? { comptes: compte.detail } : {}),

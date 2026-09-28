@@ -7,6 +7,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ dernier: true });
 
 const args = process.argv.slice(2);
 const file = args.find((a, i) => !a.startsWith('--') && !['--profil', '--model'].includes(args[i - 1]));
@@ -18,7 +21,7 @@ const pArg = args.includes('--profil') ? args[args.indexOf('--profil') + 1] : nu
 const MODELE = args.includes('--model') ? args[args.indexOf('--model') + 1] : (process.env.QO_JUGE_MODELE || null);
 const DOM = 'Jugement rédactionnel (LLM-juge externe)';
 const NJ = ['véracité factuelle (oracles déterministes)', 'AVIS OUTILLÉ non déterministe : deux runs peuvent diverger — ne jamais promouvoir en verdict', 'qualité visuelle (render/pptx)'];
-const out = (verdict, findings, nj, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-judge', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
+const out = (verdict, findings, nj, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-judge', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 
 const SKILLDIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');

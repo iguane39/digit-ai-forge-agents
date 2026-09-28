@@ -20,12 +20,15 @@ import { parseNum, isTotalLabel, isGrandTotalLabel } from './lib/num.mjs';
 import { extractTables } from './lib/tables.mjs';
 import { verifierEffectifs } from './lib/effectifs.mjs';
 import { verifierMesures, NON_JUGE_MESURE } from './lib/mesure.mjs';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ dernier: true });
 
 const args = process.argv.slice(2);
 const file = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--profil');
 const pArg = args.includes('--profil') ? args[args.indexOf('--profil') + 1] : null;
 const out = (verdict, findings, non_juge, code) => {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-calculs', domaine: 'Calculs / chiffres', artefact: file || null, verdict, findings, non_juge }));
+  process.stdout.write(contratJSON({ oracle: 'oracle-calculs', domaine: 'Calculs / chiffres', artefact: file || null, verdict, findings, non_juge }));
   process.exit(code);
 };
 const NON_JUGE_BASE = [

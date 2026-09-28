@@ -22,6 +22,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ dernier: true });
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
@@ -37,7 +40,7 @@ const NJ = [
   'charte des blocs non-titres (corps, listes, tableaux) : seule la couleur des titres est jugée',
 ];
 const out = (verdict, findings, nj, code) => {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-dossier-cab', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj }));
+  process.stdout.write(contratJSON({ oracle: 'oracle-dossier-cab', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj }));
   process.exit(code);
 };
 

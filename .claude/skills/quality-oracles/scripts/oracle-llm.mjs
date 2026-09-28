@@ -9,6 +9,9 @@
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[]} ; exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ limites: () => NJ });
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
@@ -16,7 +19,7 @@ const schemaPath = args.includes('--schema') ? args[args.indexOf('--schema') + 1
 const DOM = 'Sortie LLM / IA générative';
 const NJ = ['véracité factuelle (revue humaine sourcée / recompute — cf. loi §5)', 'qualité rédactionnelle', 'non-régression sans jeu de golden outputs'];
 function emit(verdict, findings = [], non_juge = NJ) {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-llm', domaine: DOM, artefact: file || null, verdict, findings, non_juge }));
+  process.stdout.write(contratJSON({ oracle: 'oracle-llm', domaine: DOM, artefact: file || null, verdict, findings, non_juge }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
 }
 if (!file || !fs.existsSync(file)) emit('SKIP', [{ sev: 'info', msg: 'fichier absent' }]);

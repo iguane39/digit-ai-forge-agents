@@ -23,6 +23,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { extractTables } from './lib/tables.mjs';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ dernier: true });
 
 const ORACLE = 'oracle-autorite-decision', DOM = 'Autorité d\'une décision affirmée';
 const args = process.argv.slice(2);
@@ -35,7 +38,7 @@ const NJ = [
   'les propagations au-delà de la première occurrence (listées en info, jamais bloquantes)'
 ];
 const out = (verdict, findings, nj, code) => {
-  process.stdout.write(JSON.stringify({ oracle: ORACLE, domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj }));
+  process.stdout.write(contratJSON({ oracle: ORACLE, domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj }));
   process.exit(code);
 };
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);

@@ -32,6 +32,9 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolvePython } from './lib/python.mjs';
 import { resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
@@ -44,7 +47,7 @@ const non_juge = [
   'rendu visuel (débordements, contraste) → pipeline d inspection digit-ai-pptx',
   'S5 : le texte vivant dans une IMAGE (capture, schéma embarqué) échappe au lexique — seuls les <a:t> des slides et des notes sont lus'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-charte-pptx-semantique', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-charte-pptx-semantique', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (!/\.pptx$/i.test(file)) skip('extension non gérée');

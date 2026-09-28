@@ -14,6 +14,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { resolvePython } from './lib/python.mjs';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 
 const file = process.argv[2];
 // C1 — politique par profil : jpeg_interdit / transitions_interdites (défaut : les deux, rétrocompat digit-ai)
@@ -25,7 +28,7 @@ const findings = [], non_juge = [
   'rendu visuel slide par slide (débordements, contraste, chevauchements) → pipeline d\'inspection digit-ai-pptx',
   'contenu (textes, chiffres, images pertinentes)'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-pptx', domaine: 'Rendu PPTX (structure & compatibilité)', artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-pptx', domaine: 'Rendu PPTX (structure & compatibilité)', artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = msg => { non_juge.unshift(msg); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (!/\.(pptx|potx)$/i.test(file)) skip('extension non gérée');

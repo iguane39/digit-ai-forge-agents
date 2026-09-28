@@ -37,8 +37,13 @@ ACCEPT = "--accepter" in args
 prof_path = args[args.index("--profil") + 1] if "--profil" in args else None
 
 def out(verdict, findings, non_juge, code):
-    print(json.dumps({"oracle": "oracle-visual-diff", "domaine": DOM, "artefact": file,
-                      "verdict": verdict, "findings": findings, "non_juge": non_juge}, ensure_ascii=False))
+    sortie = {"oracle": "oracle-visual-diff", "domaine": DOM, "artefact": file,
+              "verdict": verdict, "findings": findings, "non_juge": non_juge}
+    if verdict == "SKIP":
+        # TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` — ici le DERNIER
+        # non_juge, là où chaque SKIP de cet oracle écrit sa raison.
+        sortie["motif"] = str(non_juge[-1]).strip() if non_juge else ""
+    print(json.dumps(sortie, ensure_ascii=False))
     sys.exit(code)
 
 if not file or not os.path.isfile(file):
@@ -152,5 +157,6 @@ bloq = [f for f in findings if f["sev"] == "bloquant"]
 if bloq:
     out("FAIL", findings, nj, 1)
 if not judged:
-    out("SKIP", [], nj, 2)
+    # TF-1447 : sans golden manquant, rien ne disait POURQUOI rien n'a été jugé.
+    out("SKIP", [], nj if missing else nj + ["aucun breakpoint configuré au profil : rien à comparer"], 2)
 out("PASS", findings, nj, 0)

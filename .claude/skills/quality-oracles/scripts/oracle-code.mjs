@@ -8,12 +8,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ limites: () => NJ });
 
 const file = process.argv[2];
 const DOM = 'Code source';
 const NJ = ['exécution réelle & tests fonctionnels (harnais de test du projet)', 'lint/typage approfondi (si outil non présent)'];
 function emit(verdict, findings = [], non_juge = NJ) {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-code', domaine: DOM, artefact: file || null, verdict, findings, non_juge }));
+  process.stdout.write(contratJSON({ oracle: 'oracle-code', domaine: DOM, artefact: file || null, verdict, findings, non_juge }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
 }
 if (!file || !fs.existsSync(file)) emit('SKIP', [{ sev: 'info', msg: 'fichier absent' }]);

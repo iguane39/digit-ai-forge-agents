@@ -12,6 +12,9 @@
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
 const DOM = 'Inventaire de connecteurs (interop)';
 const findings = [];
@@ -19,7 +22,7 @@ const non_juge = [
   'exactitude technique des connecteurs décrits (→ fiche interop-archi, vérification métier)',
   'complétude du périmètre (la liste des systèmes couverts relève du dossier)'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-inventaire-interop', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-inventaire-interop', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (path.extname(file).toLowerCase() !== '.md') skip('extension non gérée');

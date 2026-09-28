@@ -9,12 +9,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ info: true });
 
 const target = process.argv[2];
 const DOM = 'Sécurité / secrets';
 const NJ = ['vulnérabilités de dépendances (SCA : pip-audit / npm audit / OSV)', 'secrets dans l\'historique git (scanner le dépôt, pas seulement le fichier)'];
 function emit(verdict, findings = [], non_juge = NJ) {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-secrets', domaine: DOM, artefact: target || null, verdict, findings, non_juge }));
+  process.stdout.write(contratJSON({ oracle: 'oracle-secrets', domaine: DOM, artefact: target || null, verdict, findings, non_juge }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
 }
 if (!target || !fs.existsSync(target)) emit('SKIP', [{ sev: 'info', msg: 'cible absente' }]);

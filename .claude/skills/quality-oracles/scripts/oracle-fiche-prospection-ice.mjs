@@ -16,6 +16,9 @@
 // inventaire P2 §3 O10. Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
 const DOM = 'Fiches prospection ICE (structure et classement)';
 const findings = [];
@@ -24,7 +27,7 @@ const non_juge = [
   'pertinence métier des cas d usage (jugement commercial)',
   'charte visuelle du livrable → digit-ai-page-html / digit-ai-fiches-html'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-fiche-prospection-ice', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-fiche-prospection-ice', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (!['.html', '.htm'].includes(path.extname(file).toLowerCase())) skip('extension non gérée');

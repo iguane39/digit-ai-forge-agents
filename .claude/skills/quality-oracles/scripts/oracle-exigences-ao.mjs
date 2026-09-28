@@ -16,6 +16,9 @@
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
 const opt = n => args.includes('--' + n) ? args[args.indexOf('--' + n) + 1] : null;
@@ -25,7 +28,7 @@ const non_juge = [
   'qualité de la réponse à chaque exigence (jugement → digit-ai-propale-review / oracle-judge)',
   'exhaustivité du référentiel fourni (extraction humaine du CCTP/RC)'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-exigences-ao', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-exigences-ao', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (path.extname(file).toLowerCase() !== '.md') skip('extension non gérée');

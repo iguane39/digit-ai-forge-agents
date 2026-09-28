@@ -27,6 +27,9 @@
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[]} · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ dernier: true });
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
@@ -40,7 +43,7 @@ const NJ = [
   "la suffisance de la mesure : un seul appel peut satisfaire A1-A4 et rester une mesure pauvre"
 ];
 const out = (verdict, findings, nj, code) => {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-premisse-acces', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj }));
+  process.stdout.write(contratJSON({ oracle: 'oracle-premisse-acces', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj }));
   process.exit(code);
 };
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);

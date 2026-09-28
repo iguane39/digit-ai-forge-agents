@@ -22,6 +22,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { resolvePython } from './lib/python.mjs';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
@@ -33,7 +36,7 @@ const non_juge = [
   'rendu/format du document (→ oracle-format, inspection)',
   'exactitude des affirmations du programme (→ oracle-claims)'
 ];
-const out = (verdict, nj, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-programme-formation', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
+const out = (verdict, nj, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-programme-formation', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
 if (!file || !fs.existsSync(file)) { non_juge.unshift('fichier absent'); out('SKIP', non_juge, 2); }
 const ext = path.extname(file).toLowerCase();
 if (!['.md', '.docx'].includes(ext)) { non_juge.unshift('extension non gérée'); out('SKIP', non_juge, 2); }

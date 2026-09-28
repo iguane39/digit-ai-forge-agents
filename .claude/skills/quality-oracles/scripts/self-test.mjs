@@ -13,6 +13,7 @@ import { resolvePython } from './lib/python.mjs';
 import { frontmatter } from './lib/frontmatter.mjs';
 import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
+import { motifDeSkip, ecrivainDeContrat } from './lib/contrat.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
@@ -1941,6 +1942,85 @@ else {
       ko('TF-1446 : la commande routée ne déclare pas T4 NON JOUÉ avec le profil par défaut — le routage ajouterait un appel de modèle');
     else ok('TF-1446 : lecture-tiers juge la page sous output (FAIL, intention absente), laisse la même page hors output, et la commande routée déclare T4 NON JOUÉ — aucun appel de modèle ajouté');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1447 (28/09/2026) — LE MOTIF D'UN SKIP A UNE PLACE FIXE, ET LA RECETTE LE TIENT POUR TOUS.
+//
+// LE FAIT. Le contrat JSON commun ne disait pas où vit la raison d'un SKIP : en fin de non_juge chez
+// oracle-conception-livrable, en tête chez oracle-post-linkedin, dans un constat `info` chez
+// oracle-sast. Sur les 29 SKIP d'un run produit, un relevé qui lisait le premier élément de non_juge
+// a rendu des limites déclarées à la place des motifs. Mesuré le 28/09 sur 38 livrables du pilot :
+// 895 SKIP réels sur 1 330 exécutions de 35 oracles, AUCUN ne portant de motif à place fixe.
+// CE QUE CE BLOC ÉPROUVE :
+//   (A) l'écrivain `lib/contrat.mjs` dans ses domiciles (premier, dernier, limites, info), sans
+//       réécrire un motif déjà posé, sans toucher un verdict qui n'est pas SKIP ; et son sens ROUGE :
+//       une sortie qui ne dit sa raison nulle part rend un motif VIDE — jamais une valeur de
+//       remplacement qui cacherait l'absence ;
+//   (B) chaque oracle du registre hébergé par ce skill (.mjs et .py), joué sur une cible ABSENTE :
+//       tout SKIP porte un motif non vide ;
+//   (C) chaque fixture du manifest dont le verdict est SKIP porte un motif non vide.
+{
+  // (A) — l'écrivain, dans ses domiciles, et son sens rouge.
+  const cas = [
+    [{ verdict: 'SKIP', findings: [], non_juge: ['m-premier', 'limite'] }, { premier: true }, 'm-premier'],
+    [{ verdict: 'SKIP', findings: [], non_juge: ['limite', 'm-dernier'] }, { dernier: true }, 'm-dernier'],
+    [{ verdict: 'SKIP', findings: [], non_juge: ['L1', 'm-hors', 'L2'] }, { limites: () => ['L1', 'L2'] }, 'm-hors'],
+    [{ verdict: 'SKIP', findings: [{ sev: 'info', msg: 'm-info' }], non_juge: ['L1'] }, { info: true }, 'm-info'],
+    [{ verdict: 'SKIP', findings: [{ sev: 'info', msg: 'm-repli' }], non_juge: ['L1'] }, { limites: () => ['L1'] }, 'm-repli'],
+    [{ verdict: 'SKIP', findings: [], non_juge: ['L1'] }, { limites: () => ['L1'] }, ''],
+  ];
+  const fautes = cas.filter(([s, d, attendu]) => motifDeSkip(s, d) !== attendu);
+  const ecrire = ecrivainDeContrat({ premier: true });
+  const deja = JSON.parse(ecrire({ verdict: 'SKIP', findings: [], non_juge: ['autre'], motif: 'posé par l oracle' }));
+  const nonSkip = JSON.parse(ecrire({ verdict: 'PASS', findings: [], non_juge: ['x'] }));
+  if (fautes.length) ko('TF-1447 (A) : l écrivain lit mal ' + fautes.length + ' domicile(s) — ' + fautes.map(([, d, a]) => JSON.stringify(d) + ' attendu « ' + a + ' »').join(' · '));
+  else if (deja.motif !== 'posé par l oracle') ko('TF-1447 (A) : un motif déjà posé par l oracle a été réécrit');
+  else if ('motif' in nonSkip) ko('TF-1447 (A) : un verdict PASS a reçu un champ motif');
+  else ok('TF-1447 (A) : l écrivain lit les quatre domiciles, garde un motif déjà posé, ignore les verdicts non SKIP, et rend un motif VIDE quand la raison n est dite nulle part (sens rouge, refusé par B et C)');
+
+  // (B) — chaque oracle hébergé ici, sur une cible absente.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1447-'));
+  try {
+    const absent = path.join(tmp, 'absent', 'rien.html');
+    const py = resolvePython();
+    const skips = [], sansMotif = [];
+    for (const o of reg.oracles) {
+      if (o.type !== 'cli' || !Array.isArray(o.cmd)) continue;
+      const script = o.cmd.find((c) => /\{skilldir\}\/scripts\/oracle-[\w-]+\.(mjs|py)$/.test(c));
+      if (!script) continue;
+      const nom = script.match(/(oracle-[\w-]+)\.(mjs|py)$/)[1];
+      let cmd = o.cmd.map((s) => s.replace('{skilldir}', SKILLDIR).replace('{file}', absent)
+        .replace('{profil}', path.join(SKILLDIR, 'profils', 'digit-ai.json')))
+        .filter((s) => !/\{[a-z]+\}/.test(s));
+      if (/^python3?$/.test(cmd[0])) { if (!py) continue; cmd = [...py, ...cmd.slice(1)]; }
+      const r = spawnSync(cmd[0] === 'node' ? process.execPath : cmd[0], cmd.slice(1), { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+      let j = null; try { j = JSON.parse((r.stdout || '').trim().match(/\{[\s\S]*\}/)[0]); } catch { /* sortie illisible */ }
+      if (!j || j.verdict !== 'SKIP') continue;
+      skips.push(nom);
+      if (!(typeof j.motif === 'string' && j.motif.trim())) sansMotif.push(nom);
+    }
+    if (skips.length < 30) ko('TF-1447 (B) : ' + skips.length + ' oracle(s) seulement ont rendu SKIP sur une cible absente — le contrôle ne mesure presque rien');
+    else if (sansMotif.length) ko('TF-1447 (B) : ' + sansMotif.length + ' SKIP sans motif sur ' + skips.length + ' — ' + [...new Set(sansMotif)].join(', '));
+    else ok('TF-1447 (B) : ' + skips.length + ' SKIP sur cible absente, oracles du registre hébergés ici, et tous portent un motif non vide');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+
+  // (C) — chaque fixture du manifest dont le verdict est SKIP.
+  const manC = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'manifest.json'), 'utf8'));
+  const skipsC = [], sansMotifC = [];
+  for (const fx of manC.fixtures) for (const side of ['red', 'green']) {
+    if (!(fx['attendu_' + side] || []).includes('SKIP')) continue;
+    if (fx.cmd.some((s) => s.includes(MARQUEUR_PILOT)) && !PILOT) continue;
+    let cmd = fx.cmd.map((s) => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT)
+      .replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace('{fixture}', path.join(SKILLDIR, 'fixtures', fx[side])));
+    if (/^python3?$/.test(cmd[0])) { const pyC = resolvePython(); if (!pyC) continue; cmd = [...pyC, ...cmd.slice(1)]; }
+    const r = spawnSync(cmd[0] === 'node' ? process.execPath : cmd[0], cmd.slice(1), { encoding: 'utf8', timeout: 180000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+    let j = null; try { j = JSON.parse((r.stdout || '').trim().match(/\{[\s\S]*\}/)[0]); } catch { /* sortie illisible */ }
+    if (!j || j.verdict !== 'SKIP') continue;
+    skipsC.push(fx.nom + '/' + side);
+    if (!(typeof j.motif === 'string' && j.motif.trim())) sansMotifC.push(fx.nom + '/' + side);
+  }
+  if (sansMotifC.length) ko('TF-1447 (C) : ' + sansMotifC.length + ' fixture(s) SKIP sans motif — ' + sansMotifC.join(', '));
+  else ok('TF-1447 (C) : ' + skipsC.length + ' fixture(s) du manifest rendent SKIP, et toutes portent un motif non vide');
 }
 
 // ── TF-1023 (décision humaine D-11 (a) du 23/09/2026) — LE SOCLE DES PAGES SUIT LA CHARTE LUE À LA SOURCE ──

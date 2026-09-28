@@ -39,6 +39,9 @@
 // Contrat JSON commun {oracle, domaine, artefact, verdict, findings[], non_juge[], mesure} · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ info: true });
 
 const DOM = "Promesses d'un texte dérivé des faits du produit : équipements absents, distances, capacités";
 const EXT = new Set(['.csv', '.tsv', '.html', '.htm', '.md', '.txt']);
@@ -57,7 +60,7 @@ const refArg = iRef >= 0 ? args[iRef + 1] : null;
 const cible = args.find((a, i) => !a.startsWith('--') && !(iRef >= 0 && i === iRef + 1)) || null;
 
 function sortir(verdict, findings, nonJuge, mesure, code) {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-promesses', version: '1.0.0', domaine: DOM,
+  process.stdout.write(contratJSON({ oracle: 'oracle-promesses', version: '1.0.0', domaine: DOM,
     artefact: cible, verdict, findings, non_juge: nonJuge, mesure }) + '\n');
   process.exit(code);
 }

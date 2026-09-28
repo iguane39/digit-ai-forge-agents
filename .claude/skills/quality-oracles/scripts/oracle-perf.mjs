@@ -13,13 +13,16 @@
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],metriques} ; exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ info: true });
 
 const file = process.argv[2];
 const DOM = 'Performance / poids';
 const NJ = ['temps de rendu réel / FCP / LCP sous charge (mesure navigateur, non déterministe)', 'performance runtime des scripts',
   'la légitimité des zones repliées ou citées : le compte « hors zones » éclaire le diagnostic, il n\'exempte rien du budget'];
 function emit(verdict, findings = [], metriques = {}) {
-  process.stdout.write(JSON.stringify({ oracle: 'oracle-perf', domaine: DOM, artefact: file || null, verdict, findings, non_juge: NJ, metriques }));
+  process.stdout.write(contratJSON({ oracle: 'oracle-perf', domaine: DOM, artefact: file || null, verdict, findings, non_juge: NJ, metriques }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
 }
 if (!file || !fs.existsSync(file)) emit('SKIP', [{ sev: 'info', msg: 'fichier absent' }]);

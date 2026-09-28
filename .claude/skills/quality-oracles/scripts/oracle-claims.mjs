@@ -18,6 +18,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { extractLabelled } from './lib/claims-extract.mjs';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ dernier: true });
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
@@ -30,7 +33,7 @@ const NJ = [
   'petits nombres en prose (< 4 chiffres, hors €, %, TJM, jours-homme)',
   'dates d\'échéance : avertissement seulement (jamais bloquant)'
 ];
-const out = (verdict, findings, nj, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-claims', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
+const out = (verdict, findings, nj, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-claims', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 if (!['.md', '.html', '.htm', '.txt'].includes(path.extname(file).toLowerCase())) out('SKIP', [], ['extension non gérée'], 2);
 

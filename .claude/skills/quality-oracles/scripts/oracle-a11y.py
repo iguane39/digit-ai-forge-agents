@@ -27,9 +27,16 @@ NON_JUGE = ["audit axe-core complet (ARIA avance, roles, ordre focus)",
             "contraste couleur (voir render_page.py V2)", "navigation clavier / pieges de focus"]
 
 def emit(verdict, findings=None, non_juge=None):
-    sys.stdout.write(json.dumps({"oracle": "oracle-a11y", "domaine": DOM,
+    sortie = {"oracle": "oracle-a11y", "domaine": DOM,
         "artefact": file, "verdict": verdict, "findings": findings or [],
-        "non_juge": non_juge if non_juge is not None else NON_JUGE}, ensure_ascii=False))
+        "non_juge": non_juge if non_juge is not None else NON_JUGE}
+    if verdict == "SKIP":
+        # TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` — ici le premier
+        # non_juge qui n'est pas une limite permanente, sinon le premier constat `info`.
+        propres = [x for x in sortie["non_juge"] if isinstance(x, str) and x.strip() and x not in NON_JUGE]
+        infos = [str(f.get("msg", "")) for f in sortie["findings"] if isinstance(f, dict) and str(f.get("msg", "")).strip()]
+        sortie["motif"] = (propres[0] if propres else (infos[0] if infos else "")).strip()
+    sys.stdout.write(json.dumps(sortie, ensure_ascii=False))
     sys.exit(1 if verdict == "FAIL" else 2 if verdict == "SKIP" else 0)
 
 file = sys.argv[1] if len(sys.argv) > 1 else None

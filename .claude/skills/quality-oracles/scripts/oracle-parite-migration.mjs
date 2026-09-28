@@ -17,6 +17,9 @@
 // non_juge déclaré en sortie. Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { ecrivainDeContrat } from './lib/contrat.mjs';
+// TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
+const contratJSON = ecrivainDeContrat({ premier: true });
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
 const DOM = 'Parité de migration (routes symétriques)';
 const findings = [];
@@ -25,7 +28,7 @@ const non_juge = [
   'parité visuelle du rendu (→ visual-diff)',
   'performances comparées (→ oracle-perf)'
 ];
-const out = (verdict, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-parite-migration', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
+const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-parite-migration', domaine: DOM, artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (path.extname(file).toLowerCase() !== '.txt') skip('extension non gérée');
