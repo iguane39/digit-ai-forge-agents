@@ -30,6 +30,20 @@ libellés du générateur (menus, inventaires, légendes de schéma), il est don
 riche que sa source. Un rendu plus pauvre est une PERTE, sans jugement à rendre — aucune
 pertinence, aucune lisibilité, aucun chapeau n'est jugé ici.
 
+EXTENSION TF-1436, 28/09/2026 (lot Produit-78 20260928a, RP-2). Le compte de MOTS ne voit pas la
+STRUCTURE : une liste numérotée de 8 éléments fondue en un seul paragraphe garde ses mots, perd
+ses 8 `<li>` — `check_completude.py` rendait PASS à 100,3 % sur une page qui avait perdu sa liste
+et rétrogradé ses titres. La règle s'étend, au même compas :
+
+    pour chaque niveau de titre (1 à 6)     : rendu(niveau) doit être ≥ source(niveau)
+    pour les listes NUMÉROTÉES et à PUCES   : rendu(type) doit être ≥ source(type)
+    sinon : ÉCART — un titre ou un élément de liste a été PERDU ou DÉPLACÉ vers un autre niveau/type
+
+Un titre ou un élément EN PLUS ne fait jamais échouer (même logique que les mots : un générateur
+peut ajouter son propre titre de page ou son sommaire). Ce comptage n'est PAS couvert par
+`--seuil` : contrairement aux mots, une dérogation de couverture ne rouvre jamais la structure —
+la perdre n'est jamais négociable au même geste qu'une simple pauvreté de contenu.
+
 Usage :
     python check_completude.py page.html --source source.md [--source autre.md ...]
     python check_completude.py page.html --source source.md --output json
@@ -70,17 +84,60 @@ _REGLE_HORIZONTALE = re.compile(r"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$", re.M)
 # tableau n'est pas du texte, et les compter des deux côtés ne ferait que brouiller l'écart.
 _MOT = re.compile(r"[^\W_]", re.U)
 
+# --- Structure : titres par niveau, éléments de liste par type (TF-1436) --------------------
+# Côté Markdown : un titre ATX (pas de Setext ===/---) et un item de liste marqué -, *, + ou
+# N. / N) — la même forme que celle déjà reconnue par le générateur d'études (lib-vue-html.mjs).
+# Une ligne engagée par « > » (citation) n'ouvre aucune des deux : elle n'a pas d'équivalent
+# séparé côté Markdown pour un item imbriqué, le compter brouillerait l'écart plus qu'il ne l'éclaire.
+_TITRE_MD = re.compile(r"^[ \t]*(#{1,6})(?=[ \t]|$)", re.M)
+_ITEM_NUMEROTE_MD = re.compile(r"^[ \t]*\d+[.)][ \t]+", re.M)
+_ITEM_PUCE_MD = re.compile(r"^[ \t]*[-*+][ \t]+", re.M)
+# Côté HTML : les six niveaux de titre, et ol/ul/li pour distinguer numéroté de puces — le TYPE
+# se lit sur la liste qui ENCLOT le <li>, jamais sur le <li> seul.
+_BALISE_STRUCTURE_HTML = re.compile(r"<(h[1-6]|ol|/ol|ul|/ul|li)\b[^>]*>", re.I)
 
-def mots_visibles_html(source: str) -> list:
-    """Les mots que le lecteur voit dans le corps de la page."""
+
+def _corps_visible_html(source: str) -> str:
+    """Le corps de la page, commentaires et blocs invisibles retirés — partagé par le compte de
+    mots (TF-1174) et le compte de structure (TF-1436) : les deux doivent lire le MÊME corps."""
     texte = _COMMENTAIRE.sub(" ", source)
     texte = _INVISIBLE.sub(" ", texte)
     corps = _CORPS.search(texte)
-    if corps:
-        texte = corps.group(1)
-    texte = _BALISE.sub(" ", texte)
+    return corps.group(1) if corps else texte
+
+
+def mots_visibles_html(source: str) -> list:
+    """Les mots que le lecteur voit dans le corps de la page."""
+    texte = _BALISE.sub(" ", _corps_visible_html(source))
     texte = _html.unescape(texte)
     return [m for m in texte.split() if _MOT.search(m)]
+
+
+def elements_structure_html(source: str) -> dict:
+    """Titres par niveau et éléments de liste par type, RENDUS (TF-1436)."""
+    texte = _corps_visible_html(source)
+    titres = {n: 0 for n in range(1, 7)}
+    listes_numerotees = 0
+    listes_puces = 0
+    pile = []  # empile 'ol'/'ul' à l'ouverture, dépile à la fermeture ; un <li> compte pour le
+    # sommet de pile courant — sa liste la plus proche, pas une balise plus loin dans le corps.
+    for m in _BALISE_STRUCTURE_HTML.finditer(texte):
+        tag = m.group(1).lower()
+        if tag in ("ol", "ul"):
+            pile.append(tag)
+        elif tag in ("/ol", "/ul"):
+            if pile:
+                pile.pop()
+        elif tag == "li":
+            if pile and pile[-1] == "ol":
+                listes_numerotees += 1
+            elif pile:
+                listes_puces += 1
+            # un <li> hors de tout <ol>/<ul> (HTML mal formé) n'est rattaché à aucun type : rien
+            # côté Markdown ne s'y compare, le compter brouillerait l'écart plus qu'il ne l'éclaire.
+        else:
+            titres[int(tag[1:])] += 1
+    return {"titres": titres, "listes_numerotees": listes_numerotees, "listes_puces": listes_puces}
 
 
 def mots_visibles_markdown(source: str) -> list:
@@ -102,6 +159,67 @@ def mots_visibles_markdown(source: str) -> list:
     return [m for m in texte.split() if _MOT.search(m)]
 
 
+def _texte_structure_markdown(source: str) -> str:
+    """La source, débarrassée de ce qui pourrait imiter un titre ou une puce sans en être un
+    (frontmatter, commentaire, bloc de code, filet, séparateur de tableau) — même ordre de
+    retrait que `mots_visibles_markdown`, sans toucher aux marqueurs de titre ou de liste."""
+    texte = _FRONTMATTER.sub(" ", source)
+    texte = _COMMENTAIRE.sub(" ", texte)
+    texte = _CLOTURE.sub(" ", texte)
+    texte = _REGLE_HORIZONTALE.sub(" ", texte)
+    texte = _SEPARATEUR_TABLE.sub(" ", texte)
+    return texte
+
+
+def elements_structure_markdown(source: str) -> dict:
+    """Titres par niveau et éléments de liste par type, DITS par la source (TF-1436)."""
+    texte = _texte_structure_markdown(source)
+    titres = {n: 0 for n in range(1, 7)}
+    for m in _TITRE_MD.finditer(texte):
+        titres[len(m.group(1))] += 1
+    listes_numerotees = len(_ITEM_NUMEROTE_MD.findall(texte))
+    listes_puces = len(_ITEM_PUCE_MD.findall(texte))
+    return {"titres": titres, "listes_numerotees": listes_numerotees, "listes_puces": listes_puces}
+
+
+def structure_agregee(structures: list) -> dict:
+    """Somme de plusieurs structures (page multi-sources) — même geste que `total_source` pour
+    les mots : chaque source s'additionne, aucune n'efface l'autre."""
+    total = {"titres": {n: 0 for n in range(1, 7)}, "listes_numerotees": 0, "listes_puces": 0}
+    for s in structures:
+        for n in range(1, 7):
+            total["titres"][n] += s["titres"][n]
+        total["listes_numerotees"] += s["listes_numerotees"]
+        total["listes_puces"] += s["listes_puces"]
+    return total
+
+
+_NOM_NIVEAU = {1: "1 (#)", 2: "2 (##)", 3: "3 (###)", 4: "4 (####)", 5: "5 (#####)", 6: "6 (######)"}
+
+
+def constats_structure(source_agg: dict, rendu: dict) -> list:
+    """Un écart par niveau de titre ou par type de liste où le rendu porte MOINS que la source —
+    jamais l'inverse : un générateur ajoute normalement son propre titre de page ou son sommaire."""
+    constats = []
+    for niveau in range(1, 7):
+        n_source, n_rendu = source_agg["titres"][niveau], rendu["titres"][niveau]
+        if n_rendu < n_source:
+            constats.append(
+                f"TITRE PERDU OU DÉPLACÉ : la source porte {n_source} titre(s) de niveau "
+                f"{_NOM_NIVEAU[niveau]}, la page en rend {n_rendu} à ce niveau — "
+                f"{n_source - n_rendu} manquant(s), perdu(s) ou glissé(s) vers un autre niveau. "
+                "Remonter au générateur avant toute autre correction")
+    for cle, libelle in (("listes_numerotees", "numérotée(s)"), ("listes_puces", "à puces")):
+        n_source, n_rendu = source_agg[cle], rendu[cle]
+        if n_rendu < n_source:
+            constats.append(
+                f"ÉLÉMENT DE LISTE PERDU OU DÉPLACÉ : la source porte {n_source} élément(s) de "
+                f"liste {libelle}, la page en rend {n_rendu} — {n_source - n_rendu} manquant(s), "
+                "perdu(s) ou rendus sous une autre forme (paragraphe, autre type de liste). "
+                "Remonter au générateur avant toute autre correction")
+    return constats
+
+
 def non_juge(seuil: float) -> list:
     """Ce que ce contrôle NE regarde pas — publié à chaque exécution, PASS ou FAIL."""
     notes = [
@@ -117,6 +235,14 @@ def non_juge(seuil: float) -> list:
         "rendu après exécution",
         "LA SOURCE EST CRUE SUR PAROLE : que le ou les Markdown fournis soient bien ceux dont la "
         "page sort est une déclaration de l'appelant, jamais une mesure",
+        "LA STRUCTURE COMPTÉE EST GROSSIÈRE ELLE AUSSI (TF-1436) : titres ATX (#, pas de Setext "
+        "===/---) et éléments de liste marqués -, *, + ou N. / N) au premier caractère de la "
+        "ligne ; un titre ou un item imbriqué dans une citation (>) n'est pas compté séparément. "
+        "Un MÊME NOMBRE à un niveau ou un type ne dit rien de l'ORDRE ni du CONTENU, seulement "
+        "que rien n'y a disparu ni glissé ailleurs",
+        "LA DÉROGATION DE SEUIL NE COUVRE QUE LES MOTS : un titre ou un élément de liste perdu ou "
+        "déplacé reste bloquant même sous --seuil abaissé — la structure n'est pas négociable au "
+        "même geste qu'une simple pauvreté de contenu",
     ]
     if seuil < SEUIL_DEFAUT:
         notes.append(
@@ -127,27 +253,29 @@ def non_juge(seuil: float) -> list:
 
 
 def verifier_completude(page: str, sources: list, seuil: float = SEUIL_DEFAUT) -> dict:
-    """Le verdict : le rendu porte-t-il au moins ce que la source dit ?"""
+    """Le verdict : le rendu porte-t-il au moins ce que la source dit — en mots ET en structure ?"""
     rendu = mots_visibles_html(page)
+    structure_rendu = elements_structure_html(page)
     par_source = [{"mots": len(mots_visibles_markdown(t)), "source": n} for n, t in sources]
     total_source = sum(s["mots"] for s in par_source)
+    structure_source = structure_agregee([elements_structure_markdown(t) for _, t in sources])
     couverture = (len(rendu) / total_source) if total_source else None
     fails = []
     if total_source == 0:
         verdict = "SKIP"
         fails.append("SOURCE VIDE : aucune source ne porte de mot visible — rien à comparer, et "
                      "un PASS ici ne voudrait rien dire")
-    elif couverture < seuil:
-        verdict = "FAIL"
-        manquants = total_source - len(rendu)
-        fails.append(
-            f"PERTE DE TEXTE : la page rendue porte {len(rendu)} mots visibles pour "
-            f"{total_source} mots de source — couverture {couverture:.1%}, sous le seuil "
-            f"{seuil:.1%}. Il manque au moins {manquants} mots. Un rendu porte normalement EN "
-            "PLUS les libellés du générateur : plus pauvre que sa source, il a PERDU quelque "
-            "chose. Remonter au générateur avant toute autre correction")
     else:
-        verdict = "PASS"
+        if couverture < seuil:
+            manquants = total_source - len(rendu)
+            fails.append(
+                f"PERTE DE TEXTE : la page rendue porte {len(rendu)} mots visibles pour "
+                f"{total_source} mots de source — couverture {couverture:.1%}, sous le seuil "
+                f"{seuil:.1%}. Il manque au moins {manquants} mots. Un rendu porte normalement EN "
+                "PLUS les libellés du générateur : plus pauvre que sa source, il a PERDU quelque "
+                "chose. Remonter au générateur avant toute autre correction")
+        fails.extend(constats_structure(structure_source, structure_rendu))
+        verdict = "FAIL" if fails else "PASS"
     return {
         "verdict": verdict,
         "mots_rendu": len(rendu),
@@ -155,6 +283,8 @@ def verifier_completude(page: str, sources: list, seuil: float = SEUIL_DEFAUT) -
         "sources": par_source,
         "couverture": round(couverture, 4) if couverture is not None else None,
         "seuil": seuil,
+        "structure_rendu": structure_rendu,
+        "structure_source": structure_source,
         "fails": fails,
         "non_juge": non_juge(seuil),
     }
@@ -206,6 +336,12 @@ def main():
         couv = f"{r['couverture']:.1%}" if r["couverture"] is not None else "—"
         print(f"Rendu   : {r['mots_rendu']} mots visibles pour {r['mots_source']} de source "
               f"(couverture {couv}, seuil {r['seuil']:.1%})")
+        ts, tr = r["structure_source"]["titres"], r["structure_rendu"]["titres"]
+        niveaux = ", ".join(f"h{n} {ts[n]}→{tr[n]}" for n in range(1, 7) if ts[n] or tr[n])
+        print(f"Titres  : {niveaux or 'aucun titre côté source'}")
+        print(f"Listes  : numérotées {r['structure_source']['listes_numerotees']}→"
+              f"{r['structure_rendu']['listes_numerotees']} · à puces "
+              f"{r['structure_source']['listes_puces']}→{r['structure_rendu']['listes_puces']}")
         for f in r["fails"]:
             print(f"  x {f}")
         print("\nPérimètre de NON-MESURE (ce verdict ne dit rien de ceci) :")

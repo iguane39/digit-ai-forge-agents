@@ -7,13 +7,21 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.25.0"
+  version: "1.26.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.26.0 (28/09/2026)** — **`check_completude.py` compte aussi la structure.** TF-1436 (lot
+Produit-78 20260928a, RP-2) : une liste numérotée fondue en un paragraphe, ou un titre rétrogradé
+d'un niveau, rendait PASS à 100,3 % de couverture de MOTS — la structure disparaissait sans
+qu'aucun contrôle ne le voie. Le contrôle compte désormais aussi les titres par niveau et les
+éléments de liste par type (numérotée, à puces) ; `--seuil` ne couvre que les mots, jamais la
+structure, qui reste bloquante sans dérogation possible. Fixtures `structure-source.md` /
+`structure-verte.html` / `structure-rouge.html`.
 
 **1.25.0 (23/09/2026)** — **la charte de police des pages est celle des présentations de
 l'émetteur.** Décision humaine D-5 (a) du 22/09 (« la charte des présentations fait foi, les pages
@@ -614,6 +622,13 @@ Le seuil est grossier à dessein : un rendu porte EN PLUS les libellés du gén�
 inventaires, légendes de schéma), il est donc normalement **plus riche** que sa source. Un rendu
 plus pauvre est une perte, sans jugement à rendre. `--seuil` sous 1.0 reste possible, mais la
 **dérogation est écrite au périmètre de non-mesure de chaque exécution** — jamais silencieuse.
+
+**Le compte de mots ne voit pas la structure (TF-1436, 28/09/2026, lot Produit-78 20260928a,
+RP-2).** Le même contrôle compte aussi les **titres par niveau** et les **éléments de liste par
+type** (numérotée, à puces). Le fait payé : une liste de 8 éléments fondue en un paragraphe, ou un
+« ## » rendu en h3, rendait PASS à 100,3 % de couverture — le compte de mots restait intact, la
+structure avait disparu. `--seuil` ne couvre que les mots : un titre ou un élément de liste perdu
+ou déplacé reste bloquant, même sous une dérogation de couverture.
 
 À lancer dès qu'une chaîne **transforme une source en page** : un gabarit rendu, une synthèse
 publiée, un rapport d'audit. Une page écrite à la main n'a pas de source à laquelle se comparer, et

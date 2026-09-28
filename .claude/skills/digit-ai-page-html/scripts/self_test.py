@@ -1576,6 +1576,85 @@ def run_completude():
     return out
 
 
+def run_structure_completude():
+    """TF-1436, 28/09/2026 (lot Produit-78 20260928a, RP-2) — LA STRUCTURE, RENDU vs SOURCE.
+
+    Le fait payé : sur une page d'étude, une liste numérotée Markdown de 8 éléments sortie en un
+    seul paragraphe, un « ## » rendu en h3 sous le h1 (saut signalé par `check_html.py` et
+    `oracle-a11y`) — `check_completude.py` rendait PASS à 100,3 % puis 118,8 % : il ne comptait
+    que des MOTS, et le compte restait intact malgré la perte. TF-1174 (16/09) avait appris que la
+    FORME ne suffit pas ; ici c'est le compte de MOTS lui-même qui ne suffit pas.
+
+    LES CAS :
+      1. SENS VERT — chaque titre à son niveau, chaque liste à son type : PASS ;
+      2. SENS ROUGE — titre de niveau 2 rétrogradé + liste numérotée fondue en paragraphe :
+         FAIL, exit 1, ALORS QUE la couverture de MOTS seule reste au-dessus du seuil (le défaut
+         du 28/09 REPRODUIT : un contrôle qui ne compterait que les mots laisserait passer) ;
+      3. LA BONNE RAISON — le message nomme le niveau 2 et la liste NUMÉROTÉE, jamais la liste à
+         puces (inchangée dans la fixture rouge) : un contrôle bruyant accuserait tout à la fois ;
+      4. NON-RÉGRESSION — les fixtures de mots (TF-1174) gardent leur verdict PASS avec le code
+         étendu : aucun écart de structure n'y a été introduit par erreur.
+    """
+    outil = Path(__file__).resolve().parent / 'check_completude.py'
+    fx = Path(__file__).resolve().parent.parent / 'fixtures'
+    src = fx / 'structure-source.md'
+    out = []
+
+    def cas(nom, attendu, obtenu, regle, detail=''):
+        ok = attendu == obtenu
+        out.append({'fixture': nom, 'verdict': 'OK' if ok else 'ECHEC', 'attendu': str(attendu)[:96],
+                    'obtenu': str(obtenu)[:96], 'regle': regle,
+                    'detail': '' if ok else (detail or '')[:300]})
+
+    def jouer(page, source=None):
+        r = subprocess.run([sys.executable, '-X', 'utf8', str(outil), str(page),
+                            '--source', str(source or src), '--output', 'json'],
+                           capture_output=True, text=True, encoding='utf-8', timeout=120)
+        try:
+            return r.returncode, json.loads(r.stdout)
+        except Exception:
+            return r.returncode, {}
+
+    # 1 — SENS VERT.
+    code_vert, j_vert = jouer(fx / 'structure-verte.html')
+    cas('structure · page complète : PASS, exit 0 (sens vert)',
+        (0, 'PASS'), (code_vert, j_vert.get('verdict')), 'TF-1436 sens vert')
+    cas('structure · aucun écart en sens vert (fails vide)',
+        [], j_vert.get('fails'), 'TF-1436 sens vert')
+
+    # 2 — SENS ROUGE : la couverture de MOTS seule resterait un PASS (défaut du 28/09 reproduit).
+    code_rouge, j_rouge = jouer(fx / 'structure-rouge.html')
+    cas('structure · titre rétrogradé + liste numérotée fondue : FAIL, exit 1 (sens rouge)',
+        (1, 'FAIL'), (code_rouge, j_rouge.get('verdict')), 'TF-1436 sens rouge')
+    cas('structure · la couverture de MOTS seule resterait AU-DESSUS du seuil (défaut du 28/09)',
+        True, (j_rouge.get('couverture') or 0) >= 1.0, 'TF-1436 aveuglement du seul compte de mots',
+        f"couverture {j_rouge.get('couverture')}")
+
+    # 3 — LA BONNE RAISON : niveau 2 et liste numérotée nommés, liste à puces jamais accusée.
+    fails_rouge = j_rouge.get('fails') or []
+    cas('structure · le message nomme le titre de niveau 2 (##) manquant',
+        True, any('niveau 2' in f and 'TITRE' in f for f in fails_rouge),
+        'TF-1436 constat localisant', str(fails_rouge)[:280])
+    cas('structure · le message CHIFFRE les 8 éléments de liste numérotée manquants',
+        True, any('ÉLÉMENT DE LISTE' in f and 'numérotée' in f and '8' in f for f in fails_rouge),
+        'TF-1436 constat localisant', str(fails_rouge)[:280])
+    cas("structure · la liste à puces, inchangée, n'est jamais accusée",
+        True, all('puces' not in f for f in fails_rouge),
+        "TF-1436 bonne raison — pas de bruit sur ce qui n'a pas bougé", str(fails_rouge)[:280])
+    cas('structure · exactement 2 écarts (un titre, une liste) — ni plus ni moins',
+        2, len(fails_rouge), 'TF-1436 bonne raison', str(fails_rouge)[:280])
+
+    # 4 — NON-RÉGRESSION : les fixtures de mots (TF-1174) gardent leur verdict avec le code étendu.
+    code_mv, j_mv = jouer(fx / 'completude-verte.html', source=fx / 'completude-source.md')
+    cas('structure · non-régression — completude-verte.html reste PASS (TF-1174)',
+        (0, 'PASS'), (code_mv, j_mv.get('verdict')), 'TF-1436 non-régression sur TF-1174')
+    code_ma, j_ma = jouer(fx / 'completude-amputee.html', source=fx / 'completude-source.md')
+    cas('structure · non-régression — completude-amputee.html reste FAIL sur les MOTS seulement',
+        (1, 'FAIL', 1), (code_ma, j_ma.get('verdict'), len(j_ma.get('fails') or [])),
+        'TF-1436 non-régression sur TF-1174', str(j_ma.get('fails'))[:280])
+    return out
+
+
 def run_markdown():
     """TF-0518 (22/08/2026) — LA PORTE DU MARKDOWN, ouverte et jouée dans les deux sens.
 
@@ -3792,7 +3871,8 @@ def main():
     args = ap.parse_args()
 
     res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
-           + run_glyphes_du_socle() + run_completude() + run_markdown() + run_syne()
+           + run_glyphes_du_socle() + run_completude() + run_structure_completude()
+           + run_markdown() + run_syne()
            + run_assets_inlinables() + run_assets_echelle_4pt() + run_fins_de_ligne_declarees()
            + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
