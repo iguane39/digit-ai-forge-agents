@@ -18,7 +18,8 @@
 //                     sa décision laisse son lecteur la deviner, et il devine mal.
 //   T2 VOCABULAIRE    tout en-tête de colonne et tout sigle employé en en-tête est GLOSÉ quelque
 //                     part que le lecteur peut atteindre : `data-definition`, `<abbr title>`,
-//                     `title=`, un glossaire, ou une définition en prose.
+//                     `title=`, `aria-describedby` vers un élément non vide (TF-1445), un
+//                     glossaire, ou une définition en prose.
 //   T3 GESTE          la page offre au moins un geste (filtre, recherche, tri déclaré, repli,
 //                     lien) — ou DÉCLARE être en lecture seule. Une page de chiffres sans geste
 //                     et sans déclaration est un mur.
@@ -129,17 +130,36 @@ const INTENTION = /\b(permet(?:tent)?\s+de\s+(?:d[ée]cider|choisir|arbitrer|tra
 }
 
 // ---- T2 — tout en-tête et tout sigle d'en-tête est glosé, quelque part d'atteignable ----------
+// TF-1445 (28/09/2026) — DES FRONTIÈRES UNICODE, ET `aria-describedby` LU. Le fait, mesuré chez un
+// produit : la glose d'un en-tête se cherchait par une expression ouverte sur `\b`, sans drapeau
+// `u`. En JavaScript, `\b` ne connaît que [A-Za-z0-9_] : devant « É », il ne tombe jamais, et
+// « État au 2026-09-28 », défini en prose ET relié à sa note par `aria-describedby`, était déclaré
+// non glosé — FAIL sur une page dont les 40 en-têtes étaient définis, et le seul geste qui levait
+// le constat, renommer la colonne, était un contournement. Même défaut derrière un en-tête qui
+// finit par une lettre accentuée ou qui s'ouvre sur « % » ou « ( ». Les frontières sont désormais
+// « ni lettre, ni chiffre, ni souligné » au sens Unicode (drapeau `u`), et un `aria-describedby`
+// qui désigne un élément NON VIDE de la page est une glose atteignable : c'est le lien même que
+// suit un lecteur d'écran.
+const HORS_MOT = '(?<![\\p{L}\\p{N}_])', FIN_MOT = '(?![\\p{L}\\p{N}_])';
 {
   const glossaire = snap.corps;
+  /** Le texte de l'élément de la page qui porte cet id, ou '' s'il n'existe pas. */
+  const texteDeId = (id) => {
+    const m = snap.sansCode.match(new RegExp('<([a-zA-Z][\\w-]*)\\b[^>]*\\sid\\s*=\\s*["\']'
+      + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '["\'][^>]*>([\\s\\S]*?)</\\1\\s*>', 'i'));
+    return m ? m[2].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  };
   const gloseAtteignable = (e) => {
     if (/data-definition\s*=\s*["'][^"']{3,}/i.test(e.attrs)) return 'data-definition';
     if (/title\s*=\s*["'][^"']{3,}/i.test(e.attrs)) return 'title';
     if (/aria-description\s*=\s*["'][^"']{3,}/i.test(e.attrs)) return 'aria-description';
+    const decrit = (e.attrs.match(/aria-describedby\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (decrit && decrit.split(/\s+/).some((id) => id && texteDeId(id).length >= 3)) return 'aria-describedby';
     const t = e.texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (!t) return null;
-    if (new RegExp('<abbr[^>]+title=["\'][^"\']{3,}["\'][^>]*>\\s*' + t, 'i').test(snap.sansCode)) return 'abbr';
-    if (new RegExp('\\b' + t + '\\s*(?::|—|–|=)\\s*\\S', 'i').test(glossaire)) return 'glossaire';
-    if (new RegExp('\\b(?:on\\s+appelle|d[ée]finition)\\b[^.\\n]{0,60}\\b' + t + '\\b', 'i').test(glossaire)) return 'prose';
+    if (new RegExp('<abbr[^>]+title=["\'][^"\']{3,}["\'][^>]*>\\s*' + t, 'iu').test(snap.sansCode)) return 'abbr';
+    if (new RegExp(HORS_MOT + t + '\\s*(?::|—|–|=)\\s*\\S', 'iu').test(glossaire)) return 'glossaire';
+    if (new RegExp(HORS_MOT + '(?:on\\s+appelle|d[ée]finition)' + FIN_MOT + '[^.\\n]{0,60}' + HORS_MOT + t + FIN_MOT, 'iu').test(glossaire)) return 'prose';
     return null;
   };
   const nommes = snap.entetes.filter(e => e.texte);
@@ -148,10 +168,11 @@ const INTENTION = /\b(permet(?:tent)?\s+de\s+(?:d[ée]cider|choisir|arbitrer|tra
   } else {
     const nus = nommes.filter(e => !gloseAtteignable(e));
     // Un SIGLE en en-tête (2 à 6 majuscules) est un mot que personne ne devine.
-    const sigles = [...new Set(nommes.flatMap(e => (e.texte.match(/\b[A-ZÀ-Þ]{2,6}\b/g) || [])))]
-      .filter(s => !new RegExp('\\b' + s + '\\b\\s*(?::|—|–|=|\\()', 'i').test(glossaire));
+    // TF-1445 : même frontière Unicode — `\b` coupait « ÉTP » en « TP », et nommait le mauvais sigle.
+    const sigles = [...new Set(nommes.flatMap(e => (e.texte.match(/(?<![\p{L}\p{N}_])[A-ZÀ-Þ]{2,6}(?![\p{L}\p{N}_])/gu) || [])))]
+      .filter(s => !new RegExp(HORS_MOT + s + FIN_MOT + '\\s*(?::|—|–|=|\\()', 'iu').test(glossaire));
     if (nus.length) bloquant('T2', `VOCABULAIRE NON GLOSÉ — ${nus.length} en-tête(s) de colonne sur ${nommes.length} ne portent AUCUNE glose atteignable par le lecteur `
-      + `(ni data-definition, ni <abbr title>, ni title=, ni glossaire, ni définition en prose) : « ${nus.slice(0, 6).map(e => e.texte).join(' », « ')} ». `
+      + `(ni data-definition, ni <abbr title>, ni title=, ni aria-describedby vers un élément non vide, ni glossaire, ni définition en prose) : « ${nus.slice(0, 6).map(e => e.texte).join(' », « ')} ». `
       + `Un en-tête qu'on ne peut pas définir sans ouvrir le code n'est pas un en-tête, c'est une étiquette.`);
     if (sigles.length) bloquant('T2', `SIGLE NON GLOSÉ EN EN-TÊTE — « ${sigles.join(' », « ')} » : un sigle ne se devine pas, il se glose à sa première occurrence.`);
     if (!nus.length && !sigles.length) info('T2', `${nommes.length} en-tête(s) de colonne, tous glosés de façon atteignable`);

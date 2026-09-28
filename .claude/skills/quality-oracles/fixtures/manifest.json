@@ -1373,6 +1373,31 @@
     "annonce 10 min"
    ],
    "provenance": "TF-1365, lot Produit-02 - RETOURS - 20260922a (RT-97) — deux mots-cles « spa » achetes alors que le domaine n a pas de spa, et la veille deux mots-cles « piscine privee » (la piscine est partagee) et une distance de 10 minutes pour 15 : la fixture rouge reprend ces trois formes sur des faits inventes."
+  },
+  {
+   "nom": "lecture-tiers-unicode",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-lecture-tiers.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "lecture-tiers-unicode-red.html",
+   "green": "lecture-tiers-unicode-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "T2",
+    "VOCABULAIRE NON GLOSÉ",
+    "2 en-tête(s) de colonne sur 3",
+    "« État au 2026-09-28 », « Délai »"
+   ],
+   "provenance": "TF-1445, lot Produit-78 - RETOURS - 20260928b (RQ-2) — T2 cherchait la glose d un en-tete par une expression ouverte sur \\b sans drapeau u : devant « É » elle ne tombait jamais, et « État au 2026-09-28 », defini en prose et relie a sa note par aria-describedby, etait declare non glose. La verte glose les trois en-tetes accentues (prose, aria-describedby vers une note non vide, glossaire) et echoue contre l oracle d avant (3 en-tetes sur 3 non gloses) ; la rouge laisse « État au 2026-09-28 » sans glose et relie « Délai » a une note VIDE : 2 sur 3, et « Écart », glose, n est plus accuse."
   }
  ]
 }
