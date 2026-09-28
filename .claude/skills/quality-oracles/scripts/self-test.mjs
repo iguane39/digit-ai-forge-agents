@@ -1889,6 +1889,60 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1446 (28/09/2026) — LECTURE-TIERS EST ROUTÉ SUR LES PAGES LIVRÉES, ET SEULEMENT LÀ.
+//
+// LE FAIT. run-oracles a rendu CONFORME une étude et sa page, chez un produit, sans appeler
+// oracle-lecture-tiers : son entrée au registre portait `ext: []`, faute de quoi T4 aurait appelé
+// un modèle. Or T1-T3 sont déterministes et gratuits, et T4 ne s'arme que par `--juge`, `--reponse`
+// ou `lecture_tiers.actif: true` au profil (faux dans les deux profils livrés). Joué à la main,
+// l'oracle trouvait deux défauts réels sur la page. Le routage se borne aux pages SOUS `output` :
+// mesuré le 28/09 sur les 74 pages suivies du pilot et des forges, les 10 pages sous `output`
+// échouent toutes pour de vrais manques, les 64 autres ne sont pas des livrables.
+// LE CAS, dans ses deux sens, sur l'entrée RÉELLE du registre jouée dans un registre jouet (le
+// lanceur complet sur une page coûterait trente secondes de rendu sans rien prouver de plus) :
+//   · une page sans phrase d'intention SOUS `output` est jugée, FAIL T1 ;
+//   · la MÊME page hors `output` n'est pas routée : aucune ligne de lecture-tiers ;
+//   · la commande routée, jouée telle quelle avec le profil par défaut, déclare T4 NON JOUÉ :
+//     aucun appel de modèle n'est ajouté par ce routage.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1446-'));
+  try {
+    const entree = reg.oracles.find((o) => (o.cmd || []).some((c) => /oracle-lecture-tiers\.mjs$/.test(c)));
+    const page = '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Tableau</title></head><body>'
+      + '<h1>Tableau</h1><table><tr><th>Marché</th><th>Écart</th></tr><tr><td>Nord</td><td>2</td></tr></table>'
+      + '<p>Écart : la différence entre la cible et le relevé.</p><p>Marché : la zone suivie.</p>'
+      + '<p>Page en lecture seule.</p></body></html>';
+    for (const d of ['output', 'docs']) {
+      fs.mkdirSync(path.join(tmp, 'racine', d), { recursive: true });
+      fs.writeFileSync(path.join(tmp, 'racine', d, 'page.html'), page, 'utf8');
+    }
+    const regJ = path.join(tmp, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [entree] }), 'utf8');
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), path.join(tmp, 'racine'),
+      '--registre', regJ, '--no-cache', '--json'], { encoding: 'utf8', timeout: 180000 });
+    let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* sortie illisible */ }
+    const lignes = j ? (j.resultats || []).filter((x) => /Lecture d'une page/.test(x.domaine)) : [];
+    const sous = lignes.filter((x) => /output[\\/]page\.html$/.test(x.file));
+    const hors = lignes.filter((x) => /docs[\\/]page\.html$/.test(x.file));
+    // La commande que run-oracles lance, jouée telle quelle avec le profil par défaut du lanceur.
+    const cmd = entree ? entree.cmd.map((s) => s.replace('{skilldir}', SKILLDIR)
+      .replace('{file}', path.join(tmp, 'racine', 'output', 'page.html'))
+      .replace('{profil}', path.join(SKILLDIR, 'profils', 'digit-ai.json'))) : null;
+    const direct = cmd ? spawnSync(cmd[0] === 'node' ? process.execPath : cmd[0], cmd.slice(1), { encoding: 'utf8', timeout: 60000 }) : null;
+    let jd = null; try { jd = JSON.parse(direct.stdout); } catch { /* sortie illisible */ }
+    if (!entree) ko('TF-1446 : entrée de lecture-tiers introuvable au registre');
+    else if (!(entree.ext || []).includes('.html') || !(entree.chemins || []).includes('output'))
+      ko('TF-1446 : l entrée de lecture-tiers ne route pas les pages sous output (ext ' + JSON.stringify(entree.ext) + ', chemins ' + JSON.stringify(entree.chemins) + ')');
+    else if (!j) ko('TF-1446 : sortie de run-oracles inexploitable');
+    else if (sous.length !== 1 || sous[0].verdict !== 'FAIL' || !/INTENTION ABSENTE/.test(sous[0].detail || ''))
+      ko('TF-1446 : la page SOUS output n est pas jugée par lecture-tiers, ou pas pour son intention absente — ' + JSON.stringify(sous).slice(0, 200));
+    else if (hors.length) ko('TF-1446 : la page HORS output est routée elle aussi — le critère `chemins` n est pas tenu');
+    else if (!jd || !(jd.non_juge || []).some((x) => /^T4 NON JOUÉ/.test(x)))
+      ko('TF-1446 : la commande routée ne déclare pas T4 NON JOUÉ avec le profil par défaut — le routage ajouterait un appel de modèle');
+    else ok('TF-1446 : lecture-tiers juge la page sous output (FAIL, intention absente), laisse la même page hors output, et la commande routée déclare T4 NON JOUÉ — aucun appel de modèle ajouté');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // ── TF-1023 (décision humaine D-11 (a) du 23/09/2026) — LE SOCLE DES PAGES SUIT LA CHARTE LUE À LA SOURCE ──
 //
 // LE FAIT. La marque Digit-AI était portée par deux chartes : les pages (socle digit-ai-page-html,

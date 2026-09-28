@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.28.0, alignée sur le JSON le 26/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.29.0, alignée sur le JSON le 28/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -174,7 +174,7 @@ n'est jamais neutralisé ; et un constat qui n'est pas de police n'est jamais to
 
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
-| Lecture d'une page par un tiers sans contexte | `scripts/oracle-lecture-tiers.mjs <page.html> --profil <profil.json> [--juge <cli>] [--reponse <lecture.json>]` — **T1** la page dit ce qu'elle permet de **décider** · **T2** tout en-tête de colonne et tout **sigle** d'en-tête est **glosé de façon atteignable** (`data-definition`, `<abbr title>`, `title=`, glossaire, prose) · **T3** la page offre au moins un **geste**, ou **déclare** être en lecture seule · **T4** *(invocation explicite, coût modèle)* le juge reçoit l'**instantané seul**, sans brief ni code, et répond à trois questions — **un « je ne sais pas » = FAIL** | cli | ✅ |
+| Lecture d'une page par un tiers sans contexte | `scripts/oracle-lecture-tiers.mjs <page.html> --profil <profil.json> [--juge <cli>] [--reponse <lecture.json>]` — **T1** la page dit ce qu'elle permet de **décider** · **T2** tout en-tête de colonne et tout **sigle** d'en-tête est **glosé de façon atteignable** (`data-definition`, `<abbr title>`, `title=`, `aria-describedby` vers un élément non vide, glossaire, prose — frontières Unicode depuis TF-1445) · **T3** la page offre au moins un **geste**, ou **déclare** être en lecture seule · **T4** *(invocation explicite, coût modèle)* le juge reçoit l'**instantané seul**, sans brief ni code, et répond à trois questions — **un « je ne sais pas » = FAIL**. **Routé par défaut sur les pages sous `output`** (TF-1446 : `ext` .html/.htm, `chemins` output) — T1-T3 seulement, T4 restant explicite | cli | ✅ |
 
 > **Quatre portes vertes, et « on n'y comprend absolument rien ».** Le 02/09/2026, la vue V6 —
 > huit comptes par marché, aucun mot-clé visible, aucun geste — a passé le contrat de sortie, les
@@ -515,3 +515,27 @@ mêmes faits. Le format, le plus simple qui tienne les trois familles — chacun
   Les deux sont comptées au `non_juge`.
 - **Preuve** : deux paires au manifest (`promesses-annonces`, `promesses-page`), rouge FAIL sur P1,
   P2 et P3, verte PASS avec exclusions et négations écartées.
+
+## Routage du 28/09/2026 — lecture-tiers juge les pages livrées (TF-1446, v2.29.0)
+
+Le lot `Produit-78 - RETOURS - 20260928b` (RQ-3) : `run-oracles` a rendu CONFORME une étude et sa
+page sans appeler trois oracles qui y trouvaient des défauts réels, joués ensuite un par un. Pour
+l'un d'eux, `oracle-lecture-tiers`, rien ne justifiait ce silence : T1-T3 sont déterministes et
+gratuits, et T4, qui appelle un modèle, ne s'arme que par `--juge`, `--reponse` ou
+`lecture_tiers.actif: true` au profil, faux dans les deux profils livrés.
+
+- **Le routage** : `ext` [.html, .htm] et un critère neuf, `chemins` [output]. `run-oracles` ne
+  route un fichier vers cet oracle que si son chemin résolu traverse un dossier `output`.
+- **Pourquoi `output` seulement** : mesuré sur les 74 pages suivies du pilot et des forges, les
+  10 pages sous `output` échouent toutes pour de vrais manques (phrase d'intention absente, en-têtes
+  non glosés) ; les 64 autres sont des vues générées, de la documentation et des gabarits, dont la
+  précision n'a pas été mesurée.
+- **Ce qui n'est pas routé, et pourquoi** : `oracle-transparence` rendrait FAIL sur 325 des 343
+  livrables sous `output` du pilot, alors que son `non_juge` réserve l'obligation aux contenus
+  PUBLICS, décidés à l'invocation (TF-1030) ; `oracle-premisse-acces` a rendu 37 FAIL sur 335
+  documents du pilot, et l'échantillon lu montre des blocs de synthèse pris pour des prémisses
+  d'accès. Les deux restent à invocation explicite ; les étendre est une décision du pilot.
+- **Coût** : sur une page d'étude du pilot, `run-oracles` passe de 30,3 s à 29,1 s (bruit de mesure) ;
+  l'oracle joue en 55 ms environ par page.
+- **Preuve** : bloc TF-1446 de la recette, l'entrée réelle du registre jouée sur une page sous
+  `output` (FAIL, intention absente) et sur la même page hors `output` (non routée).

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // run-oracles v2 — Orchestrateur de la loi qualité (noyau générique).
-// Détecte les domaines d'un livrable (extension + trigger_files + content_patterns),
+// Détecte les domaines d'un livrable (extension + trigger_files + content_patterns, bornés par
+// `chemins` quand l'entrée en porte — TF-1446),
 // lance les oracles CLI du registre EN PARALLÈLE (pool borné, cache par hash), agrège
 // un verdict PASS / FAIL / INCONCLUSIF, tient le BILAN 4 ÉTATS de chaque fichier
 // (jugé / exempté / délégué / signalé — somme = nb de fichiers, aucun silence),
@@ -326,6 +327,17 @@ for (const o of registry.oracles) {
     ? contentMatches(o).filter(f => o.ext.includes(extOf(f)))
     : contentMatches(o);
   matches = [...new Set([...matches, ...parContenu])];
+  // TF-1446 (28/09/2026) — UN ORACLE PEUT SE BORNER À DES DOSSIERS. `chemins` (facultatif) nomme les
+  // dossiers dont un fichier doit relever pour être routé : `["output"]` veut dire « les livrables ».
+  // Le fait : lecture-tiers, déterministe et gratuit en T1-T3, n'était appelé sur aucune page, et
+  // run-oracles a déclaré CONFORME, chez un produit, la page d'une étude où il trouvait deux défauts
+  // réels. Mesuré le 28/09 sur les 74 pages suivies du pilot et des forges : les 10 pages sous
+  // `output` échouent toutes pour de vrais manques ; les 64 autres (vues générées, documentation,
+  // gabarits) ne sont pas des livrables, et leur précision n'a pas été mesurée. Le critère se lit
+  // sur le chemin RÉSOLU du fichier ; la cible-dossier injectée par `trigger_files` n'est pas filtrée.
+  if (Array.isArray(o.chemins) && o.chemins.length) {
+    matches = matches.filter(f => (f === target && !targetIsFile) ? true : path.resolve(f).split(/[\\/]+/).some(seg => o.chemins.includes(seg)));
+  }
   if (!matches.length) continue;
   if (o.type === 'cli' && o.cmd && EXCLUS.has(o.domaine)) continue;   // §6 — domaine exclu à ce niveau (CLI seulement ; délégations toujours signalées, R6)
   if (o.type === 'cli' && o.cmd) {

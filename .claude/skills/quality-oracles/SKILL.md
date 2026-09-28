@@ -134,7 +134,8 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
 
 ## Outillage (scripts)
 - **Orchestrateur** — `node scripts/run-oracles.mjs <cible> [--profil <nom|chemin>] [--niveau note|diffuse|production] [--no-cache]` : matching
-  par **extension + `trigger_files` + contenu** (`content_patterns`), **type réel** (magic bytes ≠ extension = FAIL), exécution
+  par **extension + `trigger_files` + contenu** (`content_patterns`), bornés par **`chemins`** quand l'entrée en porte
+  (dossiers où l'oracle s'applique, TF-1446), **type réel** (magic bytes ≠ extension = FAIL), exécution
   **parallèle** + **cache** par hash (jamais sur FAIL/SKIP) + `timeout_ms`, verdict **PASS / FAIL / INCONCLUSIF** (exit 0/1/2),
   **bilan 4 états** par fichier (jugé / exempté / délégué / signalé — somme = nb de fichiers, aucun silence), exemptions, journal `<cible>.oracles.json` + historique `*-historique.jsonl`.
   Le journal et chaque ligne d'historique portent l'**empreinte du contenu jugé** au format existant `forge-ops/empreinte@1`
