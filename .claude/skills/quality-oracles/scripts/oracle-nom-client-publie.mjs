@@ -28,6 +28,12 @@
 // ajoutée à une table rendait tout le passé fautif RÉTROACTIVEMENT — trois réécritures
 // d'historique en douze jours. Détail et arbitrages : le bloc TF-0982 plus bas.
 //
+// ET À QUEL PRIX — CHAQUE BLOB UNE FOIS (TF-1448, 28/09/2026). Le contenu de l'histoire se juge
+// par ses blobs UNIQUES, chacun lu une fois sur un arbre synthétique, puis rapporté à chaque
+// révision où il vit : même liste de constats, 438,9 s ramenées à 23,2 s sur un clone du dépôt du
+// pilot (1 080 révisions, tables jetables de la taille des réelles), le 28/09/2026.
+// Détail, garde des attributs `diff` et trou des chemins non ASCII : le bloc TF-1448 plus bas.
+//
 // LE RÉFÉRENTIEL DES NOMS EST UNE DONNÉE, ET IL VIT HORS DES DÉPÔTS PUBLIÉS (loi transverse n° 4).
 // Un contrôle qui embarquerait la liste des noms interdits PUBLIERAIT EXACTEMENT CE QU'IL PROTÈGE :
 // il suffirait de lire l'oracle pour connaître les clients. Le référentiel est donc résolu à
@@ -475,6 +481,213 @@ function lots(tab, n) {
   return r;
 }
 
+// ---------------------------------------------------------------------------
+// TF-1448 (28/09/2026) — L'HISTOIRE SE JUGE PAR SES CONTENUS UNIQUES : CHAQUE BLOB UNE FOIS.
+//
+// LE FAIT, ET IL EST MESURÉ. Le 28/09, la publication du pilot a pris 27 min 19 s (lancée à
+// 11:32:34, rendue à 11:59:53), puis 26 min et 15,5 min, alors que le pilot annonçait « trois à
+// cinq minutes ». La durée vivait dans l'angle du CONTENU de l'historique (C4, et C5 qui le
+// rejoue) : `git grep` recevait des LOTS DE 150 RÉVISIONS et relisait, pour CHAQUE révision,
+// chacun de ses fichiers, même inchangé depuis la précédente. Mesure du 28/09 sur le dépôt du
+// pilot : 1 080 révisions, 2 490 fichiers suivis et 245 Mo au bout de l'histoire, pour 7 739
+// blobs UNIQUES (1,17 Go) dans toute l'histoire. Chaque passe relisait donc la plupart des
+// octets des centaines de fois, et il y a une passe par groupe de drapeaux, plus celle des
+// produits. S'y ajoutaient une relecture par TERME et par COUPLE (révision, fichier) qui avait
+// mordu, et un `git show` par couple pour C5 : un fichier porteur présent dans 300 révisions
+// coûtait 300 appels par terme.
+//
+// CE QUI CHANGE, C'EST LE COÛT, JAMAIS LE JUGEMENT. Le verdict de `git grep -I -F [-i] [-w]` sur
+// un fichier ne dépend que de son CONTENU, sauf si un attribut `diff` le déclare binaire ou texte :
+// il dépend alors aussi du CHEMIN. D'où quatre temps :
+//   1. l'histoire s'inventorie par ses objets : chaque ARBRE est lu une fois (un `git cat-file
+//      --batch` par profondeur), chaque blob de fichier régulier est recensé une fois ;
+//   2. git dit lui-même si un attribut `diff` touche un chemin de l'histoire (`git check-attr`).
+//      Si oui, rien ne change : le contenu de l'histoire se juge par révision, comme avant, et le
+//      non_juge le dit ;
+//   3. sinon, un ARBRE SYNTHÉTIQUE porte chaque blob unique une fois, écrit dans un magasin
+//      d'objets TEMPORAIRE qui emprunte ceux du dépôt (le dépôt jugé n'est jamais écrit), et
+//      `git grep` le parcourt avec les mêmes drapeaux. L'outil qui fait foi reste git (règle R3) :
+//      la frontière de mot, la casse et l'exclusion des binaires restent les siennes ;
+//   4. chaque blob qui a mordu est rapporté à CHAQUE révision et à CHAQUE chemin où il vit, dans
+//      l'ordre même où `git grep` les rendait : même liste de constats, même borne de date par
+//      révision. Un blob porteur présent avant ET après l'inscription de son terme reste BLOQUANT
+//      dans les révisions postérieures ; une porte « incrémentale » qui ne jugerait que le commit
+//      d'arrivée d'un blob l'aurait perdu, et la recette le prouve.
+//
+// UN TROU FERMÉ EN PASSANT, et il se déclare. Sans `-z`, `git grep -l` cite en style C tout
+// chemin qui porte un octet non ASCII (`"docs/\303\251tude.md"`), `core.quotePath` n'étant réglé
+// nulle part sur le poste. La relecture `-- :(literal)<chemin>` et le `git show <rév>:<chemin>`
+// visaient alors un chemin qui n'existe pas, et le couple se perdait EN SILENCE : 73 des 2 829
+// chemins de l'histoire du pilot échappaient à cet angle. Les chemins se lisent désormais dans les
+// arbres, et la voie par révision lit la sortie de `git grep -z`, qui ne cite pas.
+// ---------------------------------------------------------------------------
+const MAX_TAMPON = 256 * 1024 * 1024;
+// Un fichier RÉGULIER (100644, 100755, et l'ancien 100664) : les seuls que `git grep` lit dans un
+// arbre — ni lien symbolique (120000), ni sous-module (160000).
+const REGULIER = /^100[0-7]{3}$/;
+let magasinTemporaire = null;
+
+/** Lit des objets par UN SEUL `git cat-file --batch` : Map(oid -> { type, contenu }), ou `null`
+ *  quand un objet manque ou que git ne répond pas — l'inventaire serait alors incomplet. */
+function lireObjets(repo, oids) {
+  if (!oids.length) return new Map();
+  const r = spawnSync('git', ['-C', repo, 'cat-file', '--batch'], { input: oids.join('\n') + '\n', maxBuffer: MAX_TAMPON });
+  if (r.status !== 0 || !Buffer.isBuffer(r.stdout)) return null;
+  const buf = r.stdout, objets = new Map();
+  let i = 0;
+  while (i < buf.length) {
+    const fin = buf.indexOf(0x0a, i);
+    if (fin < 0) return null;
+    const [oid, type, taille] = buf.toString('latin1', i, fin).split(' ');
+    if (type === 'missing' || taille === undefined) return null;
+    const n = Number(taille);
+    objets.set(oid, { type, contenu: buf.subarray(fin + 1, fin + 1 + n) });
+    i = fin + 1 + n + 1;
+  }
+  return objets;
+}
+
+/** Les entrées d'un objet arbre brut, dans l'ordre où git les range : [{ mode, nom, oid }]. */
+function entreesDArbre(contenu, octetsOid) {
+  const entrees = [];
+  let i = 0;
+  while (i < contenu.length) {
+    const sp = contenu.indexOf(0x20, i);
+    const nul = sp < 0 ? -1 : contenu.indexOf(0x00, sp + 1);
+    if (sp < 0 || nul < 0 || nul + 1 + octetsOid > contenu.length) return null;
+    entrees.push({ mode: contenu.toString('latin1', i, sp), nom: contenu.toString('utf8', sp + 1, nul),
+                   oid: contenu.toString('hex', nul + 1, nul + 1 + octetsOid) });
+    i = nul + 1 + octetsOid;
+  }
+  return entrees;
+}
+
+/** L'histoire par ses objets : l'arbre racine de chaque révision, et chaque arbre lu UNE fois. */
+function inventaireHistoire(repo, revs) {
+  if (!revs.length) return null;
+  const octetsOid = revs[0].length / 2;              // 20 (SHA-1) ou 32 (SHA-256)
+  const racineDe = new Map();
+  for (const l of (git(repo, 'log', '--all', '--format=%H %T').stdout || '').split('\n')) {
+    const m = l.match(/^([0-9a-f]+) ([0-9a-f]+)$/);
+    if (m) racineDe.set(m[1], m[2]);
+  }
+  if (revs.some((rev) => !racineDe.has(rev))) return null;
+  const arbres = new Map();
+  let aLire = [...new Set(racineDe.values())];
+  while (aLire.length) {
+    const lus = lireObjets(repo, aLire);
+    if (!lus) return null;
+    const suivants = new Set();
+    for (const oid of aLire) {
+      const o = lus.get(oid);
+      const entrees = o && o.type === 'tree' ? entreesDArbre(o.contenu, octetsOid) : null;
+      if (!entrees) return null;
+      arbres.set(oid, entrees);
+      for (const e of entrees) if (e.mode === '40000' && !arbres.has(e.oid)) suivants.add(e.oid);
+    }
+    aLire = [...suivants].filter((oid) => !arbres.has(oid));
+  }
+  return { racineDe, arbres, octetsOid };
+}
+
+/** Chaque blob de fichier régulier de l'histoire, une fois, et tous les chemins où un tel blob a
+ *  vécu (ce sont eux que l'attribut `diff` pourrait viser). */
+function blobsDeLHistoire(inv) {
+  const blobs = new Set(), chemins = new Set(), vus = new Set();
+  const pile = [...new Set(inv.racineDe.values())].map((oid) => [oid, '']);
+  while (pile.length) {
+    const [oid, prefixe] = pile.pop();
+    const cle = oid + '\0' + prefixe;
+    if (vus.has(cle)) continue;
+    vus.add(cle);
+    for (const e of inv.arbres.get(oid)) {
+      if (e.mode === '40000') pile.push([e.oid, prefixe + e.nom + '/']);
+      else if (REGULIER.test(e.mode)) { blobs.add(e.oid); chemins.add(prefixe + e.nom); }
+    }
+  }
+  return { blobs, chemins };
+}
+
+/** Combien de ces chemins un attribut `diff` touche-t-il ? C'est le seul attribut que lit
+ *  `git grep -I` pour décider qu'un fichier est binaire. `null` quand git ne répond pas. */
+function cheminsAAttributDiff(repo, chemins) {
+  const r = spawnSync('git', ['-C', repo, 'check-attr', '-z', '--stdin', 'diff'],
+    { input: chemins.join('\0') + '\0', encoding: 'utf8', maxBuffer: MAX_TAMPON });
+  if (r.status !== 0) return null;
+  const champs = (r.stdout || '').split('\0');
+  let n = 0;
+  for (let i = 0; i + 2 < champs.length; i += 3) if (champs[i + 2] !== 'unspecified') n += 1;
+  return n;
+}
+
+/** L'arbre synthétique : chaque blob unique une fois, nommé par son empreinte, écrit dans un
+ *  magasin d'objets TEMPORAIRE qui emprunte ceux du dépôt. Le dépôt jugé n'est jamais écrit. */
+function arbreSynthetique(repo, blobs, octetsOid) {
+  const objets = (git(repo, 'rev-parse', '--git-path', 'objects').stdout || '').trim();
+  if (!objets) return null;
+  magasinTemporaire = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-ncp-obj-'));
+  const alternes = [path.resolve(repo, objets), process.env.GIT_ALTERNATE_OBJECT_DIRECTORIES].filter(Boolean).join(path.delimiter);
+  const env = { ...process.env, GIT_OBJECT_DIRECTORY: magasinTemporaire, GIT_ALTERNATE_OBJECT_DIRECTORIES: alternes };
+  const morceaux = [];
+  for (const oid of [...blobs].sort()) morceaux.push(Buffer.from('100644 ' + oid + '\0', 'latin1'), Buffer.from(oid, 'hex'));
+  const r = spawnSync('git', ['-C', repo, 'hash-object', '-t', 'tree', '-w', '--stdin'], { input: Buffer.concat(morceaux), env, encoding: 'utf8' });
+  const oid = (r.stdout || '').trim();
+  if (r.status !== 0 || oid.length !== octetsOid * 2 || !/^[0-9a-f]+$/.test(oid)) return null;
+  return { oid, env };
+}
+
+/** `git grep -l -z -I -F` sur l'arbre synthétique, restreint ou non à des blobs : l'ensemble des
+ *  blobs qui ont mordu, ou `null` si git n'a pas jugé (toute sortie autre que 0 ou 1). */
+function grepSynthetique(repo, synth, drapeaux, aiguilles, restreint) {
+  const e = [];
+  for (const a of aiguilles) e.push('-e', a);
+  const touches = new Set();
+  for (const noms of (restreint ? lots([...restreint], 300) : [null])) {
+    const r = spawnSync('git', ['-C', repo, 'grep', '-l', '-z', '-I', '-F', ...drapeaux, ...e, synth.oid, ...(noms ? ['--', ...noms] : [])],
+      { env: synth.env, encoding: 'utf8', maxBuffer: MAX_TAMPON });
+    if (r.status !== 0 && r.status !== 1) return null;
+    for (const x of (r.stdout || '').split('\0')) if (x) touches.add(x.slice(synth.oid.length + 1));
+  }
+  return touches;
+}
+
+/** Pour une révision, les [chemin, blob] des blobs CIBLES qu'elle porte, dans l'ordre où `git grep`
+ *  parcourt son arbre (l'ordre des entrées, en profondeur). Mémoïsé par arbre : un sous-arbre
+ *  inchangé d'une révision à l'autre n'est parcouru qu'une fois. */
+function occurrencesDe(inv, cibles) {
+  if (!cibles.size) return () => [];
+  const memo = new Map();
+  const dans = (oid) => {
+    let res = memo.get(oid);
+    if (res) return res;
+    res = [];
+    for (const e of inv.arbres.get(oid)) {
+      if (e.mode === '40000') { for (const [rel, b] of dans(e.oid)) res.push([e.nom + '/' + rel, b]); }
+      else if (REGULIER.test(e.mode) && cibles.has(e.oid)) res.push([e.nom, e.oid]);
+    }
+    memo.set(oid, res);
+    return res;
+  };
+  return (rev) => dans(inv.racineDe.get(rev));
+}
+
+/** La VOIE du contenu de l'histoire : par blobs uniques quand git garantit que le verdict ne
+ *  dépend que du contenu, par révision sinon — et le motif du choix se déclare toujours. */
+function voieDuContenu(repo, revs) {
+  if (process.env.FORGE_PORTE_PAR_REVISION === '1') return { unique: false, motif: 'voie par révision imposée par FORGE_PORTE_PAR_REVISION=1 (banc, mesure)' };
+  if (!revs.length) return { unique: false, motif: "voie par révision : l'histoire ne porte aucune révision, rien n'y est à juger" };
+  const inv = inventaireHistoire(repo, revs);
+  if (!inv) return { unique: false, motif: "voie par révision : l'inventaire des objets de l'histoire est incomplet (objet manquant ou illisible)" };
+  const { blobs, chemins } = blobsDeLHistoire(inv);
+  // Les noms synthétiques sont soumis au même contrôle : un motif d'attribut pourrait les viser.
+  const attr = cheminsAAttributDiff(repo, [...chemins, ...blobs]);
+  if (attr === null) return { unique: false, motif: "voie par révision : `git check-attr` n'a pas répondu" };
+  if (attr > 0) return { unique: false, motif: `voie par révision : un attribut \`diff\` touche ${attr} chemin(s) de l'histoire — le verdict de \`git grep -I\` y dépend du chemin, pas du seul contenu` };
+  const synth = arbreSynthetique(repo, blobs, inv.octetsOid);
+  if (!synth) return { unique: false, motif: "voie par révision : l'arbre synthétique n'a pas pu être écrit dans le magasin temporaire" };
+  return { unique: true, inv, synth, blobs: blobs.size, chemins: chemins.size };
+}
+
 // --- exécution --------------------------------------------------------------
 if (!cible) out('SKIP', [], ['aucun artefact — usage : node oracle-nom-client-publie.mjs <depot|fixture.bundle> [--referentiel=<chemin>] [--produits=<chemin>]'], 2);
 
@@ -550,7 +763,11 @@ const findings = [];
 // COMPTEURS DU COÛT DE C4 (TF-0958) — ils ne jugent rien, ils RENDENT COMPTE : le coût de cet
 // angle est ce qui décide si la porte est tenable, et un coût non déclaré ne se surveille pas.
 let passesC4 = 0, affinagesC4 = 0, lotsC4 = 0;
-const nettoyer = () => { if (temporaire) try { fs.rmSync(temporaire, { recursive: true, force: true }); } catch { /* zone temporaire : un reste ne fausse rien */ } };
+// TF-1448 : la voie du contenu de l'histoire (par blobs uniques, ou par révision et pourquoi).
+let voie = null, voieC5 = null, revCount = 0;
+const nettoyer = () => {
+  for (const d of [temporaire, magasinTemporaire]) if (d) try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* zone temporaire : un reste ne fausse rien */ }
+};
 
 try {
   // --- C1 · contenus des fichiers SUIVIS de l'arbre courant -----------------
@@ -627,6 +844,7 @@ try {
   // Retirer un fichier de l'arbre ne le retire pas des commits, et l'hébergeur continue de
   // servir par empreinte ce qu'un commit ancien contient.
   const revs = (git(repo, 'rev-list', '--all').stdout || '').split('\n').filter(Boolean);
+  revCount = revs.length;
   const cheminsHisto = new Set((git(repo, 'log', '--all', '--name-only', '--format=').stdout || '')
     .split('\n').map((x) => x.trim()).filter(Boolean));
 
@@ -717,6 +935,57 @@ try {
     ], termes: [] });
     groupes.get(cle).termes.push(t);
   }
+  // TF-1448 — LA VOIE du contenu de l'histoire (bloc TF-1448 plus haut) : par blobs uniques, ou
+  // par révision quand git ne peut pas garantir que le verdict ne dépend que du contenu. Tous les
+  // passages de git sont faits AVANT le premier constat : une voie qui échoue en route laisse la
+  // place à l'autre sans avoir rien écrit.
+  voie = voieDuContenu(repo, revs);
+  let parGroupe = null;
+  if (voie.unique) {
+    lotsC4 = 1;                                  // un seul argument : l'arbre synthétique
+    parGroupe = [];
+    for (const g of groupes.values()) {
+      const touches = grepSynthetique(repo, voie.synth, g.drapeaux, g.termes.map((t) => t.mot), null);
+      passesC4 += 1;
+      if (!touches) { parGroupe = null; break; }
+      // QUEL terme ? Une passe par terme, restreinte aux seuls blobs qui ont mordu — mêmes drapeaux.
+      const parTerme = new Map();
+      for (const t of g.termes) {
+        if (g.termes.length === 1) { parTerme.set(t, touches); continue; }
+        const s = grepSynthetique(repo, voie.synth, g.drapeaux, [t.mot], touches);
+        affinagesC4 += Math.ceil(touches.size / 300);
+        if (!s) { parGroupe = null; break; }
+        parTerme.set(t, s);
+      }
+      if (!parGroupe) break;
+      parGroupe.push({ g, touches, parTerme });
+    }
+    if (!parGroupe) voie = { unique: false, motif: "voie par révision : `git grep` n'a pas jugé l'arbre synthétique (sortie autre que 0 ou 1)" };
+  }
+  if (parGroupe) {
+    const cibles = new Set();
+    for (const { touches } of parGroupe) for (const b of touches) cibles.add(b);
+    const occ = occurrencesDe(voie.inv, cibles);
+    // Même parcours que la voie par révision : groupe, puis révisions dans l'ordre de `rev-list`,
+    // puis l'arbre de chaque révision dans l'ordre de git, puis les termes du groupe.
+    for (const { g, touches, parTerme } of parGroupe) {
+      for (const rev of revs) for (const [rel, oid] of occ(rev)) {
+        if (!touches.has(oid)) continue;
+        if (suivis.includes(rel) && findings.some((f) => f.regle === 'C1' && f.where.startsWith(rel + ':'))) continue;
+        for (const t of g.termes) {
+          if (!parTerme.get(t).has(oid)) continue;
+          const dOcc = dateDeRev.get(rev) || null;
+          const sev = sevHisto(t.depuis, dOcc);
+          findings.push({
+            sev, regle: 'C4',
+            msg: `${t.genre} interdit « ${t.mot} » dans le CONTENU d'un fichier de l'historique`
+              + (sev === 'anteriorite' ? ditAnteriorite(t.depuis, dOcc) : ''),
+            where: `${rev.slice(0, 12)}:${rel}`,
+          });
+        }
+      }
+    }
+  } else {
   lotsC4 = lots(revs, 150).length;
   for (const g of groupes.values()) {
     // `-w` N'EST PAS COSMÉTIQUE ICI, et son oubli était un DÉFAUT DE COHÉRENCE entre angles :
@@ -736,9 +1005,10 @@ try {
     const eGroupe = [];
     for (const t of g.termes) eGroupe.push('-e', t.mot);
     for (const lot of lots(revs, 150)) {
-      const r = git(repo, ...argsGrep, ...eGroupe, ...lot);
+      // `-z` (TF-1448) : sans lui, un chemin non ASCII revient cité en style C, et le couple se perd.
+      const r = git(repo, ...argsGrep, '-z', ...eGroupe, ...lot);
       passesC4 += 1;
-      for (const ligne of (r.stdout || '').split('\n').filter(Boolean)) {
+      for (const ligne of (r.stdout || '').split('\0').filter(Boolean)) {
         const [rev, ...reste] = ligne.split(':');
         const rel = reste.join(':');
         if (suivis.includes(rel) && findings.some((f) => f.regle === 'C1' && f.where.startsWith(rel + ':'))) continue;
@@ -760,6 +1030,7 @@ try {
         }
       }
     }
+  }
   }
 
   // --- C5 · le CONTENU de l'historique, quatrième angle (TF-0828, 05/09) ------------------
@@ -817,11 +1088,46 @@ try {
     else borneDAiguille.set(a, bornePlusStricte(pr.depuis, prec));
   }
   if (aiguilles.length) {
+    // TF-1448 : par blobs uniques quand la voie le permet — la passe groupée parcourt l'arbre
+    // synthétique, et chaque blob porteur est lu UNE fois (un seul `git cat-file --batch`) au lieu
+    // d'un `git show` par couple (révision, fichier). L'aiguille s'identifie par la même expression.
+    let parBlobs = false;
+    if (voie.unique) {
+      const touchesP = grepSynthetique(repo, voie.synth, ['-w'], aiguilles, null);
+      const contenus = touchesP ? lireObjets(repo, [...touchesP]) : null;
+      if (touchesP && contenus) {
+        const parBlob = new Map();
+        for (const oid of touchesP) {
+          const o = contenus.get(oid);
+          const texte = o ? o.contenu.toString('utf8') : '';
+          parBlob.set(oid, aiguilles.filter((a) => litteralProduit(a).test(texte)));
+        }
+        const occ = occurrencesDe(voie.inv, touchesP);
+        for (const rev of revs) for (const [rel, oid] of occ(rev)) {
+          // Déjà dit par C5 sur l'arbre courant : ne pas compter deux fois le même fichier.
+          if (suivis.includes(rel) && findings.some((f) => f.regle === 'C5' && f.where.startsWith(rel + ':'))) continue;
+          for (const a of parBlob.get(oid)) {
+            const borne = borneDAiguille.get(a) || null;
+            const dOcc = dateDeRev.get(rev) || null;
+            const sev = sevHisto(borne, dOcc);
+            findings.push({
+              sev, regle: 'C5',
+              msg: `nom de produit interdit « ${a} » dans le CONTENU d'un fichier de l'historique`
+                + (sev === 'anteriorite' ? ditAnteriorite(borne, dOcc) : ''),
+              where: `${rev.slice(0, 12)}:${rel}`,
+            });
+          }
+        }
+        parBlobs = true;
+      } else voieC5 = "C5 (contenu de l'historique) jouée par révision : `git grep` ou `git cat-file` n'a pas jugé l'arbre synthétique";
+    }
+    if (!parBlobs) {
     const eGroupe = [];
     for (const a of aiguilles) eGroupe.push('-e', a);
     for (const lot of lots(revs, 150)) {
-      const r = git(repo, 'grep', '-l', '-I', '-F', '-w', ...eGroupe, ...lot);
-      for (const ligne of (r.stdout || '').split('\n').filter(Boolean)) {
+      // `-z` (TF-1448) : sans lui, un chemin non ASCII revient cité en style C, et le couple se perd.
+      const r = git(repo, 'grep', '-l', '-z', '-I', '-F', '-w', ...eGroupe, ...lot);
+      for (const ligne of (r.stdout || '').split('\0').filter(Boolean)) {
         const [rev, ...reste] = ligne.split(':');
         const rel = reste.join(':');
         // Déjà dit par C5 sur l'arbre courant : ne pas compter deux fois le même fichier.
@@ -842,6 +1148,7 @@ try {
           });
         }
       }
+    }
     }
   }
 } finally { nettoyer(); }
@@ -864,12 +1171,25 @@ const nj = NON_JUGE.concat(['table lue (référentiel des noms interdits) : ' + 
 // invocations `git grep`), à comparer aux 21 que le groupage laisse. Un jeu d'essai de 4 termes
 // rendait 81 s et 99 s sur le même dépôt : le temps croît avec la TABLE, et c'est la table qui
 // grossit.
+// TF-1448 — LA VOIE JOUÉE SE DIT, et son coût avec elle : par blobs uniques, combien de blobs pour
+// combien de révisions ; par révision, pourquoi (un attribut `diff`, un objet manquant, un échec).
+// La phrase de TF-0958 reste la même dans les deux voies : c'est elle que surveille la recette.
+const parBlobsUniques = voie && voie.unique;
 nj.push('coût de C4 sur cet artefact : ' + passesC4 + ' passe(s) `git grep` groupée(s) pour '
   + T.length + ' terme(s) du référentiel (' + affinagesC4 + " relecture(s) d'identification fine "
-  + 'sur les seuls couples révision/fichier qui ont mordu) — une passe par TERME et par lot en '
-  + 'aurait coûté ' + (T.length * lotsC4) + '. Temps mesuré le 08/09 sur le plus gros dépôt '
-  + 'du parc (909 révisions, 1 371 fichiers suivis, tables réelles) : 330,9 s et 295,5 s AVANT ce '
-  + 'groupage');
+  + (parBlobsUniques ? 'sur les seuls blobs qui ont mordu' : 'sur les seuls couples révision/fichier qui ont mordu')
+  + ') — une passe par TERME et par lot en aurait coûté ' + (T.length * lotsC4) + '. '
+  + (parBlobsUniques
+    ? 'Joué par la voie par blobs uniques (TF-1448) : ' + voie.blobs + ' blob(s) unique(s) jugé(s) une '
+      + 'fois chacun, sur un arbre synthétique, pour ' + revCount + ' révision(s) et ' + voie.chemins
+      + ' chemin(s) de l’histoire ; chaque blob porteur est rapporté à chaque révision et à chaque '
+      + 'chemin où il vit, sous la borne de date de cette révision ; aucun attribut `diff` ne touche '
+      + 'un chemin de l’histoire, le verdict de `git grep -I` n’y dépend donc que du contenu'
+      + (voieC5 ? ' ; ' + voieC5 : '') + '. '
+    : (voie ? 'Joué par la ' + voie.motif + '. ' : ''))
+  + 'Temps mesuré le 08/09 sur le plus gros dépôt du parc (909 révisions, 1 371 fichiers suivis, '
+  + 'tables réelles) : 330,9 s et 295,5 s AVANT ce groupage ; le 28/09, sur un clone du même dépôt '
+  + '(1 080 révisions, tables jetables de même taille) : 438,9 s par révision, 23,2 s par blobs uniques');
 nj.push(prodMotif || ('table lue (pseudonymes de produits) : ' + prodPath
   + ' — table des produits employée (' + P.length
   + ' nom(s) de produit jugé(s) par C5, ' + prodIgnorees + ' clé(s) de CHEMIN ignorée(s) — un chemin '

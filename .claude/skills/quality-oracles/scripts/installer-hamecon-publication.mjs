@@ -12,8 +12,9 @@
 // qu'elle constate : elle arrive après.
 //
 // LES DEUX NE FONT PAS LE MÊME GESTE, ET C'EST VOULU. Le `pre-push` REFUSE : il juge tout
-// l'historique, coûte trois à cinq minutes sur le plus gros dépôt du parc, et se rencontre
-// quelques fois par jour. Le `pre-commit` CORRIGE : il ne juge que l'INDEX, coûte quelques
+// l'historique (15 à 27 minutes mesurées au pilot le 28/09/2026 ; 23 s sur le même dépôt, avec des
+// tables jetables de même taille, depuis que le contenu de l'histoire se juge par blobs uniques,
+// TF-1448), et se rencontre quelques fois par jour. Le `pre-commit` CORRIGE : il ne juge que l'INDEX, coûte quelques
 // millisecondes, et se rencontre dix fois par jour. Un contrôle bloquant qu'on rencontre dix fois
 // par jour finit contourné — l'option existe et elle est documentée dans le hameçon lui-même. Un
 // contrôle qui CORRIGE ne se contourne pas, parce qu'il n'y a rien à contourner.
@@ -167,7 +168,8 @@ trap '' PIPE
 # Il CORRIGE le contenu indexe et le RE-INDEXE : dans le cas normal, aucun refus, aucune
 # interruption. Il ne refuse que dans deux cas -- tables illisibles, ou NOM de fichier porteur --
 # et le dit alors avec la commande exacte. Il ne juge que l'INDEX, jamais l'histoire : son cout est
-# de quelques millisecondes, la ou la porte de publication prend trois a cinq minutes.
+# de quelques millisecondes, la ou la porte de publication juge toute l'histoire (23 s mesurees le
+# 28/09/2026 sur le depot du pilot avec des tables jetables, TF-1448 ; 15 a 27 minutes avant).
 RACINE="\${FORGE_ROOT:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)}"
 LANCEUR=""
 for CANDIDAT in \\

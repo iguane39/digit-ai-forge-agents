@@ -1786,6 +1786,109 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1448 (28/09/2026) — LA PORTE JUGE CHAQUE BLOB UNE FOIS, ET TOUJOURS CHAQUE RÉVISION.
+//
+// LE FAIT. La publication du pilot a pris 27 min 19 s le 28/09 : le contenu de l'histoire se
+// jugeait par lots de 150 révisions, et chaque révision relisait chacun de ses fichiers. La porte
+// juge désormais chaque blob unique une fois, sur un arbre synthétique, puis rapporte chaque blob
+// porteur à chaque révision où il vit. Ce qui pourrait s'y perdre, et que ces cas éprouvent :
+//   (A) UNE RÉVISION POSTÉRIEURE À L'INSCRIPTION RESTE JUGÉE — le même blob, présent avant ET
+//       après la date d'inscription de son terme, est antériorité dans la première révision et
+//       BLOQUANT dans la suivante. Une porte « incrémentale » qui ne jugerait que le commit
+//       d'arrivée d'un blob rendrait PASS ici. Les deux voies rendent la même liste, dans le même
+//       ordre (FORGE_PORTE_PAR_REVISION=1 impose l'ancienne) ;
+//   (B) UN CHEMIN ACCENTUÉ N'ÉCHAPPE PLUS À L'HISTOIRE — `git grep -l` sans `-z` citait le chemin
+//       en style C, et le couple se perdait en silence : le terme n'était jamais vu ;
+//   (C) UN ATTRIBUT `diff` RAMÈNE LA VOIE PAR RÉVISION — là, le verdict de `git grep -I` dépend
+//       du chemin et pas du seul contenu : la porte le constate par git et le dit au non_juge.
+// LES NOMS SONT INVENTÉS, comme partout dans ce dépôt.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1448-'));
+  try {
+    const CLIENT = 'Farfadec';
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const ecrireTable = (nom, obj) => { const p = path.join(tables, nom); fs.writeFileSync(p, JSON.stringify(obj), 'utf8'); return p; };
+    const tProduitsNu = ecrireTable('_produits-nu.json', { produits: {} });
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const g = (r, env, ...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8', env });
+    const batir = (nom, commits) => {
+      const r = path.join(depots, nom);
+      fs.mkdirSync(r);
+      const base = { ...process.env };
+      g(r, base, 'init', '-q');
+      g(r, base, 'config', 'user.email', 'banc@local');
+      g(r, base, 'config', 'user.name', 'banc');
+      for (const c of commits) {
+        for (const [f, txt] of Object.entries(c.ecrire || {})) fs.writeFileSync(path.join(r, f), txt, 'utf8');
+        for (const f of c.retirer || []) fs.rmSync(path.join(r, f), { force: true });
+        g(r, base, 'add', '-A');
+        g(r, { ...base, GIT_AUTHOR_DATE: c.date }, 'commit', '-q', '-m', c.message);
+      }
+      return r;
+    };
+    const jouer = (repo, tClients, parRevision) => {
+      const env = { ...process.env, FORGE_ROOT: tmp };
+      delete env.FORGE_PRODUITS_PSEUDO; delete env.FORGE_NOMS_INTERDITS; delete env.FORGE_PORTE_PAR_REVISION;
+      if (parRevision) env.FORGE_PORTE_PAR_REVISION = '1';
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduitsNu], { encoding: 'utf8', timeout: 300000, env });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const c4 = (j) => (j ? (j.findings || []) : []).filter((f) => f.regle === 'C4');
+    const cout = (j) => (j ? (j.non_juge || []) : []).find((x) => /^coût de C4/.test(x)) || '';
+    const tete = (r, n) => (g(r, process.env, 'rev-list', '--reverse', 'HEAD').stdout || '').split('\n').filter(Boolean)[n].slice(0, 12);
+
+    // (A) Le même blob avant et après l'inscription du terme (2020-03-01), puis retiré de l'arbre.
+    const persistance = batir('persistance', [
+      { date: '2020-01-10T10:00:00+01:00', message: 'premier depot', ecrire: { 'note.md': 'Compte rendu remis a ' + CLIENT + '.\n', 'garde.md': 'sans nom\n' } },
+      { date: '2020-06-10T10:00:00+02:00', message: 'la note reste', ecrire: { 'garde.md': 'sans nom, retouche\n' } },
+      { date: '2021-01-10T10:00:00+01:00', message: 'retrait de la note', retirer: ['note.md'] },
+    ]);
+    const tBorne = ecrireTable('_clients-borne.json', { noms: [CLIENT], identifiants: [], sigles: [], depuis: { [CLIENT]: '2020-03-01' } });
+    const jA = jouer(persistance, tBorne, false), jAr = jouer(persistance, tBorne, true);
+    const [r1, r2] = [tete(persistance, 0), tete(persistance, 1)];
+    const bloqueA = c4(jA).filter((f) => f.sev === 'bloquant'), anteA = c4(jA).filter((f) => f.sev === 'anteriorite');
+    if (!jA || !jAr) ko('TF-1448 (A) : sortie de l oracle inexploitable');
+    else if (jA.verdict !== 'FAIL' || !bloqueA.some((f) => f.where === r2 + ':note.md'))
+      ko('TF-1448 (A) : la revision POSTERIEURE a l inscription, qui porte encore le blob, n est plus bloquante (' + jA.verdict + ', ' + c4(jA).map((f) => f.sev + ' ' + f.where).join(', ') + ') — une porte qui ne juge que le commit d arrivee d un blob a perdu la suite');
+    else if (!anteA.some((f) => f.where === r1 + ':note.md'))
+      ko('TF-1448 (A) : la revision ANTERIEURE a l inscription n est pas declaree anteriorite — ' + c4(jA).map((f) => f.sev + ' ' + f.where).join(', '));
+    else if (!/voie par blobs uniques/.test(cout(jA)) || !/3 révision\(s\)/.test(cout(jA)))
+      ko('TF-1448 (A) : la voie par blobs uniques n a pas joue, ou ne dit pas ce qu elle a juge — ' + cout(jA).slice(0, 200));
+    else if (JSON.stringify(jA.findings) !== JSON.stringify(jAr.findings) || !/FORGE_PORTE_PAR_REVISION/.test(cout(jAr)))
+      ko('TF-1448 (A) : les deux voies ne rendent PAS la meme liste de constats — par blobs : ' + jA.findings.length + ', par revision : ' + jAr.findings.length);
+    else ok('TF-1448 (A) : le blob present avant et apres l inscription est anteriorite en ' + r1.slice(0, 7) + ' et BLOQUANT en ' + r2.slice(0, 7) + ' ; les deux voies rendent la meme liste (' + jA.findings.length + ' constats, meme ordre)');
+
+    // (B) Un terme dans l'histoire d'un fichier au chemin accentué, retiré de l'arbre ensuite.
+    const accents = batir('accents', [
+      { date: '2024-01-10T10:00:00+01:00', message: 'premier depot', ecrire: { 'synthèse-été.md': 'Remis a ' + CLIENT + '.\n', 'garde.md': 'sans nom\n' } },
+      { date: '2024-01-11T10:00:00+01:00', message: 'retrait', retirer: ['synthèse-été.md'] },
+    ]);
+    const tNu = ecrireTable('_clients-nu.json', { noms: [CLIENT], identifiants: [], sigles: [] });
+    const jB = jouer(accents, tNu, false), jBr = jouer(accents, tNu, true);
+    const voitB = (j) => c4(j).some((f) => f.sev === 'bloquant' && f.where === tete(accents, 0) + ':synthèse-été.md');
+    if (!jB || !jBr) ko('TF-1448 (B) : sortie de l oracle inexploitable');
+    else if (jB.verdict !== 'FAIL' || !voitB(jB)) ko('TF-1448 (B) : par blobs uniques, le terme dans l histoire d un fichier au chemin ACCENTUE n est pas vu (' + jB.verdict + ')');
+    else if (jBr.verdict !== 'FAIL' || !voitB(jBr)) ko('TF-1448 (B) : par revision, le terme dans l histoire d un fichier au chemin ACCENTUE n est pas vu (' + jBr.verdict + ') — la sortie de git grep cite le chemin, et le couple se perd');
+    else ok('TF-1448 (B) : un terme dans l histoire de « synthèse-été.md », retire de l arbre, est BLOQUANT par les deux voies — le chemin n est plus cite en style C');
+
+    // (C) Un attribut `diff` sur un chemin de l'histoire : la voie par révision reprend la main.
+    const attributs = batir('attributs', [
+      { date: '2024-02-10T10:00:00+01:00', message: 'premier depot', ecrire: { '.gitattributes': '*.dat -diff\n', 'releve.dat': 'Releve remis a ' + CLIENT + '.\n' } },
+      { date: '2024-02-11T10:00:00+01:00', message: 'retrait du releve', retirer: ['releve.dat'] },
+    ]);
+    const jC = jouer(attributs, tNu, false), jCr = jouer(attributs, tNu, true);
+    if (!jC || !jCr) ko('TF-1448 (C) : sortie de l oracle inexploitable');
+    else if (!/voie par révision/.test(cout(jC)) || !/attribut `diff`/.test(cout(jC)))
+      ko('TF-1448 (C) : un attribut `diff` touche un chemin de l histoire et la voie par blobs uniques a joue quand meme — le verdict de git grep -I y depend du chemin. Ligne de cout : ' + cout(jC).slice(0, 200));
+    else if (JSON.stringify(jC.findings) !== JSON.stringify(jCr.findings))
+      ko('TF-1448 (C) : la voie choisie par l oracle ne rend pas la liste de la voie par revision');
+    else ok('TF-1448 (C) : un attribut `diff` sur « *.dat » ramene la voie par revision, et le non_juge le dit (' + jC.verdict + ', ' + jC.findings.length + ' constat(s), comme la voie imposee)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // ── TF-1023 (décision humaine D-11 (a) du 23/09/2026) — LE SOCLE DES PAGES SUIT LA CHARTE LUE À LA SOURCE ──
 //
 // LE FAIT. La marque Digit-AI était portée par deux chartes : les pages (socle digit-ai-page-html,
