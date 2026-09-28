@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L24 mot court pris dans un mot voisin — 20260924a</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--vert:#166534;--head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75rem;font-family:var(--head)}
+.badge.acte{background:#DCFCE7;color:var(--vert)}
+.legende{color:var(--faint);font-size:.8rem}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1333 (24/09/2026), fixture ROUGE jouee par self_test (CAS, regle L24).
+
+  LA GARDE DU CORRECTIF. Les mots courts de RE_TRACE ne comptent que comme MOTS ENTIERS. Chaque
+  cible ci-dessous les porte seulement a la FIN d'un mot voisin (« impacte », « exacte »,
+  « contacte », « retranche ») : aucune ne se declare decision, et L24 doit mordre deux fois.
+  Retirer les octets BACKSPACE sans frontiere, ou ne rendre que la frontiere de droite, ferait
+  passer ces deux badges pour resolus.
+-->
+<body><main class="wrap">
+<h1>L24 — deux badges dont la cible ne se declare pas decision</h1>
+<p>Chaque badge ci-dessous renvoie a une note qui existe. La note decrit une situation ; elle ne
+cite aucune trace et ne se declare pas decision. Une cible qui resout n'est pas une trace.</p>
+<h2>Chaine de facturation</h2>
+<p><span class="badge acte" aria-describedby="note-impact" title="Presente comme en vigueur depuis le 2 mars 2026">en vigueur</span>
+<span class="legende">La facturation passe par le nouveau connecteur.</span></p>
+<p id="note-impact">Ce changement impacte la chaine de facturation : la mesure reste exacte
+pour chaque site du reseau.</p>
+<h2>Doublons du referentiel</h2>
+<p><span class="badge acte" aria-describedby="note-doublons" title="Presente comme en vigueur depuis le 9 mars 2026">en vigueur</span>
+<span class="legende">Le referentiel est purge chaque semaine.</span></p>
+<p id="note-doublons">L'equipe contacte chaque site et retranche les doublons avant la
+publication du referentiel.</p>
+</main></body></html>

@@ -302,6 +302,10 @@ CAS = {
     #     remettre l antislash-b reconnaitrait « adr » dans « cadre » et rendrait ce badge vert.
     "l24-trace-mots-bornes.html": set(),
     "l24-trace-mots-colles.html": {"L24"},
+    # TF-1333 (report du 28/09) — la frontière de GAUCHE : « impacte », « exacte », « contacte »,
+    # « retranche » finissent par un jeton court sans le porter comme mot. Deux badges dont la
+    # cible ne se déclare pas décision : L24 doit mordre. Sans la frontière de gauche, rendu vert.
+    "l24-trace-mot-voisin.html": {"L24"},
 }
 
 # TF-0435 : L15 est un AVERTISSEMENT — jugé à part, sur les warns. La verte emploie un chevron

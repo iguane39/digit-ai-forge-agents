@@ -2157,8 +2157,14 @@ def check_lisibilite(html: str, a: Arbre):
     CL_STATUT_ENGAGEANT = {"acte", "actee", "actée", "acté", "decide", "décide", "decidee",
                            "décidée", "decidée", "tranche", "tranché", "tranchee", "tranchée"}
     CL_BADGE = {"badge", "pastille", "statut", "status", "chip-val", "etiquette-statut"}
-    RE_TRACE = re.compile(r"(décision|decision|décidé|decide|décide|adr\b|arbitrage|arbitré|"
-                          r"arbitre\b|délibér|deliber|tranché|tranche\b|acté|acte\b)", re.I)
+    # TF-1333 (report du 28/09/2026 de la variante du 24/09) — LA FRONTIÈRE DE GAUCHE. Celle de
+    # droite, rétablie le 26/09, empêche « adr » de se lire dans « cadre » ; elle laisse « impacte »,
+    # « exacte », « contacte » et « retranche » déclarer une décision, des mots courants de
+    # livrable. Les quatre jetons courts portent donc une frontière de chaque côté ; les jetons
+    # longs gardent leur lecture en préfixe (« délibér » vaut « délibération »). Fixture rouge :
+    # l24-trace-mot-voisin.html (deux badges, L24 doit mordre deux fois).
+    RE_TRACE = re.compile(r"(décision|decision|décidé|decide|décide|\badr\b|arbitrage|arbitré|"
+                          r"\barbitre\b|délibér|deliber|tranché|\btranche\b|acté|\bacte\b)", re.I)
 
     def _trace_declaree(n):
         """La cible se DÉCLARE-t-elle décision ? Un texte de trace, ou `data-decision`."""
