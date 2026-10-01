@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.34.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.35.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -25,7 +25,8 @@
 | Sécurité / secrets | `scripts/oracle-secrets.mjs` — clés/tokens/PAT (+ gitleaks) | cli | ✅ |
 | Sécurité : dépendances (SCA) | `scripts/oracle-sca.mjs` — pip-audit / npm audit / OSV ; fixtures jouées sur données OSV figées (`--osv-fige`), ressource injoignable = SKIP nommé (TF-1107) | cli | ✅ |
 | Sécurité : SAST (injection/exécution) | `scripts/oracle-sast.mjs` — injection SQL/commande, eval/exec, désérialisation (semgrep/bandit + repli) | cli | ✅ |
-| Configuration d'infrastructure (Terraform) | `scripts/oracle-terraform.mjs <fichier.tf|.tfvars|dossier> [--date-application AAAA-MM-JJ]` — étape **standard** : **T1** `terraform fmt -check` (première ligne réécrite), **T2** `terraform validate -json`, sans `terraform init`, rien d'écrit dans la cible ; Terraform absent → l'étape rend SKIP motivé. Étape **maison** : **D1** une valeur datée écrite en dur dont le mois précède le mois d'application est refusée (banc du lot rejoué) ; remède : la date calculée à la création (TF-1492) | cli | ✅ |
+| Image de conteneur, vulnérabilités de la couche système | `scripts/oracle-image-conteneur.mjs <journal.txt\|rapport-trivy.json [--journal <log>]\|Dockerfile>` — **C1** la construction ne reprend aucune couche du cache du poste (`#N CACHED`, `---> Using cache`, l'image de base `FROM` dite sans être accusée) · **C2** `trivy image --severity HIGH,CRITICAL --exit-code 1` sans constat, sur une image construite avec `docker build --no-cache`, jamais sur une image issue du cache. Sur un Dockerfile, l'oracle construit (`--no-cache --pull`), scanne et retire l'image ; docker ou trivy absents → SKIP motivé. **Invocation explicite** (TF-1499) | cli | ✅ |
+| Configuration d'infrastructure (Terraform) | `scripts/oracle-terraform.mjs <fichier.tf\|.tfvars\|dossier> [--date-application AAAA-MM-JJ]` — étape **standard** : **T1** `terraform fmt -check` (première ligne réécrite), **T2** `terraform validate -json`, sans `terraform init`, rien d'écrit dans la cible ; Terraform absent → l'étape rend SKIP motivé. Étape **maison** : **D1** une valeur datée écrite en dur dont le mois précède le mois d'application est refusée (banc du lot rejoué) ; remède : la date calculée à la création (TF-1492) | cli | ✅ |
 | Sortie LLM / IA générative | `scripts/oracle-llm.mjs` — schéma JSON (auto) + checklist véracité | cli | ⚙️ |
 | Programme de formation (structure pédagogique) | `scripts/oracle-programme-formation.mjs` — C1 sommes de durées, C2 part de pratique déclarée, C3 couverture vs référence, C4 segment ≤ 50 min, C5 évaluation par bloc (.md/.docx) | cli | ✅ |
 | Support de diapositives (parité de format par profil) | `scripts/oracle-pptx.mjs --profil <profil>` — P1 format (`pptx.format`), P2 polices (`pptx.polices`), P3 couleurs de texte (`pptx.palette`), plus l'hygiène du paquet ; règles propres à un type de séance = invocation locale au produit (TF-1130) | cli | ⚙️ |
@@ -688,3 +689,35 @@ d'infrastructure.
   refusé en juillet, juin et juillet acceptés à leur mois). Il joue aussi les remèdes que les
   messages prescrivent (`terraform fmt`, la date calculée), T2 dans ses deux sens, et le poste sans
   Terraform.
+
+## Injection du 01/10/2026 — l'image de conteneur, construite à neuf (TF-1499, v2.35.0)
+
+Le lot `Produit-03 - RETOURS - 20260930b` (RA-55) : pour anticiper le scan bloquant de la
+production, l'image d'un produit a été construite sur le poste puis scannée par trivy, qui a rendu
+une faille HIGH dans une bibliothèque système. Le journal de construction portait l'étape
+`RUN apk upgrade --no-cache` suivie de `CACHED` : la couche de mise à jour venait d'une
+construction ancienne du poste. Reconstruite avec `docker build --no-cache`, l'image portait les
+versions corrigées, et trivy ne rendait plus aucune faille HIGH ou CRITICAL. Le registre n'avait
+pas de ligne pour l'image de conteneur, et sa ligne SCA ne couvre pas la couche système.
+
+- **L'oracle** : `scripts/oracle-image-conteneur.mjs`, scaffoldé par `write-an-oracle` puis durci.
+  **C1** : la construction ne reprend aucune couche du cache du poste ; chaque étape `#N CACHED`
+  d'un journal BuildKit, ou `---> Using cache` du constructeur classique, est nommée. L'image de
+  base (`FROM … CACHED`), affichée ainsi même sous `--no-cache`, est comptée et dite, pas accusée.
+  **C2** : `trivy image --severity HIGH,CRITICAL --exit-code 1` ne trouve rien, sur une image
+  construite avec `docker build --no-cache`, jamais sur une image issue du cache.
+- **Trois entrées** : un journal de construction (C1) ; un rapport JSON de trivy avec son journal
+  (`--journal`, C2 et C1), un rapport sans journal disant C1 non jouée ; un `Dockerfile` ou son
+  dossier, que l'oracle construit lui-même (`docker build --no-cache --pull`), scanne, puis retire.
+  `--pull` revérifie l'image de base au registre, comme sur l'agent neuf d'une chaîne.
+- **Invocation explicite** : une construction coûte des minutes et le réseau ; le registre ne
+  route pas ce domaine. Un oracle local qui construit une image l'appelle sur son journal, ou sur
+  son `Dockerfile`.
+- **Ce qui n'a pas été joué** : le mode construction. Sur le poste de la mise en service, trivy est
+  absent, et le démon docker était arrêté le matin ; ce mode rend SKIP, motif à l'appui, et la recette
+  prouve ce SKIP, pas la construction. C1 et C2 sont prouvés par fixtures.
+- **Preuve** : deux paires au manifest, `image-conteneur` (deux journaux BuildKit fictifs, l'étape
+  de mise à jour reprise du cache puis exécutée) et `image-conteneur-rapport` (deux rapports de
+  trivy fictifs, une HIGH puis aucune). Le bloc TF-1499 de la recette joue aussi le journal du
+  constructeur classique, l'image de base seule en `CACHED`, le rapport sans journal, le rapport
+  propre d'une image dont le journal porte une étape reprise du cache, et le poste sans docker.

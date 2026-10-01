@@ -1,0 +1,22 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "qo-essai:local",
+  "ArtifactType": "container_image",
+  "Results": [
+    {
+      "Target": "qo-essai:local (alpine 3.24)",
+      "Class": "os-pkgs",
+      "Type": "alpine",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2099-0002",
+          "PkgName": "libessai-outils",
+          "InstalledVersion": "1.6.58-r0",
+          "FixedVersion": "1.6.59-r0",
+          "Severity": "MEDIUM",
+          "Title": "Vulnérabilité FICTIVE de jeu d'essai"
+        }
+      ]
+    }
+  ]
+}

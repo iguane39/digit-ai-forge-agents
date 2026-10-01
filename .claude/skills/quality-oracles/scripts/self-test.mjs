@@ -2203,6 +2203,55 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1499 (01/10/2026) — UNE IMAGE DE CONTENEUR SE JUGE CONSTRUITE À NEUF, JAMAIS SUR LE CACHE DU POSTE.
+//
+// LE FAIT (lot Produit-03 - RETOURS - 20260930b, RA-55) : une image construite sur le poste, sa couche
+// « RUN apk upgrade --no-cache » reprise du cache (CACHED), a rendu 1 faille HIGH qu'une construction
+// --no-cache ne portait plus ; seule la lecture du journal l'a dit. CE BLOC :
+//   (A) C1 sur les deux formes de journal : BuildKit (étape CACHED nommée, l'image de base FROM CACHED
+//       comptée et dite sans être accusée) et constructeur classique (« ---> Using cache ») ;
+//   (B) C2 lit le rapport de trivy, et un rapport donné SANS journal dit C1 non jouée ;
+//   (C) le mode construction sans docker sur le PATH rend SKIP, et son motif nomme docker — la
+//       construction elle-même n'est pas jouée par la recette (minutes, réseau), et c'est dit au registre.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1499-'));
+  try {
+    const O = path.join(SKILLDIR, 'scripts', 'oracle-image-conteneur.mjs');
+    const FX = path.join(SKILLDIR, 'fixtures', 'image-conteneur');
+    const jouer = (args, env = process.env) => {
+      const r = spawnSync(process.execPath, [O, ...args], { encoding: 'utf8', timeout: 120000, env });
+      try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [], motif: (r.stderr || '').slice(0, 160) }; }
+    };
+    const poser = (nom, texte) => { const p = path.join(tmp, nom); fs.writeFileSync(p, texte, 'utf8'); return p; };
+    const c = (j, regle) => (j.findings || []).filter((f) => f.sev === 'bloquant' && f.regle === regle);
+    // (A) — les deux formes de journal, et l'image de base qui n'est pas accusée.
+    const rouge = jouer([path.join(FX, 'journal-cache.txt')]);
+    const vert = jouer([path.join(FX, 'journal-sans-cache.txt')]);
+    const classique = jouer([poser('classique.log', 'Step 1/3 : FROM alpine:3.24\n ---> 0123456789ab\nStep 2/3 : RUN apk upgrade --no-cache\n ---> Using cache\n ---> 89abcdef0123\nStep 3/3 : COPY app /srv/app\n ---> 456789abcdef\nSuccessfully built 456789abcdef\n')]);
+    const baseSeule = jouer([poser('base.log', '#5 [runtime 1/2] FROM docker.io/library/alpine:3.24\n#5 CACHED\n\n#6 [runtime 2/2] COPY app /srv/app\n#6 DONE 0.1s\n')]);
+    if (rouge.verdict !== 'FAIL' || c(rouge, 'C1').length !== 1 || !/RUN apk upgrade/.test(c(rouge, 'C1')[0].msg))
+      ko(`TF-1499 (A) : le journal à étape reprise du cache rend ${rouge.verdict} (${c(rouge, 'C1').length} C1) — attendu FAIL par UNE C1, l'étape RUN nommée`);
+    else if (vert.verdict !== 'PASS') ko(`TF-1499 (A) : le journal d'une construction --no-cache rend ${vert.verdict}`);
+    else if (classique.verdict !== 'FAIL' || !c(classique, 'C1').some((f) => /RUN apk upgrade/.test(f.msg))) ko(`TF-1499 (A) : le journal du constructeur classique (« ---> Using cache ») rend ${classique.verdict}`);
+    else if (baseSeule.verdict !== 'PASS' || !(baseSeule.non_juge || []).some((x) => /image de base/.test(x))) ko(`TF-1499 (A) : un journal dont seule l'image de base est CACHED rend ${baseSeule.verdict}, ou ne la dit pas — attendu PASS, dite`);
+    else ok('TF-1499 (A) : C1 nomme l étape reprise du cache (BuildKit et constructeur classique), passe la construction --no-cache, et dit l image de base FROM CACHED sans l accuser');
+    // (B) — le rapport de trivy, avec et sans journal.
+    const sansJournal = jouer([path.join(FX, 'rapport-trivy-rouge.json')]);
+    const avecCache = jouer([path.join(FX, 'rapport-trivy-vert.json'), '--journal', path.join(FX, 'journal-cache.txt')]);
+    if (sansJournal.verdict !== 'FAIL' || c(sansJournal, 'C2').length !== 1 || !(sansJournal.non_juge || []).some((x) => /^C1 NON jouée/.test(x)))
+      ko(`TF-1499 (B) : un rapport à une HIGH, sans journal, rend ${sansJournal.verdict} (${c(sansJournal, 'C2').length} C2) — attendu FAIL par une C2, et C1 dite non jouée`);
+    else if (avecCache.verdict !== 'FAIL' || !c(avecCache, 'C1').length) ko(`TF-1499 (B) : un rapport sans HIGH mais d'une image dont le journal porte une étape CACHED rend ${avecCache.verdict} — le scan d'une image issue du cache ne vaut pas`);
+    else ok('TF-1499 (B) : C2 compte les HIGH et CRITICAL du rapport (pas les MEDIUM), dit C1 non jouée sans journal, et refuse le rapport d une image dont le journal porte une étape reprise du cache');
+    // (C) — le mode construction sans docker sur le PATH.
+    const clePath = Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH') || 'PATH';
+    const dockerfile = poser('Dockerfile', 'FROM alpine:3.24\nRUN apk upgrade --no-cache\n');
+    const sansDocker = jouer([dockerfile], { ...process.env, [clePath]: path.dirname(process.execPath) });
+    sansDocker.verdict === 'SKIP' && /docker introuvable/.test(sansDocker.motif || '')
+      ? ok('TF-1499 (C) : sans docker sur le PATH, le mode construction rend SKIP et son motif nomme docker — la construction n est pas jouée par la recette, et le registre le dit')
+      : ko(`TF-1499 (C) : sans docker, le mode construction rend ${sansDocker.verdict} (${sansDocker.motif || ''}) — attendu SKIP motivé`);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1447 (28/09/2026) — LE MOTIF D'UN SKIP A UNE PLACE FIXE, ET LA RECETTE LE TIENT POUR TOUS.
 //
 // LE FAIT. Le contrat JSON commun ne disait pas où vit la raison d'un SKIP : en fin de non_juge chez

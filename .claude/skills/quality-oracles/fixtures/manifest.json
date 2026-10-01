@@ -1626,6 +1626,48 @@
    ],
    "dependant_outil": "terraform sur le PATH — absent, l'étape standard rend SKIP motivé et, sans valeur datée à juger, l'oracle aussi ; le bloc TF-1492 de la recette exige alors que le motif nomme terraform, et sinon FAIL par T1 sur la rouge, PASS sur la verte",
    "provenance": "TF-1492, lot Produit-03 - RETOURS - 20260929a (RA-48) — une date d'effet écrite en dur pour une mise en production d'août, refusée à l'application du 29/09/2026 ; la première écriture du correctif rendait fmt -check à 3. Fixtures FICTIVES : un commentaire a coupé le groupe d'alignement des signes égal (rouge), la même configuration au format canonique, sa date d'effet calculée à la création (verte)"
+  },
+  {
+   "nom": "image-conteneur",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-image-conteneur.mjs",
+    "{fixture}"
+   ],
+   "red": "image-conteneur/journal-cache.txt",
+   "green": "image-conteneur/journal-sans-cache.txt",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "C1 — étape réutilisée du cache du poste : [runtime 2/3] RUN apk upgrade --no-cache (#6 CACHED)"
+   ],
+   "provenance": "TF-1499, lot Produit-03 - RETOURS - 20260930b (RA-55) — une couche « RUN apk upgrade --no-cache » reprise du cache du poste (CACHED) a fait rendre 1 faille HIGH qu'une construction --no-cache ne portait plus. Fixtures FICTIVES : deux journaux BuildKit, l'étape de mise à jour reprise du cache (rouge) puis exécutée par une construction --no-cache (verte) ; les deux portent l'image de base FROM … CACHED, qui n'est pas accusée"
+  },
+  {
+   "nom": "image-conteneur-rapport",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-image-conteneur.mjs",
+    "{fixture}",
+    "--journal",
+    "{skilldir}/fixtures/image-conteneur/journal-sans-cache.txt"
+   ],
+   "red": "image-conteneur/rapport-trivy-rouge.json",
+   "green": "image-conteneur/rapport-trivy-vert.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "C2 — HIGH CVE-2099-0001 : libessai 2.8.4-r0 installée, corrigée en 2.8.5-r0"
+   ],
+   "provenance": "TF-1499, lot Produit-03 - RETOURS - 20260930b (RA-55) — une couche « RUN apk upgrade --no-cache » reprise du cache du poste (CACHED) a fait rendre 1 faille HIGH qu'une construction --no-cache ne portait plus. Fixtures FICTIVES : deux rapports JSON de trivy sur une bibliothèque inventée, une HIGH et une MEDIUM (rouge), la MEDIUM seule (verte) ; le journal d'une construction --no-cache est donné, C1 est donc jouée"
   }
  ]
 }
