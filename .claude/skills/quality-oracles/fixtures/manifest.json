@@ -507,6 +507,53 @@
    "provenance": "TF-1152 (retour humain du 16/09/2026) : le lexique du destinataire n'était joué sur aucun texte de présentation — EC-7 d'oracle-ecriture ne lit que des .md, S46 d'oracle-synthese que des restitutions. Les deux decks sont identiques à quatre chaînes près. Le terme « workflow » ne vit QUE dans les notes du présentateur : sans lecture des notes, le message attendu manque et la règle n'est plus prouvée. La VERTE applique mot pour mot la correction que le message de la rouge propose (TF-1013) — un remède recommandé se joue au banc. Les deux termes sont synthétiques : aucun retour client réel n'est publié ici"
   },
   {
+   "nom": "charte-pptx-profil-client",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/fixtures/profil-charte-client.json"
+   ],
+   "red": "charte-pptx-client-red.pptx",
+   "green": "charte-pptx-client-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S4 — footer absent (zone de texte",
+    "S4 — pagination absente (numéro en zone de texte"
+   ],
+   "provenance": "TF-1490, lot Produit-64 - RETOURS - 20260928c (RA-5) — sous --profil generique, 69 constats S3 et S4 sur le support d'un client au format de ce client (icônes de contenu, pied de page et pagination en zones de texte). Support FICTIF (fixtures/gen-charte-pptx-client-fixtures.py) au même format : la verte le tient sous son profil de jeu d'essai (logos partout, pied de page en zone de texte, profil-charte-client.json), la rouge a perdu pied de page et pagination sur une diapositive"
+  },
+  {
+   "nom": "charte-pptx-profil-digit-ai",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "charte-pptx-client-green.pptx",
+   "green": "charte-pptx-semantique-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S3 — image au gabarit logo",
+    "S4 — footer absent (placeholder ftr",
+    "S4 — pagination absente (placeholder sldNum"
+   ],
+   "provenance": "TF-1490, lot Produit-64 - RETOURS - 20260928c (RA-5) — sous --profil generique, 69 constats S3 et S4 sur le support d'un client au format de ce client (icônes de contenu, pied de page et pagination en zones de texte). Support FICTIF (fixtures/gen-charte-pptx-client-fixtures.py) au même format : le MÊME support, vert sous son profil, est rouge sous digit-ai (S3 icônes hors couverture, S4 sans espaces réservés) ; la verte est le deck à la charte Digit-AI de la paire charte-pptx-semantique"
+  },
+  {
    "nom": "etat-forge",
    "cmd": [
     "node",

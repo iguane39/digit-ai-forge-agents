@@ -2076,6 +2076,65 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1490 (01/10/2026) — S3 ET S4 DE LA CHARTE PPTX SÉMANTIQUE SUIVENT LE PROFIL, COMME P1 À P3.
+//
+// LE FAIT (lot Produit-64 - RETOURS - 20260928c, RA-5) : sous `--profil generique`, le support d'un
+// client au format de ce client rendait 69 constats S3 et S4 — icônes de contenu, pied de page et
+// pagination en zones de texte —, et seule une exemption par fichier ramenait le vert. CE BLOC :
+//   (A) le MÊME support fictif au format d'un client : PASS sous son profil, FAIL sous digit-ai par
+//       S3 ET par S4 ;
+//   (B) le lanceur, par l'entrée RÉELLE du registre : sous `--profil generique` le support passe et
+//       S3, S4 sont dites NON jouées ; sous le profil par défaut, digit-ai, il échoue ;
+//   (C) sans `--profil`, l'oracle juge comme avant, messages compris, mot pour mot : le hook
+//       d'écriture identifie un constat par sa ligne, un message réécrit le ferait passer pour neuf.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1490-'));
+  try {
+    const FX = path.join(SKILLDIR, 'fixtures');
+    const jouer = (args) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-charte-pptx-semantique.mjs'), ...args], { encoding: 'utf8', timeout: 120000 });
+      try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [(r.stderr || '').slice(0, 160)] }; }
+    };
+    const bloquants = (j) => (j.findings || []).filter((f) => f.sev === 'bloquant').map((f) => f.msg);
+    const client = path.join(FX, 'charte-pptx-client-green.pptx');
+    const sousClient = jouer([client, '--profil', path.join(FX, 'profil-charte-client.json')]);
+    const sousDigit = jouer([client, '--profil', path.join(SKILLDIR, 'profils', 'digit-ai.json')]);
+    if (sousClient.verdict !== 'PASS') ko(`TF-1490 (A) : le support au format d un client rend ${sousClient.verdict} sous SON profil — ${bloquants(sousClient).slice(0, 2).join(' · ')}`);
+    else if (sousDigit.verdict !== 'FAIL' || !bloquants(sousDigit).some((m) => /^S3 /.test(m)) || !bloquants(sousDigit).some((m) => /^S4 /.test(m)))
+      ko(`TF-1490 (A) : le même support rend ${sousDigit.verdict} sous digit-ai (${bloquants(sousDigit).length} constat(s)) — attendu FAIL par S3 ET par S4`);
+    else ok(`TF-1490 (A) : le support au format d un client passe sous son profil, et échoue sous digit-ai par S3 et S4 (${bloquants(sousDigit).length} constats)`);
+
+    // (B) — le lanceur, par l'entrée réelle, sous generique puis sous le profil par défaut.
+    const entree = reg.oracles.find((o) => o.domaine === 'Charte PPTX sémantique (sommaire, kicker, logos, footer)');
+    const racine = path.join(tmp, 'racine');
+    fs.mkdirSync(racine);
+    fs.copyFileSync(client, path.join(racine, 'support-client.pptx'));
+    const regJ = path.join(tmp, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [entree] }), 'utf8');
+    const lancer = (profil) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), racine, '--registre', regJ, '--no-cache', '--json',
+        ...(profil ? ['--profil', profil] : [])], { encoding: 'utf8', timeout: 180000, env: { ...process.env, QO_PROFIL: '' } });
+      try { return (JSON.parse(r.stdout).resultats || []).find((x) => /Charte PPTX/.test(x.domaine)) || {}; } catch { return { verdict: '?', detail: (r.stderr || '').slice(0, 160) }; }
+    };
+    const generique = lancer('generique'), defaut = lancer(null);
+    const direct = jouer([client, '--profil', path.join(SKILLDIR, 'profils', 'generique.json')]);
+    const dits = (direct.non_juge || []).filter((x) => /^S[34] NON jouée/.test(x)).length;
+    if (!entree || !entree.cmd.includes('{profil}')) ko('TF-1490 (B) : l entrée « Charte PPTX sémantique » ne passe pas --profil {profil} à sa commande');
+    else if (generique.verdict !== 'PASS' || dits !== 2)
+      ko(`TF-1490 (B) : sous --profil generique, le lanceur rend ${generique.verdict} (${(generique.detail || '').slice(0, 120)}) et ${dits} règle(s) dite(s) NON jouée(s) — attendu PASS et S3, S4 dites`);
+    else if (defaut.verdict !== 'FAIL') ko(`TF-1490 (B) : sous le profil par défaut (digit-ai), le lanceur rend ${defaut.verdict} sur le format d un client — attendu FAIL`);
+    else ok('TF-1490 (B) : par l entrée réelle, le support au format d un client passe sous --profil generique (S3 et S4 dites NON jouées) et échoue sous le profil par défaut, digit-ai');
+
+    // (C) — sans --profil, la charte Digit-AI d'avant, messages compris.
+    const avant = ['S3 — image au gabarit logo (≤ 2000000 EMU) hors couverture/interlocuteurs',
+      'S4 — footer absent (placeholder ftr au niveau slide)', 'S4 — pagination absente (placeholder sldNum au niveau slide)'];
+    const historique = jouer([path.join(FX, 'charte-pptx-semantique-red.pptx')]);
+    const manquants = avant.filter((m) => !bloquants(historique).includes(m));
+    if (historique.verdict !== 'FAIL' || manquants.length) ko('TF-1490 (C) : sans --profil, la rouge historique ne porte plus les messages d avant — manquent : ' + manquants.join(' · '));
+    else ok('TF-1490 (C) : sans --profil, la rouge historique échoue par S3 et S4 avec les messages d avant, mot pour mot');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1447 (28/09/2026) — LE MOTIF D'UN SKIP A UNE PLACE FIXE, ET LA RECETTE LE TIENT POUR TOUS.
 //
 // LE FAIT. Le contrat JSON commun ne disait pas où vit la raison d'un SKIP : en fin de non_juge chez

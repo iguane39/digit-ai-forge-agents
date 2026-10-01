@@ -1,0 +1,9 @@
+{
+ "nom": "client-fictif",
+ "version": "1.0.0",
+ "_decision": "TF-1490 (01/10/2026) : profil de JEU D'ESSAI, inventé. Le format d'un client dont les petites icônes de contenu sont admises sur toute diapositive, et dont le pied de page et la pagination vivent en zones de texte au bas de la diapositive. Désigné par --profil au manifest (TF-0912), jamais résolu par voisinage.",
+ "pptx": {
+  "logos": "partout",
+  "pied_de_page": "zone-texte"
+ }
+}

@@ -25,6 +25,16 @@
 // intercalaire = slide contenant un paragraphe-numéro isolé (1-2 chiffres) et l'intitulé.
 // Provenance : règles kicker/logo/bijection nées de renders fautifs (charte v2, « legacy renders
 // to discard ») ; overrides fantômes découverts après livraison le 08/06 (inventaire P2 §2).
+//
+// TF-1490 (01/10/2026) — S3 ET S4 SUIVENT LA POLITIQUE PPTX DU PROFIL, COMME P1 À P3 D'ORACLE-PPTX.
+// Le fait (lot Produit-64 20260928c, RA-5) : sous `--profil generique`, le support d'un client au
+// format de ce client rendait 69 constats, 21 S3 sur des icônes de contenu et 48 S4 faute d'espace
+// réservé, quand son pied de page et sa pagination vivent en zones de texte ; le deck de référence
+// du format en porte autant. Seule issue au vert : une exemption par fichier, à renouveler pour
+// chaque support. `--profil <chemin>` lit désormais `pptx.logos` (zone admise pour les logos :
+// `couverture-interlocuteurs` ou `partout`) et `pptx.pied_de_page` (forme admise : `espace-reserve`
+// ou `zone-texte`, un texte au bas de la diapositive, sous 80 % de sa hauteur). Une clé absente du
+// profil : la règle n'est pas jouée, et c'est dit. Sans `--profil`, la charte Digit-AI, comme avant.
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -37,7 +47,10 @@ import { ecrivainDeContrat } from './lib/contrat.mjs';
 const contratJSON = ecrivainDeContrat({ premier: true });
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const file = process.argv.slice(2).find(a => !a.startsWith('--'));
+const argv = process.argv.slice(2);
+const iProfil = argv.indexOf('--profil');
+const profilChemin = iProfil >= 0 ? argv[iProfil + 1] : null;
+const file = argv.find((a, i) => !a.startsWith('--') && !(iProfil >= 0 && i === iProfil + 1));
 const DOM = 'Charte PPTX sémantique (sommaire, kicker, logos, footer)';
 const findings = [];
 const non_juge = [
@@ -51,6 +64,16 @@ const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'ora
 const skip = m => { non_juge.unshift(m); out('SKIP', 2); };
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (!/\.pptx$/i.test(file)) skip('extension non gérée');
+// TF-1490 : la zone admise pour les logos (S3) et la forme admise du pied de page (S4) viennent du
+// profil quand il est passé ; sans profil, la charte Digit-AI, comme avant.
+let CHARTE = { logos: 'couverture-interlocuteurs', pied_de_page: 'espace-reserve', profil: null };
+if (profilChemin) {
+  let prof = null;
+  try { prof = JSON.parse(fs.readFileSync(profilChemin, 'utf8')); } catch { /* dit ci-dessous */ }
+  if (!prof) skip('profil illisible : ' + profilChemin);
+  const pol = prof.pptx || {};
+  CHARTE = { logos: pol.logos ?? null, pied_de_page: pol.pied_de_page ?? null, profil: prof.nom || path.basename(profilChemin, '.json') };
+}
 const py = resolvePython(); // portable Windows/Unix, esquive l'alias Store (cf. lib/python.mjs)
 if (!py) skip('python indisponible (lecture zip impossible)');
 
@@ -89,11 +112,14 @@ for idx, target in enumerate(order):
     has_ftr = bool(re.search(r'<p:ph type="ftr"', xml))
     has_num = bool(re.search(r'<p:ph type="sldNum"', xml) or re.search(r'type="slidenum"', xml))
     slides.append({"n": idx + 1, "file": name.split("/")[-1], "shapes": shapes, "imgs": imgs, "has_media": has_media, "has_ftr": has_ftr, "has_num": has_num, "notes": notes})
-print(json.dumps(slides))
+sz = re.search(r'<p:sldSz\\b[^>]*?cy="(\\d+)"', read("ppt/presentation.xml"))
+print(json.dumps({"hauteur": int(sz.group(1)) if sz else None, "slides": slides}))
 `;
 const r = spawnSync(py[0], [...py.slice(1), '-c', script, file], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
-let slides = null; try { slides = JSON.parse((r.stdout || '').trim()); } catch {}
-if (!slides) skip('inspection XML inexécutable : ' + (r.stderr || '').slice(0, 120));
+let lu = null; try { lu = JSON.parse((r.stdout || '').trim()); } catch {}
+if (!lu) skip('inspection XML inexécutable : ' + (r.stderr || '').slice(0, 120));
+const slides = lu.slides;
+const HAUTEUR = lu.hauteur || 6858000; // 16:9 standard quand presentation.xml ne dit rien (TF-1490, S4 en zone de texte)
 if (!slides.length) { findings.push({ sev: 'bloquant', msg: 'aucun slide résolu depuis presentation.xml', where: path.basename(file) }); out('FAIL', 1); }
 
 const titleOf = s => { const t = s.shapes.find(x => x.ph === 'title' || x.ph === 'ctrTitle'); return t ? t.text : ''; };
@@ -128,18 +154,43 @@ for (const s of slides) {
   }
 }
 
-// S3 — logos hors couverture/interlocuteurs
+// S3 — logos hors couverture/interlocuteurs (zone admise par le profil, TF-1490)
 const LOGO_MAX_CX = 2000000;
-for (const s of slides) {
-  if (s.n === 1 || /interlocuteur/i.test(titleOf(s))) continue;
-  s.imgs.filter(i => i.cx > 0 && i.cx <= LOGO_MAX_CX).forEach(() => findings.push({ sev: 'bloquant', msg: `S3 — image au gabarit logo (≤ ${LOGO_MAX_CX} EMU) hors couverture/interlocuteurs`, where: s.file }));
+const duProfil = CHARTE.profil ? ` (profil « ${CHARTE.profil} »)` : '';
+const parLeProfil = CHARTE.profil ? ` par le profil « ${CHARTE.profil} »` : '';
+if (CHARTE.logos === 'couverture-interlocuteurs') {
+  for (const s of slides) {
+    if (s.n === 1 || /interlocuteur/i.test(titleOf(s))) continue;
+    s.imgs.filter(i => i.cx > 0 && i.cx <= LOGO_MAX_CX).forEach(() => findings.push({ sev: 'bloquant', msg: `S3 — image au gabarit logo (≤ ${LOGO_MAX_CX} EMU) hors couverture/interlocuteurs`, where: s.file }));
+  }
+} else if (CHARTE.logos === 'partout') {
+  non_juge.push(`S3 : logos et petites images admis sur toute diapositive${duProfil}, pptx.logos = partout — aucune zone à juger`);
+} else {
+  non_juge.push(CHARTE.logos == null
+    ? `S3 NON jouée : le profil${duProfil} ne déclare aucune zone admise pour les logos (pptx.logos : couverture-interlocuteurs ou partout)`
+    : `S3 NON jouée : zone de logos « ${CHARTE.logos} » inconnue${duProfil} (attendu couverture-interlocuteurs ou partout)`);
 }
 
-// S4 — footer + pagination sur les slides de contenu
-for (const s of slides) {
-  if (s.n === 1 || /interlocuteur/i.test(titleOf(s))) continue;
-  if (!s.has_ftr) findings.push({ sev: 'bloquant', msg: 'S4 — footer absent (placeholder ftr au niveau slide)', where: s.file });
-  if (!s.has_num) findings.push({ sev: 'bloquant', msg: 'S4 — pagination absente (placeholder sldNum au niveau slide)', where: s.file });
+// S4 — footer + pagination sur les slides de contenu, dans la forme admise par le profil (TF-1490)
+//   espace-reserve : placeholders ftr et sldNum (ou champ slidenum) au niveau de la diapositive ;
+//   zone-texte     : un texte au bas de la diapositive (sous 80 % de sa hauteur) ; la pagination est
+//                    un texte de ce bandeau qui FINIT par un numéro (« 12 », « 12 / 25 », « … · 12 »).
+const NUMERO_SEUL = /^\s*\d{1,3}(?:\s*\/\s*\d{1,3})?\s*$/;
+const FINIT_PAR_NUMERO = /(?:^|[\s·|—–-])\d{1,3}(?:\s*\/\s*\d{1,3})?\s*$/;
+if (CHARTE.pied_de_page === 'espace-reserve' || CHARTE.pied_de_page === 'zone-texte') {
+  const texte = CHARTE.pied_de_page === 'zone-texte';
+  for (const s of slides) {
+    if (s.n === 1 || /interlocuteur/i.test(titleOf(s))) continue;
+    const bas = texte ? s.shapes.filter(x => !x.ph && x.y != null && x.y >= 0.8 * HAUTEUR && x.text) : [];
+    const pied = s.has_ftr || bas.some(x => !NUMERO_SEUL.test(x.text));
+    const page = s.has_num || bas.some(x => FINIT_PAR_NUMERO.test(x.text));
+    if (!pied) findings.push({ sev: 'bloquant', msg: texte ? `S4 — footer absent (zone de texte au bas de la diapositive, forme admise${parLeProfil})` : 'S4 — footer absent (placeholder ftr au niveau slide)', where: s.file });
+    if (!page) findings.push({ sev: 'bloquant', msg: texte ? `S4 — pagination absente (numéro en zone de texte au bas de la diapositive, forme admise${parLeProfil})` : 'S4 — pagination absente (placeholder sldNum au niveau slide)', where: s.file });
+  }
+} else {
+  non_juge.push(CHARTE.pied_de_page == null
+    ? `S4 NON jouée : le profil${duProfil} ne déclare aucune forme admise pour le pied de page (pptx.pied_de_page : espace-reserve ou zone-texte)`
+    : `S4 NON jouée : forme de pied de page « ${CHARTE.pied_de_page} » inconnue${duProfil} (attendu espace-reserve ou zone-texte)`);
 }
 
 // S5 — le lexique du destinataire (TF-1152, 16/09/2026).
@@ -190,6 +241,10 @@ let s5Etat = null;
 }
 
 if (findings.length) out('FAIL', 1);
-findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), S1-S4 vérifiés`
+// TF-1490 : un PASS dit quelles règles il a jouées — sous un profil qui ne déclare pas S3 ou S4, elles ne l'ont pas été.
+const regles34 = (CHARTE.logos === 'couverture-interlocuteurs' && CHARTE.pied_de_page === 'espace-reserve') ? 'S1-S4 vérifiés'
+  : `S1-S2 vérifiés, S3 ${CHARTE.logos === 'couverture-interlocuteurs' ? 'vérifiée' : CHARTE.logos === 'partout' ? 'sans zone à juger' : 'NON jouée'}, `
+    + `S4 ${['espace-reserve', 'zone-texte'].includes(CHARTE.pied_de_page) ? 'vérifiée (' + CHARTE.pied_de_page + ')' : 'NON jouée'}${duProfil}`;
+findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), ${regles34}`
   + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)'), where: path.basename(file) });
 out('PASS', 0);

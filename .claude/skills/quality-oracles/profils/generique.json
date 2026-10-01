@@ -1,6 +1,6 @@
 {
   "nom": "generique",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "perf": {
     "poids_warn": 2097152,
     "poids_fail": 5242880,
@@ -11,7 +11,8 @@
   },
   "pptx": {
     "jpeg_interdit": false,
-    "transitions_interdites": false
+    "transitions_interdites": false,
+    "_charte": "TF-1490 (01/10/2026) : ni zone de logos (logos) ni forme de pied de page (pied_de_page) déclarées. Le profil générique n'impose aucune charte de support : S3 et S4 d'oracle-charte-pptx-semantique ne sont pas jouées sous lui, et le disent. Un profil client les déclare : logos couverture-interlocuteurs ou partout, pied_de_page espace-reserve ou zone-texte."
   },
   "nommage": {
     "_decision": "TF-0071 (11/08/2026) : convention générique MINIMALE plutôt que SKIP permanent — le motif Q3-bis est purement structurel (aucun préfixe imposé, aucun nom de marque) : seul un fichier qui ADOPTE la forme « <X> - <Y> - … » est jugé, et il doit alors la finir correctement (date AAAAMMJJ + indice). Un projet aux conventions propres n'est jamais condamné : ses fichiers ordinaires ne déclenchent pas.",

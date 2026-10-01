@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.32.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.33.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -28,7 +28,7 @@
 | Sortie LLM / IA générative | `scripts/oracle-llm.mjs` — schéma JSON (auto) + checklist véracité | cli | ⚙️ |
 | Programme de formation (structure pédagogique) | `scripts/oracle-programme-formation.mjs` — C1 sommes de durées, C2 part de pratique déclarée, C3 couverture vs référence, C4 segment ≤ 50 min, C5 évaluation par bloc (.md/.docx) | cli | ✅ |
 | Support de diapositives (parité de format par profil) | `scripts/oracle-pptx.mjs --profil <profil>` — P1 format (`pptx.format`), P2 polices (`pptx.polices`), P3 couleurs de texte (`pptx.palette`), plus l'hygiène du paquet ; règles propres à un type de séance = invocation locale au produit (TF-1130) | cli | ⚙️ |
-| Charte PPTX sémantique (sommaire, kicker, logos, footer) | `scripts/oracle-charte-pptx-semantique.mjs` — S1 bijection sommaire↔intercalaires, S2 kicker, S3 logos hors couverture/interlocuteurs, S4 footer+pagination, S5 lexique du destinataire sur textes **et notes** (`lib-lexique.mjs` du pilot, celui d'EC-7 et de S46) | cli | ✅ |
+| Charte PPTX sémantique (sommaire, kicker, logos, footer) | `scripts/oracle-charte-pptx-semantique.mjs <deck.pptx> --profil <profil>` — S1 bijection sommaire↔intercalaires, S2 kicker, S3 logos hors de la zone admise, S4 footer+pagination dans la forme admise, S5 lexique du destinataire sur textes **et notes** (`lib-lexique.mjs` du pilot, celui d'EC-7 et de S46). **S3 et S4 suivent le profil** (TF-1490) : `pptx.logos` (`couverture-interlocuteurs` ou `partout`), `pptx.pied_de_page` (`espace-reserve` ou `zone-texte`) ; digit-ai déclare la charte d'avant, generique ne déclare rien (S3 et S4 non jouées, et dites) | cli | ✅ |
 | État de la forge (versions, couverture, fixtures, dormance) | `scripts/oracle-etat-forge.mjs versions-livrees.json [--restitution <fichier>] [--ledger <run.jsonl>]` — F1 versions montées vs livrées, F2 fixtures présentes, F3 corpus résolus, F4 ligne de couverture, F5 dormance, **F6 maquette validée avant le code d'une vue**, **F7 l'auteur du contrat de sortie n'est pas son exécutant** | cli | ✅ |
 | Traçabilité exigences AO → réponse | `scripts/oracle-exigences-ao.mjs <réponse.md> --exigences <référentiel>` — X1 exigences tracées, X2 rubriques à l'identique, X3 pièces livrées (invocation explicite par dossier) | cli | ✅ |
 | Simulateur JS (KPI vs modèle de référence) | `scripts/oracle-simulateur-js.mjs <page.html> --attendus <json>` — J1 autoportance des libs, J2 KPI aux valeurs par défaut vs attendus à tolérance déclarée | cli | ✅ |
@@ -623,3 +623,31 @@ livrable qui embarquent des polices, chacune décodée comme la décode le poste
   réseau), qui n'est pas embarquée ; une page de plus de 1 Mo, dont `run-oracles` ne lit pas le
   contenu pour le routage (aucune parmi les 44 mesurées) ; les contours CFF et Type 1 ; le rendu
   réel chez le destinataire.
+
+## Correction du 01/10/2026 — la charte PPTX sémantique suit le profil (TF-1490, v2.33.0)
+
+Le lot `Produit-64 - RETOURS - 20260928c` (RA-5) : sous `--profil generique`, le support d'un
+client au format de ce client rendait 69 constats de la charte sémantique, 21 S3 sur des icônes de
+contenu et 48 S4 faute d'espace réservé, quand son pied de page et sa pagination vivent en zones de
+texte. Le deck de référence du format, produit hors de la forge, en porte autant. Seule issue au
+vert : une exemption par fichier, à renouveler pour chaque support. La règle qui l'aurait évité
+était déjà écrite pour le domaine voisin (TF-1130) : les règles de marque passent par le profil.
+
+- **La commande** passe désormais `--profil {profil}`, comme celle du domaine « Support de
+  diapositives ». L'oracle lit deux clés de la politique `pptx` du profil :
+  `logos`, la zone admise pour les logos (`couverture-interlocuteurs` ou `partout`), et
+  `pied_de_page`, la forme admise (`espace-reserve`, ou `zone-texte` : un texte sous 80 % de la
+  hauteur de la diapositive, et une pagination qui finit par un numéro).
+- **Les profils livrés** : digit-ai déclare `couverture-interlocuteurs` et `espace-reserve`, la
+  charte d'avant, messages compris mot pour mot ; generique ne déclare rien, et S3 et S4 sont dites
+  NON jouées. Un profil client déclare sa propre forme. Sans `--profil`, l'oracle juge comme avant.
+- **Mesure du 01/10/2026 sur les 91 decks du poste lus en place**, hors fixtures et archives : la
+  commande d'avant rendait 742 constats S3 et 1 636 constats S4, et 80 decks en FAIL ; sous
+  generique, 0 constat S3 ou S4 et 11 decks en FAIL, pour S1, S2 ou S5 ; sous digit-ai, des
+  constats identiques à ceux d'avant sur les 91 decks.
+- **Preuve** : deux paires au manifest sur un support FICTIF au format d'un client
+  (`fixtures/gen-charte-pptx-client-fixtures.py`, profil de jeu d'essai `fixtures/profil-charte-client.json`).
+  `charte-pptx-profil-client` : vert sous son profil, rouge quand une diapositive perd pied de page
+  et pagination. `charte-pptx-profil-digit-ai` : le même support vert est rouge sous digit-ai, par S3
+  et S4. Le bloc TF-1490 de la recette joue aussi l'entrée réelle par le lanceur : PASS sous
+  generique, FAIL sous le profil par défaut, et la rouge historique garde ses messages.
