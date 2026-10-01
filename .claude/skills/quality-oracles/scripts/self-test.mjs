@@ -2390,6 +2390,27 @@ else {
   }
 }
 
+// TF-1348 (01/10/2026) — npm SE LANCE SOUS WINDOWS. `npm` y est un script `npm.cmd`, que Node refuse
+// de lancer sans shell : `npm audit` rendait status null et aucune sortie, et oracle-sca rendait SKIP
+// (« exit null ») sur un poste où npm répond. Le cas ne juge ni le registre npm ni le réseau : il
+// exige seulement que le processus ait été LANCÉ. Sans npm sur le poste, il le dit.
+{
+  const aNpm = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['npm'], { encoding: 'utf8' }).status === 0;
+  if (!aNpm) ok('TF-1348 NON JUGÉ sur ce poste : npm absent');
+  else {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-sca-npm-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'sca-npm', version: '1.0.0', dependencies: {} }));
+      fs.writeFileSync(path.join(dir, 'package-lock.json'), JSON.stringify({ name: 'sca-npm', version: '1.0.0', lockfileVersion: 3, requires: true, packages: { '': { name: 'sca-npm', version: '1.0.0' } } }));
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-sca.mjs'), dir], { encoding: 'utf8', timeout: 120000 });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* illisible : dit ci-dessous */ }
+      if (!j) ko('TF-1348 : sortie d\'oracle-sca illisible — ' + String(r.stdout || r.stderr).slice(0, 120));
+      else if (/exit null/.test(JSON.stringify(j))) ko('TF-1348 : npm audit n\'a pas été lancé (exit null) alors que npm est présent — verdict ' + j.verdict);
+      else ok(`TF-1348 : npm audit lancé par oracle-sca sur un projet npm sans dépendance, verdict ${j.verdict}`);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

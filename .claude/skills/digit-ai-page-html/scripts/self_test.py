@@ -3062,6 +3062,7 @@ def run_poseur_composants():
     """
     if not shutil.which("node"):
         return None
+    import os
     import subprocess
     import tempfile
     poseur = str(Path(__file__).resolve().parent / "embarquer-composants.mjs")
@@ -3086,6 +3087,40 @@ def run_poseur_composants():
     nu = subprocess.run(["node", poseur], capture_output=True, text=True, encoding="utf-8")
     cas("poseur · sans drapeau, l'usage est toujours refuse (la garde n'a rien eteint)",
         2, nu.returncode, "TF-0890 point d'entree", nu.stderr[-280:])
+
+    # ---- 5 (TF-1416, 01/10/2026) : appele par une JONCTION ou un lien vers le skill ----------
+    # La garde de point d'entree comparait le chemin resolu du module au chemin de la jonction :
+    # main() ne s'executait pas, rien n'etait pose, et le script sortait 0 sans message. Mesure le
+    # 24/09 sur un profil dont le dossier des skills est une jonction. Silencieux si le lien ne se
+    # cree pas sur ce poste.
+    lien_dir = tempfile.mkdtemp(prefix="self-test-jonction-")
+    lien = Path(lien_dir) / "skill"
+    skill = Path(poseur).resolve().parent.parent
+    try:
+        if os.name == "nt":
+            cree = subprocess.run(["cmd", "/c", "mklink", "/J", str(lien), str(skill)],
+                                  capture_output=True, text=True).returncode == 0
+        else:
+            os.symlink(skill, lien)
+            cree = True
+        if cree:
+            page_j = Path(lien_dir) / "page-jonction.html"
+            page_j.write_text('<!DOCTYPE html>\n<html lang="fr">\n<head>\n<title>Essai</title>\n'
+                              "</head>\n<body>\n</body>\n</html>\n", encoding="utf-8")
+            pj = subprocess.run(["node", str(lien / "scripts" / "embarquer-composants.mjs"), "--poser",
+                                 str(page_j), "--composants", "table-filters.js"],
+                                capture_output=True, text=True, encoding="utf-8")
+            cas("poseur · appele par une jonction, il pose (sens rouge : rien pose, exit 0)",
+                True, pj.returncode == 0
+                and 'data-composant="table-filters.js"' in page_j.read_text(encoding="utf-8"),
+                "TF-1416 point d'entree", (pj.stderr or pj.stdout)[-280:])
+    finally:
+        if lien.exists() or os.path.islink(lien):
+            if os.name == "nt":
+                os.rmdir(lien)
+            else:
+                os.unlink(lien)
+        shutil.rmtree(lien_dir, ignore_errors=True)
 
     # ---- 3 et 4 : poser hors de l'arbre des skills, puis rejouer la parite dessus ------------
     atelier = tempfile.mkdtemp(prefix="self-test-poseur-")

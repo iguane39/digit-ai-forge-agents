@@ -75,7 +75,9 @@ if (req) {
 if (pkg) {
   const dir = path.dirname(pkg);
   if (!FIGE && have('npm') && (fs.existsSync(path.join(dir, 'package-lock.json')) || fs.existsSync(path.join(dir, 'npm-shrinkwrap.json')))) {
-    const r = spawnSync('npm', ['audit', '--json'], { cwd: dir, encoding: 'utf8' });
+    // Sous Windows, npm est un script `npm.cmd` : Node refuse de le lancer sans shell (status null,
+    // aucune sortie), et l'oracle rendait SKIP sur un poste où npm répond (TF-1348, 01/10/2026).
+    const r = spawnSync('npm', ['audit', '--json'], { cwd: dir, encoding: 'utf8', shell: process.platform === 'win32' });
     let j = null; try { j = JSON.parse(r.stdout || ''); } catch { /* sortie inexploitable : non vérifié */ }
     const v = j && j.metadata && j.metadata.vulnerabilities;
     if (!v) nonVerifie('npm audit sans sortie exploitable (exit ' + r.status + ') → dépendances npm NON vérifiées — registre npm injoignable ?');

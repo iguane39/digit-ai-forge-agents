@@ -259,6 +259,11 @@ export function main(argv) {
         + `${r.manquants.join(', ')} — rien n'a été écrit.`);
       return 2;
     }
+    if (!r.poses.length) {
+      // Une porte qui se fie au code de sortie du poseur croirait la pose faite (TF-1416).
+      console.error(`aucun bloc posé dans ${cible} — rien n'a été écrit.`);
+      return 1;
+    }
     fs.writeFileSync(cible, r.html, 'utf8');
     console.log(`composants embarqués : ${r.poses.length} bloc(s) posé(s) dans ${cible} —`);
     for (const p of r.poses) console.log(`  · ${p}`);
@@ -305,6 +310,14 @@ export function main(argv) {
 // LA GARDE DE POINT D'ENTRÉE (TF-0890). Sans elle, l'analyse d'arguments s'exécutait à l'IMPORT
 // et tout `import { blocCanonique }` terminait le processus avec le code 2 avant le premier
 // appel. Un module qui s'exécute quand on l'importe n'a pas d'API : il n'a qu'un script.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// TF-1416 (01/10/2026) : appelé par une JONCTION ou un lien vers le skill, Node charge le module par
+// son chemin résolu et `process.argv[1]` garde celui du lien ; comparés tels quels, ils différaient,
+// main() ne s'exécutait pas et le script sortait 0 sans rien poser. Les deux côtés se résolvent.
+function estPointDEntree() {
+  if (!process.argv[1]) return false;
+  try { return fs.realpathSync(fileURLToPath(import.meta.url)) === fs.realpathSync(process.argv[1]); }
+  catch { return import.meta.url === pathToFileURL(process.argv[1]).href; }
+}
+if (estPointDEntree()) {
   process.exit(main(process.argv));
 }
