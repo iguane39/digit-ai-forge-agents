@@ -8,13 +8,13 @@ description: >
   footer, pagination, nommage ; sans dossier de marque, il rend la main. Construit le slide
   canonique "Vos interlocuteurs chez Digit-AI" avec le deck.
   Use when / déclencher dès que l'utilisateur demande de créer, mettre à jour, refondre,
-  charter ou produire un PowerPoint pour Digit-AI ou pour un client de Digit-AI, quel que soit
-  son nom (pseudonymisé : Client-A, Client-F…), ou parle de propale, deck, slides,
+  charter, produire ou exporter un PowerPoint pour Digit-AI ou pour un client de Digit-AI,
+  quel que soit son nom (pseudonymisé : Client-A, Client-F…), ou parle de propale, deck, slides,
   présentation en contexte Digit-AI. Ne pas déclencher pour rédiger ou chiffrer une
   proposition commerciale (→ digit-ai-propale), pour l'auditer avant envoi
   (→ digit-ai-propale-review), ni pour un livrable hors charte Digit-AI (→ systeme-de-marque).
 metadata:
-  version: "2.6.0"
+  version: "2.7.0"
 ---
 
 # Digit-AI PowerPoint Skill
@@ -22,6 +22,14 @@ metadata:
 Encode les **règles de composition** des livrables PPTX Digit-AI (charte v2) et **consomme** les
 **valeurs** de marque là où elles vivent : chez l'émetteur.
 
+> **Journal du 2026-10-01 — v2.7.0 (TF-1502, décision humaine D-37 (a)).** L'export par
+> PowerPoint entre dans le skill (étape 7). Un produit le réécrivait en 9 scripts maison :
+> 8 appelaient `Quit()` sur l'instance que l'utilisateur avait ouverte, et aucun ne contrôlait
+> les polices embarquées, sorties fausses sur 5 versions d'un deck. `scripts/exporter-pptx.mjs`
+> pose un verrou entre sessions et ne quitte jamais un PowerPoint qu'il n'a pas lancé. Il fait
+> juger les polices embarquées, les réencode hors PowerPoint sur un FAIL, et refuse de livrer si
+> le jugement reste en échec. Self-test : contrôles C5 à C8.
+>
 > **Journal du 2026-09-11 — v2.6.0 (TF-1022 / TF-1023, décision humaine D-4 « 4b pour les
 > powerpoints »).** Ce skill ne peint plus depuis des valeurs écrites dans son texte. Il
 > **charge** les jetons du support « diapositives » du dossier de marque de l'émetteur
@@ -82,7 +90,24 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    arrondis sans cadre), placement **contain-fit** (ratio préservé, jamais d'étirement).
 6. Construire le PPTX avec pptxgenjs, **en n'écrivant que des valeurs venues de l'étape 1** :
    aucune couleur ni police littérale dans le script de génération — les lire depuis le JSON.
-7. **Passe QA finale (obligatoire)** — deux temps, l'oracle d'abord :
+7. **Exporter par PowerPoint**, jamais par un script maison : le PPTX ressort avec ses polices
+   embarquées, et le PDF sert la passe QA et la remise.
+
+   ```bash
+   node scripts/exporter-pptx.mjs <deck pptxgenjs>.pptx --pptx <deck à livrer>.pptx --pdf <deck à livrer>.pdf
+   ```
+
+   Le script attend son tour derrière le verrou des autres sessions, travaille sur une copie, ne
+   ferme que sa présentation et ne quitte que l'instance qu'il a lancée lui-même, invisible et
+   sans autre présentation. Il fait ensuite juger les polices embarquées par
+   `../quality-oracles/scripts/oracle-polices-embarquees.mjs`. Sur un FAIL, il les réencode hors
+   PowerPoint (`scripts/reembarquer-polices.py`) et les fait rejuger ; un second échec vaut
+   refus. Il n'écrase aucun fichier et livre tout ou rien. **Exit 1 ou 2 ⇒ rien n'est livré** :
+   citer le `motif` du rapport JSON. Si ce motif dit l'absence de Windows ou de PowerPoint, le
+   deck pptxgenjs part sans polices embarquées, et la restitution le dit.
+   `--instance-neuve` refuse de travailler dans un PowerPoint déjà ouvert, pour un export sans
+   surveillance ; `--deja-exporte` assainit seul un deck exporté ailleurs.
+8. **Passe QA finale (obligatoire)** — deux temps, l'oracle d'abord :
 
    ```bash
    node ../quality-oracles/scripts/oracle-charte-pptx-semantique.mjs <deck.pptx>
@@ -94,10 +119,10 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    (TF-1152). Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
    fichier LEXIQUE.json du socle du projet où vit le deck : si le `non_juge` déclare l'avoir
    cherché en vain, le vocabulaire du client n'a été jugé par personne — le dire, pas conclure.
-   Puis rasteriser tout le deck (PDF → PNG) et inspecter **chaque** slide — aucune image
+   Puis rasteriser le PDF de l'étape 7 (PDF → PNG) et inspecter **chaque** slide — aucune image
    déformée / hors zone / encadrée, aucun texte qui déborde d'un encart ou de la slide.
    Détail : `references/drive-assets.md` §8.
-8. Nommer selon la convention ci-dessous, livrer dans `/mnt/user-data/outputs/` via `present_files`.
+9. Nommer selon la convention ci-dessous, livrer dans `/mnt/user-data/outputs/` via `present_files`.
 
 Le slide canonique « Vos interlocuteurs » se **construit avec le deck** (étape 6), il ne se
 greffe pas sur un PPTX existant : l'outil de fusion XML décrit par la v2.5.0 est **non livré**
@@ -145,7 +170,13 @@ manipulation XML directe n'est livré avec ce skill (cf. « Non livré »).
 `scripts/prepare_images.py`) importent **Pillow** (`PIL`) — validation d'image et dimensions
 réelles pour le premier, transcodage et masque alpha pour le second. Prérequis :
 `pip install Pillow`. Sans Pillow, l'étape 5 (images) échoue ; le reste du workflow tient.
-`scripts/lire-marque.mjs` et `scripts/self-test.mjs` sont en Node pur, **sans dépendance**.
+`scripts/lire-marque.mjs` et `scripts/self-test.mjs` sont en Node pur, **sans dépendance** npm.
+
+**Export (étape 7)** : Windows, PowerPoint et Windows PowerShell 5.1 pour
+`scripts/exporter-powerpoint.ps1` ; Python 3 et fontTools, sinon `uv run --with fonttools`, pour
+`scripts/reembarquer-polices.py` et pour le juge ; le skill voisin quality-oracles, qui porte ce
+juge. S'il en manque un, l'export rend exit 2 avec son motif et ne livre rien. Le self-test rend
+alors SKIP sur les contrôles qu'il ne peut pas jouer, jamais PASS.
 
 ## Références chargées à la demande
 
@@ -168,9 +199,21 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   attendues dans `attendu.json`) et `fixtures/marque-sans-blue` (rouge, exit 2). Node, sans dépendance.
 - `scripts/fetch_drive_assets.py` — liste / cherche par tag / télécharge / valide des images d'un dossier Drive public (raccourcis `images`, `logos`, `profils` ; webp reconnu). **Requiert Pillow.**
 - `scripts/prepare_images.py` — prépare pour embarquement PPTX : transcodage webp/gif→PNG, coins arrondis (masque alpha, **sans cadre**), calcul contain-fit, manifest JSON. **Requiert Pillow.**
+- `scripts/exporter-pptx.mjs` — **l'export par PowerPoint** de l'étape 7 : verrou entre sessions,
+  appel de `scripts/exporter-powerpoint.ps1`, jugement des polices embarquées, réencodage si FAIL,
+  livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
+- `scripts/exporter-powerpoint.ps1` — le seul code qui pilote PowerPoint (COM) : copie unique
+  ouverte sans fenêtre, PPTX à polices embarquées et PDF, puis la règle de décision qui ne quitte
+  que l'instance lancée par l'export. Son mode `-Decision` rejoue la règle sans PowerPoint.
+- `scripts/reembarquer-polices.py` — réencode les polices embarquées d'un PPTX dans un processus
+  neuf, sur les polices sources du poste ou de `--polices`. Refuse sans rien écrire si une source
+  manque, diffère de version, ou si un glyphe se perdrait.
 - `scripts/self-test.mjs` — self-test du skill : liens relatifs du SKILL.md (C1), absence de nom
   de client (C2), consommation effective du système de marque sur les deux fixtures (C3),
-  absence de valeur de marque en dur dans ce fichier (C4). Node, sans dépendance.
+  absence de valeur de marque en dur dans ce fichier (C4), règle de décision et ses 3 mutants
+  (C5), verrou entre processus (C6), chaîne d'assainissement sur fixtures fictives (C7), essai
+  réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne). Les
+  deux polices sources fausses de C7 sortent de `fixtures/export/gen-source-defectueuse.py`.
 
 ## Non livré (constat daté du 2026-09-11, TF-1022)
 
@@ -224,12 +267,19 @@ le renvoi est retiré du workflow, le manque est déclaré.
   (image déformée / hors zone / encadrée, **texte qui déborde d'un encart ou de la slide**, zones
   qui se chevauchent). Corriger à la source et re-générer — jamais livrer avec un défaut.
 - **Toujours** vérifier visuellement le rendu avant de livrer (conversion PDF + lecture des slides)
+- **Jamais d'export PowerPoint par un script maison**, et jamais `Quit()` sur une application que
+  l'export n'a pas lancée : l'instance ouverte appartient à l'utilisateur, avec ses documents.
+  L'export passe par `scripts/exporter-pptx.mjs`, et un PPTX à polices embarquées ne se livre
+  qu'après le PASS de leur juge.
 
 ## Exemple type
 
 - « Crée une propale pour X, périmètre Y » → `scripts/lire-marque.mjs` (étape 1) +
   `references/charte.md` + `references/layouts.md` + `references/drive-assets.md` ; couverture
-  (logos + photo) + sommaire + contenu (images ~1/2) + interlocuteurs ; QA ; nommer ; livrer.
+  (logos + photo) + sommaire + contenu (images ~1/2) + interlocuteurs ; export (étape 7) ; QA ;
+  nommer ; livrer.
+- « Tire le PDF de ce deck » ou « embarque les polices » → `scripts/exporter-pptx.mjs` (étape 7),
+  sur un nom de sortie neuf ; le rapport dit si les polices sont saines, réencodées ou absentes.
 - « Mets le slide interlocuteurs à la fin de ce PPTX » → `references/assets.md` ; le slide se
   **reconstruit** avec le deck (l'outil de greffe XML est **non livré**) ; vérifier ; nouveau
   suffixe de date.

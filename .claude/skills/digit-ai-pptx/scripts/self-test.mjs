@@ -30,20 +30,39 @@
 //   C4 — SKILL.md ne porte plus de VALEUR de marque en dur : aucune couleur hexadécimale,
 //        aucune famille de police nommée comme valeur. Les noms de jetons, eux, sont attendus.
 //        Une police nommée pour être INTERDITE reste permise : c'est une règle, pas une valeur.
+//   C5 — l'export par PowerPoint ne quitte jamais une application qu'il n'a pas lancée (TF-1502,
+//        01/10/2026 : 8 scripts maison sur 9 quittaient l'instance de l'utilisateur). La règle de
+//        `scripts/exporter-powerpoint.ps1` est jouée par son mode -Decision, sans PowerPoint, sur
+//        sept cas ; puis trois MUTANTS de la règle (Quit sans condition, garde sur le seul compte
+//        des présentations, garde sans la visibilité) doivent chacun être pris par un cas.
+//   C6 — le verrou entre sessions parallèles de `scripts/exporter-pptx.mjs` : libre il s'obtient,
+//        tenu par un processus vivant il ne s'obtient ni ne se touche, en cours d'écriture il ne se
+//        reprend pas, périmé (processus terminé, trop vieux) il se reprend et c'est dit ; deux
+//        processus lancés ensemble ne le tiennent jamais en même temps.
+//   C7 — la chaîne d'assainissement (`--deja-exporte`, sans PowerPoint) sur les fixtures FICTIVES
+//        du juge des polices embarquées (skill quality-oracles) : verte livrée à l'identique,
+//        rouge réencodée puis rejugée PASS avec ses seules parties de police changées, rouge sans
+//        police source refusée sans rien écrire, deck sans police livré tel quel, sortie existante
+//        jamais écrasée.
+//   C8 — sur demande (--essai-powerpoint) : l'essai réel par PowerPoint, joué seulement si AUCUN
+//        processus PowerPoint ne tourne, et avec --instance-neuve. L'instance lancée doit être
+//        quittée, le PPTX et le PDF écrits. Sans l'option, ou si PowerPoint tourne : non joué, dit.
 //
 // DOUBLE SENS. Chaque contrôle est rejoué sur une FIXTURE ROUGE : C1 sur un SKILL.md temporaire
 // citant un fichier absent, C2 sur un terme inventé, C3 sur le dossier de marque amputé, C4 sur
-// un texte planté. Si une fixture rouge ne rougit pas, le contrôle est aveugle et le self-test
-// échoue de lui-même. Les fixtures VERTES sont le skill réel et `fixtures/marque-valide`.
+// un texte planté, C5 sur des mutants de la règle, C6 sur un verrou tenu et un verrou en cours
+// d'écriture, C7 sur un deck à polices fausses. Si une fixture rouge ne rougit pas, le contrôle est
+// aveugle et le self-test échoue de lui-même. Les fixtures VERTES sont le skill réel,
+// `fixtures/marque-valide`, la règle livrée, un verrou libre et le deck fictif à polices saines.
 //
 // Sortie : JSON {verdict, findings, non_juge} sur stdout. Exit 0 (PASS) / 1 (FAIL) / 2 (SKIP).
-// Usage : node scripts/self-test.mjs [--skill=<dir>] [--referentiel=<chemin table>]
+// Usage : node scripts/self-test.mjs [--skill=<dir>] [--referentiel=<chemin table>] [--essai-powerpoint]
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -72,6 +91,10 @@ const NON_JUGE = [
   "C3 ne juge pas le RENDU : qu'un jeton soit lu ne prouve pas qu'il ait été peint sur la diapositive — c'est l'affaire de la passe QA du deck",
   "C4 ne voit que SKILL.md : une valeur en dur dans references/ n'est pas attrapée — charte.md porte d'ailleurs des valeurs datées, explicitement « ne fait pas foi »",
   "C4 ne connaît que la notation hexadécimale à six chiffres et les familles de polices nommées : un nom de couleur CSS ou une valeur rgb() lui échappe",
+  "C5 joue la RÈGLE de décision sur des faits donnés : que les faits soient bien relevés sur une vraie instance (numéros de processus, visibilité, présentations ouvertes) ne se prouve que par C8",
+  "C6 prouve l'exclusion entre processus d'un même poste : un verrou n'arbitre pas deux postes, et chaque poste a sa propre instance PowerPoint",
+  "C7 répare des polices fictives à une famille : l'équivalence octet pour octet avec PowerPoint sur des polices réelles est une mesure du produit (8 flux sur 8, 30/09/2026), rapportée et non rejouée ici",
+  "C8 n'est joué que sur demande, et jamais quand PowerPoint tourne : sans lui, le chemin COM réel n'est prouvé par aucun contrôle de ce self-test",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
 
@@ -256,6 +279,342 @@ function valeursEnDur(texte, etiquette) {
   return findings;
 }
 
+// ------------------------------------------- C5 : la règle « l'export a-t-il lancé l'instance ? »
+const PS1 = path.join(SKILL_DIR, 'scripts', 'exporter-powerpoint.ps1');
+const EXPORTEUR = path.join(SKILL_DIR, 'scripts', 'exporter-pptx.mjs');
+const LIGNE_REGLE = '$quitter = $lancee -and (-not $erreur) -and ($autres -eq 0) -and (-not $visible)';
+const CAS_DECISION = [
+  { cas: "instance de l'utilisateur, sans fenêtre ni présentation (le 30/09/2026)", pids_avant: [4321], pids_apres: [4321], autres_presentations: 0, visible: false, erreur_lecture: false, attendu: false },
+  { cas: "instance de l'utilisateur, visible, quatre présentations ouvertes", pids_avant: [4321], pids_apres: [4321], autres_presentations: 4, visible: true, erreur_lecture: false, attendu: false },
+  { cas: "instance lancée par l'export, seule et invisible", pids_avant: [], pids_apres: [5555], autres_presentations: 0, visible: false, erreur_lecture: false, attendu: true },
+  { cas: "instance lancée par l'export, où l'utilisateur a ouvert une présentation", pids_avant: [], pids_apres: [5555], autres_presentations: 1, visible: false, erreur_lecture: false, attendu: false },
+  { cas: "instance lancée par l'export, devenue visible", pids_avant: [], pids_apres: [5555], autres_presentations: 0, visible: true, erreur_lecture: false, attendu: false },
+  { cas: "état de l'instance illisible", pids_avant: [], pids_apres: [5555], autres_presentations: null, visible: null, erreur_lecture: true, attendu: false },
+  { cas: 'aucun processus PowerPoint retrouvé après le rattachement', pids_avant: [], pids_apres: [], autres_presentations: 0, visible: false, erreur_lecture: false, attendu: false },
+];
+const MUTANTS = [
+  { nom: 'Quit() sans condition (8 scripts maison sur 9)', ligne: '$quitter = $true' },
+  { nom: 'garde sur le seul compte des présentations', ligne: '$quitter = ($autres -eq 0)' },
+  { nom: 'garde sans la visibilité', ligne: '$quitter = $lancee -and (-not $erreur) -and ($autres -eq 0)' },
+];
+
+function jouerDecision(ps1) {
+  const cas = CAS_DECISION.map(({ attendu, ...c }) => c);
+  const b64 = Buffer.from(JSON.stringify(cas), 'utf8').toString('base64');
+  const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ps1, '-Decision', '-CasBase64', b64],
+    { encoding: 'utf8', timeout: 60000, windowsHide: true });
+  let j = null;
+  try { j = JSON.parse(String(r.stdout || '').trim().split(/\r?\n/).pop()); } catch { /* dit ci-dessous */ }
+  if (!j || !Array.isArray(j.decisions) || j.decisions.length !== CAS_DECISION.length) {
+    return { erreur: `mode -Decision sans réponse lisible (exit ${r.status}${r.error ? ', ' + r.error.code : ''}) : ${String(r.stderr || r.stdout || '').trim().slice(0, 200)}` };
+  }
+  return { ecarts: CAS_DECISION.filter((c, i) => j.decisions[i].quitter !== c.attendu).map((c) => c.cas) };
+}
+
+function verifierDecision() {
+  if (!fs.existsSync(PS1)) return { joue: true, findings: ["scripts/exporter-powerpoint.ps1 — absent : l'export par PowerPoint n'est plus livré"] };
+  if (process.platform !== 'win32') return { joue: false, motif: 'C5 NON JOUÉE : PowerShell et PowerPoint, Windows seulement' };
+  const findings = [];
+  // FIXTURE VERTE — la règle livrée rend la décision attendue sur chaque cas
+  const v = jouerDecision(PS1);
+  if (v.erreur) return { joue: true, findings: [`C5 — ${v.erreur}`] };
+  for (const cas of v.ecarts) findings.push(`C5 — exporter-powerpoint.ps1 décide mal : « ${cas} »`);
+  // FIXTURES ROUGES — trois mutants de la règle, dont celle des 8 scripts sur 9 : chacun doit être pris
+  const texte = fs.readFileSync(PS1, 'utf8');
+  const occurrences = texte.split(LIGNE_REGLE).length - 1;
+  if (occurrences !== 1) {
+    findings.push(`C5 — la ligne de la règle apparaît ${occurrences} fois dans exporter-powerpoint.ps1 au lieu d'une : les mutants ne savent plus où frapper`);
+    return { joue: true, findings };
+  }
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'self-test-decision-'));
+  try {
+    MUTANTS.forEach((m, i) => {
+      const f = path.join(tmp, `mutant-${i}.ps1`);
+      fs.writeFileSync(f, texte.replace(LIGNE_REGLE, () => m.ligne));
+      const r = jouerDecision(f);
+      if (r.erreur) findings.push(`C5 — mutant « ${m.nom} » injouable : ${r.erreur}`);
+      else if (!r.ecarts.length) findings.push(`fixture-rouge — C5 est AVEUGLE : le mutant « ${m.nom} » passe les ${CAS_DECISION.length} cas`);
+    });
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return { joue: true, findings };
+}
+
+// ------------------------------------------------------- C6 : le verrou entre sessions parallèles
+async function verifierVerrou() {
+  if (!fs.existsSync(EXPORTEUR)) return ["scripts/exporter-pptx.mjs — absent : ni verrou, ni assainissement"];
+  const { prendreVerrou, rendreVerrou, AGE_MAX_VERROU_MS } = await import(pathToFileURL(EXPORTEUR).href);
+  const findings = [];
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'self-test-verrou-'));
+  const chemin = path.join(tmp, 'export-powerpoint.verrou');
+  const poser = (o) => fs.writeFileSync(chemin, typeof o === 'string' ? o : JSON.stringify(o));
+  try {
+    // VERTE — libre : obtenu, jeton écrit, rendu
+    const v = await prendreVerrou(chemin, { attenteMs: 1000 });
+    if (!v.obtenu) findings.push("C6 — un verrou libre n'est pas obtenu");
+    else if (JSON.parse(fs.readFileSync(chemin, 'utf8')).jeton !== v.jeton) findings.push('C6 — verrou obtenu sans son jeton dans le fichier');
+    if (!rendreVerrou(v) || fs.existsSync(chemin)) findings.push('C6 — verrou rendu, fichier resté en place');
+    // ROUGE — tenu par un processus vivant : ni obtenu, ni touché (deux sessions parallèles)
+    const tenu = JSON.stringify({ pid: process.pid, jeton: 'tenu-par-une-autre-session', debut: new Date().toISOString(), entree: 'autre.pptx' });
+    poser(tenu);
+    const r1 = await prendreVerrou(chemin, { attenteMs: 600, pasMs: 100 });
+    if (r1.obtenu) findings.push("fixture-rouge — C6 : le verrou n'exclut rien, il est obtenu alors qu'un processus vivant le tient");
+    else if (r1.tenu_par?.pid !== process.pid) findings.push('C6 — verrou tenu : le rapport ne nomme pas le processus qui le tient');
+    if (fs.readFileSync(chemin, 'utf8') !== tenu) findings.push("C6 — le verrou d'une autre session a été modifié");
+    if (rendreVerrou({ obtenu: true, chemin, jeton: 'pas-le-sien' }) || !fs.existsSync(chemin)) findings.push("C6 — rendreVerrou a supprimé le verrou d'une autre session");
+    // ROUGE — en cours d'écriture (illisible depuis moins de 10 s) : pas repris
+    poser('');
+    const r2 = await prendreVerrou(chemin, { attenteMs: 500, pasMs: 100 });
+    if (r2.obtenu) findings.push("fixture-rouge — C6 : un verrou en cours d'écriture est repris, deux exports se croiseraient");
+    // VERTE — processus terminé : repris, et dit
+    const mort = spawnSync(process.execPath, ['-e', '0']).pid;
+    poser({ pid: mort, jeton: 'processus-termine', debut: new Date().toISOString() });
+    const v2 = await prendreVerrou(chemin, { attenteMs: 1000 });
+    if (!v2.obtenu || !v2.repris.some((x) => x.pid === mort)) findings.push(`C6 — le verrou d'un processus terminé (${mort}) n'est pas repris`);
+    rendreVerrou(v2);
+    // VERTE — trop vieux, processus vivant (numéro resservi) : repris
+    poser({ pid: process.pid, jeton: 'trop-vieux', debut: new Date(Date.now() - 2 * AGE_MAX_VERROU_MS).toISOString() });
+    const v3 = await prendreVerrou(chemin, { attenteMs: 1000 });
+    if (!v3.obtenu || !v3.repris.length) findings.push("C6 — un verrou plus vieux que l'âge maximal n'est pas repris");
+    rendreVerrou(v3);
+    // DEUX PROCESSUS LANCÉS ENSEMBLE — jamais ensemble dans la section tenue
+    const code = [
+      `import { prendreVerrou, rendreVerrou } from ${JSON.stringify(pathToFileURL(EXPORTEUR).href)};`,
+      `const v = await prendreVerrou(${JSON.stringify(chemin)}, { attenteMs: 20000, pasMs: 50 });`,
+      'const debut = Date.now(); await new Promise((r) => setTimeout(r, 700)); const fin = Date.now();',
+      'const rendu = rendreVerrou(v);',
+      'process.stdout.write(JSON.stringify({ obtenu: v.obtenu, debut, fin, rendu }));',
+    ].join('\n');
+    const lancer = () => new Promise((resolve) => {
+      const p = spawn(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+      let out = '';
+      p.stdout.on('data', (d) => { out += d; });
+      p.on('close', () => { try { resolve(JSON.parse(out)); } catch { resolve(null); } });
+    });
+    const [a, b] = await Promise.all([lancer(), lancer()]);
+    if (!a || !b) findings.push("C6 — un des deux processus concurrents n'a pas rendu de rapport");
+    else if (!a.obtenu || !b.obtenu) findings.push("C6 — un des deux processus concurrents n'a jamais obtenu le verrou");
+    else if (!(a.fin <= b.debut || b.fin <= a.debut)) findings.push(`fixture-rouge — C6 : deux processus ont tenu le verrou ensemble (${a.debut}-${a.fin} et ${b.debut}-${b.fin})`);
+    else if (!a.rendu || !b.rendu) findings.push("C6 — un processus concurrent n'a pas pu rendre son verrou");
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return findings;
+}
+
+// --------------------------------------------- C7 : la chaîne d'assainissement, sans PowerPoint
+const ORACLE_POLICES = path.join(SKILL_DIR, '..', 'quality-oracles', 'scripts', 'oracle-polices-embarquees.mjs');
+const FIX_POLICES = path.join(SKILL_DIR, '..', 'quality-oracles', 'fixtures');
+
+// Les noms et les CRC-32 des parties d'un paquet zip, lus dans son répertoire central (rien n'est décompressé).
+function empreintesDuPaquet(fichier) {
+  const buf = fs.readFileSync(fichier);
+  const carte = new Map();
+  let fin = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) if (buf.readUInt32LE(i) === 0x06054b50) { fin = i; break; }
+  if (fin < 0) return carte;
+  let p = buf.readUInt32LE(fin + 16);
+  for (let k = 0; k < buf.readUInt16LE(fin + 10); k++) {
+    if (buf.readUInt32LE(p) !== 0x02014b50) break;
+    const ln = buf.readUInt16LE(p + 28);
+    carte.set(buf.toString('utf8', p + 46, p + 46 + ln), buf.readUInt32LE(p + 16));
+    p += 46 + ln + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+  }
+  return carte;
+}
+
+function exporterCli(argsExport) {
+  const r = spawnSync(process.execPath, [EXPORTEUR, ...argsExport], { encoding: 'utf8', timeout: 600000, windowsHide: true });
+  let j = null;
+  try { j = JSON.parse(r.stdout); } catch { /* rapport illisible : le code et j nul le disent */ }
+  return { code: r.status, j };
+}
+
+function pythonQuiRepond() {
+  const candidats = process.platform === 'win32' ? [['py', '-3'], ['python'], ['python3']] : [['python3'], ['python']];
+  return candidats.find((c) => spawnSync(c[0], [...c.slice(1), '-c', 'import sys'], { encoding: 'utf8', timeout: 15000 }).status === 0) || null;
+}
+
+// Un deck SANS police embarquée, dérivé de la fixture verte : parties ppt/fonts/ retirées, et leurs renvois avec.
+const PY_SANS_POLICE = [
+  'import re, sys, zipfile',
+  'src, dst = sys.argv[1:3]',
+  'with zipfile.ZipFile(src) as zi, zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zo:',
+  '    for info in zi.infolist():',
+  '        if info.filename.startswith("ppt/fonts/"):',
+  '            continue',
+  '        data = zi.read(info.filename)',
+  '        if info.filename == "ppt/presentation.xml":',
+  '            data = re.sub(rb"<p:embeddedFontLst>.*?</p:embeddedFontLst>", b"", data, flags=re.S)',
+  '        if info.filename == "ppt/_rels/presentation.xml.rels":',
+  '            data = re.sub(rb"<Relationship [^>]*Target=\\"fonts/[^\\"]*\\"/>", b"", data)',
+  '        zo.writestr(info, data)',
+].join('\n');
+
+function verifierChaine() {
+  if (!fs.existsSync(EXPORTEUR)) return { joue: true, findings: ["scripts/exporter-pptx.mjs — absent : ni verrou, ni assainissement"] };
+  const vert = path.join(FIX_POLICES, 'polices-embarquees-green.pptx');
+  const rouge = path.join(FIX_POLICES, 'polices-embarquees-red.pptx');
+  const sources = path.join(FIX_POLICES, 'polices-embarquees-sources');
+  const manquent = [ORACLE_POLICES, vert, rouge, sources].filter((f) => !fs.existsSync(f));
+  if (manquent.length) return { joue: false, motif: `C7 NON JOUÉE : le juge des polices embarquées ou ses fixtures fictives manquent (${manquent.map((f) => path.basename(f)).join(', ')}) — le skill quality-oracles doit être installé à côté de ce skill` };
+  const findings = [];
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'self-test-chaine-'));
+  try {
+    // VERTE — polices saines : livrées telles quelles
+    const s1 = path.join(tmp, 'vert.pptx');
+    const a = exporterCli([vert, '--deja-exporte', '--pptx', s1, '--polices', sources]);
+    if (a.code === 2 && a.j?.etat === 'non-joue') return { joue: false, motif: `C7 NON JOUÉE : ${a.j.motif}` };
+    if (a.code !== 0 || a.j?.etat !== 'embarquees') findings.push(`C7 — fixture verte : exit ${a.code}, état ${a.j?.etat} au lieu de 0 et embarquees (${a.j?.motif})`);
+    else if (!fs.readFileSync(s1).equals(fs.readFileSync(vert))) findings.push("C7 — fixture verte : la sortie diffère de l'entrée, alors que rien n'était à réparer");
+    // ROUGE — polices fausses : jugées FAIL, réencodées, rejugées PASS ; seules les parties de police changent
+    const s2 = path.join(tmp, 'rouge.pptx');
+    const b = exporterCli([rouge, '--deja-exporte', '--pptx', s2, '--polices', sources]);
+    if (b.code !== 0 || b.j?.etat !== 'reencodees') {
+      findings.push(`fixture-rouge — C7 : polices fausses, exit ${b.code} et état ${b.j?.etat} au lieu de 0 et reencodees (${b.j?.motif})`);
+    } else {
+      const avant = empreintesDuPaquet(rouge);
+      const apres = empreintesDuPaquet(s2);
+      const changees = [...avant.keys()].filter((n) => avant.get(n) !== apres.get(n));
+      if (!changees.length || apres.size !== avant.size || changees.some((n) => !n.startsWith('ppt/fonts/'))) {
+        findings.push(`C7 — fixture rouge réparée : parties changées ${changees.join(', ') || 'aucune'} — seules des parties ppt/fonts/ doivent changer`);
+      }
+      const juge = spawnSync(process.execPath, [ORACLE_POLICES, s2, '--polices', sources], { encoding: 'utf8', timeout: 300000, windowsHide: true });
+      let jj = null;
+      try { jj = JSON.parse(juge.stdout); } catch { /* dit ci-dessous */ }
+      if (jj?.verdict !== 'PASS') findings.push(`C7 — fixture rouge réparée : le juge rejoué à part rend ${jj?.verdict ?? 'un rapport illisible'} au lieu de PASS`);
+    }
+    // ROUGE — polices fausses et aucune police source : refus, rien n'est écrit
+    const vide = path.join(tmp, 'sans-source');
+    fs.mkdirSync(vide);
+    const s3 = path.join(tmp, 'refus.pptx');
+    const c = exporterCli([rouge, '--deja-exporte', '--pptx', s3, '--polices', vide]);
+    if (c.code !== 1 || c.j?.etat !== 'refus') findings.push(`fixture-rouge — C7 : polices fausses sans police source, exit ${c.code} et état ${c.j?.etat} au lieu de 1 et refus`);
+    if (fs.existsSync(s3)) findings.push('fixture-rouge — C7 : un deck refusé a tout de même été écrit');
+    // ROUGE — le défaut est dans la police SOURCE (fixtures/export/source-defectueuse) : le réencodage
+    // réussit, le juge rejoué rend encore FAIL, et la chaîne refuse sans rien écrire
+    const s6 = path.join(tmp, 'source-defectueuse.pptx');
+    const f = exporterCli([rouge, '--deja-exporte', '--pptx', s6, '--polices', path.join(SKILL_DIR, 'fixtures', 'export', 'source-defectueuse')]);
+    if (f.code !== 1 || f.j?.etat !== 'refus' || f.j?.polices?.recontrole?.verdict !== 'FAIL') {
+      findings.push(`fixture-rouge — C7 : police source défectueuse, exit ${f.code}, état ${f.j?.etat}, recontrôle ${f.j?.polices?.recontrole?.verdict} au lieu de 1, refus et FAIL`);
+    }
+    if (fs.existsSync(s6)) findings.push('fixture-rouge — C7 : un deck encore FAIL après réencodage a été écrit');
+    // ROUGE — la police source a perdu un glyphe que la copie embarquée portait (fixtures/export/
+    // source-incomplete) : réencoder effacerait une lettre que le juge ne verrait pas, vide des deux
+    // côtés. C'est la garde « glyphe perdu » du réencodage qui refuse, et rien n'est écrit
+    const s7 = path.join(tmp, 'source-incomplete.pptx');
+    const g7 = exporterCli([vert, '--deja-exporte', '--pptx', s7, '--polices', path.join(SKILL_DIR, 'fixtures', 'export', 'source-incomplete')]);
+    const perdus = (g7.j?.polices?.reencodage?.polices || []).reduce((n, p) => n + (p.glyphes_perdus || 0), 0);
+    if (g7.code !== 1 || g7.j?.etat !== 'refus' || perdus < 1) {
+      findings.push(`fixture-rouge — C7 : police source privée d'un glyphe, exit ${g7.code}, état ${g7.j?.etat}, ${perdus} glyphe(s) perdu(s) au lieu de 1, refus et au moins 1`);
+    }
+    if (fs.existsSync(s7)) findings.push("fixture-rouge — C7 : un deck réencodé avec un glyphe en moins a été écrit");
+    // VERTE — aucune police embarquée : livré tel quel, sans juge ni réencodage
+    const py = pythonQuiRepond();
+    if (!py) {
+      findings.push("C7 — aucun interpréteur Python ne répond : le deck sans police n'a pas pu être dérivé");
+    } else {
+      const script = path.join(tmp, 'sans-police.py');
+      const sans = path.join(tmp, 'sans-police.pptx');
+      fs.writeFileSync(script, PY_SANS_POLICE);
+      const g = spawnSync(py[0], [...py.slice(1), '-B', script, vert, sans], { encoding: 'utf8', timeout: 60000 });
+      const s4 = path.join(tmp, 'sans-police-livre.pptx');
+      const d = g.status === 0 ? exporterCli([sans, '--deja-exporte', '--pptx', s4]) : null;
+      if (!d) findings.push(`C7 — deck sans police non dérivé : ${String(g.stderr || '').trim().slice(-200)}`);
+      else if (d.code !== 0 || d.j?.etat !== 'aucune') findings.push(`C7 — deck sans police : exit ${d.code}, état ${d.j?.etat} au lieu de 0 et aucune`);
+      else if (!fs.readFileSync(s4).equals(fs.readFileSync(sans))) findings.push("C7 — deck sans police : la sortie diffère de l'entrée");
+    }
+    // ROUGE — sortie déjà présente : rien n'est écrasé
+    const s5 = path.join(tmp, 'existe.pptx');
+    fs.writeFileSync(s5, 'deja la');
+    const e = exporterCli([vert, '--deja-exporte', '--pptx', s5]);
+    if (e.code !== 2 || fs.readFileSync(s5, 'utf8') !== 'deja la') findings.push(`fixture-rouge — C7 : une sortie existante n'est pas protégée (exit ${e.code})`);
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return { joue: true, findings };
+}
+
+// ------------------------------------------------ C8 : l'essai réel par PowerPoint, sur demande
+function processusPowerPoint() {
+  const r = spawnSync('tasklist', ['/FI', 'IMAGENAME eq POWERPNT.EXE', '/FO', 'CSV', '/NH'], { encoding: 'utf8', timeout: 30000, windowsHide: true });
+  if (r.status !== 0) return null;
+  return String(r.stdout).split(/\r?\n/).filter((l) => /POWERPNT\.EXE/i.test(l)).map((l) => Number((l.split('","')[1] || '').replace(/"/g, '')));
+}
+
+// Le deck d'essai : texte fictif, dans une police INSTALLÉE PAR L'UTILISATEUR quand le poste en a une
+// qui s'embarque (PowerPoint n'embarque pas la police du thème par défaut, mesuré le 01/10/2026) :
+// c'est le cas réel d'une police de marque, et le seul qui exerce l'assainissement après l'export.
+const PY_DECK_ESSAI = [
+  'import glob, json, os, sys',
+  'from fontTools.ttLib import TTFont',
+  'from pptx import Presentation',
+  'choix = None',
+  'for f in sorted(glob.glob(os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts", "*.ttf"))):',
+  '    try:',
+  '        t = TTFont(f, lazy=True)',
+  '        if t["OS/2"].fsType & 0x2 or t["OS/2"].usWeightClass != 400 or t["head"].macStyle & 2 or "glyf" not in t:',
+  '            continue',
+  '        choix = (t["name"].getDebugName(1) or "").strip() or None',
+  '    except Exception:',
+  '        continue',
+  '    if choix:',
+  '        break',
+  'prs = Presentation()',
+  'diapo = prs.slides.add_slide(prs.slide_layouts[1])',
+  'diapo.shapes.title.text = "Essai d\'export par PowerPoint"',
+  'diapo.placeholders[1].text = "Deck fictif du self-test de digit-ai-pptx : polices embarquées, puis contrôlées."',
+  'for forme in (diapo.shapes.title, diapo.placeholders[1]) if choix else ():',
+  '    for p in forme.text_frame.paragraphs:',
+  '        for r in p.runs:',
+  '            r.font.name = choix',
+  'prs.save(sys.argv[1])',
+  'print(json.dumps({"police_utilisateur": choix}))',
+].join('\n');
+
+async function essaiPowerPoint() {
+  if (process.platform !== 'win32') return { joue: false, motif: 'C8 NON JOUÉE : PowerPoint par COM, Windows seulement' };
+  const avant = processusPowerPoint();
+  if (avant === null) return { joue: false, motif: "C8 NON JOUÉE : tasklist ne répond pas, l'essai ne sait pas si PowerPoint tourne et ne se lance pas" };
+  if (avant.length) return { joue: false, motif: `C8 NON JOUÉE : PowerPoint tourne (PID ${avant.join(', ')}), l'essai réel ne s'attache pas à une instance qu'il n'a pas lancée` };
+  const findings = [];
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'self-test-powerpoint-'));
+  try {
+    const script = path.join(tmp, 'deck-essai.py');
+    const deck = path.join(tmp, 'deck-essai.pptx');
+    fs.writeFileSync(script, PY_DECK_ESSAI);
+    const g = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'python-pptx', '--with', 'fonttools', 'python', '-B', script, deck],
+      { encoding: 'utf8', timeout: 300000, windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
+    if (g.status !== 0 || !fs.existsSync(deck)) return { joue: false, motif: `C8 NON JOUÉE : deck d'essai non généré par python-pptx (uv) : ${String(g.stderr || g.error || '').trim().slice(-200)}` };
+    let police = null;
+    try { police = JSON.parse(String(g.stdout).trim().split(/\r?\n/).pop()).police_utilisateur; } catch { /* aucune police dite : traitée comme absente */ }
+    const sPptx = path.join(tmp, 'sortie.pptx');
+    const sPdf = path.join(tmp, 'sortie.pdf');
+    const e = exporterCli([deck, '--pptx', sPptx, '--pdf', sPdf, '--instance-neuve', '--attente', '120']);
+    const pp = e.j?.powerpoint;
+    if (e.code === 2 && pp && pp.pids_avant?.length) return { joue: false, motif: `C8 NON JOUÉE : PowerPoint lancé entre-temps (PID ${pp.pids_avant.join(', ')}), refusé par --instance-neuve` };
+    if (e.code !== 0) findings.push(`C8 — export réel : exit ${e.code}, ${e.j?.verdict} ${e.j?.etat} (${e.j?.motif})`);
+    if (!pp?.lancee_par_l_export) findings.push("C8 — l'instance n'est pas reconnue comme lancée par l'export");
+    if (!pp?.quittee) findings.push(`C8 — l'instance lancée par l'export n'a pas été quittée (${pp?.decision})`);
+    if (e.code === 0) {
+      if (!fs.existsSync(sPptx)) findings.push('C8 — PPTX livré absent');
+      if (!fs.existsSync(sPdf) || fs.readFileSync(sPdf).subarray(0, 5).toString('latin1') !== '%PDF-') findings.push('C8 — PDF livré absent ou illisible');
+      if (police && !['embarquees', 'reencodees'].includes(e.j?.polices?.etat)) {
+        findings.push(`C8 — deck en police ${police} : état des polices ${e.j?.polices?.etat} au lieu d'embarquees ou reencodees, l'assainissement réel n'a pas été exercé`);
+      }
+    }
+    const note = police ? null : "C8 : aucune police installée par l'utilisateur ne s'embarque sur ce poste, le deck d'essai garde la police du thème que PowerPoint n'embarque pas : l'assainissement réel n'est pas exercé";
+    // l'instance quittée doit disparaître : on la laisse s'éteindre, sans jamais rien tuer
+    let reste = processusPowerPoint();
+    for (let i = 0; i < 40 && reste && reste.length; i++) { await new Promise((r) => setTimeout(r, 500)); reste = processusPowerPoint(); }
+    if (reste?.length) findings.push(`C8 — un processus PowerPoint tourne encore 20 s après l'export (PID ${reste.join(', ')}) : instance non quittée, ou ouverte entre-temps par l'utilisateur`);
+    return { joue: true, findings, note, bilan: e.j ? { police_du_deck: police, etat: e.j.etat, motif: e.j.motif, decision: pp?.decision, polices: e.j.polices?.etat, pdf: e.j.pdf?.verdict } : null };
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+}
+
 // ---------------------------------------------------------------- exécution
 const findings = [];
 const nonJuge = [...NON_JUGE];
@@ -339,8 +698,21 @@ if (fs.existsSync(skillMdPath)) {
   findings.push(...valeursEnDur(fs.readFileSync(skillMdPath, 'utf8'), `${NOM_SKILL}/SKILL.md`));
 }
 
+// C5 à C7 — l'export par PowerPoint, prouvé sans ouvrir PowerPoint (TF-1502). Un contrôle que le
+// poste ne permet pas de jouer est dit au non_juge et rend le verdict SKIP, jamais PASS.
+const c5 = verifierDecision();
+if (c5.joue) findings.push(...c5.findings); else nonJuge.push(c5.motif);
+findings.push(...await verifierVerrou());
+const c7 = verifierChaine();
+if (c7.joue) findings.push(...c7.findings); else nonJuge.push(c7.motif);
+// C8 — l'essai réel, sur demande seulement, et jamais quand PowerPoint tourne
+let c8 = { joue: false, motif: "C8 NON JOUÉE : l'essai réel par PowerPoint ne se joue que sur demande (--essai-powerpoint)" };
+if (args.includes('--essai-powerpoint')) c8 = await essaiPowerPoint();
+if (c8.joue) findings.push(...c8.findings); else nonJuge.push(c8.motif);
+if (c8.note) nonJuge.push(c8.note);
+
 if (findings.length) verdict = 'FAIL';
-else if (!c2Jouee) verdict = 'SKIP';
+else if (!c2Jouee || !c5.joue || !c7.joue) verdict = 'SKIP';
 
 const code = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2;
 process.stdout.write(JSON.stringify({
@@ -352,7 +724,12 @@ process.stdout.write(JSON.stringify({
     C2_noms_interdits: c2Jouee ? 'jouée' : 'NON jouée (table absente)',
     C3_consommation_marque: 'jouée',
     C4_valeurs_de_marque_en_dur: 'jouée',
+    C5_decision_quitter_powerpoint: c5.joue ? 'jouée' : 'NON jouée (Windows seulement)',
+    C6_verrou_entre_sessions: 'jouée',
+    C7_chaine_assainissement: c7.joue ? 'jouée' : 'NON jouée (juge ou prérequis absents)',
+    C8_essai_reel_powerpoint: c8.joue ? 'jouée' : 'NON jouée',
   },
+  ...(c8.bilan ? { essai_powerpoint: c8.bilan } : {}),
   verdict,
   findings,
   non_juge: nonJuge,
