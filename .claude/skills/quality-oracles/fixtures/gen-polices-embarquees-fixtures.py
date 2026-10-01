@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Génération scriptée des fixtures de l'oracle des polices EMBARQUÉES (TF-1501, 01/10/2026).
+# Génération scriptée des fixtures de l'oracle des polices EMBARQUÉES (TF-1501 et TF-1504, 01/10/2026).
 # Tout est FICTIF : la police « Essai Fictif » (17 glyphes polygonaux) est construite ici avec
 # fontTools ; aucun deck, aucune police ni aucun rapport du produit qui a payé le défaut n'est repris.
 #   polices-embarquees-sources/EssaiFictif-Regular.ttf  la police de RÉFÉRENCE d'E1 (« installée »),
@@ -8,12 +8,20 @@
 #   polices-embarquees-red.pptx    le MÊME deck, dont la police embarquée a 5 glyphes sur 17 aux
 #                                  contours déplacés hors de la boîte englobante que la police
 #                                  déclare : les deux symptômes mesurés chez le produit (contours
-#                                  différents de la police installée, glyphes hors de la boîte).
-# L'embarquement est celui de PowerPoint : TTEmbedFont de t2embed.dll, sous-ensemble compressé MTX
-# (drapeaux 0x5), dans un processus par police chargée en privé. D'où les prérequis de ce
-# générateur : Windows et fontTools — `uv run --with fonttools python -B gen-polices-embarquees-fixtures.py`.
-# Les deux decks ne diffèrent que par leur partie ppt/fonts/font1.fntdata.
+#                                  différents de la police installée, glyphes hors de la boîte) ;
+#   polices-embarquees-docx-{green,red}.docx  la même paire en DOCX : police obscurcie (.odttf) par
+#                                  la clé w:fontKey de fontTable.xml (ECMA-376, 17.8.1) — TF-1504 ;
+#   polices-embarquees-pdf-{green,red}.pdf    la même paire en PDF : programme TrueType (FontFile2)
+#                                  compressé, descripteur de police à la boîte de la police saine ;
+#   polices-embarquees-html-{green,red}.html  la même paire en page HTML : la police en WOFF2, en data:
+#                                  d'une règle @font-face, comme dans les pages du socle.
+# L'embarquement PPTX est celui de PowerPoint : TTEmbedFont de t2embed.dll, sous-ensemble compressé
+# MTX (drapeaux 0x5), dans un processus par police chargée en privé — Windows seulement ; DOCX, PDF
+# et HTML s'écrivent partout. Prérequis : fontTools et brotli —
+# `uv run --with fonttools --with brotli python -B gen-polices-embarquees-fixtures.py`.
+# Dans chaque paire, rouge et verte ne diffèrent que par la police embarquée.
 import ctypes
+import io
 import os
 import subprocess
 import sys
@@ -184,6 +192,10 @@ def deck(chemin, eot):
         ("ppt/theme/theme1.xml", theme()),
         ("ppt/fonts/font1.fntdata", police),
     ]
+    paquet(chemin, parties)
+
+
+def paquet(chemin, parties):
     with zipfile.ZipFile(chemin, "w", zipfile.ZIP_DEFLATED) as z:
         for nom, contenu in parties:
             info = zipfile.ZipInfo(nom, date_time=DATE_ZIP)
@@ -192,12 +204,109 @@ def deck(chemin, eot):
     print("écrit :", os.path.relpath(chemin, ICI))
 
 
+CLE_DOCX = "{6E1D5B3A-0C2F-4A8E-9B7D-1F2E3A4B5C6D}"  # clé d'obscurcissement fictive
+W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+CTW = "application/vnd.openxmlformats-officedocument.wordprocessingml"
+
+
+def obscurcir(octets, cle):
+    """ECMA-376, partie 1, 17.8.1 : les 32 premiers octets XOR la clé GUID lue à rebours (opération symétrique)."""
+    k = bytes.fromhex(cle.strip("{}").replace("-", ""))[::-1]
+    b = bytearray(octets)
+    for i in range(32):
+        b[i] ^= k[i % 16]
+    return bytes(b)
+
+
+def document(chemin, ttf):
+    with open(ttf, "rb") as f:
+        police = obscurcir(f.read(), CLE_DOCX)
+    parties = [
+        ("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+         '<Default Extension="xml" ContentType="application/xml"/>'
+         '<Default Extension="odttf" ContentType="application/vnd.openxmlformats-officedocument.obfuscatedFont"/>'
+         f'<Override PartName="/word/document.xml" ContentType="{CTW}.document.main+xml"/>'
+         f'<Override PartName="/word/fontTable.xml" ContentType="{CTW}.fontTable+xml"/>'
+         f'<Override PartName="/word/settings.xml" ContentType="{CTW}.settings+xml"/></Types>'),
+        ("_rels/.rels", rels(("officeDocument", "word/document.xml"))),
+        ("word/document.xml", f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document {W}><w:body>'
+         f'<w:p><w:r><w:rPr><w:rFonts w:ascii="{FAMILLE}" w:hAnsi="{FAMILLE}"/><w:sz w:val="48"/></w:rPr><w:t>{TEXTE}</w:t></w:r></w:p>'
+         '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417" '
+         'w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>'),
+        ("word/_rels/document.xml.rels", rels(("fontTable", "fontTable.xml"), ("settings", "settings.xml"))),
+        ("word/fontTable.xml", f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:fonts {W}>'
+         f'<w:font w:name="{FAMILLE}"><w:charset w:val="00"/><w:family w:val="swiss"/><w:pitch w:val="variable"/>'
+         f'<w:embedRegular r:id="rId1" w:fontKey="{CLE_DOCX}"/></w:font></w:fonts>'),
+        ("word/_rels/fontTable.xml.rels", rels(("font", "fonts/font1.odttf"))),
+        ("word/settings.xml", f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings {W}><w:embedTrueTypeFonts/></w:settings>'),
+        ("word/fonts/font1.odttf", police),
+    ]
+    paquet(chemin, parties)
+
+
+def pdf(chemin, ttf):
+    import zlib
+    from fontTools.ttLib import TTFont
+    with open(ttf, "rb") as f:
+        octets = f.read()
+    saine = TTFont(os.path.join(SOURCES, "EssaiFictif-Regular.ttf"))["head"]
+    flux = zlib.compress(octets, 9)
+    texte = TEXTE.encode("cp1252").replace(b"(", b"\\(").replace(b")", b"\\)")
+    contenu = b"BT /F1 24 Tf 72 720 Td (" + texte + b") Tj ET"
+    largeurs = b" ".join([b"600"] * (233 - 32 + 1))
+    objets = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /TrueType /BaseFont /EssaiFictif-Regular /FirstChar 32 /LastChar 233 /Widths [" + largeurs
+        + b"] /FontDescriptor 6 0 R /Encoding /WinAnsiEncoding >>",
+        b"<< /Length " + str(len(contenu)).encode() + b" >>\nstream\n" + contenu + b"\nendstream",
+        b"<< /Type /FontDescriptor /FontName /EssaiFictif-Regular /Flags 32 /FontBBox ["
+        + " ".join(str(v) for v in (saine.xMin, saine.yMin, saine.xMax, saine.yMax)).encode()
+        + b"] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>",
+        b"<< /Length " + str(len(flux)).encode() + b" /Length1 " + str(len(octets)).encode() + b" /Filter /FlateDecode >>\nstream\n" + flux + b"\nendstream",
+    ]
+    sortie = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    positions = []
+    for i, o in enumerate(objets, 1):
+        positions.append(len(sortie))
+        sortie += str(i).encode() + b" 0 obj\n" + o + b"\nendobj\n"
+    debut_xref = len(sortie)
+    sortie += b"xref\n0 " + str(len(objets) + 1).encode() + b"\n0000000000 65535 f \n"
+    for p in positions:
+        sortie += ("%010d 00000 n \n" % p).encode()
+    sortie += b"trailer\n<< /Size " + str(len(objets) + 1).encode() + b" /Root 1 0 R >>\nstartxref\n" + str(debut_xref).encode() + b"\n%%EOF\n"
+    with open(chemin, "wb") as f:
+        f.write(bytes(sortie))
+    print("écrit :", os.path.relpath(chemin, ICI))
+
+
+def page(chemin, ttf):
+    """La police en WOFF2, en data: dans une règle @font-face — la forme des pages du socle (A1)."""
+    import base64
+    from fontTools.ttLib import TTFont
+    police = TTFont(ttf)
+    police.flavor = "woff2"
+    police.recalcTimestamp = False
+    police.recalcBBoxes = False  # la boîte déclarée reste celle de la police, même quand des glyphes la dépassent
+    tampon = io.BytesIO()
+    police.save(tampon)
+    b64 = base64.b64encode(tampon.getvalue()).decode("ascii")
+    html = ('<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<title>Essai de polices embarquées</title>\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">\n<style>\n'
+            f'@font-face {{ font-family: "{FAMILLE}"; src: url(data:font/woff2;base64,{b64}) format("woff2"); font-weight: 400; font-style: normal; }}\n'
+            f'body {{ font-family: "{FAMILLE}", sans-serif; }}\n</style>\n</head>\n<body>\n<h1>{TEXTE}</h1>\n</body>\n</html>\n')
+    with open(chemin, "w", encoding="utf-8", newline="\n") as f:
+        f.write(html)
+    print("écrit :", os.path.relpath(chemin, ICI))
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "--embarquer":  # sous-processus : une police chargée par processus
         embarquer(sys.argv[2], sys.argv[3])
         sys.exit(0)
-    if os.name != "nt":
-        sys.exit("refus : l'embarquement MTX passe par t2embed.dll, Windows seulement")
     os.makedirs(SOURCES, exist_ok=True)
     saine = os.path.join(SOURCES, "EssaiFictif-Regular.ttf")
     construire_police(saine, altere=False)
@@ -206,6 +315,12 @@ if __name__ == "__main__":
         fausse = os.path.join(tmp, "EssaiFictif-Regular-fausse.ttf")
         construire_police(fausse, altere=True)
         for nom, ttf in (("green", saine), ("red", fausse)):
+            document(os.path.join(ICI, f"polices-embarquees-docx-{nom}.docx"), ttf)
+            pdf(os.path.join(ICI, f"polices-embarquees-pdf-{nom}.pdf"), ttf)
+            page(os.path.join(ICI, f"polices-embarquees-html-{nom}.html"), ttf)
+            if os.name != "nt":
+                print("decks PPTX non régénérés : l'embarquement MTX passe par t2embed.dll, Windows seulement")
+                continue
             eot = os.path.join(tmp, f"{nom}.fntdata")
             subprocess.run([sys.executable, "-B", os.path.abspath(__file__), "--embarquer", ttf, eot], check=True)
             deck(os.path.join(ICI, f"polices-embarquees-{nom}.pptx"), eot)

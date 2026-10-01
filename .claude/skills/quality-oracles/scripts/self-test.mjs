@@ -2010,6 +2010,72 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1504 (01/10/2026) — LE MÊME JUGE POUR CHAQUE DOCUMENT GÉNÉRÉ QUI EMBARQUE DES POLICES.
+//
+// LA DÉCISION HUMAINE du 30/09/2026 (RP-04) : l'erreur des polices embarquées ne doit se reproduire
+// dans aucun document généré. Le DOCX (polices obscurcies .odttf, désobscurcies par la clé de
+// fontTable.xml), le PDF (programmes de police TrueType) et la page HTML (polices en data: d'une
+// règle @font-face) reçoivent le juge des PPTX. CE BLOC :
+//   (A) chaque paire FICTIVE dans ses deux sens — rouge FAIL par E1 ET par E2, verte PASS —, un SKIP
+//       n'étant admis que si son motif nomme un prérequis absent (fontTools, pypdf, brotli, uv) ;
+//   (B) les entrées RÉELLES du registre, jouées par le lanceur sur un dossier jetable : le DOCX qui
+//       porte word/fonts/ est jugé, le DOCX sans police embarquée n'est pas routé, le PDF l'est, la
+//       page qui porte une police en data: l'est, la page sans police embarquée ne l'est pas.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1504-'));
+  try {
+    const FX = path.join(SKILLDIR, 'fixtures');
+    const jouer = (fx) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-polices-embarquees.mjs'), path.join(FX, fx),
+        '--polices', path.join(FX, 'polices-embarquees-sources')], { encoding: 'utf8', timeout: 180000 });
+      try { return JSON.parse(r.stdout); } catch { return { verdict: '?', motif: (r.stderr || r.stdout || '').slice(0, 160) }; }
+    };
+    const regles = (j) => new Set((j.findings || []).filter((f) => f.sev === 'bloquant').map((f) => f.regle));
+    const PREREQUIS = /fontTools|pypdf|brotli|uv n est pas|interpréteur Python/;
+    for (const [type, rouge, verte] of [['DOCX', 'polices-embarquees-docx-red.docx', 'polices-embarquees-docx-green.docx'],
+      ['PDF', 'polices-embarquees-pdf-red.pdf', 'polices-embarquees-pdf-green.pdf'],
+      ['HTML', 'polices-embarquees-html-red.html', 'polices-embarquees-html-green.html']]) {
+      const jr = jouer(rouge), jv = jouer(verte);
+      if (jr.verdict === 'SKIP' && jv.verdict === 'SKIP' && PREREQUIS.test(jr.motif || '') && PREREQUIS.test(jv.motif || ''))
+        ok(`TF-1504 (A) ${type} : NON JOUÉ sur ce poste — ${jr.motif} (SKIP motivé par un prérequis absent, admis et dit)`);
+      else if (jr.verdict !== 'FAIL' || !regles(jr).has('E1') || !regles(jr).has('E2'))
+        ko(`TF-1504 (A) ${type} : la fixture rouge rend ${jr.verdict} (${[...regles(jr)].join('+') || jr.motif || 'sans constat'}) — attendu FAIL par E1 ET par E2`);
+      else if (jv.verdict !== 'PASS')
+        ko(`TF-1504 (A) ${type} : la fixture verte rend ${jv.verdict} (${jv.motif || JSON.stringify(jv.findings || []).slice(0, 160)}) — attendu PASS`);
+      else ok(`TF-1504 (A) ${type} : la police embarquée altérée est refusée par E1 ET par E2, la même police saine passe`);
+    }
+    // (B) — les entrées réelles, dans un registre jouet qui ne porte qu'elles.
+    const entrees = reg.oracles.filter((o) => (o.cmd || []).some((c) => /oracle-polices-embarquees\.mjs$/.test(c)));
+    const docx = entrees.find((o) => (o.ext || []).includes('.docx')), pdf = entrees.find((o) => (o.ext || []).includes('.pdf'));
+    const html = entrees.find((o) => (o.content_patterns || []).some((p) => /font-face/.test(p)));
+    if (!docx || !(docx.parties_paquet || []).includes('word/fonts/') || !pdf || !html || !(html.content_patterns || []).length) {
+      ko('TF-1504 (B) : entrées DOCX (déclenchée sur word/fonts/), PDF ou page HTML (déclenchée par contenu) du juge des polices embarquées absentes du registre');
+    } else {
+      const racine = path.join(tmp, 'racine');
+      fs.mkdirSync(racine);
+      fs.copyFileSync(path.join(FX, 'polices-embarquees-docx-red.docx'), path.join(racine, 'avec-polices.docx'));
+      fs.copyFileSync(path.join(FX, 'dossier-cab-green.docx'), path.join(racine, 'sans-police.docx'));
+      fs.copyFileSync(path.join(FX, 'polices-embarquees-pdf-red.pdf'), path.join(racine, 'programme.pdf'));
+      fs.copyFileSync(path.join(FX, 'polices-embarquees-html-red.html'), path.join(racine, 'page-avec-police.html'));
+      fs.copyFileSync(path.join(FX, 'a11y-green.html'), path.join(racine, 'page-sans-police.html'));
+      const regJ = path.join(tmp, 'registre-jouet.json');
+      fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [docx, pdf, html] }), 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), racine, '--registre', regJ, '--no-cache', '--json'],
+        { encoding: 'utf8', timeout: 300000 });
+      let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* sortie illisible */ }
+      const lignes = j ? (j.resultats || []).filter((x) => /Polices embarquées/.test(x.domaine)).map((x) => `${path.basename(x.file)}:${x.verdict}`).sort() : null;
+      // Rouges toutes deux, sauf poste sans prérequis : le routage se lit au NOM des fichiers jugés, le verdict en plus quand il est rendu.
+      const juges = lignes ? lignes.map((l) => l.split(':')[0]) : null;
+      if (!lignes) ko('TF-1504 (B) : sortie de run-oracles inexploitable — ' + (r.stderr || '').slice(0, 160));
+      else if (JSON.stringify(juges) !== JSON.stringify(['avec-polices.docx', 'page-avec-police.html', 'programme.pdf']))
+        ko('TF-1504 (B) : le lanceur juge ' + JSON.stringify(lignes) + ' — attendu le DOCX qui porte word/fonts/, la page à police en data: et le PDF, jamais le DOCX ni la page sans police embarquée');
+      else if (lignes.some((l) => !/:(FAIL|SKIP)$/.test(l)))
+        ko('TF-1504 (B) : un document à police altérée sort ' + JSON.stringify(lignes) + ' — attendu FAIL (ou SKIP motivé sur un poste sans prérequis)');
+      else ok('TF-1504 (B) : par les entrées réelles, le DOCX qui porte word/fonts/, la page à police en data: et le PDF sont jugés (' + lignes.join(', ') + '), le DOCX et la page sans police embarquée ne sont pas routés');
+    }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1447 (28/09/2026) — LE MOTIF D'UN SKIP A UNE PLACE FIXE, ET LA RECETTE LE TIENT POUR TOUS.
 //
 // LE FAIT. Le contrat JSON commun ne disait pas où vit la raison d'un SKIP : en fin de non_juge chez

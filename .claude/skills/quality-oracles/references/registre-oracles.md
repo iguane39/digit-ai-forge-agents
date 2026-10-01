@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.31.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.32.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -15,6 +15,9 @@
 | Filtres de colonne sur tableaux de données | `scripts/oracle-filtres-tableau.mjs <page.html>` — G1 marquage ou exemption motivée, G2 asset référencé, G3 initialisation, G4 id + thead, G5 compteur aria-live, G6 réaffichage à l'impression | cli | ✅ |
 | Rendu PPTX (structure & compatibilité) | `scripts/oracle-pptx.mjs` — zip, [Content_Types].xml 1re entrée, zéro transition/JPEG, smoke-test LibreOffice ; charte sémantique → gate digit-ai-pptx ; polices embarquées NON décodées, et dit au `non_juge` → domaine ci-dessous (TF-1501) | cli | ⚙️ |
 | Polices embarquées d'un PPTX | `scripts/oracle-polices-embarquees.mjs <deck.pptx> [--polices <dossier de référence>]` — **E0** chaque partie `ppt/fonts/` (flux EOT) se décode par le décodeur de Windows (`t2embed.dll`, chargé en privé) · **E1** ses contours sont ceux de la police installée de même famille, graisse, pente et version · **E2** aucun glyphe simple hors de la boîte englobante que la police déclare. **Déclenché par la présence d'une partie `ppt/fonts/`** dans le paquet (`parties_paquet`, critère neuf de `run-oracles`). Prérequis : Python 3 et fontTools (importé, sinon fourni par `uv`), Windows pour le MTX ; absent → SKIP qui le nomme (TF-1501) | cli | ✅ |
+| Polices embarquées d'un DOCX | `scripts/oracle-polices-embarquees.mjs <document.docx>` — **E0** chaque police que `word/fontTable.xml` déclare embarquée est dans le paquet et se désobscurcit par sa clé `w:fontKey` (ECMA-376, 17.8.1) · **E1** contours = police installée (aux mêmes indices si la cmap Unicode le confirme, sinon par point de code) · **E2** boîte englobante. Déclenché par une partie `word/fonts/` (`parties_paquet`). Sans dépendance au système (TF-1504) | cli | ✅ |
+| Polices embarquées d'un PDF | `scripts/oracle-polices-embarquees.mjs <document.pdf>` — **E0** chaque programme TrueType d'un descripteur (`FontFile2`, `FontFile3 /OpenType`) se décode, **avertissement** pour un PDF (un lecteur de PDF répare ce qu'il peut) · **E1** · **E2** comme ci-dessus ; programmes CFF et Type 1 comptés, non jugés. Tout PDF est routé ; pypdf requis (TF-1504) | cli | ✅ |
+| Polices embarquées d'une page HTML | `scripts/oracle-polices-embarquees.mjs <page.html>` — **E0** chaque police en `data:` d'une règle `@font-face` se décode (base64, WOFF2, WOFF ou sfnt) · **E1** · **E2** comme ci-dessus, constats à la ligne de la règle. Déclenché par le **contenu** (`content_patterns`) ; brotli requis pour le WOFF2 (TF-1504) | cli | ✅ |
 | Accessibilité (WCAG structurel) | `scripts/oracle-a11y.py` — lang, alt, labels, titres, id, zoom (Playwright) | cli | ✅ |
 | Performance / poids | `scripts/oracle-perf.mjs` — budgets poids/DOM/JS inline/refs | cli | ✅ |
 | Format / livraison / versioning | `scripts/oracle-format.mjs` — UTF-8, ZIP, placeholders, autoportance | cli | ✅ |
@@ -578,3 +581,45 @@ triplets était altérée dans la mémoire du processus PowerPoint qui exportait
   n'admet un SKIP que si son motif nomme un prérequis absent. Il joue aussi `parties_paquet` sur un
   registre jouet : le deck qui porte `ppt/fonts/` est routé, le deck sans police ne l'est pas,
   le paquet illisible l'est.
+
+## Extension du 01/10/2026 — le même juge pour chaque document généré (TF-1504, v2.32.0)
+
+La décision humaine du 30/09/2026 (RP-04) demande que l'erreur des polices embarquées ne se
+reproduise dans aucun document généré. Le juge des PPTX s'étend aux trois autres formes de
+livrable qui embarquent des polices, chacune décodée comme la décode le poste du destinataire.
+
+- **DOCX** : les polices que `word/fontTable.xml` déclare embarquées (`w:embedRegular`,
+  `w:embedBold`…) sont désobscurcies par leur clé `w:fontKey` (ECMA-376, partie 1, 17.8.1) ; une
+  police déclarée dont la partie manque, ou dont la clé est illisible, est un constat E0. Déclenché
+  par une partie `word/fonts/` dans le paquet.
+- **PDF** : les programmes de police de tous les descripteurs du fichier, lus par pypdf. Les
+  programmes TrueType (`FontFile2`, `FontFile3 /OpenType` à contours `glyf`) sont jugés ; les
+  programmes CFF et Type 1 sont comptés et dits, non jugés. Un lecteur de PDF répare ce qu'il peut
+  d'un programme de police : pour un PDF, E0 **avertit** (le niveau production le promeut), il ne
+  bloque pas. Tout PDF est routé ; sans programme embarqué, SKIP « sans objet ».
+- **Page HTML** : les polices en `data:` d'une règle `@font-face`, la forme des pages du socle
+  (A1), décodées depuis le base64 puis le WOFF2, le WOFF ou le sfnt. Déclenché par le contenu
+  (`content_patterns`) : seules les pages qui embarquent une police sont routées.
+- **E1 hors PPTX** : un sous-ensemble peut renuméroter ses glyphes. Les indices servent si la
+  cmap Unicode de la copie les confirme pour chaque point de code commun ; sinon les glyphes
+  s'apparient par point de code, contours aplatis. Sans cmap Unicode commune, E1 n'est pas jouée,
+  et c'est dit.
+- **Une table que les lecteurs ne lisent pas ne fait pas un constat** : la première passe sur les
+  PDF du poste rendait 4 E0 sur une table `post` de format inconnu. La table est ignorée et dite ;
+  seules les tables des contours (`head`, `maxp`, `loca`, `glyf`) font un E0.
+- **Mesure du 01/10/2026, sur les documents du poste lus en place** : 2 DOCX (22 polices), 2 PASS,
+  E2 jouée sur 22 polices et E1 sur 20, sans constat. 198 PDF (844 programmes TrueType décodés),
+  E2 jouée sur 840 et E1 sur 447, sans constat E1 ni E2 : 164 PASS, dont 4 avec un avertissement
+  E0 (une table `glyf` plus courte que ne l'annonce `loca`, chez un même producteur), 34 SKIP sans
+  objet, 0 FAIL. 44 pages à police en `data:` (148 polices WOFF2), E2 jouée sur 148, E1 sur aucune
+  faute de police de référence de même version sur ce poste, sans constat : 42 PASS et 2 SKIP, des
+  gabarits dont la donnée base64 est un espace réservé. De 0,5 à 11 s par document.
+- **Preuve** : trois paires au manifest (`polices-embarquees-docx`, `-pdf`, `-html`), sur la police
+  fictive « Essai Fictif » ; le bloc TF-1504 de la recette exige FAIL par E1 et par E2 sur chaque
+  rouge, PASS sur chaque verte, et joue les entrées réelles sur un dossier jetable — le DOCX qui
+  porte `word/fonts/`, la page à police en `data:` et le PDF sont jugés, le DOCX et la page sans
+  police embarquée ne sont pas routés.
+- **Ce qui reste hors de ce juge** : une police appelée par URL depuis une page (fichier voisin,
+  réseau), qui n'est pas embarquée ; une page de plus de 1 Mo, dont `run-oracles` ne lit pas le
+  contenu pour le routage (aucune parmi les 44 mesurées) ; les contours CFF et Type 1 ; le rendu
+  réel chez le destinataire.

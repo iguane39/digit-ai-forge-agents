@@ -1,5 +1,5 @@
 {
- "version": "2.31.0",
+ "version": "2.32.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {forges}=racine des forges soeurs (TF-1334, 26/09/2026 : FORGE_ROOT, sinon le parent du depot digit-ai-forge-agents, sinon — copie installee — le parent du pilot resolu ; racine introuvable ou script absent de ce poste → SKIP motive, jamais un FAIL muet — scripts/lib/forges.mjs ; plus aucun chemin absolu dans une commande, controle a double sens dans scripts/self-test.mjs), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -1825,6 +1825,87 @@
    ],
    "provenance": "TF-1501, lot du 30/09/2026 (RA-02) — cinq versions d'un deck sorties avec huit polices embarquées fausses (232 contours faux sur 235 pour la police du corps de texte), PASS à toutes les portes du registre. Fixtures FICTIVES : la police « Essai Fictif » construite par fixtures/gen-polices-embarquees-fixtures.py, embarquée par TTEmbedFont (sous-ensemble compressé MTX) comme le fait PowerPoint ; la rouge porte 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée, la verte est le même deck, police saine",
    "note": "TF-1501 (01/10/2026) : le contrôle écrit par le produit qui a payé le défaut (vérificateur 1.0.1), porté sans nom, sans deck ni rapport ; moteur scripts/polices-embarquees.py, lancé par scripts/oracle-polices-embarquees.mjs qui écrit le contrat commun. Prérequis du poste : Node, un Python 3 et fontTools (importé par l'interpréteur résolu, sinon fourni par uv run --with fonttools), et Windows pour décoder le MTX. Contre-mesure du 01/10/2026 sur les 22 decks à polices embarquées d'un produit, lus en place : 22 verdicts sur 22 identiques à ceux de l'outil d'origine, dont les 5 versions fautives en FAIL par E1 et E2, et 17 PASS ; de 1,2 à 4,4 s par deck. Déclencheur parties_paquet (nouveau critère de run-oracles) : un .pptx ou un .potx n'est routé vers ce domaine que si son paquet porte une partie ppt/fonts/ — répertoire central lu sans décompresser, paquet illisible routé quand même.",
+   "timeout_ms": 180000
+  },
+  {
+   "domaine": "Polices embarquées d'un DOCX",
+   "ext": [
+    ".docx",
+    ".dotx"
+   ],
+   "parties_paquet": [
+    "word/fonts/"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-polices-embarquees.mjs",
+    "{file}"
+   ],
+   "checklist": "E0 chaque police que word/fontTable.xml déclare embarquée (w:embedRegular, w:embedBold, w:embedItalic, w:embedBoldItalic) est dans le paquet et se désobscurcit par sa clé w:fontKey (ECMA-376, partie 1, 17.8.1) en une police lisible · E1 contours identiques à la police installée de même famille, graisse, pente et version (aux mêmes indices si la cmap Unicode le confirme, sinon par point de code) · E2 aucun glyphe simple hors de la boîte englobante déclarée. Déclenché par une partie word/fonts/ dans le paquet (parties_paquet)",
+   "statut": "ok",
+   "non_juge": [
+    "le rendu réel chez le destinataire (poste sans la police, autre lecteur) : l'essai sur le poste du destinataire reste un geste humain",
+    "E1 sans la police source de même famille, graisse, pente ET version parmi les polices de référence (le poste, ou --polices <dossier>) : déclarée non jouée police par police, E2 juge seule ; sans table cmap Unicode commune, les glyphes ne s'apparient pas et E1 n'est pas jouée",
+    "un contour faux qui reste dans la boîte englobante : seule E1 le voit",
+    "prérequis absents : SKIP dont le motif nomme ce qui manque, jamais un PASS",
+    "une partie word/fonts/ que fontTable.xml ne désigne pas : clé inconnue, non décodée (Word ne la lit pas), et dite"
+   ],
+   "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : « à intégrer côté Factory pour chaque document généré afin de s'assurer que l'erreur ne se reproduise plus ». Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » saine et altérée (5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée) ; ici obscurcie (.odttf) par une clé w:fontKey inventée",
+   "note": "TF-1504 (01/10/2026) : même juge que le PPTX (oracle-polices-embarquees.mjs), sans dépendance au système — le désobscurcissement se fait en Python. Mesure du 01/10/2026 : les 2 DOCX à polices embarquées du poste (22 polices), lus en place : 2 PASS, E2 jouée sur 22 polices et E1 sur 20, 0 constat ; de 8,5 à 11 s par document (polices complètes).",
+   "timeout_ms": 180000
+  },
+  {
+   "domaine": "Polices embarquées d'un PDF",
+   "ext": [
+    ".pdf"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-polices-embarquees.mjs",
+    "{file}"
+   ],
+   "checklist": "E0 chaque programme de police d'un descripteur (FontFile2 TrueType, FontFile3 /OpenType) se décode et ses tables de contours se lisent · E1 contours identiques à la police installée de même famille, graisse, pente et version (aux mêmes indices si la cmap Unicode le confirme, sinon par point de code) · E2 aucun glyphe simple hors de la boîte englobante déclarée. Tout PDF est routé ; sans programme embarqué, SKIP motivé « sans objet »",
+   "statut": "ok",
+   "non_juge": [
+    "le rendu réel chez le destinataire (poste sans la police, autre lecteur) : l'essai sur le poste du destinataire reste un geste humain",
+    "E1 sans la police source de même famille, graisse, pente ET version parmi les polices de référence (le poste, ou --polices <dossier>) : déclarée non jouée police par police, E2 juge seule ; sans table cmap Unicode commune, les glyphes ne s'apparient pas et E1 n'est pas jouée",
+    "un contour faux qui reste dans la boîte englobante : seule E1 le voit",
+    "prérequis absents : SKIP dont le motif nomme ce qui manque, jamais un PASS",
+    "les programmes CFF (FontFile3 Type1C, CIDFontType0C, OpenType à contours CFF) et Type 1 (FontFile) : comptés et dits, non jugés",
+    "une table post illisible : ignorée et dite, elle ne porte pas de contours",
+    "pypdf absent : SKIP motivé"
+   ],
+   "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : « à intégrer côté Factory pour chaque document généré afin de s'assurer que l'erreur ne se reproduise plus ». Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » saine et altérée (5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée) ; ici en programme TrueType (FontFile2) compressé",
+   "note": "TF-1504 (01/10/2026) : programmes de police lus par pypdf dans tous les descripteurs du fichier. Mesure du 01/10/2026 : 198 PDF du poste, lus en place : 844 programmes TrueType décodés, E2 jouée sur 840 et E1 sur 447, 0 constat E1 ni E2 ; 164 PASS dont 4 avec un avertissement E0 (table glyf plus courte que ne l'annonce loca, un même producteur), 34 SKIP sans objet, 0 FAIL ; de 0,6 à 7,3 s par fichier. La première passe rendait 4 faux constats E0 sur une table post de format inconnu, que ni un lecteur de PDF ni GDI ne lisent : la table est désormais ignorée et dite.",
+   "timeout_ms": 180000
+  },
+  {
+   "domaine": "Polices embarquées d'une page HTML",
+   "ext": [],
+   "content_patterns": [
+    "@font-face[^}]*?url\\(\\s*['\"]?data:(?:font|application)/[\\w.+-]+;base64,"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-polices-embarquees.mjs",
+    "{file}"
+   ],
+   "checklist": "E0 chaque police en data: d'une règle @font-face se décode (base64, puis WOFF2, WOFF ou sfnt) · E1 contours identiques à la police installée de même famille, graisse, pente et version (aux mêmes indices si la cmap Unicode le confirme, sinon par point de code) · E2 aucun glyphe simple hors de la boîte englobante déclarée. Constats localisés à la ligne de la règle. Déclenché par le CONTENU (content_patterns) : seules les pages qui embarquent une police en data: sont routées",
+   "statut": "ok",
+   "non_juge": [
+    "le rendu réel chez le destinataire (poste sans la police, autre lecteur) : l'essai sur le poste du destinataire reste un geste humain",
+    "E1 sans la police source de même famille, graisse, pente ET version parmi les polices de référence (le poste, ou --polices <dossier>) : déclarée non jouée police par police, E2 juge seule ; sans table cmap Unicode commune, les glyphes ne s'apparient pas et E1 n'est pas jouée",
+    "un contour faux qui reste dans la boîte englobante : seule E1 le voit",
+    "prérequis absents : SKIP dont le motif nomme ce qui manque, jamais un PASS",
+    "une police appelée par URL (fichier voisin, réseau) : pas embarquée, pas jugée",
+    "une page de plus de 1 Mo : run-oracles ne lit pas son contenu pour le routage (borne du lanceur) — l'oracle se joue alors directement",
+    "un WOFF2 sans le module brotli : non décompressé, et dit"
+   ],
+   "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : « à intégrer côté Factory pour chaque document généré afin de s'assurer que l'erreur ne se reproduise plus ». Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » saine et altérée (5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée) ; ici en WOFF2, en data: d'une règle @font-face, comme dans les pages du socle",
+   "note": "TF-1504 (01/10/2026) : la forme des pages du socle (A1, polices en data:). Mesure du 01/10/2026 : 44 pages à police en data: sur le poste, lues en place (aucune au-delà de 1 Mo) : 148 polices WOFF2 décodées, E2 jouée sur 148 et E1 sur 0 (aucune police de référence de même version sur ce poste), 0 constat ; 42 PASS, 2 SKIP (gabarits dont la donnée base64 est un espace réservé) ; de 0,5 à 2,3 s par page.",
    "timeout_ms": 180000
   }
  ]

@@ -23,9 +23,10 @@ const TOOLS = [
   { nom: 'gitleaks', oracle: 'oracle-secrets (complément — scanner intégré sinon)', install: null, note: 'binaire à installer manuellement' },
   { nom: 'claude', oracle: 'oracle-judge (LLM-juge externe)', install: null, note: 'CLI Claude Code' },
   { nom: 'playwright', oracle: 'oracle-a11y / render_page.py', check: () => sh('python3', ['-c', 'import playwright']).status === 0, install: () => pipInstall('playwright') && sh('python3', ['-m', 'playwright', 'install', 'chromium']).status === 0 },
-  // TF-1501 : le juge des polices embarquées lit les polices décodées avec fontTools — importé par
-  // l'interpréteur résolu, ou fourni à la demande par `uv run --with fonttools` ; le MTX exige Windows.
-  { nom: 'fontTools', oracle: 'oracle-polices-embarquees (polices embarquées décodées et jugées ; uv le fournit à défaut)', check: () => { const py = resolvePython(); return (py && sh(py[0], [...py.slice(1), '-c', 'import fontTools']).status === 0) || has('uv'); }, install: () => pipInstall('fonttools') }
+  // TF-1501, TF-1504 : le juge des polices embarquées lit les polices décodées avec fontTools, les
+  // programmes d'un PDF avec pypdf, le WOFF2 d'une page avec brotli — importés par l'interpréteur
+  // résolu, ou fournis à la demande par `uv run --with …` ; le MTX d'un PPTX exige Windows.
+  { nom: 'fontTools, pypdf, brotli', oracle: 'oracle-polices-embarquees (polices embarquées décodées et jugées ; uv les fournit à défaut)', check: () => { const py = resolvePython(); return (py && sh(py[0], [...py.slice(1), '-c', 'import fontTools, pypdf, brotli']).status === 0) || has('uv'); }, install: () => pipInstall('fonttools') && pipInstall('pypdf') && pipInstall('brotli') }
 ];
 
 console.log('BOOTSTRAP quality-oracles — état des outils externes' + (INSTALL ? ' (mode --install)' : ''));

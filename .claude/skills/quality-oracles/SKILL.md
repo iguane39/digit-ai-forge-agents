@@ -187,8 +187,9 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   **visual-diff** (`oracle-visual-diff.py` : rendu vs **goldens** versionnés `.oracles-goldens/`, masques de zones dynamiques,
   entérinement **hors boucle uniquement** via `--accepter` — refusé après un FAIL non re-jugé, R5) ·
   **nommage** (convention du profil) · **pptx** ([Content_Types].xml 1re entrée, transitions/JPEG selon profil, smoke-test LibreOffice) ·
-  **polices embarquées** (`oracle-polices-embarquees.mjs` : E0 décodage par `t2embed.dll`, E1 contours = police installée, E2 boîte
-  englobante ; Python + fontTools, Windows pour le MTX — TF-1501) ·
+  **polices embarquées** (`oracle-polices-embarquees.mjs`, PPTX, DOCX, PDF et page HTML : E0 décodage, E1 contours = police
+  installée, E2 boîte englobante ; Python + fontTools, pypdf pour le PDF, brotli pour le WOFF2, Windows pour le MTX d'un PPTX
+  — TF-1501, TF-1504) ·
   secrets · sca · sast · a11y (WCAG structurel) · llm (schéma JSON) · **judge** (LLM-juge externe `claude -p`, rubrique figée — avis outillé, invocation explicite).
 - **Oracles délégués** (registre) : rendu HTML → `render_page.py` (digit-ai-page-html) ; données → `data-quality-auditor` ; prompts → `prompt-analyzer-l99` ; schémas → `digit-ai-schemas` ; kit RefAudit (externe, projet client). Skill/kit délégué absent de l'environnement → **jamais de substitution silencieuse** : contrôle manuel tracé (§2) et signalement (R6).
 - **Bibliothèque partagée** — `scripts/lib/` : `num.mjs` (parsing des nombres affichés, libellés de totaux), `tables.mjs`

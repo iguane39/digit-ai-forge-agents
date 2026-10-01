@@ -1468,6 +1468,72 @@
    ],
    "dependant_outil": "Windows (t2embed.dll, le décodeur MTX) et fontTools (importé par l'interpréteur Python résolu, sinon fourni par uv) — un poste sans l'un d'eux rend un SKIP motivé ; le bloc TF-1501 de la recette n'admet alors ce SKIP que si son motif nomme le prérequis manquant, et exige sinon FAIL par E1 ET E2 sur la rouge, PASS sur la verte",
    "provenance": "TF-1501, lot du 30/09/2026 (RA-02) — cinq versions d'un deck sorties avec huit polices embarquées fausses, PASS à toutes les portes. Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » embarquée par TTEmbedFont comme le fait PowerPoint ; la rouge a 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée — les deux symptômes mesurés chez le produit —, la verte est le même deck, police saine ; la police de référence d'E1 est DÉSIGNÉE par --polices (TF-0912), jamais celle du poste"
+  },
+  {
+   "nom": "polices-embarquees-docx",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-polices-embarquees.mjs",
+    "{fixture}",
+    "--polices",
+    "{skilldir}/fixtures/polices-embarquees-sources"
+   ],
+   "red": "polices-embarquees-docx-red.docx",
+   "green": "polices-embarquees-docx-green.docx",
+   "attendu_red": [
+    "FAIL",
+    "SKIP"
+   ],
+   "attendu_green": [
+    "PASS",
+    "SKIP"
+   ],
+   "dependant_outil": "fontTools (pypdf en plus pour le PDF, brotli pour la page), importés par l'interpréteur Python résolu, sinon fournis par uv — un poste sans eux rend un SKIP motivé ; le bloc TF-1504 de la recette n'admet alors ce SKIP que si son motif nomme le prérequis manquant, et exige sinon FAIL par E1 ET E2 sur la rouge, PASS sur la verte",
+   "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : le juge des polices embarquées pour chaque document généré. Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » obscurcie (.odttf) par une clé w:fontKey inventée ; la rouge porte 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée, la verte est le même document, police saine ; référence d'E1 désignée par --polices (TF-0912)"
+  },
+  {
+   "nom": "polices-embarquees-pdf",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-polices-embarquees.mjs",
+    "{fixture}",
+    "--polices",
+    "{skilldir}/fixtures/polices-embarquees-sources"
+   ],
+   "red": "polices-embarquees-pdf-red.pdf",
+   "green": "polices-embarquees-pdf-green.pdf",
+   "attendu_red": [
+    "FAIL",
+    "SKIP"
+   ],
+   "attendu_green": [
+    "PASS",
+    "SKIP"
+   ],
+   "dependant_outil": "fontTools (pypdf en plus pour le PDF, brotli pour la page), importés par l'interpréteur Python résolu, sinon fournis par uv — un poste sans eux rend un SKIP motivé ; le bloc TF-1504 de la recette n'admet alors ce SKIP que si son motif nomme le prérequis manquant, et exige sinon FAIL par E1 ET E2 sur la rouge, PASS sur la verte",
+   "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : le juge des polices embarquées pour chaque document généré. Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » en programme TrueType (FontFile2) compressé ; la rouge porte 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée, la verte est le même document, police saine ; référence d'E1 désignée par --polices (TF-0912)"
+  },
+  {
+   "nom": "polices-embarquees-html",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-polices-embarquees.mjs",
+    "{fixture}",
+    "--polices",
+    "{skilldir}/fixtures/polices-embarquees-sources"
+   ],
+   "red": "polices-embarquees-html-red.html",
+   "green": "polices-embarquees-html-green.html",
+   "attendu_red": [
+    "FAIL",
+    "SKIP"
+   ],
+   "attendu_green": [
+    "PASS",
+    "SKIP"
+   ],
+   "dependant_outil": "fontTools (pypdf en plus pour le PDF, brotli pour la page), importés par l'interpréteur Python résolu, sinon fournis par uv — un poste sans eux rend un SKIP motivé ; le bloc TF-1504 de la recette n'admet alors ce SKIP que si son motif nomme le prérequis manquant, et exige sinon FAIL par E1 ET E2 sur la rouge, PASS sur la verte",
+   "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : le juge des polices embarquées pour chaque document généré. Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » en WOFF2, en data: d une règle @font-face ; la rouge porte 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée, la verte est le même document, police saine ; référence d'E1 désignée par --polices (TF-0912)"
   }
  ]
 }
