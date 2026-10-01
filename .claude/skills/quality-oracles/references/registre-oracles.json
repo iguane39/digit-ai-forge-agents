@@ -1,5 +1,5 @@
 {
- "version": "2.30.0",
+ "version": "2.31.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {forges}=racine des forges soeurs (TF-1334, 26/09/2026 : FORGE_ROOT, sinon le parent du depot digit-ai-forge-agents, sinon — copie installee — le parent du pilot resolu ; racine introuvable ou script absent de ce poste → SKIP motive, jamais un FAIL muet — scripts/lib/forges.mjs ; plus aucun chemin absolu dans une commande, controle a double sens dans scripts/self-test.mjs), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste.",
  "oracles": [
   {
@@ -111,7 +111,8 @@
    "statut": "partiel",
    "non_juge": [
     "charte sémantique (kicker, logos, bijection sommaire↔intercalaires) → gate digit-ai-pptx",
-    "rendu visuel slide par slide → pipeline digit-ai-pptx"
+    "rendu visuel slide par slide → pipeline digit-ai-pptx",
+    "polices embarquées (parties ppt/fonts/) : non décodées par oracle-pptx → domaine « Polices embarquées d'un PPTX » (oracle-polices-embarquees.mjs, E0 décodage, E1 contours, E2 boîte englobante), routé par run-oracles sur tout paquet qui en porte (TF-1501)"
    ]
   },
   {
@@ -551,7 +552,8 @@
     "débordement de texte hors cadre — le rendu PowerPoint le montre (TF-1130)",
     "couleurs héritées du thème ou des masques (schemeClr)",
     "règles propres à un type de séance (pied de page attendu, mot de couverture, faits portés) → invocation locale au produit, en plus de cet oracle",
-    "pied de page et pagination → oracle-charte-pptx-semantique S4"
+    "pied de page et pagination → oracle-charte-pptx-semantique S4",
+    "polices embarquées (parties ppt/fonts/) : non décodées par oracle-pptx → domaine « Polices embarquées d'un PPTX » (oracle-polices-embarquees.mjs, E0 décodage, E1 contours, E2 boîte englobante), routé par run-oracles sur tout paquet qui en porte (TF-1501)"
    ],
    "note": "TF-1130 (lot Produit-64 20260913a) : un produit avait dupliqué son oracle de format de support faute de domaine ; les règles de marque passent par SON profil (format, polices, palette relevés sur son deck de référence), qui vit chez lui"
   },
@@ -1795,6 +1797,35 @@
    ],
    "provenance": "TF-1365, lot Produit-02 - RETOURS - 20260922a (RT-97) — deux mots-cles « spa » achetes alors que le domaine n a pas de spa, et la veille deux mots-cles « piscine privee » (la piscine est partagee) et une distance de 10 minutes pour 15 : la fixture rouge reprend ces trois formes sur des faits inventes.",
    "note": "TF-1365 (26/09/2026) : une garde des promesses tenue UNE fois (le referentiel du produit, donnee datee et sourcee — loi n° 4) et jouee par chaque generateur de texte derive des memes faits — pages, annonces, fiche d etablissement, livrets. Declencheurs : un fichier d annonces (.csv, .tsv), ou un dossier qui porte promesses.json (tout le dossier est alors juge, pages .html, .htm, .md, .txt comprises)."
+  },
+  {
+   "domaine": "Polices embarquées d'un PPTX",
+   "ext": [
+    ".pptx",
+    ".potx"
+   ],
+   "parties_paquet": [
+    "ppt/fonts/"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-polices-embarquees.mjs",
+    "{file}"
+   ],
+   "checklist": "E0 chaque partie ppt/fonts/ (flux EOT) se décode par le décodeur de Windows (t2embed.dll, chargement privé au processus, rien n'est installé) · E1 ses contours sont ceux de la police installée de même famille, graisse, pente et version (mêmes indices de glyphes ; un composite garde ses composants et leurs décalages) · E2 aucun glyphe simple ne sort de la boîte englobante que la police déclare (table head), jugeable sans la police source. Déclenché par la présence d'une partie ppt/fonts/ dans le paquet (parties_paquet) ; appelé à la main sur un deck sans police embarquée, SKIP motivé « sans objet »",
+   "statut": "ok",
+   "non_juge": [
+    "le rendu réel chez le destinataire (Mac, poste sans la police) : l'essai sur le poste qui a montré le défaut reste un geste humain",
+    "E1 sans la police source de même famille, graisse, pente ET version parmi les polices de référence (le poste, ou --polices <dossier>) : déclarée non jouée police par police, E2 juge seule",
+    "un contour faux qui reste dans la boîte englobante : seule E1 le voit",
+    "hors de Windows : le décodeur MTX de référence est t2embed.dll ; le portage par libeot n'est pas mesuré, donc pas branché — SKIP motivé",
+    "prérequis absents (Python 3, fontTools importé par l'interpréteur résolu ou fourni par uv) : SKIP dont le motif nomme ce qui manque, jamais un PASS",
+    "la réparation : l'oracle juge, il ne réencode rien — le réencodage hors PowerPoint est un geste du producteur"
+   ],
+   "provenance": "TF-1501, lot du 30/09/2026 (RA-02) — cinq versions d'un deck sorties avec huit polices embarquées fausses (232 contours faux sur 235 pour la police du corps de texte), PASS à toutes les portes du registre. Fixtures FICTIVES : la police « Essai Fictif » construite par fixtures/gen-polices-embarquees-fixtures.py, embarquée par TTEmbedFont (sous-ensemble compressé MTX) comme le fait PowerPoint ; la rouge porte 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée, la verte est le même deck, police saine",
+   "note": "TF-1501 (01/10/2026) : le contrôle écrit par le produit qui a payé le défaut (vérificateur 1.0.1), porté sans nom, sans deck ni rapport ; moteur scripts/polices-embarquees.py, lancé par scripts/oracle-polices-embarquees.mjs qui écrit le contrat commun. Prérequis du poste : Node, un Python 3 et fontTools (importé par l'interpréteur résolu, sinon fourni par uv run --with fonttools), et Windows pour décoder le MTX. Contre-mesure du 01/10/2026 sur les 22 decks à polices embarquées d'un produit, lus en place : 22 verdicts sur 22 identiques à ceux de l'outil d'origine, dont les 5 versions fautives en FAIL par E1 et E2, et 17 PASS ; de 1,2 à 4,4 s par deck. Déclencheur parties_paquet (nouveau critère de run-oracles) : un .pptx ou un .potx n'est routé vers ce domaine que si son paquet porte une partie ppt/fonts/ — répertoire central lu sans décompresser, paquet illisible routé quand même.",
+   "timeout_ms": 180000
   }
  ]
 }

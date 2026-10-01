@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // run-oracles v2 — Orchestrateur de la loi qualité (noyau générique).
 // Détecte les domaines d'un livrable (extension + trigger_files + content_patterns, bornés par
-// `chemins` quand l'entrée en porte — TF-1446),
+// `chemins` quand l'entrée en porte — TF-1446 — et par `parties_paquet` — TF-1501),
 // lance les oracles CLI du registre EN PARALLÈLE (pool borné, cache par hash), agrège
 // un verdict PASS / FAIL / INCONCLUSIF, tient le BILAN 4 ÉTATS de chaque fichier
 // (jugé / exempté / délégué / signalé — somme = nb de fichiers, aucun silence),
@@ -303,6 +303,32 @@ const contents = new Map();
 for (const f of files) { try { if (TEXT_EXT.has(extOf(f)) && fs.statSync(f).size <= 1024 * 1024) contents.set(f, fs.readFileSync(f, 'utf8')); } catch {} }
 const contentMatches = o => (Array.isArray(o.content_patterns) && o.content_patterns.length)
   ? files.filter(f => contents.has(f) && o.content_patterns.some(p => { try { return new RegExp(p, 'im').test(contents.get(f)); } catch { return false; } })) : [];
+// TF-1501 — les noms des parties d'un paquet zip, lus dans son répertoire central (fin d'archive) ;
+// null si l'archive est illisible. Une lecture par fichier, gardée pour les entrées suivantes.
+const parties = new Map();
+function partiesDuPaquet(f) {
+  if (parties.has(f)) return parties.get(f);
+  let noms = null;
+  try {
+    const buf = fs.readFileSync(f);
+    let fin = -1;
+    for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) if (buf.readUInt32LE(i) === 0x06054b50) { fin = i; break; }
+    if (fin >= 0) {
+      const n = buf.readUInt16LE(fin + 10);
+      let p = buf.readUInt32LE(fin + 16);
+      noms = [];
+      for (let k = 0; k < n; k++) {
+        if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) { noms = null; break; }
+        const ln = buf.readUInt16LE(p + 28);
+        noms.push(buf.toString('utf8', p + 46, p + 46 + ln));
+        p += 46 + ln + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+      }
+    }
+  } catch { noms = null; }
+  parties.set(f, noms);
+  return noms;
+}
+const paquetPorte = (f, prefixes) => { const noms = partiesDuPaquet(f); return noms === null || noms.some(n => prefixes.some(p => n.startsWith(p))); };
 
 const results = [], actions = [], tasks = [];
 const etat = new Map(); // C2 — bilan : fichier → jugé | exempté | délégué | signalé
@@ -337,6 +363,17 @@ for (const o of registry.oracles) {
   // sur le chemin RÉSOLU du fichier ; la cible-dossier injectée par `trigger_files` n'est pas filtrée.
   if (Array.isArray(o.chemins) && o.chemins.length) {
     matches = matches.filter(f => (f === target && !targetIsFile) ? true : path.resolve(f).split(/[\\/]+/).some(seg => o.chemins.includes(seg)));
+  }
+  // TF-1501 (01/10/2026) — UN ORACLE PEUT SE DÉCLENCHER SUR LE CONTENU D'UN PAQUET. `parties_paquet`
+  // (facultatif) nomme des préfixes de parties d'un paquet zip (OPC : .pptx, .docx…) : le fichier n'est
+  // routé que si son paquet porte au moins une partie sous l'un d'eux — `["ppt/fonts/"]` veut dire
+  // « un deck qui embarque des polices ». Le fait : cinq versions d'un deck sont sorties avec huit
+  // polices embarquées fausses, PASS à toutes les portes, faute d'un juge qui décode la copie
+  // embarquée ; ce juge n'a rien à dire d'un deck sans police embarquée, et ne lui doit pas un SKIP
+  // par livrable. Le répertoire central se lit sans rien décompresser ; un paquet ILLISIBLE reste
+  // routé : le juge dit lui-même ce qu'il ne lit pas, un routage ne fait jamais taire un juge.
+  if (Array.isArray(o.parties_paquet) && o.parties_paquet.length) {
+    matches = matches.filter(f => (f === target && !targetIsFile) ? true : paquetPorte(f, o.parties_paquet));
   }
   if (!matches.length) continue;
   if (o.type === 'cli' && o.cmd && EXCLUS.has(o.domaine)) continue;   // §6 — domaine exclu à ce niveau (CLI seulement ; délégations toujours signalées, R6)

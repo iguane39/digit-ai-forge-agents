@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.30.0, alignée sur le JSON le 28/09/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.31.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -13,7 +13,8 @@
 | Conformité charte HTML (charte, sémantique, print) | `check_html.py` (digit-ai-page-html) — DOCTYPE, `lang="fr"`, charset prioritaire, viewport, `<h1>` unique, `:root`, `<title>`, `@media print`, police Syne interdite | cli (délégué) | ✅ |
 | Complétude d'un rendu par rapport à sa source (texte perdu à la génération) | `check_completude.py <page.html> --source <source.md>` (digit-ai-page-html) — **invocation explicite** : rendu = mots visibles du corps HTML, source = mots visibles du Markdown dont il sort, `rendu < source` ⇒ ARRÊT. Seuil par défaut 1.0 ; `--seuil` en dessous reste possible mais la dérogation est écrite au `non_juge` de chaque exécution. **TF-1174** : une page ayant perdu les trois quarts de son texte (11 996 → ~3 000 mots) passait les SIX oracles de forme — ils mesurent une grandeur *corrélée*, pas l'invariant. **TF-1436** : titres par niveau et éléments de liste se comptent aussi ; un seau du rendu sous la source est un écart, un surplus jamais | cli (délégué) | ✅ |
 | Filtres de colonne sur tableaux de données | `scripts/oracle-filtres-tableau.mjs <page.html>` — G1 marquage ou exemption motivée, G2 asset référencé, G3 initialisation, G4 id + thead, G5 compteur aria-live, G6 réaffichage à l'impression | cli | ✅ |
-| Rendu PPTX (structure & compatibilité) | `scripts/oracle-pptx.mjs` — zip, [Content_Types].xml 1re entrée, zéro transition/JPEG, smoke-test LibreOffice ; charte sémantique → gate digit-ai-pptx | cli | ⚙️ |
+| Rendu PPTX (structure & compatibilité) | `scripts/oracle-pptx.mjs` — zip, [Content_Types].xml 1re entrée, zéro transition/JPEG, smoke-test LibreOffice ; charte sémantique → gate digit-ai-pptx ; polices embarquées NON décodées, et dit au `non_juge` → domaine ci-dessous (TF-1501) | cli | ⚙️ |
+| Polices embarquées d'un PPTX | `scripts/oracle-polices-embarquees.mjs <deck.pptx> [--polices <dossier de référence>]` — **E0** chaque partie `ppt/fonts/` (flux EOT) se décode par le décodeur de Windows (`t2embed.dll`, chargé en privé) · **E1** ses contours sont ceux de la police installée de même famille, graisse, pente et version · **E2** aucun glyphe simple hors de la boîte englobante que la police déclare. **Déclenché par la présence d'une partie `ppt/fonts/`** dans le paquet (`parties_paquet`, critère neuf de `run-oracles`). Prérequis : Python 3 et fontTools (importé, sinon fourni par `uv`), Windows pour le MTX ; absent → SKIP qui le nomme (TF-1501) | cli | ✅ |
 | Accessibilité (WCAG structurel) | `scripts/oracle-a11y.py` — lang, alt, labels, titres, id, zoom (Playwright) | cli | ✅ |
 | Performance / poids | `scripts/oracle-perf.mjs` — budgets poids/DOM/JS inline/refs | cli | ✅ |
 | Format / livraison / versioning | `scripts/oracle-format.mjs` — UTF-8, ZIP, placeholders, autoportance | cli | ✅ |
@@ -539,3 +540,41 @@ gratuits, et T4, qui appelle un modèle, ne s'arme que par `--juge`, `--reponse`
   l'oracle joue en 55 ms environ par page.
 - **Preuve** : bloc TF-1446 de la recette, l'entrée réelle du registre jouée sur une page sous
   `output` (FAIL, intention absente) et sur la même page hors `output` (non routée).
+
+## Injection du 01/10/2026 — les polices embarquées d'un PPTX (TF-1501, v2.31.0)
+
+Le lot du 30/09/2026 (RA-02) : cinq versions d'un deck de propale sont sorties avec huit polices
+embarquées fausses, 232 contours faux sur 235 pour la police du corps de texte. Sur un poste qui
+n'a pas la police, le texte s'affichait en éclats. Toutes les portes du registre ont rendu PASS,
+`oracle-pptx` compris, dont le `non_juge` ne disait rien des polices : aucune ne décodait la copie
+embarquée, et le poste producteur lit la police installée. La cause mesurée chez le produit tient
+au composant de Windows qui embarque les polices, `t2embed.dll` : la table de son codage en
+triplets était altérée dans la mémoire du processus PowerPoint qui exportait.
+
+- **Le juge** : `scripts/oracle-polices-embarquees.mjs`, scaffoldé par `write-an-oracle` puis durci
+  avec le contrôle écrit par le produit, porté sans nom, sans deck ni rapport. Son moteur,
+  `scripts/polices-embarquees.py`, décode chaque partie `ppt/fonts/` par `t2embed.dll` chargée en
+  privé, puis joue E0, E1 et E2. E1 compare la copie à la police de référence de même famille,
+  graisse, pente et version : celle du poste, ou celle du dossier désigné par `--polices`. Une
+  autre version de la police n'a pas les mêmes glyphes aux mêmes indices : E1 est alors déclarée
+  non jouée, et E2 juge seule.
+- **Le déclencheur** : un critère neuf de `run-oracles`, `parties_paquet` [`ppt/fonts/`]. Un `.pptx`
+  ou un `.potx` n'est routé vers ce domaine que si son paquet porte une partie sous ce préfixe ; le
+  répertoire central se lit sans rien décompresser, et un paquet illisible reste routé. Appelé à la
+  main sur un deck sans police embarquée, l'oracle rend un SKIP motivé « sans objet ».
+- **Ce que le poste doit avoir** : Node, un Python 3 et fontTools, importé par l'interpréteur
+  résolu ou à défaut fourni par `uv run --with fonttools`, et Windows pour décoder le MTX. Il en
+  manque un : SKIP dont le motif nomme le prérequis, jamais un PASS.
+- **Hors de Windows** : le décodeur de référence est `t2embed.dll`. Le portage par libeot, qui
+  rend les mêmes contours selon le produit, n'a pas été mesuré sur ce poste (ni libeot ni
+  compilateur) : il n'est pas branché, et le SKIP le dit.
+- **Mesure** : sur les 22 decks à polices embarquées d'un produit, lus en place le 01/10/2026,
+  l'oracle rend 22 verdicts sur 22 identiques à ceux de l'outil d'origine. Les 5 versions fautives
+  échouent par E1 et E2, les 17 autres passent, en 1,2 à 4,4 s par deck.
+- **Preuve** : la paire `polices-embarquees` du manifest, sur une police FICTIVE « Essai Fictif »
+  embarquée par `TTEmbedFont` comme le fait PowerPoint (`fixtures/gen-polices-embarquees-fixtures.py`).
+  La rouge a 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée, la verte est le
+  même deck sain. Le bloc TF-1501 de la recette exige FAIL par E1 et par E2, puis PASS, et
+  n'admet un SKIP que si son motif nomme un prérequis absent. Il joue aussi `parties_paquet` sur un
+  registre jouet : le deck qui porte `ppt/fonts/` est routé, le deck sans police ne l'est pas,
+  le paquet illisible l'est.

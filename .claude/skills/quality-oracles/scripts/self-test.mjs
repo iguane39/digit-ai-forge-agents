@@ -1944,6 +1944,72 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1501 (01/10/2026) — LES POLICES EMBARQUÉES D'UN PPTX SONT DÉCODÉES, PAR LE DOMAINE QUI LES JUGE.
+//
+// LE FAIT (lot du 30/09/2026, RA-02). Cinq versions d'un deck sont sorties avec huit polices
+// embarquées fausses — texte en éclats sur tout poste qui n'a pas la police —, PASS à toutes les
+// portes du registre : aucune ne décodait la copie embarquée, et le poste producteur lit la police
+// installée. CE QUE CE BLOC ÉPROUVE :
+//   (A) le juge dans ses deux sens, sur les fixtures FICTIVES : la rouge échoue par E1 ET par E2, la
+//       verte passe. Le manifest tolère un SKIP (Windows, fontTools ou uv absents) ; ici ce SKIP
+//       n'est admis que si son motif NOMME le prérequis manquant : tout autre SKIP est un juge muet ;
+//   (B) le critère `parties_paquet` du lanceur, sur un registre jouet : le deck qui porte ppt/fonts/
+//       est routé, le deck sans police embarquée ne l'est pas, le paquet ILLISIBLE l'est — un
+//       routage ne fait jamais taire un juge ;
+//   (C) l'entrée RÉELLE du registre porte ce déclencheur, et oracle-pptx nomme ce juge dans son
+//       non_juge : le trou se lit là où il était muet.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1501-'));
+  try {
+    const FX = path.join(SKILLDIR, 'fixtures');
+    const jouer = (script, args) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', script), ...args], { encoding: 'utf8', timeout: 180000 });
+      try { return JSON.parse(r.stdout); } catch { return { verdict: '?', motif: (r.stderr || r.stdout || '').slice(0, 160) }; }
+    };
+    const fixture = (deck) => jouer('oracle-polices-embarquees.mjs', [path.join(FX, deck), '--polices', path.join(FX, 'polices-embarquees-sources')]);
+    const regles = (j) => new Set((j.findings || []).filter((f) => f.sev === 'bloquant').map((f) => f.regle));
+    const PREREQUIS = /t2embed|fontTools|uv n est pas|interpréteur Python/;
+    const rouge = fixture('polices-embarquees-red.pptx');
+    const verte = fixture('polices-embarquees-green.pptx');
+    if (rouge.verdict === 'SKIP' && verte.verdict === 'SKIP' && PREREQUIS.test(rouge.motif || '') && PREREQUIS.test(verte.motif || ''))
+      ok('TF-1501 (A) : NON JOUÉ sur ce poste — ' + rouge.motif + ' (SKIP motivé par un prérequis absent, admis et dit)');
+    else if (rouge.verdict !== 'FAIL' || !regles(rouge).has('E1') || !regles(rouge).has('E2'))
+      ko(`TF-1501 (A) : la fixture rouge rend ${rouge.verdict} (${[...regles(rouge)].join('+') || rouge.motif || 'sans constat'}) — attendu FAIL par E1 ET par E2`);
+    else if (verte.verdict !== 'PASS')
+      ko(`TF-1501 (A) : la fixture verte rend ${verte.verdict} (${verte.motif || JSON.stringify(verte.findings || []).slice(0, 160)}) — attendu PASS`);
+    else ok('TF-1501 (A) : la police embarquée altérée est refusée par E1 (contours ≠ police de référence désignée) ET par E2 (glyphes hors de la boîte déclarée), la même police saine passe');
+
+    // (B) — le déclencheur sur le contenu du paquet, joué par le lanceur.
+    const racine = path.join(tmp, 'racine');
+    fs.mkdirSync(racine);
+    fs.copyFileSync(path.join(FX, 'polices-embarquees-green.pptx'), path.join(racine, 'avec-polices.pptx'));
+    fs.copyFileSync(path.join(FX, 'pptx-format-green.pptx'), path.join(racine, 'sans-police.pptx'));
+    fs.writeFileSync(path.join(racine, 'illisible.pptx'), 'pas un paquet zip\n', 'utf8');
+    const jouet = path.join(tmp, 'oracle-jouet.mjs');
+    fs.writeFileSync(jouet, "process.stdout.write(JSON.stringify({ oracle: 'oracle-jouet', verdict: 'PASS', findings: [] }));\n");
+    const regJ = path.join(tmp, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [{ domaine: 'paquet jouet', ext: ['.pptx'], parties_paquet: ['ppt/fonts/'],
+      type: 'cli', statut: 'ok', cmd: ['node', jouet, '{file}'] }] }), 'utf8');
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), racine, '--registre', regJ, '--no-cache', '--json'],
+      { encoding: 'utf8', timeout: 180000 });
+    let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* sortie illisible */ }
+    const routes = j ? (j.resultats || []).filter((x) => x.domaine === 'paquet jouet').map((x) => path.basename(x.file)).sort() : null;
+    if (!routes) ko('TF-1501 (B) : sortie de run-oracles inexploitable — ' + (r.stderr || '').slice(0, 160));
+    else if (JSON.stringify(routes) !== JSON.stringify(['avec-polices.pptx', 'illisible.pptx']))
+      ko('TF-1501 (B) : parties_paquet route ' + JSON.stringify(routes) + ' — attendu le deck qui porte ppt/fonts/ et le paquet illisible, jamais le deck sans police embarquée');
+    else ok('TF-1501 (B) : parties_paquet route le deck qui porte ppt/fonts/, laisse le deck sans police embarquée, et route le paquet illisible (un routage ne fait jamais taire un juge)');
+
+    // (C) — l'entrée réelle, et le non_juge d'oracle-pptx qui nomme ce juge.
+    const entree = reg.oracles.find((o) => (o.cmd || []).some((c) => /oracle-polices-embarquees\.mjs$/.test(c)) && (o.ext || []).includes('.pptx'));
+    const pptx = jouer('oracle-pptx.mjs', [path.join(FX, 'pptx-green.pptx')]);
+    if (!entree || !(entree.parties_paquet || []).includes('ppt/fonts/'))
+      ko('TF-1501 (C) : l entrée « Polices embarquées d un PPTX » manque au registre, ou ne se déclenche pas sur ppt/fonts/ — ' + JSON.stringify(entree && entree.parties_paquet));
+    else if (!(pptx.non_juge || []).some((x) => /polices embarquées/.test(x) && /oracle-polices-embarquees/.test(x)))
+      ko('TF-1501 (C) : oracle-pptx ne déclare pas, dans son non_juge, que les polices embarquées ne sont pas décodées par lui ni qui les juge');
+    else ok('TF-1501 (C) : l entrée du registre se déclenche sur ppt/fonts/, et oracle-pptx nomme le juge des polices embarquées dans son non_juge');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1447 (28/09/2026) — LE MOTIF D'UN SKIP A UNE PLACE FIXE, ET LA RECETTE LE TIENT POUR TOUS.
 //
 // LE FAIT. Le contrat JSON commun ne disait pas où vit la raison d'un SKIP : en fin de non_juge chez

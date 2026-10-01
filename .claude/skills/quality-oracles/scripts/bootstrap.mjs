@@ -7,6 +7,7 @@
 // absence est rattachée à sa conséquence (« oracle X SKIPpera »).
 //   node bootstrap.mjs [--install]   · exit 0 = tout présent · 2 = dégradations restantes
 import { spawnSync } from 'node:child_process';
+import { resolvePython } from './lib/python.mjs';
 
 const INSTALL = process.argv.includes('--install');
 const sh = (cmd, args) => spawnSync(cmd, args, { encoding: 'utf8', timeout: 300000 });
@@ -21,7 +22,10 @@ const TOOLS = [
   { nom: 'bandit', oracle: 'oracle-sast (Python — repli intégré sinon)', install: () => pipInstall('bandit') },
   { nom: 'gitleaks', oracle: 'oracle-secrets (complément — scanner intégré sinon)', install: null, note: 'binaire à installer manuellement' },
   { nom: 'claude', oracle: 'oracle-judge (LLM-juge externe)', install: null, note: 'CLI Claude Code' },
-  { nom: 'playwright', oracle: 'oracle-a11y / render_page.py', check: () => sh('python3', ['-c', 'import playwright']).status === 0, install: () => pipInstall('playwright') && sh('python3', ['-m', 'playwright', 'install', 'chromium']).status === 0 }
+  { nom: 'playwright', oracle: 'oracle-a11y / render_page.py', check: () => sh('python3', ['-c', 'import playwright']).status === 0, install: () => pipInstall('playwright') && sh('python3', ['-m', 'playwright', 'install', 'chromium']).status === 0 },
+  // TF-1501 : le juge des polices embarquées lit les polices décodées avec fontTools — importé par
+  // l'interpréteur résolu, ou fourni à la demande par `uv run --with fonttools` ; le MTX exige Windows.
+  { nom: 'fontTools', oracle: 'oracle-polices-embarquees (polices embarquées décodées et jugées ; uv le fournit à défaut)', check: () => { const py = resolvePython(); return (py && sh(py[0], [...py.slice(1), '-c', 'import fontTools']).status === 0) || has('uv'); }, install: () => pipInstall('fonttools') }
 ];
 
 console.log('BOOTSTRAP quality-oracles — état des outils externes' + (INSTALL ? ' (mode --install)' : ''));

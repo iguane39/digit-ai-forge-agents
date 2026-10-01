@@ -26,7 +26,10 @@ if (pArg) { try { POL = { ...POL, ...(JSON.parse(fs.readFileSync(pArg, 'utf8')).
 const findings = [], non_juge = [
   'charte sémantique (pas de kicker, logo couverture/interlocuteurs seulement, bijection sommaire↔intercalaires) → gate digit-ai-pptx',
   'rendu visuel slide par slide (débordements, contraste, chevauchements) → pipeline d\'inspection digit-ai-pptx',
-  'contenu (textes, chiffres, images pertinentes)'
+  'contenu (textes, chiffres, images pertinentes)',
+  // TF-1501 (01/10/2026) : cinq versions d'un deck sont sorties avec huit polices embarquées fausses,
+  // PASS ici sur chacune, et ce non_juge n'en disait rien. Le trou se dit désormais, avec son juge.
+  'polices embarquées (parties ppt/fonts/) : NON décodées par cet oracle — jugées par oracle-polices-embarquees.mjs (domaine « Polices embarquées d\'un PPTX », E0 décodage, E1 contours, E2 boîte englobante), que run-oracles route sur tout paquet qui en porte'
 ];
 const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-pptx', domaine: 'Rendu PPTX (structure & compatibilité)', artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = msg => { non_juge.unshift(msg); out('SKIP', 2); };

@@ -135,7 +135,8 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
 ## Outillage (scripts)
 - **Orchestrateur** — `node scripts/run-oracles.mjs <cible> [--profil <nom|chemin>] [--niveau note|diffuse|production] [--no-cache]` : matching
   par **extension + `trigger_files` + contenu** (`content_patterns`), bornés par **`chemins`** quand l'entrée en porte
-  (dossiers où l'oracle s'applique, TF-1446), **type réel** (magic bytes ≠ extension = FAIL), exécution
+  (dossiers où l'oracle s'applique, TF-1446) et par **`parties_paquet`** (préfixes de parties qu'un paquet zip doit
+  porter, `ppt/fonts/` par exemple — TF-1501), **type réel** (magic bytes ≠ extension = FAIL), exécution
   **parallèle** + **cache** par hash (jamais sur FAIL/SKIP) + `timeout_ms`, verdict **PASS / FAIL / INCONCLUSIF** (exit 0/1/2),
   **bilan 4 états** par fichier (jugé / exempté / délégué / signalé — somme = nb de fichiers, aucun silence), exemptions, journal `<cible>.oracles.json` + historique `*-historique.jsonl`.
   Le journal et chaque ligne d'historique portent l'**empreinte du contenu jugé** au format existant `forge-ops/empreinte@1`
@@ -186,6 +187,8 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   **visual-diff** (`oracle-visual-diff.py` : rendu vs **goldens** versionnés `.oracles-goldens/`, masques de zones dynamiques,
   entérinement **hors boucle uniquement** via `--accepter` — refusé après un FAIL non re-jugé, R5) ·
   **nommage** (convention du profil) · **pptx** ([Content_Types].xml 1re entrée, transitions/JPEG selon profil, smoke-test LibreOffice) ·
+  **polices embarquées** (`oracle-polices-embarquees.mjs` : E0 décodage par `t2embed.dll`, E1 contours = police installée, E2 boîte
+  englobante ; Python + fontTools, Windows pour le MTX — TF-1501) ·
   secrets · sca · sast · a11y (WCAG structurel) · llm (schéma JSON) · **judge** (LLM-juge externe `claude -p`, rubrique figée — avis outillé, invocation explicite).
 - **Oracles délégués** (registre) : rendu HTML → `render_page.py` (digit-ai-page-html) ; données → `data-quality-auditor` ; prompts → `prompt-analyzer-l99` ; schémas → `digit-ai-schemas` ; kit RefAudit (externe, projet client). Skill/kit délégué absent de l'environnement → **jamais de substitution silencieuse** : contrôle manuel tracé (§2) et signalement (R6).
 - **Bibliothèque partagée** — `scripts/lib/` : `num.mjs` (parsing des nombres affichés, libellés de totaux), `tables.mjs`
