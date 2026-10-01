@@ -679,6 +679,12 @@ d'infrastructure.
 - **Terraform absent du poste** : l'étape standard rend SKIP avec son motif ; D1 juge toujours. La
   sortie porte le verdict de chaque étape (`etapes`), et l'oracle ne rend SKIP que si aucune étape
   n'a jugé.
+- **La contre-lecture d'un plan (TF-1493)** : le plan de production du 28/09 a été approuvé sur son
+  seul compte de créations, de modifications et de destructions, et le critère d'approbation ne
+  disait pas qu'il ne lisait pas les valeurs envoyées à la plateforme. D1 juge ces valeurs dans les
+  fichiers de configuration ; un plan exporté (`plan.txt`, plan en JSON) n'est pas lu, et une
+  procédure d'approbation porte sa ligne « Ne vérifie pas : … » (§3 du SKILL, point 3). Non mécanisé
+  hors de la restitution, que juge la règle S55 du pilot.
 - **Mesure du 01/10/2026** sur les 212 fichiers `.tf` et `.tfvars` du poste (33 dossiers), lus en
   place et appliqués au 01/10 : 203 PASS et 9 FAIL. Les 3 D1 sont des dates de début d'août dans des
   budgets, la classe même du lot ; les 6 T1 sont des fichiers hors du format canonique. Aucun

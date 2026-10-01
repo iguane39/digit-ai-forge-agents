@@ -57,6 +57,19 @@ Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
 1. **Déterministe & exécutable** — verdict PASS/FAIL reproductible, adossé à une **checklist canonique** versionnée.
 2. **Observateur de l'artefact réel** — rendu / exécution / données ; jamais le seul code source.
 3. **Couvrant les modes de défaillance connus** du domaine **et déclarant ce qu'il ne juge pas** (`non_juge`).
+   **La même obligation vaut pour tout critère de vérification écrit en prose pour un humain**
+   (TF-1493, 01/10/2026) : une procédure d'approbation, une contre-lecture, un feu vert portent leur
+   ligne « Ne vérifie pas : … », qui nomme ce que leurs contrôles n'ont pas mesuré. *Le fait* : le
+   28/09/2026, chez un produit, le critère d'approbation d'un plan de production ne comptait que ses
+   créations, modifications et destructions (11, 1 et 0) ; le plan portait une date de début lisible,
+   que la plateforme a refusée à l'application. Un vert qui ne dit pas ce qu'il ne mesure pas se lit
+   comme une absence de limite : c'est la classe `oracle-perimetre-de-non-mesure-non-publie`, revenue
+   par la prose parce que son remède ne visait que la sortie d'un oracle exécuté. Côté pilot, la
+   restitution est jugée par la règle **S55** d'`oracle-synthese` (enregistrement `71b878b8`,
+   `gabarits/RESTITUTION.md` 2.32.0) ; les valeurs datées d'une configuration Terraform, par **D1**
+   d'`oracle-terraform` (TF-1492). **Non mécanisé** : aucun oracle ne lit une procédure d'approbation
+   ou une contre-lecture écrite hors d'une restitution, ni un plan exporté (`plan.txt`) ; la ligne s'y
+   écrit à la main, et sa justesse reste un jugement humain.
 4. **À sortie localisante** (code retour + *où* est le défaut) et **autoportant**, rejouable dans les deux environnements.
 5. **Prouvé par fixtures** — paire rouge/verte dans `fixtures/` (+ `manifest.json`) : le self-test exige
    FAIL sur la rouge, PASS sur la verte. **Un oracle qui ne sait pas échouer n'est pas un oracle.**
