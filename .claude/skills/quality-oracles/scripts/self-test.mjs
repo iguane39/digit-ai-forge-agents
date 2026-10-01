@@ -2135,6 +2135,74 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1492 (01/10/2026) — UNE CONFIGURATION D'INFRASTRUCTURE A SON ORACLE : LES STANDARDS, PUIS LA DATE.
+//
+// LE FAIT (lot Produit-03 - RETOURS - 20260929a, RA-48) : une date d'effet écrite en dur pour une
+// mise en production d'août a été refusée à l'application du 29/09/2026 — 10 ressources sur 11, le
+// budget absent —, et la première écriture du correctif rendait fmt -check à 3. CE BLOC :
+//   (A) le banc du lot pour D1, sur des fichiers de variables jetables à date d'application épinglée :
+//       août au 29/09 refusée, septembre au 29 et au 30/09 acceptée, septembre au 01/10 refusée, et
+//       l'étalonnage sur Azure (juin refusé en juillet, juin et juillet acceptés à leur mois) ;
+//   (B) le remède que D1 prescrit, JOUÉ : la date calculée à la création ne fait pas de constat ;
+//   (C) T1 et T2 dans leurs deux sens quand Terraform est sur le poste — format rompu refusé, puis
+//       accepté une fois `terraform fmt` passé (le remède du message), variable non déclarée refusée,
+//       configuration valide acceptée, fournisseur non installé DIT et non imputé à la configuration ;
+//   (D) Terraform retiré du PATH : l'étape standard rend SKIP et son motif nomme terraform, D1 juge
+//       toujours.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1492-'));
+  try {
+    const O = path.join(SKILLDIR, 'scripts', 'oracle-terraform.mjs');
+    const jouer = (cible, date, env = process.env) => {
+      const r = spawnSync(process.execPath, [O, cible, ...(date ? ['--date-application', date] : [])], { encoding: 'utf8', timeout: 180000, env });
+      try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], motif: (r.stderr || '').slice(0, 160) }; }
+    };
+    const poser = (rel, texte) => { const p = path.join(tmp, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, texte, 'utf8'); return p; };
+    const regles = (j) => new Set((j.findings || []).filter((f) => f.sev === 'bloquant').map((f) => f.regle));
+    // (A) — le banc du lot et l'étalonnage.
+    const banc = [['2026-08-01T00:00:00Z', '2026-09-29', 'FAIL'], ['2026-09-01T00:00:00Z', '2026-09-29', 'PASS'], ['2026-09-01T00:00:00Z', '2026-09-30', 'PASS'],
+      ['2026-09-01T00:00:00Z', '2026-10-01', 'FAIL'], ['2026-06-01T00:00:00Z', '2026-07-15', 'FAIL'], ['2026-06-01T00:00:00Z', '2026-06-20', 'PASS'], ['2026-07-01T00:00:00Z', '2026-07-20', 'PASS']];
+    const fautes = banc.filter(([valeur, date, attendu], k) => {
+      const j = jouer(poser(`banc-${k}/prd.tfvars`, `budget_start_date = "${valeur}"\n`), date);
+      return j.verdict !== attendu || (attendu === 'FAIL' && !regles(j).has('D1'));
+    });
+    fautes.length ? ko('TF-1492 (A) : le banc du lot n est pas tenu par D1 — ' + fautes.map(([v, d, a]) => `${v.slice(0, 7)} au ${d} attendu ${a}`).join(' · '))
+      : ok('TF-1492 (A) : le banc du lot est tenu — août au 29/09 refusée, septembre au 29 et au 30/09 acceptée, septembre au 01/10 refusée — et l étalonnage d Azure aussi (juin refusé en juillet, accepté en juin, juillet accepté en juillet)');
+    // (B) — le remède prescrit par le message de D1, joué.
+    const remede = jouer(poser('remede/main.tf', 'locals {\n  debut_budget = formatdate("YYYY-MM-01\'T\'00:00:00\'Z\'", timestamp())\n}\n'), '2026-10-01');
+    remede.verdict !== 'FAIL' && !regles(remede).has('D1')
+      ? ok(`TF-1492 (B) : la date calculée à la création, le remède que D1 prescrit, ne fait aucun constat (${remede.verdict})`)
+      : ko(`TF-1492 (B) : le remède prescrit par D1 est refusé (${remede.verdict}, ${[...regles(remede)].join('+')})`);
+    // (C) — T1 et T2 dans leurs deux sens, Terraform présent.
+    const tfPresent = spawnSync('terraform', ['version'], { encoding: 'utf8', timeout: 30000 }).status === 0;
+    if (!tfPresent) ok('TF-1492 (C) : NON JOUÉ — terraform introuvable sur ce poste : T1 et T2 ne peuvent pas se montrer ici, et c est dit');
+    else {
+      const rompu = poser('t1/main.tf', 'locals {\n  a = 1\n  # commentaire\n  bb = 2\n  ccc   = 3\n}\n');
+      const j1 = jouer(rompu, '2026-10-01');
+      spawnSync('terraform', ['fmt', rompu], { encoding: 'utf8', timeout: 60000 });
+      const j1bis = jouer(rompu, '2026-10-01');
+      const j2 = jouer(poser('t2-ko/main.tf', 'variable "x" {\n  type = string\n}\n\noutput "y" {\n  value = var.z\n}\n'), '2026-10-01');
+      const j2ok = jouer(poser('t2-ok/main.tf', 'variable "x" {\n  type = string\n}\n\noutput "y" {\n  value = var.x\n}\n'), '2026-10-01');
+      const j2init = jouer(poser('t2-init/main.tf', 'terraform {\n  required_providers {\n    azurerm = {\n      source = "hashicorp/azurerm"\n    }\n  }\n}\n'), '2026-10-01');
+      const t1Ligne = (j1.findings || []).find((f) => f.regle === 'T1');
+      if (j1.verdict !== 'FAIL' || !t1Ligne || !/:4$/.test(t1Ligne.where)) ko(`TF-1492 (C) : le format rompu rend ${j1.verdict} (${t1Ligne ? t1Ligne.where : 'sans T1'}) — attendu FAIL par T1 à la ligne 4`);
+      else if (j1bis.verdict !== 'PASS') ko(`TF-1492 (C) : après terraform fmt, le remède que T1 prescrit, la configuration rend ${j1bis.verdict}`);
+      else if (j2.verdict !== 'FAIL' || !regles(j2).has('T2')) ko(`TF-1492 (C) : une variable non déclarée rend ${j2.verdict} — attendu FAIL par T2`);
+      else if (j2ok.verdict !== 'PASS') ko(`TF-1492 (C) : une configuration valide rend ${j2ok.verdict}`);
+      else if (j2init.verdict === 'FAIL' || !(j2init.non_juge || []).some((x) => /^T2 non jouée/.test(x)))
+        ko(`TF-1492 (C) : un fournisseur non installé rend ${j2init.verdict} sans dire T2 non jouée — un défaut du POSTE imputé à la configuration`);
+      else ok('TF-1492 (C) : T1 refuse le format rompu à sa ligne et accepte la configuration une fois terraform fmt passé ; T2 refuse la variable non déclarée, accepte la configuration valide, et DIT le fournisseur non installé sans l imputer à la configuration');
+    }
+    // (D) — Terraform absent : l'étape standard rend SKIP motivé, D1 juge toujours.
+    const clePath = Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH') || 'PATH';
+    const sansTf = jouer(poser('d/prd.tfvars', 'budget_start_date = "2026-08-01T00:00:00Z"\n'), '2026-09-29', { ...process.env, [clePath]: path.dirname(process.execPath) });
+    const std = sansTf.etapes && sansTf.etapes.standard;
+    if (!std || std.verdict !== 'SKIP' || !/terraform introuvable/.test(std.motif || '')) ko(`TF-1492 (D) : sans terraform, l étape standard rend ${std ? std.verdict : '?'} (${std ? std.motif : ''}) — attendu SKIP motivé`);
+    else if (sansTf.verdict !== 'FAIL' || !regles(sansTf).has('D1')) ko(`TF-1492 (D) : sans terraform, D1 ne juge plus (${sansTf.verdict})`);
+    else ok('TF-1492 (D) : sans terraform sur le PATH, l étape standard rend SKIP et son motif le nomme, et D1 juge toujours (FAIL sur la date d août)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1447 (28/09/2026) — LE MOTIF D'UN SKIP A UNE PLACE FIXE, ET LA RECETTE LE TIENT POUR TOUS.
 //
 // LE FAIT. Le contrat JSON commun ne disait pas où vit la raison d'un SKIP : en fin de non_juge chez

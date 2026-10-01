@@ -190,7 +190,9 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   **polices embarquées** (`oracle-polices-embarquees.mjs`, PPTX, DOCX, PDF et page HTML : E0 décodage, E1 contours = police
   installée, E2 boîte englobante ; Python + fontTools, pypdf pour le PDF, brotli pour le WOFF2, Windows pour le MTX d'un PPTX
   — TF-1501, TF-1504) ·
-  secrets · sca · sast · a11y (WCAG structurel) · llm (schéma JSON) · **judge** (LLM-juge externe `claude -p`, rubrique figée — avis outillé, invocation explicite).
+  secrets · sca · sast · a11y (WCAG structurel) · llm (schéma JSON) · **terraform** (`oracle-terraform.mjs` : fmt -check et validate
+  sans init, puis D1 une date d'effet écrite en dur jugée contre le mois d'application — TF-1492) ·
+  **judge** (LLM-juge externe `claude -p`, rubrique figée — avis outillé, invocation explicite).
 - **Oracles délégués** (registre) : rendu HTML → `render_page.py` (digit-ai-page-html) ; données → `data-quality-auditor` ; prompts → `prompt-analyzer-l99` ; schémas → `digit-ai-schemas` ; kit RefAudit (externe, projet client). Skill/kit délégué absent de l'environnement → **jamais de substitution silencieuse** : contrôle manuel tracé (§2) et signalement (R6).
 - **Bibliothèque partagée** — `scripts/lib/` : `num.mjs` (parsing des nombres affichés, libellés de totaux), `tables.mjs`
   (extraction tables md/html), `claims-extract.mjs` (affirmations labellisées) — source unique consommée par calculs, claims et coherence.

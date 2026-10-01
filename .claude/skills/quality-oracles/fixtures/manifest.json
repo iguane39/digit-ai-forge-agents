@@ -1581,6 +1581,51 @@
    ],
    "dependant_outil": "fontTools (pypdf en plus pour le PDF, brotli pour la page), importés par l'interpréteur Python résolu, sinon fournis par uv — un poste sans eux rend un SKIP motivé ; le bloc TF-1504 de la recette n'admet alors ce SKIP que si son motif nomme le prérequis manquant, et exige sinon FAIL par E1 ET E2 sur la rouge, PASS sur la verte",
    "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : le juge des polices embarquées pour chaque document généré. Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » en WOFF2, en data: d une règle @font-face ; la rouge porte 5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée, la verte est le même document, police saine ; référence d'E1 désignée par --polices (TF-0912)"
+  },
+  {
+   "nom": "terraform",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-terraform.mjs",
+    "{fixture}",
+    "--date-application",
+    "2026-09-29"
+   ],
+   "red": "terraform-red/prd.tfvars",
+   "green": "terraform-green/prd.tfvars",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "D1 — budget_start_date = ",
+    "août 2026, avant le mois d'application (septembre 2026"
+   ],
+   "provenance": "TF-1492, lot Produit-03 - RETOURS - 20260929a (RA-48) — une date d'effet écrite en dur pour une mise en production d'août, refusée à l'application du 29/09/2026 ; la première écriture du correctif rendait fmt -check à 3. Fixtures FICTIVES : le fichier de variables d'août appliqué le 29/09 (rouge), le même porté à septembre (vert) ; la date d'application est ÉPINGLÉE (--date-application), jamais le jour du poste (TF-0912)"
+  },
+  {
+   "nom": "terraform-forme",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-terraform.mjs",
+    "{fixture}",
+    "--date-application",
+    "2026-09-29"
+   ],
+   "red": "terraform-forme-red/main.tf",
+   "green": "terraform-forme-green/main.tf",
+   "attendu_red": [
+    "FAIL",
+    "SKIP"
+   ],
+   "attendu_green": [
+    "PASS",
+    "SKIP"
+   ],
+   "dependant_outil": "terraform sur le PATH — absent, l'étape standard rend SKIP motivé et, sans valeur datée à juger, l'oracle aussi ; le bloc TF-1492 de la recette exige alors que le motif nomme terraform, et sinon FAIL par T1 sur la rouge, PASS sur la verte",
+   "provenance": "TF-1492, lot Produit-03 - RETOURS - 20260929a (RA-48) — une date d'effet écrite en dur pour une mise en production d'août, refusée à l'application du 29/09/2026 ; la première écriture du correctif rendait fmt -check à 3. Fixtures FICTIVES : un commentaire a coupé le groupe d'alignement des signes égal (rouge), la même configuration au format canonique, sa date d'effet calculée à la création (verte)"
   }
  ]
 }

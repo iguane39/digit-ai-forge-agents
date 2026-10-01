@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.33.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.34.0, alignée sur le JSON le 01/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -25,6 +25,7 @@
 | Sécurité / secrets | `scripts/oracle-secrets.mjs` — clés/tokens/PAT (+ gitleaks) | cli | ✅ |
 | Sécurité : dépendances (SCA) | `scripts/oracle-sca.mjs` — pip-audit / npm audit / OSV ; fixtures jouées sur données OSV figées (`--osv-fige`), ressource injoignable = SKIP nommé (TF-1107) | cli | ✅ |
 | Sécurité : SAST (injection/exécution) | `scripts/oracle-sast.mjs` — injection SQL/commande, eval/exec, désérialisation (semgrep/bandit + repli) | cli | ✅ |
+| Configuration d'infrastructure (Terraform) | `scripts/oracle-terraform.mjs <fichier.tf|.tfvars|dossier> [--date-application AAAA-MM-JJ]` — étape **standard** : **T1** `terraform fmt -check` (première ligne réécrite), **T2** `terraform validate -json`, sans `terraform init`, rien d'écrit dans la cible ; Terraform absent → l'étape rend SKIP motivé. Étape **maison** : **D1** une valeur datée écrite en dur dont le mois précède le mois d'application est refusée (banc du lot rejoué) ; remède : la date calculée à la création (TF-1492) | cli | ✅ |
 | Sortie LLM / IA générative | `scripts/oracle-llm.mjs` — schéma JSON (auto) + checklist véracité | cli | ⚙️ |
 | Programme de formation (structure pédagogique) | `scripts/oracle-programme-formation.mjs` — C1 sommes de durées, C2 part de pratique déclarée, C3 couverture vs référence, C4 segment ≤ 50 min, C5 évaluation par bloc (.md/.docx) | cli | ✅ |
 | Support de diapositives (parité de format par profil) | `scripts/oracle-pptx.mjs --profil <profil>` — P1 format (`pptx.format`), P2 polices (`pptx.polices`), P3 couleurs de texte (`pptx.palette`), plus l'hygiène du paquet ; règles propres à un type de séance = invocation locale au produit (TF-1130) | cli | ⚙️ |
@@ -651,3 +652,39 @@ vert : une exemption par fichier, à renouveler pour chaque support. La règle q
   et pagination. `charte-pptx-profil-digit-ai` : le même support vert est rouge sous digit-ai, par S3
   et S4. Le bloc TF-1490 de la recette joue aussi l'entrée réelle par le lanceur : PASS sous
   generique, FAIL sous le profil par défaut, et la rouge historique garde ses messages.
+
+## Injection du 01/10/2026 — la configuration d'infrastructure (TF-1492, v2.34.0)
+
+Le lot `Produit-03 - RETOURS - 20260929a` (RA-48) : le fichier de variables de production portait
+`budget_start_date = "2026-08-01T00:00:00Z"`, écrit pour une mise en production prévue le 26/08.
+Appliqué le 29/09, il a été refusé (400, date de début antérieure au mois courant) : 10 ressources
+créées sur 11, le budget absent. La valeur était juste le jour où elle a été écrite, et rien ne
+l'a rejugée contre la date d'application. Aucun oracle du registre ne jugeait une configuration
+d'infrastructure.
+
+- **L'oracle** : `scripts/oracle-terraform.mjs`, scaffoldé par `write-an-oracle` puis durci, en deux
+  étapes, les standards avant la maison (R3). L'étape **standard** joue `terraform fmt -check` (T1),
+  localisé à la première ligne que fmt réécrirait, puis `terraform validate -json` (T2) sur le
+  dossier de configuration, sans `terraform init` : l'oracle n'écrit rien dans la cible et ne
+  télécharge rien. L'étape **maison** joue D1 en Node sur les `.tf` et `.tfvars`.
+- **D1** : une valeur datée écrite en dur (une chaîne qui est une date ISO 8601, hors des blocs
+  `tags` et `labels`) dont le mois précède le mois d'application est refusée. La date d'application
+  se donne par `--date-application AAAA-MM-JJ`, sinon c'est le jour du poste. Le remède prescrit
+  est la date calculée à la création : `formatdate("YYYY-MM-01'T'00:00:00'Z'", timestamp())`,
+  avec `lifecycle { ignore_changes }`.
+- **Ce que T2 ne juge pas** : quand `validate` parle du poste et non de la configuration
+  (fournisseur ou module non installé ou abîmé, version de Terraform hors de `required_version`),
+  T2 est dite non jouée. La première passe sur le parc rendait 21 faux constats T2 de cette sorte.
+- **Terraform absent du poste** : l'étape standard rend SKIP avec son motif ; D1 juge toujours. La
+  sortie porte le verdict de chaque étape (`etapes`), et l'oracle ne rend SKIP que si aucune étape
+  n'a jugé.
+- **Mesure du 01/10/2026** sur les 212 fichiers `.tf` et `.tfvars` du poste (33 dossiers), lus en
+  place et appliqués au 01/10 : 203 PASS et 9 FAIL. Les 3 D1 sont des dates de début d'août dans des
+  budgets, la classe même du lot ; les 6 T1 sont des fichiers hors du format canonique. Aucun
+  fichier n'a été écrit dans les dossiers jugés ; de 0,3 à 6 s par fichier.
+- **Preuve** : deux paires au manifest, `terraform` (D1, jouée partout) et `terraform-forme` (T1,
+  Terraform requis). Le bloc TF-1492 de la recette rejoue le banc du lot (août au 29/09 refusée,
+  septembre au 29 et au 30/09 acceptée, septembre au 01/10 refusée) et l'étalonnage sur Azure (juin
+  refusé en juillet, juin et juillet acceptés à leur mois). Il joue aussi les remèdes que les
+  messages prescrivent (`terraform fmt`, la date calculée), T2 dans ses deux sens, et le poste sans
+  Terraform.

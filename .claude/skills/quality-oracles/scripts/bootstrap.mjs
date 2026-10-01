@@ -26,6 +26,7 @@ const TOOLS = [
   // TF-1501, TF-1504 : le juge des polices embarquées lit les polices décodées avec fontTools, les
   // programmes d'un PDF avec pypdf, le WOFF2 d'une page avec brotli — importés par l'interpréteur
   // résolu, ou fournis à la demande par `uv run --with …` ; le MTX d'un PPTX exige Windows.
+  { nom: 'terraform', oracle: 'oracle-terraform (étape standard : fmt -check, validate ; D1 juge sans lui)', install: null, note: 'binaire HashiCorp à installer' },
   { nom: 'fontTools, pypdf, brotli', oracle: 'oracle-polices-embarquees (polices embarquées décodées et jugées ; uv les fournit à défaut)', check: () => { const py = resolvePython(); return (py && sh(py[0], [...py.slice(1), '-c', 'import fontTools, pypdf, brotli']).status === 0) || has('uv'); }, install: () => pipInstall('fonttools') && pipInstall('pypdf') && pipInstall('brotli') }
 ];
 
