@@ -1365,20 +1365,65 @@ def run_perimetre_non_mesure():
     # amputée de ces noms, rend les manques un par un — une règle qui ne saurait pas dire ce qui
     # manque ne prouverait rien de ce qu'elle déclare présent.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from check_html import ORACLES_FORGE_DESIGN, manques_du_renvoi_forge_design
+    from check_html import (ORACLES_FORGE_DESIGN, manques_du_renvoi_forge_design,
+                            renvoi_forge_design, _racine_forge_design, _oracles_sur_disque)
 
-    for nom_oracle, _regles, _domaine in ORACLES_FORGE_DESIGN:
-        cas(f'perimetre · oracle de forge-design NOMMÉ : {nom_oracle}',
-            True, nom_oracle in bloc, 'TF-1173 renvoi publié')
-    cas('perimetre · la COMMANDE qui joue les quatre est donnée',
-        True, 'run-oracles-design.mjs' in bloc, 'TF-1173 renvoi publié')
-    cas('perimetre · le renvoi sort AUSSI sur un verdict en échec',
-        [], manques_du_renvoi_forge_design(jouer(fx / 'l1-ponctuation-orpheline.html', 'text')),
-        'TF-1173 renvoi permanent')
+    # TF-1290 (22/09/2026, lot Produit-64 20260922a, RD-16) — depuis cette correction, le bloc
+    # LIT `digit-ai-forge-design` sur le disque au lieu de réciter QUATRE noms figés. Les deux cas
+    # qui suivent sont donc CONDITIONNÉS à ce que ce poste porte ou non le dépôt frère — sur un
+    # poste qui ne le porte pas, le bloc doit dire PROPREMENT qu'il n'a rien mesuré, jamais
+    # affirmer une liste. Les quatre noms de TF-1173 restent un fait vérifiable SEULEMENT quand
+    # la forge est jointe : ce n'est plus une certitude écrite en dur dans check_html.py.
+    racine_fd, _motif_fd = _racine_forge_design()
+    if racine_fd:
+        noms_reels = _oracles_sur_disque(racine_fd)
+        for nom_oracle, _regles, _domaine in ORACLES_FORGE_DESIGN:
+            cas(f'perimetre · oracle de forge-design NOMMÉ : {nom_oracle}',
+                True, nom_oracle in bloc, 'TF-1173 renvoi publié (forge-design jointe)')
+        cas('perimetre · la COMMANDE qui joue les oracles est donnée',
+            True, 'run-oracles-design.mjs' in bloc, 'TF-1173 renvoi publié')
+        cas('perimetre · le COMPTE publié est celui LU sur le disque, pas un chiffre figé (TF-1290)',
+            True, f'LES {len(noms_reels)} ORACLES' in bloc, 'TF-1290 compte lu')
+        cas('perimetre · le renvoi sort AUSSI sur un verdict en échec',
+            [], manques_du_renvoi_forge_design(jouer(fx / 'l1-ponctuation-orpheline.html', 'text')),
+            'TF-1173 renvoi permanent')
+    else:
+        cas('perimetre · forge-design absente de ce poste : motif HONNÊTE, jamais une liste figée',
+            True, 'NE SONT PAS MESURÉS ICI' in bloc, 'TF-1290 non mesuré dit proprement')
+
+    # TF-1290 proposition (3) de la fiche : FIXTURE À DOUBLE SENS sur le contrat lui-même — un
+    # faux `digit-ai-forge-design` portant 3 oracles, un autre en portant 5 : seule forme qui
+    # prouve que le bloc LIT l'autre forge au lieu de la RÉCITER. Avant la correction,
+    # `renvoi_forge_design()` ignorait tout paramètre `racine` et répondait TOUJOURS
+    # « LES QUATRE ORACLES… » quel que soit le contenu du faux dépôt — ce cas tournait donc FAUX
+    # pour les deux cardinaux à la fois, et c'est la preuve recherchée.
+    import tempfile
+    faux_fd = Path(tempfile.mkdtemp(prefix='self-test-tf1290-'))
+    for mot, nb in (('trois', 3), ('cinq', 5)):
+        dossier = faux_fd / mot / 'oracles'
+        dossier.mkdir(parents=True, exist_ok=True)
+        for i in range(nb):
+            (dossier / f'oracle-fictif-{i}.mjs').write_text('// fixture TF-1290', encoding='utf-8')
+        # un fichier qui NE DOIT PAS être compté : un test homonyme, un dossier écarté (sens
+        # négatif de la même preuve — lire la règle de nommage, pas tout ce qui s'y trouve).
+        (dossier / 'oracle-fictif-0.test.mjs').write_text('// pas un oracle', encoding='utf-8')
+        leurre = dossier / 'fixtures'
+        leurre.mkdir(exist_ok=True)
+        (leurre / 'oracle-leurre.mjs').write_text('// écarté', encoding='utf-8')
+        message = renvoi_forge_design(racine=dossier.parent)
+        cas(f'TF-1290 · faux digit-ai-forge-design à {nb} oracles : le bloc en nomme {nb}, pas quatre',
+            True, f'LES {nb} ORACLES' in message and 'QUATRE' not in message,
+            'TF-1290 preuve double sens (lu, pas récité)')
+        cas(f'TF-1290 · faux dépôt à {nb} oracles : le leurre (test, dossier écarté) n\'est PAS compté',
+            True, f'LES {nb} ORACLES' in message, 'TF-1290 règle de nommage respectée')
+
+    message_absent = renvoi_forge_design(racine=faux_fd / 'nexistepas')
+    cas('TF-1290 · digit-ai-forge-design introuvable : motif HONNÊTE, pas de liste inventée',
+        True, 'NE SONT PAS MESURÉS ICI' in message_absent, 'TF-1290 non mesuré dit proprement')
 
     skill = Path(__file__).resolve().parent.parent / 'SKILL.md'
     texte_skill = skill.read_text(encoding='utf-8') if skill.is_file() else ''
-    cas('renvoi · SKILL.md nomme les quatre oracles ET leur commande (sens vert)',
+    cas('renvoi · SKILL.md documente fidèlement le cas du 16/09 (TF-1173, instantané historique)',
         [], manques_du_renvoi_forge_design(texte_skill), 'TF-1173 socle écrit')
     ampute = texte_skill
     for nom_oracle, _r, _d in ORACLES_FORGE_DESIGN:

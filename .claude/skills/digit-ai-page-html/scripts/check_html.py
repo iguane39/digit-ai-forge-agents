@@ -3874,9 +3874,11 @@ def jeu_de_regles(source_py=None) -> dict:
 # la couleur en dur contraste correctement, la barre fixe ne recouvre rien au rendu de bureau.
 GABARIT_REVUE = "references/gabarit-revue-de-lecture.md"
 
-# Les quatre oracles de `digit-ai-forge-design` qui jugent une page du socle, avec leur domaine.
-# Cette table est la SOURCE du renvoi : `SKILL.md` la recopie, `render_page.py` l'importe, et le
-# self-test la rejoue dans les deux sens (nommés → PASS ; retirés → le manque est localisé).
+# Instantané du 16/09/2026 (lot Produit-64 20260916b, RD-9) — FIGÉ À DESSEIN, sert seulement à
+# `manques_du_renvoi_forge_design` pour vérifier que SKILL.md documente fidèlement CE cas-là.
+# Depuis TF-1290, ce N'EST PLUS la source du renvoi publié par `renvoi_forge_design` ci-dessous :
+# cette table-ci a quatre entrées parce que la mesure du 16/09 en portait quatre, pas parce que
+# `digit-ai-forge-design` en porte quatre aujourd'hui.
 ORACLES_FORGE_DESIGN = (
     ("oracle-slop", "S1–S10", "marqueurs de design généré"),
     ("oracle-tokens", "T1–T8", "traçabilité des jetons, parité des thèmes, contraste"),
@@ -3885,25 +3887,103 @@ ORACLES_FORGE_DESIGN = (
 )
 ORCHESTRATEUR_FORGE_DESIGN = "oracles/run-oracles-design.mjs"
 
+# TF-1290 (22/09/2026, lot Produit-64 20260922a, RD-16) — LE PÉRIMÈTRE NE RÉCITE PLUS UN COMPTE.
+# MESURÉ sur digit-ai-forge-design v1.17.2-51-gfa48dfc : le bloc ci-dessus (TF-1173) nommait
+# QUATRE oracles fixes ; le lanceur de la forge (`run-oracles-design.mjs`) en joue jusqu'à NEUF
+# selon la page, le dépôt en porte DIX-SEPT au total, et les deux inventaires ne se recoupaient
+# que sur TROIS noms — l'un des SIX muets (`oracle-surcouche`, règle SC4) était ROUGE sur une
+# page DÉJÀ LIVRÉE (indice 20260921e), vu seulement parce que la session suivante a joué le
+# lanceur complet. Un périmètre qui ÉNUMÈRE devient faux dès que l'autre forge grandit ; il doit
+# LIRE le dossier, jamais le recopier — même mécanique que `--familles` de render_page.py, qui
+# lit SES PROPRES familles au lieu d'en tenir une copie. Dépôt frère = DONNÉE, JAMAIS EXÉCUTÉE
+# (garde-fou du pilot) : ce qui suit WALK le dossier `oracles/` sur le disque, selon la MÊME règle
+# de nommage que `oracles/decouvrir-oracles.mjs` de digit-ai-forge-design publie lui-même (contrat
+# `digit-ai/decouverte-oracles@1`, CONTRAT-INTERFACE.md §3 du pilot) — jamais un `node` lancé sur
+# son code.
+_ECARTES_FORGE_DESIGN = frozenset((
+    ".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache", ".ruff_cache",
+    ".mypy_cache", ".oracles", "Old", "old", "fixtures", "vendor", "input",
+))
+_RE_ORACLE_JS = re.compile(r"^oracle-[\w-]+\.(?:mjs|cjs|js)$")
+_RE_ORACLE_PY = re.compile(r"^oracle[-_]\w[\w-]*\.py$")
 
-def renvoi_forge_design() -> str:
-    """La phrase de renvoi aux quatre oracles de `digit-ai-forge-design` (TF-1173)."""
-    liste = " · ".join(f"{nom} ({regles} — {domaine})" for nom, regles, domaine in ORACLES_FORGE_DESIGN)
+
+def _pistes_forge_design() -> list:
+    """Les pistes pour trouver `digit-ai-forge-design`, même règle que `pistes_pilot` de
+    `check_markdown.py` et que le marqueur `{forges}` de quality-oracles (`scripts/lib/forges.mjs`)."""
+    pistes = []
+    racine_env = os.environ.get("FORGE_ROOT")
+    if racine_env:
+        pistes.append(Path(racine_env) / "digit-ai-forge-design")
+    # parents[5] : quatre crans au-dessus du dossier de CE script (scripts/ → skill → .claude →
+    # dépôt de la forge → son parent), même piste que `pistes_pilot` côté `digit-ai-factory`.
+    pistes.append(Path(__file__).resolve().parents[5] / "digit-ai-forge-design")
+    pistes.append(Path("c:/dev") / "digit-ai-forge-design")
+    pistes.append(Path.home() / ".digit-ai-forge" / "digit-ai-forge-design")
+    return pistes
+
+
+def _racine_forge_design():
+    """Le dépôt de `digit-ai-forge-design`, ou `None` et le motif qui NOMME les pistes essayées."""
+    essayees = []
+    for p in _pistes_forge_design():
+        essayees.append(str(p))
+        if (p / "oracles").is_dir():
+            return p, ""
+    return None, ("dépôt `digit-ai-forge-design` INJOIGNABLE depuis ce poste — pistes essayées : "
+                  + " · ".join(essayees) + ". Poser `FORGE_ROOT` ou cloner `digit-ai-forge-design` "
+                    "à côté du dépôt de cette forge")
+
+
+def _oracles_sur_disque(racine: Path) -> list:
+    """Énumère les `oracle-*.mjs|cjs|js` et `oracle[-_]*.py` du dossier `oracles/` de `racine`,
+    LUS SUR LE DISQUE (TF-1290) — jamais une liste recopiée. Dossiers écartés et règle de nommage
+    identiques à `oracles/decouvrir-oracles.mjs` de digit-ai-forge-design."""
+    trouves = []
+    for courant, dossiers, fichiers in os.walk(racine / "oracles"):
+        dossiers[:] = [d for d in dossiers if d not in _ECARTES_FORGE_DESIGN]
+        for nom in fichiers:
+            if _RE_ORACLE_JS.match(nom) or _RE_ORACLE_PY.match(nom):
+                trouves.append(Path(nom).stem)
+    return sorted(set(trouves))
+
+
+def renvoi_forge_design(racine: Path = None) -> str:
+    """La phrase de renvoi aux oracles de `digit-ai-forge-design` — LUE sur le disque à chaque
+    appel depuis TF-1290 (22/09/2026), jamais un compte figé qui dérive de l'autre forge.
+
+    `racine` surcharge la résolution automatique : sert au self-test (fixture à double sens,
+    TF-1290) pour prouver que ce bloc LIT un faux dépôt au lieu de réciter une liste.
+    """
+    motif = ""
+    if racine is None:
+        racine, motif = _racine_forge_design()
+    elif not (Path(racine) / "oracles").is_dir():
+        motif = f"racine fournie sans dossier `oracles/` : {racine}"
+        racine = None
+    if racine is None:
+        return ("LES ORACLES DE `digit-ai-forge-design` NE SONT PAS MESURÉS ICI — " + motif +
+                 ". Aucune liste n'est supposée : un compte non lu ne doit jamais être affirmé "
+                 "(TF-1290)")
+    noms = _oracles_sur_disque(Path(racine))
+    racine_posix = Path(racine).as_posix()
+    if not noms:
+        return (f"LE DOSSIER `{racine_posix}/oracles` NE PORTE AUCUN `oracle-*` LU ICI — vérifier "
+                 "la piste avant d'y croire ; aucun verdict n'est supposé (TF-1290)")
+    liste = " · ".join(noms)
     return (
-        "LES QUATRE ORACLES DE `digit-ai-forge-design` JUGENT CETTE MÊME PAGE ET N'ONT PAS ÉTÉ "
-        f"JOUÉS ICI : {liste}. Mesure du 16/09/2026 (lot Produit-64 20260916b, RD-9) : sur une "
-        "page que les trois scripts du socle déclaraient PASS, TROIS d'entre eux étaient rouges "
-        "— 4 règles dures S1, 59 écarts de jetons dont 3 bloquants T1, 1 bloquant M3. Les jouer : "
-        f"`node <racine digit-ai-forge-design>/{ORCHESTRATEUR_FORGE_DESIGN} <page.html>`, ou un "
-        "par un `node <racine digit-ai-forge-design>/oracles/<oracle>.mjs <page.html>`"
+        f"LES {len(noms)} ORACLES DE `digit-ai-forge-design` LUS SUR LE DISQUE "
+        f"({racine_posix}/oracles) JUGENT CETTE MÊME PAGE ET N'ONT PAS ÉTÉ JOUÉS ICI (liste RELUE "
+        f"à chaque appel, jamais figée — TF-1290) : {liste}. Les jouer, d'un coup : "
+        f"`node {racine_posix}/{ORCHESTRATEUR_FORGE_DESIGN} <page.html>`, ou un par un : "
+        f"`node {racine_posix}/oracles/<oracle>.mjs <page.html>`"
     )
 
 
 def manques_du_renvoi_forge_design(texte: str) -> list:
-    """Ce qui manque à un texte pour renvoyer aux quatre oracles (TF-1173).
-
-    Sert au self-test dans les DEUX sens : liste vide sur un texte qui les nomme tous avec la
-    commande qui les joue, liste des manques localisés sur un texte amputé.
+    """Ce qui manque à un texte pour documenter le cas du 16/09/2026 (TF-1173) — sert au
+    self-test pour vérifier que `SKILL.md` relate fidèlement CETTE mesure historique, jamais à
+    juger le bloc dynamique de `renvoi_forge_design` (TF-1290, lui est lu sur le disque).
     """
     manques = [nom for nom, _, _ in ORACLES_FORGE_DESIGN if nom not in texte]
     if ORCHESTRATEUR_FORGE_DESIGN not in texte and "run-oracles-design" not in texte:
