@@ -3083,6 +3083,38 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             "`location.protocol` ne s'execute pas. Ne pas lire ce PASS comme un verdict sur le "
             "livrable SERVI : le rejouer sur une instance servie (TF-1093)")
 
+    # TF-1370 — SEUL L'ETAT INITIAL EST JUGE PAR DEFAUT, ET CE RAPPORT LE DIT. --etats-ouverts
+    # et les matrices (--matrice-etats, --matrice-paires) rejouent chacun des etats DECLARES et
+    # le disent deja a leur maniere (etats_ouverts, non_juge des matrices) ; mais une vue
+    # atteinte par une AUTRE interaction — un onglet, une etape, un clic qu'aucun de ces
+    # mecanismes ne declenche — reste, elle, NI RENDUE NI MESUREE, meme sur un verdict PASS.
+    # Mesure Produit-68 du 24/09/2026 : sept vues annoncees, six jamais rendues, PASS quand meme
+    # aux sept largeurs. Rejouer les mesures sur des vues DECLAREES par un auteur reste une
+    # fonctionnalite A CONSTRUIRE SEPAREMENT (fiche de decision TF-1370 du 02/10/2026) — cette
+    # ligne ne fait que nommer la borne, elle ne l'ecarte pas.
+    etats_couverts = []
+    if etats_ouverts:
+        etats_couverts.append("l'etat « tout-deplie » (--etats-ouverts)")
+    if matrice_etats:
+        etats_couverts.append("les etats de la matrice (--matrice-etats)")
+    if matrice_paires:
+        etats_couverts.append("les paires de filtres croises (--matrice-paires)")
+    if etats_couverts:
+        report["non_juge"].append(
+            "ETAT DE LA PAGE : seul l'etat INITIAL est rendu et mesure PAR DEFAUT ; cette "
+            f"execution rejoue EN PLUS {', '.join(etats_couverts)} — des etats DECLARES, pas la "
+            "totalite des vues possibles. Une vue atteinte par une AUTRE interaction (un onglet, "
+            "une etape, un clic que rien ici ne declenche) reste NI RENDUE NI MESUREE, meme sur "
+            "un verdict PASS (TF-1370)")
+    else:
+        report["non_juge"].append(
+            "ETAT DE LA PAGE : seul l'etat INITIAL (tel que la page se charge) est rendu et "
+            "mesure ici — aucune interaction n'est rejouee sur cette execution (--etats-ouverts, "
+            "--matrice-etats, --matrice-paires rejouent des etats DECLARES, aucun n'est actif). "
+            "Une page a plusieurs vues (onglets, etapes, accordeons) dont le changement depend "
+            "d'un script garde ses AUTRES vues NI RENDUES NI MESUREES, meme sur un verdict PASS "
+            "(TF-1370)")
+
     # TF-0365 — ce qui n a pas pu etre mesure se DIT, dans la sortie machine autant qu au
     # terminal. Un PASS qui tairait l absence des images serait plus faible que celui d hier en
     # ayant l air identique : c est exactement le silence que cet item ferme.

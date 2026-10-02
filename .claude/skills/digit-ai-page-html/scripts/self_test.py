@@ -3442,6 +3442,64 @@ def run_bandeau_collant_section():
              "detail": "" if ok else (r.stderr or r.stdout)[-300:]}]
 
 
+def run_etat_initial_non_juge():
+    """TF-1370 — SEUL L'ETAT INITIAL EST JUGE, ET LE RAPPORT LE DIT DESORMAIS.
+
+    Mesure Produit-68 du 24/09/2026 (RG-9, ledger seq 214) : sur une page a sept vues, six
+    n'ont jamais ete rendues — paragraphes brides, tableau rogne, schema absent — et le verdict
+    est quand meme sorti PASS aux sept largeurs, sans un mot sur ce qui n'avait pas ete regarde.
+    Aucune des lignes publiees par `render_page.py` ne le disait.
+
+    Deux sens, sur la MEME fixture : sans aucun flag, le message dit qu'AUCUNE interaction
+    n'est rejouee ; avec `--etats-ouverts`, le MEME message nomme ce qui l'est EN PLUS — l'un
+    ne doit pas se lire comme l'autre.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    page = FIXTURES / "a5-feuille-parsable.html"
+    if not page.exists():
+        return [{"fixture": page.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-1370", "detail": ""}]
+    out = []
+
+    def non_juge_etat(args_en_plus):
+        dossier = tempfile.mkdtemp(prefix="self-test-etat-initial-")
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", rendu, str(page), "--widths", "900",
+             "--out", dossier, "--output", "json", *args_en_plus],
+            capture_output=True, text=True, encoding="utf-8")
+        shutil.rmtree(dossier, ignore_errors=True)
+        try:
+            lignes = json.loads(r.stdout).get("non_juge") or []
+        except Exception:  # noqa: BLE001 — une sortie illisible se compte comme un échec
+            return None
+        return " ".join(n for n in lignes if n.startswith("ETAT DE LA PAGE"))
+
+    sans_flag = non_juge_etat([]) or ""
+    ok_defaut = ("l'etat INITIAL" in sans_flag and "aucune interaction n'est rejouee" in sans_flag
+                 and "TF-1370" in sans_flag)
+    out.append({"fixture": "etat initial · aucun flag · avertissement publie",
+                "verdict": "OK" if ok_defaut else "ECHEC",
+                "attendu": "ETAT INITIAL, aucune interaction rejouee, TF-1370",
+                "regle": "TF-1370 defaut", "obtenu": sans_flag[:160] or "absent",
+                "detail": "" if ok_defaut else sans_flag})
+
+    avec_flag = non_juge_etat(["--etats-ouverts"]) or ""
+    ok_nuance = ("rejoue EN PLUS" in avec_flag and "tout-deplie" in avec_flag
+                 and "TF-1370" in avec_flag)
+    out.append({"fixture": "etat initial · --etats-ouverts · avertissement nuance",
+                "verdict": "OK" if ok_nuance else "ECHEC",
+                "attendu": "rejoue EN PLUS l'etat tout-deplie, TF-1370",
+                "regle": "TF-1370 nuance matrice", "obtenu": avec_flag[:160] or "absent",
+                "detail": "" if ok_nuance else avec_flag})
+    return out
+
+
 def run_thead_colle():
     """TF-0900 — LE CONTENEUR DE TABLEAU CONTRE LE THEAD COLLANT, mesure d'execution.
 
@@ -4153,6 +4211,11 @@ def main():
     bandeau_section = run_bandeau_collant_section()
     if bandeau_section:
         res += bandeau_section
+    # TF-1370 — seul l'etat initial est juge par defaut, et le rapport le dit desormais, nuance
+    # quand --etats-ouverts ou une matrice rejoue en plus des etats declares.
+    etat_initial = run_etat_initial_non_juge()
+    if etat_initial:
+        res += etat_initial
     # TF-0890 — le poseur de composants : une API qu'on peut IMPORTER, et une pose jouable hors
     # de l'arbre des skills. Sans ces deux portes, un produit reecrit le poseur.
     poseur = run_poseur_composants()
