@@ -249,7 +249,7 @@ MEASURE_JS = r"""
                    l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
                    contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
-                   conteneur_bride_donnees: [], overlap_en_bloc: [],
+                   conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
                    unmeasured: [] };
   const doc = document.documentElement;
 
@@ -1438,6 +1438,61 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- V19 : un mot COUPE EN DEUX LIGNES SANS TRAIT D'UNION (TF-1350, 24/09/2026) ---------
+  //
+  // LE FAIT, trouve sur une cellule de tableau a cinq colonnes, 7 % de la largeur : « Remediation »
+  // en gras se rend « Remediatio » puis « n » sur la ligne suivante, sans cesure ni trait d'union,
+  // a 1920 ET 1280 px. check_html PASS (42 regles), render_page PASS (0 bloquant, 7 largeurs),
+  // run-oracles-design PASS (9/9) : AUCUN des trois scripts du socle ne voyait le defaut. CAUSE :
+  // `overflow-wrap: break-word` est legitime sur de la prose (L19 statique ne vise QUE `anywhere`
+  // et `break-all`) — seul le RENDU distingue le mot coupe du debordement evite, et
+  // `references/lisibilite.md` §L19 declarait elle-meme ce controle-la « n'existe pas encore ».
+  //
+  // LA MESURE : pour chaque mot d'un noeud de texte visible, un `Range` sur son etendue rend
+  // `getClientRects()` — un mot dont les rectangles tombent sur deux lignes (ecart de `top` au-
+  // dela du bruit d'arrondi) EST coupe au rendu. Tokeniser sur la LETTRE exclut deja les mots
+  // composes d'un trait d'union («Digit-AI», «sous-ensemble») : chacune de leurs moities est son
+  // propre token, et une coupure PILE au trait d'union n'en fragmente aucune — c'est la cesure
+  // volontaire que la regle doit laisser passer. Portee alignee sur L19 : `code`, `pre`, `kbd`,
+  // `samp`, `a[href]` restent legitimes et non juges (identifiants, chemins). Exemption explicite,
+  // MEME attribut que la regle statique (`lisibilite.md` §L19) : `data-coupure-ok="<raison>"`.
+  {
+    const RE_MOT = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
+    const feuille = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        const p = n.parentElement;
+        if (!p || !n.textContent || !n.textContent.trim()) return NodeFilter.FILTER_REJECT;
+        if (p.closest('script, style, noscript, code, pre, kbd, samp, a[href], [data-coupure-ok]')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return visible(p) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      },
+    });
+    let n;
+    while ((n = feuille.nextNode())) {
+      const texte = n.textContent;
+      RE_MOT.lastIndex = 0;
+      let m;
+      while ((m = RE_MOT.exec(texte))) {
+        const mot = m[0];
+        if (mot.length < 2) continue;      // un caractere seul ne se « coupe » pas
+        const r = document.createRange();
+        r.setStart(n, m.index);
+        r.setEnd(n, m.index + mot.length);
+        const rects = [...r.getClientRects()].filter((rc) => rc.width > 0 && rc.height > 0);
+        if (rects.length < 2) continue;
+        const tops = rects.map((rc) => rc.top);
+        if (Math.max(...tops) - Math.min(...tops) <= 2) continue;   // memes rects, meme ligne
+        issues.mot_coupe.push({ what: label(n.parentElement), detail:
+          `V19 mot coupe sur deux lignes SANS trait d'union : « ${mot} » rendu en ` +
+          `${rects.length} fragments — overflow-wrap casse la prose au milieu du mot. Exemption ` +
+          `declaree : data-coupure-ok="<raison>" sur l'element ou un ancetre` });
+        if (issues.mot_coupe.length >= 20) break;
+      }
+      if (issues.mot_coupe.length >= 20) break;
+    }
+  }
+
   return issues;
 }
 """
@@ -2283,6 +2338,12 @@ FAMILLES = [
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
+    # TF-1350 (24/09/2026, lot Produit-64 20260924a, RD-21) : un mot coupe en son milieu passait
+    # les trois scripts du socle — L19 statique ne vise que `overflow-wrap:anywhere` et
+    # `break-all`, jamais `break-word` (légitime sur la prose), et le contrôle de RENDU que
+    # `lisibilite.md` §L19 annonçait n'existait pas. Bloquant au même titre que V13 (bloc de texte
+    # étriqué) : un mot illisible EST le premier défaut qu'un lecteur voit.
+    ("mot_coupe", "V19 mot coupé sur deux lignes sans trait d'union", "bloquant"),
     ("unmeasured", "Non mesurable — à vérifier à l'œil", "info"),
 ]
 # UNE ÉCHÉANCE DÉPASSÉE DURCIT LA FAMILLE, elle ne l'adoucit jamais : la table déclare la

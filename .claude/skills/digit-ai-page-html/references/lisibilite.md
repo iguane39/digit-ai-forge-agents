@@ -721,11 +721,19 @@ ne dit aucun usage technique) est un échec. Restent légitimes et non jugés : 
 `kbd`, `samp`, `a[href]`, et toute classe qui nomme son usage (`.chemin`, `.jeton`, `.uri`,
 `.sha`, `.mono`, `.identifiant`…). Exemption explicite : `data-coupure-ok="<raison>"`.
 
-**Ce que L19 ne fait PAS, et c'est déclaré** : elle empêche la CAUSE, elle ne mesure pas l'EFFET.
-Détecter au rendu qu'un mot est effectivement tombé sur deux lignes sans césure demande un
-navigateur et vit dans `render_page.py` ; ce contrôle-là n'existe pas encore. Une feuille de style
-qui casse la prose est refusée en amont, ce qui suffit à empêcher le défaut d'entrer — mais une
-page héritée qui le porte déjà autrement n'est pas vue.
+**Ce que L19 ne fait PAS, et c'est déclaré** : elle empêche la CAUSE, elle ne mesure pas l'EFFET —
+`overflow-wrap: break-word`, légitime sur la prose, n'entre pas dans son périmètre et peut quand
+même casser un mot. Détecter au rendu qu'un mot est effectivement tombé sur deux lignes sans
+césure demande un navigateur : **`V19` de `render_page.py` le fait depuis le 24/09/2026**
+(TF-1350, lot Produit-64 20260924a, RD-21 — zero-defaut-visuel.md). *Le fait qui l'a posé* : un
+mot en gras dans une cellule étroite, « Remediation », rendu « Remediatio » puis « n » sur la ligne
+suivante, sans trait d'union, à 1920 ET 1280 px — `check_html` PASS, `render_page` PASS,
+`run-oracles-design` PASS, les trois scripts du socle muets sur ce mot précis. `V19` mesure
+chaque mot par ses rectangles (`Range.getClientRects`) et retient ceux répartis sur deux lignes ;
+même exemption que ci-dessus, `data-coupure-ok`, et même portée non jugée (`code`, `pre`, `kbd`,
+`samp`, `a[href]`). Une feuille de style qui casse la prose reste refusée en amont par `L19`, ce
+qui suffit à empêcher le défaut d'ENTRER — `V19` voit ce qui entre quand même, par héritage ou par
+une forme de césure que `L19` ne vise pas.
 
 ## L20 — « le contenu est là » ne veut pas dire « le contenu est lisible » (TF-0495, 22/08/2026)
 

@@ -617,6 +617,19 @@ CAS_RENDU = {
     # recouvre vraiment : un V4.
     "v4-sticky-survol-opaque.html": ("v4_overlap", 0),
     "v4-sticky-transparent.html": ("v4_overlap", 1),
+    # TF-1350 (24/09/2026, lot Produit-64 20260924a, RD-21) — V19, LE CONTROLE DE RENDU QUE L19
+    # (statique) ANNONCAIT SANS LE JOUER. Le fait mesure : « Remediation » en gras dans une
+    # cellule etroite, `overflow-wrap:break-word` (legitime sur la prose, hors du perimetre de
+    # L19 qui ne vise que `anywhere`/`break-all`), se rend « Remediatio » puis « n » sans trait
+    # d'union — check_html PASS, render_page PASS, run-oracles-design PASS. Trois fixtures :
+    # la rouge (cellule 5rem, mot coupe, mesure AVANT correction : 1 constat) ; la verte par
+    # LARGEUR (meme mot, cellule 22rem, le mot tient sur sa ligne : 0 constat — sans elle, V19
+    # crierait sur tout mot en gras d'un tableau) ; la verte par EXEMPTION (meme cellule 5rem,
+    # meme coupure geometrique, `data-coupure-ok` pose : 0 constat — meme attribut que L19
+    # statique, lisibilite.md §L19).
+    "v19-mot-coupe-sans-trait-union.html": ("mot_coupe", 1),
+    "v19-mot-entier-colonne-large.html": ("mot_coupe", 0),
+    "v19-coupure-declaree-exemptee.html": ("mot_coupe", 0),
 }
 
 

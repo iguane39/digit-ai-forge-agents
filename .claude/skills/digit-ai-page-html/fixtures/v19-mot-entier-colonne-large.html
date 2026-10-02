@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V19 — mot entier, colonne large — 20260924a</title>
+<!--
+  Fixture de TF-1350 — LE SENS VERT : le MEME mot, « Remediation » en gras, dans la MEME table,
+  mais une cellule assez large pour l accueillir sur une seule ligne. Sans cette contre-epreuve,
+  V19 pourrait crier sur tout mot en gras d un tableau, qu il soit coupe ou non. Attendu : AUCUN
+  constat mot_coupe.
+-->
+<style>
+:root{--ink:#0F172A;--line:#CBD5E1;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+td.large{width:22rem;max-width:22rem;overflow-wrap:break-word;font-weight:700}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V19 — un mot entier tient sur sa ligne</h1>
+<table>
+<thead><tr><th>Axe</th><th>Constat</th></tr></thead>
+<tbody>
+<tr><td class="large">Remediation</td><td>Ecart mesure sur l indice livre</td></tr>
+</tbody>
+</table>
+</main></body></html>

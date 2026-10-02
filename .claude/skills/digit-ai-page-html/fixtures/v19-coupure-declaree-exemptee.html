@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V19 — coupure declaree exemptee — 20260924a</title>
+<!--
+  Fixture de TF-1350 — LE SENS VERT DE L EXEMPTION : le MEME defaut geometrique que la fixture
+  rouge (la cellule de 5rem, le mot « Remediation » coupe au meme endroit), avec
+  `data-coupure-ok` pose sur la cellule — meme attribut que L19 statique (lisibilite.md §L19).
+  Sans cette contre-epreuve, l exemption pourrait ne rien exempter, ou tout exempter (y compris la
+  fixture rouge, qui ne la porte pas). Attendu : AUCUN constat mot_coupe.
+-->
+<style>
+:root{--ink:#0F172A;--line:#CBD5E1;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+td.etroite{width:5rem;max-width:5rem;overflow-wrap:break-word;font-weight:700}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V19 — coupure assumee et declaree</h1>
+<table>
+<thead><tr><th>Axe</th><th>Constat</th><th>Statut</th><th>Action</th><th>Suite</th></tr></thead>
+<tbody>
+<tr><td class="etroite" data-coupure-ok="gabarit de tableau herite, correction hors perimetre de cet indice">Remediation</td><td>Ecart mesure sur l indice livre</td><td>Ouvert</td><td>Corriger</td><td>Rejouer</td></tr>
+</tbody>
+</table>
+</main></body></html>
