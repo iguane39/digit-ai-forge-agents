@@ -2527,8 +2527,11 @@ _V9_JS_RECENSER_COLLES = """() => {
   return window.__v9Colles.length;
 }"""
 
-_V9_JS_MASQUER_COLLES = """(n) => {
-  const cible = document.querySelector('[data-v9="' + n + '"]');
+#   TF-1356 — prend desormais la CIBLE directement (un `ElementHandle`, que Playwright
+#   deserialise en element DOM quand il est passe en argument) plutot qu'un `data-v9`
+#   a resoudre par selecteur : la capture d'UN SEUL element (V9) ET la capture PAR SECTION
+#   (TF-0422) appellent ainsi exactement la MEME fonction, aucune n'est dupliquee.
+_V9_JS_MASQUER_COLLES = """(cible) => {
   window.__v9Masques = [];
   if (!cible) return 0;
   for (const el of (window.__v9Colles || [])) {
@@ -2542,6 +2545,18 @@ _V9_JS_MASQUER_COLLES = """(n) => {
 _V9_JS_RESTAURER_COLLES = """() => {
   for (const [el, v] of (window.__v9Masques || [])) el.style.visibility = v;
   window.__v9Masques = [];
+}"""
+
+# TF-1356 — CE QUI A ETE NEUTRALISE SE NOMME dans la sortie : un identifiant lisible
+# (balise, id, premiere classe), lu AVANT la restauration, pour qu'un auteur sache quel
+# bandeau collant a ete ecarte de sa capture de section plutot que de le deviner.
+_V9_JS_NOMMER_COLLES = """() => {
+  return (window.__v9Masques || []).map(([el]) => {
+    const id = el.id ? '#' + el.id : '';
+    const cls = (el.className && typeof el.className === 'string' && el.className.trim())
+      ? '.' + el.className.trim().split(/\\s+/)[0] : '';
+    return el.tagName.toLowerCase() + id + cls;
+  });
 }"""
 
 
@@ -2589,7 +2604,7 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float =
             continue
         try:
             try:
-                page.evaluate(_V9_JS_MASQUER_COLLES, c["n"])
+                page.evaluate(_V9_JS_MASQUER_COLLES, el)
             except Exception:            # noqa: BLE001 — le masquage est un mieux, jamais un du
                 pass
             brut = el.screenshot(timeout=timeout_ms)
@@ -2881,13 +2896,32 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             # reussie. L'echec d'une section se declare desormais a part, sans toucher `capture`.
             if sections and capture.get("faite"):
                 sections_echouees: list = []
+                sections_neutralises: dict = {}
                 try:
                     handles = page.query_selector_all(sections)
                 except Exception as erreur_sel:  # noqa: BLE001
                     handles = []
                     sections_echouees.append(
                         {"motif": f"selecteur de sections invalide : {type(erreur_sel).__name__}"})
+                # TF-1356 — le recensement des elements collants/fixes se fait UNE FOIS pour la
+                # page (meme mecanisme que V9, TF-1192) : le masquage, lui, est propre a chaque
+                # section, puisque le bandeau qui porte lui-meme une section ne se masque pas.
+                if handles:
+                    try:
+                        page.evaluate(_V9_JS_RECENSER_COLLES)
+                    except Exception:  # noqa: BLE001 — un recensement rate n'arrete rien
+                        pass
                 for i, handle in enumerate(handles, start=1):
+                    try:
+                        page.evaluate(_V9_JS_MASQUER_COLLES, handle)
+                    except Exception:  # noqa: BLE001 — la neutralisation est un mieux, jamais un du
+                        pass
+                    try:
+                        noms = page.evaluate(_V9_JS_NOMMER_COLLES)
+                        if noms:
+                            sections_neutralises[i] = noms
+                    except Exception:  # noqa: BLE001
+                        pass
                     try:
                         handle.evaluate(_SECTION_JS_RENDRE_VISIBLE)
                         boite = handle.evaluate(
@@ -2920,9 +2954,16 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                             handle.evaluate(_SECTION_JS_RESTAURER_VISIBLE)
                         except Exception:  # noqa: BLE001
                             pass
+                        # La page est RENDUE A SON ETAT entre deux sections (meme geste que V9).
+                        try:
+                            page.evaluate(_V9_JS_RESTAURER_COLLES)
+                        except Exception:  # noqa: BLE001
+                            pass
                 capture["sections"] = len(handles)
                 if sections_echouees:
                     capture["sections_echouees"] = sections_echouees
+                if sections_neutralises:
+                    capture["sections_collants_neutralises"] = sections_neutralises
             # TF-0382 — `blocking` comptait les LIGNES d'une liste plafonnee, donc la severite
             # etait plafonnee avec elle. Il compte desormais les CAUSES reelles : le total exact
             # quand l inventaire a ete tronque, la longueur de la liste sinon. Ce n est pas un
@@ -3175,6 +3216,11 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             # silence de l'absence de PNG de section, alors que la capture de page a reussi.
             for ech in cap.get("sections_echouees") or []:
                 print(f"  [section] {ech.get('motif', '')}")
+            # TF-1356 — ce qui a ete neutralise pour une section se nomme : un bandeau collant
+            # ecarte de la capture n'est pas un fait tu, au meme titre que pour un actif V9.
+            for idx, noms in (cap.get("sections_collants_neutralises") or {}).items():
+                print(f"  [section {idx}] collant(s) neutralise(s) le temps de la capture : "
+                      f"{', '.join(noms)}")
             # TF-1341 — ce que --etats-ouverts a ouvert se lit, et un flag qui n'a rien ouvert aussi.
             eo = data.get("etats_ouverts")
             if eo:

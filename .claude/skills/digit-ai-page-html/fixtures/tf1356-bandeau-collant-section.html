@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — TF-1356 — bandeau collant sur une capture de section</title>
+<!--
+  Fixture de TF-1356 — mesuree le 24/09/2026 : `render_page.py --sections` peint le bandeau
+  collant du socle PAR-DESSUS le haut de chaque section capturee, parce que le mecanisme qui
+  neutralise les elements `position: sticky | fixed` (deja applique a la capture d'UN SEUL
+  element, V9 / TF-1192) n'etait jamais appele dans la boucle de capture PAR SECTION.
+
+  Le remplissage force le defilement avant que la section ciblee ne soit capturee : sur le cas
+  mesure, le bandeau se peint A LA HAUTEUR ou se trouvait le haut de la fenetre au moment de la
+  capture. Avant TF-1356, le mecanisme qui neutralise les elements collants le temps d'une
+  capture (deja applique a V9) n'etait jamais appele ici ; apres, il est appele, le bandeau est
+  neutralise le temps de la capture et nomme dans la sortie (`sections_collants_neutralises`).
+-->
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"DM Sans",system-ui,sans-serif}
+header.bandeau{position:sticky;top:0;height:64px;background:#ff00ff;color:#fff;
+  display:flex;align-items:center;padding:0 16px;z-index:10;font-weight:700}
+.remplissage{height:1200px;background:#eef2ff;padding:16px}
+section.chap{margin:0;padding:0}
+.repere{height:80px;background:#00ff80;color:#003320;display:flex;align-items:center;
+  padding:0 16px;font-weight:700}
+.reste{height:300px;padding:16px}
+</style></head>
+<body>
+<header class="bandeau">Bandeau collant Digit-AI</header>
+<main>
+  <div class="remplissage">Remplissage pour forcer le défilement avant la section ciblée.</div>
+  <section class="chap">
+    <div class="repere">LIGNE REPÈRE — doit rester lisible dans la capture de section</div>
+    <div class="reste">Reste du contenu de la section, sous la ligne repère.</div>
+  </section>
+</main>
+</body></html>

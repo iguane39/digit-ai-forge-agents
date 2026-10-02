@@ -3396,6 +3396,52 @@ def run_sections_masquees():
     return out
 
 
+def run_bandeau_collant_section():
+    """TF-1356 — LE MECANISME DE NEUTRALISATION DES COLLANTS JOUE AUSSI PAR SECTION.
+
+    Mesure du 24/09/2026 : `render_page.py --sections` peignait le bandeau `position: sticky`
+    du socle PAR-DESSUS le haut de chaque section capturee (4 lignes sur 7 d'un tableau
+    invisibles), parce que le mecanisme qui neutralise les elements collants le temps d'une
+    capture (deja applique a la capture d'UN SEUL element, V9 / TF-1192) n'etait JAMAIS appele
+    dans la boucle de capture PAR SECTION — aucune trace de neutralisation n'existait pour une
+    section, quel que soit le gabarit. Preuve : le JSON nomme desormais le bandeau neutralise
+    (`sections_collants_neutralises`), ce qu'aucune version precedente ne pouvait produire
+    puisque le champ lui-meme n'existait pas hors du chemin V9.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    page = FIXTURES / "tf1356-bandeau-collant-section.html"
+    if not page.exists():
+        return [{"fixture": page.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-1356", "detail": ""}]
+    captures = tempfile.mkdtemp(prefix="self-test-bandeau-")
+    r = subprocess.run(
+        [sys.executable, "-X", "utf8", rendu, str(page), "--widths", "900",
+         "--sections", "section.chap", "--out", captures, "--output", "json"],
+        capture_output=True, text=True, encoding="utf-8")
+    try:
+        cap = json.loads(r.stdout)["breakpoints"]["900"]["capture"]
+    except Exception:  # noqa: BLE001 — une sortie illisible se compte comme un échec
+        cap = None
+    neutralises = (cap or {}).get("sections_collants_neutralises") or {}
+    noms = neutralises.get("1") or []
+    nomme = any("bandeau" in n for n in noms)
+    section_peinte = (Path(captures) / f"{page.stem}-w900-section01.png").exists()
+    ok = nomme and section_peinte
+    shutil.rmtree(captures, ignore_errors=True)
+    return [{"fixture": "section sous bandeau collant · neutralisation nommee",
+             "verdict": "OK" if ok else "ECHEC",
+             "attendu": "section capturee, header.bandeau neutralise et nomme",
+             "regle": "TF-1356 mecanisme",
+             "obtenu": noms or "aucun",
+             "detail": "" if ok else (r.stderr or r.stdout)[-300:]}]
+
+
 def run_thead_colle():
     """TF-0900 — LE CONTENEUR DE TABLEAU CONTRE LE THEAD COLLANT, mesure d'execution.
 
@@ -4102,6 +4148,11 @@ def main():
     sections_masquees = run_sections_masquees()
     if sections_masquees:
         res += sections_masquees
+    # TF-1356 — le mecanisme de neutralisation des elements collants (deja applique a la
+    # capture d'un seul element, V9) s'applique desormais AUSSI a la capture par section.
+    bandeau_section = run_bandeau_collant_section()
+    if bandeau_section:
+        res += bandeau_section
     # TF-0890 — le poseur de composants : une API qu'on peut IMPORTER, et une pose jouable hors
     # de l'arbre des skills. Sans ces deux portes, un produit reecrit le poseur.
     poseur = run_poseur_composants()
