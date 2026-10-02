@@ -150,6 +150,14 @@ CAS = {
     # fixture verte AVEC LE SEUL BLOC DE STYLE DU SOMMAIRE RETIRE : une difference, une regle.
     "l21-composant-sans-style.html": {"L21"},
     "l2-largeur-bridee.html": {"L2"},
+    # TF-1371 (24/09/2026, lot Produit-68 20260924a, RG-10) — LE CONTENEUR PRINCIPAL REPÉRÉ PAR SA
+    # POSITION, PAS PAR SON NOM. Mesuré chez un produit : un conteneur nommé `.app`, plafonné à
+    # 1 280 px, occupait 67 % d'une fenêtre de 1 920 px et 33 % d'une fenêtre de 3 840 — sous le
+    # plancher de 75 % de la règle E4 — et L2 rendait PASS, aucun des six noms convenus
+    # (`body`/`main`/`.wrap`/`.container`/`.page`/`#page`) ne le voyant. Avant la correction, cette
+    # fixture (conteneur `.app`, aucun nom convenu) rendait 0 constat L2 ; `conteneur_principal`
+    # le repère maintenant par sa position (plus grand enfant direct de `<body>` hors landmarks).
+    "l2-conteneur-renomme.html": {"L2"},
     "l3-tooltip-vide.html": {"L3"},
     "l3-bareme-absent.html": {"L3"},
     "l4-table-sans-filtre.html": {"L4"},

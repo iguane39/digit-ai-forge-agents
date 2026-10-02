@@ -330,6 +330,36 @@ def index_ids(a: Arbre) -> dict:
     return {n.attrs["id"]: n for n in a.racine.descendants() if n.attrs.get("id")}
 
 
+# TF-1371 (24/09/2026, lot Produit-68 20260924a, RG-10) — LE CONTENEUR PRINCIPAL SE REPÈRE PAR SA
+# POSITION, JAMAIS PAR SON NOM. Un conteneur nommé `.app`, plafonné à 1 280 px, occupait 67 % d'une
+# fenêtre de 1 920 px et 33 % d'une fenêtre de 3 840 — sous le plancher de 75 % de la règle E4 — et
+# L2 rendait PASS : sa liste de six sélecteurs nommés (`body`, `main`, `.wrap`, `.container`,
+# `.page`, `#page`) ne le voyait pas. Un prochain renommage aurait reproduit le même trou.
+HORS_FLUX_PRINCIPAL = ("script", "style", "noscript", "link", "meta", "header", "nav", "footer", "aside")
+
+
+def conteneur_principal(a: Arbre):
+    """Le conteneur principal d'une page, repéré par sa POSITION dans l'arbre — jamais par un nom
+    de balise ou de classe convenu d'avance.
+
+    Priorité à la balise sémantique `<main>` si la page en porte une. Sinon, parmi les enfants
+    ÉLÉMENTS directs de `<body>` hors landmarks et plomberie (`HORS_FLUX_PRINCIPAL`), le plus
+    grand bloc du flux vertical — celui qui porte le plus de descendants, approximation de « ce
+    que la page contient réellement » quand rien ne le nomme. Rend `None` sur un fragment sans
+    `<body>` ni enfant retenu : L2 reste alors muet sur ce point précis plutôt que de deviner.
+    """
+    body = next((n for n in a.racine.descendants() if n.tag == "body"), None)
+    if body is None:
+        return None
+    main = next((n for n in body.descendants() if n.tag == "main"), None)
+    if main is not None:
+        return main
+    candidats = [e for e in body.enfants if isinstance(e, Noeud) and e.tag not in HORS_FLUX_PRINCIPAL]
+    if not candidats:
+        return None
+    return max(candidats, key=lambda n: sum(1 for _ in n.descendants()))
+
+
 # ---------------------------------------------------------------------------
 # CSS — découpage en (sélecteur, déclarations). Suffisant pour L2 et L5 : on ne
 # cherche pas à comprendre la cascade, seulement à trouver une déclaration
@@ -1265,7 +1295,17 @@ def check_lisibilite(html: str, a: Arbre):
                      f"par le producteur, pas rendue telle quelle.{indice}")
 
     # --- L2 : largeur de lecture ------------------------------------------
-    porteurs = ("body", "main", ".wrap", ".container", ".page", "#page")
+    # TF-1371 — `porteurs` n'est plus une liste de six noms convenus : `body`/`html` restent
+    # toujours valides (la bride peut s'écrire directement dessus), et le conteneur principal RÉEL
+    # de CETTE page s'y ajoute, repéré par sa position (`conteneur_principal`), quel que soit son
+    # nom de balise, d'id ou de classe.
+    porteurs = {"body", "html"}
+    principal = conteneur_principal(a)
+    if principal is not None:
+        porteurs.add(principal.tag)
+        if principal.att("id"):
+            porteurs.add("#" + principal.att("id"))
+        porteurs.update("." + c for c in principal.classes())
     for sel, d in css:
         if not any(p in sel for p in porteurs):
             continue
