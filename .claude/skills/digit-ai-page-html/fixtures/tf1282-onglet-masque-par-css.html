@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — TF-1282 — onglet masqué par une règle CSS</title>
+<!--
+  Fixture de TF-1282 — un panneau d'onglet masqué par une REGLE CSS (pas par l'attribut
+  `hidden`, deja traite). `section.vue[data-vue="b"]` n'est jamais visible : seule la vue
+  qui porte `.active` recoit `display:block`. `--sections "section.vue"` doit capturer les
+  TROIS sections — avant TF-1282, la section B masquee levait une erreur qui ECRASAIT la
+  capture de page deja reussie ; apres, B se peint vraiment (cause du masquage : la regle
+  CSS, forcee le temps de la capture), et la vue C, dont la boite reste nulle meme une fois
+  affichee (piege : largeur et hauteur a 0 posees en style INLINE, qu'aucun forcage de
+  `display` ne corrige), echoue en nommant sa cause — « NON PEINTE », pas un delai.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:16px;line-height:1.6;color:var(--ink)}
+main{max-width:72ch;margin:0 auto;padding:24px}
+.vue{display:none}
+.vue.active{display:block}
+section{padding:16px 0}
+</style></head>
+<body><main>
+<h1>TF-1282 — trois vues, une seule active</h1>
+<section class="vue active" data-vue="a"><h2>Vue A</h2><p>Section visible d'office.</p></section>
+<section class="vue" data-vue="b"><h2>Vue B</h2><p>Section masquée par la règle CSS <code>.vue{display:none}</code>, jamais par l'attribut <code>hidden</code>.</p></section>
+<section class="vue" data-vue="c" style="width:0;height:0;overflow:hidden"><h2>Vue C</h2><p>Boîte nulle posée en style inline : forcer <code>display:block</code> ne lui rend aucune surface.</p></section>
+</main></body></html>

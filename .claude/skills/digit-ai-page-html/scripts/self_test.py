@@ -3331,6 +3331,71 @@ def run_capture_manquee():
     return out
 
 
+def run_sections_masquees():
+    """TF-1282 — UNE SECTION MASQUEE NE PERD PLUS LA CAPTURE DE PAGE, ET SE PEINT VRAIMENT.
+
+    Mesure du 21/09 et du 01/10/2026 : sur une page a onglets, `--sections` sur une vue
+    masquee par une regle CSS (pas par l'attribut `hidden`) levait une erreur rattrapee par
+    le MEME `except` que la capture de page — qui ecrasait alors une capture de page deja
+    reussie (`capture NON FAITE` alors que le PNG existe). La fixture porte trois vues :
+      · vue A, active d'office — capturee dans tous les cas ;
+      · vue B, masquee par `.vue{display:none}` — DOIT se peindre vraiment une fois le
+        `display` force sur elle (TF-1282, mecanisme 2) ;
+      · vue C, boite nulle posee en style INLINE — reste non peinte meme une fois affichee,
+        et son echec doit nommer la CAUSE (« NON PEINTE »), pas un delai (mecanisme 3).
+    Dans tous les cas, la capture de PAGE ENTIERE ne doit JAMAIS se dire « NON FAITE »
+    (mecanisme 1) : avant TF-1282, l'echec de la vue C a lui seul suffisait a l'effacer.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    page = FIXTURES / "tf1282-onglet-masque-par-css.html"
+    if not page.exists():
+        return [{"fixture": page.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-1282", "detail": ""}]
+    captures = tempfile.mkdtemp(prefix="self-test-sections-")
+    out = []
+    r = subprocess.run(
+        [sys.executable, "-X", "utf8", rendu, str(page), "--widths", "900",
+         "--sections", "section.vue", "--out", captures],
+        capture_output=True, text=True, encoding="utf-8")
+    stdout = r.stdout or ""
+
+    # Mecanisme 1 — la capture de PAGE n'est JAMAIS perdue a cause de l'echec d'une section.
+    page_preservee = ("capture NON FAITE" not in stdout and "Verdict :" in stdout
+                       and "Traceback" not in (r.stderr or ""))
+    out.append({"fixture": "section masquee · capture de page preservee",
+                "verdict": "OK" if page_preservee else "ECHEC",
+                "attendu": "page jamais NON FAITE, aucun traceback", "regle": "TF-1282 mecanisme 1",
+                "obtenu": "conforme" if page_preservee else "capture de page perdue ou traceback",
+                "detail": "" if page_preservee else stdout[-400:] + (r.stderr or "")[-400:]})
+
+    # Mecanisme 2 — la vue B, masquee par une regle CSS, se peint VRAIMENT : son PNG existe.
+    png_b = Path(captures) / f"{page.stem}-w900-section02.png"
+    vue_b_peinte = png_b.exists() and png_b.stat().st_size > 0
+    out.append({"fixture": "section masquee par CSS · peinte pour de bon",
+                "verdict": "OK" if vue_b_peinte else "ECHEC",
+                "attendu": "PNG de la vue B produit", "regle": "TF-1282 mecanisme 2",
+                "obtenu": "conforme" if vue_b_peinte else "PNG de la vue B absent",
+                "detail": "" if vue_b_peinte else f"attendu : {png_b}"})
+
+    # Mecanisme 3 — la vue C, boite nulle, echoue en nommant la CAUSE, pas un delai.
+    cause_nommee = ("NON PEINTE" in stdout and "boite 0" in stdout
+                     and "TimeoutError" not in stdout)
+    out.append({"fixture": "section non peinte · cause nommee",
+                "verdict": "OK" if cause_nommee else "ECHEC",
+                "attendu": "motif « NON PEINTE » avec boite nulle, pas TimeoutError",
+                "regle": "TF-1282 mecanisme 3",
+                "obtenu": "conforme" if cause_nommee else "cause non nommee ou TimeoutError lu",
+                "detail": "" if cause_nommee else stdout[-400:]})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_thead_colle():
     """TF-0900 — LE CONTENEUR DE TABLEAU CONTRE LE THEAD COLLANT, mesure d'execution.
 
@@ -4031,6 +4096,12 @@ def main():
     capture = run_capture_manquee()
     if capture:
         res += capture
+    # TF-1282 — une capture par SECTION : l'echec d'une section ne perd plus la capture de
+    # page deja reussie, un panneau masque par une regle CSS se peint vraiment, et un echec
+    # residuel nomme sa cause plutot que le seul delai depasse.
+    sections_masquees = run_sections_masquees()
+    if sections_masquees:
+        res += sections_masquees
     # TF-0890 — le poseur de composants : une API qu'on peut IMPORTER, et une pose jouable hors
     # de l'arbre des skills. Sans ces deux portes, un produit reecrit le poseur.
     poseur = run_poseur_composants()

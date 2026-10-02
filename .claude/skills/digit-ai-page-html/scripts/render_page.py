@@ -2687,6 +2687,38 @@ def compter_bloquants(issues: dict) -> int:
     return total
 
 
+# TF-1282 — un panneau d'onglet masque ne l'est pas toujours par l'attribut `hidden` (deja
+# traite) : le cas courant est une regle CSS, sur l'element lui-meme ou un de ses ANCETRES
+# (`.vue[data-vue="b"] { display: none }`, un panneau replie en `visibility: hidden`…).
+# L'element et toute la chaine de ses ancetres masques sont donc forces REELEMENT visibles
+# (`!important`, pour passer devant la regle qui les masque) le temps de la capture, puis
+# restaures a l'identique — exactement ce que l'aide de l'outil promettait sans le faire.
+_SECTION_JS_RENDRE_VISIBLE = """(cible) => {
+  window.__sectionRestaure = [];
+  let el = cible;
+  while (el) {
+    const cs = getComputedStyle(el);
+    const etat = {display: el.style.display, visibility: el.style.visibility, hidden: el.hidden};
+    let touche = false;
+    if (cs.display === 'none') { el.style.setProperty('display', 'block', 'important'); touche = true; }
+    if (cs.visibility === 'hidden') { el.style.setProperty('visibility', 'visible', 'important'); touche = true; }
+    if (el.hidden) { el.hidden = false; touche = true; }
+    if (touche) window.__sectionRestaure.push([el, etat]);
+    el = el.parentElement;
+  }
+  return window.__sectionRestaure.length;
+}"""
+
+_SECTION_JS_RESTAURER_VISIBLE = """() => {
+  for (const [el, etat] of (window.__sectionRestaure || [])) {
+    el.style.display = etat.display;
+    el.style.visibility = etat.visibility;
+    el.hidden = etat.hidden;
+  }
+  window.__sectionRestaure = [];
+}"""
+
+
 def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool,
         out_dir: Path | None = None, etats_ouverts: bool = False,
         capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None,
@@ -2827,18 +2859,6 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                     # TF-1131 : au-delà de 4:1, des tuiles d'un écran, produites d'office.
                     capture.update(produire_tuiles(page, png_dir, cible.stem, width,
                                                    capture_timeout))
-                # TF-0422 : une capture PAR SECTION — un panneau d'onglet masqué est rendu
-                # visible le temps de sa capture, puis remis dans son état.
-                if sections:
-                    for i, handle in enumerate(page.query_selector_all(sections), start=1):
-                        etait_cache = handle.evaluate("el => { const h = el.hidden; el.hidden = false; return h; }")
-                        try:
-                            handle.screenshot(path=str(png_dir / f"{cible.stem}-w{width}-section{i:02d}.png"),
-                                              timeout=capture_timeout)
-                        finally:
-                            if etait_cache:
-                                handle.evaluate("el => { el.hidden = true; }")
-                    capture["sections"] = len(page.query_selector_all(sections))
             except _SautDeCapture:
                 pass                         # TF-1139 : `capture` porte déjà son motif nommé
             except Exception as erreur:  # noqa: BLE001 — toute panne, pas seulement le delai
@@ -2853,6 +2873,56 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                               "Augmenter --timeout, reduire --scale, ou assumer l ecart declare"),
                 }
                 captures_manquees.append(width)
+
+            # TF-0422 / TF-1282 : une capture PAR SECTION — un panneau masque est rendu VRAIMENT
+            # visible (l'element et ses ancetres masques) le temps de sa capture, puis remis dans
+            # son etat. ISOLEE du `try` de la capture de PAGE : avant, le meme `except` rattrapait
+            # l'echec d'une section ET celui de la page, et ecrasait une capture de page deja
+            # reussie. L'echec d'une section se declare desormais a part, sans toucher `capture`.
+            if sections and capture.get("faite"):
+                sections_echouees: list = []
+                try:
+                    handles = page.query_selector_all(sections)
+                except Exception as erreur_sel:  # noqa: BLE001
+                    handles = []
+                    sections_echouees.append(
+                        {"motif": f"selecteur de sections invalide : {type(erreur_sel).__name__}"})
+                for i, handle in enumerate(handles, start=1):
+                    try:
+                        handle.evaluate(_SECTION_JS_RENDRE_VISIBLE)
+                        boite = handle.evaluate(
+                            "el => { const r = el.getBoundingClientRect(); "
+                            "return {w: r.width, h: r.height}; }")
+                        if boite["w"] <= 0 or boite["h"] <= 0:
+                            sections_echouees.append({
+                                "index": i,
+                                "motif": (
+                                    f"section {i} NON PEINTE : boite {boite['w']:.0f}x"
+                                    f"{boite['h']:.0f} px apres mise en visibilite forcee de "
+                                    "l'element et de ses ancetres — un ancetre garde une regle "
+                                    "non couverte (ex. position hors ecran, largeur nulle). "
+                                    "Ce n'est PAS un delai depasse : augmenter --timeout n'y "
+                                    "changerait rien"),
+                            })
+                            continue
+                        handle.screenshot(
+                            path=str(png_dir / f"{cible.stem}-w{width}-section{i:02d}.png"),
+                            timeout=capture_timeout)
+                    except Exception as erreur_section:  # noqa: BLE001
+                        sections_echouees.append({
+                            "index": i,
+                            "motif": (f"section {i} capture impossible : "
+                                      f"{type(erreur_section).__name__} apres mise en visibilite "
+                                      "forcee de l'element et de ses ancetres masques"),
+                        })
+                    finally:
+                        try:
+                            handle.evaluate(_SECTION_JS_RESTAURER_VISIBLE)
+                        except Exception:  # noqa: BLE001
+                            pass
+                capture["sections"] = len(handles)
+                if sections_echouees:
+                    capture["sections_echouees"] = sections_echouees
             # TF-0382 — `blocking` comptait les LIGNES d'une liste plafonnee, donc la severite
             # etait plafonnee avec elle. Il compte desormais les CAUSES reelles : le total exact
             # quand l inventaire a ete tronque, la longueur de la liste sinon. Ce n est pas un
@@ -3101,6 +3171,10 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                       + (f" ; {reste} écran(s) au-delà de la borne NON capturé(s)" if reste else ""))
             if not data.get("png"):
                 print(f"  [capture] {data['capture'].get('motif', 'capture impossible')}")
+            # TF-1282 — l'echec d'une section se lit a part : il ne doit pas se deduire en
+            # silence de l'absence de PNG de section, alors que la capture de page a reussi.
+            for ech in cap.get("sections_echouees") or []:
+                print(f"  [section] {ech.get('motif', '')}")
             # TF-1341 — ce que --etats-ouverts a ouvert se lit, et un flag qui n'a rien ouvert aussi.
             eo = data.get("etats_ouverts")
             if eo:
