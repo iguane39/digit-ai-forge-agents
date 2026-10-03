@@ -10,7 +10,11 @@ Chaque composant porte un tier : 🔴 Obligatoire si présent · 🟡 Recommand�
 
 ---
 
-## 1 — Grille de KPI 🟡
+## 1 — Grille de KPI 🟡 — REMPLACÉE par l'asset « tuiles d'indicateurs » (§ 14)
+
+> **Remplacée (D-55 (a) du 03/10/2026, Produit-02 RT-120).** Cet extrait n'est pas embarquable et
+> ne porte ni comparaison ni écart. Employer l'asset du § 14 ; l'extrait ci-dessous reste lisible
+> pour les pages existantes, qu'il n'y a plus lieu de reproduire.
 
 Chiffres-clés en tête de livrable. Toujours **label + valeur (+ hint)** ; jamais une valeur
 nue, jamais le sens porté par la seule couleur.
@@ -447,3 +451,99 @@ filtre qui ne laisse rien insère une ligne `tr[data-tf-empty]` (libellé `data-
 surchargeable) avec le bouton « Tout réafficher », retirée dès qu'une ligne revient. Le
 **panneau choisit son côté** selon la place mesurée (`tf-droite`) et neutralise le rognage du
 conteneur `overflow-x:auto` tant qu'il est ouvert (`data-tf-ouvert`), rétabli à la fermeture.
+
+
+## 14 — Tuiles d'indicateurs 🔴 (dès qu'un chiffre de tête ou un détail chiffré est présenté)
+
+**Le fait.** Le détail d'une ligne s'écrivait en phrases (« Groupe X, plafond 0,90 € par clic :
+192 impressions, 20 clics… ») faute de composant ; la grille de KPI du § 1 était un extrait sans
+comparaison ni écart (Produit-02, RT-120).
+
+**Assets** : `assets/tuiles-indicateurs.css` + `assets/tuiles-indicateurs.js` (tendance
+optionnelle seule). Pose : `node scripts/embarquer-composants.mjs --poser <page.html> --composants
+tuiles-indicateurs.css,tuiles-indicateurs.js`, puis `window.DigitAITuiles.init(document)`.
+Exemple complet : `assets/exemples-interactions/exemple-tuiles-et-barres-empilees.html`.
+
+**Quand l'employer.** Une rangée de 3 à 6 tuiles en tête de livrable, ou par groupe quand un détail
+dépasse quelques chiffres. Un détail chiffré dense en prose passe en tuiles. Au-delà de 6, grouper
+(un chapitre par famille) plutôt qu'allonger la rangée. Le retour à la ligne est automatique.
+
+**Une tuile dit cinq choses** : le libellé, la valeur, l'**écart** (absolu et relatif ; pour un
+pourcentage, l'écart en **points**, jamais en %), le **sens** par une flèche ET un mot (hausse,
+baisse, au-dessus, stable) — jamais la couleur seule — et la **comparaison libellée** (période
+précédente, ou cible). Un jugement (favorable / défavorable) s'écrit en toutes lettres quand le
+sens n'est pas neutre ; la couleur ne fait que le doubler. La tendance est optionnelle.
+
+```html
+<div class="tuiles">
+  <article class="tuile tuile--bon" aria-labelledby="t2-l" aria-describedby="t2-c" data-tendance="6900,7200,7050,7610,8340" data-tendance-libelle="5 dernières périodes">
+    <p class="tuile-label" id="t2-l">Clics</p>
+    <p class="tuile-valeur">8 340</p>
+    <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+730 (+9,6 %)</span> <span class="tuile-jugement">favorable</span></p>
+    <p class="tuile-comparaison" id="t2-c">Période précédente : 7 610</p>
+  </article>
+</div>
+```
+
+**Légende (L3).** La comparaison est le texte visible que `aria-describedby` désigne : pas de
+`title` redondant sur la tuile. Variantes de ton : `tuile--bon`, `tuile--mauvais`, `tuile--neutre`
+(la flèche prend `--green`, `--red`, `--muted`). L'écart se **calcule** à l'écriture, pas à l'œil :
+un écart faux dans une tuile est un chiffre faux de tête.
+
+**Tokens et limites.** Jetons du `:root` du boilerplate seulement, échelle 4 pt, clair et sombre par
+les jetons. L'écart n'est pas calculé par le script (il se lit sans JS, à l'impression et en PDF) ;
+la tendance, elle, n'existe qu'avec JS et ne porte jamais le sens à elle seule.
+
+## 15 — Barres empilées 🔴 (dès qu'un total se compose de plusieurs séries)
+
+**Le fait.** Le socle n'avait aucun composant de graphique : chaque page écrivait son SVG à la main
+et retenait la série UNIQUE, la voie la plus courte, alors que la demande et la donnée en portaient
+plusieurs (Produit-02, RT-119). Une partie d'un tout se montre empilée.
+
+**Assets** : `assets/barres-empilees.css` (palette en jetons + style) et `assets/barres-empilees.js`,
+posés avec `infobulle.css` et `infobulle.js` (l'infobulle par segment). Vertical et horizontal, mode
+`valeurs` ou `pourcent`, 1 à 6 séries (au-delà : regrouper en « Autres »), valeurs positives ou nulles.
+
+**Donnée déclarée, dessin dérivé.** La `<figure data-graphe-empile id="…">` porte un
+`<script type="application/json" class="graphe-donnees">` (orientation, mode, unite, decimales,
+totaux, titre, categories, series[{nom, valeurs}]). Deux voies pour le même code : le navigateur
+dessine au chargement (`window.DigitAIBarresEmpilees.init(document)`), ou, de préférence,
+`node assets/barres-empilees.js --injecter <page.html>` **pré-rend** le SVG dans le fichier — il
+existe alors sans script (PDF, courriel, oracle statique) et se refait à l'identique. Aucune
+requête réseau, aucune bibliothèque.
+
+```html
+<figure class="graphe-empile" id="g-jour" data-graphe-empile>
+  <figcaption>Dépense par jour et par pays (euros)</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation":"vertical","mode":"valeurs","unite":"€","totaux":true,"categories":["Lun","Mar"],
+   "series":[{"nom":"France","valeurs":[820,760]},{"nom":"Italie","valeurs":[410,450]}]}
+  </script>
+</figure>
+```
+
+**CONVENTION lue par l'oracle.** Le `<svg>` porte `data-series-source="N"` (N = nombre de séries de
+la DONNÉE, pas de ce qui est peint) ; chaque segment porte `data-serie="<nom>"` ; une étiquette est
+un `<text class="etiquette-marque" data-etiquette-de="<id du rect>">`, posée **seulement si elle tient
+dans le rectangle** (sinon pas d'étiquette — la valeur passe alors à l'infobulle). L'étiquette porte
+`data-overlap-ok="<id du rect>"` : paire déclarée pour V4, pas d'exemption en bloc.
+
+**Palette.** `--cat-1` à `--cat-6` (et `--cat-N-texte` pour le texte posé dessus), valeurs de la
+palette documentée du skill `dataviz`, validées le 03/10/2026 par son `validate_palette.js` sur les
+surfaces du socle : clair (#FFFFFF) tous contrôles PASS sauf le contraste 3:1 de trois teintes
+(aqua 2,82, jaune 2,17, magenta 2,69 : bande « relief requis »), sombre (#121B2E) tous PASS. Le
+relief est fourni : étiquettes directes, filets de 2 px (`vector-effect: non-scaling-stroke`),
+légende dès 2 séries, vue tableau sous le graphique (en place si elle fait moins de 200 caractères,
+L9 ; en dépliant au-delà). Changer une valeur de la palette exige de rejouer le validateur.
+
+**Ce que l'infobulle doit contenir.** Un COMPLÉMENT, jamais le texte visible : la part du total de la
+colonne, le rang parmi les séries, le total de la colonne s'il n'est pas affiché, la valeur exacte si
+l'étiquette l'arrondit ou manque. Le nom de la série et de la catégorie vont dans l'`aria-label` du
+segment, pas dans l'infobulle. Elle se lit depuis le `title` du segment (contrat du § 13) ; chaque
+segment est focalisable (`tabindex="0"`) pour que le clavier l'ouvre aussi.
+
+**Limites.** Pas de valeurs négatives ; l'étiquette se calcule sur une estimation de largeur de
+texte ; viewBox de 420 unités (lisible de 340 à 560 px) ; le graphique ne remplace pas le tableau
+quand le lecteur doit comparer des valeurs précises. Une page dont la donnée porte plusieurs séries
+et dont le graphique n'en peint qu'une est un défaut : `data-series-source` rend la comparaison
+possible.
