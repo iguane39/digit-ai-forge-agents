@@ -18,7 +18,7 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | V1 | Texte ou élément qui sort de son cadre / de la page | Aucun débordement horizontal du document ; aucun contenu hors de la zone de son conteneur | **Mesuré** — `render_page.py` (scrollWidth vs clientWidth, bounding boxes vs viewport) |
 | V2 | Texte illisible — clair sur fond clair, sombre sur sombre | Ratio de contraste **≥ 4.5:1** (WCAG AA) pour le texte courant ; ≥ 3:1 pour le texte large (≥ 24px, ou ≥ 18.66px gras) | **Mesuré** — `render_page.py` (couleur effective vs fond effectif, formule WCAG) |
 | V3 | Éléments non alignés | Les éléments frères d'un même groupe partagent leur bord d'alignement (écart ≤ 2px) | **Mesuré (avertissement)** — `render_page.py` ; l'arbitrage final reste visuel (un décalage peut être voulu) |
-| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok="<id de l'élément recouvert>"` — une **paire**, pas un interrupteur (TF-1146). La forme nue exempte encore l'élément entier, mais elle est **recensée** (famille `overlap_en_bloc`, avertissement) |
+| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok="<id de l'élément recouvert>"` — une **paire**, pas un interrupteur (TF-1146). La forme nue exempte encore l'élément entier, mais elle est **recensée** (famille `overlap_en_bloc`, avertissement). Une étiquette déclarée de sa marque (`data-etiquette-de`, `.etiquette-marque`) et **contenue** dans son rectangle n'est pas un chevauchement (RT-124) |
 | V5 | Flèches ou filets qui croisent un élément | Aucun connecteur à travers un nœud ou un texte ; routage en L pur (règle `digit-ai-schemas`) | **Visuel** — rendu + inspection (boucle render-view-fix) |
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
@@ -351,6 +351,31 @@ corrige jamais.
 l'autre boîte → **constat**, mesure avant / après : **0 puis 1**), `v4-libelle-sur-sa-boite.html`
 (même fichier, une coordonnée près → **aucun constat** : apparier n'a pas rendu l'exemption
 inopérante), `v4-exemption-en-bloc-recensee.html` (forme nue → toujours exemptée, **recensée**).
+
+### L'étiquette écrite DANS sa marque n'est pas un chevauchement (RT-124, D-55 (a) du 03/10/2026)
+
+**Le fait payé.** Deux règles du socle étaient inconciliables. Le skill dataviz prescrit
+l'**étiquetage direct** — la part écrite dans le segment d'une barre empilée, plutôt qu'une légende
+à aller chercher — et V4 le jugeait en chevauchement : « `rect.seg × text.dans`, intersection
+100 % du plus petit », **sept constats** sur une page servie de Produit-02, contournés en reportant
+la part après le total, c'est-à-dire en dégradant la lecture pour faire taire l'oracle.
+
+**La forme.** Même invariant que la paire déclarée ci-dessus : un libellé **appartient** à la
+marque qu'il annote. Un `<text>` se déclare étiquette de sa marque par
+`data-etiquette-de="<id de la marque>"` (plusieurs ids séparés par des espaces), ou par la classe
+`etiquette-marque` — la marque est alors celle qui le contient. Il est exempté **s'il est contenu**
+dans le rectangle de sa marque, à 1 px près. Le composant barres empilées du socle pose
+l'attribut, et n'écrit l'étiquette que si elle tient dans son segment.
+
+**Ce qui reste un constat.** Une étiquette qui **déborde** de sa marque — sur le segment voisin,
+hors de la barre : le lecteur ne sait plus à quel segment elle appartient. Une étiquette contenue
+dans une **autre** marque que celle qu'elle déclare. Tout recouvrement avec un élément qui n'est
+pas sa marque.
+
+**Preuve à double sens** : `v4-etiquette-dans-sa-marque.html` (trois étiquettes contenues, les deux
+formes de déclaration → **0 constat** ; l'ancienne version en rendait **3**),
+`v4-etiquette-deborde-sa-marque.html` (même fichier, un segment trop mince → **2 constats**, avant
+comme après : l'exemption n'a pas éteint V4).
 
 ### V11 à V14 : quatre angles morts nommés par un lecteur, pas par un oracle (02/09/2026)
 

@@ -516,6 +516,28 @@ MEASURE_JS = r"""
           if (declare) continue;
           // Paire NON declaree : le recouvrement est juge, comme s il n y avait pas d exemption.
         }
+        // RT-124 (lot Produit-02 20261003b, D-55 (a) du 03/10/2026) — L ETIQUETTE ECRITE DANS SA
+        // MARQUE N EST PAS UN CHEVAUCHEMENT. Deux regles du socle etaient inconciliables : le skill
+        // dataviz prescrit l etiquetage DIRECT (la part ecrite dans le segment d une barre
+        // empilee), et V4 le jugeait « rect.seg x text.dans, intersection 100 % du plus petit » —
+        // sept constats sur la page servie, contournes en reportant la part apres le total.
+        // L invariant est celui de TF-1146 : un libelle APPARTIENT a la marque qu il annote. Un
+        // <text> se declare etiquette de sa marque — `data-etiquette-de="<id de la marque>"`, ou
+        // classe `etiquette-marque` (la marque est alors celle qui le contient) — et n est exempte
+        // que s il est CONTENU dans le rectangle de sa marque (1 px de tolerance) : une etiquette
+        // qui deborde sur le segment voisin ne dit plus a quel segment elle appartient, et reste
+        // un constat.
+        const etiquetteDans = (t, m) => {
+          if (t.tagName.toLowerCase() !== 'text' || m.tagName.toLowerCase() === 'text') return false;
+          const cibles = (t.getAttribute('data-etiquette-de') || '').trim().split(/\s+/).filter(Boolean);
+          const declaree = cibles.length ? (m.id !== '' && cibles.includes(m.id))
+            : t.classList.contains('etiquette-marque');
+          if (!declaree) return false;
+          const rt = t.getBoundingClientRect(), rm = m.getBoundingClientRect();
+          return rt.left >= rm.left - 1 && rt.right <= rm.right + 1 &&
+                 rt.top >= rm.top - 1 && rt.bottom <= rm.bottom + 1;
+        };
+        if (etiquetteDans(a.el, b.el) || etiquetteDans(b.el, a.el)) continue;
         // TF-0444 (21/08) : <colgroup> et <col> sont des elements de DECLARATION, pas de mise
         // en page. Leur boite englobe par construction celle du tableau — donc tout tableau
         // portant un colgroup produisait deux faux positifs BLOQUANTS (« colgroup x thead »,

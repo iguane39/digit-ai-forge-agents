@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — etiquette ecrite dans son segment — 20261003a</title>
+<!--
+  Fixture de RT-124 (lot Produit-02 20261003b, D-55 (a) du 03/10/2026) — LE SENS VERT.
+
+  Deux règles du socle étaient inconciliables : le skill dataviz prescrit l'étiquette DIRECTE,
+  écrite dans le segment d'une barre empilée, et V4 la jugeait en chevauchement
+  (« rect.seg × text.dans, intersection 100 % du plus petit ») — sept constats sur la page servie,
+  contournés en reportant la part après le total. Ici, chaque <text> se DÉCLARE étiquette de sa
+  marque, par les deux formes admises (`data-etiquette-de="<id>"`, classe `etiquette-marque`), et
+  tient DANS son rectangle. Attendu : AUCUN constat v4_overlap. L'ancienne version en rend trois.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — une étiquette écrite dans son segment</h1>
+<p>Dépense par jour, empilée par pays ; la part de chaque pays est écrite dans son segment.</p>
+<svg width="320" height="220" viewBox="0 0 320 220" role="img" aria-label="Dépense par jour et par pays">
+  <rect class="seg" id="s-1-fr" x="40" y="100" width="90" height="100" fill="#1E40AF"></rect>
+  <rect class="seg" id="s-1-be" x="40" y="40" width="90" height="60" fill="#B45309"></rect>
+  <rect class="seg" id="s-2-fr" x="180" y="120" width="90" height="80" fill="#1E40AF"></rect>
+  <text class="dans" data-etiquette-de="s-1-fr" x="85" y="155" text-anchor="middle" font-size="14" fill="#FFFFFF">62 %</text>
+  <text class="dans" data-etiquette-de="s-1-be" x="85" y="75" text-anchor="middle" font-size="14" fill="#FFFFFF">38 %</text>
+  <text class="dans etiquette-marque" x="225" y="165" text-anchor="middle" font-size="14" fill="#FFFFFF">100 %</text>
+</svg>
+</main></body></html>

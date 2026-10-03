@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — etiquette qui deborde son segment — 20261003a</title>
+<!--
+  Fixture de RT-124 (lot Produit-02 20261003b, D-55 (a) du 03/10/2026) — LE SENS ROUGE.
+
+  Même fichier que `v4-etiquette-dans-sa-marque.html` à une hauteur de segment près : le segment
+  belge est trop mince pour son étiquette, qui DÉBORDE sur le segment voisin. Elle se déclare
+  étiquette de sa marque, mais n'y est plus contenue : le lecteur ne sait plus à quel segment elle
+  appartient. L'exemption ne vaut que pour un texte CONTENU dans le rectangle de sa marque.
+  Attendu : au moins un constat v4_overlap.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — une étiquette qui déborde de son segment</h1>
+<p>Dépense par jour, empilée par pays ; le segment belge est trop mince pour son étiquette.</p>
+<svg width="320" height="220" viewBox="0 0 320 220" role="img" aria-label="Dépense par jour et par pays">
+  <rect class="seg" id="s-1-fr" x="40" y="100" width="90" height="100" fill="#1E40AF"></rect>
+  <rect class="seg" id="s-1-be" x="40" y="94" width="90" height="6" fill="#B45309"></rect>
+  <text class="dans" data-etiquette-de="s-1-be" x="85" y="104" text-anchor="middle" font-size="14" fill="#FFFFFF">4 %</text>
+</svg>
+</main></body></html>

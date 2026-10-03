@@ -483,6 +483,13 @@ CAS_RENDU = {
     # 0 constat, puis 1 — c est le constat que l exemption en bloc avalait.
     "v4-libelle-dans-la-boite-voisine.html": ("v4_overlap", 1),   # paire declaree, autre boite
     "v4-libelle-sur-sa-boite.html": ("v4_overlap", 0),            # paire declaree, sa boite
+    # RT-124 (lot Produit-02 20261003b, D-55 (a) du 03/10) — l etiquette DIRECTE ecrite dans son
+    # segment (prescrite par dataviz) rendait « rect.seg x text.dans, intersection 100 % ». Un
+    # <text> declare etiquette de sa marque (data-etiquette-de ou .etiquette-marque) et CONTENU
+    # dans son rectangle est exempte : ancienne version 3 constats, nouvelle 0. Celle qui deborde
+    # sur le segment voisin reste un constat (2 avant comme apres).
+    "v4-etiquette-dans-sa-marque.html": ("v4_overlap", 0),
+    "v4-etiquette-deborde-sa-marque.html": ("v4_overlap", 1),
     # La forme NUE exempte toujours — 1 716 occurrences dans le parc — mais elle est RECENSEE.
     "v4-exemption-en-bloc-recensee.html": [("v4_overlap", 0), ("overlap_en_bloc", 1)],
     "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
