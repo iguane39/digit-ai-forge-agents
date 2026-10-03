@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- A3 (TF-0303, 17/08) — charset PUIS viewport en TOUTE PREMIÈRE position : la
+     déclaration d'encodage doit tomber dans les 1024 premiers octets, sinon l'analyseur
+     devine. Le commentaire S-G1 ci-dessous et son script la repoussaient au 1613e octet :
+     mesuré par check_html.py, sur ce gabarit même. L'ordre compte, la position aussi. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- S-G1 (1/4, R-30 amendé TF-0158 le 13/08) — initialisation AVANT la balise de style : pose
+     data-theme avant la première peinture (zéro flash). CLAIR PAR DÉFAUT, STRICTEMENT :
+     un livrable circule et s'ouvre identique chez tous ses lecteurs — l'auto-sombre
+     hérité de l'OS (prefers-color-scheme) est retiré (il a valu un retour humain réel
+     le 13/08 : « thème sombre par défaut »). Le sombre reste un CHOIX du lecteur,
+     persisté. Volontairement SANS defer/async : un script différé peindrait d'abord le
+     thème par défaut du CSS puis re-peindrait, c'est le flash que ce script évite
+     (déclenche le WARN générique « script bloquant en head » de check_html.py —
+     exception assumée, documentée ici). -->
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  var theme = stocke === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  /* RV-9 (14/08) : `color-scheme` SUIT le thème effectif. Laissé à « light dark », le
+     navigateur peignait ses propres surfaces (ascenseurs, contrôles de formulaire) en
+     sombre dès que le poste l'était — un corps clair bordé de chrome sombre, alors même
+     que la règle dit « clair par défaut ». Le figer à « light » aurait produit l'inverse
+     après bascule. Il suit donc, et reste juste dans les deux états. */
+  var meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) { meta.setAttribute('content', theme); }
+})();
+</script>
+  <!-- A4 : marque — objet · client — indice de version DATÉ ({YYYYMMDD}{a,b,c…}, le même
+       que le nom de fichier). Sans lui, deux révisions du même jour portent le même nom à
+       l'écran ; « V1 » ne les distingue pas (défaut du 17/08, lot Produit-01). -->
+  <title>Digit-AI — Tuiles et barres empilées · Produit-02 — 20261003a</title>
+  <meta name="description" content="Exemple fictif des composants tuiles d'indicateurs et barres empilées du socle.">
+  <meta name="theme-color" content="#2563EB">
+  <!-- « light » à l'écriture : le script d'initialisation ci-dessus le passe à « dark » si,
+       et seulement si, le lecteur a explicitement choisi le sombre (RV-9, 14/08). -->
+  <meta name="color-scheme" content="light">
+  <!-- Favicon-lettre (systématisation du 13/08, loi transverse n°3 : la surface implicite
+       se propose d'office) : remplacer {L} par la PREMIÈRE LETTRE du client ou du projet. -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3E{L}%3C/text%3E%3C/svg%3E">
+
+  <!-- Polices : AUCUN chargement réseau (A1/D-10 — confidentialité, durabilité,
+       lecture hors ligne). La charte est celle des PRÉSENTATIONS de l'émetteur (décision
+       humaine D-5 (a) du 22/09/2026, exécutée par D-11 (a) le 23/09 ; source : dossier de
+       marque, tokens-diapositives) : Montserrat en titres, Inter en corps. Elles s'affichent
+       si installées localement ; Roboto et DM Sans, la charte d'avant, restent en premier
+       repli, puis les replis système des tokens --head/--sans/--mono prennent le relais. -->
+
+  <style>
+    :root {
+      /* Couleurs — marque & surfaces */
+      --blue: #2563EB;
+      --bg: #FAFBFF;
+      --surface: #FFFFFF;
+      --card: #FFFFFF;
+      /* Focus — PRESCRIT par token, consomme par toute affordance (RGAA 10.7, WCAG 2.4.7) :
+         un anneau improvise par chaque auteur n'est pas une charte. */
+      --focus-anneau: 2px solid var(--blue);
+      --focus-decalage: 2px;
+      /* Couleurs — encres */
+      --ink: #0F172A;
+      --muted: #64748B;
+      --faint: #94A3B8;
+      --line: #E6EAF2;
+      /* Accents sémantiques */
+      --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;
+      --teal:  #0E9488; --teal-fill:  #EFFDFB; --teal-line:  #C7F0EA;
+      --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
+      /* TF-0755 (02/09) : le QUATRIEME registre, employe par les livrables de la maison et
+         documente nulle part. Un rapport de conformite qui a eu besoin d'un « refus / non
+         declare » ne l'a pas trouve dans le socle et l'a INVENTE — alors que le livrable
+         conforme de reference portait deja ces trois valeurs exactes. Une palette dont un
+         registre entier n'est ecrit nulle part se fait reinventer, et deux reinventions donnent
+         deux rouges dans deux livrables de la meme maison. */
+      --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
+      /* TF-0754 (02/09) : hauteur de l'EN-TETE COLLANT. Le socle a tranche — l'en-tete garde le
+         bord haut, le thead collant et le sommaire lateral se decalent de var(--hh). Un token
+         consomme sans etre pose vaudrait 0 et ramenerait la collision (controle L29). */
+      --hh: 64px;
+      /* TF-0929 (08/09, troisieme retour humain sur l'en-tete collant en deux jours) — `--hh`
+         est un TOKEN, et un token ne suit pas une hauteur qui change avec la largeur. Des que
+         l'en-tete passe sur deux lignes, ou qu'une bande de sommaire colle SOUS lui, ce qui
+         colle au-dessus du thead est plus haut que 64 px, et le thead se range DERRIERE eux —
+         mesure a 1 370 px : 115 px d'en-tete masques ; a 1 600 px, aucun defaut. Les deux
+         valeurs sont donc MESUREES au chargement, au redimensionnement et aux polices chargees
+         (voir poserHauteurs() en pied de page) ; ce qui est ecrit ici est le REPLI, celui qui
+         sert avant la premiere mesure et si le script ne s'execute pas.
+         --hh     : bas de l'en-tete collant — ce qui colle directement sous lui l'emploie ;
+         --hh-tab : bas du DERNIER collant au-dessus d'un tableau (en-tete + bande de sommaire
+                    collante s'il y en a une) — le thead collant emploie celui-la. */
+      --hh-tab: 64px;
+      /* Rayons */
+      --r: 12px; --r-sm: 8px;
+      /* Largeur du conteneur et largeur de lecture — cf. regle L2.
+         Le conteneur occupe 75-100 % de la fenetre A TOUTE TAILLE (decision 13/08) :
+         92vw sous ~1826px, plafond confort 1680px, plancher 75vw au-dela. */
+      /* TF-0450 : `--prose: 75ch` retire. Il n'etait plus consomme nulle part depuis que
+         TF-0421 a retire la bride `p, li { max-width: var(--prose) }` — un token declare et
+         jamais lu n'est pas neutre, c'est la trace visible d'une doctrine abandonnee, en tete
+         du fichier que tout auteur de page copie. Le prochain le rebrancherait. */
+      --w: clamp(75vw, 1680px, 92vw);
+      /* Familles (repli système obligatoire) — charte des présentations (D-5 (a), D-11 (a)) */
+      --head: "Montserrat", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --sans: "Inter", "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+      /* Année de référence (token isolé) */
+      --annee-ref: "2026";
+    }
+
+    /* S-G1 (2/4, R-30) — tokens sombres : une source, deux projections. bg/surface
+       s'assombrissent vers une base marine ; ink/muted/faint s'éclaircissent en
+       dégradé inverse ; line reste un filet proche du fond ; chaque accent
+       sémantique éclaircit sa teinte de base (lisible sur fond sombre) et assombrit
+       son -fill/-line en griffe basse de la même teinte. */
+    :root[data-theme="dark"] {
+      --bg: #0B1220; --surface: #121B2E; --card: #121B2E;
+      --ink: #EEF2F8; --muted: #A9B4C4; --faint: #7C8AA0; --line: #263248;
+      --blue: #7DA2F5;
+      --amber: #FBBF6D; --amber-fill: #2B2210; --amber-line: #4A3A18;
+      --teal:  #5FE6D6; --teal-fill:  #0E2A27; --teal-line:  #164E48;
+      --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
+      --red:   #F5A3A3; --red-fill:   #2C1416; --red-line:   #4C1F22;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+    /* TF-0733 (31/08, lot produit) — LE VOILE INVISIBLE AUX SEIZE ORACLES. Un panneau masque
+       par l'attribut `hidden` mais style par un `display: flex` explicite : la regle CSS
+       l'emporte sur le display:none que l'attribut tient de la feuille de l'agent utilisateur,
+       et un rectangle TRANSPARENT couvre l'ecran en interceptant chaque clic — invisible en
+       capture (transparent), invisible a la lecture (syntaxiquement correct), trouve par
+       document.elementFromPoint. Cette ligne rend l'attribut SOUVERAIN : un composant masque
+       le reste, quel que soit le display que sa classe pose. Elle est OBLIGATOIRE de charte
+       sur toute page qui emploie `hidden` (controle L23 de check_html.py). */
+    [hidden] { display: none !important; }
+
+    /* Regle L2 (corrigee, TF-0421 — lot Produit-05 20260820a) : la mesure de lecture est portee
+       par le CONTENEUR, jamais par le paragraphe. L'ancienne doctrine (« conteneur relatif,
+       prose bornee en ch ») bridait chaque <p> a 75ch : a 1 800 px, 60 % de la fenetre vide,
+       livre vert, refuse par le client. Deux gabarits de chapitre NOMMES remplacent la bride :
+         .chap.lire  — un PASSAGE de lecture (~1 080 px centres) INSERE dans une mise en page
+                       large — JAMAIS l'enveloppe d'un chapitre entier : employe comme
+                       enveloppe, il place tout le document a 56 % d'une fenetre de 1 920 px,
+                       sous le plancher de largeur que ce squelette enonce, et render_page L2
+                       le refuse a bon droit (TF-0724 D2, constate par le destinataire humain) ;
+         .chap.duo   — grille 7/5 texte + encart utile (KPI, legende, figure), repli < 1 100 px.
+       Un <p> seul sur une largeur de 1 680 px reste illisible : c'est le CHAPITRE qu'on
+       retrecit (.chap.lire), pas la ligne. render_page.py L2 juge quelle que soit la propriete. */
+    .wrap { max-width: var(--w); margin: 0 auto; padding: 32px 24px 64px; }
+    /* TF-0930 (retour humain du 08/09, « augmente la largeur complete du document ») — une
+       page qui se DECLARE page de donnees echappe au plafond de confort : `--w` la bridait a
+       1 260 px dans une fenetre de 1 370 et a 1 680 dans une fenetre de 1 920, alors que I1 et
+       L26 disent « pleine largeur adaptative ». Sept colonnes de mapping n'entrent pas dans
+       1 260 px ; la place existe, la page doit la prendre. La colonne de lecture reste
+       accessible a la PROSE par `.chap.lire`, qui n'est pas touche ici.
+       Mesure : .wrap 1 370/1 370 px et 1 920/1 920 px apres, contre 1 260 et 1 680 avant.
+       Controle : famille `conteneur_bride_donnees` de render_page.py (>= 96 % a >= 1 280 px). */
+    [data-page="donnees"] .wrap,
+    .wrap[data-page="donnees"] { max-width: none; padding: 20px 28px 48px; }
+    /* TF-0932 — l'entrée en matière d'un chapitre : ce qu'il contient, puis ses termes. */
+    /* TF-1238 (22/09/2026) — LE REPLI LITTÉRAL EST RETIRÉ, ET IL ÉTAIT PIRE QUE REDONDANT.
+       `var(--muted, #475569)` promettait de secourir un jeton absent ; or `--muted` est posé
+       sans condition au `:root` de cette coquille, donc le repli ne pouvait jamais servir — et
+       sa valeur ne correspondait PAS au jeton : `#475569` contre `#64748B`. En thème sombre le
+       jeton devient `#A9B4C4`, que le repli aurait contredit plus franchement encore. Une
+       valeur de secours qui ne peut pas s'exécuter et qui ment sur ce qu'elle secourt est une
+       dette pure : elle fait échouer le contrôle des jetons sans rien garantir en échange. */
+    .contenu { margin: .2em 0 .8em; color: var(--muted); }
+    .termes { margin: 0 0 1em; font-size: .92em; color: var(--muted); }
+    .termes dfn { font-style: normal; font-weight: 600; color: var(--ink); }
+    .chap.lire { max-width: 1080px; margin-left: auto; margin-right: auto; }
+    .chap.duo { display: grid; grid-template-columns: 7fr 5fr; gap: 32px; align-items: start; }
+    @media (max-width: 1100px) { .chap.duo { grid-template-columns: 1fr; } }
+
+    /* ── Tableaux, et leur repli en cartes (TF-0442, composants.md §6) ──────────────────
+       Le socle ne portait AUCUN style de tableau : chaque page en reinventait, et le repli en
+       cartes — seule parade reelle au debordement — n'existait qu'en exemple dans un
+       referentiel. Mesure du 21/08 sur une page dont TOUS les tableaux etaient deja dans un
+       conteneur `overflow-x: auto` : 26 defauts V1 BLOQUANTS a 390 px (25 causes, 935
+       elements), 4 a 768 px, et ZERO apres repli. Un conteneur qui defile rend un tableau
+       CONSULTABLE ; il ne le rend pas lisible et ne fait pas passer V1, qui compare le bord
+       droit au viewport sans regarder si un ancetre defile.
+
+       Seuil a 900 px et non 640 : le calibrage de composants.md (~130 px de largeur utile par
+       colonne de prose) place le repli d'un tableau de 4 colonnes textuelles au-dessus de
+       640 px. Verifie au rendu sur le squelette de rapport de donnees du pilot — PASS a
+       1280 / 768 / 390.
+
+       `thead { display: none }` et non un masquage hors ecran : la version « position
+       absolue + clip » a ete essayee D'ABORD et REFUSEE par render_page — les `<th>` gardent
+       leur largeur naturelle et debordent (3 BLOQUANTS mesures a 390 px). Le libelle de colonne
+       n'est pas perdu, il est rendu par `td::before` depuis `data-label`.
+
+       Chaque `<td>` porte `data-label="<en-tete de sa colonne>"`. Un tableau qui n'en porte
+       pas ne se replie pas — c'est voulu : le repli sans etiquette rendrait des valeurs nues. */
+    /* ── TF-0900 (08/09/2026) : LE CONTENEUR DEFILANT NE VIT QUE SOUS 900 px ────────────
+       Un ancetre dont l'`overflow` n'est pas `visible` DEVIENT la boite de defilement de tout
+       `position: sticky` de son sous-arbre. `.table-hote { overflow-x: auto }` pose partout
+       DEFAISAIT donc, a lui seul, le geste L29 pose vingt lignes plus bas : le thead se figeait
+       sous le haut de SON TABLEAU au lieu de l'en-tete de page. Mesure du 07/09 sur quatre
+       tableaux sans filtres : th a 404 px au repos pour 337 attendus (+67), une ligne recouverte
+       en permanence, -96 px apres 200 px de defilement — le thead quittait l'ecran avec son
+       tableau. Deux lignes du MEME gabarit se contredisaient, et un produit a du trancher seul.
+
+       ARBITRAGE : au-dessus de 900 px le conteneur ne defile PAS. Il n'y servait a rien — la
+       regle « tableau rogne » (render_page, famille rognage_donnees) refuse deja qu'un tableau
+       soit coupe dans un conteneur defilant sur une page de donnees, et V1 ne regarde pas si un
+       ancetre defile. Sous 900 px il reprend son role : c'est la que le repli en cartes masque
+       le thead (`table.repli-cartes thead { display: none }`), donc plus aucun sticky a casser,
+       et qu'un tableau NON repliable a besoin d'etre consultable a defaut d'etre lisible.
+       Reste declare : un tableau sans `data-label` (donc sans repli) ET porteur de `thead.colle`
+       perd son collage sous 900 px — c'est la seule largeur ou le socle prefere la consultation
+       au collage, et lisibilite.md L29 le dit. */
+    .table-hote { overflow-x: visible; }
+    table { width: 100%; border-collapse: collapse; }
+    caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 8px 0; }
+    /* TF-0724 D1 (31/08, lot produit) — `overflow-wrap: anywhere` NE VIT PLUS sur `th, td` :
+       pose la, la coupure s'appliquait a TOUTE cellule de prose, et L19 — le controle qui
+       accompagne ce squelette — refusait precisement cela. Tout document bati sur le socle et
+       portant un tableau de texte echouait SANS QUE SON AUTEUR AIT RIEN ECRIT (deux echecs
+       mesures sur un livrable, imputables au seul CSS du socle ; la surcharge ne suffisait
+       pas, l'oracle lisant la declaration et non la cascade). La coupure vit desormais aux
+       DEUX seuls endroits legitimes : le repli en cartes (composants.md §6, palier oblige,
+       tolere par L19 depuis TF-0554) et la classe explicite `.cellule-code` pour les cellules
+       d'identifiants techniques — une classe qui DIT son usage, comme L19 le demande. */
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-family: var(--head); font-weight: 700; }
+    td.cellule-code, th.cellule-code { font-family: var(--mono); overflow-wrap: anywhere; }
+    @media (max-width: 900px) {
+      /* TF-0900 : c'est ICI que le conteneur defilant sert — le thead est masque par le repli
+         en cartes (ligne suivante), donc aucun sticky ne peut etre casse, et un tableau non
+         repliable reste consultable au doigt. */
+      .table-hote { overflow-x: auto; }
+      table.repli-cartes thead { display: none; }
+      table.repli-cartes tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 12px; break-inside: avoid; }
+      table.repli-cartes td { display: grid; grid-template-columns: minmax(9ch, 38%) 1fr; gap: 8px; border: 0; padding: 4px 0; }
+      table.repli-cartes td::before { content: attr(data-label); font-weight: 700; color: var(--muted); }
+      table.repli-cartes td:not([data-label])::before { content: none; }
+    }
+
+    h1, h2, h3, h4 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+    h1 { font-size: 2rem; margin: 0 0 .25em; }
+    h2 { font-size: 1.4rem; font-weight: 700; margin: 2em 0 .5em; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 1.5em 0 .4em; }
+    /* TF-0724 D3 : le socle s'arretait a h3 — un document au quatrieme niveau devait le styler
+       lui-meme, et declenchait « saut de hierarchie » s'il n'intercalait pas un h3. Le niveau 4
+       existe ; au-dela, c'est un composant, pas un titre. */
+    h4 { font-size: 1rem; font-weight: 700; margin: 1.2em 0 .3em; }
+    p, li { margin: 0 0 1em; }
+    a { color: var(--blue); }
+    code, pre { font-family: var(--mono); }
+
+    header.doc {
+      border-bottom: 2px solid var(--blue);
+      padding-bottom: 16px; margin-bottom: 24px;
+    }
+    /* ── B1 contre B6 : l'ARBITRAGE, en deux lignes (TF-0754, 02/09) ──────────────────
+       « header sticky » et « thead sticky » se superposaient sur toute page longue a
+       tableaux : le thead se collait au bord haut DERRIERE l'en-tete et devenait illisible,
+       ou bien on lui donnait un decalage au jugé et il flottait au-dessus des premieres
+       lignes de son propre tableau. Aucun des deux textes du socle ne disait lequel cede, ni
+       ne fournissait le decalage — un PRODUIT a fini par trancher, apres deux cycles de
+       rendu. L'en-tete garde le bord haut (c'est lui qui porte l'identite du livrable) ; ce
+       qui colle SOUS lui consomme --hh. Le sommaire lateral (L25) prend le meme repere. */
+    header.doc.colle { position: sticky; top: 0; z-index: 20; background: var(--bg); }
+    thead.colle th   { position: sticky; top: var(--hh-tab, var(--hh)); z-index: 10; background: var(--surface); }
+    nav.toc.colle    { position: sticky; top: var(--hh); z-index: 10; }
+    @media (max-width: 900px) { nav.toc.colle { position: static; } }
+    .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
+
+    /* S-G1 (3/4, R-30) — bouton de bascule, en-tête, haut à droite */
+    .theme-toggle { appearance: none; border: 1px solid var(--line); background: var(--surface);
+      color: var(--ink); border-radius: 999px; width: 36px; height: 36px; flex: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; }
+    .theme-toggle:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 20px 24px;
+      margin: 16px 0;
+    }
+
+    footer.doc {
+      margin-top: 48px; padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted); font-size: .85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .wrap { padding: 24px 16px 48px; }
+      h1 { font-size: 1.6rem; }
+    }
+
+    /* Respect du mouvement réduit (a11y) */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+
+    /* Export PDF / impression */
+    @page { size: A4; margin: 18mm 16mm; }
+    @page :first { margin-top: 22mm; }
+    @media print {
+      /* S-G1 (2/4 suite, R-30.2) — impression toujours claire, quel que soit le
+         thème affiché à l'écran au moment d'imprimer. */
+      :root, :root[data-theme="dark"] {
+        --bg:#FFFFFF; --surface:#FFFFFF; --card:#FFFFFF; --ink:#0F172A;
+        --muted:#64748B; --faint:#94A3B8; --line:#E6EAF2; --blue:#2563EB;
+        --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
+        --teal:#0E9488;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
+        --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
+        --red:#B91C1C;   --red-fill:#FEF2F2;    --red-line:#F6CFCF;
+      }
+      body { background: var(--surface); }
+      .wrap { max-width: none; padding: 0; }
+      .card { break-inside: avoid; page-break-inside: avoid; }
+      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em; color: var(--muted); }
+      .theme-toggle { display: none; }
+    }
+  </style>
+<!-- COMPOSANT-EMBARQUE:DEBUT tuiles-indicateurs.css — copie du socle digit-ai-page-html/assets/tuiles-indicateurs.css,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<style data-composant="tuiles-indicateurs.css" data-empreinte="sha256:f0c45507aa5dbadf2fac657bd9c32232384c948fd760b41ab508e750032d5823">
+/* tuiles-indicateurs.css — rangee de tuiles d'indicateurs (RT-120, D-55 (a) du 03/10/2026).
+   Remplace l'extrait « 1 — Grille de KPI » de composants.md. Une tuile porte : un libelle, une
+   valeur, un ECART (absolu et relatif ; en points pour un pourcentage) avec un repere de sens qui
+   ne repose pas sur la couleur (fleche + mot), une COMPARAISON libellee (periode precedente ou
+   cible) qui est la legende lue par aria-describedby, et une tendance optionnelle (mini-courbe).
+   Jetons du socle uniquement (:root du boilerplate), echelle 4 pt, clair et sombre par les jetons. */
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));   /* 3 a 6 tuiles, retour a la ligne */
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tuile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--ink);
+}
+
+.tuile-label { margin: 0; color: var(--muted); font-size: .8rem; font-weight: 600; }
+.tuile-valeur { margin: 0; font-family: var(--head); font-weight: 800; font-size: 1.75rem; line-height: 1.2; color: var(--ink); }
+
+/* Ecart : le SENS est dit par la fleche ET par le mot (hausse / baisse / stable) ; la couleur
+   ne fait que doubler le jugement (favorable / defavorable) — texte toujours en --ink. */
+.tuile-ecart { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; font-size: .85rem; font-weight: 600; color: var(--ink); }
+.tuile-sens { display: inline-flex; align-items: baseline; gap: 4px; }
+.tuile-fleche { font-size: .8rem; }
+.tuile--bon .tuile-fleche { color: var(--green); }
+.tuile--mauvais .tuile-fleche { color: var(--red); }
+.tuile--neutre .tuile-fleche { color: var(--muted); }
+.tuile-jugement { color: var(--muted); font-weight: 400; }
+
+.tuile-comparaison { margin: 0; color: var(--muted); font-size: .75rem; }   /* --muted, pas --faint : AA */
+
+.tuile-tendance { display: block; width: 100%; height: 32px; margin-top: 4px; }
+.tuile-tendance .tt-ligne { fill: none; stroke: var(--blue); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+
+@media print { .tuile { break-inside: avoid; } }
+</style>
+<!-- COMPOSANT-EMBARQUE:FIN tuiles-indicateurs.css -->
+<!-- COMPOSANT-EMBARQUE:DEBUT barres-empilees.css — copie du socle digit-ai-page-html/assets/barres-empilees.css,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<style data-composant="barres-empilees.css" data-empreinte="sha256:6810c10c355a935321b28769fbdf7504081484e8dbac454297f52227e6b7c25e">
+/* barres-empilees.css — habillage du graphique en barres empilees (RT-119, D-55 (a) du 03/10/2026).
+   Le dessin vit dans barres-empilees.js ; ici, la PALETTE en jetons et le style du SVG.
+
+   PALETTE CATEGORIELLE — six jetons --cat-N, et pour chacun le jeton de TEXTE posable dessus
+   (--cat-N-texte), parce qu'un meme texte ne tient pas sur six fonds. Valeurs reprises mot pour
+   mot de la palette documentee du skill dataviz, dans son ordre (l'ordre est le mecanisme de
+   securite daltonisme). Validation jouee le 03/10/2026 par validate_palette.js :
+     clair  (fond #FFFFFF) : bande de luminosite, chroma, CVD adjacent (pire 9,1) et vision normale
+                             (pire 19,6) PASS ; contraste a 3:1 : trois teintes (aqua 2,82, jaune
+                             2,17, magenta 2,69) en bande « relief requis ».
+     sombre (fond #121B2E) : tous controles PASS, contraste >= 3:1 pour les six (CVD pire 8,4).
+   Le RELIEF exige par le validateur est fourni : etiquettes directes dans les segments qui les
+   portent, filets de 2 px, legende, et vue tableau (details.graphe-table) sous chaque graphique.
+   Contraste des textes d'etiquette sur leur fond, mesure : >= 4,5:1 pour les douze couples.
+   Les jetons sont portes par .graphe-empile (pas par :root) : le composant ne redefinit rien du socle. */
+
+.graphe-empile {
+  --cat-1: #2a78d6; --cat-1-texte: #000000;
+  --cat-2: #eb6834; --cat-2-texte: #0F172A;
+  --cat-3: #1baf7a; --cat-3-texte: #0F172A;
+  --cat-4: #eda100; --cat-4-texte: #0F172A;
+  --cat-5: #e87ba4; --cat-5-texte: #0F172A;
+  --cat-6: #008300; --cat-6-texte: #FFFFFF;
+  margin: 0;
+  min-width: 0;   /* un enfant de grille ne s'impose pas a la largeur intrinseque du viewBox */
+  padding: 16px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid var(--line, #E6EAF2);
+  border-radius: var(--r, 12px);
+}
+
+/* Sombre : CHOIX du lecteur (data-theme), jamais herite de l'OS — doctrine du boilerplate (RV-9). */
+:root[data-theme="dark"] .graphe-empile {
+  --cat-1: #3987e5; --cat-1-texte: #0B1220;
+  --cat-2: #d95926; --cat-2-texte: #0B1220;
+  --cat-3: #199e70; --cat-3-texte: #0B1220;
+  --cat-4: #c98500; --cat-4-texte: #0B1220;
+  --cat-5: #d55181; --cat-5-texte: #0B1220;
+  --cat-6: #008300; --cat-6-texte: #FFFFFF;
+}
+
+.graphe-empile figcaption {
+  margin: 0 0 8px;
+  font-family: var(--head, system-ui, sans-serif);
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--ink, #0F172A);
+}
+
+.graphe-svg { display: block; width: 100%; max-width: 560px; height: auto; font-family: var(--sans, system-ui, sans-serif); }
+
+.graphe-grille { stroke: var(--line, #E6EAF2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.graphe-base { stroke: var(--muted, #64748B); }
+.graphe-axe { fill: var(--muted, #64748B); font-size: 13px; }
+.graphe-total { fill: var(--ink, #0F172A); font-size: 13px; font-weight: 600; }
+
+/* Filet de 2 px entre segments : le trait a la couleur de la surface, en epaisseur non mise a l'echelle. */
+.graphe-seg { stroke: var(--surface, #FFFFFF); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.graphe-seg:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue, #2563EB)); outline-offset: var(--focus-decalage, 2px); }
+.etiquette-marque { font-size: 13px; font-weight: 600; pointer-events: none; }
+
+.graphe-s1 { fill: var(--cat-1); background: var(--cat-1); }
+.graphe-s2 { fill: var(--cat-2); background: var(--cat-2); }
+.graphe-s3 { fill: var(--cat-3); background: var(--cat-3); }
+.graphe-s4 { fill: var(--cat-4); background: var(--cat-4); }
+.graphe-s5 { fill: var(--cat-5); background: var(--cat-5); }
+.graphe-s6 { fill: var(--cat-6); background: var(--cat-6); }
+.etiquette-marque.graphe-t1 { fill: var(--cat-1-texte); }
+.etiquette-marque.graphe-t2 { fill: var(--cat-2-texte); }
+.etiquette-marque.graphe-t3 { fill: var(--cat-3-texte); }
+.etiquette-marque.graphe-t4 { fill: var(--cat-4-texte); }
+.etiquette-marque.graphe-t5 { fill: var(--cat-5-texte); }
+.etiquette-marque.graphe-t6 { fill: var(--cat-6-texte); }
+
+.graphe-legende { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0 0; padding: 0; list-style: none; font-size: .85rem; color: var(--ink, #0F172A); }
+.graphe-legende li { display: inline-flex; align-items: center; gap: 8px; }
+.graphe-pastille { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+
+.graphe-table { margin-top: 12px; font-size: .85rem; }
+.graphe-table summary { cursor: pointer; color: var(--blue, #2563EB); font-weight: 600; }
+.graphe-table table { border-collapse: collapse; margin-top: 8px; width: 100%; }
+.graphe-table caption { text-align: left; color: var(--muted, #64748B); padding-bottom: 4px; }
+.graphe-table th, .graphe-table td { border-bottom: 1px solid var(--line, #E6EAF2); padding: 4px; font-size: .75rem; text-align: right; }
+.graphe-table th[scope="row"], .graphe-table th[scope="col"]:first-child { text-align: left; }
+.graphe-erreur { color: var(--red, #B91C1C); }
+
+@media print {
+  .graphe-table { display: block; }
+  .graphe-table[open] summary, .graphe-table summary { display: none; }
+}
+</style>
+<!-- COMPOSANT-EMBARQUE:FIN barres-empilees.css -->
+<!-- COMPOSANT-EMBARQUE:DEBUT infobulle.css — copie du socle digit-ai-page-html/assets/infobulle.css,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<style data-composant="infobulle.css" data-empreinte="sha256:79cd958a125aa1162cf9a5b811b3876dee13c3399f543bde5b9bb1b5e6d5391c">
+/* infobulle.css — habillage de l'infobulle structuree (TF-0935, lot Produit-10 20260908d).
+   La BANNIERE d'un composant est ce a quoi oracle-parite-assets le RECONNAIT : deux assets
+   qui partagent leur premiere ligne se confondent, et la parite accuse chacun d'etre l'autre
+   (mesure du 08/09 : P1 « copie NON DECLAREE » et P3 « bloc non delimite » sur une page
+   pourtant posee par le poseur). Elle est donc distincte de celle d'infobulle.js.
+   Le socle ne connaissait que l'attribut `title` natif : sept objets concatenes en un
+   paragraphe de 700 caracteres etaient conformes a L3 et illisibles. Ce composant rend la
+   MEME source (le `title`) en liste — une seule source de verite, aucun balisage double.
+   Le style vit ici ; le comportement dans infobulle.js. */
+
+#infobulle {
+  position: fixed;
+  z-index: 9999;
+  max-width: 520px;
+  margin: 0;
+  padding: 8px 12px;   /* echelle 4 pt (T3 d'oracle-tokens) : 10/14 faisaient rougir toute page */
+  border: 1px solid var(--line, #E6EAF2);
+  border-radius: var(--r-sm, 8px);
+  background: var(--surface, #FFFFFF);
+  color: var(--ink, #0F172A);
+  font-family: var(--sans, "DM Sans", system-ui, sans-serif);
+  font-size: .82rem;
+  line-height: 1.45;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, .16);
+  pointer-events: none;   /* l'infobulle ne vole jamais le survol a sa cible */
+}
+
+#infobulle[hidden] { display: none; }
+
+#infobulle ul { margin: 0; padding: 0 0 0 1.1em; list-style: disc; }
+#infobulle ul ul { margin: .15em 0 .25em; list-style: circle; }
+#infobulle li { margin: .12em 0; }
+#infobulle li > .ib-objet { font-weight: 600; }
+/* Un texte sans structure reste un paragraphe : le composant ne fabrique pas de puces
+   la ou l'auteur n'en a pas mis. */
+#infobulle p { margin: 0; }
+
+/* A l'impression, l'infobulle n'existe pas : elle est un etat de survol, et le PDF porte
+   le `title` restitue sur la cible (voir infobulle.js). */
+@media print { #infobulle { display: none !important; } }
+</style>
+<!-- COMPOSANT-EMBARQUE:FIN infobulle.css -->
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+      <div>
+        <p class="eyebrow">Digit-AI · Exemple de composants</p>
+        <h1>Tuiles d'indicateurs et barres empilées</h1>
+      </div>
+      <!-- S-G1 (3/4, R-30) — bouton de bascule thème sombre -->
+      <button id="theme-toggle" class="theme-toggle" type="button"
+              aria-label="Bascule thème sombre" aria-pressed="false">
+        <svg class="icon-moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+        </svg>
+        <svg class="icon-sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="4.5"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"
+                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <main>
+      <section>
+        <h2>Indicateurs de la campagne fictive</h2>
+        <div class="chap lire" data-mesure-lecture="passage de lecture voulu, introduction de chapitre">
+        <p class="contenu">Ce chapitre contient les cinq indicateurs de tête de la campagne fictive
+           « Atelier Démo », chacun comparé à la période précédente ou à sa cible, et se distingue du
+           chapitre suivant en ce qu'il donne l'état global là où le suivant donne la répartition.</p>
+        <p class="termes">Termes employés — <dfn>Écart</dfn> : différence entre la valeur et son point de
+           comparaison, en valeur et en pourcentage ; pour un taux, en points de pourcentage.</p>
+        </div>
+
+        <div class="tuiles">
+          <article class="tuile tuile--neutre" aria-labelledby="t1-l" aria-describedby="t1-c" data-tendance="9800,10400,10100,11260,12480" data-tendance-libelle="5 dernières périodes">
+            <p class="tuile-label" id="t1-l">Dépense</p>
+            <p class="tuile-valeur">12 480 €</p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+1 220 € (+10,8 %)</span></p>
+            <p class="tuile-comparaison" id="t1-c">Période précédente : 11 260 €</p>
+          </article>
+          <article class="tuile tuile--bon" aria-labelledby="t2-l" aria-describedby="t2-c" data-tendance="6900,7200,7050,7610,8340" data-tendance-libelle="5 dernières périodes">
+            <p class="tuile-label" id="t2-l">Clics</p>
+            <p class="tuile-valeur">8 340</p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+730 (+9,6 %)</span> <span class="tuile-jugement">favorable</span></p>
+            <p class="tuile-comparaison" id="t2-c">Période précédente : 7 610</p>
+          </article>
+          <article class="tuile tuile--bon" aria-labelledby="t3-l" aria-describedby="t3-c">
+            <p class="tuile-label" id="t3-l">Taux de conversion</p>
+            <p class="tuile-valeur">3,4 %</p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+0,3 point</span> <span class="tuile-jugement">favorable</span></p>
+            <p class="tuile-comparaison" id="t3-c">Période précédente : 3,1 %</p>
+          </article>
+          <article class="tuile tuile--mauvais" aria-labelledby="t4-l" aria-describedby="t4-c">
+            <p class="tuile-label" id="t4-l">Coût par clic</p>
+            <p class="tuile-valeur">1,50 €</p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>au-dessus</span></span> <span>+0,10 € (+7,1 %)</span> <span class="tuile-jugement">défavorable</span></p>
+            <p class="tuile-comparaison" id="t4-c">Cible : 1,40 €</p>
+          </article>
+          <article class="tuile tuile--neutre" aria-labelledby="t5-l" aria-describedby="t5-c">
+            <p class="tuile-label" id="t5-l">Impressions</p>
+            <p class="tuile-valeur">412 000</p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">►</span><span>stable</span></span> <span>+800 (+0,2 %)</span></p>
+            <p class="tuile-comparaison" id="t5-c">Période précédente : 411 200</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Répartition de la dépense</h2>
+        <div class="chap lire" data-mesure-lecture="passage de lecture voulu, introduction de chapitre">
+        <p class="contenu">Ce chapitre contient deux graphiques en barres empilées de la même campagne
+           fictive : la dépense par jour ventilée par pays, puis la dépense par pays ventilée par
+           appareil. Il se distingue du chapitre précédent en ce qu'il montre de quoi se compose le
+           total, pas seulement son niveau. Au survol d'un segment, l'infobulle ajoute la part du
+           total, le rang et la valeur exacte.</p>
+        </div>
+
+        <div class="chap duo">
+          <figure class="graphe-empile" id="g-jour" data-graphe-empile>
+            <figcaption>Dépense par jour et par pays (euros)</figcaption>
+            <script type="application/json" class="graphe-donnees">
+            {"orientation":"vertical","mode":"valeurs","unite":"€","decimales":0,"totaux":true,
+             "titre":"Dépense par jour et par pays","titreCategories":"Jour",
+             "categories":["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"],
+             "series":[
+               {"nom":"France","valeurs":[820,760,905.5,880,940,610,420]},
+               {"nom":"Italie","valeurs":[410,450,380,520,470,300,210]},
+               {"nom":"Espagne","valeurs":[250,230,310,280,340,190,95]}]}
+            </script>
+  <!--graphe-rendu--><svg class="graphe-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" role="group" aria-label="Dépense par jour et par pays" data-series-source="3" data-orientation="vertical"><line class="graphe-grille graphe-base" x1="44" x2="412" y1="236" y2="236"/><text class="graphe-axe" x="38" y="240" text-anchor="end">0</text><line class="graphe-grille" x1="44" x2="412" y1="182" y2="182"/><text class="graphe-axe" x="38" y="186" text-anchor="end">500</text><line class="graphe-grille" x1="44" x2="412" y1="128" y2="128"/><text class="graphe-axe" x="38" y="132" text-anchor="end">1 000</text><line class="graphe-grille" x1="44" x2="412" y1="74" y2="74"/><text class="graphe-axe" x="38" y="78" text-anchor="end">1 500</text><line class="graphe-grille" x1="44" x2="412" y1="20" y2="20"/><text class="graphe-axe" x="38" y="24" text-anchor="end">2 000</text><text class="graphe-axe" x="70.3" y="252" text-anchor="middle">Lun</text><text class="graphe-axe" x="122.9" y="252" text-anchor="middle">Mar</text><text class="graphe-axe" x="175.4" y="252" text-anchor="middle">Mer</text><text class="graphe-axe" x="228" y="252" text-anchor="middle">Jeu</text><text class="graphe-axe" x="280.6" y="252" text-anchor="middle">Ven</text><text class="graphe-axe" x="333.1" y="252" text-anchor="middle">Sam</text><text class="graphe-axe" x="385.7" y="252" text-anchor="middle">Dim</text><rect class="graphe-seg graphe-s1" id="g-jour-0-0" data-serie="France" data-categorie="Lun" x="49.3" y="147.4" width="42.1" height="88.6" tabindex="0" role="img" aria-label="France, Lun : 820 €" title="Part du total de la colonne : 55,4 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-jour-0-1" data-serie="Italie" data-categorie="Lun" x="49.3" y="103.2" width="42.1" height="44.3" tabindex="0" role="img" aria-label="Italie, Lun : 410 €" title="Part du total de la colonne : 27,7 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-jour-0-2" data-serie="Espagne" data-categorie="Lun" x="49.3" y="76.2" width="42.1" height="27" tabindex="0" role="img" aria-label="Espagne, Lun : 250 €" title="Part du total de la colonne : 16,9 %
+Rang : 3e sur 3"/><rect class="graphe-seg graphe-s1" id="g-jour-1-0" data-serie="France" data-categorie="Mar" x="101.8" y="153.9" width="42.1" height="82.1" tabindex="0" role="img" aria-label="France, Mar : 760 €" title="Part du total de la colonne : 52,8 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-jour-1-1" data-serie="Italie" data-categorie="Mar" x="101.8" y="105.3" width="42.1" height="48.6" tabindex="0" role="img" aria-label="Italie, Mar : 450 €" title="Part du total de la colonne : 31,3 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-jour-1-2" data-serie="Espagne" data-categorie="Mar" x="101.8" y="80.5" width="42.1" height="24.8" tabindex="0" role="img" aria-label="Espagne, Mar : 230 €" title="Part du total de la colonne : 16,0 %
+Rang : 3e sur 3"/><rect class="graphe-seg graphe-s1" id="g-jour-2-0" data-serie="France" data-categorie="Mer" x="154.4" y="138.2" width="42.1" height="97.8" tabindex="0" role="img" aria-label="France, Mer : 905,50 €" title="Part du total de la colonne : 56,8 %
+Rang : 1er sur 3
+Valeur exacte : 905,50 €"/><rect class="graphe-seg graphe-s2" id="g-jour-2-1" data-serie="Italie" data-categorie="Mer" x="154.4" y="97.2" width="42.1" height="41" tabindex="0" role="img" aria-label="Italie, Mer : 380 €" title="Part du total de la colonne : 23,8 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-jour-2-2" data-serie="Espagne" data-categorie="Mer" x="154.4" y="63.7" width="42.1" height="33.5" tabindex="0" role="img" aria-label="Espagne, Mer : 310 €" title="Part du total de la colonne : 19,4 %
+Rang : 3e sur 3"/><rect class="graphe-seg graphe-s1" id="g-jour-3-0" data-serie="France" data-categorie="Jeu" x="207" y="141" width="42.1" height="95" tabindex="0" role="img" aria-label="France, Jeu : 880 €" title="Part du total de la colonne : 52,4 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-jour-3-1" data-serie="Italie" data-categorie="Jeu" x="207" y="84.8" width="42.1" height="56.2" tabindex="0" role="img" aria-label="Italie, Jeu : 520 €" title="Part du total de la colonne : 31,0 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-jour-3-2" data-serie="Espagne" data-categorie="Jeu" x="207" y="54.6" width="42.1" height="30.2" tabindex="0" role="img" aria-label="Espagne, Jeu : 280 €" title="Part du total de la colonne : 16,7 %
+Rang : 3e sur 3"/><rect class="graphe-seg graphe-s1" id="g-jour-4-0" data-serie="France" data-categorie="Ven" x="259.5" y="134.5" width="42.1" height="101.5" tabindex="0" role="img" aria-label="France, Ven : 940 €" title="Part du total de la colonne : 53,7 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-jour-4-1" data-serie="Italie" data-categorie="Ven" x="259.5" y="83.7" width="42.1" height="50.8" tabindex="0" role="img" aria-label="Italie, Ven : 470 €" title="Part du total de la colonne : 26,9 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-jour-4-2" data-serie="Espagne" data-categorie="Ven" x="259.5" y="47" width="42.1" height="36.7" tabindex="0" role="img" aria-label="Espagne, Ven : 340 €" title="Part du total de la colonne : 19,4 %
+Rang : 3e sur 3"/><rect class="graphe-seg graphe-s1" id="g-jour-5-0" data-serie="France" data-categorie="Sam" x="312.1" y="170.1" width="42.1" height="65.9" tabindex="0" role="img" aria-label="France, Sam : 610 €" title="Part du total de la colonne : 55,5 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-jour-5-1" data-serie="Italie" data-categorie="Sam" x="312.1" y="137.7" width="42.1" height="32.4" tabindex="0" role="img" aria-label="Italie, Sam : 300 €" title="Part du total de la colonne : 27,3 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-jour-5-2" data-serie="Espagne" data-categorie="Sam" x="312.1" y="117.2" width="42.1" height="20.5" tabindex="0" role="img" aria-label="Espagne, Sam : 190 €" title="Part du total de la colonne : 17,3 %
+Rang : 3e sur 3"/><rect class="graphe-seg graphe-s1" id="g-jour-6-0" data-serie="France" data-categorie="Dim" x="364.7" y="190.6" width="42.1" height="45.4" tabindex="0" role="img" aria-label="France, Dim : 420 €" title="Part du total de la colonne : 57,9 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-jour-6-1" data-serie="Italie" data-categorie="Dim" x="364.7" y="168" width="42.1" height="22.7" tabindex="0" role="img" aria-label="Italie, Dim : 210 €" title="Part du total de la colonne : 29,0 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-jour-6-2" data-serie="Espagne" data-categorie="Dim" x="364.7" y="157.7" width="42.1" height="10.3" tabindex="0" role="img" aria-label="Espagne, Dim : 95 €" title="Part du total de la colonne : 13,1 %
+Rang : 3e sur 3
+Valeur exacte : 95 €"/><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-0-0" data-overlap-ok="g-jour-0-0" x="70.3" y="195.7" text-anchor="middle">820</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-0-1" data-overlap-ok="g-jour-0-1" x="70.3" y="129.3" text-anchor="middle">410</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-0-2" data-overlap-ok="g-jour-0-2" x="70.3" y="93.7" text-anchor="middle">250</text><text class="graphe-total" x="70.3" y="70.2" text-anchor="middle">1 480 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-1-0" data-overlap-ok="g-jour-1-0" x="122.9" y="199" text-anchor="middle">760</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-1-1" data-overlap-ok="g-jour-1-1" x="122.9" y="133.6" text-anchor="middle">450</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-1-2" data-overlap-ok="g-jour-1-2" x="122.9" y="96.9" text-anchor="middle">230</text><text class="graphe-total" x="122.9" y="74.5" text-anchor="middle">1 440 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-2-0" data-overlap-ok="g-jour-2-0" x="175.4" y="191.1" text-anchor="middle">906</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-2-1" data-overlap-ok="g-jour-2-1" x="175.4" y="121.7" text-anchor="middle">380</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-2-2" data-overlap-ok="g-jour-2-2" x="175.4" y="84.4" text-anchor="middle">310</text><text class="graphe-total" x="175.4" y="57.7" text-anchor="middle">1 596 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-3-0" data-overlap-ok="g-jour-3-0" x="228" y="192.5" text-anchor="middle">880</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-3-1" data-overlap-ok="g-jour-3-1" x="228" y="116.9" text-anchor="middle">520</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-3-2" data-overlap-ok="g-jour-3-2" x="228" y="73.7" text-anchor="middle">280</text><text class="graphe-total" x="228" y="48.6" text-anchor="middle">1 680 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-4-0" data-overlap-ok="g-jour-4-0" x="280.6" y="189.2" text-anchor="middle">940</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-4-1" data-overlap-ok="g-jour-4-1" x="280.6" y="113.1" text-anchor="middle">470</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-4-2" data-overlap-ok="g-jour-4-2" x="280.6" y="69.4" text-anchor="middle">340</text><text class="graphe-total" x="280.6" y="41" text-anchor="middle">1 750 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-5-0" data-overlap-ok="g-jour-5-0" x="333.1" y="207.1" text-anchor="middle">610</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-5-1" data-overlap-ok="g-jour-5-1" x="333.1" y="157.9" text-anchor="middle">300</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-5-2" data-overlap-ok="g-jour-5-2" x="333.1" y="131.5" text-anchor="middle">190</text><text class="graphe-total" x="333.1" y="111.2" text-anchor="middle">1 100 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-6-0" data-overlap-ok="g-jour-6-0" x="385.7" y="217.3" text-anchor="middle">420</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-6-1" data-overlap-ok="g-jour-6-1" x="385.7" y="183.3" text-anchor="middle">210</text><text class="graphe-total" x="385.7" y="151.7" text-anchor="middle">725 €</text></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>France</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Italie</li><li><span class="graphe-pastille graphe-s3" aria-hidden="true"></span>Espagne</li></ul><div class="graphe-table"><table><caption>Dépense par jour et par pays (€)</caption><thead><tr><th scope="col">Jour</th><th scope="col">France</th><th scope="col">Italie</th><th scope="col">Espagne</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">Lun</th><td>820</td><td>410</td><td>250</td><td>1 480</td></tr><tr><th scope="row">Mar</th><td>760</td><td>450</td><td>230</td><td>1 440</td></tr><tr><th scope="row">Mer</th><td>905,50</td><td>380</td><td>310</td><td>1 595,50</td></tr><tr><th scope="row">Jeu</th><td>880</td><td>520</td><td>280</td><td>1 680</td></tr><tr><th scope="row">Ven</th><td>940</td><td>470</td><td>340</td><td>1 750</td></tr><tr><th scope="row">Sam</th><td>610</td><td>300</td><td>190</td><td>1 100</td></tr><tr><th scope="row">Dim</th><td>420</td><td>210</td><td>95</td><td>725</td></tr></tbody></table></div><!--/graphe-rendu-->
+</figure>
+
+          <figure class="graphe-empile" id="g-pays" data-graphe-empile>
+            <figcaption>Dépense par pays et par appareil (euros)</figcaption>
+            <script type="application/json" class="graphe-donnees">
+            {"orientation":"horizontal","mode":"valeurs","unite":"€","decimales":0,"totaux":true,
+             "titre":"Dépense par pays et par appareil","titreCategories":"Pays",
+             "categories":["France","Italie","Espagne","Belgique"],
+             "series":[
+               {"nom":"Mobile","valeurs":[3150,1520,1010,380]},
+               {"nom":"Ordinateur","valeurs":[1980,890,520,95]},
+               {"nom":"Tablette","valeurs":[245,150,60,8]}]}
+            </script>
+  <!--graphe-rendu--><svg class="graphe-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 160" role="group" aria-label="Dépense par pays et par appareil" data-series-source="3" data-orientation="horizontal"><line class="graphe-grille graphe-base" x1="72" x2="72" y1="8" y2="136"/><text class="graphe-axe" x="72" y="152" text-anchor="middle">0</text><line class="graphe-grille" x1="166.7" x2="166.7" y1="8" y2="136"/><text class="graphe-axe" x="166.7" y="152" text-anchor="middle">2 000</text><line class="graphe-grille" x1="261.3" x2="261.3" y1="8" y2="136"/><text class="graphe-axe" x="261.3" y="152" text-anchor="middle">4 000</text><line class="graphe-grille" x1="356" x2="356" y1="8" y2="136"/><text class="graphe-axe" x="356" y="152" text-anchor="middle">6 000</text><text class="graphe-axe" x="64" y="28" text-anchor="end">France</text><text class="graphe-axe" x="64" y="60" text-anchor="end">Italie</text><text class="graphe-axe" x="64" y="92" text-anchor="end">Espagne</text><text class="graphe-axe" x="64" y="124" text-anchor="end">Belgique</text><rect class="graphe-seg graphe-s1" id="g-pays-0-0" data-serie="Mobile" data-categorie="France" x="72" y="13" width="149.1" height="22" tabindex="0" role="img" aria-label="Mobile, France : 3 150 €" title="Part du total de la barre : 58,6 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-pays-0-1" data-serie="Ordinateur" data-categorie="France" x="221.1" y="13" width="93.7" height="22" tabindex="0" role="img" aria-label="Ordinateur, France : 1 980 €" title="Part du total de la barre : 36,8 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-pays-0-2" data-serie="Tablette" data-categorie="France" x="314.8" y="13" width="11.6" height="22" tabindex="0" role="img" aria-label="Tablette, France : 245 €" title="Part du total de la barre : 4,6 %
+Rang : 3e sur 3
+Valeur exacte : 245 €"/><rect class="graphe-seg graphe-s1" id="g-pays-1-0" data-serie="Mobile" data-categorie="Italie" x="72" y="45" width="71.9" height="22" tabindex="0" role="img" aria-label="Mobile, Italie : 1 520 €" title="Part du total de la barre : 59,4 %
+Rang : 1er sur 3"/><rect class="graphe-seg graphe-s2" id="g-pays-1-1" data-serie="Ordinateur" data-categorie="Italie" x="143.9" y="45" width="42.1" height="22" tabindex="0" role="img" aria-label="Ordinateur, Italie : 890 €" title="Part du total de la barre : 34,8 %
+Rang : 2e sur 3"/><rect class="graphe-seg graphe-s3" id="g-pays-1-2" data-serie="Tablette" data-categorie="Italie" x="186.1" y="45" width="7.1" height="22" tabindex="0" role="img" aria-label="Tablette, Italie : 150 €" title="Part du total de la barre : 5,9 %
+Rang : 3e sur 3
+Valeur exacte : 150 €"/><rect class="graphe-seg graphe-s1" id="g-pays-2-0" data-serie="Mobile" data-categorie="Espagne" x="72" y="77" width="47.8" height="22" tabindex="0" role="img" aria-label="Mobile, Espagne : 1 010 €" title="Part du total de la barre : 63,5 %
+Rang : 1er sur 3
+Valeur exacte : 1 010 €"/><rect class="graphe-seg graphe-s2" id="g-pays-2-1" data-serie="Ordinateur" data-categorie="Espagne" x="119.8" y="77" width="24.6" height="22" tabindex="0" role="img" aria-label="Ordinateur, Espagne : 520 €" title="Part du total de la barre : 32,7 %
+Rang : 2e sur 3
+Valeur exacte : 520 €"/><rect class="graphe-seg graphe-s3" id="g-pays-2-2" data-serie="Tablette" data-categorie="Espagne" x="144.4" y="77" width="2.8" height="22" tabindex="0" role="img" aria-label="Tablette, Espagne : 60 €" title="Part du total de la barre : 3,8 %
+Rang : 3e sur 3
+Valeur exacte : 60 €"/><rect class="graphe-seg graphe-s1" id="g-pays-3-0" data-serie="Mobile" data-categorie="Belgique" x="72" y="109" width="18" height="22" tabindex="0" role="img" aria-label="Mobile, Belgique : 380 €" title="Part du total de la barre : 78,7 %
+Rang : 1er sur 3
+Valeur exacte : 380 €"/><rect class="graphe-seg graphe-s2" id="g-pays-3-1" data-serie="Ordinateur" data-categorie="Belgique" x="90" y="109" width="4.5" height="22" tabindex="0" role="img" aria-label="Ordinateur, Belgique : 95 €" title="Part du total de la barre : 19,7 %
+Rang : 2e sur 3
+Valeur exacte : 95 €"/><rect class="graphe-seg graphe-s3" id="g-pays-3-2" data-serie="Tablette" data-categorie="Belgique" x="94.5" y="109" width="0.4" height="22" tabindex="0" role="img" aria-label="Tablette, Belgique : 8 €" title="Part du total de la barre : 1,7 %
+Rang : 3e sur 3
+Valeur exacte : 8 €"/><text class="etiquette-marque graphe-t1" data-etiquette-de="g-pays-0-0" data-overlap-ok="g-pays-0-0" x="146.6" y="28" text-anchor="middle">3 150</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-pays-0-1" data-overlap-ok="g-pays-0-1" x="268" y="28" text-anchor="middle">1 980</text><text class="graphe-total" x="332.4" y="28">5 375 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-pays-1-0" data-overlap-ok="g-pays-1-0" x="108" y="60" text-anchor="middle">1 520</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-pays-1-1" data-overlap-ok="g-pays-1-1" x="165" y="60" text-anchor="middle">890</text><text class="graphe-total" x="199.2" y="60">2 560 €</text><text class="graphe-total" x="153.3" y="92">1 590 €</text><text class="graphe-total" x="100.9" y="124">483 €</text></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>Mobile</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Ordinateur</li><li><span class="graphe-pastille graphe-s3" aria-hidden="true"></span>Tablette</li></ul><div class="graphe-table"><table><caption>Dépense par pays et par appareil (€)</caption><thead><tr><th scope="col">Pays</th><th scope="col">Mobile</th><th scope="col">Ordinateur</th><th scope="col">Tablette</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">France</th><td>3 150</td><td>1 980</td><td>245</td><td>5 375</td></tr><tr><th scope="row">Italie</th><td>1 520</td><td>890</td><td>150</td><td>2 560</td></tr><tr><th scope="row">Espagne</th><td>1 010</td><td>520</td><td>60</td><td>1 590</td></tr><tr><th scope="row">Belgique</th><td>380</td><td>95</td><td>8</td><td>483</td></tr></tbody></table></div><!--/graphe-rendu-->
+</figure>
+        </div>
+      </section>
+    </main>
+
+
+    <footer class="doc">
+      Digit-AI — Produit-02 (données fictives) · exemple de composants · 2026
+    </footer>
+  </div>
+
+  <!-- S-G1 (4/4, R-30) — câblage : persistance + aria-pressed, aucune bascule muette -->
+  <script>
+  (function () {
+    var bouton = document.getElementById('theme-toggle');
+    var racine = document.documentElement;
+    function appliquer(theme) {
+      racine.setAttribute('data-theme', theme);
+      localStorage.setItem('digitai-theme', theme);
+      bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+    bouton.setAttribute('aria-pressed', racine.getAttribute('data-theme') === 'dark' ? 'true' : 'false');
+    bouton.addEventListener('click', function () {
+      appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  })();
+  </script>
+  <!-- TF-0929 — LES HAUTEURS DE COLLAGE SE MESURENT, ELLES NE SE DECLARENT PAS.
+       Le token de `:root` reste le repli ; ce script le remplace par la hauteur REELLE de ce
+       qui colle, a chaque evenement qui peut la changer : chargement, redimensionnement, et
+       POLICES CHARGEES — une police de titre qui arrive apres coup fait passer un en-tete de
+       une a deux lignes, et c'est exactement le cas qui a produit le defaut.
+       Controle : famille `entete_masque_par_collants` de render_page.py, qui mesure le `th`
+       colle contre le bas du dernier collant au-dessus de lui, a chaque largeur. -->
+  <script>
+  (function () {
+    function poserHauteurs() {
+      var racine = document.documentElement;
+      var enTete = document.querySelector('header.doc.colle');
+      var hh = enTete ? Math.ceil(enTete.getBoundingClientRect().height) : 0;
+      if (hh > 0) racine.style.setProperty('--hh', hh + 'px');
+      /* Ce qui colle SOUS l'en-tete et surplombe les tableaux : la bande de sommaire, quand
+         elle est effectivement collante a cette largeur (sous 900 px elle repasse `static`,
+         et elle ne masque alors plus rien). */
+      var bas = hh;
+      var toc = document.querySelector('nav.toc.colle');
+      if (toc && getComputedStyle(toc).position === 'sticky') {
+        var r = toc.getBoundingClientRect();
+        if (r.height > 0 && r.width > 0) bas = Math.max(bas, hh + Math.ceil(r.height));
+      }
+      racine.style.setProperty('--hh-tab', bas + 'px');
+    }
+    window.addEventListener('resize', poserHauteurs);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(poserHauteurs);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', poserHauteurs);
+    } else {
+      poserHauteurs();
+    }
+    window.addEventListener('load', poserHauteurs);
+    window.poserHauteurs = poserHauteurs;
+  })();
+  </script>
+<!-- COMPOSANT-EMBARQUE:DEBUT tuiles-indicateurs.js — copie du socle digit-ai-page-html/assets/tuiles-indicateurs.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="tuiles-indicateurs.js" data-empreinte="sha256:0ff4876eeccab074c3eb5c9883c6ea4dac20b934159271595000753489ee8096">
+/* tuiles-indicateurs.js — mini-courbe de tendance des tuiles d'indicateurs (RT-120, D-55 (a)
+   du 03/10/2026). Le reste de la tuile est du HTML et du CSS ECRITS (valeur, ecart, comparaison) :
+   ils doivent se lire sans script, a l'impression et en PDF. Ce fichier ne dessine que la
+   tendance OPTIONNELLE, depuis un attribut de donnees :
+
+     <article class="tuile" data-tendance="12,14,13,18,21,24" data-tendance-libelle="6 derniers mois">
+
+   Il ajoute un <svg class="tuile-tendance" role="img"> dont l'aria-label dit le point de depart,
+   le point d'arrivee et l'extremite haute : la courbe n'est jamais la seule porteuse du sens (le
+   sens est dans l'ecart ecrit de la tuile). Idempotent. Aucune requete reseau. */
+(function (root) {
+  'use strict';
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var W = 120, H = 32, PAD = 3;
+
+  function nombre(v) { return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(v); }
+
+  /* Points de la courbe pour une serie de valeurs, dans un viewBox W x H. */
+  function points(valeurs) {
+    var min = Math.min.apply(null, valeurs), max = Math.max.apply(null, valeurs);
+    var etendue = max - min || 1;
+    return valeurs.map(function (v, i) {
+      var x = PAD + (W - 2 * PAD) * (valeurs.length === 1 ? 0.5 : i / (valeurs.length - 1));
+      var y = H - PAD - (H - 2 * PAD) * (v - min) / etendue;
+      return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+    });
+  }
+
+  function dessiner(tuile) {
+    if (tuile.querySelector('.tuile-tendance')) return;
+    var brut = tuile.getAttribute('data-tendance');
+    if (!brut) return;
+    var valeurs = brut.split(',').map(function (s) { return parseFloat(s); }).filter(function (v) { return isFinite(v); });
+    if (valeurs.length < 2) return;
+    var pts = points(valeurs);
+    var libelle = tuile.getAttribute('data-tendance-libelle') || 'tendance';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'tuile-tendance');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Tendance (' + libelle + ') : de ' + nombre(valeurs[0]) + ' à ' +
+      nombre(valeurs[valeurs.length - 1]) + ', maximum ' + nombre(Math.max.apply(null, valeurs)));
+    var ligne = document.createElementNS(NS, 'polyline');
+    ligne.setAttribute('class', 'tt-ligne');
+    ligne.setAttribute('points', pts.map(function (p) { return p.join(','); }).join(' '));
+    svg.appendChild(ligne);
+    tuile.appendChild(svg);
+  }
+
+  function init(racine) {
+    Array.prototype.forEach.call((racine || document).querySelectorAll('.tuile[data-tendance]'), dessiner);
+  }
+
+  root.DigitAITuiles = { init: init, points: points };
+})(window);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN tuiles-indicateurs.js -->
+<!-- COMPOSANT-EMBARQUE:DEBUT barres-empilees.js — copie du socle digit-ai-page-html/assets/barres-empilees.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="barres-empilees.js" data-empreinte="sha256:f396e79bfc9202ed0413a30d24f11aad7977e2724db7be995968e1bb4319e3b2">
+/* barres-empilees.js — graphique en barres empilees, SVG, vertical et horizontal
+   (D-55 (a) du 03/10/2026, Produit-02 RT-119, lot C de la campagne O2).
+
+   LE FAIT. Le socle n'avait aucun composant de graphique : chaque page ecrivait son SVG a la main
+   et retenait la serie UNIQUE, la voie la plus courte, alors que la demande et la donnee en
+   portaient plusieurs (pays, appareils). Retour humain : « pourquoi pas un histogramme avec
+   plusieurs valeurs par colonne, avec differentes couleurs ? ».
+
+   CONTRAT. La donnee est DECLAREE, le dessin en est derive :
+
+     <figure class="graphe-empile" id="g-depense" data-graphe-empile>
+       <figcaption>Depense par jour et par pays (euros)</figcaption>
+       <script type="application/json" class="graphe-donnees">
+       {"orientation":"vertical","mode":"valeurs","unite":"€","decimales":0,"totaux":true,
+        "categories":["Lun","Mar"],
+        "series":[{"nom":"France","valeurs":[120,90]},{"nom":"Italie","valeurs":[60,80]}]}
+       <\/script>
+     </figure>
+
+   CONVENTION (lue par l'oracle) : le <svg> porte data-series-source="N" (N = nombre de series de
+   la DONNEE) ; chaque segment porte data-serie="<nom>" ; une etiquette de segment est un
+   <text class="etiquette-marque" data-etiquette-de="<id du rect>">, posee SEULEMENT si elle tient
+   dans le rectangle.
+
+   DEUX VOIES, UN SEUL CODE. (1) Au chargement, init() dessine les figures qui n'ont pas encore de
+   SVG. (2) `node barres-empilees.js --injecter page.html` PRE-RENDU le SVG dans le fichier : il
+   existe alors sans script (export PDF, courriel, oracle statique). Le rendu pre-fait est range
+   entre deux commentaires HTML « graphe-rendu » et « /graphe-rendu » et se refait a l'identique.
+
+   INFOBULLE. Chaque segment porte un `title` lu par infobulle.js (a poser avec lui). Son contenu
+   est un COMPLEMENT de ce que la page montre deja : part du total, rang, total de la colonne si
+   non affiche, valeur exacte si l'etiquette l'arrondit ou manque. Jamais la repetition du texte
+   visible. Le nom de la serie et de la categorie vont dans aria-label, pas dans l'infobulle.
+
+   PALETTE : jetons --cat-1..--cat-6 de barres-empilees.css, valides en clair et en sombre. Plus de
+   six series : regrouper en « Autres ». Autonome : aucune requete reseau, aucune bibliotheque. */
+(function (root) {
+  'use strict';
+
+  var MAX_SERIES = 6;
+  var FS = 13;                 /* corps du texte du graphe, en unites du viewBox */
+  var LARGEUR = 420;           /* viewBox : lisible a 340 px (x0,8) comme a 560 px (x1,3) */
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function num(v, dec) {
+    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+  }
+  function arrondi(v, dec) { var p = Math.pow(10, dec); return Math.round(v * p) / p; }
+  function r1(x) { return Math.round(x * 10) / 10; }
+  /* Nombre exact : au plus deux decimales, sans zeros inutiles. */
+  function exactNum(v) { var a = arrondi(v, 2); return num(a, a % 1 ? 2 : 0); }
+
+  function pasLisible(max, cible) {
+    var brut = max / cible, p = Math.pow(10, Math.floor(Math.log(brut) / Math.LN10)), n = brut / p;
+    var m = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+    return m * p;
+  }
+
+  function valider(d) {
+    if (!d || !d.categories || !d.series) throw new Error('graphe : categories et series requises');
+    if (d.series.length < 1 || d.series.length > MAX_SERIES)
+      throw new Error('graphe : 1 a ' + MAX_SERIES + ' series (regrouper le reste en « Autres »)');
+    d.series.forEach(function (s) {
+      if (!s.nom || s.valeurs.length !== d.categories.length)
+        throw new Error('graphe : la serie « ' + s.nom + ' » doit porter une valeur par categorie');
+      s.valeurs.forEach(function (v) {
+        if (typeof v !== 'number' || !isFinite(v) || v < 0)
+          throw new Error('graphe : valeur negative ou non numerique dans « ' + s.nom + ' »');
+      });
+    });
+  }
+
+  /* Rend {svg, legende, table} pour une donnee declaree. `id` prefixe les identifiants. */
+  function rendre(d, id) {
+    valider(d);
+    var vert = d.orientation !== 'horizontal';
+    var pct = d.mode === 'pourcent';
+    var dec = d.decimales || 0;
+    var unite = d.unite ? ' ' + d.unite : '';
+    var nc = d.categories.length, ns = d.series.length;
+    var totaux = d.categories.map(function (_, i) {
+      return d.series.reduce(function (a, s) { return a + s.valeurs[i]; }, 0);
+    });
+    var maxTotal = pct ? 100 : Math.max.apply(null, totaux);
+    if (!(maxTotal > 0)) maxTotal = 1;
+    var pas = pct ? 25 : pasLisible(maxTotal, 4);
+    var maxAxe = pct ? 100 : Math.ceil(maxTotal / pas - 1e-9) * pas;
+    var fmtAxe = function (v) { return pct ? num(v, 0) + ' %' : num(v, pas < 1 ? 1 : 0); };
+    var mot = vert ? 'colonne' : 'barre';
+
+    /* --- gabarit : marges et bande par categorie --- */
+    var mg, W = LARGEUR, H, bande;
+    if (vert) {
+      mg = { g: 44, d: 8, h: d.totaux ? 20 : 8, b: 24 };
+      H = 260; bande = (W - mg.g - mg.d) / nc;
+    } else {
+      var maxCar = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
+      mg = { g: Math.min(140, Math.round(maxCar * FS * 0.58) + 12), d: d.totaux ? 64 : 12, h: 8, b: 24 };
+      bande = 32; H = mg.h + mg.b + nc * bande;
+    }
+    var pw = W - mg.g - mg.d, ph = H - mg.h - mg.b;
+    var ech = function (v) { return (vert ? ph : pw) * v / maxAxe; };
+    var ep = Math.min(vert ? 56 : 22, bande * 0.8);
+
+    var out = [];
+    out.push('<svg class="graphe-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + r1(H) +
+      '" role="group" aria-label="' + esc(d.titre || 'Barres empilees') + '" data-series-source="' + ns +
+      '" data-orientation="' + (vert ? 'vertical' : 'horizontal') + '">');
+
+    /* --- grille et axe des valeurs --- */
+    for (var t = 0; t <= maxAxe + 1e-9; t += pas) {
+      var p = ech(t);
+      if (vert) {
+        var y = r1(mg.h + ph - p);
+        out.push('<line class="graphe-grille' + (t === 0 ? ' graphe-base' : '') + '" x1="' + mg.g + '" x2="' + (W - mg.d) + '" y1="' + y + '" y2="' + y + '"/>');
+        out.push('<text class="graphe-axe" x="' + (mg.g - 6) + '" y="' + r1(y + 4) + '" text-anchor="end">' + esc(fmtAxe(t)) + '</text>');
+      } else {
+        var x = r1(mg.g + p);
+        out.push('<line class="graphe-grille' + (t === 0 ? ' graphe-base' : '') + '" x1="' + x + '" x2="' + x + '" y1="' + mg.h + '" y2="' + (H - mg.b) + '"/>');
+        out.push('<text class="graphe-axe" x="' + x + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(fmtAxe(t)) + '</text>');
+      }
+    }
+
+    /* --- categories : une sur k si la bande est trop etroite pour le texte --- */
+    var plusLong = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
+    var k = vert ? Math.max(1, Math.ceil((plusLong * FS * 0.6 + 4) / bande)) : 1;
+    d.categories.forEach(function (c, i) {
+      if (i % k) return;
+      if (vert) out.push('<text class="graphe-axe" x="' + r1(mg.g + bande * (i + 0.5)) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(c) + '</text>');
+      else out.push('<text class="graphe-axe" x="' + (mg.g - 8) + '" y="' + r1(mg.h + bande * (i + 0.5) + 4) + '" text-anchor="end">' + esc(c) + '</text>');
+    });
+
+    /* --- segments --- */
+    var segs = [], etiq = [], lignesTable = [];
+    d.categories.forEach(function (cat, i) {
+      var cumul = 0, tot = totaux[i];
+      var rangs = d.series.map(function (s) { return s.valeurs[i]; });
+      var nonNuls = rangs.filter(function (x) { return x > 0; }).length;
+      d.series.forEach(function (s, j) {
+        var v = s.valeurs[i];
+        if (v === 0) return;
+        var part = tot ? v / tot : 0;
+        var vv = pct ? part * 100 : v;
+        var seg = ech(vv), debut = ech(cumul);
+        cumul += vv;
+        var sid = id + '-' + i + '-' + j;
+        var rect = vert
+          ? { x: mg.g + bande * (i + 0.5) - ep / 2, y: mg.h + ph - debut - seg, w: ep, h: seg }
+          : { x: mg.g + debut, y: mg.h + bande * (i + 0.5) - ep / 2, w: seg, h: ep };
+        var texte = pct ? num(arrondi(part * 100, dec), dec) + ' %' : num(arrondi(v, dec), dec);   /* l'unite est dite par la legende de la figure et par le total */
+        var tient = rect.w - 4 >= texte.length * FS * 0.62 + 4 && rect.h - 2 >= FS + 4;
+        var rang = 1 + rangs.filter(function (x) { return x > v; }).length;
+        var arrondit = arrondi(v, dec) !== arrondi(v, 2);
+        var lignes = [];
+        lignes.push('Part du total de la ' + mot + ' : ' + num(arrondi(part * 100, 1), 1) + ' %');
+        lignes.push('Rang : ' + rang + (rang === 1 ? 'er' : 'e') + ' sur ' + nonNuls);
+        if (!d.totaux) lignes.push('Total de la ' + mot + ' : ' + exactNum(tot) + unite);
+        if (!tient || arrondit || pct) lignes.push('Valeur exacte : ' + exactNum(v) + unite);
+        segs.push('<rect class="graphe-seg graphe-s' + (j + 1) + '" id="' + sid + '" data-serie="' + esc(s.nom) +
+          '" data-categorie="' + esc(cat) + '" x="' + r1(rect.x) + '" y="' + r1(rect.y) + '" width="' + r1(rect.w) +
+          '" height="' + r1(rect.h) + '" tabindex="0" role="img" aria-label="' +
+          esc(s.nom + ', ' + cat + ' : ' + exactNum(v) + unite) +
+          '" title="' + esc(lignes.join('\n')) + '"/>');
+        if (tient) etiq.push('<text class="etiquette-marque graphe-t' + (j + 1) + '" data-etiquette-de="' + sid +
+          '" data-overlap-ok="' + sid + '" x="' + r1(rect.x + rect.w / 2) + '" y="' + r1(rect.y + rect.h / 2 + 4) + '" text-anchor="middle">' + esc(texte) + '</text>');
+      });
+      if (d.totaux && !pct) {
+        var tt = num(arrondi(tot, dec), dec) + unite;
+        if (vert) etiq.push('<text class="graphe-total" x="' + r1(mg.g + bande * (i + 0.5)) + '" y="' + r1(mg.h + ph - ech(tot) - 6) + '" text-anchor="middle">' + esc(tt) + '</text>');
+        else etiq.push('<text class="graphe-total" x="' + r1(mg.g + ech(tot) + 6) + '" y="' + r1(mg.h + bande * (i + 0.5) + 4) + '">' + esc(tt) + '</text>');
+      }
+      lignesTable.push('<tr><th scope="row">' + esc(cat) + '</th>' + d.series.map(function (s) {
+        return '<td>' + esc(exactNum(s.valeurs[i])) + '</td>';
+      }).join('') + '<td>' + esc(exactNum(tot)) + '</td></tr>');
+    });
+    out.push(segs.join(''), etiq.join(''), '</svg>');
+
+    /* --- legende des 2 series (ou plus) --- */
+    var legende = ns >= 2 ? '<ul class="graphe-legende">' + d.series.map(function (s, j) {
+      return '<li><span class="graphe-pastille graphe-s' + (j + 1) + '" aria-hidden="true"></span>' + esc(s.nom) + '</li>';
+    }).join('') + '</ul>' : '';
+
+    /* --- vue tableau : le relief de la palette claire (trois teintes sous 3:1 sur fond blanc) ;
+       en place si elle est courte (L9), en depliant au-dela --- */
+    var tableau = '<table><caption>' +
+      esc((d.titre || 'Données') + (d.unite ? ' (' + d.unite + ')' : '')) + '</caption><thead><tr><th scope="col">' +
+      esc(d.titreCategories || 'Catégorie') + '</th>' +
+      d.series.map(function (s) { return '<th scope="col">' + esc(s.nom) + '</th>'; }).join('') +
+      '<th scope="col">Total</th></tr></thead><tbody>' + lignesTable.join('') + '</tbody></table>';
+    /* L9 : un depliant qui cache moins de 200 caracteres s'affiche en place. */
+    var long = tableau.replace(/<[^>]*>/g, '').length;
+    var table = long < 200 ? '<div class="graphe-table">' + tableau + '</div>'
+      : '<details class="graphe-table"><summary>Voir les données du graphique</summary>' + tableau + '</details>';
+
+    return { svg: out.join(''), legende: legende, table: table };
+  }
+
+  /* Pas de debut de commentaire HTML litteral dans un script : il ouvre l'etat d'echappement. */
+  var DEB = '<' + '!--graphe-rendu-->', FIN = '<' + '!--/graphe-rendu-->';
+  function assembler(r) { return DEB + r.svg + r.legende + r.table + FIN; }
+
+  /* Voie navigateur : dessine les figures dont le rendu n'est pas deja dans la page. */
+  function init(racine) {
+    var scope = racine || document;
+    Array.prototype.forEach.call(scope.querySelectorAll('[data-graphe-empile]'), function (fig) {
+      if (fig.querySelector('svg.graphe-svg')) return;
+      var js = fig.querySelector('script.graphe-donnees');
+      if (!js) return;
+      try {
+        fig.insertAdjacentHTML('beforeend', assembler(rendre(JSON.parse(js.textContent), fig.id || 'g')));
+      } catch (e) {
+        fig.insertAdjacentHTML('beforeend', '<p class="graphe-erreur" role="alert">Graphique non dessiné : ' + esc(e.message) + '</p>');
+      }
+    });
+  }
+
+  root.DigitAIBarresEmpilees = { init: init, rendre: rendre, assembler: assembler };
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.DigitAIBarresEmpilees;
+
+  /* Voie fichier : node barres-empilees.js --injecter page.html  (pre-rend, idempotent). */
+  if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
+    var fs = require('fs'), a = process.argv, cible = a[a.indexOf('--injecter') + 1];
+    if (a.indexOf('--injecter') < 0 || !cible) {
+      console.error('usage : node barres-empilees.js --injecter <page.html>');
+      process.exit(2);
+    }
+    var html = fs.readFileSync(cible, 'utf8'), n = 0;
+    var re = /(<figure\b[^>]*\bdata-graphe-empile\b[^>]*>)([\s\S]*?)(<\/figure>)/g;
+    html = html.replace(re, function (m, ouv, corps, clo) {
+      var fid = /\bid="([^"]+)"/.exec(ouv);
+      var j = /<script type="application\/json" class="graphe-donnees">([\s\S]*?)<\/script>/.exec(corps);
+      if (!j || !fid) return m;
+      var sans = corps.replace(new RegExp('\\s*' + DEB + '[\\s\\S]*?' + FIN), '');
+      n++;
+      return ouv + sans.replace(/\s+$/, '') + '\n  ' + assembler(rendre(JSON.parse(j[1]), fid[1])) + '\n' + clo;
+    });
+    fs.writeFileSync(cible, html);
+    console.log('graphes rendus : ' + n);
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN barres-empilees.js -->
+<!-- COMPOSANT-EMBARQUE:DEBUT infobulle.js — copie du socle digit-ai-page-html/assets/infobulle.js,
+     posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
+     La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
+<script data-composant="infobulle.js" data-empreinte="sha256:0e552990274d62d13598e7b93722045dbf881f3752cd2b311c542f48b474f34c">
+/* infobulle.js — comportement de l'infobulle structuree (TF-0935, lot Produit-10 20260908d).
+
+   LE FAIT. Le socle ne connaissait que l'attribut `title` natif, et aucune regle ne jugeait sa
+   LISIBILITE : sur un livrable servi, 3 153 cellules a `title`, 2 527 portant plusieurs objets,
+   la plus longue SEPT objets en 700 caracteres d'un seul bloc — conforme a L3, illisible.
+   Retour humain : « formatte tous les tooltips, puces et sous-puces ».
+
+   LE CHOIX. Une seule source de verite : le `title` de la cible. Le composant le LIT et le rend
+   en liste ; il ne demande aucun balisage supplementaire, et une page qui l'oublie garde
+   l'infobulle native. La version qui dupliquait le contenu dans un attribut de donnees pesait
+   2,06 Mo chez le produit contre 1,25 Mo par cette voie.
+
+   CONTRAT D'ECRITURE DU `title` — une ligne par objet, une sous-precision par ligne indentee :
+
+     Fait mensuel des lots
+       grain : un lot par mois
+       volume : 1,4 million de lignes
+     Dimension des batiments
+       grain : un batiment
+
+   Un `title` d'une seule ligne reste un paragraphe : le composant ne fabrique pas de puces la
+   ou l'auteur n'en a pas mis.
+
+   COMPORTEMENT. Un seul noeud `#infobulle` (role=tooltip) pour toute la page, en position fixe,
+   repositionne pour rester dans l'ecran. Pendant l'affichage, le `title` natif de la cible est
+   RETIRE et memorise, pour que les deux infobulles ne se superposent pas ; il est RESTITUE des
+   la fermeture — un `title` perdu serait un contenu perdu a l'impression et pour les
+   technologies d'assistance. Fermeture : sortie du survol, perte du focus, defilement, Echap. */
+(function (root) {
+  'use strict';
+
+  var MARGE = 12;          /* garde entre l'infobulle et le bord de la fenetre */
+  var DECALAGE = 14;       /* distance a la cible */
+
+  function noeud() {
+    var n = document.getElementById('infobulle');
+    if (n) return n;
+    n = document.createElement('div');
+    n.id = 'infobulle';
+    n.setAttribute('role', 'tooltip');
+    n.hidden = true;
+    document.body.appendChild(n);
+    return n;
+  }
+
+  /* Le `title` en arbre : profondeur d'indentation = niveau de puce. */
+  function analyser(texte) {
+    var lignes = String(texte || '').split(/\r?\n/);
+    var items = [];
+    for (var i = 0; i < lignes.length; i++) {
+      var brute = lignes[i];
+      if (!brute.replace(/\s+/g, '')) continue;
+      var creux = brute.match(/^[\s ]*/)[0].length;
+      var texteLigne = brute.replace(/^[\s ]*[-•·*]?\s*/, '').trim();
+      if (!texteLigne) continue;
+      if (creux > 0 && items.length) items[items.length - 1].sous.push(texteLigne);
+      else items.push({ objet: texteLigne, sous: [] });
+    }
+    return items;
+  }
+
+  function rendre(cible, texte) {
+    var n = noeud();
+    var items = analyser(texte);
+    while (n.firstChild) n.removeChild(n.firstChild);
+    if (items.length < 2 && (!items[0] || !items[0].sous.length)) {
+      var p = document.createElement('p');
+      p.textContent = items.length ? items[0].objet : String(texte || '');
+      n.appendChild(p);
+    } else {
+      var ul = document.createElement('ul');
+      items.forEach(function (it) {
+        var li = document.createElement('li');
+        var s = document.createElement('span');
+        s.className = 'ib-objet';
+        s.textContent = it.objet;
+        li.appendChild(s);
+        if (it.sous.length) {
+          var sous = document.createElement('ul');
+          it.sous.forEach(function (t) {
+            var sli = document.createElement('li');
+            sli.textContent = t;
+            sous.appendChild(sli);
+          });
+          li.appendChild(sous);
+        }
+        ul.appendChild(li);
+      });
+      n.appendChild(ul);
+    }
+    n.hidden = false;
+    placer(n, cible);
+    return n;
+  }
+
+  /* Toujours dans l'ecran : on tente sous la cible, on bascule au-dessus si ca deborde,
+     et on rentre horizontalement les bords. */
+  function placer(n, cible) {
+    var r = cible.getBoundingClientRect();
+    var b = n.getBoundingClientRect();
+    var vh = window.innerHeight, vw = window.innerWidth;
+    var haut = r.bottom + DECALAGE;
+    if (haut + b.height > vh - MARGE) haut = Math.max(MARGE, r.top - DECALAGE - b.height);
+    var gauche = r.left;
+    if (gauche + b.width > vw - MARGE) gauche = vw - MARGE - b.width;
+    if (gauche < MARGE) gauche = MARGE;
+    n.style.top = Math.round(haut) + 'px';
+    n.style.left = Math.round(gauche) + 'px';
+  }
+
+  var courante = null;     /* cible dont le `title` est actuellement retire */
+
+  function ouvrir(cible) {
+    var texte = cible.getAttribute('title');
+    if (texte === null || !texte.trim()) return;
+    fermer();
+    courante = { el: cible, title: texte };
+    cible.removeAttribute('title');     /* neutralise l'infobulle NATIVE pendant l'affichage */
+    rendre(cible, texte);
+  }
+
+  function fermer() {
+    var n = document.getElementById('infobulle');
+    if (n) n.hidden = true;
+    if (courante) {
+      /* Restitution systematique : un `title` perdu est un contenu perdu a l'impression
+         et pour les technologies d'assistance. */
+      courante.el.setAttribute('title', courante.title);
+      courante = null;
+    }
+  }
+
+  function init(racine, selecteur) {
+    var scope = racine || document;
+    var sel = selecteur || '[title]';
+    if (scope.getAttribute && scope.getAttribute('data-ib-ready') === '1') return null;
+    function estCible(e) {
+      var el = e.target && e.target.closest ? e.target.closest(sel) : null;
+      return el && el.id !== 'infobulle' ? el : null;
+    }
+    scope.addEventListener('mouseover', function (e) {
+      var el = estCible(e);
+      if (el) ouvrir(el);
+    });
+    scope.addEventListener('mouseout', function (e) {
+      var el = estCible(e);
+      if (el && courante && el === courante.el) fermer();
+    });
+    scope.addEventListener('focusin', function (e) {
+      var el = estCible(e);
+      if (el) ouvrir(el);
+    });
+    scope.addEventListener('focusout', fermer);
+    window.addEventListener('scroll', fermer, true);
+    window.addEventListener('resize', fermer);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || e.keyCode === 27) fermer();
+    });
+    if (scope.setAttribute) scope.setAttribute('data-ib-ready', '1');
+    return { ouvrir: ouvrir, fermer: fermer, analyser: analyser };
+  }
+
+  root.DigitAIInfobulle = { init: init, ouvrir: ouvrir, fermer: fermer, analyser: analyser };
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<!-- COMPOSANT-EMBARQUE:FIN infobulle.js -->
+<script>
+/* Câblage des composants : tendance des tuiles, graphes non pré-rendus, infobulle (lit les title). */
+window.DigitAITuiles.init(document);
+window.DigitAIBarresEmpilees.init(document);
+window.DigitAIInfobulle.init(document);
+</script>
+</body>
+</html>

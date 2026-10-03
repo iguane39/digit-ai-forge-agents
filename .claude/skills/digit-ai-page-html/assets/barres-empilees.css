@@ -1,0 +1,90 @@
+/* barres-empilees.css — habillage du graphique en barres empilees (RT-119, D-55 (a) du 03/10/2026).
+   Le dessin vit dans barres-empilees.js ; ici, la PALETTE en jetons et le style du SVG.
+
+   PALETTE CATEGORIELLE — six jetons --cat-N, et pour chacun le jeton de TEXTE posable dessus
+   (--cat-N-texte), parce qu'un meme texte ne tient pas sur six fonds. Valeurs reprises mot pour
+   mot de la palette documentee du skill dataviz, dans son ordre (l'ordre est le mecanisme de
+   securite daltonisme). Validation jouee le 03/10/2026 par validate_palette.js :
+     clair  (fond #FFFFFF) : bande de luminosite, chroma, CVD adjacent (pire 9,1) et vision normale
+                             (pire 19,6) PASS ; contraste a 3:1 : trois teintes (aqua 2,82, jaune
+                             2,17, magenta 2,69) en bande « relief requis ».
+     sombre (fond #121B2E) : tous controles PASS, contraste >= 3:1 pour les six (CVD pire 8,4).
+   Le RELIEF exige par le validateur est fourni : etiquettes directes dans les segments qui les
+   portent, filets de 2 px, legende, et vue tableau (details.graphe-table) sous chaque graphique.
+   Contraste des textes d'etiquette sur leur fond, mesure : >= 4,5:1 pour les douze couples.
+   Les jetons sont portes par .graphe-empile (pas par :root) : le composant ne redefinit rien du socle. */
+
+.graphe-empile {
+  --cat-1: #2a78d6; --cat-1-texte: #000000;
+  --cat-2: #eb6834; --cat-2-texte: #0F172A;
+  --cat-3: #1baf7a; --cat-3-texte: #0F172A;
+  --cat-4: #eda100; --cat-4-texte: #0F172A;
+  --cat-5: #e87ba4; --cat-5-texte: #0F172A;
+  --cat-6: #008300; --cat-6-texte: #FFFFFF;
+  margin: 0;
+  min-width: 0;   /* un enfant de grille ne s'impose pas a la largeur intrinseque du viewBox */
+  padding: 16px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid var(--line, #E6EAF2);
+  border-radius: var(--r, 12px);
+}
+
+/* Sombre : CHOIX du lecteur (data-theme), jamais herite de l'OS — doctrine du boilerplate (RV-9). */
+:root[data-theme="dark"] .graphe-empile {
+  --cat-1: #3987e5; --cat-1-texte: #0B1220;
+  --cat-2: #d95926; --cat-2-texte: #0B1220;
+  --cat-3: #199e70; --cat-3-texte: #0B1220;
+  --cat-4: #c98500; --cat-4-texte: #0B1220;
+  --cat-5: #d55181; --cat-5-texte: #0B1220;
+  --cat-6: #008300; --cat-6-texte: #FFFFFF;
+}
+
+.graphe-empile figcaption {
+  margin: 0 0 8px;
+  font-family: var(--head, system-ui, sans-serif);
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--ink, #0F172A);
+}
+
+.graphe-svg { display: block; width: 100%; max-width: 560px; height: auto; font-family: var(--sans, system-ui, sans-serif); }
+
+.graphe-grille { stroke: var(--line, #E6EAF2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.graphe-base { stroke: var(--muted, #64748B); }
+.graphe-axe { fill: var(--muted, #64748B); font-size: 13px; }
+.graphe-total { fill: var(--ink, #0F172A); font-size: 13px; font-weight: 600; }
+
+/* Filet de 2 px entre segments : le trait a la couleur de la surface, en epaisseur non mise a l'echelle. */
+.graphe-seg { stroke: var(--surface, #FFFFFF); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.graphe-seg:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue, #2563EB)); outline-offset: var(--focus-decalage, 2px); }
+.etiquette-marque { font-size: 13px; font-weight: 600; pointer-events: none; }
+
+.graphe-s1 { fill: var(--cat-1); background: var(--cat-1); }
+.graphe-s2 { fill: var(--cat-2); background: var(--cat-2); }
+.graphe-s3 { fill: var(--cat-3); background: var(--cat-3); }
+.graphe-s4 { fill: var(--cat-4); background: var(--cat-4); }
+.graphe-s5 { fill: var(--cat-5); background: var(--cat-5); }
+.graphe-s6 { fill: var(--cat-6); background: var(--cat-6); }
+.etiquette-marque.graphe-t1 { fill: var(--cat-1-texte); }
+.etiquette-marque.graphe-t2 { fill: var(--cat-2-texte); }
+.etiquette-marque.graphe-t3 { fill: var(--cat-3-texte); }
+.etiquette-marque.graphe-t4 { fill: var(--cat-4-texte); }
+.etiquette-marque.graphe-t5 { fill: var(--cat-5-texte); }
+.etiquette-marque.graphe-t6 { fill: var(--cat-6-texte); }
+
+.graphe-legende { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0 0; padding: 0; list-style: none; font-size: .85rem; color: var(--ink, #0F172A); }
+.graphe-legende li { display: inline-flex; align-items: center; gap: 8px; }
+.graphe-pastille { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+
+.graphe-table { margin-top: 12px; font-size: .85rem; }
+.graphe-table summary { cursor: pointer; color: var(--blue, #2563EB); font-weight: 600; }
+.graphe-table table { border-collapse: collapse; margin-top: 8px; width: 100%; }
+.graphe-table caption { text-align: left; color: var(--muted, #64748B); padding-bottom: 4px; }
+.graphe-table th, .graphe-table td { border-bottom: 1px solid var(--line, #E6EAF2); padding: 4px; font-size: .75rem; text-align: right; }
+.graphe-table th[scope="row"], .graphe-table th[scope="col"]:first-child { text-align: left; }
+.graphe-erreur { color: var(--red, #B91C1C); }
+
+@media print {
+  .graphe-table { display: block; }
+  .graphe-table[open] summary, .graphe-table summary { display: none; }
+}

@@ -1,0 +1,47 @@
+/* tuiles-indicateurs.css — rangee de tuiles d'indicateurs (RT-120, D-55 (a) du 03/10/2026).
+   Remplace l'extrait « 1 — Grille de KPI » de composants.md. Une tuile porte : un libelle, une
+   valeur, un ECART (absolu et relatif ; en points pour un pourcentage) avec un repere de sens qui
+   ne repose pas sur la couleur (fleche + mot), une COMPARAISON libellee (periode precedente ou
+   cible) qui est la legende lue par aria-describedby, et une tendance optionnelle (mini-courbe).
+   Jetons du socle uniquement (:root du boilerplate), echelle 4 pt, clair et sombre par les jetons. */
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));   /* 3 a 6 tuiles, retour a la ligne */
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tuile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--ink);
+}
+
+.tuile-label { margin: 0; color: var(--muted); font-size: .8rem; font-weight: 600; }
+.tuile-valeur { margin: 0; font-family: var(--head); font-weight: 800; font-size: 1.75rem; line-height: 1.2; color: var(--ink); }
+
+/* Ecart : le SENS est dit par la fleche ET par le mot (hausse / baisse / stable) ; la couleur
+   ne fait que doubler le jugement (favorable / defavorable) — texte toujours en --ink. */
+.tuile-ecart { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; font-size: .85rem; font-weight: 600; color: var(--ink); }
+.tuile-sens { display: inline-flex; align-items: baseline; gap: 4px; }
+.tuile-fleche { font-size: .8rem; }
+.tuile--bon .tuile-fleche { color: var(--green); }
+.tuile--mauvais .tuile-fleche { color: var(--red); }
+.tuile--neutre .tuile-fleche { color: var(--muted); }
+.tuile-jugement { color: var(--muted); font-weight: 400; }
+
+.tuile-comparaison { margin: 0; color: var(--muted); font-size: .75rem; }   /* --muted, pas --faint : AA */
+
+.tuile-tendance { display: block; width: 100%; height: 32px; margin-top: 4px; }
+.tuile-tendance .tt-ligne { fill: none; stroke: var(--blue); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+
+@media print { .tuile { break-inside: avoid; } }
