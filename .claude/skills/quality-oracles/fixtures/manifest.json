@@ -1519,6 +1519,30 @@
    "provenance": "RT-122, lot Produit-02 - RETOURS - 20261003b du 03/10/2026 — oracle-calculs lisait le source HTML brut : une infobulle SVG ecrite dans un attribut title sur plusieurs lignes laissait « …(Google Ads) : 2\"/> 26,69 27 sept. <rect class=\"seg c1\" x=\"148.6\" » sur une ligne, et le x de l attribut x= se lisait comme une multiplication (17 constats bloquants « unite de FLUX » sur la page du produit). Correctif : une page HTML se lit dans son texte rendu (balises reduites a leur nom, attributs, script et style retires, frontiere sure autour de chaque balise non en ligne). La verte (infobulles title en attribut et en element finissant par un nombre, suivies d un rect x=, et un budget en €/mois sur les reservations) passe et echoue contre l oracle d avant ; la rouge y ajoute un vrai flux multiplie par un compte de reservations, qui reste accuse."
   },
   {
+   "nom": "calculs-indicateur",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "calculs-indicateur-red.html",
+   "green": "calculs-indicateur-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "I1",
+    "même indicateur, deux valeurs",
+    "« Visites engagées » vaut 40"
+   ],
+   "provenance": "RT-121, lot Produit-02 - RETOURS - 20261003b du 03/10/2026 — une page de statut livree PASS 15/15 publiait 54 visites engagees la ou la source, au grain du jour, en rend 40 : deux valeurs du meme indicateur, tirees de deux grains de la source, et aucun oracle ne les confrontait. Regle I1 : une valeur declaree (tuile kpi-label/kpi-value, dt/dd) et une mention en prose « <nombre> <libelle> » du meme libelle portent deux nombres differents. La rouge (tuile 40, prose 54, donnees inventees) echoue ; l oracle d avant la rendait SKIP. La verte tient les faux positifs : meme valeur en prose, portees declarees differentes (data-indicateur-portee), mot seul non chiffre, lignes de tableau par jour (ligne de total egale), infobulles et textes SVG par donnee, precision d affichage. Mesure de bruit avant blocage : 2 996 pages HTML de 29 depots produits, 0 constat (voir le commentaire de la regle)."
+  },
+  {
    "nom": "polices-embarquees",
    "cmd": [
     "node",
