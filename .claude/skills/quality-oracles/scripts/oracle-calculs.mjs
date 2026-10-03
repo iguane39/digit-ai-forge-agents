@@ -46,14 +46,56 @@ const NON_JUGE_BASE = [
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 const ext = path.extname(file).toLowerCase();
 if (!['.md', '.html', '.htm', '.txt'].includes(ext)) out('SKIP', [], ['extension non gérée : ' + ext], 2);
-const text = fs.readFileSync(file, 'utf8');
+const brut = fs.readFileSync(file, 'utf8');
+
+// ---- RT-122 (Produit-02, 03/10/2026) : une page HTML se lit dans son TEXTE RENDU ----------------
+// LE FAIT : oracle-calculs lisait le source HTML brut, ligne par ligne. Une infobulle SVG écrite
+// dans un attribut `title` sur plusieurs lignes laissait, sur sa dernière ligne, « …(Google Ads) : 2"/>
+// 26,69 27 sept. <rect class="seg c1" x="148.6" » : la balise ouverte sans fermeture sur la ligne
+// échappait au retrait des balises, et le `x` de l'attribut x= se lisait comme une multiplication.
+// 17 constats bloquants « unité de FLUX » sur la version c du statut ; contournement subi : finir
+// chaque infobulle par une ligne de mots.
+// LE CORRECTIF : avant les volets tables et mesures, une page HTML est ramenée à ce qu'elle REND — commentaires,
+// <script>, <style>, <template>, <noscript> retirés, et chaque balise réduite à son NOM (attributs
+// retirés, valeurs entre guillemets comprises, même sur plusieurs lignes). Les sauts de ligne retirés
+// sont reposés après la balise : un constat garde le numéro de ligne du source. Une balise qui n'est
+// pas de texte courant et que lib/ ne lit pas déjà comme une fin d'unité (élément SVG, <title>, <text>,
+// <section>, <button>…) est suivie d'un <br> à sa fermeture : c'est une FRONTIÈRE SÛRE, le nombre
+// qui termine un nœud ne se colle jamais au suivant. La structure (tables, listes, titres) reste,
+// les modules lib/ la lisent comme avant. Le Markdown est inchangé.
+// LA MESURE (03/10/2026, 2 996 pages HTML de 29 dépôts produits, avant → après) : 2 906 SKIP, 61 PASS
+// et 22 FAIL inchangés ; 4 PASS → SKIP (le seul « jugé » vivait dans un <script> ou un attribut) ;
+// 3 bascules N3 (2 FAIL → PASS, 1 PASS → FAIL) : l'ancien `nu` de lib/mesure.mjs perdait les sauts de
+// ligne des balises sur plusieurs lignes et lisait la note d'une table plusieurs lignes trop haut.
+const EN_LIGNE = new Set(['a', 'abbr', 'b', 'bdi', 'bdo', 'cite', 'code', 'data', 'del', 'dfn', 'em', 'font', 'i', 'ins', 'kbd', 'mark', 'q', 's', 'samp', 'small', 'span', 'strong', 'sub', 'sup', 'time', 'tspan', 'u', 'var', 'wbr', 'br', 'html', 'head', 'body']);
+// Fins d'unité déjà lues par lib/ (FIN_D_UNITE de mesure.mjs, structure des tables et listes) : rien
+// à ajouter — chaque <br> de plus déplace la fenêtre de 2 000 caractères de lib/effectifs.mjs.
+const DEJA_FRONTIERE = new Set(['td', 'th', 'tr', 'li', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'dt', 'dd', 'caption', 'div', 'blockquote', 'figcaption', 'table', 'thead', 'tbody', 'tfoot', 'ul', 'ol', 'dl', 'colgroup', 'col']);
+const sautsSeuls = s => s.replace(/[^\n]/g, '');
+function texteRendu(html) {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, sautsSeuls)
+    .replace(/<(script|style|template|noscript)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1\s*>/gi, sautsSeuls)
+    .replace(/<(\/?)([a-zA-Z][\w:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g, (m, ferme, nom, attrs) => {
+      const n = nom.toLowerCase(), auto = /\/\s*$/.test(attrs) ? '/' : '';
+      const balise = '<' + ferme + n + auto + '>';
+      if (EN_LIGNE.has(n)) return balise + sautsSeuls(m);
+      return balise + ((ferme || auto) && !DEJA_FRONTIERE.has(n) ? '<br>' : '') + sautsSeuls(m);
+    });
+}
+const text = (ext === '.html' || ext === '.htm') ? texteRendu(brut) : brut;
 
 const tables = extractTables(text, ext);
 
 // ---- TF-0718 : effectifs annoncés vs cardinal réel (indépendant des lignes de total) ---------
 // Ce volet juge AUSSI les documents sans aucune table de total : le décalage « Sept écarts »
 // au-dessus d'un tableau de huit vivait dans un sommaire, pas dans une somme.
-const eff = verifierEffectifs(text, ext, path.basename(file));
+// RT-122 : ce volet garde le SOURCE. lib/effectifs.mjs cherche l'ancre d'une annonce dans une fenêtre
+// de 2 000 caractères ; le texte rendu, plus court (attributs retirés), y fait entrer des tableaux
+// TRONQUÉS, et la mesure du parc du 03/10/2026 l'a montré : 4 pages SKIP devenues FAIL sur des
+// cardinaux coupés (« trois constats » ≠ 2 lignes d'un tableau qui en a 3). Ce volet retire déjà
+// les balises sur le texte entier, sans découpage par ligne : il n'avait pas le défaut de RT-122.
+const eff = verifierEffectifs(brut, ext, path.basename(file));
 
 // ---- TF-0760 / TF-0777 : « un chiffre publié énonce son dénominateur, et une unité se lit » ---
 // N3 pourcentage sans sa formule · N4 unités des en-têtes · N5 hypothèse calculable depuis la
