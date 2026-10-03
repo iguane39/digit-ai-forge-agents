@@ -1373,6 +1373,29 @@ HTML de onze dépôts du parc, dont les 208 du skill — **zéro fichier touché
 Fixtures : `l32-marqueur-svg-duplique.html` (rouge), `l32-marqueurs-svg-uniques.html` (verte),
 `l33-reference-hors-de-son-svg.html` (rouge), `l33-defs-partagees-declarees.html` (verte).
 
+## L34 — Un graphique ne trace pas UNE série quand sa donnée en porte plusieurs (RT-119, D-55 (a) du 03/10/2026)
+
+**Le fait.** Sur une page servie de Produit-02, la dépense par jour, par pays et par heure était
+tracée en barres d'une seule couleur, le détail par pays relégué à l'infobulle — alors que la
+demande disait « graphique argent, avec pays et montants » et que la donnée portait les pays.
+Retour humain : « pourquoi est-ce qu'on n'est pas passé à un histogramme avec plusieurs valeurs
+par colonne, avec différentes couleurs ? ». Cause : sans composant de graphique au socle, chaque
+page écrivait son SVG à la main, et la voie la plus simple est la série unique.
+
+**La convention.** Un graphique déclare sur son `<svg>` `data-series-source="N"` — le nombre de
+séries de la **donnée** — et chaque marque de série porte `data-serie="<nom>"`. Le composant
+barres empilées du socle (`composants.md`) la pose de lui-même.
+
+**La règle.** Si `N > 1` et que le graphique porte au plus **une** valeur distincte de
+`data-serie`, **avertissement** L34 : empiler ou grouper les séries, une couleur par série,
+légende visible. **Jamais bloquant** — un agrégat peut être voulu ; il se dit alors dans la
+légende, et `data-series-source` revient à 1. Un SVG qui ne déclare rien n'est pas jugé.
+
+**Bruit mesuré** le 03/10/2026 : 3 267 pages HTML de 29 dépôts produits, aucune ne porte encore la
+convention — zéro constat nouveau.
+
+Fixtures : `l34-serie-unique.html` (rouge, avertissement), `l34-series-tracees.html` (verte).
+
 ## Lancer le contrôle
 
 ```bash

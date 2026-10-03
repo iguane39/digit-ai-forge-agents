@@ -336,6 +336,12 @@ CAS_AVERT = {
     # l'ecrivant. La seconde moitie (le jargon) reste un echec, et a sa fixture dans CAS.
     "l30-chapitre-sans-contenu.html": {"L30"},
     "l30-chapitre-annonce.html": set(),
+    # RT-119 (lot Produit-02 20261003b, D-55 (a) du 03/10) — L34 : un graphique qui declare deux
+    # series dans sa donnee source (data-series-source="2") et n'en trace qu'une (data-serie).
+    # AVERTISSEMENT, jamais bloquant. La verte porte les memes barres empilees par pays, et un
+    # second graphique a serie source unique, qui ne doit pas crier.
+    "l34-serie-unique.html": {"L34"},
+    "l34-series-tracees.html": set(),
 }
 
 RE_CODE = re.compile(r"^(L\d+)\b")

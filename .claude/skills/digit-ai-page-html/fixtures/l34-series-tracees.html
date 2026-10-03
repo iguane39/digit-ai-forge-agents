@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L34 series tracees — 20261003a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--s1:#2563EB;--s2:#D97706;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de L34 (RT-119, Produit-02, D-55 (a) du 03/10/2026) — la même dépense, tracée en
+  barres EMPILÉES par pays : deux valeurs distinctes de `data-serie` pour `data-series-source="2"`.
+  Le second graphique déclare UNE série source et en trace une : la série unique est alors la
+  donnée, pas un appauvrissement — aucun avertissement non plus.
+
+  Attendu : aucun avertissement L34, aucun échec L.
+-->
+<body><main class="wrap">
+<h1>Dépense publicitaire par jour et par pays</h1>
+<p>Dépense en euros, du 1er au 2 octobre, empilée par pays : France en bleu, Belgique en orange.</p>
+<svg width="240" height="140" viewBox="0 0 240 140" role="img" aria-label="Dépense par jour et par pays, en euros" data-series-source="2">
+  <rect x="20" y="70" width="40" height="50" fill="#2563EB" data-serie="France"></rect>
+  <rect x="20" y="40" width="40" height="30" fill="#D97706" data-serie="Belgique"></rect>
+  <rect x="90" y="80" width="40" height="40" fill="#2563EB" data-serie="France"></rect>
+  <rect x="90" y="70" width="40" height="10" fill="#D97706" data-serie="Belgique"></rect>
+  <text x="40" y="132" text-anchor="middle" font-size="12">1 oct.</text>
+  <text x="110" y="132" text-anchor="middle" font-size="12">2 oct.</text>
+</svg>
+<p>Le nombre de visites, seule mesure de la donnée source, est tracé seul.</p>
+<svg width="240" height="140" viewBox="0 0 240 140" role="img" aria-label="Visites par jour" data-series-source="1">
+  <rect x="20" y="40" width="40" height="80" fill="#2563EB" data-serie="Visites"></rect>
+  <rect x="90" y="60" width="40" height="60" fill="#2563EB" data-serie="Visites"></rect>
+</svg>
+</main></body></html>

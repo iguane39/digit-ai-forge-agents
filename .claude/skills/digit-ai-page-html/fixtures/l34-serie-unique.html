@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L34 serie unique — 20261003a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--s1:#2563EB;--s2:#D97706;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de L34 — la SÉRIE UNIQUE quand la donnée en porte plusieurs (RT-119, Produit-02,
+  D-55 (a) du 03/10/2026). AVERTISSEMENT, jamais bloquant.
+
+  Le défaut de la page servie : la dépense par jour en barres d'une seule couleur, le détail par
+  pays relégué à l'infobulle, alors que la demande disait « graphique argent, avec pays et
+  montants ». Le graphique DÉCLARE que sa donnée source porte deux séries (France, Belgique) —
+  `data-series-source="2"` — et ne trace qu'une valeur de `data-serie`.
+
+  Attendu : un avertissement L34, aucun échec L.
+-->
+<body><main class="wrap">
+<h1>Dépense publicitaire par jour</h1>
+<p>Dépense en euros, du 1er au 2 octobre ; la donnée source la ventile par pays.</p>
+<svg width="240" height="140" viewBox="0 0 240 140" role="img" aria-label="Dépense par jour, en euros" data-series-source="2">
+  <rect x="20" y="40" width="40" height="80" fill="#2563EB" data-serie="Total"></rect>
+  <rect x="90" y="70" width="40" height="50" fill="#2563EB" data-serie="Total"></rect>
+  <text x="40" y="132" text-anchor="middle" font-size="12">1 oct.</text>
+  <text x="110" y="132" text-anchor="middle" font-size="12">2 oct.</text>
+</svg>
+</main></body></html>

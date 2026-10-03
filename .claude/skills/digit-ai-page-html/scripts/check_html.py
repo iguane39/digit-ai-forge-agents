@@ -3354,6 +3354,48 @@ def check_lisibilite(html: str, a: Arbre):
                 "autre document, c'est occuper la place de la réponse sans la donner "
                 "(lisibilite.md L30).")
 
+    # --- L34 : la SÉRIE UNIQUE quand la donnée en porte plusieurs (AVERTISSEMENT) -----------
+    #     (RT-119 du lot Produit-02 20261003b, D-55 (a) du 03/10/2026)
+    #
+    # LE FAIT. La dépense par jour, par pays et par heure tracée en barres d'UNE couleur, le détail
+    # par pays relégué à l'infobulle, alors que la demande disait « graphique argent, avec pays et
+    # montants » et que la donnée portait les pays. Retour humain : « pourquoi est-ce qu'on n'est
+    # pas passé à un histogramme avec plusieurs valeurs par colonne, avec différentes couleurs ? ».
+    # Cause : le socle n'avait aucun composant de graphique, chaque page écrivait son SVG à la main,
+    # et la voie la plus simple est la série unique.
+    #
+    # LA CONVENTION (fixée par le pilot, portée par le composant barres empilées du socle) : un
+    # graphique déclare sur son <svg> `data-series-source="N"` — le nombre de séries de la DONNÉE —
+    # et chaque marque de série porte `data-serie="<nom>"`. Si N > 1 et que le graphique trace au
+    # plus UNE valeur distincte de `data-serie`, la donnée a été appauvrie au tracé.
+    #
+    # AVERTISSEMENT, JAMAIS BLOQUANT : agréger peut être un choix (un total demandé seul) ; le
+    # constat propose le geste — empiler ou grouper les séries — et se décline en le motivant.
+    #
+    # LA MESURE DE BRUIT (03/10/2026) : 3 267 pages HTML de 29 dépôts produits — AUCUNE ne porte
+    # encore `data-series-source` (la convention naît avec ce lot) : zéro constat nouveau. La règle
+    # ne mord que les graphiques qui déclarent leur source ; un SVG muet n'est pas jugé.
+    for svg in [n for n in a.racine.descendants() if n.tag == "svg"]:
+        try:
+            n_source = int((svg.att("data-series-source") or "").strip())
+        except ValueError:
+            continue
+        if n_source <= 1:
+            continue
+        series = {(e.att("data-serie") or "").strip() for e in svg.descendants()
+                  if (e.att("data-serie") or "").strip()}
+        if len(series) <= 1:
+            nom = svg.att("aria-label") or svg.att("id") or svg.chemin()
+            trace = (f"n'en trace qu'une seule (« {next(iter(series))} »)" if series
+                     else "n'en trace aucune")
+            warns.append(
+                f"L34 graphique à SÉRIE UNIQUE — « {nom[:60]} » déclare {n_source} séries dans sa "
+                f"donnée source (data-series-source) et {trace} (data-serie). Le "
+                "détail relégué à l'infobulle ne se compare pas d'un coup d'œil : empiler ou "
+                "grouper les séries, une couleur par série, légende visible — le composant "
+                "barres empilées du socle le fait (composants.md). Agrégat VOULU → le dire dans "
+                "la légende et ramener data-series-source à 1.")
+
     return fails, warns
 
 
