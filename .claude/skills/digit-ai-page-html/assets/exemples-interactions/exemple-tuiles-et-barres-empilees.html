@@ -407,15 +407,21 @@
    Le RELIEF exige par le validateur est fourni : etiquettes directes dans les segments qui les
    portent, filets de 2 px, legende, et vue tableau (details.graphe-table) sous chaque graphique.
    Contraste des textes d'etiquette sur leur fond, mesure : >= 4,5:1 pour les douze couples.
-   Les jetons sont portes par .graphe-empile (pas par :root) : le composant ne redefinit rien du socle. */
+   Les jetons sont poses sur :root (clair) et :root[data-theme="dark"] (sombre), la ou oracle-tokens
+   (forge-design, T4) les cherche ; ils ne redefinissent rien du socle (prefixe --cat- propre au
+   composant). Texte sur --cat-1 en clair : #02050C, quasi-noir teinte (oracle-slop S4 refuse le noir
+   pur), contraste 4,6:1 mesure. */
 
-.graphe-empile {
-  --cat-1: #2a78d6; --cat-1-texte: #000000;
+:root {
+  --cat-1: #2a78d6; --cat-1-texte: #02050C;
   --cat-2: #eb6834; --cat-2-texte: #0F172A;
   --cat-3: #1baf7a; --cat-3-texte: #0F172A;
   --cat-4: #eda100; --cat-4-texte: #0F172A;
   --cat-5: #e87ba4; --cat-5-texte: #0F172A;
   --cat-6: #008300; --cat-6-texte: #FFFFFF;
+}
+
+.graphe-empile {
   margin: 0;
   min-width: 0;   /* un enfant de grille ne s'impose pas a la largeur intrinseque du viewBox */
   padding: 16px;
@@ -425,7 +431,7 @@
 }
 
 /* Sombre : CHOIX du lecteur (data-theme), jamais herite de l'OS — doctrine du boilerplate (RV-9). */
-:root[data-theme="dark"] .graphe-empile {
+:root[data-theme="dark"] {
   --cat-1: #3987e5; --cat-1-texte: #0B1220;
   --cat-2: #d95926; --cat-2-texte: #0B1220;
   --cat-3: #199e70; --cat-3-texte: #0B1220;
@@ -568,25 +574,25 @@
           <article class="tuile tuile--neutre" aria-labelledby="t1-l" aria-describedby="t1-c" data-tendance="9800,10400,10100,11260,12480" data-tendance-libelle="5 dernières périodes">
             <p class="tuile-label" id="t1-l">Dépense</p>
             <p class="tuile-valeur">12 480 €</p>
-            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+1 220 € (+10,8 %)</span></p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↑</span><span>hausse</span></span> <span>+1 220 € (+10,8 %)</span></p>
             <p class="tuile-comparaison" id="t1-c">Période précédente : 11 260 €</p>
           </article>
           <article class="tuile tuile--bon" aria-labelledby="t2-l" aria-describedby="t2-c" data-tendance="6900,7200,7050,7610,8340" data-tendance-libelle="5 dernières périodes">
             <p class="tuile-label" id="t2-l">Clics</p>
             <p class="tuile-valeur">8 340</p>
-            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+730 (+9,6 %)</span> <span class="tuile-jugement">favorable</span></p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↑</span><span>hausse</span></span> <span>+730 (+9,6 %)</span> <span class="tuile-jugement">favorable</span></p>
             <p class="tuile-comparaison" id="t2-c">Période précédente : 7 610</p>
           </article>
           <article class="tuile tuile--bon" aria-labelledby="t3-l" aria-describedby="t3-c">
             <p class="tuile-label" id="t3-l">Taux de conversion</p>
             <p class="tuile-valeur">3,4 %</p>
-            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+0,3 point</span> <span class="tuile-jugement">favorable</span></p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↑</span><span>hausse</span></span> <span>+0,3 point</span> <span class="tuile-jugement">favorable</span></p>
             <p class="tuile-comparaison" id="t3-c">Période précédente : 3,1 %</p>
           </article>
           <article class="tuile tuile--mauvais" aria-labelledby="t4-l" aria-describedby="t4-c">
             <p class="tuile-label" id="t4-l">Coût par clic</p>
             <p class="tuile-valeur">1,50 €</p>
-            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>au-dessus</span></span> <span>+0,10 € (+7,1 %)</span> <span class="tuile-jugement">défavorable</span></p>
+            <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↑</span><span>au-dessus</span></span> <span>+0,10 € (+7,1 %)</span> <span class="tuile-jugement">défavorable</span></p>
             <p class="tuile-comparaison" id="t4-c">Cible : 1,40 €</p>
           </article>
           <article class="tuile tuile--neutre" aria-labelledby="t5-l" aria-describedby="t5-c">

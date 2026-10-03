@@ -12,15 +12,21 @@
    Le RELIEF exige par le validateur est fourni : etiquettes directes dans les segments qui les
    portent, filets de 2 px, legende, et vue tableau (details.graphe-table) sous chaque graphique.
    Contraste des textes d'etiquette sur leur fond, mesure : >= 4,5:1 pour les douze couples.
-   Les jetons sont portes par .graphe-empile (pas par :root) : le composant ne redefinit rien du socle. */
+   Les jetons sont poses sur :root (clair) et :root[data-theme="dark"] (sombre), la ou oracle-tokens
+   (forge-design, T4) les cherche ; ils ne redefinissent rien du socle (prefixe --cat- propre au
+   composant). Texte sur --cat-1 en clair : #02050C, quasi-noir teinte (oracle-slop S4 refuse le noir
+   pur), contraste 4,6:1 mesure. */
 
-.graphe-empile {
-  --cat-1: #2a78d6; --cat-1-texte: #000000;
+:root {
+  --cat-1: #2a78d6; --cat-1-texte: #02050C;
   --cat-2: #eb6834; --cat-2-texte: #0F172A;
   --cat-3: #1baf7a; --cat-3-texte: #0F172A;
   --cat-4: #eda100; --cat-4-texte: #0F172A;
   --cat-5: #e87ba4; --cat-5-texte: #0F172A;
   --cat-6: #008300; --cat-6-texte: #FFFFFF;
+}
+
+.graphe-empile {
   margin: 0;
   min-width: 0;   /* un enfant de grille ne s'impose pas a la largeur intrinseque du viewBox */
   padding: 16px;
@@ -30,7 +36,7 @@
 }
 
 /* Sombre : CHOIX du lecteur (data-theme), jamais herite de l'OS — doctrine du boilerplate (RV-9). */
-:root[data-theme="dark"] .graphe-empile {
+:root[data-theme="dark"] {
   --cat-1: #3987e5; --cat-1-texte: #0B1220;
   --cat-2: #d95926; --cat-2-texte: #0B1220;
   --cat-3: #199e70; --cat-3-texte: #0B1220;

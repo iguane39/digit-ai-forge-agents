@@ -479,7 +479,7 @@ sens n'est pas neutre ; la couleur ne fait que le doubler. La tendance est optio
   <article class="tuile tuile--bon" aria-labelledby="t2-l" aria-describedby="t2-c" data-tendance="6900,7200,7050,7610,8340" data-tendance-libelle="5 dernières périodes">
     <p class="tuile-label" id="t2-l">Clics</p>
     <p class="tuile-valeur">8 340</p>
-    <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">▲</span><span>hausse</span></span> <span>+730 (+9,6 %)</span> <span class="tuile-jugement">favorable</span></p>
+    <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↑</span><span>hausse</span></span> <span>+730 (+9,6 %)</span> <span class="tuile-jugement">favorable</span></p>
     <p class="tuile-comparaison" id="t2-c">Période précédente : 7 610</p>
   </article>
 </div>

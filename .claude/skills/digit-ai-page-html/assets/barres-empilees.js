@@ -14,7 +14,7 @@
        {"orientation":"vertical","mode":"valeurs","unite":"€","decimales":0,"totaux":true,
         "categories":["Lun","Mar"],
         "series":[{"nom":"France","valeurs":[120,90]},{"nom":"Italie","valeurs":[60,80]}]}
-       </script>
+       <\/script>   (écrit « <\/script> » ici : un commentaire d'asset inliné ne ferme jamais la balise hôte, TF-1062)
      </figure>
 
    CONVENTION (lue par l'oracle) : le <svg> porte data-series-source="N" (N = nombre de series de
