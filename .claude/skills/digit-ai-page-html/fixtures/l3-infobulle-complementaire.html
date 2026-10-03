@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 infobulle complementaire — 20261003a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.entonnoir{display:flex;gap:16px;list-style:none;padding:0}
+.etape{padding:8px 12px;border:1px solid var(--line)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.court{max-width:12ch;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:inline-block}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de L3 bis étendue (RT-118, Produit-02, 03/10/2026) — la même page que
+  `l3-infobulle-redondante.html`, avec des infobulles qui APPRENNENT quelque chose.
+
+  - l'étape d'entonnoir porte en title sa source et sa définition, pas son propre libellé ;
+  - les <title> des barres donnent le détail par pays, que le montant écrit au-dessus ne dit pas ;
+  - une pastille glyphe `✓✓✓✓·` doublée d'un texte `.sr` : le texte réservé au lecteur d'écran
+    n'est pas VU, son title est la seule explication visible — pas une redite ;
+  - un libellé TRONQUÉ par ellipse : son title montre ce que la boîte cache ;
+  - une répétition déclarée VOULUE (`data-legende-ok`) ;
+  - la légende de l'indicateur liée par aria-describedby, porteur recommandé par L3.
+
+  Attendu : aucun échec L.
+-->
+<body><main class="wrap">
+<h1>Visites et dépenses de la semaine</h1>
+<p id="def-engagee">Une visite engagée dure plus de dix secondes, ou voit deux pages, ou convertit.</p>
+<ul class="entonnoir">
+<li class="etape" title="Toutes les visites du site, au grain du jour, source : API Google Analytics">63 visites</li>
+<li class="etape" aria-describedby="def-engagee" title="Source : API Google Analytics, compte du jour ; 85 % des visites"><b>54</b> visites engagées</li>
+</ul>
+<svg width="240" height="140" viewBox="0 0 240 140" role="img" aria-labelledby="titre-barres">
+  <title id="titre-barres">Dépense publicitaire par jour, en euros, du 1er au 3 octobre</title>
+  <rect id="b1" x="20" y="40" width="40" height="80" fill="#2563EB"><title>France 18,40 € ; Belgique 8,29 €</title></rect>
+  <text x="40" y="34" text-anchor="middle" font-size="12" data-etiquette-de="b1">26,69 €</text>
+  <rect id="b2" x="90" y="70" width="40" height="50" fill="#2563EB"><title>France 14,20 € ; aucune dépense ailleurs</title></rect>
+  <text x="110" y="64" text-anchor="middle" font-size="12" data-etiquette-de="b2">14,20 €</text>
+</svg>
+<p>Gain estimé <span class="pastille" title="gain 4 sur 5 — effet mesurable sur le trafic global"><span aria-hidden="true">✓✓✓✓·</span><span class="sr">gain 4 sur 5 — effet mesurable sur le trafic global</span></span>.</p>
+<p>Campagne <span class="court" title="Hébergement insolite baie du Mont">Hébergement insolite baie du Mont</span>.</p>
+<p>Graphie normalisée : <span title="Mont-Saint-Michel" data-legende-ok>Mont-Saint-Michel</span>.</p>
+</main></body></html>

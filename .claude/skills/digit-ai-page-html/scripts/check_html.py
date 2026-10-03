@@ -201,6 +201,13 @@ RE_OBJET_TECHNIQUE = re.compile(
     r"^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$"
     r"|^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$")
 
+# Classes de texte réservé au LECTEUR D'ÉCRAN (L3 bis étendue, RT-118) : ce texte n'est pas vu,
+# donc une infobulle qui le répète n'est pas une redite de la page.
+CL_LECTEUR_ECRAN_SEUL = {"sr", "sr-only", "visually-hidden", "visuallyhidden",
+                         "screen-reader-text", "screen-reader-only", "assistive-text",
+                         "visuellement-cache", "visuellement-masque", "masque-visuel",
+                         "cache-visuel", "lecteur-ecran", "hors-ecran"}
+
 # Mots qui ne désignent rien : un <summary> qui n'en contient QUE ceux-là promet une
 # information sans dire laquelle. Les mots-outils sont ignorés avant le test — c'est
 # le mot plein qui décide. « Afficher la dette » passe (« dette » désigne) ;
@@ -1423,8 +1430,14 @@ def check_lisibilite(html: str, a: Arbre):
             elif not (t and t.strip()) and not (al and al.strip()) \
                     and not decrit_par(n) and not legende_visible(n) \
                     and not bareme_de_groupe(n) and not couvert_par_descendant(n):
-                fails.append(f'L3 valeur sans légende : « {libelle} » — title, aria-label, '
-                             f"aria-describedby ou légende visible attendus ({n.chemin()}).")
+                # RT-118 (Produit-02, 03/10) : le message nommait `title` en premier, et la voie la
+                # plus courte devenait la règle — des infobulles posées pour passer L3, qui
+                # répétaient la page. Le porteur recommandé est nommé d'abord.
+                fails.append(f'L3 valeur sans légende : « {libelle} » — porteur recommandé : '
+                             "aria-describedby vers une légende VISIBLE de la page (elle survit "
+                             "au PDF et s'atteint au doigt) ; à défaut légende visible, aria-label "
+                             "ou title — et une infobulle porte un complément, jamais une redite "
+                             f"de la page (L3 bis) ({n.chemin()}).")
 
     # --- L3 (suite) : une colonne CALCULÉE publie sa formule ---------------
     # Un score classe tout le reste. Sans sa formule, le lecteur doit croire sur
@@ -1546,6 +1559,150 @@ def check_lisibilite(html: str, a: Arbre):
                 reste = re.sub(re.escape(entete), " ", reste, flags=re.I)
         if _norme_legende(reste) == _norme_legende(cellule):
             tautologiques.append((cellule[:40], aide[:60], td.chemin()))
+
+    # --- L3 bis (étendue) : une infobulle HORS CELLULE qui répète ce que la page montre déjà
+    #     (RT-118 du lot Produit-02 20261003b, D-55 (a) du 03/10/2026)
+    #
+    # LE FAIT. L3 bis ne jugeait que les `<td>`. Sur une page servie le 03/10, un entonnoir
+    # affichait « 54 visites engagées » et son infobulle répétait « 54 visites engagées » ; les
+    # `<title>` des barres SVG répétaient le montant écrit au-dessus de chaque barre. Retour
+    # humain, troisième occurrence (TF-0954 le 08/09, sur un autre produit) : « des tooltips qui
+    # affichent ce qu'on a par ailleurs sur la page, ça n'a pas d'intérêt ; les tooltips doivent
+    # fournir des informations complémentaires ». Cause amont : L3 exigeait « title, aria-label,
+    # aria-describedby ou légende visible », et le `title` est la voie la plus courte — la session
+    # a posé « Statut de S1 » sur des pastilles pour passer L3. L3 nomme désormais
+    # `aria-describedby` vers une légende visible comme porteur recommandé.
+    #
+    # LA RÈGLE. Porteurs jugés : le `<title>` enfant d'un élément SVG, et les attributs `title`,
+    # `data-tip`, `data-definition` de tout élément autre qu'une cellule (`td`/`th`
+    # restent jugés plus haut, au même seuil). Comparaison avec le texte visible de la CIBLE (la
+    # marque qui porte le `<title>`, l'élément qui porte l'attribut), de chacun de ses FRÈRES
+    # directs, de leur PARENT pris en entier, et du `<text>` déclaré étiquette de la marque
+    # (`data-etiquette-de`, `aria-labelledby`). Seuil : celui de L3 bis — égalité une fois casse,
+    # ponctuation et espaces retirés. Sortie déclarative inchangée : `data-legende-ok`.
+    #
+    # LA MESURE DE BRUIT (03/10/2026, AVANT de poser la règle — D-55 (a)). Ancienne et nouvelle
+    # version jouées sur les 3 267 pages HTML de 29 dépôts produits de C:\dev (hors node_modules,
+    # old/, .claude/worktrees), en lecture seule. Cinq passes (les quatre premières sur 3 311 pages,
+    # dossiers `Old/` compris), chaque faux positif corrigé :
+    #   · `aria-label` RETIRÉ des porteurs : 144 constats, TOUS des noms accessibles égaux au
+    #     libellé visible d'un lien, d'un bouton, d'un champ ou d'un `role="img"` — ce que WCAG
+    #     2.5.3 (« label in name ») RECOMMANDE. Un `aria-label` ne s'affiche pas au survol : ce
+    #     n'est pas une infobulle. (L3 bis des cellules le garde, inchangé.)
+    #   · texte réservé au LECTEUR D'ÉCRAN exclu du texte visible (`.sr`, `.visually-hidden`,
+    #     `.visuellement-cache`…, et toute classe que la feuille masque par clip / boîte de 1 px /
+    #     text-indent / police nulle) : 2 015 constats sur des pastilles `▩▩▩▩▢` doublées d'un
+    #     `.sr` — leur title est la SEULE explication vue ;
+    #   · ÉLÉMENT D'ICÔNE (classe `icon`, `*-icon`, `fa`…) : 220 constats sur des icônes d'export
+    #     tiers dont le texte est masqué par une feuille externe ;
+    #   · texte TRONQUÉ (ellipse, line-clamp) : 2 constats, le title y montre ce que la boîte cache.
+    # Résultat final : 142 éléments sur 23 pages de 2 dépôts (dont Produit-02), TOUS inspectés,
+    # TOUS de vrais défauts — glose (`title` = la définition écrite juste à côté), jeton défini
+    # sur place, tuile d'indicateur dont le title recopie la tuile, champ de formulaire dont le
+    # title recopie son aide visible. ZÉRO faux positif : la règle est BLOQUANTE.
+    #
+    # LA VARIANTE « CONTIENT SANS RIEN AJOUTER » (l'infobulle est incluse dans un texte voisin),
+    # écartée le 08/09 faute de mesure (TF-0954), a été mesurée le même jour : 527 constats sur 56
+    # pages de 5 dépôts, en majorité vrais, mais avec des faux positifs avérés — un bouton de
+    # fermeture sans texte dont le panneau voisin contient un AUTRE « Fermer » ; un gabarit Jinja
+    # dont le code `c.etat` contient le mot « État » du title. Le bruit n'est pas nul : elle
+    # N'EST PAS POSÉE. La rouvrir demande un voisinage plus étroit que le parent, et une mesure.
+    # Classes que la feuille de la page MASQUE au lecteur voyant (motif « lecteur d'écran seul » :
+    # clip, clip-path, boîte de 1 px, text-indent rejeté, police nulle) et classes qui TRONQUENT
+    # leur texte (ellipse, line-clamp) — le `title` d'un texte tronqué montre ce que la boîte cache.
+    cl_masquees, cl_tronquees = set(CL_LECTEUR_ECRAN_SEUL), {"truncate", "text-ellipsis",
+                                                              "ellipsis", "tronque"}
+    for sel, d in css:
+        sujet = re.findall(r"\.([\w-]+)", sel.split(",")[-1].split()[-1]) if sel.split() else []
+        if not sujet:
+            continue
+        decl = " ".join(f"{k}:{v}" for k, v in d.items())
+        if re.search(r"clip\s*:\s*rect\(|clip-path\s*:\s*inset\(\s*50%|text-indent\s*:\s*-\d{3,}"
+                     r"|font-size\s*:\s*0(?:px)?(?:\s|;|$)", decl) \
+                or (d.get("position") == "absolute" and d.get("width", "").startswith("1px")):
+            cl_masquees.update(sujet)
+        if "ellipsis" in d.get("text-overflow", "") or "-webkit-line-clamp" in d:
+            cl_tronquees.update(sujet)
+
+    def _icone(e):
+        """Un élément d'ICÔNE ne montre pas son texte en mots (police d'icônes, feuille externe)."""
+        return any(re.search(r"(?:^|-)icon(?:-|$)|^(?:fa|glyphicon|material-icons\S*)$", c)
+                   for c in e.classes())
+
+    def _masque(e):
+        """Texte que le lecteur VOYANT ne lit pas : lecteur d'écran seul, masqué, ou icône."""
+        if e.classes() & cl_masquees or "hidden" in e.attrs or _icone(e):
+            return True
+        return bool(re.search(r"display\s*:\s*none", e.att("style") or "", re.I))
+
+    def _tronque(e):
+        return bool(e.classes() & cl_tronquees) or bool(
+            re.search(r"text-overflow\s*:\s*ellipsis|line-clamp", e.att("style") or "", re.I))
+
+    def _texte_vu(n):
+        """Texte VISIBLE : sans <title>/<desc> SVG, sans script ni style, sans le texte réservé
+        au lecteur d'écran. Une pastille `▩▩▩▩▢` doublée d'un `.sr` « gain 4 sur 5 » ne MONTRE
+        pas « gain 4 sur 5 » : son `title` est la seule explication visible, pas une redite."""
+        out = []
+        for e in n.enfants:
+            if isinstance(e, str):
+                out.append(e)
+            elif e.tag not in ("script", "style", "title", "desc") and not _masque(e):
+                out.append(_texte_vu(e))
+        return "".join(out)
+
+    def _voisinage(cible, porteur):
+        """Les textes visibles auxquels une infobulle de `cible` se compare. Le `porteur` (le
+        <title> lui-même) n'est jamais son propre voisin : un <svg aria-labelledby> qui pointe
+        son propre <title> ne « répète » rien."""
+        textes = [] if _masque(cible) else [_texte_vu(cible)]
+        parent = cible.parent
+        if parent is not None and parent.tag not in ("[racine]", "body", "html"):
+            for f in parent.enfants:
+                if isinstance(f, Noeud) and f is not cible and not _masque(f) \
+                        and f.tag not in ("script", "style", "title", "desc"):
+                    textes.append(_texte_vu(f))
+            if not _masque(parent):
+                textes.append(_texte_vu(parent))
+        ident = cible.att("id")
+        if ident:
+            textes += [_texte_vu(e) for e in etiquettes_de.get(ident, ())]
+        for ref in (cible.att("aria-labelledby") or "").split():
+            if ref in ids and ids[ref] is not porteur:
+                textes.append(_texte_vu(ids[ref]))
+        return [x for x in textes if _norme_legende(x)]
+
+    etiquettes_de = {}
+    for e in a.racine.descendants():
+        for ref in (e.att("data-etiquette-de") or "").split():
+            etiquettes_de.setdefault(ref, []).append(e)
+
+    def _dans_svg(n):
+        return any(x.tag == "svg" for x in n.ancetres())
+
+    redondantes = []
+    for n in a.racine.descendants():
+        porteurs = []
+        if n.tag == "title" and _dans_svg(n) and n.parent is not None:
+            porteurs.append(("<title>", n.texte_propre(), n.parent))
+        elif n.tag not in ("td", "th", "title", "[racine]", "html", "head", "body"):
+            for att in ("title", "data-tip", "data-definition"):
+                v = (n.att(att) or "").strip()
+                if v:
+                    porteurs.append((att, v, n))
+        for att, aide, cible in porteurs:
+            na = _norme_legende(aide)
+            if not na:
+                continue
+            if any("data-legende-ok" in x.attrs for x in [n, cible, *cible.ancetres()]):
+                continue
+            if _tronque(cible):
+                continue                  # le title d'un texte tronqué montre ce que la boîte cache
+            voisins = _voisinage(cible, n)
+            ou = cible.chemin()
+            if na in [_norme_legende(v) for v in voisins]:
+                redondantes.append((att, aide[:60], ou))
+
     # --- L3 bis (suite) : une DEFINITION DE COLONNE qui recopie son en-tete (TF-0954, 08/09)
     #
     # LE FAIT. La loi posee par L3 bis est « une explication qui recopie son porteur n'est pas une
@@ -1684,6 +1841,17 @@ def check_lisibilite(html: str, a: Arbre):
             "définition du champ ; si un catalogue commenté existe, l'infobulle se génère "
             "depuis ses commentaires. Répétition VOULUE (graphie normalisée, "
             "transcription) → `data-legende-ok`, déclaré sur la cellule ou sa colonne.")
+
+    if redondantes:
+        att, aide, ou = redondantes[0]
+        fails.append(
+            f"L3 infobulle REDONDANTE sur {len(redondantes)} élément(s) — le {att} « {aide}… » "
+            f"répète le texte déjà visible de sa cible ou de son voisinage immédiat ({ou}). Une "
+            "infobulle qui affiche ce que la page montre déjà n'apprend rien (retour humain, "
+            "troisième occurrence) : elle porte un COMPLÉMENT — d'où vient la valeur, ce qu'elle "
+            "mesure, à quoi la comparer — ou elle disparaît. La légende d'une valeur se lie par "
+            "`aria-describedby` vers un texte visible (L3) ; elle n'a pas besoin d'être recopiée "
+            "dans un title. Répétition VOULUE → `data-legende-ok` sur l'élément ou un ancêtre.")
 
     # --- L4 : liste longue filtrable --------------------------------------
     for t in [n for n in a.racine.descendants() if n.tag == "table"]:

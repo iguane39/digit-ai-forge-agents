@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 infobulle redondante — 20261003a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.entonnoir{display:flex;gap:16px;list-style:none;padding:0}
+.etape{padding:8px 12px;border:1px solid var(--line)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de L3 bis étendue — l'infobulle REDONDANTE hors tableau (RT-118, Produit-02,
+  03/10/2026).
+
+  Les deux défauts, mot pour mot ceux de la page servie : une étape d'entonnoir affiche
+  « 54 visites engagées » et son title répète « 54 visites engagées » ; une barre SVG porte un
+  <title> qui répète le montant écrit au-dessus d'elle (le <text> frère). L3 bis ne jugeait que
+  les <td> : la version précédente rend PASS sur cette page.
+
+  Attendu : L3 (infobulle REDONDANTE, deux éléments).
+-->
+<body><main class="wrap">
+<h1>Visites et dépenses de la semaine</h1>
+<p>L'entonnoir compte les visites du site ; les barres donnent la dépense publicitaire par jour.</p>
+<ul class="entonnoir">
+<li class="etape" title="63 visites">63 visites</li>
+<li class="etape" title="54 visites engagées"><b>54</b> visites engagées</li>
+</ul>
+<svg width="240" height="140" viewBox="0 0 240 140" role="img" aria-labelledby="titre-barres">
+  <title id="titre-barres">Dépense publicitaire par jour, en euros, du 1er au 3 octobre</title>
+  <rect x="20" y="40" width="40" height="80" fill="#2563EB"><title>26,69 €</title></rect>
+  <text x="40" y="34" text-anchor="middle" font-size="12">26,69 €</text>
+  <rect x="90" y="70" width="40" height="50" fill="#2563EB"><title>14,20 €</title></rect>
+  <text x="110" y="64" text-anchor="middle" font-size="12">14,20 €</text>
+</svg>
+</main></body></html>

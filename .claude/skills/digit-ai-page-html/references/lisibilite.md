@@ -168,8 +168,12 @@ mobile, et n'a jamais la place d'énoncer cinq crans. Le barème doit **exister 
 document**. C'est la mécanisation de « 1/5 sans barème = défaut ».
 
 **(b) Les autres valeurs mises en avant** — `kpi`, `badge`, `pastille`, `pv`, `stat`.
-Exigence : `title` non vide, **ou** `aria-label` non vide, **ou** `aria-describedby` résolu,
-**ou** une légende visible (`<small>`, `.legende`, `.kpi-d`) d'au moins 12 caractères.
+Exigence : **`aria-describedby` vers une légende visible de la page — le porteur recommandé**,
+parce qu'elle survit au PDF, s'atteint au doigt et ne se recopie pas ; **ou** une légende visible
+(`<small>`, `.legende`, `.kpi-d`) d'au moins 12 caractères ; **ou**, à défaut, `aria-label` ou
+`title` non vide. Le `title` est la voie la plus courte, et c'est pour cela qu'il n'est plus nommé
+en premier (RT-118, Produit-02, 03/10/2026) : une session a posé « Statut de S1 » sur des
+pastilles pour passer L3. Une infobulle porte un **complément**, jamais une redite — voir (e bis).
 
 Un `title=""` vide est **pire** que pas de tooltip : il annonce une explication et n'en
 donne aucune. C'est un échec, pas un avertissement.
@@ -206,6 +210,31 @@ porte l'explication de la VALEUR* — d'où elle vient, ce qu'elle mesure, ce qu
 générateur qui dispose d'un catalogue commenté lit ses commentaires plutôt que de recomposer
 l'en-tête. Répétition **voulue** (graphie normalisée, transcription) → `data-legende-ok`,
 déclaré sur la cellule ou sur sa colonne : c'est le geste complet, pas la moitié.
+
+**(e bis) L'infobulle REDONDANTE hors tableau** (RT-118, Produit-02, D-55 (a) du 03/10/2026). (e)
+ne jugeait que les cellules. Sur une page servie, une étape d'entonnoir affichait « 54 visites
+engagées » et son infobulle répétait « 54 visites engagées » ; les `<title>` des barres SVG
+répétaient le montant écrit au-dessus. Retour humain, troisième occurrence : « des tooltips qui
+affichent ce qu'on a par ailleurs sur la page, ça n'a pas d'intérêt ; les tooltips doivent fournir
+des informations complémentaires ».
+
+Exigence : le `<title>` enfant d'un élément SVG, et le `title` / `data-tip` / `data-definition` de
+tout élément hors cellule, une fois casse, ponctuation et espaces retirés, ne doivent pas **égaler**
+le texte visible de leur cible, d'un de ses frères directs, de leur parent pris en entier, ni du
+`<text>` déclaré étiquette de la marque (`data-etiquette-de`, `aria-labelledby`). N'est pas compté
+comme visible : le texte réservé au lecteur d'écran (`.sr`, `.visually-hidden`, toute classe que la
+feuille masque), le texte d'un élément d'icône. Un texte **tronqué** (ellipse, line-clamp) garde son
+`title` : il montre ce que la boîte cache. `aria-label` n'est pas jugé ici — c'est un nom
+accessible, pas une infobulle, et WCAG 2.5.3 lui demande justement de contenir le libellé visible.
+Répétition voulue → `data-legende-ok`.
+
+Mesure de bruit avant de poser la règle : 3 267 pages de 29 dépôts produits, 142 éléments sur 23
+pages de 2 dépôts, **tous de vrais défauts** (glose dont le `title` répète la définition écrite à
+côté, tuile d'indicateur dont le `title` recopie la tuile, champ dont le `title` recopie son aide
+visible) : **bloquant**. La variante « l'infobulle est **contenue** dans un texte voisin sans rien
+ajouter » a été mesurée aussi — 527 constats sur 56 pages de 5 dépôts, avec des faux positifs
+avérés (un bouton de fermeture sans texte dont le panneau voisin contient un autre « Fermer ») :
+elle **n'est pas posée**.
 
 **(f) L'objet d'un système source CITÉ mais jamais joint** (TF-0934, 08/09/2026). Le lendemain
 de (e), le même livrable portait des colonnes « Source héritée » nommant les objets d'un
@@ -248,7 +277,7 @@ Il retire le `title` natif pendant l'affichage pour que les deux infobulles ne s
 et le **restitue** à la fermeture — un `title` perdu est un contenu perdu à l'impression et pour
 les technologies d'assistance. Bloc **voulu** → `data-legende-ok`.
 
-**Contrôle mécanique.** `L3` — les sept exigences ci-dessus, plus l'échec explicite sur
+**Contrôle mécanique.** `L3` — les huit exigences ci-dessus, plus l'échec explicite sur
 légende vide et sur `aria-describedby` pointant dans le vide.
 
 **Revue de lecture.** Que le barème soit juste, que ses crans soient discriminants, et que

@@ -240,6 +240,13 @@ CAS = {
     # G9 et L27 verifient qu'une definition EXISTE, jamais qu'elle APPREND quelque chose.
     "l3-definition-colonne-tautologique.html": {"L3"},
     "l3-definition-colonne-explicative.html": set(),
+    # RT-118 (lot Produit-02 20261003b, D-55 (a) du 03/10) — L3 bis ETENDUE hors tableau : une
+    # etape d'entonnoir dont le title repete « 54 visites engagees », des <title> de barres SVG qui
+    # repetent le montant ecrit au-dessus. La version precedente rend PASS sur la rouge. La verte
+    # est la meme page avec des infobulles de COMPLEMENT, et porte les quatre sorties mesurees sur
+    # le parc : texte `.sr` non vu, texte tronque, `data-legende-ok`, etiquette `data-etiquette-de`.
+    "l3-infobulle-redondante.html": {"L3"},
+    "l3-infobulle-complementaire.html": set(),
     # TF-0934 (lot Produit-10 20260908c) — L3 ter : l'objet NOMME que personne n'explique. Les
     # objets d'un systeme source CITE mais jamais joint n'ont aucun catalogue commente ; le
     # generateur fait retomber l'infobulle sur la DEFINITION DE LA COLONNE, la meme phrase sur
