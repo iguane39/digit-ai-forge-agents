@@ -1757,6 +1757,23 @@ else {
     else if (a2.length) ko('TF-0982 (A) sens 2 : ' + a2.length + ' anteriorite(s) declaree(s) alors que la revision est POSTERIEURE a la borne — la comparaison de dates est inversee');
     else ok('TF-0982 (A) sens 2 : la MEME occurrence sous une borne au 2019-01-01 → FAIL, ' + b2.length + ' bloquant(s), zero anteriorite. La borne mord dans les DEUX sens');
 
+    // (A bis) D-65 (a) du 12/10/2026 — un MESSAGE de commit ancien est borne comme un blob ancien :
+    //     publie, il ne se corrige pas sans reecrire l'historique. Meme double sens que (A).
+    const histoireMsg = batir('histoire-message', [
+      { date: VIEUX, message: 'compte rendu remis a ' + CLIENT,
+        ecrire: { 'garde.md': 'Ce fichier ne porte aucun nom.\n' } },
+    ]);
+    const jM1 = jouer(histoireMsg, borneApres, tProduitsNu);
+    const aM1 = ante(jM1).filter(f => f.regle === 'C3');
+    if (!jM1) ko('D-65 (a) sens 1 : sortie de l oracle inexploitable');
+    else if (jM1.verdict !== 'PASS' || aM1.length !== 1 || !/ANTÉRIORITÉ/.test(aM1[0].msg)) ko('D-65 (a) sens 1 : un message de 2020 anterieur a la borne du 2025-01-01 devrait etre UNE anteriorite C3 nommee, verdict PASS — obtenu ' + jM1.verdict + ', ' + aM1.length + ' anteriorite(s)');
+    else ok('D-65 (a) sens 1 : message de commit de 2020 sous une borne au 2025-01-01 → PASS, 1 anteriorite C3 nommee');
+    const jM2 = jouer(histoireMsg, borneAvant, tProduitsNu);
+    const bM2 = bloq(jM2).filter(f => f.regle === 'C3');
+    if (!jM2) ko('D-65 (a) sens 2 : sortie de l oracle inexploitable');
+    else if (jM2.verdict !== 'FAIL' || bM2.length !== 1) ko('D-65 (a) sens 2 : le MEME message sous une borne au 2019-01-01 devrait rester bloquant — obtenu ' + jM2.verdict + ', ' + bM2.length + ' bloquant(s) C3');
+    else ok('D-65 (a) sens 2 : le MEME message sous une borne au 2019-01-01 → FAIL, 1 bloquant C3 : la borne ne devient pas une amnistie');
+
     // ---------------------------------------------------------------------------------------
     // (E) LA BORNE À L'INSTANT (27/09/2026, décision humaine D-28 (a)) — la MÊME occurrence, datée
     //     du 2020-03-04 à 10:00 (+01:00), sous quatre bornes. Un instant plus tard le même jour :
@@ -1800,14 +1817,14 @@ else {
     const jB = jouer(arbre, tClientsNu, tProduitsLoin);
     const bB = bloq(jB), aB = ante(jB);
     const dansArbre = bB.filter(f => /contenu d'un fichier suivi/.test(f.msg));
-    const dansMessage = bB.filter(f => /MESSAGE de commit/.test(f.msg));
+    const dansMessage = aB.filter(f => /MESSAGE de commit/.test(f.msg));
     const dansHisto = aB.filter(f => /CONTENU d'un fichier de l'historique/.test(f.msg));
     if (!jB) ko('TF-0982 (B) : sortie de l oracle inexploitable');
     else if (jB.verdict !== 'FAIL') ko('TF-0982 (B) : une borne au 2099-01-01 desarme la porte ENTIERE (' + jB.verdict + ') — l arbre courant et les messages de commit ont ete bornes eux aussi, alors qu ils se corrigent par une edition');
     else if (!dansArbre.length) ko('TF-0982 (B) : le nom present dans un fichier SUIVI ne bloque plus — l arbre courant a ete borne');
-    else if (!dansMessage.length) ko('TF-0982 (B) : le nom present dans un MESSAGE de commit ne bloque plus — les messages ont ete bornes');
+    else if (!dansMessage.length) ko('TF-0982 (B) et D-65 (a) : le MESSAGE de commit ancien n est pas declare en anteriorite — depuis le 12/10/2026, un message deja ecrit est borne comme un blob ancien');
     else if (!dansHisto.length) ko('TF-0982 (B) : aucune anteriorite sur le blob ancien du MEME depot — le temoin manque, et le cas ne prouve pas que la borne s applique bien QUELQUE PART');
-    else ok('TF-0982 (B) : sous une borne au 2099-01-01, dans UN SEUL depot — le fichier SUIVI bloque (' + dansArbre.length + '), le MESSAGE de commit bloque (' + dansMessage.length + '), et le blob ancien du meme terme est une anteriorite (' + dansHisto.length + '). L arbre et les messages ne sont pas bornes');
+    else ok('TF-0982 (B) : sous une borne au 2099-01-01, dans UN SEUL depot — le fichier SUIVI bloque (' + dansArbre.length + '), le MESSAGE de commit ancien est une anteriorite (' + dansMessage.length + ', D-65 (a)), et le blob ancien du meme terme aussi (' + dansHisto.length + '). Seul l arbre courant n est pas borne');
 
     // ---------------------------------------------------------------------------------------
     // (C) UN TERME SANS DATE N'EST PAS EXEMPTÉ — le bloc `depuis` existe, il date un AUTRE terme.

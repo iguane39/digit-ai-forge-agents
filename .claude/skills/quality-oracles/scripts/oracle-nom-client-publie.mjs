@@ -356,8 +356,9 @@ function estAnteriorite(borne, dateOcc) {
   return Number.isFinite(b) && Number.isFinite(o) && o < b;
 }
 
-/** La sévérité d'un constat d'HISTOIRE — et de l'histoire SEULE : l'arbre courant et les messages
- *  de commit n'appellent jamais cette fonction. */
+/** La sévérité d'un constat d'HISTOIRE — et de l'histoire SEULE : l'arbre courant ne l'appelle jamais.
+ *  Les messages de commit l'appellent depuis le 12/10/2026 (D-65 (a)) : un message déjà écrit ne se
+ *  corrige pas sans réécrire l'historique, exactement comme un blob ancien. */
 const sevHisto = (borne, dateOcc) => (estAnteriorite(borne, dateOcc) ? 'anteriorite' : 'bloquant');
 
 /** De deux bornes, la plus STRICTE — celle qui exempte le moins. Jours différents : le plus ancien.
@@ -840,23 +841,34 @@ try {
   // L'angle oublié du 27/08 : huit dépôts déclarés propres, un neuvième trouvé ensuite par ce
   // seul contrôle. Un message de commit est publié aussi sûrement qu'un fichier.
   const sep = '<<<COMMIT>>>';
-  const journal = (git(repo, 'log', '--all', `--format=${sep}%H%n%B`).stdout || '').split(sep).filter((x) => x.trim());
+  // D-65 (a) du 12/10/2026 : la date d'auteur borne le message comme elle borne un blob ancien —
+  // un message antérieur à l'inscription de son terme est une ANTÉRIORITÉ, nommée et comptée.
+  const journal = (git(repo, 'log', '--all', `--format=${sep}%H%n%aI%n%B`).stdout || '').split(sep).filter((x) => x.trim());
   for (const bloc of journal) {
-    const nl = bloc.indexOf('\n');
-    const sha = bloc.slice(0, nl < 0 ? bloc.length : nl).trim();
-    const corps = nl < 0 ? '' : bloc.slice(nl + 1);
-    for (const t of T) if (chercheTexte(corps, t)) findings.push({
-      sev: 'bloquant', regle: 'C3',
-      msg: `${t.genre} interdit « ${t.mot} » dans un MESSAGE de commit`,
-      where: sha.slice(0, 12),
-    });
+    const lignes = bloc.split('\n');
+    const sha = (lignes[0] || '').trim();
+    const dOcc = (lignes[1] || '').trim() || null;
+    const corps = lignes.slice(2).join('\n');
+    for (const t of T) if (chercheTexte(corps, t)) {
+      const sev = sevHisto(t.depuis, dOcc);
+      findings.push({
+        sev, regle: 'C3',
+        msg: `${t.genre} interdit « ${t.mot} » dans un MESSAGE de commit`
+          + (sev === 'anteriorite' ? ditAnteriorite(t.depuis, dOcc) : ''),
+        where: sha.slice(0, 12),
+      });
+    }
     // C5 · le même message, jugé sur les NOMS DE PRODUITS. Un message de commit est publié aussi
     // sûrement qu'un fichier, et il ne se corrige pas sans réécrire l'historique.
-    for (const pr of P) if (porteProduit(corps, pr)) findings.push({
-      sev: 'bloquant', regle: 'C5',
-      msg: `nom de produit interdit « ${pr.cle} » dans un MESSAGE de commit`,
-      where: sha.slice(0, 12),
-    });
+    for (const pr of P) if (porteProduit(corps, pr)) {
+      const sev = sevHisto(pr.depuis, dOcc);
+      findings.push({
+        sev, regle: 'C5',
+        msg: `nom de produit interdit « ${pr.cle} » dans un MESSAGE de commit`
+          + (sev === 'anteriorite' ? ditAnteriorite(pr.depuis, dOcc) : ''),
+        where: sha.slice(0, 12),
+      });
+    }
   }
 
   // --- C4 · contenus ET noms de fichiers dans TOUT l'historique -------------
