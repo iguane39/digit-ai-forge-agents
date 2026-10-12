@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — fleches routees autour des boites — 20260924a</title>
+<!--
+  Fixture VERTE de TF-1369 : les memes trois briques. Source → Relais en ligne droite, d'un bord
+  a l'autre ; Source → Cible par une fleche COUDEE qui passe sous Relais sans la toucher. La boite
+  englobante de la fleche coudee recouvre Relais sans qu'aucun trait ne la touche : c'est le cas
+  qui faisait 42 des 45 constats V4 du schema mesure. Attendu : 0 constat v4_overlap.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+svg{display:block;width:100%;height:auto}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — fleches routees autour des boites</h1>
+<svg viewBox="0 0 600 200" role="img" aria-label="Trois briques reliees">
+  <line x1="120" y1="60" x2="250" y2="60" stroke="#334155" stroke-width="2"/>
+  <path d="M120 80 L200 80 L200 130 L420 130 L420 80 L480 80" fill="none" stroke="#334155" stroke-width="2"/>
+  <g><title>Source</title>
+    <rect x="20" y="30" width="100" height="60" fill="#E2E8F0"/>
+    <text x="70" y="65" text-anchor="middle" font-size="14" fill="#0F172A">Source</text>
+  </g>
+  <g><title>Relais</title>
+    <rect x="250" y="30" width="100" height="60" fill="#E2E8F0"/>
+    <text x="300" y="65" text-anchor="middle" font-size="14" fill="#0F172A">Relais</text>
+  </g>
+  <g><title>Cible</title>
+    <rect x="480" y="30" width="100" height="60" fill="#E2E8F0"/>
+    <text x="530" y="65" text-anchor="middle" font-size="14" fill="#0F172A">Cible</text>
+  </g>
+</svg>
+</main></body></html>

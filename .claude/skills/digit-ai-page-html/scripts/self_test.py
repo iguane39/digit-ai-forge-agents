@@ -597,6 +597,13 @@ CAS_RENDU = {
     # dessous, pas sur l'encre heritee de la page. Sans la correction, la rouge rendait 0 constat.
     "v2-svg-libelle-couleur-de-sa-boite.html": ("v2_contrast", 2),
     "v2-svg-libelle-lisible-sur-sa-boite.html": ("v2_contrast", 0),
+    # TF-1369 (lot Produit-68 20260924a, RG-8) : une fleche se juge par son trace. Rouge : une
+    # traversee et une confusion (l'ancienne mesure ne voyait que la seconde, par sa boite) ;
+    # verte : une fleche coudee dont la boite recouvre une brique sans la toucher (l'ancienne
+    # mesure l'accusait).
+    "v4-fleche-traverse-boite.html": ("v4_overlap", 2),
+    "v4-fleche-contourne-boite.html": ("v4_overlap", 0),
+    "v4-grille-de-graphe.html": ("v4_overlap", 0),
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
     # haut de boîte au suivant. Les deux pages sont identiques à une chose près —
     # un paragraphe hors de l'échelle d'espacement dans la rouge.

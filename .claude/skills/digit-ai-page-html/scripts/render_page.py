@@ -526,6 +526,19 @@ MEASURE_JS = r"""
     }
   }
 
+  // TF-1369 — un connecteur SVG (trait sans remplissage) : defini ici, avant le jugement par
+  // boite qui l'ecarte, et repris par la passe des fleches qui juge son trace.
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const estConnecteurV4 = (el) => {
+    if (!el || el.namespaceURI !== SVGNS) return false;
+    const t = el.tagName.toLowerCase();
+    if (!['line', 'polyline', 'path'].includes(t) || typeof el.getTotalLength !== 'function') return false;
+    const cs = getComputedStyle(el);
+    if (cs.stroke === 'none' || cs.display === 'none' || cs.visibility === 'hidden') return false;
+    if (t === 'line') return true;
+    const f = parseColor(cs.fill);
+    return cs.fill === 'none' || (f !== null && f.a === 0);
+  };
   // ---- V3 / V4 / V7 : frères d'un même parent ---------------------------
   const parents = new Set();
   for (const el of document.body.querySelectorAll('*')) {
@@ -571,6 +584,8 @@ MEASURE_JS = r"""
       for (let j = i + 1; j < kids.length; j++) {
         const a = kids[i], b = kids[j];
         if (svgIcone || groupeTitre || svgFigure) continue;
+        // TF-1369 — un connecteur se juge par son TRACE (passe dediee plus bas), plus par sa boite.
+        if (estConnecteurV4(a.el) || estConnecteurV4(b.el)) continue;
         // TF-1146 (16/09, lot Produit-64 20260916a, retour RD-6) — L EXEMPTION S APPLIQUAIT A L
         // ELEMENT, PAS A LA PAIRE, ET COUVRAIT DONC AUSSI LE RECOUVREMENT NON VOULU. Dans le
         // schema des trois couches, le libelle de fleche « expose ses sorties a » etait imprime
@@ -775,6 +790,152 @@ MEASURE_JS = r"""
             detail: `espaces de ${gaps.map((g) => Math.round(g)).join(' / ')}px` });
         }
       }
+    }
+  }
+  // ---- V4 (fleches) : TF-1369 — une fleche se juge par son TRACE, pas par sa boite ---------
+  // Lot Produit-68 20260924a, RG-8 : sur un schema remis, 5 liaisons droites traversaient les
+  // boites intermediaires (11 traversees) et 18 paires de fleches etaient confondues, sans un
+  // constat V4 — la boite d'une ligne droite a une aire nulle, `visible()` l'ecarte. A l'inverse,
+  // 42 des 45 constats V4 du schema venaient de la boite d'une fleche COUDEE, qui recouvre ses
+  // voisins sans qu'aucun trait ne les touche. Les connecteurs (`line`, `polyline`, `path` sans
+  // remplissage, avec un trait) sortent donc du jugement par boite, et leur trace est echantillonne
+  // tous les 2 px a l'ecran :
+  //   · TRAVERSEE : un point du trace a l'interieur (3 px de marge) d'une forme remplie FEUILLE
+  //     (rect, cercle, ellipse, polygone qui n'en contient aucune autre — une bande ou un cadre
+  //     de fond n'est pas une boite) qui ne porte aucune de ses deux extremites ;
+  //   · seules les LIAISONS sont jugees : un trait a marqueur de fleche, ou dont les deux
+  //     extremites touchent deux formes distinctes — une grille ou un axe de graphique n'en est pas ;
+  //   · CONFUSION : deux liaisons dont les traces courent a moins de 1,5 px l'un de l'autre
+  //     sur 24 px ou plus — le lecteur ne sait plus lequel va ou.
+  // Exemption : `data-overlap-ok` sur le connecteur, nue (tout) ou par ids / jetons partages,
+  // meme grammaire que V4 (TF-1146, TF-1281).
+  const horsJugement = (el) => {
+    const svg = el.closest('svg');
+    if (!svg) return true;
+    const rr = svg.getBoundingClientRect();
+    if (rr.width < 48 && rr.height < 48) return true;              // icone
+    return (svg.getAttribute('role') || '').trim() === 'img' && !svg.querySelector('text')
+      && Boolean((svg.getAttribute('aria-label') || '').trim()
+        || (svg.getAttribute('aria-labelledby') || '').trim()
+        || [...svg.children].some((c) => c.tagName.toLowerCase() === 'title'));   // logo (TF-1628)
+  };
+  const tracer = (el) => {
+    let total = 0;
+    try { total = el.getTotalLength(); } catch (e) { return null; }
+    const m = el.getScreenCTM();
+    if (!m || !(total > 0)) return null;
+    const echelle = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d)) || 1;
+    const pas = 2 / echelle;
+    const pts = [];
+    for (let l = 0; l <= total + 1e-6; l += pas) {
+      const p = el.getPointAtLength(Math.min(l, total));
+      const q = new DOMPoint(p.x, p.y).matrixTransform(m);
+      pts.push({ x: q.x, y: q.y });
+    }
+    return pts;
+  };
+  const declarations = (el) => {
+    const v = el.getAttribute('data-overlap-ok');
+    return v === null ? null : v.trim().split(/\s+/).filter(Boolean);
+  };
+  const exempte = (c, autre) => {
+    const pc = declarations(c), po = declarations(autre);
+    if (pc !== null && pc.length === 0) return true;
+    if (po !== null && po.length === 0 && estConnecteurV4(autre)) return true;
+    return (pc || []).includes(autre.id) || (po || []).includes(c.id)
+      || (pc !== null && po !== null && pc.some((x) => po.includes(x)));
+  };
+  const connecteurs = [...document.querySelectorAll('svg line, svg polyline, svg path')]
+    .filter((el) => estConnecteurV4(el) && !horsJugement(el))
+    .map((el) => ({ el, pts: tracer(el) })).filter((c) => c.pts && c.pts.length >= 2);
+  if (connecteurs.length) {
+    const formes = [...document.querySelectorAll('svg rect, svg circle, svg ellipse, svg polygon')]
+      .filter((el) => {
+        if (horsJugement(el)) return false;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || cs.fill === 'none') return false;
+        const f = parseColor(cs.fill);
+        if (f !== null && f.a === 0) return false;
+        const r = el.getBoundingClientRect();
+        return r.width >= 8 && r.height >= 8;
+      })
+      .map((el) => ({ el, r: el.getBoundingClientRect(), svg: el.closest('svg') }));
+    const contient = (a, b) => a !== b && a.left <= b.left + 0.5 && a.right >= b.right - 0.5
+      && a.top <= b.top + 0.5 && a.bottom >= b.bottom - 0.5;
+    const feuilles = formes.filter((f) => !formes.some((g) => g.svg === f.svg && g !== f && contient(f.r, g.r)));
+    const dans = (p, r, m) => p.x > r.left + m && p.x < r.right - m && p.y > r.top + m && p.y < r.bottom - m;
+    const PLAFOND_FLECHES = 40;
+    let constatsFleches = 0;
+    // UNE LIAISON RELIE DEUX BOITES. Une grille ou un axe de graphique traverse ses barres par
+    // construction (mesure du 12/10/2026 sur l'exemple des barres empilees du socle : 19 faux
+    // constats). N'est jugee qu'une LIAISON : un trait qui porte un marqueur de fleche, ou dont
+    // les deux extremites touchent (6 px) deux formes feuilles distinctes sans y entrer.
+    const accroche = (p, svg) => feuilles.find((f) => f.svg === svg && dans(p, f.r, -6));
+    const liaisons = connecteurs.filter((c) => {
+      const cs = getComputedStyle(c.el);
+      if ((cs.markerEnd && cs.markerEnd !== 'none') || (cs.markerStart && cs.markerStart !== 'none')) return true;
+      const svg = c.el.closest('svg');
+      const a1 = accroche(c.pts[0], svg), a2 = accroche(c.pts[c.pts.length - 1], svg);
+      // Une liaison QUITTE ses boites ; une ligne de grille dont l'extremite frole une barre la
+      // traverse aussitot (mesure a 390 px, ou la tolerance de 6 px atteint les barres voisines).
+      return Boolean(a1 && a2 && a1 !== a2)
+        && !c.pts.some((p) => dans(p, a1.r, 3) || dans(p, a2.r, 3));
+    });
+    for (const c of liaisons) {
+      const svg = c.el.closest('svg');
+      const debut = c.pts[0], fin = c.pts[c.pts.length - 1];
+      for (const f of feuilles) {
+        if (f.svg !== svg || exempte(c.el, f.el)) continue;
+        if (dans(debut, f.r, -3) || dans(fin, f.r, -3)) continue;   // la boite porte une extremite
+        const interieurs = c.pts.filter((p) => dans(p, f.r, 3)).length;
+        if (interieurs && constatsFleches < PLAFOND_FLECHES) {
+          constatsFleches++;
+          issues.v4_overlap.push({ what: `${label(c.el)} × ${label(f.el)}`, detail:
+            `fleche qui TRAVERSE une boite qui n'est ni son depart ni son arrivee, sur ~${interieurs * 2} px `
+            + `de trace — cachee derriere elle ou peinte dessus, elle montre une liaison qui n'existe pas (TF-1369)` });
+        }
+      }
+    }
+    // UN TRAIT QUI BARRE UN TEXTE. Le jugement par boite l'attrapait pour un trace courbe ou coude
+    // (fixture v4-calque-recouvre-numero.html, TF-1281) : il reste juge, par le trace, pour toute
+    // liaison et pour tout connecteur dont la boite a une surface. Une ligne droite de grille ou
+    // d'axe (boite d'aire nulle, jamais jugee jusqu'ici) n'est pas une liaison et reste hors champ.
+    const textes = [...document.querySelectorAll('svg text')].filter((t) => !horsJugement(t) && visible(t))
+      .map((t) => ({ el: t, r: t.getBoundingClientRect(), svg: t.closest('svg') }));
+    for (const c of connecteurs) {
+      const rc = c.el.getBoundingClientRect();
+      if (!liaisons.includes(c) && !(rc.width > 1 && rc.height > 1)) continue;
+      const svg = c.el.closest('svg');
+      for (const t of textes) {
+        if (t.svg !== svg || exempte(c.el, t.el)) continue;
+        const dedans = c.pts.filter((p) => dans(p, t.r, 1)).length;
+        if (dedans && constatsFleches < PLAFOND_FLECHES) {
+          constatsFleches++;
+          issues.v4_overlap.push({ what: `${label(c.el)} × ${label(t.el)}`, detail:
+            `trait qui BARRE un texte sur ~${dedans * 2} px de trace — decaler le libelle, ou declarer `
+            + `la paire par data-overlap-ok (TF-1369, TF-1281)` });
+        }
+      }
+    }
+    for (let i = 0; i < liaisons.length; i++) {
+      for (let j = i + 1; j < liaisons.length; j++) {
+        const a = liaisons[i], b = liaisons[j];
+        if (a.el.closest('svg') !== b.el.closest('svg') || exempte(a.el, b.el)) continue;
+        let commun = 0;
+        for (const p of a.pts) {
+          if (b.pts.some((q) => Math.abs(p.x - q.x) <= 1.5 && Math.abs(p.y - q.y) <= 1.5)) commun++;
+        }
+        if (commun * 2 >= 24 && constatsFleches < PLAFOND_FLECHES) {
+          constatsFleches++;
+          issues.v4_overlap.push({ what: `${label(a.el)} × ${label(b.el)}`, detail:
+            `deux fleches CONFONDUES sur ~${commun * 2} px de trace : le lecteur ne sait plus laquelle `
+            + `va ou — decaler l'une, ou declarer le calque par data-overlap-ok (TF-1369)` });
+        }
+      }
+    }
+    if (constatsFleches >= PLAFOND_FLECHES) {
+      issues.unmeasured.push({ what: 'V4 fleches', detail:
+        `inventaire des fleches TRONQUE a ${PLAFOND_FLECHES} constats : les suivants ne sont pas listes` });
     }
   }
   // ---- L2 (rendu) : le texte occupe-t-il la place qu'on lui donne ? ------

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — fleche droite qui traverse une boite — 20260924a</title>
+<!--
+  Fixture ROUGE de TF-1369 (lot Produit-68 20260924a, RG-8) — LE FAIT MESURE : 5 liaisons tracees
+  en ligne droite a travers les boites intermediaires, cachees derriere elles, et 18 paires de
+  fleches confondues, sans un constat V4 : la boite englobante d'une ligne droite a une aire
+  nulle. Ici : la liaison Source → Cible passe sous la boite Relais (traversee), et deux
+  liaisons Relais → Cible courent l'une sur l'autre (confusion). Attendu : 2 constats v4_overlap.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+svg{display:block;width:100%;height:auto}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — fleche droite qui traverse une boite</h1>
+<svg viewBox="0 0 600 200" role="img" aria-label="Trois briques reliees">
+  <line x1="120" y1="60" x2="480" y2="60" stroke="#334155" stroke-width="2"/>
+  <path d="M300 90 L300 150 L540 150 L540 90" fill="none" stroke="#334155" stroke-width="2"/>
+  <path d="M300 90 L300 150 L540 150 L540 90" fill="none" stroke="#B91C1C" stroke-width="2"/>
+  <g><title>Source</title>
+    <rect x="20" y="30" width="100" height="60" fill="#E2E8F0"/>
+    <text x="70" y="65" text-anchor="middle" font-size="14" fill="#0F172A">Source</text>
+  </g>
+  <g><title>Relais</title>
+    <rect x="250" y="30" width="100" height="60" fill="#E2E8F0"/>
+    <text x="300" y="65" text-anchor="middle" font-size="14" fill="#0F172A">Relais</text>
+  </g>
+  <g><title>Cible</title>
+    <rect x="480" y="30" width="100" height="60" fill="#E2E8F0"/>
+    <text x="530" y="65" text-anchor="middle" font-size="14" fill="#0F172A">Cible</text>
+  </g>
+</svg>
+</main></body></html>
