@@ -125,8 +125,9 @@ logo est absent du Drive.
 
 La couverture porte **trois** assets :
 
-1. **Logo Digit-AI** dans le panneau blanc (asset `assets/logo-digit-ai.png`, seul endroit
-   autorisé avec la slide interlocuteurs).
+1. **Logo Digit-AI** dans le panneau blanc (seul endroit autorisé avec la slide interlocuteurs) :
+   fichier « Digit-AI - Logo + Texte - Bleu.png » du dossier `logos`
+   (`--name "Digit-AI - Logo + Texte - Bleu.png" --folder logos`). Repli texte propre seulement si le Drive est injoignable.
 2. **Logo client** depuis `logos` (`--name <client>.png --folder logos`), posé en `containBox`
    dans une boîte dédiée du panneau. Client absent du dépôt → le signaler et proposer de
    l'ajouter au dossier `logos`, sinon repli texte propre.
@@ -149,6 +150,14 @@ La couverture porte **trois** assets :
 ## 8. Passe QA finale — débordements & déformations (obligatoire)
 
 Après la génération complète, **rasteriser tout le deck et inspecter chaque slide** :
+
+```bash
+node scripts/exporter-pptx.mjs deck.pptx --png images/           # PowerPoint : Diapositive1.PNG, Diapositive2.PNG, …
+```
+
+Poste Windows avec PowerPoint (le cas du poste Digit-AI) : `--png` de l'export (étape 7 du
+workflow), dossier neuf, une image de 1600 px de large par diapositive. Poste avec LibreOffice et
+poppler, à défaut :
 
 ```bash
 soffice --headless --convert-to pdf --outdir . deck.pptx

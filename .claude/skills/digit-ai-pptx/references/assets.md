@@ -12,7 +12,7 @@ le `SKILL.md` v2.5.0 mais **n'ont jamais été livrés** avec lui ; ils ne sont 
 
 | Asset décrit par la source | État |
 |---|---|
-| logo officiel Digit-AI (PNG) | **non livré** |
+| logo officiel Digit-AI (PNG) | **non livré** dans le paquet ; présent dans le dossier Drive `logos` (« Digit-AI - Logo + Texte - Bleu.png », constat du 2026-10-12, TF-1386) |
 | photos N&B carrées des deux interlocuteurs | **non livré** (et pseudonymisées : cf. §4) |
 | fragment XML du slide « Vos interlocuteurs chez Digit-AI » | **non livré** |
 | script de fusion XML d'un slide canonique dans un PPTX existant | **non livré** |
@@ -72,4 +72,4 @@ Reprises de `references/drive-assets.md`, sans exception ici :
 - ratio d'origine **toujours** préservé (`containBox`), jamais `w` **et** `h` figés ;
 - **aucun cadre** : arrondi = masque alpha, jamais de `line` ;
 - webp / gif → **PNG** avant embarquement ;
-- un logo absent du dépôt → repli **texte propre**, jamais un logo étiré ni une case vide.
+- un logo absent du dépôt **et** du dossier Drive `logos` → repli **texte propre**, jamais un logo étiré ni une case vide. Le logo Digit-AI, lui, se récupère dans ce dossier.

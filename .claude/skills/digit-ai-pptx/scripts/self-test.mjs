@@ -51,6 +51,9 @@
 //   C10 — l'étape 0 du workflow, cadrer avant de générer (TF-1383) : SKILL.md prescrit la résolution de famille
 //        (G8) et le jugement de la fiche de conception (G6) ; les deux commandes sont rejouées sur le pilot :
 //        la fiche d'exemple remplie rend PASS, le modèle vide rend FAIL.
+//   C11 — le skill sur un poste Windows sans LibreOffice (TF-1386) : l'aide des scripts Python sort sous une
+//        console cp1252 (un script qui imprime une flèche sans forcer l'UTF-8 y échoue : le détecteur voit le
+//        défaut), et `--png` de l'export refuse un dossier existant et la combinaison avec --deja-exporte.
 //   C8 — sur demande (--essai-powerpoint) : l'essai réel par PowerPoint, joué seulement si AUCUN
 //        processus PowerPoint ne tourne, et avec --instance-neuve. L'instance lancée doit être
 //        quittée, le PPTX et le PDF écrits. Sans l'option, ou si PowerPoint tourne : non joué, dit.
@@ -103,6 +106,7 @@ const NON_JUGE = [
   "C7 répare des polices fictives à une famille : l'équivalence octet pour octet avec PowerPoint sur des polices réelles est une mesure du produit (8 flux sur 8, 30/09/2026), rapportée et non rejouée ici",
   "C9 joue le remède sur un deck de jeu produit par pptxgenjs 4.0.1 : que PowerPoint ouvre sans réserve un espace réservé posé ainsi, sans correspondance dans un gabarit, n'est pas prouvé par ce contrôle",
   "C10 prouve que les commandes prescrites distinguent une fiche remplie d'une fiche vide ; que l'agent remplisse réellement la fiche avant de générer, et que le lecteur y soit juste défini, n'est jugé par aucun contrôle de ce self-test",
+  "C11 ne tire aucune image : la capture par PowerPoint (--png) ne se prouve que par un essai réel, sur un poste où PowerPoint est installé, jamais par ce self-test sans PowerPoint",
   "C8 n'est joué que sur demande, et jamais quand PowerPoint tourne : sans lui, le chemin COM réel n'est prouvé par aucun contrôle de ce self-test",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
@@ -616,6 +620,42 @@ async function verifierCadrage() {
   return { joue: true, findings };
 }
 
+// ------------------------------------------ C11 : le skill sur un poste Windows sans LibreOffice (TF-1386)
+// Le fait (retours Produit-68 du 26/09/2026, RG-18) : la passe QA prescrivait soffice puis pdftoppm, absents du
+// poste ; prepare_images.py --help s'arrêtait sur UnicodeEncodeError dans une console cp1252. Les deux sens :
+//   (A) un script qui imprime une flèche sans forcer l'UTF-8 échoue sous cp1252 (le détecteur voit le défaut) ;
+//       l'aide des scripts Python du skill sort en code 0 sous cp1252 ;
+//   (B) la capture par PowerPoint (--png) refuse d'écraser un dossier existant et de se combiner à
+//       --deja-exporte, sans ouvrir PowerPoint.
+function verifierPoste() {
+  const py = pythonQuiRepond();
+  if (!py) return { joue: false, findings: [], motif: 'C11 NON JOUÉE : python introuvable' };
+  const findings = [];
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'poste-'));
+  try {
+    const env = { ...process.env, PYTHONIOENCODING: 'cp1252', PYTHONUTF8: '0' };
+    const jouer = (args) => spawnSync(py[0], [...py.slice(1), ...args], { encoding: 'utf8', timeout: 60000, env });
+    const fleche = path.join(dossier, 'fleche.py');
+    fs.writeFileSync(fleche, 'print("a \u2192 b")\n', 'utf8');
+    if (jouer([fleche]).status === 0) findings.push('C11 (A) : le détecteur est aveugle — une flèche imprimée sous cp1252 n\'a pas échoué');
+    for (const s of ['prepare_images.py', 'fetch_drive_assets.py']) {
+      const r = jouer([path.join(SKILL_DIR, 'scripts', s), '--help']);
+      if (r.status !== 0) findings.push(`C11 (A) : ${s} --help échoue sous une console cp1252 (code ${r.status}) — ${(r.stderr || '').trim().split('\n').pop().slice(0, 120)}`);
+    }
+    const deck = path.join(dossier, 'deck.pptx');
+    fs.writeFileSync(deck, 'x');
+    const existant = path.join(dossier, 'images');
+    fs.mkdirSync(existant);
+    const b1 = exporterCli([deck, '--png', existant]);
+    if (b1.code !== 2 || !/existe déjà/.test(b1.j?.motif || '')) findings.push(`C11 (B) : --png sur un dossier existant devrait rendre code 2 « existe déjà » (code ${b1.code}, motif ${(b1.j?.motif || '').slice(0, 80)})`);
+    const b2 = exporterCli([deck, '--png', path.join(dossier, 'neuf'), '--pptx', path.join(dossier, 'sortie.pptx'), '--deja-exporte']);
+    if (b2.code !== 2 || !/--png/.test(b2.j?.motif || '')) findings.push(`C11 (B) : --png avec --deja-exporte devrait être refusé à l'usage (code ${b2.code}, motif ${(b2.j?.motif || '').slice(0, 80)})`);
+  } finally {
+    try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return { joue: true, findings };
+}
+
 // ---------------------------------- C9 : les pieds de page d'un deck pptxgenjs (TF-1382, sans PowerPoint)
 // Le fait (retours Produit-68 du 26/09/2026, RG-14) : pptxgenjs n'émet ni `ftr` ni `sldNum`, S4 les exige, et
 // le skill ne livrait aucune étape pour les poser. Le deck de jeu est un VRAI sortie de pptxgenjs 4.0.1
@@ -838,6 +878,8 @@ const c7 = await verifierChaine();
 if (c7.joue) findings.push(...c7.findings); else nonJuge.push(c7.motif);
 const c9 = verifierPieds();
 if (c9.joue) findings.push(...c9.findings); else nonJuge.push(c9.motif);
+const c11 = verifierPoste();
+if (c11.joue) findings.push(...c11.findings); else nonJuge.push(c11.motif);
 const c10 = await verifierCadrage();
 findings.push(...c10.findings);
 if (!c10.joue) nonJuge.push(c10.motif);
@@ -864,6 +906,7 @@ process.stdout.write(JSON.stringify({
     C6_verrou_entre_sessions: 'jouée',
     C7_chaine_assainissement: c7.joue ? 'jouée' : 'NON jouée (juge ou prérequis absents)',
     C9_pieds_de_page_pptxgenjs: c9.joue ? 'jouée' : 'NON jouée (oracle, deck de jeu ou python absents)',
+    C11_poste_windows_sans_libreoffice: c11.joue ? 'jouée' : 'NON jouée (python absent)',
     C10_cadrage_amont: c10.joue ? 'jouée' : 'texte seul (pilot introuvable)',
     C8_essai_reel_powerpoint: c8.joue ? 'jouée' : 'NON jouée',
   },

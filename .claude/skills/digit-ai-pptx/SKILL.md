@@ -133,7 +133,9 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
 
    Le script attend son tour derrière le verrou des autres sessions, travaille sur une copie, ne
    ferme que sa présentation et ne quitte que l'instance qu'il a lancée lui-même, invisible et
-   sans autre présentation. Il fait ensuite juger les polices embarquées par
+   sans autre présentation. `--png <dossier neuf>` tire en plus une image par diapositive, sans
+   juge de polices : c'est le rasteriseur de la passe QA sur un poste sans LibreOffice ni
+   pdftoppm (PowerPoint rend les images, le dossier ne doit pas exister). Il fait ensuite juger les polices embarquées par
    `../quality-oracles/scripts/oracle-polices-embarquees.mjs`. Sur un FAIL, il les réencode hors
    PowerPoint (`scripts/reembarquer-polices.py`) et les fait rejuger ; un second échec vaut
    refus. Il n'écrase aucun fichier et livre tout ou rien. **Exit 1 ou 2 ⇒ rien n'est livré** :
@@ -159,7 +161,7 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    désaxement d'un repère est alors à chercher à l'œil sur le rendu. Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
    fichier LEXIQUE.json du socle du projet où vit le deck : si le `non_juge` déclare l'avoir
    cherché en vain, le vocabulaire du client n'a été jugé par personne — le dire, pas conclure.
-   Puis rasteriser le PDF de l'étape 7 (PDF → PNG) et inspecter **chaque** slide — aucune image
+   Puis tirer les images (`--png` de l'étape 7, ou le PDF de l'étape 7 passé à pdftoppm si le poste l'a) et inspecter **chaque** slide — aucune image
    déformée / hors zone / encadrée, aucun texte qui déborde d'un encart ou de la slide.
    Détail : `references/drive-assets.md` §8.
 9. Nommer selon la convention ci-dessous, livrer dans `/mnt/user-data/outputs/` via `present_files`.
@@ -244,7 +246,8 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   standard, sans dépendance. Exit 0 posé, 1 aucune forme nommée, 2 usage ou sortie existante.
 - `scripts/exporter-pptx.mjs` — **l'export par PowerPoint** de l'étape 7 : verrou entre sessions,
   appel de `scripts/exporter-powerpoint.ps1`, jugement des polices embarquées, réencodage si FAIL,
-  métadonnées personnelles vidées puis rejugées (TF-1535), livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
+  métadonnées personnelles vidées puis rejugées (TF-1535), images PNG de la passe QA par `--png`
+  (TF-1386), livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
 - `scripts/exporter-powerpoint.ps1` — le seul code qui pilote PowerPoint (COM) : copie unique
   ouverte sans fenêtre, PPTX à polices embarquées et PDF, puis la règle de décision qui ne quitte
   que l'instance lancée par l'export. Son mode `-Decision` rejoue la règle sans PowerPoint.
@@ -257,7 +260,8 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   (C5), verrou entre processus (C6), chaîne d'assainissement sur fixtures fictives (C7), essai
   réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne), pieds de
   page d'un vrai deck pptxgenjs, remède joué (C9), commandes de l'étape 0 rejouées sur une fiche
-  remplie et une fiche vide (C10). Les
+  remplie et une fiche vide (C10), aide des scripts Python sous console cp1252 et refus de `--png`
+  sur un dossier existant (C11). Les
   deux polices sources fausses de C7 sortent de `fixtures/export/gen-source-defectueuse.py`.
 
 ## Non livré (constat daté du 2026-09-11, TF-1022)
@@ -265,7 +269,9 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
 Ressources citées par la v2.5.0 et **absentes du paquet**. Elles ne sont **pas** réinventées ici :
 le renvoi est retiré du workflow, le manque est déclaré.
 
-- Logo officiel Digit-AI (PNG) — **non livré**. Repli : texte propre dans le panneau blanc.
+- Logo officiel Digit-AI (PNG) — **non livré** dans le paquet, mais présent dans le dossier Drive `logos` (constat du
+  2026-10-12, TF-1386 : « Digit-AI - Logo + Texte - Bleu.png »). Le récupérer avec `scripts/fetch_drive_assets.py` (`--name` et
+  `--folder logos`). Repli seulement si le Drive est injoignable : texte propre dans le panneau blanc.
 - Photos N&B carrées des interlocuteurs — **non livré**. Repli : dépôt `profils` (cf. `references/drive-assets.md`).
 - Fragment XML du slide « interlocuteurs » — **non livré**. Repli : construire le slide avec pptxgenjs.
 - Script de fusion XML d'un slide canonique dans un PPTX existant — **non livré**. Aucun repli : le patch de PPTX n'est pas outillé.

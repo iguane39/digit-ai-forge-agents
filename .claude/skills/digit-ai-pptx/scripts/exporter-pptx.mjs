@@ -361,8 +361,8 @@ export function viderMetadonnees(entree, sortie) {
 
 // ---------------------------------------------------------------- export
 function lireArguments(argv) {
-  const AVEC_VALEUR = new Set(['--pptx', '--pdf', '--polices', '--attente']);
-  const o = { entree: null, pptx: null, pdf: null, polices: null, attente: String(ATTENTE_VERROU_S), dejaExporte: false, instanceNeuve: false, inconnus: [] };
+  const AVEC_VALEUR = new Set(['--pptx', '--pdf', '--png', '--polices', '--attente']);
+  const o = { entree: null, pptx: null, pdf: null, png: null, polices: null, attente: String(ATTENTE_VERROU_S), dejaExporte: false, instanceNeuve: false, inconnus: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (AVEC_VALEUR.has(a)) { o[a.slice(2)] = argv[++i] ?? null; continue; }
@@ -385,7 +385,7 @@ function derniereLigneJSON(texte) {
 export async function exporter(argv) {
   const o = lireArguments(argv);
   const rapport = {
-    outil: 'exporter-pptx', version: VERSION, entree: o.entree, sorties: { pptx: o.pptx, pdf: o.pdf },
+    outil: 'exporter-pptx', version: VERSION, entree: o.entree, sorties: { pptx: o.pptx, pdf: o.pdf, png: o.png },
     verdict: null, etat: null, motif: null, verrou: null, powerpoint: null, polices: null, metadonnees: null, pdf: null, non_juge: [...NON_JUGE],
   };
   const fin = (code, verdict, etat, motif) => {
@@ -393,15 +393,17 @@ export async function exporter(argv) {
     process.stdout.write(JSON.stringify(rapport, null, 2) + '\n');
     return code;
   };
-  const usage = (motif) => fin(2, 'NON_JOUE', 'non-joue', `${motif} — usage : exporter-pptx.mjs <entrée.pptx> --pptx <sortie.pptx> [--pdf <sortie.pdf>] [--polices <dossier>] [--attente <s>] [--instance-neuve] [--deja-exporte]`);
+  const usage = (motif) => fin(2, 'NON_JOUE', 'non-joue', `${motif} — usage : exporter-pptx.mjs <entrée.pptx> --pptx <sortie.pptx> [--pdf <sortie.pdf>] [--png <dossier>] [--polices <dossier>] [--attente <s>] [--instance-neuve] [--deja-exporte]`);
 
   if (o.inconnus.length) return usage(`argument(s) inconnu(s) : ${o.inconnus.join(' ')}`);
   if (!o.entree || !fs.existsSync(o.entree) || !fs.statSync(o.entree).isFile()) return usage(`entrée absente : ${o.entree ?? '(aucune)'}`);
   if (path.extname(o.entree).toLowerCase() !== '.pptx') return usage('l entrée doit être un .pptx');
-  if (!o.pptx && !o.pdf) return usage('aucune sortie demandée : --pptx, --pdf, ou les deux');
+  if (!o.pptx && !o.pdf && !o.png) return usage('aucune sortie demandée : --pptx, --pdf, --png, ou plusieurs');
   if (o.pptx && path.extname(o.pptx).toLowerCase() !== '.pptx') return usage('--pptx doit nommer un .pptx');
   if (o.pdf && path.extname(o.pdf).toLowerCase() !== '.pdf') return usage('--pdf doit nommer un .pdf');
-  if (o.dejaExporte && (o.pdf || !o.pptx)) return usage('--deja-exporte assainit un PPTX déjà exporté : --pptx seul, sans --pdf');
+  if (o.dejaExporte && (o.pdf || o.png || !o.pptx)) return usage('--deja-exporte assainit un PPTX déjà exporté : --pptx seul, sans --pdf ni --png');
+  if (o.png && fs.existsSync(o.png)) return fin(2, 'NON_JOUE', 'non-joue', `le dossier d'images existe déjà (${o.png}) : cet export n'écrase rien, nommer un dossier neuf`);
+  if (o.png && !fs.existsSync(path.dirname(path.resolve(o.png)))) return usage(`dossier parent des images absent : ${path.dirname(path.resolve(o.png))}`);
   if (o.polices && !(fs.existsSync(o.polices) && fs.statSync(o.polices).isDirectory())) return usage(`dossier de polices introuvable : ${o.polices}`);
   const attenteS = Number(o.attente);
   if (!Number.isFinite(attenteS) || attenteS < 0) return usage(`--attente attend un nombre de secondes : ${o.attente}`);
@@ -434,7 +436,7 @@ export async function exporter(argv) {
       let r;
       try {
         r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT_POWERPOINT, '-Entree', copie,
-          ...(o.pptx ? ['-SortiePptx', path.join(tmp, 'export.pptx')] : []), ...(o.pdf ? ['-SortiePdf', path.join(tmp, 'export.pdf')] : []),
+          ...(o.pptx ? ['-SortiePptx', path.join(tmp, 'export.pptx')] : []), ...(o.pdf ? ['-SortiePdf', path.join(tmp, 'export.pdf')] : []), ...(o.png ? ['-SortiePng', path.join(tmp, 'images')] : []),
           ...(o.instanceNeuve ? ['-InstanceNeuve'] : [])],
         { encoding: 'utf8', timeout: DELAI_POWERPOINT_MS, windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
       } finally {
@@ -455,12 +457,14 @@ export async function exporter(argv) {
       pdfExporte = o.pdf ? path.join(tmp, 'export.pdf') : null;
       const manquants = [pptxExporte, pdfExporte].filter((f) => f && !fs.existsSync(f));
       if (manquants.length) return fin(1, 'REFUS', 'refus', `PowerPoint rend la main sans avoir écrit : ${manquants.map((f) => path.basename(f)).join(', ')}`);
+      if (o.png && !(fs.existsSync(path.join(tmp, 'images')) && fs.readdirSync(path.join(tmp, 'images')).some((f) => /\.png$/i.test(f)))) return fin(1, 'REFUS', 'refus', 'PowerPoint rend la main sans avoir écrit une seule image PNG');
     }
 
     // 3. assainissement : le PPTX, puis le PDF devant le même juge
     let livrablePptx = null;
     let etat = 'pdf-seul';
-    let motif = 'PDF tiré par PowerPoint';
+    let motif = o.pdf ? 'PDF tiré par PowerPoint' : 'images PNG tirées par PowerPoint, pour la passe QA';
+    if (!o.pdf && !o.pptx) etat = 'png-seul';
     if (o.pptx) {
       const a = assainir(pptxExporte, tmp, { polices: o.polices });
       rapport.polices = { ...a, livrable: undefined };
@@ -502,6 +506,17 @@ export async function exporter(argv) {
     } catch (e) {
       for (const f of ecrits) { try { fs.unlinkSync(f); } catch { /* rien */ } }
       return fin(2, 'NON_JOUE', 'non-joue', `écriture des sorties impossible (${e.code || e.message}) : rien n'est livré`);
+    }
+    // les images de la passe QA : aucun juge de polices (ce sont des pixels), livrées en dernier, dossier neuf
+    if (o.png) {
+      try {
+        fs.mkdirSync(o.png);
+        for (const f of fs.readdirSync(path.join(tmp, 'images'))) fs.copyFileSync(path.join(tmp, 'images', f), path.join(o.png, f), fs.constants.COPYFILE_EXCL);
+      } catch (e) {
+        for (const f of ecrits) { try { fs.unlinkSync(f); } catch { /* rien */ } }
+        try { fs.rmSync(o.png, { recursive: true, force: true }); } catch { /* rien */ }
+        return fin(2, 'NON_JOUE', 'non-joue', `écriture des images impossible (${e.code || e.message}) : rien n'est livré`);
+      }
     }
     return fin(0, 'LIVRE', etat, motif);
   } finally {

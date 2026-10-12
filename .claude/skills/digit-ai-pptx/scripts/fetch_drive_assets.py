@@ -29,7 +29,16 @@ import argparse
 import html
 import os
 import re
+import sys
 import urllib.request
+
+# Sortie en UTF-8 quoi que dise la console : en cp1252 (console Windows par defaut), l'aide et les noms
+# de fichiers accentues ou fleches levaient UnicodeEncodeError (TF-1386).
+for _flux in (sys.stdout, sys.stderr):
+    try:
+        _flux.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
 
 UA = {"User-Agent": "Mozilla/5.0"}
 KNOWN = {
