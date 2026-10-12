@@ -44,6 +44,7 @@ clair, et « couleur seule » viole WCAG 1.4.1).
 <span class="badge ok">Adopter</span>
 <span class="badge part">Adapter</span>
 <span class="badge info">Info</span>
+<span class="badge ko">Écarter</span>
 ```
 ```css
 .badge { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 600;
@@ -52,7 +53,13 @@ clair, et « couleur seule » viole WCAG 1.4.1).
 .badge.ok   { --_dot: var(--green); background: var(--green-fill); border-color: var(--green-line); }
 .badge.part { --_dot: var(--amber); background: var(--amber-fill); border-color: var(--amber-line); }
 .badge.info { --_dot: var(--teal);  background: var(--teal-fill);  border-color: var(--teal-line); }
+.badge.ko   { --_dot: var(--red);   background: var(--red-fill);   border-color: var(--red-line); }
 ```
+
+La variante `ko` dit un état **défavorable** : bloquant, écarté, refusé, probabilité forte d'un
+risque. Elle se câble sur les jetons `--red`, `--red-fill` et `--red-line` du gabarit, posés dans
+ses trois projections (clair, sombre, impression) : aucun consommateur ne pose son propre rouge
+(TF-1263).
 
 ## 3 — Barre de progression 🟡
 

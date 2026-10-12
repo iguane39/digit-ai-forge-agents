@@ -4232,6 +4232,50 @@ def run_canevas_differentiel():
     return out
 
 
+def badges_non_cables(css: str, gabarit: str) -> list[str]:
+    """Les jetons qu'une variante `.badge.<x>` emploie sans que le gabarit les pose dans ses
+    trois projections (clair, sombre, impression) — rend « variante : --jeton (n projection(s)) »."""
+    ecarts = []
+    for m in re.finditer(r"\.badge\.([\w-]+)\s*\{([^}]*)\}", css):
+        for jeton in re.findall(r"var\(--([\w-]+)", m.group(2)):
+            n = len(re.findall(r"--" + re.escape(jeton) + r"\s*:", gabarit))
+            if n < 3:
+                ecarts.append(f"{m.group(1)} : --{jeton} ({n} projection(s))")
+    return ecarts
+
+
+def run_badge_defavorable():
+    """TF-1263 (15/09/2026) — LE SOCLE PORTE UNE VARIANTE DE BADGE POUR UN ETAT DEFAVORABLE.
+
+    LE FAIT PAYE. composants.md §2 ne portait que trois variantes (ok, part, info) ; 9 occurrences
+    de `badge ko` ecrites dans la bibliotheque du pilot avant que la classe existe se rendaient en
+    texte nu, et chaque consommateur reinventait son rouge. La variante `ko` est desormais au
+    catalogue, cablee sur les jetons rouges du gabarit.
+      · sens vert : la variante `ko` existe, et toute variante du catalogue n'emploie que des
+        jetons poses dans les trois projections du gabarit ;
+      · sens rouge : une variante cablee sur un jeton que le gabarit ne pose pas est vue.
+    """
+    racine = FIXTURES.parent
+    comp = (racine / "references" / "composants.md").read_text(encoding="utf-8")
+    gabarit = (racine / "assets" / "boilerplate.html").read_text(encoding="utf-8")
+    section = comp.split("## 2 —", 1)[-1].split("\n## 3 —", 1)[0]
+    out = []
+    a_ko = bool(re.search(r"\.badge\.ko\s*\{", section)) and 'class="badge ko"' in section
+    out.append({"fixture": "composants.md §2 · variante ko", "verdict": "OK" if a_ko else "ECHEC",
+                "attendu": "regle .badge.ko et exemple HTML", "obtenu": str(a_ko),
+                "regle": "TF-1263 badge defavorable", "detail": ""})
+    ecarts = badges_non_cables(section, gabarit)
+    out.append({"fixture": "composants.md §2 · jetons des variantes", "verdict": "OK" if not ecarts else "ECHEC",
+                "attendu": "0 jeton absent du gabarit", "obtenu": "; ".join(ecarts) or "0",
+                "regle": "TF-1263 badge defavorable", "detail": ""})
+    rouge = badges_non_cables(".badge.zz { --_dot: var(--rouge-maison); background: var(--red-fill); }", gabarit)
+    ok = rouge == ["zz : --rouge-maison (0 projection(s))"]
+    out.append({"fixture": "sens rouge · variante sur un rouge maison", "verdict": "OK" if ok else "ECHEC",
+                "attendu": "le jeton --rouge-maison nomme, --red-fill accepte", "obtenu": str(rouge),
+                "regle": "TF-1263 badge defavorable", "detail": ""})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -4243,7 +4287,7 @@ def main():
            + run_assets_inlinables() + run_assets_echelle_4pt() + run_fins_de_ligne_declarees()
            + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
-           + run_echeance_forme_ancienne() + run_mesure_prete())
+           + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable())
     rendu = run_rendu()
     if rendu:
         res += rendu
