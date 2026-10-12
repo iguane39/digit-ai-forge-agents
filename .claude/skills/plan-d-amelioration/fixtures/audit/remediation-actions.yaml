@@ -1,0 +1,43 @@
+# Jeu d'essai FICTIF du skill plan-d-amelioration (TF-1234, 12/10/2026) — même forme que
+# digit-ai-forge-audit/tests/fixtures/remediation-actions.example.yaml (contrat d'interface 1.1.0).
+# Aucun produit réel : « Produit-Essai » n'existe pas.
+audit_ref: "ESSAI-AUD-2026-10"
+core_version: "1.0.0"
+project:
+  repo: "https://example.invalid/produit-essai"
+  stack_profile: resolved
+actions:
+  - id: REM-D03-001
+    title: "Purger les secrets de l'historique et brancher le scan en CI"
+    finding_ref: "CST-D03-04"
+    control_ref: "CTL-D03-02"
+    severity: Fatal
+    priority: urgent
+    activation:
+      mode: forge-auto
+      reason: "changement code et CI dans le dépôt audité"
+    verification:
+      command: "profile:secret_scan"
+      evidence_expected: "rapport de scan + configuration CI"
+  - id: REM-D10-002
+    title: "Structurer les logs applicatifs et corréler les traces"
+    finding_ref: "CST-D10-01"
+    control_ref: "CTL-D10-01"
+    severity: Bloquant
+    priority: prio
+    activation:
+      mode: forge-assisted
+      reason: "l'acceptation inclut un jugement de pertinence des champs"
+    verification:
+      evidence_expected: "extraits de logs structurés + trace bout en bout"
+  - id: REM-D06-003
+    title: "Écrire et jouer un test de charge sur le parcours de recherche"
+    finding_ref: "CST-D06-02"
+    control_ref: "CTL-D06-01"
+    severity: Majeur
+    priority: prio
+    activation:
+      mode: forge-assisted
+      reason: "scénario de charge à valider par l'exploitant"
+    verification:
+      evidence_expected: "rapport du test de charge versionné"

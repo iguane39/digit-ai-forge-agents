@@ -1,0 +1,15 @@
+{
+  "contrat": "controles-evalues@1.0.0",
+  "audit_ref": "ESSAI-AUD-2026-10",
+  "core_version": "1.0.0",
+  "total": 6,
+  "compte": { "non_conforme": 2, "partiel": 1, "conforme": 2, "a_evaluer": 1 },
+  "controles": [
+    { "id": "CTL-D03-02", "dimension": "D03", "verdict": "non_conforme" },
+    { "id": "CTL-D06-01", "dimension": "D06", "verdict": "non_conforme" },
+    { "id": "CTL-D10-01", "dimension": "D10", "verdict": "partiel" },
+    { "id": "CTL-D11-03", "dimension": "D11", "verdict": "conforme" },
+    { "id": "CTL-D13-01", "dimension": "D13", "verdict": "conforme" },
+    { "id": "CTL-D07-02", "dimension": "D07", "verdict": "a_evaluer" }
+  ]
+}

@@ -1716,6 +1716,23 @@
     "C2 — HIGH CVE-2099-0001 : libessai 2.8.4-r0 installée, corrigée en 2.8.5-r0"
    ],
    "provenance": "TF-1499, lot Produit-03 - RETOURS - 20260930b (RA-55) — une couche « RUN apk upgrade --no-cache » reprise du cache du poste (CACHED) a fait rendre 1 faille HIGH qu'une construction --no-cache ne portait plus. Fixtures FICTIVES : deux rapports JSON de trivy sur une bibliothèque inventée, une HIGH et une MEDIUM (rouge), la MEDIUM seule (verte) ; le journal d'une construction --no-cache est donné, C1 est donc jouée"
+  },
+  {
+   "nom": "plan-d-amelioration",
+   "cmd": [
+    "node",
+    "{skillsroot}/plan-d-amelioration/scripts/oracle-plan-d-amelioration.mjs",
+    "{fixture}"
+   ],
+   "red": "../../plan-d-amelioration/fixtures/plan-rouge-doublon.json",
+   "green": "../../plan-d-amelioration/fixtures/plan-vert.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-1234 (12/10/2026) — cas limite 2 du protocole de tests du prompt réécrit du 19/09/2026 (analyse L99, chapitre 8) : un constat rattachable à un contrôle évalué par l'audit (CTL-D06-01) écrit en fiche d'amélioration au lieu d'être cité comme remédiation. Fixtures FICTIVES tenues par le skill plan-d-amelioration (aucune copie ici : le chemin remonte au skill voisin) ; aucune mission réelle n'a encore été jouée."
   }
  ]
 }
