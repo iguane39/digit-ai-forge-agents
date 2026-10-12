@@ -59,6 +59,12 @@ const optProduits = (args.find((a) => a.startsWith('--produits=')) || '').split(
 // TF-1071 : juger le SEUL message de commit (hameçon commit-msg). Le dépôt reste l'artefact qui
 // sert à résoudre les tables.
 const optMessage = (args.find((a) => a.startsWith('--message=')) || '').slice('--message='.length);
+// TF-1555 (12/10/2026) : restreindre l'HISTOIRE jugée (C3, C4, C5 d'histoire) aux révisions que
+// l'envoi ajoute. Le pre-push du pilot coûtait 9 min 11 s le 27/09, la porte rejugeant à chaque
+// envoi toute l'histoire, passé publié compris. `--revs=<jeton,…>` : empreintes à juger, `^<empreinte>`
+// et `--not --remotes=<distant>` pour ce qui est déjà publié. Absent : toute l'histoire (`--all`).
+// L'arbre courant (C1, C2) reste jugé entier.
+const optRevs = args.find((a) => a.startsWith('--revs='));
 
 // TF-0991 (08/09) — LE TOTAL EST UN CHAMP, PAS UNE PHRASE. La sortie bornée à 200 constats
 // poussait son vrai total dans une ligne du `non_juge` ; le pilot a compté les entrées de
@@ -429,6 +435,12 @@ function porteProduit(hay, p) {
 // qui permette à une fixture de prouver les quatre contrôles, C3 et C4 compris.
 // ---------------------------------------------------------------------------
 const git = (repo, ...a) => spawnSync('git', ['-C', repo, ...a], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+// TF-1555 — les révisions de l'histoire jugée : `--all`, ou les jetons de `--revs` (validés plus bas).
+// Sans aucune empreinte à juger (envoi d'une suppression), l'histoire jugée est vide.
+let REVS = null;
+const aJuger = (r) => (r.indexOf('--not') < 0 ? r : r.slice(0, r.indexOf('--not'))).some((j) => /^[0-9a-f]/.test(j));
+const histo = (repo, ...a) => (REVS === null ? git(repo, ...a, '--all')
+  : aJuger(REVS) ? git(repo, ...a, ...REVS) : { status: 0, stdout: '' });
 
 function ouvrir(artefact) {
   if (!fs.existsSync(artefact)) return { erreur: 'artefact introuvable' };
@@ -587,7 +599,7 @@ function inventaireHistoire(repo, revs) {
   if (!revs.length) return null;
   const octetsOid = revs[0].length / 2;              // 20 (SHA-1) ou 32 (SHA-256)
   const racineDe = new Map();
-  for (const l of (git(repo, 'log', '--all', '--format=%H %T').stdout || '').split('\n')) {
+  for (const l of (histo(repo, 'log', '--format=%H %T').stdout || '').split('\n')) {
     const m = l.match(/^([0-9a-f]+) ([0-9a-f]+)$/);
     if (m) racineDe.set(m[1], m[2]);
   }
@@ -779,6 +791,19 @@ if (optMessage) {
 const { repo, temporaire, erreur } = ouvrir(cible);
 if (erreur) out('SKIP', [], [erreur], 2);
 
+// TF-1555 — `--revs` validé AVANT tout jugement : seuls des jetons de révision, jamais une option
+// git arbitraire ; et une plage que git ne sait pas lire fait SKIP, car une histoire lue vide
+// par erreur rendrait PASS sans rien juger.
+if (optRevs !== undefined) {
+  const jetons = optRevs.slice('--revs='.length).split(',').map((x) => x.trim()).filter(Boolean);
+  const fautif = jetons.find((j) => !(/^\^?(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(j) || j === '--not'
+    || /^--remotes=[A-Za-z0-9._/-]+$/.test(j)));
+  if (fautif !== undefined) out('SKIP', [], ['--revs : jeton refusé « ' + fautif.slice(0, 80) + ' » — attendu : des empreintes complètes, `^<empreinte>`, `--not`, `--remotes=<distant>` (TF-1555)'], 2);
+  REVS = jetons;
+  const lisible = aJuger(REVS) ? git(repo, 'rev-list', '--count', ...REVS) : { status: 0 };
+  if (lisible.status !== 0) out('SKIP', [], ['--revs : git ne lit pas cette plage (' + String(lisible.stderr || '').trim().slice(0, 200) + ') — une histoire lue vide par erreur rendrait PASS sans rien juger (TF-1555)'], 2);
+}
+
 const findings = [];
 // COMPTEURS DU COÛT DE C4 (TF-0958) — ils ne jugent rien, ils RENDENT COMPTE : le coût de cet
 // angle est ce qui décide si la porte est tenable, et un coût non déclaré ne se surveille pas.
@@ -843,7 +868,7 @@ try {
   const sep = '<<<COMMIT>>>';
   // D-65 (a) du 12/10/2026 : la date d'auteur borne le message comme elle borne un blob ancien —
   // un message antérieur à l'inscription de son terme est une ANTÉRIORITÉ, nommée et comptée.
-  const journal = (git(repo, 'log', '--all', `--format=${sep}%H%n%aI%n%B`).stdout || '').split(sep).filter((x) => x.trim());
+  const journal = (histo(repo, 'log', `--format=${sep}%H%n%aI%n%B`).stdout || '').split(sep).filter((x) => x.trim());
   for (const bloc of journal) {
     const lignes = bloc.split('\n');
     const sha = (lignes[0] || '').trim();
@@ -874,9 +899,9 @@ try {
   // --- C4 · contenus ET noms de fichiers dans TOUT l'historique -------------
   // Retirer un fichier de l'arbre ne le retire pas des commits, et l'hébergeur continue de
   // servir par empreinte ce qu'un commit ancien contient.
-  const revs = (git(repo, 'rev-list', '--all').stdout || '').split('\n').filter(Boolean);
+  const revs = (histo(repo, 'rev-list').stdout || '').split('\n').filter(Boolean);
   revCount = revs.length;
-  const cheminsHisto = new Set((git(repo, 'log', '--all', '--name-only', '--format=').stdout || '')
+  const cheminsHisto = new Set((histo(repo, 'log', '--name-only', '--format=').stdout || '')
     .split('\n').map((x) => x.trim()).filter(Boolean));
 
   // TF-0982 — LA DATE DE CHAQUE RÉVISION, en UNE invocation. Une par révision aurait coûté 909
@@ -884,7 +909,7 @@ try {
   // propre lenteur, et une porte lente se contourne.
   // La date d'AUTEUR (`%aI`), jamais celle de validation — voir le bloc TF-0982 plus haut.
   const dateDeRev = new Map();
-  for (const l of (git(repo, 'log', '--all', '--format=%H %aI').stdout || '').split('\n')) {
+  for (const l of (histo(repo, 'log', '--format=%H %aI').stdout || '').split('\n')) {
     // La date d'auteur ENTIÈRE, heure et fuseau compris : une borne à l'instant la compare comme
     // un instant, une borne au jour n'en lit que les dix premiers caractères (27/09/2026).
     const m = l.match(/^([0-9a-f]{7,64}) (\d{4}-\d{2}-\d{2}\S*)/);
@@ -897,7 +922,7 @@ try {
   // c'est-à-dire au plus tard — soit l'inverse exact de ce qu'on mesure.
   // Un chemin sans date connue reste jugé SANS borne : la direction sûre.
   const dernierePresence = new Map();
-  for (const bloc of (git(repo, 'log', '--all', '--diff-filter=ACMRT', '--name-only', '--format=%x00%aI').stdout || '').split('\0')) {
+  for (const bloc of (histo(repo, 'log', '--diff-filter=ACMRT', '--name-only', '--format=%x00%aI').stdout || '').split('\0')) {
     const lignes = bloc.split('\n').map((x) => x.trim()).filter(Boolean);
     const d = lignes.length ? (lignes[0].match(/^(\d{4}-\d{2}-\d{2}\S*)/) || [])[1] : null;
     if (!d) continue;
@@ -1189,6 +1214,12 @@ try {
 // lue — la table du canal, un ancien fichier libre, ou celle d'un banc jetable. Une porte qui
 // mesure sans dire sur quoi rend un verdict qu'on ne peut ni reproduire ni contester.
 const nj = NON_JUGE.concat(['table lue (référentiel des noms interdits) : ' + refPath + ' (' + T.length + ' terme(s))']);
+// TF-1555 — une histoire restreinte se DIT, avec ce qu'elle laisse : le passé déjà publié.
+if (REVS !== null) nj.push('HISTOIRE RESTREINTE (--revs, TF-1555) : ' + revCount + ' révision(s) jugée(s) en C3, C4 et C5 d’histoire — '
+  + 'celles que l’envoi ajoute (' + REVS.join(' ').slice(0, 300) + '). Le passé déjà publié n’est PAS rejugé : un terme '
+  + 'inscrit depuis sa publication s’y cherche par un run de la porte sans --revs, jamais par le hameçon. L’arbre courant '
+  + '(C1, C2) reste jugé entier. Les références distantes locales datent du dernier `git fetch` : plus vieilles, elles '
+  + 'font juger PLUS de révisions, jamais moins.');
 // C5 parle TOUJOURS : jouée, elle dit sur quoi ; non jouée, elle dit pourquoi. Un angle muet se lit
 // comme un angle vert, et c'est précisément l'état dans lequel la porte a laissé passer trois
 // mentions d'un nom de produit le 05/09.

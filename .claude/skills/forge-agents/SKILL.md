@@ -61,10 +61,12 @@ garde-fou contre la spécialisation fantôme.
 ## Règles dures
 
 - `agent.def` : **6 champs obligatoires maximum** ; optionnels : `parallel`, `skill`, `expert_refs`,
-  `provenance`, `modele` ; champ inconnu = refus (fail-closed, appliqué par le compilateur).
+  `provenance`, `modele`, `effort` ; champ inconnu = refus (fail-closed, appliqué par le compilateur).
 - `modele` porte un **nom de famille** (`haiku` | `sonnet` | `opus` | `fable` | `inherit`), choisi
   par le rôle selon le routage du pilot ; absent, il vaut `sonnet`. Un identifiant de version est
   refusé : le nom de famille suit la dernière version (D-1 (a) du pilot, 25/09/2026).
+- `effort` (`low` | `medium` | `high` | `xhigh` | `max` | `inherit`) se déclare par agent ; absent,
+  il vaut `high`, retenu sur les 6 tâches du rejeu D-6 (a) du pilot (TF-1561).
 - Arbitres **figés avant le premier run**, arbitrage à charge : ✓ seulement avec preuve citable.
 - Tout ce qui traverse une frontière entre agents est un **artefact nommé** avec en-tête de
   provenance — jamais un état conversationnel implicite. Un ✗ traverse, jamais masqué.

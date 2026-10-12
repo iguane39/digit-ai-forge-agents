@@ -17,6 +17,7 @@ skill:        # skill de la forge chargé comme mandat opératoire (ex. digit-ai
 expert_refs:  # fiches du registre experts-forge consommées par l'agent (statut « ok » uniquement)
 provenance:   # capacité importée d'une source externe : { source: …, author: …, confidence: 0-1, date: … }
 modele:       # NOM DE FAMILLE du modèle : haiku | sonnet | opus | fable | inherit ; absent = sonnet
+effort:       # niveau d'effort : low | medium | high | xhigh | max | inherit ; absent = high (sauf haiku et inherit)
 ```
 
 ## Règles
@@ -46,6 +47,14 @@ modele:       # NOM DE FAMILLE du modèle : haiku | sonnet | opus | fable | inhe
   Compilé en `model:`. **Un identifiant (`claude-opus-5-5`) est refusé** : il épinglerait une
   version, et l'agent ne suivrait plus la suivante. La version réellement servie se lit au ledger
   du run (`modele_version`, relevée par `ledger.mjs append`).
+
+- **`effort`** *(TF-1561, décision D-5 (a) du pilot, 01/10/2026)* : l'effort de raisonnement de
+  l'agent, compilé en `effort:`. Sans lui, un sous-agent héritait de l'effort de la session : 456
+  réponses Sonnet 5 servies à `max` par héritage, mesuré le 01/10/2026. Absent, il vaut `high`, seul
+  niveau retenu sur les 6 tâches du rejeu D-6 (a) (`output/03-etudes/20261001-etude-resultats-rejeu-opus-5-5.md`
+  du pilot) ; `medium` y est retenu sur 5 tâches et échoue 2 fois sur 2 sur la réparation de code,
+  donc à réserver aux extractions, restitutions et études. `inherit`, ou `modele: inherit` sans
+  effort, reprend celui de la session ; `haiku`, absent du rejeu, ne reçoit pas de défaut.
 
 ## Contrôle de cohérence du lot
 

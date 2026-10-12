@@ -14,6 +14,16 @@
  * Un identifiant (`claude-opus-5-5`, `claude-sonnet-4-5-20250929`) est REFUSÉ : il épinglerait une
  * version, et l'agent ne suivrait plus la suivante.
  *
+ * EFFORT — TF-1561, décision D-5 (a) du 01/10/2026, sur le résultat du rejeu D-6 (a). Mesuré le
+ * 01/10/2026 : les sous-agents du pilot servaient leurs réponses à l'effort de la session (456
+ * réponses Sonnet 5 à `max`, par héritage). Le rejeu figé (6 tâches, 38 exécutions,
+ * `output/03-etudes/20261001-etude-resultats-rejeu-opus-5-5.md` du pilot) retient `high` sur les 6
+ * tâches, et `medium` sur 5 seulement : il échoue 2 fois sur 2 sur la réparation de code. Le champ
+ * optionnel `effort` (low | medium | high | xhigh | max | inherit) est compilé en `effort:` ;
+ * absent, il vaut `high`, le seul niveau retenu partout. Deux exceptions, dites dans le corps de
+ * l'agent : `modele: inherit` sans effort reprend celui de la session, et `haiku`, absent du rejeu,
+ * ne reçoit pas de défaut — un effort déclaré lui est compilé tel quel.
+ *
  * Usage : node compile-agent-def.mjs <def1.yaml> [def2.yaml ...] --out <dir>
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -21,10 +31,20 @@ import { join, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MANDATORY = ["id", "mandat", "outils", "arbitre", "entrees", "sorties"];
-const OPTIONAL = ["parallel", "skill", "expert_refs", "provenance", "modele"];
+const OPTIONAL = ["parallel", "skill", "expert_refs", "provenance", "modele", "effort"];
 // Noms de famille admis (CONTRAT-INTERFACE §4 du pilot) ; `inherit` reprend le modèle de la session.
 export const MODELES = ["haiku", "sonnet", "opus", "fable", "inherit"];
 export const MODELE_DEFAUT = "sonnet";
+// TF-1561 — niveaux d'effort de Claude Code ; `inherit` reprend l'effort de la session.
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max", "inherit"];
+export const EFFORT_DEFAUT = "high";
+/** L'effort compilé d'une définition, ou null quand l'agent hérite (aucune ligne `effort:`). */
+export function effortDe(def) {
+  const declare = typeof def.effort === "string" ? def.effort.trim() : "";
+  if (declare) return declare === "inherit" ? null : declare;
+  const modele = def.modele ? def.modele.trim() : MODELE_DEFAUT;
+  return modele === "inherit" || modele === "haiku" ? null : EFFORT_DEFAUT;
+}
 
 function fail(msg) { console.error(`[REFUS] ${msg}`); process.exit(1); }
 
@@ -104,6 +124,12 @@ export function validate(def, file) {
         `(${MODELES.join(" | ")}), jamais par identifiant : un identifiant épingle une version et l'agent ` +
         `ne suit plus la suivante (CONTRAT-INTERFACE §4 du pilot, décision D-1 (a) du 25/09/2026)`);
   }
+  // effort (optionnel) — un niveau de Claude Code, ou `inherit` (TF-1561).
+  if (def.effort !== undefined) {
+    const e = typeof def.effort === "string" ? def.effort.trim() : "";
+    if (!EFFORTS.includes(e))
+      fail(`${file}: effort « ${def.effort} » refusé — niveaux admis : ${EFFORTS.join(" | ")} (TF-1561)`);
+  }
   // provenance (optionnel) — traçabilité d'une capacité importée d'une source externe.
   // { source, author, confidence, date } ; confidence ∈ [0,1]. Fail-closed si présent mais mal formé.
   if (def.provenance !== undefined) {
@@ -127,6 +153,8 @@ function render(def) {
   lines.push(`tools: ${def.outils.join(", ")}`);
   const modele = def.modele ? def.modele.trim() : MODELE_DEFAUT;
   lines.push(`model: ${modele}`);
+  const effort = effortDe(def);
+  if (effort) lines.push(`effort: ${effort}`);
   lines.push("---");
   lines.push("");
   lines.push(`# ${def.id}`);
@@ -134,6 +162,14 @@ function render(def) {
   lines.push(modele === "inherit"
     ? "Modèle : celui de la session (`inherit`), effort compris, par choix explicite de la définition ; la version servie se lit au ledger du run (`modele_version`)."
     : `Modèle : famille \`${modele}\`${def.modele ? "" : " (défaut du routage, aucun modèle déclaré)"} ; le nom suit la dernière version, et la version servie se lit au ledger du run (\`modele_version\`).`);
+  const declare = typeof def.effort === "string" && def.effort.trim();
+  lines.push(effort
+    ? `Effort : \`${effort}\`${declare ? "" : " (défaut du rejeu D-6 (a) du 01/10/2026, aucun effort déclaré)"} (TF-1561).`
+    : declare
+      ? "Effort : celui de la session (`inherit`), par choix explicite de la définition (TF-1561)."
+      : modele === "inherit"
+        ? "Effort : celui de la session, avec le modèle (TF-1561)."
+        : "Effort : celui de la session — `haiku` est absent du rejeu D-6 (a) et ne reçoit pas de défaut ; déclarer `effort` pour le fixer (TF-1561).");
   lines.push("");
   lines.push(`## Mandat`);
   lines.push(def.skill ? `${def.mandat} — mandat opératoire : charger le skill \`${def.skill}\`.` : def.mandat);

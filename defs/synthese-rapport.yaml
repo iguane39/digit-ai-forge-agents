@@ -10,3 +10,4 @@ entrees:
 sorties:
   - { artefact: "run/rapport-jouet.md", vers: "livrable-final" }
 modele: sonnet
+effort: high
