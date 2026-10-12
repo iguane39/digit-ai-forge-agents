@@ -750,7 +750,9 @@ et c'est la première chose que voit un lecteur.
 sélecteur de PROSE (un élément de prose sans classe qui le restreigne, ou une classe dont le nom
 ne dit aucun usage technique) est un échec. Restent légitimes et non jugés : `code`, `pre`,
 `kbd`, `samp`, `a[href]`, et toute classe qui nomme son usage (`.chemin`, `.jeton`, `.uri`,
-`.sha`, `.mono`, `.identifiant`…). Exemption explicite : `data-coupure-ok="<raison>"`.
+`.sha`, `.mono`, `.identifiant`…). Exemption explicite : `data-coupure-ok="<raison>"`, posé
+sur chaque élément que le sélecteur habille ou sur un de ses ancêtres ; un seul élément habillé
+sans déclaration garde le constat (TF-1627).
 
 **Ce que L19 ne fait PAS, et c'est déclaré** : elle empêche la CAUSE, elle ne mesure pas l'EFFET —
 `overflow-wrap: break-word`, légitime sur la prose, n'entre pas dans son périmètre et peut quand

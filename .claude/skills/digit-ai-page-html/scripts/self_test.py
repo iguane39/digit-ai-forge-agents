@@ -135,6 +135,10 @@ CAS = {
     # selecteur ecrit sous `@media` etait juge comme s il s appliquait partout.
     "l19-repli-cartes-legitime.html": set(),
     "l19-coupure-reservee-au-technique.html": set(),
+    # TF-1627 (RA-7) — le message de L19 promettait l'exemption data-coupure-ok, que la règle
+    # ne lisait pas. Déclarée sur tous les éléments habillés : vert ; sur une partie : rouge.
+    "l19-coupure-declaree-sur-element.html": set(),
+    "l19-coupure-declaree-partielle.html": {"L19"},
     # TF-0495 (22/08) — la frontiere entre « le contenu est PRESENT » et « le contenu est
     # EXPLOITABLE ». Un document embarque en texte brut passait TOUS les oracles ; il a fallu que
     # le client le redemande DEUX FOIS pour qu'une vue lisible soit produite. Les trois fixtures

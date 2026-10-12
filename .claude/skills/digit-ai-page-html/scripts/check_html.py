@@ -2196,6 +2196,18 @@ def check_lisibilite(html: str, a: Arbre):
             # Un sélecteur de prose : un nom d'élément de prose SANS classe qui le restreigne,
             # ou une classe dont le nom ne dit aucun usage technique.
             if (nom in PROSE and not classes) or (classes and not nom):
+                # TF-1627 (lot Produit-79 20261007f, RA-7) — LE MESSAGE PROMETTAIT UNE EXEMPTION
+                # QUE LA RÈGLE NE LISAIT PAS. `data-coupure-ok` posé sur le `dd` habillé par la
+                # règle CSS laissait L19 bloquant : la règle juge un sélecteur, jamais un élément.
+                # Elle honore désormais la déclaration quand CHAQUE élément que le sujet du
+                # sélecteur habille la porte, avec une raison, sur lui-même ou un ancêtre. Un seul
+                # élément non déclaré suffit à garder le constat (fixture l19-coupure-declaree-
+                # partielle.html).
+                habilles = _noeuds_du_selecteur(a, m)
+                if habilles and all(
+                        any((x.att("data-coupure-ok") or "").strip() for x in [h, *h.ancetres()])
+                        for h in habilles):
+                    continue
                 coupeurs.append((m, valeurs.strip()))
     for sel, val in coupeurs[:6]:
         fails.append(
@@ -2203,7 +2215,8 @@ def check_lisibilite(html: str, a: Arbre):
             "identifiant technique, ravageur sur du texte courant : un mot se casse en deux au "
             "milieu d'une ligne (« Utilisabl/e », « 231 occurrenc/es »), sans césure ni trait "
             "d'union. Réserver `anywhere` à `code`, `pre`, `a[href]` et aux cellules "
-            'd\'identifiants ; exemption possible par data-coupure-ok="<raison>".')
+            'd\'identifiants ; exemption possible par data-coupure-ok="<raison>" sur chaque '
+            "élément que ce sélecteur habille, ou sur un de ses ancêtres.")
     if len(coupeurs) > 6:
         fails.append(f"L19 coupure de mot en prose : {len(coupeurs) - 6} autre(s) sélecteur(s).")
 
