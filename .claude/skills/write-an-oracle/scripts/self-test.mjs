@@ -154,6 +154,47 @@ try {
         ko(`(6) rouge : le rendu en 2 espaces N EST PAS pris par la mesure — registre : ${dit(m6.reg)} · manifest : ${dit(m6.man)}`);
       else ok(`(6) le défaut d origine (rendu en 2 espaces) est bien pris — registre : ${dit(m6.reg)} · manifest : ${dit(m6.man)}`);
     }
+
+    // ================================================ TF-1537 : SKIP motivé, aucun .bak laissé
+    // Le 01/10/2026, trois oracles scaffoldés rendaient un SKIP sans `motif` (contrat de TF-1447),
+    // et chaque remontée laissait registre-oracles.json.bak et manifest.json.bak dans la cible.
+    // Les deux sens : le scaffolder en place (vert), et un mutant qui reproduit chaque défaut (rouge).
+    const baks = (d) => ['references', 'fixtures'].flatMap((s) => fs.readdirSync(path.join(d, s)).filter((f) => f.endsWith('.bak')));
+    const motifsSkip = (oracle) => [path.join(tmp, 'absent.md'), path.join(tmp, 'mauvaise.ext')].map((cible) => {
+      if (cible.endsWith('.ext')) fs.writeFileSync(cible, 'x\n');
+      const r = spawnSync(process.execPath, [oracle, cible], { encoding: 'utf8', timeout: 60000 });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* dit par l appelant */ }
+      return { code: r.status, verdict: j?.verdict, motif: j?.motif };
+    });
+    const remonter = (script, suffixe) => {
+      const p = parcNeuf('parc-1537-' + suffixe);
+      const r = spawnSync(process.execPath, [script, '--nom', 'banc-1537-' + suffixe, '--domaine', 'Banc TF-1537 ' + suffixe,
+        '--ext', '.md', '--skilldir', p.dir], { encoding: 'utf8', env, timeout: 60000 });
+      return { r, p, oracle: path.join(p.dir, 'scripts', 'oracle-banc-1537-' + suffixe + '.mjs') };
+    };
+    const v7 = remonter(scaffold, 'vert');
+    if (v7.r.status !== 0) ko(`(7) TF-1537 : le scaffolder échoue (exit ${v7.r.status}) — ${(v7.r.stderr || '').slice(0, 200)}`);
+    else {
+      const restes = baks(v7.p.dir);
+      const s7 = motifsSkip(v7.oracle);
+      if (restes.length) ko(`(7) TF-1537 : ${restes.length} sauvegarde(s) laissée(s) dans la cible — ${restes.join(', ')}`);
+      else if (s7.some((x) => x.code !== 2 || x.verdict !== 'SKIP' || !(typeof x.motif === 'string' && x.motif.trim())))
+        ko(`(7) TF-1537 : le squelette rend un SKIP sans motif — ${JSON.stringify(s7)}`);
+      else ok('(7) TF-1537 : aucune sauvegarde .bak laissée dans la cible, et le squelette motive ses deux SKIP (fichier absent, extension non gérée)');
+    }
+    const src7 = fs.readFileSync(scaffold, 'utf8');
+    const mute7 = src7.replace("...(verdict === 'SKIP' ? { motif } : {}), ", '')
+      .replace("  for (const p of sauvegardes) fs.rmSync(p + '.bak', { force: true });\n", '');
+    if (mute7 === src7 || mute7.includes("fs.rmSync(p + '.bak'") || mute7.includes('{ motif }')) ko('(8) TF-1537 rouge : la mutation ne s applique plus — la fixture rouge est devenue creuse, à réaccorder');
+    else {
+      const mutant7 = path.join(tmp, 'scaffold-mute-1537.mjs');
+      fs.writeFileSync(mutant7, mute7, 'utf8');
+      const r7 = remonter(mutant7, 'rouge');
+      const s7r = r7.r.status === 0 ? motifsSkip(r7.oracle) : [];
+      if (r7.r.status !== 0) ko(`(8) TF-1537 rouge : le mutant n a pas scaffoldé (exit ${r7.r.status})`);
+      else if (baks(r7.p.dir).length !== 2 || s7r.some((x) => x.motif)) ko(`(8) TF-1537 rouge : les défauts d origine ne sont pas pris — ${baks(r7.p.dir).length} .bak, motifs ${JSON.stringify(s7r.map((x) => x.motif))}`);
+      else ok('(8) TF-1537 rouge : le défaut d origine (2 .bak laissés, SKIP sans motif) est bien pris par les deux contrôles');
+    }
   }
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 

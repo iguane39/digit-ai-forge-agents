@@ -37,7 +37,7 @@ Produit, en une commande, dans le skill `quality-oracles` visé :
    (PASS d'office) — la porte fixtures du self-test reste verte de bout en bout.
 3. L'entrée de **registre** (`quality-oracles/references/registre-oracles.json`, statut `partiel`)
    et l'entrée de **manifest** (`quality-oracles/fixtures/manifest.json`) — sauvegardes `.bak`
-   des deux fichiers modifiés. **La forme de ces deux fichiers est relue, pas imposée** :
+   le temps des écritures, pour restaurer en cas d'échec, puis retirées (TF-1537). **La forme de ces deux fichiers est relue, pas imposée** :
    indentation, fin de ligne et newline finale sont rendues à l'identique, de sorte que le diff
    d'une remontée ne contienne QUE l'entrée ajoutée (TF-1194 — un rendu en 2 espaces imposé à
    deux fichiers qui vivent en 1 espace coûtait 2 625 lignes réécrites pour 44 lignes utiles).
