@@ -2226,6 +2226,34 @@ else {
   else ok('TF-1381 : S2 nomme au non_juge les diapositives où il n\'a trouvé aucun titre (slide3.xml, slide5.xml)');
 }
 
+// TF-1379 (retours Produit-68 du 26/09/2026, RG-11) — S6 NE JUGE QUE CE QU'ELLE A MESURÉ, SUR CE DECK.
+//   (A) des mesures qui décrivent un AUTRE deck (autres titres) : S6 NON jouée, motif dit, aucun constat inventé ;
+//   (B) à la limite : un désaxement de 1 pt passe, 1,5 pt échoue — la tolérance est celle de la demande ;
+//   (C) un deck sans aucune mesure : S6 NON jouée, et le PASS le dit (« S6 non jouée »).
+{
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const O = path.join(SKILLDIR, 'scripts', 'oracle-charte-pptx-semantique.mjs');
+  const jouer = (args) => { const r = spawnSync(process.execPath, [O, ...args], { encoding: 'utf8', timeout: 120000 }); try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [] }; } };
+  const s6 = (j) => (j.findings || []).filter((f) => /^S6 /.test(f.msg));
+  const autre = jouer([path.join(FX, 'charte-pptx-pptxgenjs-green.pptx'), '--mesures', path.join(FX, 'charte-pptx-alignement-red.mesures.json')]);
+  const dit = (autre.non_juge || []).some((x) => /^S6 NON jouée : les mesures ne décrivent pas ce deck/.test(x));
+  if (!dit || s6(autre).length) ko(`TF-1379 (A) : des mesures d'un autre deck doivent rendre S6 NON jouée sans constat — ${s6(autre).length} constat(s), motif ${dit ? 'dit' : 'absent'}`);
+  else ok('TF-1379 (A) : des mesures qui décrivent un autre deck rendent S6 NON jouée, motif dit, aucun constat');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1379-'));
+  try {
+    const deck = path.join(tmp, 'deck.pptx');
+    fs.copyFileSync(path.join(FX, 'charte-pptx-alignement-green.pptx'), deck);
+    const base = JSON.parse(fs.readFileSync(path.join(FX, 'charte-pptx-alignement-green.mesures.json'), 'utf8'));
+    const avecEcart = (e) => { const m = JSON.parse(JSON.stringify(base)); for (const sl of m.slides) for (const f of sl.formes) if (/\//.test(f.texte)) f.haut = Math.round((f.haut + e - 0.2) * 100) / 100; fs.writeFileSync(path.join(tmp, 'm.json'), JSON.stringify(m), 'utf8'); return jouer([deck, '--mesures', path.join(tmp, 'm.json')]); };
+    const limite = avecEcart(1.0), dessus = avecEcart(1.5);
+    if (limite.verdict !== 'PASS' || dessus.verdict !== 'FAIL' || !s6(dessus).length) ko(`TF-1379 (B) : à 1,0 pt le verdict est ${limite.verdict} (attendu PASS), à 1,5 pt ${dessus.verdict} (attendu FAIL)`);
+    else ok('TF-1379 (B) : un désaxement de 1,0 pt passe, un de 1,5 pt échoue — tolérance de 1 pt');
+    const sans = jouer([deck]);
+    if (sans.verdict !== 'PASS' || !(sans.non_juge || []).some((x) => /^S6 NON jouée : aucune mesure/.test(x))) ko('TF-1379 (C) : sans mesure, S6 doit être dite NON jouée (PASS conservé) — ' + sans.verdict);
+    else ok('TF-1379 (C) : sans mesure de rendu, S6 est dite NON jouée au non_juge, jamais déclarée conforme');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1492 (01/10/2026) — UNE CONFIGURATION D'INFRASTRUCTURE A SON ORACLE : LES STANDARDS, PUIS LA DATE.
 //
 // LE FAIT (lot Produit-03 - RETOURS - 20260929a, RA-48) : une date d'effet écrite en dur pour une

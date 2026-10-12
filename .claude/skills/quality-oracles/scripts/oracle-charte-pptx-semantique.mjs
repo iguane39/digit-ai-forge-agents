@@ -23,6 +23,10 @@
 //      à côté du seul contrôle qui porte son vocabulaire. Écrire ici une liste maison aurait
 //      fabriqué la classe `oracle-remplace-par-controle-maison` que ce registre compte par
 //      ailleurs : deux listes à tenir, une seule tenue.
+//   S6 un repère (« N / M ») posé à côté du titre est centré sur la 1re LIGNE du titre, tolérance 1 pt
+//      (TF-1379) : mesure de RENDU (TextRange.Lines(1) de PowerPoint), non déductible du XML ; elle
+//      vient de `--mesures <fichier>`, de `<deck>.mesures.json` posé à côté du deck, ou de
+//      `--mesurer` (scripts/mesure-rendu-pptx.ps1). Sans mesure, S6 est dite NON jouée ;
 // Conventions de détection (déterministes, versionnées ici) : slide « Sommaire » = titre
 // contenant « sommaire » ou « agenda » ; entrée = paragraphe « NN Intitulé » / « NN. Intitulé » ;
 // intercalaire = slide contenant un paragraphe-numéro isolé (1-2 chiffres) et l'intitulé.
@@ -40,6 +44,7 @@
 // profil : la règle n'est pas jouée, et c'est dit. Sans `--profil`, la charte Digit-AI, comme avant.
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -53,7 +58,10 @@ const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const argv = process.argv.slice(2);
 const iProfil = argv.indexOf('--profil');
 const profilChemin = iProfil >= 0 ? argv[iProfil + 1] : null;
-const file = argv.find((a, i) => !a.startsWith('--') && !(iProfil >= 0 && i === iProfil + 1));
+const iMes = argv.indexOf('--mesures');
+const mesuresChemin = iMes >= 0 ? argv[iMes + 1] : null;
+const mesurer = argv.includes('--mesurer');
+const file = argv.find((a, i) => !a.startsWith('--') && !(iProfil >= 0 && i === iProfil + 1) && !(iMes >= 0 && i === iMes + 1));
 const DOM = 'Charte PPTX sémantique (sommaire, kicker, logos, footer)';
 const findings = [];
 const non_juge = [
@@ -167,6 +175,62 @@ for (const s of slides) {
 if (sansTitre.length) non_juge.push(`S2 : aucun titre (espace réservé title ou ctrTitle) trouvé sur ${sansTitre.length} diapositive(s) — kicker non jugé sur : ${sansTitre.join(', ')}`);
 if (titreSansPosition.length) non_juge.push(`S2 : titre sans position propre (hérité du gabarit) sur ${titreSansPosition.length} diapositive(s) — kicker non jugé sur : ${titreSansPosition.join(', ')}`);
 
+// S6 — un repère « N / M » posé à côté du titre est centré sur la 1re ligne du titre (TF-1379).
+// Mesure de RENDU, jamais déduite du XML : le centre de la 1re ligne dépend de la police, de la largeur de la
+// zone et du retour à la ligne. Les mesures viennent, dans cet ordre, de `--mesures <fichier>`, de
+// `<deck>.mesures.json` posé à côté du deck, de `--mesurer` (PowerPoint, scripts/mesure-rendu-pptx.ps1).
+// Sans mesure, ou si elles ne décrivent pas CE deck, S6 est dite NON jouée : un alignement non mesuré
+// n'est pas déclaré conforme. Cas de départ : la remise Produit-68 du 24/09/2026, pastille centrée
+// 6,84 pt sous la 1re ligne sur 10 diapositives, vue du seul destinataire.
+const TOLERANCE_PT = 1;
+const REPERE = /^\s*\d{1,3}\s*(?:\/\s*\d{1,3})?\s*$/;
+let s6Etat = null;
+{
+  let source = null;
+  if (mesuresChemin) source = mesuresChemin;
+  else if (fs.existsSync(file.replace(/\.pptx$/i, '.mesures.json'))) source = file.replace(/\.pptx$/i, '.mesures.json');
+  let mes = null, motif = null, tmpDir = null;
+  if (!source && mesurer) {
+    const ps = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mesure-rendu-pptx.ps1');
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mesure-'));
+    const tmpMes = path.join(tmpDir, 'mesures.json');
+    const r = process.platform === 'win32'
+      ? spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps, '-Entree', path.resolve(file), '-Sortie', tmpMes], { encoding: 'utf8', timeout: 180000 })
+      : { status: 2, stdout: '{"motif":"PowerPoint n\'existe pas hors de Windows"}' };
+    if (r.status === 0 && fs.existsSync(tmpMes)) source = tmpMes;
+    else { let m = ''; try { m = JSON.parse((r.stdout || '').trim().split('\n').pop()).motif || ''; } catch { /* statut illisible */ } motif = `la mesure par PowerPoint n'a pas été faite (code ${r.status}${m ? ' : ' + m.slice(0, 140) : ''})`; }
+  }
+  if (source) { try { mes = JSON.parse(fs.readFileSync(source, 'utf8')); } catch { motif = `mesures illisibles : ${source}`; } }
+  if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
+  if (mes) {
+    // les mesures décrivent-elles CE deck ? même nombre de diapositives et mêmes titres
+    const sansEspace = t => norm(t).replace(/\s+/g, '');
+    const titresMes = (mes.slides || []).map(sl => sansEspace(((sl.formes || []).find(f => f.titre) || {}).texte || ''));
+    const titresDeck = slides.map(s => sansEspace(titleOf(s)));
+    if (titresMes.length !== titresDeck.length || titresMes.some((t, i) => t !== titresDeck[i])) { motif = 'les mesures ne décrivent pas ce deck (nombre de diapositives ou titres différents) — à refaire'; mes = null; }
+  }
+  if (mes) {
+    let reperes = 0;
+    for (const sl of mes.slides) {
+      const t = (sl.formes || []).find(f => f.titre && f.ligne1);
+      if (!t) continue;
+      const bas = t.haut + t.hauteur;
+      for (const f of sl.formes) {
+        if (f.titre || !REPERE.test(f.texte || '')) continue;
+        const cote = f.gauche + f.largeur <= t.gauche || f.gauche >= t.gauche + t.largeur; // à côté, pas au-dessus ni en dessous
+        const chevauche = f.haut < bas && f.haut + f.hauteur > t.haut; // même bande verticale que le titre
+        if (!cote || !chevauche) continue;
+        reperes++;
+        const ecart = (f.haut + f.hauteur / 2) - (t.ligne1.haut + t.ligne1.hauteur / 2);
+        if (Math.abs(ecart) > TOLERANCE_PT + 1e-9) findings.push({ sev: 'bloquant', msg: `S6 — repère « ${f.texte.trim()} » désaxé de ${ecart > 0 ? '+' : ''}${ecart.toFixed(2)} pt sur la 1re ligne du titre (tolérance ${TOLERANCE_PT} pt, centre du repère moins centre de la ligne)`, where: `diapositive ${sl.n}` });
+      }
+    }
+    s6Etat = reperes ? `${reperes} repère(s) à côté d'un titre, tous alignés à ${TOLERANCE_PT} pt` : 'aucun repère « N / M » à côté d\'un titre dans les mesures';
+  } else {
+    non_juge.push('S6 NON jouée : ' + (motif || 'aucune mesure de rendu (--mesures <fichier>, <deck>.mesures.json à côté du deck, ou --mesurer avec PowerPoint) — alignement des repères sur la 1re ligne du titre non jugé'));
+  }
+}
+
 // S3 — logos hors couverture/interlocuteurs (zone admise par le profil, TF-1490)
 const LOGO_MAX_CX = 2000000;
 const duProfil = CHARTE.profil ? ` (profil « ${CHARTE.profil} »)` : '';
@@ -259,5 +323,6 @@ const regles34 = (CHARTE.logos === 'couverture-interlocuteurs' && CHARTE.pied_de
   : `S1-S2 vérifiés, S3 ${CHARTE.logos === 'couverture-interlocuteurs' ? 'vérifiée' : CHARTE.logos === 'partout' ? 'sans zone à juger' : 'NON jouée'}, `
     + `S4 ${['espace-reserve', 'zone-texte'].includes(CHARTE.pied_de_page) ? 'vérifiée (' + CHARTE.pied_de_page + ')' : 'NON jouée'}${duProfil}`;
 findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), ${regles34}`
-  + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)'), where: path.basename(file) });
+  + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)')
+  + (s6Etat ? ` ; S6 — ${s6Etat}` : ' ; S6 non jouée (motif au non_juge)'), where: path.basename(file) });
 out('PASS', 0);

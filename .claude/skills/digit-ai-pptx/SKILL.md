@@ -123,13 +123,17 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
 8. **Passe QA finale (obligatoire)** — deux temps, l'oracle d'abord :
 
    ```bash
-   node ../quality-oracles/scripts/oracle-charte-pptx-semantique.mjs <deck.pptx>
+   node ../quality-oracles/scripts/oracle-charte-pptx-semantique.mjs <deck.pptx> --mesurer
    ```
 
    L'oracle vit dans le skill voisin quality-oracles, sous scripts/oracle-charte-pptx-semantique.mjs :
    S1 bijection sommaire ↔ intercalaires, S2 kicker, S3 logos, S4 footer + pagination, S5
    **lexique du destinataire** sur les textes de slide **et les notes du présentateur**
-   (TF-1152). Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
+   (TF-1152), S6 **alignement d'un repère « N / M » sur la 1re ligne du titre**, tolérance 1 pt
+   (TF-1379). S6 se mesure sur le rendu : `--mesurer` fait lire par PowerPoint les bornes de la 1re
+   ligne de chaque titre (`quality-oracles/scripts/mesure-rendu-pptx.ps1`, sur une copie, sans
+   quitter l'instance de l'utilisateur). Sans PowerPoint, le `non_juge` dit « S6 NON jouée » : le
+   désaxement d'un repère est alors à chercher à l'œil sur le rendu. Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
    fichier LEXIQUE.json du socle du projet où vit le deck : si le `non_juge` déclare l'avoir
    cherché en vain, le vocabulaire du client n'a été jugé par personne — le dire, pas conclure.
    Puis rasteriser le PDF de l'étape 7 (PDF → PNG) et inspecter **chaque** slide — aucune image
@@ -279,7 +283,7 @@ le renvoi est retiré du workflow, le manque est déclaré.
 - **Illustrations : ≈ 1 slide de contenu sur 2**, jamais sur intercalaire, sommaire, ni
   prix/investissement. La couverture porte logo Digit-AI + logo client + une photo d'habillage.
   La slide interlocuteurs porte ses photos de profil (hors de ce rythme).
-- **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S5, dont
+- **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S6, dont
   le **lexique du destinataire** sur textes et notes), puis rasteriser + inspecter chaque slide
   (image déformée / hors zone / encadrée, **texte qui déborde d'un encart ou de la slide**, zones
   qui se chevauchent). Corriger à la source et re-générer — jamais livrer avec un défaut.
