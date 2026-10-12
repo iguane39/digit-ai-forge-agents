@@ -506,6 +506,11 @@ CAS_RENDU = {
     # (1 constat avant, 0 après) ; un numéro posé sur leur croisement, sans le jeton, reste jugé.
     "v4-calque-declare.html": ("v4_overlap", 0),
     "v4-calque-recouvre-numero.html": ("v4_overlap", 1),
+    # TF-1628 (RA-8) — un logo <svg role="img"> nommé et sans <text> est une figure unique (5
+    # constats avant, 0 après) ; le même logo sans role ni nom reste jugé. Le schéma à libellés
+    # (v4-libelle-dans-la-boite-voisine.html, role="img" lui aussi) garde son constat.
+    "v4-logo-figure-unique.html": ("v4_overlap", 0),
+    "v4-logo-sans-nom.html": ("v4_overlap", 1),
     # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.
     # Deux surlignages de lignes consecutives se recouvrent donc geometriquement des que line-height
     # est serre, SANS QU'AUCUN PIXEL PEINT NE SE SUPERPOSE. Mesure du 19/08 sur 1 246 surlignages

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — logo SVG nomme, figure unique — 20261012a</title>
+<!--
+  Fixture de TF-1628 (lot Produit-79 20261007f, RA-8) — UN LOGO EST UNE FIGURE, PAS UNE MISE EN
+  PAGE. V4 lisait les traces d un logo SVG inline comme des blocs : 120 constats bloquants sur un
+  seul logo, leves seulement en titrant chaque groupe. Un <svg role="img"> qui porte un nom
+  accessible (aria-label, aria-labelledby ou <title>) et AUCUN <text> est une image unique : ses
+  formes internes se superposent par construction, comme celles d un groupe titre (TF-0424).
+  Un schema garde ses <text> et reste juge (TF-1146, v4-libelle-dans-la-boite-voisine.html).
+  Attendu : aucun constat v4_overlap. Jumelle rouge : v4-logo-sans-nom.html, le meme logo sans role ni nom.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — un logo SVG inline</h1>
+<p>Le logo ci-dessous superpose ses formes par construction.</p>
+<svg width="240" height="80" viewBox="0 0 240 80" role="img" aria-label="Logo de l emetteur">
+  <g><circle cx="40" cy="40" r="34" fill="#1E3A8A"></circle><circle cx="40" cy="40" r="20" fill="#FFFFFF"></circle><path d="M28 40 L40 22 L52 40 L40 58 Z" fill="#F59E0B"></path></g>
+  <g><rect x="84" y="18" width="140" height="44" rx="6" fill="#E0E7FF"></rect><path d="M96 28 h40 v24 h-40 Z" fill="#1E3A8A"></path><path d="M146 28 h66 v24 h-66 Z" fill="#3B82F6"></path></g>
+</svg>
+</main></body></html>

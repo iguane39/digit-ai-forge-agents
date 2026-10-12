@@ -480,10 +480,26 @@ MEASURE_JS = r"""
     // noeud et fleche ; data-overlap-ok n'est plus a poser sur chaque forme d'un noeud.
     const groupeTitre = parent.tagName.toLowerCase() === 'g' &&
       [...parent.children].some((c) => c.tagName.toLowerCase() === 'title');
+    // TF-1628 (lot Produit-79 20261007f, RA-8) — UN LOGO EST UNE FIGURE UNIQUE. V4 lisait les
+    // traces d un logo SVG inline comme des blocs de mise en page : 120 constats bloquants sur un
+    // seul logo, leves seulement en titrant chaque groupe. Un <svg role="img"> qui porte un nom
+    // accessible (aria-label, aria-labelledby ou <title>) et AUCUN <text> se declare image unique :
+    // ses formes se superposent par construction, comme celles d un groupe titre (TF-0424). La
+    // condition « aucun <text> » garde les schemas — role="img" y est de regle (conventions-
+    // communes.md de digit-ai-schemas) et leurs libelles restent juges (TF-1146).
+    const svgFigure = (() => {
+      const racine = parent.tagName.toLowerCase() === 'svg' ? parent
+        : (parent.closest ? parent.closest('svg') : null);
+      if (!racine || (racine.getAttribute('role') || '').trim() !== 'img') return false;
+      const nomme = (racine.getAttribute('aria-label') || '').trim()
+        || (racine.getAttribute('aria-labelledby') || '').trim()
+        || [...racine.children].some((c) => c.tagName.toLowerCase() === 'title');
+      return Boolean(nomme) && !racine.querySelector('text');
+    })();
     for (let i = 0; i < kids.length; i++) {
       for (let j = i + 1; j < kids.length; j++) {
         const a = kids[i], b = kids[j];
-        if (svgIcone || groupeTitre) continue;
+        if (svgIcone || groupeTitre || svgFigure) continue;
         // TF-1146 (16/09, lot Produit-64 20260916a, retour RD-6) — L EXEMPTION S APPLIQUAIT A L
         // ELEMENT, PAS A LA PAIRE, ET COUVRAIT DONC AUSSI LE RECOUVREMENT NON VOULU. Dans le
         // schema des trois couches, le libelle de fleche « expose ses sorties a » etait imprime

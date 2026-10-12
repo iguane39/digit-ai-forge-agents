@@ -351,6 +351,15 @@ constats du numéro restent). Pour un nœud de schéma (sa boîte et ses textes)
 reste le groupe `<g>` portant un `<title>` (TF-0424) : il supprime l'exemption au lieu de la
 déclarer.
 
+**Le logo : une figure unique (TF-1628, lot Produit-79 20261007f).** Un logo SVG inline rendait
+**120 constats bloquants** : V4 lisait ses tracés comme des blocs de mise en page. Un
+`<svg role="img">` qui porte un nom accessible (`aria-label`, `aria-labelledby` ou `<title>`) et
+**aucun `<text>`** est désormais une image unique : ses formes internes ne sont plus jugées entre
+elles. La condition « aucun `<text>` » protège les schémas, qui portent tous `role="img"` et dont
+les libellés restent jugés (TF-1146). Preuve à double sens : `v4-logo-figure-unique.html`
+(**5 constats puis 0**) et `v4-logo-sans-nom.html` (même logo sans rôle ni nom : constats
+maintenus) ; `v4-libelle-dans-la-boite-voisine.html` reste rouge.
+
 **La forme nue continue d'exempter, et n'est plus silencieuse.** **1 716 occurrences** de
 `data-overlap-ok=""` mesurées le 16/09 dans dix pages HTML de deux dépôts du parc : les rendre
 bloquantes d'un coup rougirait tout ce qui existe. Elles sont donc **recensées** — famille
