@@ -201,7 +201,7 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
 - `scripts/prepare_images.py` — prépare pour embarquement PPTX : transcodage webp/gif→PNG, coins arrondis (masque alpha, **sans cadre**), calcul contain-fit, manifest JSON. **Requiert Pillow.**
 - `scripts/exporter-pptx.mjs` — **l'export par PowerPoint** de l'étape 7 : verrou entre sessions,
   appel de `scripts/exporter-powerpoint.ps1`, jugement des polices embarquées, réencodage si FAIL,
-  livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
+  métadonnées personnelles vidées puis rejugées (TF-1535), livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
 - `scripts/exporter-powerpoint.ps1` — le seul code qui pilote PowerPoint (COM) : copie unique
   ouverte sans fenêtre, PPTX à polices embarquées et PDF, puis la règle de décision qui ne quitte
   que l'instance lancée par l'export. Son mode `-Decision` rejoue la règle sans PowerPoint.

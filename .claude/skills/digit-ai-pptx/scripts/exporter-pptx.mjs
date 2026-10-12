@@ -20,6 +20,9 @@
 //   3. ASSAINISSEMENT des polices embarquées : oracle-polices-embarquees (skill quality-oracles)
 //      juge le PPTX exporté ; s'il rend FAIL, scripts/reembarquer-polices.py réencode les polices
 //      dans un processus neuf, puis le juge rejuge. Le PDF demandé passe devant le même juge ;
+//   3 bis. MÉTADONNÉES PERSONNELLES (TF-1535) : créateur et dernier auteur (docProps/core.xml),
+//      société et responsable (docProps/app.xml) sont vidés, puis rejugés ; un champ encore rempli
+//      refuse la livraison ;
 //   4. LIVRAISON tout ou rien : les sorties ne s'écrivent à leur chemin final que si tout est sain,
 //      et jamais par-dessus un fichier existant. Refus : rien n'est écrit, le motif est dit.
 //
@@ -42,10 +45,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.1.0';
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 export const SCRIPT_POWERPOINT = path.join(ICI, 'exporter-powerpoint.ps1');
 export const SCRIPT_REEMBARQUER = path.join(ICI, 'reembarquer-polices.py');
@@ -59,7 +63,7 @@ const ILLISIBLE_TOLERE_MS = 10 * 1000;
 const NON_JUGE = [
   'le rendu chez le destinataire (poste sans les polices, Mac) : l essai sur un tel poste reste un geste humain',
   'la charte, la composition et les débordements : → oracle-charte-pptx-semantique et la passe QA du deck',
-  'les métadonnées que PowerPoint écrit dans le paquet (compte Office de l auteur dans docProps/core.xml) : ni lues ni nettoyées par cet export',
+  'les métadonnées du PDF tiré par PowerPoint (auteur) : ni lues ni nettoyées — celles du PPTX (docProps/core.xml et app.xml) sont vidées et rejugées depuis TF-1535',
   'une instance PowerPoint qui ne répond plus : l export l abandonne après le délai sans la tuer, la fermer reste un geste de l utilisateur',
 ];
 
@@ -228,6 +232,133 @@ export function assainir(deck, dossierTravail, { polices } = {}) {
     motif: `polices réencodées encore ${bilan.recontrole.verdict} au contrôle (${(bilan.recontrole.constats || []).join(' ; ') || bilan.recontrole.motif}) : rien ne se livre` };
 }
 
+// ---------------------------------------------------------------- métadonnées personnelles (TF-1535)
+// LE FAIT (01/10/2026, TF-1502) : PowerPoint écrit le nom du compte Office du poste dans
+// docProps/core.xml à chaque enregistrement (dernier auteur, et créateur d'un deck né chez lui), et
+// l'organisation de ce compte dans docProps/app.xml ; un produit l'effaçait par un script à lui,
+// cet export le laissait partir. Les champs sont VIDÉS, pas remplacés : ce skill ne porte aucune
+// valeur de marque, et un nom d'émetteur n'a rien à faire en dur ici. Toutes les autres parties du
+// paquet sont recopiées octet pour octet ; la valeur effacée n'est jamais imprimée.
+export const CHAMPS_PERSONNELS = {
+  'docProps/core.xml': ['dc:creator', 'cp:lastModifiedBy'],
+  'docProps/app.xml': ['Company', 'Manager'],
+};
+const echapper = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const motifChamp = (balise) => new RegExp(`<${echapper(balise)}(\\s[^>]*)?>([^<]*)</${echapper(balise)}>`, 'g');
+
+// Les entrées d'un paquet zip : nom, méthode, drapeaux, tailles, CRC, et la plage d'octets de
+// l'entrée locale (en-tête, données, descripteur éventuel) — null si illisible ou en ZIP64.
+function entreesDuPaquet(buf) {
+  let fin = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) if (buf.readUInt32LE(i) === 0x06054b50) { fin = i; break; }
+  if (fin < 0) return null;
+  const n = buf.readUInt16LE(fin + 10);
+  const debutCentral = buf.readUInt32LE(fin + 16);
+  if (n === 0xffff || debutCentral === 0xffffffff) return null;
+  const entrees = [];
+  let p = debutCentral;
+  for (let k = 0; k < n; k++) {
+    if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) return null;
+    const ln = buf.readUInt16LE(p + 28), lx = buf.readUInt16LE(p + 30), lc = buf.readUInt16LE(p + 32);
+    const e = { central: buf.subarray(p, p + 46 + ln + lx + lc), nom: buf.toString('utf8', p + 46, p + 46 + ln),
+      drapeaux: buf.readUInt16LE(p + 8), methode: buf.readUInt16LE(p + 10), taille: buf.readUInt32LE(p + 20),
+      local: buf.readUInt32LE(p + 42) };
+    if (e.taille === 0xffffffff || e.local === 0xffffffff) return null;
+    entrees.push(e);
+    p += 46 + ln + lx + lc;
+  }
+  const bornes = [...entrees.map((e) => e.local), debutCentral].sort((a, b) => a - b);
+  for (const e of entrees) {
+    e.finLocale = bornes.find((b) => b > e.local);
+    if (buf.readUInt32LE(e.local) !== 0x04034b50) return null;
+    e.debutDonnees = e.local + 30 + buf.readUInt16LE(e.local + 26) + buf.readUInt16LE(e.local + 28);
+  }
+  return { entrees, debutCentral, fin };
+}
+
+function lirePartie(buf, e) {
+  const brut = buf.subarray(e.debutDonnees, e.debutDonnees + e.taille);
+  return e.methode === 8 ? zlib.inflateRawSync(brut) : e.methode === 0 ? Buffer.from(brut) : null;
+}
+
+// Les champs personnels NON VIDES d'un paquet : [{ partie, balise }] (jamais la valeur) ; null si
+// le paquet est illisible. C'est le juge : un livrable n'en porte aucun.
+export function metadonneesPersonnelles(fichier) {
+  let buf;
+  try { buf = fs.readFileSync(fichier); } catch { return null; }
+  const z = entreesDuPaquet(buf);
+  if (!z) return null;
+  const trouves = [];
+  for (const e of z.entrees) {
+    if (!CHAMPS_PERSONNELS[e.nom]) continue;
+    const data = lirePartie(buf, e);
+    if (!data) return null;
+    const xml = data.toString('utf8');
+    for (const balise of CHAMPS_PERSONNELS[e.nom]) {
+      for (const m of xml.matchAll(motifChamp(balise))) if (m[2].trim()) trouves.push({ partie: e.nom, balise });
+    }
+  }
+  return trouves;
+}
+
+// Écrit `sortie` : le paquet `entree` dont les champs personnels sont vidés. Les autres entrées sont
+// recopiées octet pour octet ; seule une partie modifiée est recompressée (sans descripteur).
+export function viderMetadonnees(entree, sortie) {
+  const buf = fs.readFileSync(entree);
+  const z = entreesDuPaquet(buf);
+  if (!z) return { ok: false, motif: 'paquet illisible ou en ZIP64 : métadonnées non nettoyées' };
+  const morceaux = [], centraux = new Map();
+  let decalage = 0;
+  const vides = [];
+  for (const e of [...z.entrees].sort((a, b) => a.local - b.local)) {
+    let local = buf.subarray(e.local, e.finLocale);
+    let central = Buffer.from(e.central);
+    if (CHAMPS_PERSONNELS[e.nom]) {
+      const data = lirePartie(buf, e);
+      if (!data) return { ok: false, motif: `${e.nom} : méthode de compression ${e.methode} non lue` };
+      let xml = data.toString('utf8');
+      for (const balise of CHAMPS_PERSONNELS[e.nom]) {
+        xml = xml.replace(motifChamp(balise), (tout, attrs, valeur) => {
+          if (!valeur.trim()) return tout;
+          vides.push({ partie: e.nom, balise });
+          return `<${balise}${attrs || ''}></${balise}>`;
+        });
+      }
+      const neuf = Buffer.from(xml, 'utf8');
+      if (!neuf.equals(data)) {
+        const comp = zlib.deflateRawSync(neuf);
+        const crc = zlib.crc32(neuf) >>> 0;
+        const nomBuf = buf.subarray(e.local + 30, e.local + 30 + buf.readUInt16LE(e.local + 26));
+        const tete = Buffer.alloc(30);
+        buf.copy(tete, 0, e.local, e.local + 30);
+        tete.writeUInt16LE(buf.readUInt16LE(e.local + 6) & ~0x8, 6);
+        tete.writeUInt16LE(8, 8);
+        tete.writeUInt32LE(crc, 14);
+        tete.writeUInt32LE(comp.length, 18);
+        tete.writeUInt32LE(neuf.length, 22);
+        tete.writeUInt16LE(nomBuf.length, 26);
+        tete.writeUInt16LE(0, 28);
+        local = Buffer.concat([tete, nomBuf, comp]);
+        central.writeUInt16LE(e.drapeaux & ~0x8, 8);
+        central.writeUInt16LE(8, 10);
+        central.writeUInt32LE(crc, 16);
+        central.writeUInt32LE(comp.length, 20);
+        central.writeUInt32LE(neuf.length, 24);
+      }
+    }
+    central.writeUInt32LE(decalage, 42);
+    morceaux.push(local);
+    centraux.set(e, central);
+    decalage += local.length;
+  }
+  const blocCentral = Buffer.concat(z.entrees.map((e) => centraux.get(e)));
+  const eocd = Buffer.from(buf.subarray(z.fin));
+  eocd.writeUInt32LE(blocCentral.length, 12);
+  eocd.writeUInt32LE(decalage, 16);
+  fs.writeFileSync(sortie, Buffer.concat([...morceaux, blocCentral, eocd]));
+  return { ok: true, vides };
+}
+
 // ---------------------------------------------------------------- export
 function lireArguments(argv) {
   const AVEC_VALEUR = new Set(['--pptx', '--pdf', '--polices', '--attente']);
@@ -255,7 +386,7 @@ export async function exporter(argv) {
   const o = lireArguments(argv);
   const rapport = {
     outil: 'exporter-pptx', version: VERSION, entree: o.entree, sorties: { pptx: o.pptx, pdf: o.pdf },
-    verdict: null, etat: null, motif: null, verrou: null, powerpoint: null, polices: null, pdf: null, non_juge: [...NON_JUGE],
+    verdict: null, etat: null, motif: null, verrou: null, powerpoint: null, polices: null, metadonnees: null, pdf: null, non_juge: [...NON_JUGE],
   };
   const fin = (code, verdict, etat, motif) => {
     Object.assign(rapport, { verdict, etat, motif });
@@ -337,6 +468,22 @@ export async function exporter(argv) {
       livrablePptx = a.livrable;
       etat = a.etat;
       motif = a.motif;
+      // 3 bis. métadonnées personnelles (TF-1535) : vidées, puis rejugées ; un deck qui en porte
+      // encore ne se livre pas.
+      const avant = metadonneesPersonnelles(livrablePptx);
+      if (avant === null) return fin(1, 'REFUS', 'refus', 'métadonnées du paquet illisibles (zip illisible ou ZIP64) : un deck non jugé ne se livre pas');
+      rapport.metadonnees = { videes: [], controle: 'PASS' };
+      if (avant.length) {
+        const propre = path.join(tmp, `metadonnees-${crypto.randomBytes(4).toString('hex')}.pptx`);
+        const v = viderMetadonnees(livrablePptx, propre);
+        const apres = v.ok ? metadonneesPersonnelles(propre) : null;
+        rapport.metadonnees = { videes: v.vides || [], controle: apres && !apres.length ? 'PASS' : 'FAIL' };
+        if (!v.ok || !apres || apres.length) {
+          return fin(1, 'REFUS', 'refus', `métadonnées personnelles encore présentes après nettoyage (${v.motif || (apres || []).map((x) => x.partie + ' ' + x.balise).join(', ')}) : rien ne se livre`);
+        }
+        livrablePptx = propre;
+        motif += ` ; ${avant.length} métadonnée(s) personnelle(s) vidée(s) (${avant.map((x) => x.balise).join(', ')})`;
+      }
     }
     if (o.pdf) {
       rapport.pdf = juger(pdfExporte, o.polices);
