@@ -1274,9 +1274,19 @@ def check_lisibilite(html: str, a: Arbre):
     # `null` n'est pas un mot français. Quand il apparaît, une valeur non
     # renseignée a traversé le producteur sans être traitée : le lecteur reçoit
     # l'aveu d'un trou, formulé dans un langage qui n'est pas le sien.
+    # TF-1590 (lot Produit-02 20261001b, RT-116) — « None » EST AUSSI UN MOT ANGLAIS. Une page
+    # en anglais écrivait « No. None of the restaurants we have tested is on the Mont itself. » :
+    # L11 la jugeait fuite de la valeur Python, et le producteur a réécrit une phrase correcte
+    # pour obtenir un vert. Exemption ÉTROITE : la page déclare lang="en…", le jeton est « None »
+    # (pas « NONE », pas « null ») et il est SUIVI d'un mot en minuscule — il ouvre une phrase
+    # (« None of… », « None is… »). Une cellule `<td>None</td>` ou « Valeur : None » reste jugée.
+    html_lang = next((n.att("lang") or "" for n in a.racine.descendants() if n.tag == "html"), "")
+    page_en = html_lang.strip().lower().startswith("en")
     fuites = []
     for txt, porteur in a.textes:
         for m in RE_LITTERAL.finditer(txt):
+            if page_en and m.group(1) == "None" and re.match(r"\s+[a-z]", txt[m.end(1):]):
+                continue
             # L'exemption « code » vaut pour le porteur ET ses ancetres : un litteral dans
             # <pre><span>…</span></pre> est cite, pas fuite (l exemption ne regardait que le
             # porteur direct — trouve le 15/08 en instruisant TF-0227).

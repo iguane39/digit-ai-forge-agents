@@ -186,6 +186,10 @@ CAS = {
     # (data-filterable pose L4 muette, exemple de lecture pose L10 muette).
     "l13-liste-sans-recherche.html": {"L13"},
     "l11-litteral-null.html": {"L11"},
+    # TF-1590 (RT-116) — « None » ouvrant une phrase d'une page lang="en" est un mot anglais ;
+    # la même page qui rend « None » seul dans une valeur reste rouge.
+    "l11-none-phrase-anglaise.html": set(),
+    "l11-none-valeur-seule.html": {"L11"},
     # Lot Produit-02 du 02/09 (TF-0772/0771/0778/0777/0783/0754) — cinq regles neuves, cinq
     # paires. Chaque paire porte la MEME page a une difference pres, et cette difference est
     # exactement ce que la regle mesure : le sommaire (L25), la bride de largeur autour du

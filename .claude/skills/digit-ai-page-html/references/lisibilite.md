@@ -489,7 +489,9 @@ l'attrape pas ; il faut normaliser explicitement.
 
 **Exemptions.** Le contenu de `<code>`, `<pre>`, `<kbd>`, `<samp>` — on y documente du code —
 et tout élément marqué `data-litteral-ok` : une page qui parle *de* `null` a le droit de
-l'écrire.
+l'écrire. Sur une page `lang="en…"`, `None` suivi d'un mot en minuscule ouvre une phrase
+anglaise (« None of the restaurants… ») et n'est pas jugé (TF-1590) ; `None` seul dans une
+valeur reste un littéral.
 
 **Contrôle mécanique.** `L11` — occurrence de l'un de ces littéraux, délimitée par des
 frontières de mot, dans un nœud de texte visible hors exemptions.
