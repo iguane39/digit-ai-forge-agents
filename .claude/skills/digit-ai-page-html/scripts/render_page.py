@@ -250,6 +250,7 @@ MEASURE_JS = r"""
                    contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
+                   decor_sur_ancetre: [],
                    unmeasured: [] };
   const doc = document.documentElement;
 
@@ -417,6 +418,7 @@ MEASURE_JS = r"""
     return { color: { r: 255, g: 255, b: 255, a: 1 } };  // défaut : blanc
   };
   const seenText = new Set();
+  const decorsAncetres = new Map();   // TF-1417 : ancetre peint -> textes rendus non mesurables
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   let n;
   while ((n = walker.nextNode())) {
@@ -506,6 +508,31 @@ MEASURE_JS = r"""
     // pseudo-élément, un mix-blend-mode ou un filtre échappe à toute mesure par styles calculés.
     const horsFond = peintHorsFond(el);
     if (horsFond) {
+      // TF-1417 (lot Produit-64 20260924e, RD-27) — LE DECOR PEINT SUR L'ANCETRE AVEUGLE TOUT
+      // SON TEXTE. Un rail de gouttiere en `.ch-corps::before` degrade rendait 440 lignes « NON
+      // MESURABLE » sur une page de guide ; sorti en element frere, 4. La regle d'auteur
+      // (composants.md, « Un decor se peint sur un element frere ») se juge ici : un ::before /
+      // ::after qui peint une surface d'au moins 24 px de cote sur un ANCETRE strict du texte est
+      // compte, une fois par ancetre. Une puce ou une pastille (moins de 24 px) n'est pas un decor.
+      for (let anc = el.parentElement; anc && anc !== document.documentElement; anc = anc.parentElement) {
+        let trouve = false;
+        for (const pseudo of ['::before', '::after']) {
+          const ps = getComputedStyle(anc, pseudo);
+          if (!ps || ps.content === 'none') continue;
+          const fondPseudo = parseColor(ps.backgroundColor);
+          const imagePseudo = ps.backgroundImage && ps.backgroundImage !== 'none';
+          const w = parseFloat(ps.width) || 0, h = parseFloat(ps.height) || 0;
+          if (w > 0 && h > 0 && (w >= 24 || h >= 24)
+              && ((fondPseudo && fondPseudo.a > 0.05) || imagePseudo)) {
+            const deja = decorsAncetres.get(anc) || { pseudo, textes: 0 };
+            deja.textes += 1;
+            decorsAncetres.set(anc, deja);
+            trouve = true;
+            break;
+          }
+        }
+        if (trouve) break;
+      }
       issues.unmeasured.push({ what: label(el), detail:
         `contraste NON MESURABLE par styles calculés — ${horsFond}. Un fond peint hors `
         + `\`background-color\` échappe à cette sonde : mesurer au pixel après rendu, ou vérifier `
@@ -524,6 +551,13 @@ MEASURE_JS = r"""
         `texte ${svgTexte ? 'SVG fill ' + s.fill : s.color} sur fond rgb(${Math.round(bg.color.r)},${Math.round(bg.color.g)},${Math.round(bg.color.b)}))` });
       if (issues.v2_contrast.length > 20) break;
     }
+  }
+  for (const [anc, d] of decorsAncetres) {
+    issues.decor_sur_ancetre.push({ what: label(anc), detail:
+      `decor peint en ${d.pseudo} sur l'ANCETRE de ${d.textes} element(s) de texte : leur contraste `
+      + `n'est pas mesurable, et un verdict PASS ne les a pas juges. Sortir le decor en element `
+      + `FRERE du texte (<div aria-hidden="true">), composants.md « Un decor se peint sur un element `
+      + `frere » (TF-1417)` });
   }
 
   // TF-1369 — un connecteur SVG (trait sans remplissage) : defini ici, avant le jugement par
@@ -2624,6 +2658,11 @@ FAMILLES = [
     # `lisibilite.md` §L19 annonçait n'existait pas. Bloquant au même titre que V13 (bloc de texte
     # étriqué) : un mot illisible EST le premier défaut qu'un lecteur voit.
     ("mot_coupe", "V19 mot coupé sur deux lignes sans trait d'union", "bloquant"),
+    # TF-1417 — un decor peint sur l'ANCETRE du texte rend son contraste non mesurable.
+    # AVERTISSEMENT : regle neuve dont le bruit sur les pages existantes n'est pas nul (12/10/2026,
+    # mesurer_bruit.py a 1 440 px : 0 page sur 79 du pilot et des forges, 6 pages sur 385 du parc
+    # complet, 31 constats) ; la regle d'auteur l'interdit (composants.md, Note d'usage).
+    ("decor_sur_ancetre", "Décor peint sur l'ancêtre du texte (contraste aveuglé)", "avertissement"),
     ("unmeasured", "Non mesurable — à vérifier à l'œil", "info"),
 ]
 # UNE ÉCHÉANCE DÉPASSÉE DURCIT LA FAMILLE, elle ne l'adoucit jamais : la table déclare la

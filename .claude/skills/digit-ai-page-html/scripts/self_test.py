@@ -604,6 +604,10 @@ CAS_RENDU = {
     "v4-fleche-traverse-boite.html": ("v4_overlap", 2),
     "v4-fleche-contourne-boite.html": ("v4_overlap", 0),
     "v4-grille-de-graphe.html": ("v4_overlap", 0),
+    # TF-1417 (lot Produit-64 20260924e, RD-27) : un decor peint sur l'ANCETRE du texte aveugle son
+    # contraste — un constat par ancetre ; le meme decor en element frere n'en rend aucun.
+    "decor-rail-sur-ancetre.html": ("decor_sur_ancetre", 1),
+    "decor-rail-frere-du-texte.html": [("decor_sur_ancetre", 0), ("unmeasured", 0)],
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
     # haut de boîte au suivant. Les deux pages sont identiques à une chose près —
     # un paragraphe hors de l'échelle d'espacement dans la rouge.

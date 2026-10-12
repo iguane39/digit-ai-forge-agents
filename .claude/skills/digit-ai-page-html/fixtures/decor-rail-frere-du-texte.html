@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — decor peint sur un element frere du texte — 20260924e</title>
+<!--
+  Fixture VERTE de TF-1417 : le meme rail, sorti en element FRERE du texte
+  (<div class="ch-rail" aria-hidden="true">). Le contraste des trois paragraphes redevient
+  mesurable. Attendu : 0 constat decor_sur_ancetre.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+.ch-corps{position:relative;padding-left:24px}
+.ch-rail{position:absolute;left:0;top:0;bottom:0;width:6px;
+  background:linear-gradient(#1E3A5F,#0F766E)}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>Decor peint sur un element frere du texte</h1>
+<div class="ch-corps">
+  <div class="ch-rail" aria-hidden="true"></div>
+  <p>Le premier paragraphe du chapitre porte le propos principal de la section.</p>
+  <p>Le deuxieme paragraphe developpe un exemple tire du guide d origine.</p>
+  <p>Le troisieme paragraphe conclut sur le geste attendu du lecteur.</p>
+</div>
+</main></body></html>

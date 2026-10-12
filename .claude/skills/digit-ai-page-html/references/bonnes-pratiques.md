@@ -69,6 +69,7 @@ raison contre une heuristique de mise en forme.
 ## 4 — Accessibilité (WCAG 2.2 AA)
 
 - 🔴 Contraste texte ≥ **4.5:1** (≥ 3:1 si large ≥ 24px ou 19px bold).
+- 🟡 Un décor (rail, bande, dégradé) se peint sur un élément **frère** du texte, jamais en `::before` / `::after` sur son ancêtre : sinon le contraste de tout ce texte devient non mesurable (`composants.md`, Note d'usage ; famille `decor_sur_ancetre` de `render_page.py`, TF-1417).
 - 🔴 `alt` descriptif sur image porteuse de sens ; `alt=""` si décorative.
 - 🔴 La **couleur n'est jamais le seul vecteur** d'information (libellé/icône en plus).
 - 🟡 États de focus visibles et contrastés (≥ 3:1) sur tout interactif.

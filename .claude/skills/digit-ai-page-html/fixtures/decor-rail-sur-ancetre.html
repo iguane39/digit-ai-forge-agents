@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — decor peint sur l ancetre du texte — 20260924e</title>
+<!--
+  Fixture ROUGE de TF-1417 (lot Produit-64 20260924e, RD-27) — LE FAIT MESURE : sur l'instance du
+  gabarit gd-guide-de-reference, le rail de gouttiere etait un `.ch-corps::before` en degrade :
+  440 lignes « contraste NON MESURABLE », tout le texte des chapitres, verdict PASS quand meme.
+  Ici, le meme rail etroit en degrade sur l'ancetre de trois paragraphes. Attendu : 1 constat
+  decor_sur_ancetre (un par ancetre, pas un par texte).
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+.ch-corps{position:relative;padding-left:24px}
+.ch-corps::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;
+  background:linear-gradient(#1E3A5F,#0F766E)}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>Decor peint sur l ancetre du texte</h1>
+<div class="ch-corps">
+  <p>Le premier paragraphe du chapitre porte le propos principal de la section.</p>
+  <p>Le deuxieme paragraphe developpe un exemple tire du guide d origine.</p>
+  <p>Le troisieme paragraphe conclut sur le geste attendu du lecteur.</p>
+</div>
+</main></body></html>
