@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 infobulle qui recopie la cible du lien — 20261012a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.st{padding:0 6px;border:1px solid var(--line);border-radius:4px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE (avertissement) de TF-1609, forme 1 — le title d'un lien interne recopie le texte
+  de sa cible (le dd qui suit le dt visé). Le libellé du lien fait plus de 8 caractères : L8 ne
+  juge rien ici, seule L3 bis étendue parle. Attendu : avertissement L3, aucun échec L.
+-->
+<body><main class="wrap">
+<h1>Deux pipelines comparés</h1>
+<p>Le premier pipeline applique la <a href="#r-promotion" title="Construire une fois, promouvoir le même artefact entre les environnements">règle de promotion unique</a> ; le second ne l'applique pas.</p>
+<h2 id="glossaire">Glossaire des repères</h2>
+<dl>
+<dt id="r-promotion">Promotion unique</dt><dd>Construire une fois, promouvoir le même artefact entre les environnements</dd>
+<dt id="r-correctif">Correctif urgent</dt><dd>Partir de la branche de production, puis reporter le jour même vers les autres branches</dd>
+</dl>
+</main></body></html>

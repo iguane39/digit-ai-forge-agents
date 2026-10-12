@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L8 title qui recopie la cible — 20261012a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.st{padding:0 6px;border:1px solid var(--line);border-radius:4px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de TF-1609, forme 3 — un lien interne à libellé court (un code) dont le title
+  recopie le dd de l'entrée de glossaire visée. L8 acceptait ce title (12 caractères et plus) ;
+  elle exige désormais un aria-label, ou un title qui DIFFÈRE du texte de la cible.
+  Attendu : L8 (et l'avertissement L3 de la recopie).
+-->
+<body><main class="wrap">
+<h1>Repères cités</h1>
+<p>Le premier pipeline applique le repère <a href="#r-promotion" title="Construire une fois, promouvoir le même artefact entre les environnements">R05</a>.</p>
+<h2 id="glossaire">Glossaire des repères</h2>
+<dl>
+<dt id="r-promotion">Promotion unique</dt><dd>Construire une fois, promouvoir le même artefact entre les environnements</dd>
+<dt id="r-correctif">Correctif urgent</dt><dd>Partir de la branche de production, puis reporter le jour même vers les autres branches</dd>
+</dl>
+</main></body></html>

@@ -128,6 +128,19 @@ RE_NM = re.compile(r"^\s*\d+(?:[.,]\d+)?\s*/\s*\d+\s*$")
 RE_COUPE = re.compile(r"[\wÀ-ɏ](?:…|\.\.\.)$")
 RE_MOT = re.compile(r"[\wÀ-ɏ]")
 
+# TF-1609 — L3 bis étendue aux recopies hors du voisinage (cible d'un lien interne, légende de la
+# page). Bloquante ou avertissement selon la mesure de bruit sur le parc (méthode de TF-0954).
+# MESURE DU 12/10/2026, avant de poser la règle : ancienne et nouvelle version jouées sur les
+# 1 979 pages HTML des dépôts produits de C:\dev (hors forges, pilote, sauvegardes, node_modules,
+# old/, .claude/worktrees), en lecture seule. 351 éléments sur 10 pages de 4 dépôts. Inspectés :
+# 278 pastilles dont le title recopie la légende (6 pages, vrais défauts) ; 20 codes dont le title
+# recopie leur entrée de légende (1 page) ; 53 liens de SOMMAIRE dont le title montre le chapeau de
+# la section visée (3 pages) — un aperçu avant de sauter, discutable. Le bruit n'est pas démontré
+# nul : la règle entre en AVERTISSEMENT. La page qui a fondé l'item (hors parc mesuré, dossier
+# old/) en porte 155. Le volet L8 (title qui recopie la cible d'un lien court) : 0 constat neuf
+# sur les mêmes 1 979 pages, il est bloquant.
+RECOPIE_BLOQUANTE = False
+
 # L11 — littéraux d'absence d'un langage, rendus tels quels dans du texte destiné
 # à un lecteur. « null » n'est pas un mot français : c'est une valeur non
 # renseignée que le producteur a laissé fuiter au lieu de la traiter.
@@ -1690,7 +1703,91 @@ def check_lisibilite(html: str, a: Arbre):
     def _dans_svg(n):
         return any(x.tag == "svg" for x in n.ancetres())
 
+    # --- L3 bis (suite) : une infobulle qui recopie un texte affiché AILLEURS (TF-1609, 12/10) ---
+    #
+    # LE FAIT (lot Produit-64 20261012a, RT-32). Une page verte aux quatre familles d'oracles
+    # portait 135 infobulles redondantes : 73 liens de code `a.ref` (href `#r-<code>`) dont le
+    # title était mot pour mot le `dd` de l'entrée de glossaire visée ; 62 pastilles `span.st`
+    # dont le title était leur définition, déjà publiée dans la légende du chapitre 2 ; 5 liens
+    # `#mod-nn` qui recopiaient la cellule de la ligne visée. Retour du porteur, troisième
+    # occurrence après TF-0954 et TF-1593 : « des tooltips qui ne font que reprendre du texte déjà
+    # présent ailleurs n'ont aucun intérêt ». L3 bis ne regardait que le voisinage immédiat.
+    #
+    # DEUX FORMES, au seuil de L3 bis (égalité une fois casse, ponctuation et espaces retirés) :
+    #   · la CIBLE D'UN LIEN INTERNE — le title d'un `a[href^="#"]` égal au texte de l'élément
+    #     visé, à celui d'un de ses blocs (cellule, définition, paragraphe), ou au `dd` qui suit la
+    #     cible quand elle est un `dt` ;
+    #   · la LÉGENDE de sa classe ou de sa valeur — le title égal à la définition qu'une légende de
+    #     la page donne à un AUTRE élément de mêmes balise, classes et texte (le texte qui
+    #     l'accompagne dans son parent, ou le `dd` qui le suit), ou au `dd` d'un `dt` qui porte
+    #     le même texte que l'élément.
+    # La paraphrase n'est pas mesurable ici : elle relève de la revue de lecture
+    # (gabarit-revue-de-lecture.md).
+    BLOCS_DEFINITION = ("dd", "dt", "td", "th", "p", "li", "figcaption", "caption", "blockquote")
+
+    def _dd_apres(dt):
+        """Les `dd` qui suivent un `dt` jusqu'au `dt` suivant."""
+        out, vu = [], False
+        if dt.parent is None:
+            return out
+        for f in dt.parent.enfants:
+            if f is dt:
+                vu = True
+                continue
+            if vu and isinstance(f, Noeud):
+                if f.tag == "dt":
+                    break
+                if f.tag == "dd":
+                    out.append(f)
+        return out
+
+    instances = {}
+    termes = {}
+    for e in a.racine.descendants():
+        if e.tag in ("[racine]", "html", "head", "body", "script", "style"):
+            continue
+        if not e.classes() and e.tag != "dt":
+            continue
+        cle = _norme_legende(_texte_vu(e))
+        if not cle:
+            continue
+        if e.classes():
+            instances.setdefault((e.tag, frozenset(e.classes()), cle), []).append(e)
+        if e.tag == "dt":
+            termes.setdefault(cle, []).append(e)
+
+    def _recopie_ailleurs(cible, na):
+        """La forme de recopie trouvée (texte du message), ou None."""
+        href = (cible.att("href") or "").strip() if cible.tag == "a" else ""
+        if href.startswith("#") and len(href) > 1 and href[1:] in ids:
+            visee = ids[href[1:]]
+            textes = [visee] + [d for d in visee.descendants() if d.tag in BLOCS_DEFINITION]
+            if visee.tag == "dt":
+                textes += _dd_apres(visee)
+            if na in {_norme_legende(_texte_vu(t)) for t in textes if not _masque(t)}:
+                return f"le texte de la cible du lien {href}"
+        cle = _norme_legende(_texte_vu(cible))
+        if not cle:
+            return None
+        definitions = []
+        for autre in instances.get((cible.tag, frozenset(cible.classes()), cle), ()):
+            if autre is cible or cible in autre.ancetres() or autre in cible.ancetres():
+                continue
+            if autre.tag == "dt":
+                definitions += [_texte_vu(d) for d in _dd_apres(autre)]
+            elif autre.parent is not None and autre.parent.tag == "dt":
+                definitions += [_texte_vu(d) for d in _dd_apres(autre.parent)]
+            elif autre.parent is not None:
+                definitions.append(_texte_vu(autre.parent).replace(_texte_vu(autre), "", 1))
+        for dt in termes.get(cle, ()):
+            if dt is not cible:
+                definitions += [_texte_vu(d) for d in _dd_apres(dt)]
+        if na in {_norme_legende(t) for t in definitions}:
+            return "la définition que la légende de la page donne à cette valeur"
+        return None
+
     redondantes = []
+    recopies = []
     for n in a.racine.descendants():
         porteurs = []
         if n.tag == "title" and _dans_svg(n) and n.parent is not None:
@@ -1712,6 +1809,10 @@ def check_lisibilite(html: str, a: Arbre):
             ou = cible.chemin()
             if na in [_norme_legende(v) for v in voisins]:
                 redondantes.append((att, aide[:60], ou))
+            elif att in ("title", "data-tip"):
+                forme = _recopie_ailleurs(cible, na)
+                if forme:
+                    recopies.append((att, aide[:60], ou, forme))
 
     # --- L3 bis (suite) : une DEFINITION DE COLONNE qui recopie son en-tete (TF-0954, 08/09)
     #
@@ -1862,6 +1963,18 @@ def check_lisibilite(html: str, a: Arbre):
             "mesure, à quoi la comparer — ou elle disparaît. La légende d'une valeur se lie par "
             "`aria-describedby` vers un texte visible (L3) ; elle n'a pas besoin d'être recopiée "
             "dans un title. Répétition VOULUE → `data-legende-ok` sur l'élément ou un ancêtre.")
+
+    if recopies:
+        att, aide, ou, forme = recopies[0]
+        message = (
+            f"L3 infobulle qui RECOPIE la page sur {len(recopies)} élément(s) — le {att} "
+            f"« {aide}… » répète {forme} ({ou}). Le lecteur trouve déjà ce texte en suivant le "
+            "lien ou en lisant la légende : l'infobulle n'apprend rien (TF-1609, retour humain, "
+            "troisième occurrence). Elle porte ce que la page n'écrit pas — le niveau, la condition "
+            "concrète, la conséquence, le coût de ne pas faire — ou elle disparaît ; un lien court "
+            "se nomme par `aria-label`. Répétition VOULUE → `data-legende-ok` sur l'élément ou un "
+            "ancêtre.")
+        (fails if RECOPIE_BLOQUANTE else warns).append(message)
 
     # --- L4 : liste longue filtrable --------------------------------------
     for t in [n for n in a.racine.descendants() if n.tag == "table"]:
@@ -2862,19 +2975,39 @@ def check_lisibilite(html: str, a: Arbre):
                          "ne mène nulle part.")
             continue
         libelle = lien.texte_propre()
-        aide = (lien.att("title") or lien.att("aria-label") or "").strip()
-        if len(libelle) < 8 and len(aide) < 12:
+        # TF-1609 (RT-32) — L8 POUSSAIT À LA RECOPIE. Un title d'au moins 12 caractères
+        # « décrivant la cible » était satisfait en recopiant la cible : 73 liens de code sur 73
+        # d'une page portaient le `dd` de l'entrée qu'ils visaient. L8 accepte désormais un
+        # `aria-label`, ou un title qui DIFFÈRE du texte de la cible (et du `dd` d'une cible `dt`).
+        aide = (lien.att("aria-label") or "").strip()
+        titre_lien = (lien.att("title") or "").strip()
+        recopie_cible = False
+        if titre_lien and href[1:] in ids:
+            visee = ids[href[1:]]
+            vues = [visee] + (_dd_apres(visee) if visee.tag == "dt" else [])
+            recopie_cible = _norme_legende(titre_lien) in {_norme_legende(_texte_vu(v))
+                                                           for v in vues}
+        if len(aide) < 12 and not recopie_cible:
+            aide = titre_lien or aide
+        if len(libelle) < 8 and len(aide) < 12 and recopie_cible:
+            fails.append(f"L8 lien interne muet : « {libelle or '(sans texte)'} » → {href} — son "
+                         "title recopie le texte de la cible, que le lecteur lit déjà en suivant "
+                         "le lien : nommer le lien par un aria-label, ou écrire un title qui "
+                         "DIFFÈRE du texte de la cible (au moins 12 caractères).")
+        elif len(libelle) < 8 and len(aide) < 12:
             # TF-0434 (lot Produit-05 20260820b) : un libellé qui est un IDENTIFIANT du document
             # (H5, E2, 1.5, ADR 0022) n'est pas muet pour son lecteur — il est elliptique pour
             # un lecteur d'écran. La sortie la plus simple se dit en premier : un title court.
             if RE_IDENTIFIANT.match(libelle.strip()):
                 fails.append(f"L8 lien interne elliptique : « {libelle} » → {href} — le libellé "
                              "est un identifiant du document, il peut rester court : ajoutez "
-                             "un title (ou aria-label) d'au moins 12 caractères décrivant la "
-                             "cible, ex. title=\"Question H5 — délais de livraison\".")
+                             "un aria-label, ou un title qui DIFFÈRE du texte de la cible, d'au "
+                             "moins 12 caractères, ex. aria-label=\"Question H5 — délais de "
+                             "livraison\".")
             else:
                 fails.append(f"L8 lien interne muet : « {libelle or '(sans texte)'} » → {href} — "
-                             "ajoutez un title décrivant la cible (au moins 12 caractères) : "
+                             "ajoutez un aria-label, ou un title qui DIFFÈRE du texte de la "
+                             "cible (au moins 12 caractères) : "
                              "le libellé visible peut rester court ; sinon, un libellé d'au "
                              "moins 8 caractères nommant la cible.")
         elif href[1:] not in ids:

@@ -296,6 +296,9 @@ CAS = {
     "l3-note-chiffree.html": {"L3"},
     "l8-identifiant-sans-title.html": {"L8"},
     "l8-identifiant-avec-title.html": set(),
+    # TF-1609 (RT-32) — L8 acceptait un title qui recopie le dd de l'entrée visée : il exige un
+    # aria-label, ou un title qui DIFFÈRE du texte de la cible (verte : l3-recopie-aucune.html).
+    "l8-title-recopie-cible.html": {"L8"},
     "l16-onglets-sans-controls.html": {"L16"},
     "l16-onglets-conformes.html": set(),
     "l17-depliant-sans-bouton.html": {"L17"},
@@ -336,6 +339,12 @@ CAS = {
 CAS_AVERT = {
     "l15-glyphe-hors-liste.html": {"L15"},
     "l15-glyphe-sur.html": set(),
+    # TF-1609 (RT-32) — l'infobulle qui recopie un texte affiché AILLEURS : la cible d'un lien
+    # interne, la légende de la page. Avertissement (bruit mesuré non nul sur le parc). La verte
+    # est la même page corrigée : aria-label, title qui diffère de la cible, pastilles sans title.
+    "l3-recopie-cible-du-lien.html": {"L3"},
+    "l3-recopie-legende.html": {"L3"},
+    "l3-recopie-aucune.html": set(),
     # TF-0932 — la moitie « ce que le chapitre CONTIENT » de L30 est un AVERTISSEMENT, pas un
     # echec : mesure du 08/09 sur les pages generees du pilot, tenues pour conformes, 40
     # constats sur TODO.html et 47 sur TODO-ARCHIVE.html, tous sur cette moitie. `.contenu` est
