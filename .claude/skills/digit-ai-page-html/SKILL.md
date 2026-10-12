@@ -357,7 +357,7 @@ si la page vise aussi le PDF.
   rendu **une seule règle** pour 27 350 caractères, la page est sortie **nue**, et les oracles
   ont mesuré des symptômes sans lien avec la cause (débordement de 2 106 px, sommaire perdu,
   faux G1) — trois passes complètes sur une page de 188 Ko avant de bissecter la feuille à la
-  main. Même famille que RA-1 pour la balise de script fermante. Contrôlé par `check_html.py`
+  main. Même famille que RA-1 (retour du 13/08 : un `</script` en clair dans un composant embarqué) pour la balise de script fermante. Contrôlé par `check_html.py`
   (FAIL bloquant, deux branches : résidu de balisage dans un sélecteur, et **densité de règles**
   — moins d'une règle par 2 000 caractères sur un bloc d'au moins 1 000).
 - **Titre au motif A4** : `{Marque} — {Objet} · {Client} — {YYYYMMDD}{a,b,c…}`. Deux FAIL
@@ -593,7 +593,7 @@ oracles publie ses limites et l'autre se tait, le silence se lit comme une absen
 
 ## Compter ce qui est RENDU contre ce que la source DIT — la complétude (TF-1174)
 
-**Le fait payé, 16/09/2026 (lot Produit-64 20260916b, RD-10).** Une édition d'un générateur a sorti
+**Le fait payé, 16/09/2026 (lot Produit-64 20260916b, RD-10 : son retour n° 10).** Une édition d'un générateur a sorti
 un `append` de sa boucle de regroupement de prose : toute la prose sauf le dernier fragment de
 chaque chapitre a disparu de la page rendue. Le livrable est passé de **11 996 à environ 3 000 mots
 visibles**, et les neuf encadrés « Exemple de lecture » sont tombés à **zéro**. Les six oracles
@@ -636,7 +636,7 @@ ce contrôle ne s'y applique pas.
 
 ## La chaîne ne s'arrête pas à ce socle : quatre oracles de `digit-ai-forge-design` jugent la même page (TF-1173)
 
-**Le fait mesuré, 16/09/2026 (lot Produit-64 20260916b, RD-9).** Un guide développeur déclaré PASS
+**Le fait mesuré, 16/09/2026 (lot Produit-64 20260916b, RD-9 : son retour n° 9).** Un guide développeur déclaré PASS
 par les trois scripts ci-dessus a été soumis pour la première fois aux oracles de
 `digit-ai-forge-design` : **trois verdicts rouges sur quatre.** Aucun de ces défauts n'est visible
 aux trois scripts du socle — le filet de 3 px ne déborde pas, la couleur en dur contraste
