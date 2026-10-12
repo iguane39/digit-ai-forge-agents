@@ -480,10 +480,26 @@ MEASURE_JS = r"""
     // noeud et fleche ; data-overlap-ok n'est plus a poser sur chaque forme d'un noeud.
     const groupeTitre = parent.tagName.toLowerCase() === 'g' &&
       [...parent.children].some((c) => c.tagName.toLowerCase() === 'title');
+    // TF-1628 (lot Produit-79 20261007f, RA-8) — UN LOGO EST UNE FIGURE UNIQUE. V4 lisait les
+    // traces d un logo SVG inline comme des blocs de mise en page : 120 constats bloquants sur un
+    // seul logo, leves seulement en titrant chaque groupe. Un <svg role="img"> qui porte un nom
+    // accessible (aria-label, aria-labelledby ou <title>) et AUCUN <text> se declare image unique :
+    // ses formes se superposent par construction, comme celles d un groupe titre (TF-0424). La
+    // condition « aucun <text> » garde les schemas — role="img" y est de regle (conventions-
+    // communes.md de digit-ai-schemas) et leurs libelles restent juges (TF-1146).
+    const svgFigure = (() => {
+      const racine = parent.tagName.toLowerCase() === 'svg' ? parent
+        : (parent.closest ? parent.closest('svg') : null);
+      if (!racine || (racine.getAttribute('role') || '').trim() !== 'img') return false;
+      const nomme = (racine.getAttribute('aria-label') || '').trim()
+        || (racine.getAttribute('aria-labelledby') || '').trim()
+        || [...racine.children].some((c) => c.tagName.toLowerCase() === 'title');
+      return Boolean(nomme) && !racine.querySelector('text');
+    })();
     for (let i = 0; i < kids.length; i++) {
       for (let j = i + 1; j < kids.length; j++) {
         const a = kids[i], b = kids[j];
-        if (svgIcone || groupeTitre) continue;
+        if (svgIcone || groupeTitre || svgFigure) continue;
         // TF-1146 (16/09, lot Produit-64 20260916a, retour RD-6) — L EXEMPTION S APPLIQUAIT A L
         // ELEMENT, PAS A LA PAIRE, ET COUVRAIT DONC AUSSI LE RECOUVREMENT NON VOULU. Dans le
         // schema des trois couches, le libelle de fleche « expose ses sorties a » etait imprime
@@ -512,7 +528,13 @@ MEASURE_JS = r"""
         const pa = _paires(a.el), pb = _paires(b.el);
         if ((pa !== null && pa.length === 0) || (pb !== null && pb.length === 0)) continue;
         if (pa !== null || pb !== null) {
-          const declare = (pa || []).includes(b.el.id) || (pb || []).includes(a.el.id);
+          // TF-1281 (lot Produit-64 20260921a, RD-13) — UN CALQUE NE S EXPRIME PAS PAR PAIRES.
+          // N traits de branche qui se croisent tous demandaient N ids et N-1 ids dans chacun
+          // (400 declarations pour une figure). Deux elements qui declarent le MEME JETON
+          // s exemptent mutuellement : data-overlap-ok="calque-traits" sur chaque trait. Un
+          // element qui ne declare pas ce jeton (le numero d un moment) reste juge.
+          const declare = (pa || []).includes(b.el.id) || (pb || []).includes(a.el.id)
+            || (pa !== null && pb !== null && pa.some((x) => pb.includes(x)));
           if (declare) continue;
           // Paire NON declaree : le recouvrement est juge, comme s il n y avait pas d exemption.
         }
@@ -1267,7 +1289,11 @@ MEASURE_JS = r"""
           `executions des trois oracles avant d etre vu sur une capture (TF-1146). Geste : ` +
           `declarer la paire, data-overlap-ok="<id de l element recouvert>" (plusieurs ids ` +
           `separes par des espaces). Un recouvrement avec un autre element que ceux declares ` +
-          `redevient alors un constat. __ECHEANCE_OVERLAP__`,
+          `redevient alors un constat. Un CALQUE (traits qui se croisent tous) declare un meme ` +
+          `jeton sur chacun, data-overlap-ok="calque-traits" : ils s exemptent entre eux et rien ` +
+          `d autre (TF-1281). Un noeud de schema (boite et textes) se groupe dans un <g> portant ` +
+          `un <title> : V4 ne juge plus son interieur, et le lecteur gagne une infobulle. ` +
+          `__ECHEANCE_OVERLAP__`,
       });
     }
   }

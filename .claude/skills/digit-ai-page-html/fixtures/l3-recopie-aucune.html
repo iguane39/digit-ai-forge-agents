@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 infobulles qui apprennent quelque chose — 20261012a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--accent:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.st{padding:0 6px;border:1px solid var(--line);border-radius:4px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de TF-1609 — la même page que les trois rouges, corrigée comme le produit l'a
+  fait : le lien court se nomme par aria-label, le lien long porte un title qui DIFFÈRE de sa
+  cible (la conséquence), les pastilles n'ont plus d'infobulle, la légende suffit.
+  Attendu : aucun échec L, aucun avertissement L3.
+-->
+<body><main class="wrap">
+<h1>Deux pipelines comparés</h1>
+<p>Le premier pipeline applique le repère <a href="#r-promotion" aria-label="Repère R05, promotion unique">R05</a> et la <a href="#r-correctif" title="Sans ce report, le correctif est perdu à la promotion suivante">règle du correctif urgent</a>.</p>
+<p>La promotion unique est <span class="st">Conforme</span> dans le premier pipeline.</p>
+<h2>Légende des statuts</h2>
+<ul>
+<li><span class="st">Conforme</span> fait ce que le guide demande, constaté dans le fichier lu</li>
+<li><span class="st">Partiel</span> une partie de l'exigence est tenue, l'autre manque ou dévie</li>
+</ul>
+<h2 id="glossaire">Glossaire des repères</h2>
+<dl>
+<dt id="r-promotion">Promotion unique</dt><dd>Construire une fois, promouvoir le même artefact entre les environnements</dd>
+<dt id="r-correctif">Correctif urgent</dt><dd>Partir de la branche de production, puis reporter le jour même vers les autres branches</dd>
+</dl>
+</main></body></html>

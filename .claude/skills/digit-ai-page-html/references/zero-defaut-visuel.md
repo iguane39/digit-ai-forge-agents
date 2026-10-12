@@ -340,6 +340,26 @@ s'appliquait à l'**élément**, donc elle couvrait aussi le recouvrement *non v
 des espaces. Un recouvrement avec un **autre** élément que ceux déclarés redevient un constat.
 Coût : un attribut à renseigner là où le schéma le pose déjà.
 
+**Le calque : un jeton partagé (TF-1281, lot Produit-64 20260921a).** La forme par paire ne sait
+pas dire « ces éléments-là se recouvrent entre eux » : vingt traits de branche qui se croisent
+tous demandaient vingt identifiants et quatre cents déclarations pour une figure. Deux éléments
+qui déclarent le **même jeton** s'exemptent mutuellement : `data-overlap-ok="calque-traits"` sur
+chaque trait. Un élément qui ne déclare pas ce jeton (le numéro d'un moment posé sur un
+croisement) reste jugé. Preuve à double sens : `v4-calque-declare.html` (trois traits croisés,
+**1 constat puis 0**) et `v4-calque-recouvre-numero.html` (les mêmes traits sur un numéro : les
+constats du numéro restent). Pour un nœud de schéma (sa boîte et ses textes), le geste préférable
+reste le groupe `<g>` portant un `<title>` (TF-0424) : il supprime l'exemption au lieu de la
+déclarer.
+
+**Le logo : une figure unique (TF-1628, lot Produit-79 20261007f).** Un logo SVG inline rendait
+**120 constats bloquants** : V4 lisait ses tracés comme des blocs de mise en page. Un
+`<svg role="img">` qui porte un nom accessible (`aria-label`, `aria-labelledby` ou `<title>`) et
+**aucun `<text>`** est désormais une image unique : ses formes internes ne sont plus jugées entre
+elles. La condition « aucun `<text>` » protège les schémas, qui portent tous `role="img"` et dont
+les libellés restent jugés (TF-1146). Preuve à double sens : `v4-logo-figure-unique.html`
+(**5 constats puis 0**) et `v4-logo-sans-nom.html` (même logo sans rôle ni nom : constats
+maintenus) ; `v4-libelle-dans-la-boite-voisine.html` reste rouge.
+
 **La forme nue continue d'exempter, et n'est plus silencieuse.** **1 716 occurrences** de
 `data-overlap-ok=""` mesurées le 16/09 dans dix pages HTML de deux dépôts du parc : les rendre
 bloquantes d'un coup rougirait tout ce qui existe. Elles sont donc **recensées** — famille

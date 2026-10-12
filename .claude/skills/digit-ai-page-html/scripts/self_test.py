@@ -135,6 +135,10 @@ CAS = {
     # selecteur ecrit sous `@media` etait juge comme s il s appliquait partout.
     "l19-repli-cartes-legitime.html": set(),
     "l19-coupure-reservee-au-technique.html": set(),
+    # TF-1627 (RA-7) — le message de L19 promettait l'exemption data-coupure-ok, que la règle
+    # ne lisait pas. Déclarée sur tous les éléments habillés : vert ; sur une partie : rouge.
+    "l19-coupure-declaree-sur-element.html": set(),
+    "l19-coupure-declaree-partielle.html": {"L19"},
     # TF-0495 (22/08) — la frontiere entre « le contenu est PRESENT » et « le contenu est
     # EXPLOITABLE ». Un document embarque en texte brut passait TOUS les oracles ; il a fallu que
     # le client le redemande DEUX FOIS pour qu'une vue lisible soit produite. Les trois fixtures
@@ -186,6 +190,10 @@ CAS = {
     # (data-filterable pose L4 muette, exemple de lecture pose L10 muette).
     "l13-liste-sans-recherche.html": {"L13"},
     "l11-litteral-null.html": {"L11"},
+    # TF-1590 (RT-116) — « None » ouvrant une phrase d'une page lang="en" est un mot anglais ;
+    # la même page qui rend « None » seul dans une valeur reste rouge.
+    "l11-none-phrase-anglaise.html": set(),
+    "l11-none-valeur-seule.html": {"L11"},
     # Lot Produit-02 du 02/09 (TF-0772/0771/0778/0777/0783/0754) — cinq regles neuves, cinq
     # paires. Chaque paire porte la MEME page a une difference pres, et cette difference est
     # exactement ce que la regle mesure : le sommaire (L25), la bride de largeur autour du
@@ -288,6 +296,9 @@ CAS = {
     "l3-note-chiffree.html": {"L3"},
     "l8-identifiant-sans-title.html": {"L8"},
     "l8-identifiant-avec-title.html": set(),
+    # TF-1609 (RT-32) — L8 acceptait un title qui recopie le dd de l'entrée visée : il exige un
+    # aria-label, ou un title qui DIFFÈRE du texte de la cible (verte : l3-recopie-aucune.html).
+    "l8-title-recopie-cible.html": {"L8"},
     "l16-onglets-sans-controls.html": {"L16"},
     "l16-onglets-conformes.html": set(),
     "l17-depliant-sans-bouton.html": {"L17"},
@@ -328,6 +339,12 @@ CAS = {
 CAS_AVERT = {
     "l15-glyphe-hors-liste.html": {"L15"},
     "l15-glyphe-sur.html": set(),
+    # TF-1609 (RT-32) — l'infobulle qui recopie un texte affiché AILLEURS : la cible d'un lien
+    # interne, la légende de la page. Avertissement (bruit mesuré non nul sur le parc). La verte
+    # est la même page corrigée : aria-label, title qui diffère de la cible, pastilles sans title.
+    "l3-recopie-cible-du-lien.html": {"L3"},
+    "l3-recopie-legende.html": {"L3"},
+    "l3-recopie-aucune.html": set(),
     # TF-0932 — la moitie « ce que le chapitre CONTIENT » de L30 est un AVERTISSEMENT, pas un
     # echec : mesure du 08/09 sur les pages generees du pilot, tenues pour conformes, 40
     # constats sur TODO.html et 47 sur TODO-ARCHIVE.html, tous sur cette moitie. `.contenu` est
@@ -494,6 +511,15 @@ CAS_RENDU = {
     "v4-exemption-en-bloc-recensee.html": [("v4_overlap", 0), ("overlap_en_bloc", 1)],
     "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
     "v4-chevauchement-reel.html": ("v4_overlap", 1),   # deux frères qui se recouvrent vraiment
+    # TF-1281 (RD-13) — un CALQUE : des traits qui déclarent le même jeton s'exemptent entre eux
+    # (1 constat avant, 0 après) ; un numéro posé sur leur croisement, sans le jeton, reste jugé.
+    "v4-calque-declare.html": ("v4_overlap", 0),
+    "v4-calque-recouvre-numero.html": ("v4_overlap", 1),
+    # TF-1628 (RA-8) — un logo <svg role="img"> nommé et sans <text> est une figure unique (5
+    # constats avant, 0 après) ; le même logo sans role ni nom reste jugé. Le schéma à libellés
+    # (v4-libelle-dans-la-boite-voisine.html, role="img" lui aussi) garde son constat.
+    "v4-logo-figure-unique.html": ("v4_overlap", 0),
+    "v4-logo-sans-nom.html": ("v4_overlap", 1),
     # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.
     # Deux surlignages de lignes consecutives se recouvrent donc geometriquement des que line-height
     # est serre, SANS QU'AUCUN PIXEL PEINT NE SE SUPERPOSE. Mesure du 19/08 sur 1 246 surlignages
@@ -2159,6 +2185,35 @@ def run_recherche_composants():
             cas("témoin : un mark HTML dans le texte SVG fait tomber les caractères peints "
                 "(sens rouge)", True, apres < avant, "TF-1353 contre-épreuve")
 
+        def phrase_coupee():
+            neuve()
+            texte = "() => document.getElementById('phrases').textContent"
+            avant = page.evaluate(texte)
+            page.fill("#find", "application laissée arrêtée")
+            cas("une phrase coupée par strong, code et lien se trouve (4 dans le texte)",
+                "4 occurrences",
+                page.evaluate("() => document.getElementById('findCount').textContent"),
+                "TF-1342")
+            cas("une occurrence à cheval pose une enveloppe par nœud traversé, texte intact",
+                [7, avant],
+                [page.evaluate("() => document.querySelectorAll('#phrases mark.find-hit').length"),
+                 page.evaluate(texte)],
+                "TF-1342")
+            page.fill("#find", "")
+            cas("la recherche effacée rend le paragraphe sans enveloppe", 0,
+                page.evaluate("() => document.querySelectorAll('#phrases mark').length"),
+                "TF-1342")
+
+        def temoin_noeud_par_noeud():
+            neuve()
+            n = page.evaluate(
+                "() => { const re = window.DigitAIFindInPage.buildRegex('application laissée "
+                "arrêtée'); const w = document.createTreeWalker(document.getElementById('phrases'),"
+                " NodeFilter.SHOW_TEXT); let n, c = 0; while ((n = w.nextNode())) {"
+                " c += (n.nodeValue.match(re) || []).length; } return c; }")
+            cas("témoin : le motif appliqué nœud texte par nœud texte n'en trouve qu'une "
+                "(sens rouge)", 1, n, "TF-1342 contre-épreuve")
+
         section("recherche effacée puis filtre", "TF-1340", filtre_apres_effacement)
         section("recherche active puis filtre", "TF-1340", filtre_pendant_recherche)
         section("recherche puis chevron", "TF-1340", chevron_pendant_recherche)
@@ -2166,6 +2221,8 @@ def run_recherche_composants():
         section("coupure recollée", "TF-1340", coupure_recollee)
         section("schéma SVG", "TF-1353", svg_peint)
         section("témoin mark SVG", "TF-1353 contre-épreuve", temoin_mark_svg)
+        section("phrase coupée par le balisage", "TF-1342", phrase_coupee)
+        section("témoin nœud par nœud", "TF-1342 contre-épreuve", temoin_noeud_par_noeud)
         navigateur.close()
     return out
 

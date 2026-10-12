@@ -236,6 +236,20 @@ ajouter » a été mesurée aussi — 527 constats sur 56 pages de 5 dépôts, a
 avérés (un bouton de fermeture sans texte dont le panneau voisin contient un autre « Fermer ») :
 elle **n'est pas posée**.
 
+**(e ter) L'infobulle qui recopie un texte affiché AILLEURS** (TF-1609, Produit-64 RT-32,
+12/10/2026). Une page verte aux quatre familles d'oracles portait 135 infobulles redondantes : des
+liens de code dont le `title` était le `dd` de l'entrée de glossaire visée, des pastilles de statut
+dont le `title` était leur définition, déjà publiée dans la légende d'un autre chapitre. (e bis) ne
+regardait que le voisinage immédiat. Exigence, au même seuil d'égalité : le `title` / `data-tip`
+d'un `a[href^="#"]` ne doit pas égaler le texte de l'élément visé, d'un de ses blocs, ni du `dd`
+qui suit une cible `dt` ; le `title` d'un élément ne doit pas égaler la définition qu'une légende de
+la page donne à un autre élément de mêmes balise, classes et texte, ni le `dd` d'un `dt` qui porte
+son texte. **Avertissement** : mesuré le 12/10 sur 1 979 pages de dépôts produits, 351 éléments sur
+10 pages, dont 53 liens de sommaire dont le `title` montre le chapeau de la section visée, un
+aperçu discutable ; le bruit n'étant pas démontré nul, la règle n'est pas bloquante. La paraphrase
+(« Appliquer avant de fusionner » sur une cellule qui dit « l'application précède la fusion ») n'est
+pas mesurable : elle passe à la revue de lecture.
+
 **(f) L'objet d'un système source CITÉ mais jamais joint** (TF-0934, 08/09/2026). Le lendemain
 de (e), le même livrable portait des colonnes « Source héritée » nommant les objets d'un
 entrepôt cité et non joint — `LOC.FAI_LOT_MOIS`, `DIM_BATIMENT`. Aucun catalogue ne les
@@ -414,6 +428,11 @@ L'allonger nuirait à la lecture.
 
 **Contrôle mécanique.** `L8` — tout `<a href="#…">` hors sommaire dont le texte visible fait
 moins de 8 caractères et qui ne porte ni `title` ni `aria-label` d'au moins 12 caractères.
+**Un `title` qui recopie la cible ne compte pas (TF-1609, 12/10/2026)** : égal au texte de
+l'élément visé, ou au `dd` d'une cible `dt`, il n'apprend rien au lecteur qui suit le lien — 73
+liens de code sur 73 d'une page le faisaient pour satisfaire L8. Sont acceptés un `aria-label`, ou
+un `title` qui DIFFÈRE du texte de la cible ; le message le dit. Mesuré sur 1 979 pages de dépôts
+produits : 0 constat neuf.
 Les ancres vides (`href="#"`) sont un échec inconditionnel.
 
 **Revue de lecture.** Que le libellé corresponde au titre réel de la cible.
@@ -489,7 +508,9 @@ l'attrape pas ; il faut normaliser explicitement.
 
 **Exemptions.** Le contenu de `<code>`, `<pre>`, `<kbd>`, `<samp>` — on y documente du code —
 et tout élément marqué `data-litteral-ok` : une page qui parle *de* `null` a le droit de
-l'écrire.
+l'écrire. Sur une page `lang="en…"`, `None` suivi d'un mot en minuscule ouvre une phrase
+anglaise (« None of the restaurants… ») et n'est pas jugé (TF-1590) ; `None` seul dans une
+valeur reste un littéral.
 
 **Contrôle mécanique.** `L11` — occurrence de l'un de ces littéraux, délimitée par des
 frontières de mot, dans un nœud de texte visible hors exemptions.
@@ -541,6 +562,7 @@ simple observation du tableau.
 | Langue du lecteur | Le constat est-il écrit comme le lecteur le reformulerait, ou comme l'auteur l'a mesuré ? |
 | Fidélité des libellés de lien | Le libellé nomme-t-il la cible ou un synonyme approximatif ? |
 | Barème | Les crans sont-ils discriminants et vérifiables ? |
+| Apport d'une infobulle | Apprend-elle quelque chose que la page n'écrit pas, ou paraphrase-t-elle un texte affiché ailleurs (TF-1609) ? |
 
 **Trace attendue — OBLIGATOIRE (TF-0422, lot Produit-05 20260820a)** : la revue de lecture se
 consigne dans `REVUE.md` à côté du livrable, au gabarit
@@ -748,7 +770,9 @@ et c'est la première chose que voit un lecteur.
 sélecteur de PROSE (un élément de prose sans classe qui le restreigne, ou une classe dont le nom
 ne dit aucun usage technique) est un échec. Restent légitimes et non jugés : `code`, `pre`,
 `kbd`, `samp`, `a[href]`, et toute classe qui nomme son usage (`.chemin`, `.jeton`, `.uri`,
-`.sha`, `.mono`, `.identifiant`…). Exemption explicite : `data-coupure-ok="<raison>"`.
+`.sha`, `.mono`, `.identifiant`…). Exemption explicite : `data-coupure-ok="<raison>"`, posé
+sur chaque élément que le sélecteur habille ou sur un de ses ancêtres ; un seul élément habillé
+sans déclaration garde le constat (TF-1627).
 
 **Ce que L19 ne fait PAS, et c'est déclaré** : elle empêche la CAUSE, elle ne mesure pas l'EFFET —
 `overflow-wrap: break-word`, légitime sur la prose, n'entre pas dans son périmètre et peut quand
