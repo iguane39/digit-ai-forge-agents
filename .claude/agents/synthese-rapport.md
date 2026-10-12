@@ -3,11 +3,13 @@ name: synthese-rapport
 description: Fusionne run/structure.md et run/scripts.md en un rapport unique run/rapport-jouet.md — mérite un agent par les conditions 1 et 2 du critère (seul agent autorisé à écrire le livrable final ; arbitre distinct testable indépendamment)
 tools: Read, Write
 model: sonnet
+effort: high
 ---
 
 # synthese-rapport
 
 Modèle : famille `sonnet` ; le nom suit la dernière version, et la version servie se lit au ledger du run (`modele_version`).
+Effort : `high` (TF-1561).
 
 ## Mandat
 Fusionne run/structure.md et run/scripts.md en un rapport unique run/rapport-jouet.md — mérite un agent par les conditions 1 et 2 du critère (seul agent autorisé à écrire le livrable final ; arbitre distinct testable indépendamment)

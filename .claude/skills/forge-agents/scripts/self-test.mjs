@@ -958,6 +958,26 @@ check("D-1 : `modele: inherit` reste possible, par choix déclaré", () => {
 check("D-1 rouge : un identifiant (`claude-opus-5-5`) épinglerait une version → refus qui exige le NOM DE FAMILLE", () =>
   mustRefuse(compile, [ecrireDef("modele-identifiant", "modele: claude-opus-5-5"), "--out", out], "NOM DE FAMILLE"));
 
+// ---- TF-1561 (D-5 (a) du 01/10/2026, sur le rejeu D-6 (a)) : l'effort se DÉCLARE par agent au lieu
+// d'hériter de celui de la session (456 réponses Sonnet 5 à `max` par héritage, mesuré le 01/10).
+check("TF-1561 : `effort: medium` compile en `effort: medium` dans le frontmatter", () => {
+  if (!/^effort: medium$/m.test(compilerUn("effort-medium", "effort: medium"))) throw new Error("`effort: medium` absent du frontmatter");
+});
+check("TF-1561 : sans `effort`, un agent sonnet compile sur `effort: high`, le défaut du rejeu, et le DIT", () => {
+  const md = compilerUn("effort-absent", "");
+  if (!/^effort: high$/m.test(md)) throw new Error("`effort: high` absent du frontmatter");
+  if (!md.includes("défaut du rejeu")) throw new Error("le défaut n'est pas dit dans le corps de l'agent");
+});
+check("TF-1561 : `effort: inherit`, ou `modele: inherit` sans effort, ou `haiku` sans effort → aucune ligne `effort:`, et le corps le dit", () => {
+  for (const [nom, sup] of [["effort-inherit", "effort: inherit"], ["effort-modele-inherit", "modele: inherit"], ["effort-haiku", "modele: haiku"]]) {
+    const md = compilerUn(nom, sup);
+    if (/^effort:/m.test(md)) throw new Error(`${nom} : une ligne effort a été compilée`);
+    if (!/Effort : celui de la session/.test(md)) throw new Error(`${nom} : l'héritage n'est pas dit`);
+  }
+});
+check("TF-1561 rouge : un effort hors des niveaux de Claude Code (`maximal`) → refus qui nomme les niveaux admis", () =>
+  mustRefuse(compile, [ecrireDef("effort-inconnu", "effort: maximal"), "--out", out], "niveaux admis"));
+
 const SID = "00000000-aaaa-bbbb-cccc-000000000001";
 function racineTranscripts(principal, sousAgent) {
   const racine = mkdtempSync(join(tmpdir(), "fa-transcripts-"));
