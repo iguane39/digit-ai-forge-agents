@@ -1335,6 +1335,53 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1456 (28/09 et 01/10/2026) — LE POINT MÉDIAN SÉPARE, ET LES ACCENTS SE REPLIENT.
+// LE FAIT : un nom d'affichage de produit en deux parties séparées par un point médian, publié
+// dans 6 fichiers, et la forme ACCENTUÉE d'un nom de produit, publiée dans 13, ont traversé la
+// porte : les variantes ne connaissaient que l'espace, le tiret et le souligné, et rien ne
+// repliait les accents. Clés INVENTÉES, dépôts jetables. Trois sens rouges, un vert :
+//   (1) « Portail · Bidule » pour la clé « Portail Bidule » → FAIL C5 ;
+//   (2) « Pôrtail Bîdule » pour la même clé → FAIL C5 ;
+//   (3) « Chrônopode » pour la clé d'un seul mot « Chronopode » → FAIL C5 ;
+//   (4) VERT — « Portail · Bidulerie » : la frontière tient avec le point médian, aucun constat.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c5-median-'));
+  try {
+    const tProduits = path.join(tmp, 'produits.json');
+    const tClients = path.join(tmp, 'clients.json');
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { 'Portail Bidule': 'Produit-96', Chronopode: 'Produit-95' } }), 'utf8');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+    const batir = (nom, contenu) => {
+      const r = path.join(tmp, nom);
+      fs.mkdirSync(r);
+      fs.writeFileSync(path.join(r, 'notes.md'), contenu, 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q'); g('config', 'user.email', 'banc@local'); g('config', 'user.name', 'banc');
+      g('add', '-A'); g('commit', '-q', '-m', 'depot jetable du banc');
+      return r;
+    };
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const c5 = (repo) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits], { encoding: 'utf8', timeout: 180000, env: envNu });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* dit ci-dessous */ }
+      return j ? (j.findings || []).filter((f) => f.regle === 'C5' && f.sev === 'bloquant').length : null;
+    };
+    const cas = [
+      ['median', 'Le guide du Portail · Bidule est remis demain.\n', true],
+      ['accents', 'Le guide du Pôrtail Bîdule est remis demain.\n', true],
+      ['mot-accentue', 'Le module Chrônopode est remis demain.\n', true],
+      ['frontiere', 'Le guide du Portail · Bidulerie est remis demain.\n', false],
+    ].map(([nom, texte, attendu]) => [nom, c5(batir(nom, texte)), attendu]);
+    const faux = cas.filter(([, n, attendu]) => n === null || (n > 0) !== attendu);
+    if (faux.length) ko('TF-1456 : ' + faux.map(([nom, n, attendu]) => `${nom} → ${n === null ? 'sortie illisible' : n + ' constat(s) C5'} (attendu ${attendu ? 'au moins 1' : '0'})`).join(' ; '));
+    else ok('TF-1456 : point médian et accents repliés — « Portail · Bidule », « Pôrtail Bîdule » et « Chrônopode » font FAIL C5, « Portail · Bidulerie » n en fait aucun');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0887 (08/09/2026) — LA PORTE TROUVE LES TABLES DU CANAL TOUTE SEULE, ET DIT LAQUELLE.
 //
 // LE FAIT PAYÉ. Le 07/09, les deux tables ont quitté les fichiers libres `<racine>\_*.json` pour
