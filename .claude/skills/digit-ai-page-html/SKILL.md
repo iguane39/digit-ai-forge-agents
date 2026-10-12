@@ -28,7 +28,7 @@ l'émetteur.** Décision humaine D-5 (a) du 22/09 (« la charte des présentatio
 s'y alignent »), exécutée par D-11 (a) le 23/09 (TF-1023). La marque Digit-AI était portée par deux
 chartes depuis le 11/09 : Roboto / DM Sans pour les pages, Montserrat / Inter pour les
 présentations. · Le gabarit ouvre désormais ses piles par **Montserrat** (titres) et **Inter**
-(corps), les familles que `digit-ai-pptx/scripts/lire-marque.mjs` lit au dossier de marque ;
+(corps), les familles que `../digit-ai-pptx/scripts/lire-marque.mjs` lit au dossier de marque ;
 **Roboto et DM Sans restent en premier repli**, si bien qu'une page livrée avant l'alignement n'est
 pas fautive. · La recette de `quality-oracles` **relit la charte à la source** et refuse un gabarit
 dont une pile ne commence pas par les familles de la charte (non jugé, motif écrit, quand le dossier
@@ -387,7 +387,7 @@ voir [references/charte-et-tokens.md](references/charte-et-tokens.md).
 
 **Le fait payé, et il est daté (TF-0939, 08/09/2026).** Une page de données devait montrer le
 schéma des bases source et cible. La recherche s'est arrêtée ici — ce socle est le seul cité par
-le `CLAUDE.md` du produit, et il ne renvoyait nulle part ailleurs. Verdict de ce tour-là :
+le `<produit>/CLAUDE.md`, et il ne renvoyait nulle part ailleurs. Verdict de ce tour-là :
 « aucun gabarit de schéma différentiel ». Une grille maison de 40 cartes et 429 puces a donc été
 écrite, puis jetée le lendemain : le gabarit existait, chez `digit-ai-schemas`, prêt à
 instancier. Coût : un composant écrit pour rien et un tour humain. Ce n'était pas un défaut de
@@ -396,8 +396,8 @@ laisse croire qu'il n'y a rien au-delà.
 
 | Ce qui est demandé | Signes dans la demande | Où c'est fourni |
 | --- | --- | --- |
-| Schéma de base de données, ERD, MCD / MLD, tables et relations, dictionnaire de données | « schéma de base de données », « ERD », « MCD », « les tables et leurs relations », « classification PII » | `digit-ai-schemas` · `references/canevas-modele-donnees.md` + `assets/template-modele-donnees.html` |
-| Schéma de base **différentiel** — ce qui CHANGE entre l'existant et la cible | « tables et champs ajoutés ou modifiés de couleurs différentes », « ce qui change », « schéma des bases X et Y » | `digit-ai-schemas` · `assets/template-schema-differentiel.html` |
+| Schéma de base de données, ERD, MCD / MLD, tables et relations, dictionnaire de données | « schéma de base de données », « ERD », « MCD », « les tables et leurs relations », « classification PII » | `digit-ai-schemas` · `../digit-ai-schemas/references/canevas-modele-donnees.md` + `../digit-ai-schemas/assets/template-modele-donnees.html` |
+| Schéma de base **différentiel** — ce qui CHANGE entre l'existant et la cible | « tables et champs ajoutés ou modifiés de couleurs différentes », « ce qui change », « schéma des bases X et Y » | `digit-ai-schemas` · `../digit-ai-schemas/assets/template-schema-differentiel.html` |
 | Architecture par couches, topologie réseau, flux temporel, tableau de bord KPI | « architecture cible », « topologie », « promotion entre environnements », « vue de pilotage » | `digit-ai-schemas` · les quatre autres canevas |
 
 Ces gabarits **héritent de ce socle** : ils s'insèrent dans une page bâtie ici, consomment ses
@@ -471,7 +471,7 @@ python scripts/render_page.py http://127.0.0.1:8000/page.html --matrice-paires  
 **La grille par défaut et la règle E5 du pilot (TF-1066, 12/09/2026).** Une page de bureau se
 **conçoit à 1920 px** — c'est la largeur de référence des maquettes, des captures de baseline et
 de la critique d'implémentation — et se **vérifie sans bloquant jusqu'à 3840 px** (règle E5,
-`references/BEST-PRACTICES-HTML.md` § E du pilot, décision humaine du 12/09/2026). D'où six
+`<pilot>/references/BEST-PRACTICES-HTML.md` § E du pilot, décision humaine du 12/09/2026). D'où six
 largeurs par défaut au lieu de quatre. Ce que le 4K change, et que 1920 ne montrait pas : la
 mesure de lecture reste portée par le **conteneur** (`.chap.lire`, E4) — la prose ne s'étire pas
 sur 2 880 px ; une page de **données** prend toute la largeur (L26) au lieu de laisser la moitié
@@ -567,7 +567,7 @@ Ce qui suppose de LIRE (clarté du propos, pertinence, justesse d'un chapeau) n'
 mécanisé : c'est la **revue de lecture — OBLIGATOIRE avant toute livraison (TF-0422)**.
 Capturer (`render_page.py`, 3840/2560/1920/1280/768/390 + `--sections`), **ouvrir et lire** les
 captures — au-delà de 4:1, les **tuiles d'un écran** que le script produit d'office, jamais la
-seule capture pleine page, illisible une fois réduite (TF-1131) —, consigner chaque constat dans `REVUE.md` au gabarit
+seule capture pleine page, illisible une fois réduite (TF-1131) —, consigner chaque constat dans `<produit>/REVUE.md` au gabarit
 [references/gabarit-revue-de-lecture.md](references/gabarit-revue-de-lecture.md) (largeur ·
 section · constat · suite · preuve) ou la mention « aucun constat » datée. Une page verte à
 tous les oracles a été refusée par son client à l'ouverture : les oracles mesurent des
@@ -670,10 +670,10 @@ contrôles que le producteur lance de toute façon.
 ## Référentiel détaillé
 
 - Complétude rendu vs source, pour toute page issue d'un générateur : `scripts/check_completude.py`
-  (TF-1174) — section ci-dessus ; registre : `quality-oracles/references/registre-oracles.md`
+  (TF-1174) — section ci-dessus ; registre : `../quality-oracles/references/registre-oracles.md`
 - Les quatre oracles de `digit-ai-forge-design` qui jugent cette même page, et leur ligne de
   commande : section ci-dessus (TF-1173) — `oracle-slop`, `oracle-tokens`, `oracle-mobile`,
-  `oracle-images`, lancés ensemble par `oracles/run-oracles-design.mjs`
+  `oracle-images`, lancés ensemble par `<racine>/digit-ai-forge-design/oracles/run-oracles-design.mjs`
 - Charte & tokens : [references/charte-et-tokens.md](references/charte-et-tokens.md)
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
@@ -702,7 +702,7 @@ La règle A1 impose une page **autoportante** : un livrable qui charge un fichie
 composant dès qu'il part par courriel. **Inliner un composant du socle est donc la règle**, pas
 l'exception — et c'est exactement là qu'une copie se détache de sa source.
 
-**Le fait payé.** `digit-ai-schemas/assets/exemple-reference.html` portait une copie **manuelle**
+**Le fait payé.** `../digit-ai-schemas/assets/exemple-reference.html` portait une copie **manuelle**
 de `assets/table-filters.js`, collée un jour où elle était juste. Le composant a été corrigé
 **sept fois** (TF-0429/0430/0431 le 21/08 ; TF-0768/0769/0781/0782 le 02/09) : la copie n'a pas
 bougé d'un octet. Elle triait encore « 1 000 » comme 1, rangeait les mois par ordre alphabétique
@@ -743,7 +743,7 @@ explicite. Seule transformation admise entre source et copie : l'échappement `<
 La contrepartie CSS se pose de la même façon (`table-filters.css` dans un `<style>` marqué) ; la
 page hôte n'a qu'à **aliaser** les jetons du socle qu'elle ne nomme pas comme lui.
 
-**Le contrôle.** `quality-oracles/scripts/oracle-parite-assets.mjs` balaie l'arborescence des
+**Le contrôle.** `../quality-oracles/scripts/oracle-parite-assets.mjs` balaie l'arborescence des
 skills sans rien écrire (P1 déclaration · P2 empreinte · P3 parité octet · P4 exemption datée et
 motivée) ; le self-test de `quality-oracles` le rejoue **sur le dépôt réel**, pour que le
 troisième skill qui recopie un composant rougisse le banc au lieu de dériver en silence.
