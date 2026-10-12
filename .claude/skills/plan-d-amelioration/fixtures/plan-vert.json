@@ -1,0 +1,205 @@
+{
+  "contrat": "plan-d-amelioration@1.0.0",
+  "produit": "Produit-Essai",
+  "titre": "Plan d'amélioration post-audit",
+  "date": "2026-10-12",
+  "indice": "20261012a",
+  "note_essai": "Jeu d'essai FICTIF du skill (TF-1234). Il exerce chaque règle du contrat dans son sens vert ; le self-test en dérive un rouge par règle en ne changeant qu'un élément.",
+  "intention": {
+    "texte": "Disposer d'une trajectoire unique et priorisée — ce qu'il faut corriger, ce qu'il vaut la peine d'améliorer, dans quel ordre et pour quel gain — afin de décider où investir sur le produit.",
+    "source": "demande du porteur, reconstruite et validée en séance",
+    "validee_le": "2026-10-12"
+  },
+  "audit": {
+    "audit_ref": "ESSAI-AUD-2026-10",
+    "actions": "audit/remediation-actions.yaml",
+    "controles_evalues": "audit/controles-evalues.json",
+    "rapport": "audit/rapport-audit.html"
+  },
+  "questions_ouverture": [
+    { "id": "Q1", "question": "Lecteur du plan ?", "valeur": "le porteur seul", "defaut_applique": true },
+    { "id": "Q2", "question": "Horizon et capacité ?", "valeur": "trois horizons, sans hypothèse de capacité ; efforts en complexité × durée", "defaut_applique": true },
+    { "id": "Q3", "question": "Invariants ?", "valeur": "une instance par client et l'hébergement actuel ne se remettent en cause que par une fiche de décision structurante", "defaut_applique": false, "reponse_source": "réponse du porteur, séance d'ouverture" },
+    { "id": "Q4", "question": "Nombre d'instances clientes visé à douze mois ?", "valeur": "inconnu : le plan donne les seuils où une recommandation change", "defaut_applique": true },
+    { "id": "Q5", "question": "Une instance de test est-elle joignable pour mesurer ?", "valeur": "non", "defaut_applique": true }
+  ],
+  "ajustements": [],
+  "fiches": [
+    {
+      "id": "AM-FON-01", "domaine": "FON",
+      "titre": "Reprendre une recherche interrompue sans tout ressaisir",
+      "constat": { "texte": "Le parcours de recherche repart d'un formulaire vide après une déconnexion : les critères saisis sont perdus.", "source": "src/front/recherche/Formulaire.tsx l.88-112" },
+      "cible": { "texte": "« Un utilisateur retrouve son travail là où il l'a laissé. »", "source": "docs/product/vision.md l.14" },
+      "proposition": { "texte": "Conserver les critères de la dernière recherche dans le profil et les proposer à la reconnexion.", "alternative_ecartee": "stockage dans le navigateur seul", "motif_ecart": "perdu au changement de poste, qui est le cas courant décrit par la vision" },
+      "gain": { "attendu": "moins de recherches abandonnées après une reconnexion", "constate_par": "compteur de recherches relancées depuis un critère conservé, relevé après mise en service" },
+      "effort": { "complexite": "simple", "duree": "court" },
+      "dependances": [],
+      "statut_existant": { "valeur": "neuve" },
+      "preuve_cloture": "une reconnexion après déconnexion forcée retrouve les critères (test de bout en bout vert)",
+      "horizon": "court", "rang": 2,
+      "chiffres": [],
+      "test_retro": "critères conservés → travail retrouvé (vision l.14) → moins de ressaisie → investir là où l'usage se perd"
+    },
+    {
+      "id": "AM-ARC-01", "domaine": "ARC",
+      "titre": "Mutualiser l'instance des petits clients",
+      "constat": { "texte": "Chaque client reçoit une instance complète, y compris les clients au plus faible usage.", "source": "docs/decisions/ADR-0003-instance-par-client.md l.9" },
+      "cible": { "texte": "réduire le coût d'exploitation par client sans dégrader l'isolement des données", "source": "réponse Q3 du porteur" },
+      "proposition": { "texte": "Ouvrir une décision structurante : mutualiser les petits clients sur une instance à cloisonnement logique, au-delà d'un seuil d'usage à mesurer.", "alternative_ecartee": "statu quo d'une instance par client", "motif_ecart": "le coût croît avec le nombre de clients, que Q4 laisse inconnu" },
+      "gain": { "attendu": "un coût d'hébergement qui ne croît plus linéairement avec le nombre de petits clients", "constate_par": "facture d'hébergement rapportée au nombre de clients, avant et après" },
+      "effort": { "complexite": "tres_complexe", "duree": "long" },
+      "dependances": ["AM-EXP-01"],
+      "statut_existant": { "valeur": "contraire_decision", "reference": "ADR-0003", "motif": "l'ADR fixe une instance par client ; la fiche la remet en cause par décision structurante argumentée, conformément à Q3" },
+      "preuve_cloture": "décision enregistrée (nouvel ADR) acceptant ou refusant la mutualisation",
+      "horizon": "long", "rang": 8,
+      "chiffres": [],
+      "test_retro": "mutualisation → coût par client maîtrisé (Q3) → décider où investir quand le nombre de clients croît"
+    },
+    {
+      "id": "AM-PERF-01", "domaine": "PERF",
+      "titre": "Fixer un objectif de temps de réponse de la recherche, avant de l'optimiser",
+      "constat": { "texte": "Aucun objectif de temps de réponse n'est écrit ; la documentation cite un ressenti de lenteur sur les gros corpus.", "source": "docs/product/retours-utilisateurs.md l.31" },
+      "cible": { "texte": "« La recherche répond avant que l'utilisateur ne se demande si elle répond. »", "source": "docs/product/vision.md l.22" },
+      "proposition": { "texte": "Écrire l'objectif (95e centile sous 800 ms, hypothèse à confirmer) et l'instrumenter avant toute optimisation.", "alternative_ecartee": "optimiser d'emblée l'index", "motif_ecart": "sans mesure de base, le gain ne serait pas constatable" },
+      "gain": { "attendu": "une cible chiffrée partagée et un écart mesuré à elle", "constate_par": "tableau de bord du 95e centile après instrumentation" },
+      "effort": { "complexite": "moyen", "duree": "court" },
+      "dependances": ["REM-D06-003"],
+      "statut_existant": { "valeur": "neuve" },
+      "preuve_cloture": "objectif écrit dans la documentation et instrument posé (sonde versionnée)",
+      "horizon": "court", "rang": 3,
+      "chiffres": [ { "valeur": "800 ms", "statut": "hypothese", "source": "ordre de grandeur usuel d'une recherche interactive, à confirmer par le plan de mesure" } ],
+      "test_retro": "objectif écrit → réponse perçue comme immédiate (vision l.22) → investir sur la recherche à bon escient"
+    },
+    {
+      "id": "AM-FRONT-01", "domaine": "FRONT",
+      "titre": "Unifier les composants de formulaire de la console d'administration",
+      "constat": { "texte": "La console emploie deux bibliothèques de champs aux états d'erreur différents.", "source": "src/admin/package.json l.12-19" },
+      "cible": { "texte": "« Une console qu'un nouvel administrateur prend en main sans formation. »", "source": "docs/product/vision.md l.30" },
+      "proposition": { "texte": "Converger sur une seule bibliothèque, alignée sur le système de design du produit.", "alternative_ecartee": "habiller la seconde bibliothèque aux couleurs de la première", "motif_ecart": "deux comportements d'erreur resteraient" },
+      "gain": { "attendu": "un seul comportement d'erreur dans la console", "constate_par": "inventaire des composants de champ : une seule bibliothèque importée" },
+      "effort": { "complexite": "moyen", "duree": "moyen" },
+      "dependances": [],
+      "statut_existant": { "valeur": "deja_planifiee", "reference": "docs/product/sprints/sprint-14.md l.5" },
+      "preuve_cloture": "le manifeste de la console n'importe plus qu'une bibliothèque de champs",
+      "horizon": "moyen", "rang": 5,
+      "chiffres": [],
+      "test_retro": "un seul comportement → prise en main sans formation (vision l.30) → coût d'adoption réduit"
+    },
+    {
+      "id": "AM-BACK-01", "domaine": "BACK",
+      "titre": "Rendre les migrations de schéma réversibles",
+      "constat": { "texte": "Les migrations du schéma n'ont pas de chemin de retour écrit.", "source": "db/migrations/ (relevé des fichiers : aucun script de retour)" },
+      "cible": { "texte": "livrer une version sans risquer de bloquer une instance cliente", "source": "réponse Q3 du porteur" },
+      "proposition": { "texte": "Exiger un script de retour par migration, joué en intégration continue.", "alternative_ecartee": "sauvegarde complète avant chaque migration", "motif_ecart": "plus lente à restaurer et sans test de retour" },
+      "gain": { "attendu": "un retour arrière possible sur toute migration", "constate_par": "le pipeline joue montée puis descente sur chaque migration" },
+      "effort": { "complexite": "moyen", "duree": "moyen" },
+      "dependances": [],
+      "statut_existant": { "valeur": "neuve" },
+      "preuve_cloture": "étape de pipeline montée-descente verte sur toutes les migrations",
+      "horizon": "moyen", "rang": 4,
+      "chiffres": [],
+      "test_retro": "migrations réversibles → livrer sans bloquer un client (Q3) → investir sans risque de régression"
+    },
+    {
+      "id": "AM-CNX-01", "domaine": "CNX",
+      "titre": "Ajouter un connecteur de source SFTP",
+      "constat": { "texte": "Seuls les connecteurs S3 et SMB existent ; la feuille de route promet le SFTP.", "source": "docs/product/feuille-de-route.md l.40" },
+      "cible": { "texte": "« Brancher les sources que nos clients ont déjà. »", "source": "docs/product/vision.md l.18" },
+      "proposition": { "texte": "Écrire le connecteur SFTP sur le contrat des connecteurs existants.", "alternative_ecartee": "passerelle tierce de synchronisation", "motif_ecart": "une dépendance de plus à exploiter chez chaque client" },
+      "gain": { "attendu": "les clients sous SFTP branchent leur source sans passerelle", "constate_par": "recette du connecteur sur une source d'essai" },
+      "effort": { "complexite": "moyen", "duree": "moyen" },
+      "dependances": ["AM-BACK-01"],
+      "statut_existant": { "valeur": "deja_planifiee", "reference": "docs/product/feuille-de-route.md l.40" },
+      "preuve_cloture": "recette du connecteur SFTP verte",
+      "horizon": "moyen", "rang": 6,
+      "chiffres": [],
+      "test_retro": "connecteur SFTP → sources déjà en place (vision l.18) → élargir la base de clients"
+    },
+    {
+      "id": "AM-EXP-01", "domaine": "EXP",
+      "titre": "Industrialiser l'installation d'un nouveau client",
+      "constat": { "texte": "L'installation d'un client suit un runbook manuel de vingt-deux étapes.", "source": "docs/runbooks/installation-client.md l.1-140" },
+      "cible": { "texte": "installer un client sans intervention experte", "source": "réponse Q1 du porteur" },
+      "proposition": { "texte": "Scripter l'installation, une fois les logs structurés (remédiation REM-D10-002) en place.", "alternative_ecartee": "former une seconde personne au runbook", "motif_ecart": "ne retire pas l'erreur de saisie, cause relevée du dernier incident" },
+      "gain": { "attendu": "une installation reproductible", "constate_par": "une installation d'essai jouée deux fois donne le même état" },
+      "effort": { "complexite": "complexe", "duree": "moyen" },
+      "dependances": ["REM-D10-002"],
+      "statut_existant": { "valeur": "neuve" },
+      "preuve_cloture": "installation scriptée jouée de bout en bout sur une instance d'essai",
+      "horizon": "moyen", "rang": 7,
+      "chiffres": [],
+      "test_retro": "installation scriptée → sans intervention experte (Q1) → coût d'ouverture d'un client réduit"
+    },
+    {
+      "id": "AM-QUA-01", "domaine": "QUA",
+      "titre": "Tester les contrats entre le front et le back",
+      "constat": { "texte": "Les appels du front au back ne sont couverts par aucun test de contrat.", "source": "tests/ (relevé : aucun dossier de contrat)" },
+      "cible": { "texte": "livrer le front et le back indépendamment", "source": "docs/decisions/ADR-0007-deploiement-separe.md l.6" },
+      "proposition": { "texte": "Poser des tests de contrat consommateur sur les routes appelées par le front.", "alternative_ecartee": "tests de bout en bout seuls", "motif_ecart": "lents, et ils ne localisent pas la rupture" },
+      "gain": { "attendu": "une rupture de contrat vue avant la livraison", "constate_par": "un changement de route incompatible fait échouer le pipeline" },
+      "effort": { "complexite": "moyen", "duree": "court" },
+      "dependances": [],
+      "statut_existant": { "valeur": "neuve" },
+      "preuve_cloture": "pipeline rouge sur une rupture de contrat provoquée",
+      "horizon": "court", "rang": 1,
+      "chiffres": [],
+      "test_retro": "tests de contrat → livraisons indépendantes (ADR-0007) → livrer plus souvent sans régression"
+    },
+    {
+      "id": "AM-COUT-01", "domaine": "COUT",
+      "titre": "Attribuer le coût d'usage des modèles à chaque client",
+      "constat": { "texte": "La facture du fournisseur de modèles arrive en un seul montant, sans ventilation par client.", "source": "docs/exploitation/couts.md l.8" },
+      "cible": { "texte": "connaître la marge par client", "source": "réponse Q1 du porteur" },
+      "proposition": { "texte": "Étiqueter chaque appel de modèle par client et agréger chaque mois.", "alternative_ecartee": "répartition au prorata des utilisateurs", "motif_ecart": "masque les clients à fort usage" },
+      "gain": { "attendu": "une marge par client calculable", "constate_par": "rapport mensuel du coût d'usage par client" },
+      "effort": { "complexite": "simple", "duree": "court" },
+      "dependances": [],
+      "statut_existant": { "valeur": "neuve" },
+      "preuve_cloture": "premier rapport mensuel ventilé par client produit",
+      "horizon": "court", "rang": 9,
+      "chiffres": [],
+      "test_retro": "coût par client → marge connue (Q1) → décider où investir"
+    }
+  ],
+  "domaines_sans_fiche": [
+    { "domaine": "IA", "motif": "aucun écart à une ambition documentée : l'évaluation des réponses est déjà outillée et suivie", "regarde": "docs/product/evaluation-ia.md ; tests/evaluation/ (relevé du jeu d'évaluation)" },
+    { "domaine": "FORK", "motif": "sans objet : le produit ne maintient aucun fork d'un projet amont", "regarde": "package.json et dépendances : aucune dépendance tirée d'un fork maison" },
+    { "domaine": "SEC", "motif": "tout écart relevé est rattaché à un contrôle du référentiel d'audit : il vit dans le plan de remédiation (REM-D03-001)", "regarde": "rapport d'audit, dimensions D02 à D04 ; liste des contrôles évalués" },
+    { "domaine": "DOC", "motif": "le contrôle de documentation est conforme et aucune ambition supplémentaire n'est écrite", "regarde": "docs/ ; contrôle CTL-D13-01 du rapport d'audit" }
+  ],
+  "plans_existants": [
+    { "entree": "Sprint 14 — unifier les formulaires de la console", "source": "docs/product/sprints/sprint-14.md l.5", "fiche": "AM-FRONT-01" },
+    { "entree": "Feuille de route — connecteur SFTP", "source": "docs/product/feuille-de-route.md l.40", "fiche": "AM-CNX-01" },
+    { "entree": "Feuille de route — refonte du logo", "source": "docs/product/feuille-de-route.md l.44", "hors_sujet_motif": "identité visuelle : hors du périmètre d'un plan d'amélioration applicative" }
+  ],
+  "jonction": [
+    { "rem": "REM-D06-003", "am": "AM-PERF-01", "relation": "conditionne", "note": "le test de charge de la remédiation fournit la mesure de base de l'objectif" },
+    { "rem": "REM-D10-002", "am": "AM-EXP-01", "relation": "conditionne", "note": "l'installation scriptée s'appuie sur des logs structurés" }
+  ],
+  "plan_de_mesure": [
+    { "domaine": "PERF", "quoi": "95e centile du temps de réponse de la recherche, par taille de corpus", "comment": "sonde de synthèse sur une instance d'essai, une fois Q5 levée", "seuil_vise": "à fixer après la première mesure de base ; hypothèse de départ écrite à la fiche AM-PERF-01" }
+  ],
+  "trajectoire": {
+    "lots": [
+      { "id": "L1", "libelle": "Sécuriser et mesurer", "horizon": "court", "rems": ["REM-D03-001", "REM-D06-003"], "fiches": ["AM-QUA-01", "AM-FON-01", "AM-PERF-01"], "utile": "le produit livre sans régression de contrat", "utilisable": "les critères de recherche survivent à une déconnexion", "utilise": "relances de recherche comptées" },
+      { "id": "L2", "libelle": "Fiabiliser la livraison et l'exploitation", "horizon": "moyen", "rems": ["REM-D10-002"], "fiches": ["AM-BACK-01", "AM-FRONT-01", "AM-CNX-01", "AM-EXP-01"], "utile": "toute migration se défait", "utilisable": "un client s'installe sans expert", "utilise": "installations scriptées comptées" },
+      { "id": "L3", "libelle": "Décider du modèle d'hébergement et des marges", "horizon": "long", "rems": [], "fiches": ["AM-ARC-01", "AM-COUT-01"], "utile": "le coût par client est connu", "utilisable": "la décision de mutualisation est instruite", "utilise": "rapport de marge lu au comité" }
+    ]
+  },
+  "decisions": [
+    { "rang": 1, "question": "Poser les tests de contrat front-back maintenant ?", "options": ["oui, au lot L1", "non, rester sur les tests de bout en bout"], "cout": "complexité moyenne, durée courte", "gain": "ruptures vues avant livraison", "si_rien": "les ruptures restent vues en production", "fiches": ["AM-QUA-01"] },
+    { "rang": 2, "question": "Conserver les critères de recherche dans le profil ?", "options": ["oui", "non"], "cout": "complexité simple, durée courte", "gain": "moins de ressaisie", "si_rien": "les recherches interrompues restent perdues", "fiches": ["AM-FON-01"] },
+    { "rang": 3, "question": "Écrire l'objectif de temps de réponse avant d'optimiser ?", "options": ["oui, objectif puis instrument", "optimiser d'emblée"], "cout": "complexité moyenne, durée courte", "gain": "un gain constatable", "si_rien": "toute optimisation reste invérifiable", "fiches": ["AM-PERF-01"] },
+    { "rang": 4, "question": "Exiger un script de retour par migration ?", "options": ["oui, joué en intégration continue", "non, sauvegarde avant migration"], "cout": "complexité moyenne, durée moyenne", "gain": "retour arrière possible", "si_rien": "une migration ratée bloque une instance", "fiches": ["AM-BACK-01"] },
+    { "rang": 5, "question": "Converger sur une seule bibliothèque de champs ?", "options": ["oui", "habiller la seconde"], "cout": "complexité moyenne, durée moyenne", "gain": "un seul comportement d'erreur", "si_rien": "deux comportements coexistent", "fiches": ["AM-FRONT-01"] },
+    { "rang": 6, "question": "Écrire le connecteur SFTP ?", "options": ["oui, sur le contrat existant", "passerelle tierce"], "cout": "complexité moyenne, durée moyenne", "gain": "clients SFTP branchés", "si_rien": "ces clients restent hors d'atteinte", "fiches": ["AM-CNX-01"] },
+    { "rang": 7, "question": "Scripter l'installation d'un client après la remédiation des logs ?", "options": ["oui, au lot L2", "former une seconde personne"], "cout": "complexité complexe, durée moyenne", "gain": "installation reproductible", "si_rien": "l'installation dépend d'une seule personne", "fiches": ["AM-EXP-01"] },
+    { "rang": 8, "question": "Ouvrir la décision structurante de mutualisation ?", "options": ["ouvrir l'instruction", "garder une instance par client"], "cout": "complexité très complexe, durée longue", "gain": "coût par client maîtrisé", "si_rien": "le coût croît avec chaque petit client", "fiches": ["AM-ARC-01"] },
+    { "rang": 9, "question": "Ventiler le coût d'usage des modèles par client ?", "options": ["oui, étiquetage des appels", "prorata des utilisateurs"], "cout": "complexité simple, durée courte", "gain": "marge par client calculable", "si_rien": "les clients à fort usage restent invisibles", "fiches": ["AM-COUT-01"] }
+  ],
+  "methode": {
+    "domaines": "references/domaines.json 1.0.0 (vérifié le 2026-10-12)",
+    "frontiere": "écart à une norme = remédiation (citée par son identifiant) ; écart à une ambition = amélioration (fiche)",
+    "statuts_chiffres": "mesuré (commande et sortie), lu (document et ligne), hypothèse (déclarée)"
+  }
+}

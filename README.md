@@ -10,7 +10,8 @@ Forge Digit-AI : deux ateliers dans un seul repo.
    `write-an-oracle`) et des fiches d'experts de domaine (`experts-forge`,
    `write-an-expert`), plus les skills de revue qui s'appuient dessus (`ameliore-un-skill`,
    `contre-expertise`, `data-quality-auditor`, `digit-ai-page-html`, `digit-ai-schemas`,
-   `prompt-analyzer-l99`).
+   `prompt-analyzer-l99`), et `plan-d-amelioration` (joindre, juger et rendre le plan
+   d'amélioration qui suit un audit).
 
 Les versions réellement montées dans `.claude/skills` (extraites des frontmatters) sont
 consignées dans `versions-livrees.json`.

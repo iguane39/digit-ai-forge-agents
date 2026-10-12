@@ -1,0 +1,28 @@
+{
+  "referentiel": "domaines-plan-d-amelioration",
+  "version": "1.0.0",
+  "verifie_le": "2026-10-12",
+  "peremption": "2027-04-12",
+  "sources": [
+    "digit-ai-forge-audit/core/dimensions/dimensions.yaml (pack core-v1, 18 dimensions D00-D17, lu le 12/10/2026)",
+    "prompt réécrit du 19/09/2026, chapitre 8 de output/03-etudes/20260919-L99-audit-et-plan-d-amelioration-plateforme.md du pilot (treize domaines fermés)",
+    "étude d'opportunité du 19/09/2026, section 5 du pilot (base de domaines : les dimensions de forge-audit, plus front, back, connectivités et dette d'un fork, adossée à ISO/IEC 25010:2023)",
+    "ISO/IEC 25010:2023, neuf caractéristiques de qualité du produit (définitions relues sur quality.arc42.org, repère de 2023-11)"
+  ],
+  "note": "Donnée volatile, pas du code (loi 4) : ce fichier s'édite, se date et se source. La base est FERMÉE pour une mission : un domaine ajouté ou retiré se déclare dans le plan (champ ajustements, avec motif), jamais en silence. Les codes servent d'identifiant de fiche : AM-<code>-NN. La première version naît d'une analyse et de cas d'essai, pas d'une mission jouée : la première mission réelle la corrigera.",
+  "domaines": [
+    { "code": "FON", "libelle": "Fonctionnel et parcours des utilisateurs", "dimensions_audit": ["D00"], "iso25010": ["adéquation fonctionnelle"] },
+    { "code": "ARC", "libelle": "Architecture et modularité", "dimensions_audit": ["D01", "D09"], "iso25010": ["maintenabilité", "flexibilité"] },
+    { "code": "PERF", "libelle": "Performances et capacité", "dimensions_audit": ["D06"], "iso25010": ["efficacité de performance"], "plan_de_mesure_sans_instance": true },
+    { "code": "FRONT", "libelle": "Front : ergonomie, accessibilité, système de design", "dimensions_audit": ["D11"], "iso25010": ["capacité d'interaction"] },
+    { "code": "BACK", "libelle": "Back : services, API, modèle de données, migrations", "dimensions_audit": ["D15", "D16"], "iso25010": ["maintenabilité", "fiabilité"] },
+    { "code": "CNX", "libelle": "Connectivités : connecteurs de sources, intégrations tierces, fédération d'identité", "dimensions_audit": [], "iso25010": ["compatibilité"] },
+    { "code": "IA", "libelle": "IA et recherche documentaire", "dimensions_audit": ["D05", "D14", "D17"], "iso25010": ["adéquation fonctionnelle", "fiabilité"] },
+    { "code": "FORK", "libelle": "Dette d'un fork et des dépendances amont", "dimensions_audit": [], "iso25010": ["maintenabilité"] },
+    { "code": "EXP", "libelle": "Exploitation : installation, déploiement, sauvegarde, observabilité", "dimensions_audit": ["D10", "D12"], "iso25010": ["fiabilité"] },
+    { "code": "QUA", "libelle": "Qualité et tests", "dimensions_audit": ["D08"], "iso25010": ["maintenabilité"] },
+    { "code": "SEC", "libelle": "Sécurité et conformité au-delà du référentiel d'audit", "dimensions_audit": ["D02", "D03", "D04"], "iso25010": ["sécurité", "sûreté"] },
+    { "code": "COUT", "libelle": "Coûts : hébergement, licences, usage des modèles", "dimensions_audit": ["D07"], "iso25010": [] },
+    { "code": "DOC", "libelle": "Documentation et expérience du développeur", "dimensions_audit": ["D13"], "iso25010": ["maintenabilité"] }
+  ]
+}
