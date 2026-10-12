@@ -39,6 +39,7 @@ const NJ = [
   "la pertinence des familles d'accès énumérées (leur existence sur la plateforme visée n'est pas contre-vérifiée)",
   "les prémisses qui ne portent pas sur l'accès (→ reste du Ch4, jugement humain)",
   "un bloc qui parle d'accès sans employer le vocabulaire reconnu ci-dessous n'est pas vu",
+  "un document qui pose des prémisses d'accès sans jamais écrire « prémisse » ni « présupposé » n'est pas jugé (TF-1485) : le mot est le signe que le document audite des prémisses",
   "une mesure écrite SANS son code de retour n'est pas reconnue comme une mesure (le code est la première des quatre pièces dues)",
   "la suffisance de la mesure : un seul appel peut satisfaire A1-A4 et rester une mesure pauvre"
 ];
@@ -50,7 +51,25 @@ if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 if (!['.md', '.markdown', '.txt'].includes(path.extname(file).toLowerCase())) out('SKIP', [], ['extension non gérée'], 2);
 
 const base = path.basename(file);
-const lignes = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n').split('\n');
+const source = fs.readFileSync(file, 'utf8');
+
+// TF-1485 — CE DOCUMENT PORTE-T-IL DES PRÉMISSES ? Le Ch4 de l'analyse L99 audite des PRÉMISSES ;
+// c'est le seul document que cette règle vise. Mesuré le 02/10/2026 sur les 385 .md du dossier
+// `output` du pilot : 37 FAIL, dont 32 sur des documents qui ne contiennent pas le mot « prémisse »
+// — des synthèses de restitution dont un bloc parle d'« accès » et nomme un dépôt, un chemin ou un
+// jeton (« motif : accès, éprouvé à 12:50 »), jamais d'une prémisse. Le déclencheur exige donc
+// qu'une prémisse soit écrite quelque part dans le document ; sinon SKIP motivé, jamais un PASS.
+if (!/pr[ée]misses?\b|pr[ée]suppos[ée]s?\b/i.test(source))
+  out('SKIP', [], [...NJ, "aucune prémisse dans ce document (ni « prémisse » ni « présupposé » n'y figurent) : ce n'est pas une analyse de prémisses, aucun bloc n'est jugé"], 2);
+// ... et ce document n'est-il pas une RESTITUTION ? Une synthèse de fin de tour (gabarit RESTITUTION,
+// ouverte par « 0. Synthèse d'ouverture » ou adressée par un `destinataire:` en en-tête) RAPPORTE
+// des analyses ; ses blocs citent « accès », « prémisse » et « invérifiable » sans en poser. Elle
+// n'est pas l'analyse : celle-ci vit dans son propre fichier, jugé là. Les 2 synthèses qui
+// portaient encore le mot « prémisse » (sur 5 FAIL restants à la mesure du 02/10) sortent ainsi.
+const entete = (source.match(/^---\r?\n([\s\S]*?)\r?\n---/) || [, ''])[1];
+if (/^#{1,3}\s*0\.\s*Synth[èe]se d['’]ouverture/im.test(source) || /^destinataire\s*:/im.test(entete))
+  out('SKIP', [], [...NJ, "restitution de fin de tour (« 0. Synthèse d'ouverture » ou en-tête `destinataire:`) : elle rapporte une analyse sans en être une, l'analyse se juge dans son propre fichier"], 2);
+const lignes = source.replace(/\r\n/g, '\n').split('\n');
 
 // --- découpage en BLOCS -----------------------------------------------------------------
 // Une ligne de tableau est un bloc à elle seule (le Ch4 liste ses prémisses en tableau) ; sinon

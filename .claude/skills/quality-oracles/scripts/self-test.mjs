@@ -957,6 +957,36 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1485 (28/09/2026) — LE CONTRÔLE DE PRÉMISSE D'ACCÈS NE JUGE PAS UNE SYNTHÈSE. Mesuré le
+// 02/10/2026 sur les 385 .md du dossier `output` du pilot : 37 FAIL avant, 3 après (tous dans de vraies
+// analyses L99), 32 SKIP motivés en plus. Le déclencheur exige désormais qu'une prémisse soit écrite
+// dans le document, et écarte les restitutions de fin de tour. Trois documents portent le MÊME bloc
+// d'accès refusé sans contrôle positif : (A) une synthèse ouverte par « 0. Synthèse d'ouverture » qui
+// porte même le mot « prémisse », (B) un document qui ne parle d'aucune prémisse, (C) le document qui
+// pose une prémisse : seul (C) est jugé, et il reste FAIL — le déclencheur resserré ne désarme pas
+// le contrôle (les fixtures rouge et verte du manifest le prouvent aussi).
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1485-'));
+  try {
+    const bloc = "- **Le dépôt du socle** : l'accès à l'espace de travail https://exemple.invalid/groups/a1 a été refusé (403) hier.\n";
+    const docs = {
+      A: "---\ndestinataire: humain\n---\n\n# Titre\n\n## 0. Synthèse d'ouverture\n\nLe mandat est rendu ; une prémisse d'accès se mesure avant d'être dite invérifiable.\n\n" + bloc,
+      B: "# Journal de travail\n\nRien à signaler.\n\n" + bloc,
+      C: "# Analyse\n\nPrémisse P1 : l'espace est lisible.\n\n" + bloc,
+    };
+    const verdict = (k) => {
+      const f = path.join(tmp, k + '.md'); fs.writeFileSync(f, docs[k], 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-premisse-acces.mjs'), f], { encoding: 'utf8', timeout: 60000 });
+      try { const j = JSON.parse((r.stdout || '').trim()); return { v: j.verdict, motif: j.motif || '' }; } catch { return { v: '?', motif: '' }; }
+    };
+    const a = verdict('A'), b = verdict('B'), c = verdict('C');
+    if (a.v !== 'SKIP' || !/restitution/.test(a.motif)) ko('TF-1485 (A) : une synthèse ouverte par « 0. Synthèse d ouverture » doit rendre SKIP motivé « restitution » — rendu ' + a.v + ' « ' + a.motif.slice(0, 80) + ' »');
+    else if (b.v !== 'SKIP' || !/aucune prémisse/.test(b.motif)) ko('TF-1485 (B) : un document sans prémisse doit rendre SKIP motivé — rendu ' + b.v + ' « ' + b.motif.slice(0, 80) + ' »');
+    else if (c.v !== 'FAIL') ko('TF-1485 (C) : le document qui pose une prémisse et porte un refus sans contrôle positif doit rester FAIL — rendu ' + c.v);
+    else ok('TF-1485 : le même bloc d accès refusé est SKIP motivé dans une synthèse (A) et dans un document sans prémisse (B), et reste FAIL dans le document qui pose une prémisse (C)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables
