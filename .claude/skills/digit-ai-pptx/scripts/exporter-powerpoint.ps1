@@ -27,7 +27,7 @@
 # regle : l'historique (Quit sans condition) et la garde sur le seul compte des presentations.
 #
 # Usage : powershell -NoProfile -ExecutionPolicy Bypass -File exporter-powerpoint.ps1
-#           -Entree <copie.pptx> [-SortiePptx <export.pptx>] [-SortiePdf <export.pdf>] [-InstanceNeuve]
+#           -Entree <copie.pptx> [-SortiePptx <export.pptx>] [-SortiePdf <export.pdf>] [-SortiePng <dossier>] [-InstanceNeuve]
 #         powershell -NoProfile -ExecutionPolicy Bypass -File exporter-powerpoint.ps1 -Decision -CasBase64 <json>
 # Sortie : une ligne JSON sur stdout. Codes : 0 export fait ; 1 export en echec (deck illisible ou
 # erreur de PowerPoint) ; 2 PowerPoint indisponible, deja lance sous -InstanceNeuve, ou usage incorrect.
@@ -35,6 +35,7 @@ param(
   [string]$Entree = '',
   [string]$SortiePptx = '',
   [string]$SortiePdf = '',
+  [string]$SortiePng = '',
   [switch]$InstanceNeuve,
   [switch]$Decision,
   [string]$CasBase64 = ''
@@ -83,8 +84,8 @@ if ($Decision) {
   Write-Rapport ([ordered]@{ etat = 'decisions'; decisions = $decisions }) 0
 }
 
-if (-not $Entree -or (-not $SortiePptx -and -not $SortiePdf)) {
-  Write-Rapport ([ordered]@{ etat = 'non-joue'; motif = 'usage : -Entree <copie.pptx> et au moins -SortiePptx ou -SortiePdf' }) 2
+if (-not $Entree -or (-not $SortiePptx -and -not $SortiePdf -and -not $SortiePng)) {
+  Write-Rapport ([ordered]@{ etat = 'non-joue'; motif = 'usage : -Entree <copie.pptx> et au moins -SortiePptx, -SortiePdf ou -SortiePng' }) 2
 }
 if (-not (Test-Path -LiteralPath $Entree -PathType Leaf)) {
   Write-Rapport ([ordered]@{ etat = 'non-joue'; motif = 'entree absente' }) 2
@@ -98,7 +99,7 @@ function Get-PidsPowerPoint {
 $rapport = [ordered]@{
   etat = $null; motif = $null; pids_avant = @(); pids_apres = @(); autres_presentations = $null
   visible = $null; erreur_lecture = $false; lancee_par_l_export = $false; decision = $null; quittee = $false
-  pptx = $false; pdf = $false
+  pptx = $false; pdf = $false; png = $false
 }
 $rapport.pids_avant = @(Get-PidsPowerPoint)
 if ($InstanceNeuve -and $rapport.pids_avant.Count -gt 0) {
@@ -123,6 +124,15 @@ try {
   if ($SortiePptx) { $pres.SaveAs($SortiePptx, 24, -1); $rapport.pptx = $true }
   # ppSaveAsPDF (32)
   if ($SortiePdf) { $pres.SaveAs($SortiePdf, 32); $rapport.pdf = $true }
+  # Une image PNG par diapositive (une image par diapositive, nommee par PowerPoint) pour la passe QA, 1600 px de large, au ratio du deck :
+  # le poste sans LibreOffice ni pdftoppm n'a pas d'autre rasteriseur (TF-1386)
+  if ($SortiePng) {
+    [void](New-Item -ItemType Directory -Path $SortiePng -Force)
+    $largeur = 1600
+    $hauteur = [int][math]::Round($largeur * [double]$pres.PageSetup.SlideHeight / [double]$pres.PageSetup.SlideWidth)
+    $pres.Export($SortiePng, 'PNG', $largeur, $hauteur)
+    $rapport.png = $true
+  }
   $rapport.etat = 'exporte'
 } catch {
   $rapport.etat = 'echec'

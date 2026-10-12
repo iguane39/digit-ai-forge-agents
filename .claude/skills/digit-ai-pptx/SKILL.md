@@ -76,6 +76,27 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
 
 ## Workflow par défaut
 
+0. **Cadrer avant de générer** (TF-1383) — pour toute présentation remise à un commanditaire (enjeu
+   fort au sens du § 6 de la fiche de conception), jamais pour un brouillon de travail interne. Une
+   présentation remise conforme à ses oracles a été refusée à 9 demandes dont 5 sur le vocabulaire
+   du lecteur : la fiche, remplie après la remise, n'avait rien fixé. Trois gestes, avant toute
+   génération, avec les outils du pilot `digit-ai-factory` (chemin : `<racine des forges>/digit-ai-factory/`) :
+
+   ```bash
+   node oracles/oracle-gabarits-documents.mjs --livrable "<nom du deck>.pptx"
+   node oracles/oracle-gabarits-documents.mjs --fiche <fiche remplie>.md
+   ```
+
+   a. **Famille du catalogue (G8)** : la première commande résout la famille du livrable par son nom.
+      Aucune famille ne résout (FAIL de G8) : ce n'est pas une case à forcer, c'est un trou du catalogue ;
+      écrire `famille: aucune — candidature remontée` dans la fiche et le remonter au pilot.
+   b. **Fiche de conception (règle D8)** : remplir la fiche de conception du pilot (gabarits, documents, FICHE-CONCEPTION)
+      (lecteur défini par ce qu'il doit décider, vocabulaire fixé, intention de chaque partie), puis
+      la faire juger par G6 (seconde commande). Jamais d'emplacement `{…}` laissé.
+   c. **Validation humaine** de la fiche quand l'enjeu est fort, avant l'étape 1. Le vocabulaire fixé
+      par la fiche alimente le LEXIQUE.json que lira S5 à l'étape 8.
+
+   Sans pilot joignable : le dire à la restitution, ne pas déclarer le cadrage fait.
 1. **Charger le système de marque** — `node scripts/lire-marque.mjs` (options ci-dessus).
    Sortie JSON : les jetons par thème, les polices et les cotes, déjà convertis pour
    pptxgenjs (hexadécimal **sans dièse**, pouces depuis les px à 96 px/pouce, face de police).
@@ -90,6 +111,19 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    arrondis sans cadre), placement **contain-fit** (ratio préservé, jamais d'étirement).
 6. Construire le PPTX avec pptxgenjs, **en n'écrivant que des valeurs venues de l'étape 1** :
    aucune couleur ni police littérale dans le script de génération — les lire depuis le JSON.
+   **Nommer le pied de page et la pagination** avec l'option `objectName` de pptxgenjs, exactement
+   « Pied de page » et « Pagination » : pptxgenjs ne sait pas écrire les espaces réservés `ftr` et
+   `sldNum` que la règle S4 de l'étape 8 exige, et l'étape 6 bis les pose à partir de ces noms.
+6 bis. **Poser les espaces réservés de pied de page** (TF-1382), sur tout deck construit par pptxgenjs :
+
+   ```bash
+   python scripts/poser-pieds-de-page.py <deck pptxgenjs>.pptx --out <deck avec pieds>.pptx
+   ```
+
+   Chaque forme nommée « Pied de page » ou « Pagination » devient l'espace réservé `ftr` ou `sldNum` ;
+   sa position, son texte et sa mise en forme ne changent pas. Le deck d'entrée n'est jamais modifié et
+   une sortie existante jamais écrasée. **Exit 1** : aucune forme ne porte ces noms, le script de
+   génération doit les nommer. L'étape 7 prend le deck avec pieds en entrée.
 7. **Exporter par PowerPoint**, jamais par un script maison : le PPTX ressort avec ses polices
    embarquées, et le PDF sert la passe QA et la remise.
 
@@ -99,7 +133,9 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
 
    Le script attend son tour derrière le verrou des autres sessions, travaille sur une copie, ne
    ferme que sa présentation et ne quitte que l'instance qu'il a lancée lui-même, invisible et
-   sans autre présentation. Il fait ensuite juger les polices embarquées par
+   sans autre présentation. `--png <dossier neuf>` tire en plus une image par diapositive, sans
+   juge de polices : c'est le rasteriseur de la passe QA sur un poste sans LibreOffice ni
+   pdftoppm (PowerPoint rend les images, le dossier ne doit pas exister). Il fait ensuite juger les polices embarquées par
    `../quality-oracles/scripts/oracle-polices-embarquees.mjs`. Sur un FAIL, il les réencode hors
    PowerPoint (`scripts/reembarquer-polices.py`) et les fait rejuger ; un second échec vaut
    refus. Il n'écrase aucun fichier et livre tout ou rien. **Exit 1 ou 2 ⇒ rien n'est livré** :
@@ -110,16 +146,22 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
 8. **Passe QA finale (obligatoire)** — deux temps, l'oracle d'abord :
 
    ```bash
-   node ../quality-oracles/scripts/oracle-charte-pptx-semantique.mjs <deck.pptx>
+   node ../quality-oracles/scripts/oracle-charte-pptx-semantique.mjs <deck.pptx> --mesurer
    ```
 
    L'oracle vit dans le skill voisin quality-oracles, sous scripts/oracle-charte-pptx-semantique.mjs :
    S1 bijection sommaire ↔ intercalaires, S2 kicker, S3 logos, S4 footer + pagination, S5
    **lexique du destinataire** sur les textes de slide **et les notes du présentateur**
-   (TF-1152). Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
+   (TF-1152), S6 **alignement d'un repère « N / M » sur la 1re ligne du titre**, tolérance 1 pt
+   (TF-1379), S7 **aucune liste en ligne** dans le texte visible (E-11 : un « · » ou deux « ; » dans
+   un paragraphe, hors pied de page et couverture, est une énumération qui devait être une liste,
+   TF-1390). S6 se mesure sur le rendu : `--mesurer` fait lire par PowerPoint les bornes de la 1re
+   ligne de chaque titre (`quality-oracles/scripts/mesure-rendu-pptx.ps1`, sur une copie, sans
+   quitter l'instance de l'utilisateur). Sans PowerPoint, le `non_juge` dit « S6 NON jouée » : le
+   désaxement d'un repère est alors à chercher à l'œil sur le rendu. Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
    fichier LEXIQUE.json du socle du projet où vit le deck : si le `non_juge` déclare l'avoir
    cherché en vain, le vocabulaire du client n'a été jugé par personne — le dire, pas conclure.
-   Puis rasteriser le PDF de l'étape 7 (PDF → PNG) et inspecter **chaque** slide — aucune image
+   Puis tirer les images (`--png` de l'étape 7, ou le PDF de l'étape 7 passé à pdftoppm si le poste l'a) et inspecter **chaque** slide — aucune image
    déformée / hors zone / encadrée, aucun texte qui déborde d'un encart ou de la slide.
    Détail : `references/drive-assets.md` §8.
 9. Nommer selon la convention ci-dessous, livrer dans `/mnt/user-data/outputs/` via `present_files`.
@@ -199,9 +241,13 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   attendues dans `attendu.json`) et `fixtures/marque-sans-blue` (rouge, exit 2). Node, sans dépendance.
 - `scripts/fetch_drive_assets.py` — liste / cherche par tag / télécharge / valide des images d'un dossier Drive public (raccourcis `images`, `logos`, `profils` ; webp reconnu). **Requiert Pillow.**
 - `scripts/prepare_images.py` — prépare pour embarquement PPTX : transcodage webp/gif→PNG, coins arrondis (masque alpha, **sans cadre**), calcul contain-fit, manifest JSON. **Requiert Pillow.**
+- `scripts/poser-pieds-de-page.py` — **l'étape 6 bis** : pose les espaces réservés `ftr` et `sldNum`
+  que pptxgenjs n'émet pas, sur les formes nommées « Pied de page » et « Pagination ». Python
+  standard, sans dépendance. Exit 0 posé, 1 aucune forme nommée, 2 usage ou sortie existante.
 - `scripts/exporter-pptx.mjs` — **l'export par PowerPoint** de l'étape 7 : verrou entre sessions,
   appel de `scripts/exporter-powerpoint.ps1`, jugement des polices embarquées, réencodage si FAIL,
-  métadonnées personnelles vidées puis rejugées (TF-1535), livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
+  métadonnées personnelles vidées puis rejugées (TF-1535), images PNG de la passe QA par `--png`
+  (TF-1386), livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
 - `scripts/exporter-powerpoint.ps1` — le seul code qui pilote PowerPoint (COM) : copie unique
   ouverte sans fenêtre, PPTX à polices embarquées et PDF, puis la règle de décision qui ne quitte
   que l'instance lancée par l'export. Son mode `-Decision` rejoue la règle sans PowerPoint.
@@ -212,7 +258,10 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   de client (C2), consommation effective du système de marque sur les deux fixtures (C3),
   absence de valeur de marque en dur dans ce fichier (C4), règle de décision et ses 3 mutants
   (C5), verrou entre processus (C6), chaîne d'assainissement sur fixtures fictives (C7), essai
-  réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne). Les
+  réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne), pieds de
+  page d'un vrai deck pptxgenjs, remède joué (C9), commandes de l'étape 0 rejouées sur une fiche
+  remplie et une fiche vide (C10), aide des scripts Python sous console cp1252 et refus de `--png`
+  sur un dossier existant (C11). Les
   deux polices sources fausses de C7 sortent de `fixtures/export/gen-source-defectueuse.py`.
 
 ## Non livré (constat daté du 2026-09-11, TF-1022)
@@ -220,7 +269,9 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
 Ressources citées par la v2.5.0 et **absentes du paquet**. Elles ne sont **pas** réinventées ici :
 le renvoi est retiré du workflow, le manque est déclaré.
 
-- Logo officiel Digit-AI (PNG) — **non livré**. Repli : texte propre dans le panneau blanc.
+- Logo officiel Digit-AI (PNG) — **non livré** dans le paquet, mais présent dans le dossier Drive `logos` (constat du
+  2026-10-12, TF-1386 : « Digit-AI - Logo + Texte - Bleu.png »). Le récupérer avec `scripts/fetch_drive_assets.py` (`--name` et
+  `--folder logos`). Repli seulement si le Drive est injoignable : texte propre dans le panneau blanc.
 - Photos N&B carrées des interlocuteurs — **non livré**. Repli : dépôt `profils` (cf. `references/drive-assets.md`).
 - Fragment XML du slide « interlocuteurs » — **non livré**. Repli : construire le slide avec pptxgenjs.
 - Script de fusion XML d'un slide canonique dans un PPTX existant — **non livré**. Aucun repli : le patch de PPTX n'est pas outillé.
@@ -262,7 +313,7 @@ le renvoi est retiré du workflow, le manque est déclaré.
 - **Illustrations : ≈ 1 slide de contenu sur 2**, jamais sur intercalaire, sommaire, ni
   prix/investissement. La couverture porte logo Digit-AI + logo client + une photo d'habillage.
   La slide interlocuteurs porte ses photos de profil (hors de ce rythme).
-- **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S5, dont
+- **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S7, dont
   le **lexique du destinataire** sur textes et notes), puis rasteriser + inspecter chaque slide
   (image déformée / hors zone / encadrée, **texte qui déborde d'un encart ou de la slide**, zones
   qui se chevauchent). Corriger à la source et re-générer — jamais livrer avec un défaut.

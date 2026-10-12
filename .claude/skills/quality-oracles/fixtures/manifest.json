@@ -485,6 +485,90 @@
    "provenance": "Propales PPTX tous clients — règles kicker/logo/bijection nées de renders fautifs (charte v2, legacy renders to discard) ; overrides slideMaster fantômes découverts après livraison le 08/06/2026 (inventaire P2 §2-§3 O2) ; comble le non_juge charte sémantique déclaré par oracle-pptx"
   },
   {
+   "nom": "charte-pptx-pptxgenjs",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-pptxgenjs-red.pptx",
+   "green": "charte-pptx-pptxgenjs-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S1 — entrée de sommaire sans intercalaire correspondant",
+    "S2 — texte au-dessus du titre",
+    "S4 — footer absent"
+   ],
+   "provenance": "TF-1381 (retours Produit-68 du 26/09/2026, RG-13) : S1 et S2 ne trouvaient pas le titre d'un deck écrit par pptxgenjs 4.0.1, qui place idx avant type sur plusieurs lignes ; le rouge ne rendait que S4, S1 se déclarait non jugé en silence. Decks FICTIFS produits par un vrai pptxgenjs (fixtures/gen-charte-pptx-pptxgenjs-fixtures.mjs) ; le vert passe par digit-ai-pptx/scripts/poser-pieds-de-page.py (TF-1382)"
+  },
+  {
+   "nom": "charte-pptx-repere-cote",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-repere-red.pptx",
+   "green": "charte-pptx-repere-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S2 — texte au-dessus du titre (kicker interdit) : « 2 / 3 »"
+   ],
+   "provenance": "TF-1380 (retours Produit-68 du 26/09/2026, RG-12) : S2 jugeait « au-dessus du titre » sur le seul haut des formes ; une pastille « N / M » à gauche du titre, recentrée sur sa 1re ligne (haut 2 pt plus haut), rendait 10 constats bloquants. Le même deck FICTIF (fixtures/gen-charte-pptx-repere-fixtures.py) : vert avec la pastille à gauche du titre, rouge avec elle au-dessus du titre, sur son étendue horizontale"
+  },
+  {
+   "nom": "charte-pptx-alignement-repere",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-alignement-red.pptx",
+   "green": "charte-pptx-alignement-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S6 — repère « 2 / 3 » désaxé de +6.84 pt sur la 1re ligne du titre"
+   ],
+   "provenance": "TF-1379 (retours Produit-68 du 26/09/2026, RG-11) : la pastille « N / 10 » était centrée 6,84 pt sous la 1re ligne du titre sur 10 diapositives, vue du seul destinataire, la passe du produit rendant 0 constat. Deck FICTIF (fixtures/gen-charte-pptx-repere-fixtures.py) jugé avec son <deck>.mesures.json, mesures de rendu CONSTRUITES (rouge : +6,84 pt, vert : +0,2 pt) ; le relevé réel par PowerPoint (scripts/mesure-rendu-pptx.ps1) est rejoué à la main, jamais par ce banc"
+  },
+  {
+   "nom": "charte-pptx-liste-en-ligne",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-liste-en-ligne-red.pptx",
+   "green": "charte-pptx-liste-en-ligne-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S7 (E-11) — liste en ligne de 4 élément(s) : « Pilotage · Données · Qualité · Sécurité »",
+    "S7 (E-11) — liste en ligne de 3 élément(s) : « Lot 1 ; lot 2 ; lot 3 »",
+    "S7 (E-11) — liste en ligne de 2 élément(s) : « Cadrage · Réalisation »"
+   ],
+   "provenance": "TF-1390 (retours Produit-68 du 26/09/2026, RG-19) : E-11 de ECRITURE.md n'avait aucun juge sur un deck, son seul juge L12 ne lisant que du HTML ; 7 listes en ligne séparées par « · » sur une diapositive, oracle-ecriture PASS, vues du seul destinataire. Decks FICTIFS (fixtures/gen-charte-pptx-liste-en-ligne-fixtures.py) : le vert porte les mêmes éléments en paragraphes, et garde ce qui ressemble à une liste sans en être une (pied de page, « 01 · Contexte », ligne de couverture)"
+  },
+  {
    "nom": "charte-pptx-lexique",
    "cmd": [
     "node",

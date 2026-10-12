@@ -23,6 +23,15 @@ CLI :
 import argparse
 import json
 import os
+import sys
+
+# Sortie en UTF-8 quoi que dise la console : en cp1252 (console Windows par defaut), l'aide et les noms
+# de fichiers accentues ou fleches levaient UnicodeEncodeError (TF-1386).
+for _flux in (sys.stdout, sys.stderr):
+    try:
+        _flux.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
 
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 

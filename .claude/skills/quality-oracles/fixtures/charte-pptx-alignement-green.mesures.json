@@ -1,0 +1,81 @@
+{
+ "outil": "mesure-rendu-pptx",
+ "unite": "pt",
+ "origine": "jeu d'essai fictif, valeurs construites (non relevées dans PowerPoint)",
+ "slides": [
+  {
+   "n": 1,
+   "formes": [
+    {
+     "nom": "Titre",
+     "texte": "Support fictif",
+     "titre": true,
+     "haut": 157.0,
+     "hauteur": 63.0,
+     "gauche": 78.7,
+     "largeur": 708.7,
+     "ligne1": {
+      "haut": 160.0,
+      "hauteur": 24.0
+     }
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "formes": [
+    {
+     "nom": "Titre",
+     "texte": "Un titre assez long pour tenir sur deux lignes dans sa zone",
+     "titre": true,
+     "haut": 31.5,
+     "hauteur": 63.0,
+     "gauche": 78.7,
+     "largeur": 708.7,
+     "ligne1": {
+      "haut": 33.0,
+      "hauteur": 24.0
+     }
+    },
+    {
+     "nom": "Pastille",
+     "texte": "2 / 3",
+     "titre": false,
+     "haut": 29.45,
+     "hauteur": 31.5,
+     "gauche": 7.9,
+     "largeur": 55.1,
+     "ligne1": null
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "formes": [
+    {
+     "nom": "Titre",
+     "texte": "Un second titre",
+     "titre": true,
+     "haut": 31.5,
+     "hauteur": 63.0,
+     "gauche": 78.7,
+     "largeur": 708.7,
+     "ligne1": {
+      "haut": 33.0,
+      "hauteur": 24.0
+     }
+    },
+    {
+     "nom": "Pastille",
+     "texte": "3 / 3",
+     "titre": false,
+     "haut": 29.45,
+     "hauteur": 31.5,
+     "gauche": 7.9,
+     "largeur": 55.1,
+     "ligne1": null
+    }
+   ]
+  }
+ ]
+}
