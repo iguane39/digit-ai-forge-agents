@@ -130,7 +130,9 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    S1 bijection sommaire ↔ intercalaires, S2 kicker, S3 logos, S4 footer + pagination, S5
    **lexique du destinataire** sur les textes de slide **et les notes du présentateur**
    (TF-1152), S6 **alignement d'un repère « N / M » sur la 1re ligne du titre**, tolérance 1 pt
-   (TF-1379). S6 se mesure sur le rendu : `--mesurer` fait lire par PowerPoint les bornes de la 1re
+   (TF-1379), S7 **aucune liste en ligne** dans le texte visible (E-11 : un « · » ou deux « ; » dans
+   un paragraphe, hors pied de page et couverture, est une énumération qui devait être une liste,
+   TF-1390). S6 se mesure sur le rendu : `--mesurer` fait lire par PowerPoint les bornes de la 1re
    ligne de chaque titre (`quality-oracles/scripts/mesure-rendu-pptx.ps1`, sur une copie, sans
    quitter l'instance de l'utilisateur). Sans PowerPoint, le `non_juge` dit « S6 NON jouée » : le
    désaxement d'un repère est alors à chercher à l'œil sur le rendu. Verdict FAIL ⇒ corriger à la source et re-générer, jamais livrer. S5 lit le
@@ -283,7 +285,7 @@ le renvoi est retiré du workflow, le manque est déclaré.
 - **Illustrations : ≈ 1 slide de contenu sur 2**, jamais sur intercalaire, sommaire, ni
   prix/investissement. La couverture porte logo Digit-AI + logo client + une photo d'habillage.
   La slide interlocuteurs porte ses photos de profil (hors de ce rythme).
-- **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S6, dont
+- **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S7, dont
   le **lexique du destinataire** sur textes et notes), puis rasteriser + inspecter chaque slide
   (image déformée / hors zone / encadrée, **texte qui déborde d'un encart ou de la slide**, zones
   qui se chevauchent). Corriger à la source et re-générer — jamais livrer avec un défaut.

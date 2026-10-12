@@ -547,6 +547,28 @@
    "provenance": "TF-1379 (retours Produit-68 du 26/09/2026, RG-11) : la pastille « N / 10 » était centrée 6,84 pt sous la 1re ligne du titre sur 10 diapositives, vue du seul destinataire, la passe du produit rendant 0 constat. Deck FICTIF (fixtures/gen-charte-pptx-repere-fixtures.py) jugé avec son <deck>.mesures.json, mesures de rendu CONSTRUITES (rouge : +6,84 pt, vert : +0,2 pt) ; le relevé réel par PowerPoint (scripts/mesure-rendu-pptx.ps1) est rejoué à la main, jamais par ce banc"
   },
   {
+   "nom": "charte-pptx-liste-en-ligne",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-liste-en-ligne-red.pptx",
+   "green": "charte-pptx-liste-en-ligne-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S7 (E-11) — liste en ligne de 4 élément(s) : « Pilotage · Données · Qualité · Sécurité »",
+    "S7 (E-11) — liste en ligne de 3 élément(s) : « Lot 1 ; lot 2 ; lot 3 »",
+    "S7 (E-11) — liste en ligne de 2 élément(s) : « Cadrage · Réalisation »"
+   ],
+   "provenance": "TF-1390 (retours Produit-68 du 26/09/2026, RG-19) : E-11 de ECRITURE.md n'avait aucun juge sur un deck, son seul juge L12 ne lisant que du HTML ; 7 listes en ligne séparées par « · » sur une diapositive, oracle-ecriture PASS, vues du seul destinataire. Decks FICTIFS (fixtures/gen-charte-pptx-liste-en-ligne-fixtures.py) : le vert porte les mêmes éléments en paragraphes, et garde ce qui ressemble à une liste sans en être une (pied de page, « 01 · Contexte », ligne de couverture)"
+  },
+  {
    "nom": "charte-pptx-lexique",
    "cmd": [
     "node",

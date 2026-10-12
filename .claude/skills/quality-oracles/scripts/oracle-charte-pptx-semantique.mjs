@@ -23,6 +23,9 @@
 //      à côté du seul contrôle qui porte son vocabulaire. Écrire ici une liste maison aurait
 //      fabriqué la classe `oracle-remplace-par-controle-maison` que ce registre compte par
 //      ailleurs : deux listes à tenir, une seule tenue.
+//   S7 aucune liste en ligne dans le texte visible (E-11 de ECRITURE.md, TF-1390) : un paragraphe qui
+//      porte un « · », ou au moins deux « ; », hors pied de page et hors couverture, est une énumération
+//      qui devait être une liste.
 //   S6 un repère (« N / M ») posé à côté du titre est centré sur la 1re LIGNE du titre, tolérance 1 pt
 //      (TF-1379) : mesure de RENDU (TextRange.Lines(1) de PowerPoint), non déductible du XML ; elle
 //      vient de `--mesures <fichier>`, de `<deck>.mesures.json` posé à côté du deck, ou de
@@ -317,6 +320,31 @@ let s5Etat = null;
   }
 }
 
+// S7 — pas de liste en ligne dans le texte visible : E-11 de references/ECRITURE.md du pilot (« une
+// énumération devient une liste », type T2, livrables Markdown, HTML et PowerPoint). Son seul juge, L12,
+// ne lisait que les pages HTML ; oracle-ecriture, oracle-pptx et S1-S5 ne lisaient pas le texte d'un deck
+// (TF-1390 : 7 listes en ligne séparées par « · » sur une diapositive, oracle-ecriture PASS, vues du seul
+// destinataire). Un paragraphe visible qui porte un « · », ou au moins deux « ; », est une énumération.
+// Exclus : la couverture (ligne d'identification, pas une énumération), les espaces réservés de pied de page,
+// date et numéro, le bandeau bas de la diapositive (pied de page en zone de texte, au-delà de 80 % de la
+// hauteur), et le préfixe « NN · » d'un intercalaire (« 01 · Contexte » est un numéro suivi d'un titre).
+const ELEMENTS_EN_LIGNE = p => {
+  const q = p.replace(/^\s*\d{1,2}\s*·\s*/, '');
+  if (q.includes('·')) return Math.max(2, q.split('·').filter(e => e.trim()).length);
+  const pv = q.split(';').filter(e => e.trim());
+  return pv.length >= 3 ? pv.length : 0; // au moins deux « ; » = trois éléments
+};
+for (const s of slides) {
+  if (s.n === 1) continue;
+  for (const x of s.shapes) {
+    if (['ftr', 'sldNum', 'dt'].includes(x.ph) || (x.y != null && x.y >= 0.8 * HAUTEUR)) continue;
+    for (const p of x.paras) {
+      const n = ELEMENTS_EN_LIGNE(p);
+      if (n >= 2) findings.push({ sev: 'bloquant', msg: `S7 (E-11) — liste en ligne de ${n} élément(s) : « ${p.slice(0, 70)}${p.length > 70 ? '…' : ''} » — une énumération devient une liste, un élément par paragraphe`, where: s.file });
+    }
+  }
+}
+
 if (findings.length) out('FAIL', 1);
 // TF-1490 : un PASS dit quelles règles il a jouées — sous un profil qui ne déclare pas S3 ou S4, elles ne l'ont pas été.
 const regles34 = (CHARTE.logos === 'couverture-interlocuteurs' && CHARTE.pied_de_page === 'espace-reserve') ? 'S1-S4 vérifiés'
@@ -324,5 +352,5 @@ const regles34 = (CHARTE.logos === 'couverture-interlocuteurs' && CHARTE.pied_de
     + `S4 ${['espace-reserve', 'zone-texte'].includes(CHARTE.pied_de_page) ? 'vérifiée (' + CHARTE.pied_de_page + ')' : 'NON jouée'}${duProfil}`;
 findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), ${regles34}`
   + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)')
-  + (s6Etat ? ` ; S6 — ${s6Etat}` : ' ; S6 non jouée (motif au non_juge)'), where: path.basename(file) });
+  + (s6Etat ? ` ; S6 — ${s6Etat}` : ' ; S6 non jouée (motif au non_juge)') + ' ; S7 (E-11) vérifiée', where: path.basename(file) });
 out('PASS', 0);
