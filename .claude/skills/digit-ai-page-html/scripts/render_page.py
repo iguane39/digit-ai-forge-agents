@@ -512,7 +512,13 @@ MEASURE_JS = r"""
         const pa = _paires(a.el), pb = _paires(b.el);
         if ((pa !== null && pa.length === 0) || (pb !== null && pb.length === 0)) continue;
         if (pa !== null || pb !== null) {
-          const declare = (pa || []).includes(b.el.id) || (pb || []).includes(a.el.id);
+          // TF-1281 (lot Produit-64 20260921a, RD-13) — UN CALQUE NE S EXPRIME PAS PAR PAIRES.
+          // N traits de branche qui se croisent tous demandaient N ids et N-1 ids dans chacun
+          // (400 declarations pour une figure). Deux elements qui declarent le MEME JETON
+          // s exemptent mutuellement : data-overlap-ok="calque-traits" sur chaque trait. Un
+          // element qui ne declare pas ce jeton (le numero d un moment) reste juge.
+          const declare = (pa || []).includes(b.el.id) || (pb || []).includes(a.el.id)
+            || (pa !== null && pb !== null && pa.some((x) => pb.includes(x)));
           if (declare) continue;
           // Paire NON declaree : le recouvrement est juge, comme s il n y avait pas d exemption.
         }
@@ -1267,7 +1273,11 @@ MEASURE_JS = r"""
           `executions des trois oracles avant d etre vu sur une capture (TF-1146). Geste : ` +
           `declarer la paire, data-overlap-ok="<id de l element recouvert>" (plusieurs ids ` +
           `separes par des espaces). Un recouvrement avec un autre element que ceux declares ` +
-          `redevient alors un constat. __ECHEANCE_OVERLAP__`,
+          `redevient alors un constat. Un CALQUE (traits qui se croisent tous) declare un meme ` +
+          `jeton sur chacun, data-overlap-ok="calque-traits" : ils s exemptent entre eux et rien ` +
+          `d autre (TF-1281). Un noeud de schema (boite et textes) se groupe dans un <g> portant ` +
+          `un <title> : V4 ne juge plus son interieur, et le lecteur gagne une infobulle. ` +
+          `__ECHEANCE_OVERLAP__`,
       });
     }
   }

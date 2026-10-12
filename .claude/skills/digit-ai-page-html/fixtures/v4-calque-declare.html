@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — calque de traits declare — 20261012a</title>
+<!--
+  Fixture de TF-1281 (lot Produit-64 20260921a, retour RD-13) — UN CALQUE NE SE DECLARE PAS PAR
+  PAIRES. Trois traits de branche se croisent par construction : un graphe de branches est fait de
+  cela. La forme par paire obligeait a donner un id a chaque trait et a lister dans chacun les N-1
+  autres (400 declarations pour une figure de 20 traits). Deux elements qui declarent le MEME
+  JETON s exemptent mutuellement : data-overlap-ok="calque-traits" sur chaque trait.
+  Attendu : aucun constat v4_overlap. Sa jumelle rouge est le meme fichier, un numero de moment
+  pose sur le passage des traits sans declarer le jeton : il reste un constat.
+-->
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#CBD5E1;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — un calque de traits qui se croisent par construction</h1>
+<p>Trois branches se croisent ; leur numero de moment est pose a l ecart des traits.</p>
+<svg width="520" height="260" viewBox="0 0 520 260" role="img" aria-label="Trois branches qui se croisent">
+  <path data-overlap-ok="calque-traits" d="M20 40 C 200 40, 300 220, 500 220" fill="none" stroke="#2563EB" stroke-width="3"></path>
+  <path data-overlap-ok="calque-traits" d="M20 220 C 200 220, 300 40, 500 40" fill="none" stroke="#16A34A" stroke-width="3"></path>
+  <path data-overlap-ok="calque-traits" d="M20 130 L 500 130" fill="none" stroke="#9333EA" stroke-width="3"></path>
+  <text x="20" y="252" font-family="DM Sans, sans-serif" font-size="12" fill="#475569">moment 13</text>
+</svg>
+</main></body></html>

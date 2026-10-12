@@ -502,6 +502,10 @@ CAS_RENDU = {
     "v4-exemption-en-bloc-recensee.html": [("v4_overlap", 0), ("overlap_en_bloc", 1)],
     "v4-colgroup-legitime.html": ("v4_overlap", 0),    # largeurs déclarées, rien ne se recouvre
     "v4-chevauchement-reel.html": ("v4_overlap", 1),   # deux frères qui se recouvrent vraiment
+    # TF-1281 (RD-13) — un CALQUE : des traits qui déclarent le même jeton s'exemptent entre eux
+    # (1 constat avant, 0 après) ; un numéro posé sur leur croisement, sans le jeton, reste jugé.
+    "v4-calque-declare.html": ("v4_overlap", 0),
+    "v4-calque-recouvre-numero.html": ("v4_overlap", 1),
     # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.
     # Deux surlignages de lignes consecutives se recouvrent donc geometriquement des que line-height
     # est serre, SANS QU'AUCUN PIXEL PEINT NE SE SUPERPOSE. Mesure du 19/08 sur 1 246 surlignages
