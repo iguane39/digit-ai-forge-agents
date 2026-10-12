@@ -6,7 +6,9 @@
 //   S1 bijection stricte sommaire ↔ intercalaires : chaque entrée numérotée du slide « Sommaire »
 //      a un intercalaire portant le même numéro et le même intitulé, et réciproquement ;
 //   S2 aucun kicker au-dessus d'un titre : aucune forme texte positionnée au-dessus du
-//      placeholder titre d'un slide ;
+//      placeholder titre d'un slide. Le titre se lit quel que soit le rang de l'attribut `type`
+//      dans `<p:ph>` (TF-1381 : pptxgenjs 4.0.1 écrit `idx` avant `type`, sur plusieurs lignes) ;
+//      les diapositives où aucun titre n'est trouvé sont DITES au non_juge, jamais passées en silence ;
 //   S3 aucun logo hors couverture (slide 1) et slide « interlocuteurs » — logo = image de
 //      largeur ≤ 2 000 000 EMU (~5,5 cm), seuil documenté ici ;
 //   S4 footer + pagination présents sur les slides de contenu (placeholders ftr/sldNum ou champ
@@ -92,7 +94,7 @@ for idx, target in enumerate(order):
     srels = read("ppt/slides/_rels/" + name.split("/")[-1] + ".rels")
     shapes = []
     for sp in re.findall(r"<p:sp>.*?</p:sp>", xml, re.S):
-        ph = re.search(r'<p:ph type="([^"]+)"', sp)
+        ph = re.search(r'<p:ph\\b[^>]*?\\btype="([^"]+)"', sp)
         off = re.search(r'<a:off x="(-?\\d+)" y="(-?\\d+)"', sp)
         txt = " ".join(t for t in re.findall(r"<a:t>([^<]*)</a:t>", sp)).strip()
         paras = [" ".join(re.findall(r"<a:t>([^<]*)</a:t>", p)).strip() for p in re.findall(r"<a:p>.*?</a:p>", sp, re.S)]
@@ -109,8 +111,8 @@ for idx, target in enumerate(order):
     if mnotes:
         nname = "ppt/" + mnotes.group(1).lstrip("/").replace("../", "")
         notes = " ".join(re.findall(r"<a:t>([^<]*)</a:t>", read(nname)))
-    has_ftr = bool(re.search(r'<p:ph type="ftr"', xml))
-    has_num = bool(re.search(r'<p:ph type="sldNum"', xml) or re.search(r'type="slidenum"', xml))
+    has_ftr = bool(re.search(r'<p:ph\\b[^>]*?\\btype="ftr"', xml))
+    has_num = bool(re.search(r'<p:ph\\b[^>]*?\\btype="sldNum"', xml) or re.search(r'type="slidenum"', xml))
     slides.append({"n": idx + 1, "file": name.split("/")[-1], "shapes": shapes, "imgs": imgs, "has_media": has_media, "has_ftr": has_ftr, "has_num": has_num, "notes": notes})
 sz = re.search(r'<p:sldSz\\b[^>]*?cy="(\\d+)"', read("ppt/presentation.xml"))
 print(json.dumps({"hauteur": int(sz.group(1)) if sz else None, "slides": slides}))
@@ -145,14 +147,18 @@ if (sommaire) {
 } else non_juge.push('S1 : aucun slide « Sommaire/Agenda » détecté — bijection non jugée (deck sans sommaire ou convention de titre différente)');
 
 // S2 — kicker au-dessus du titre
+const sansTitre = [], titreSansPosition = [];
 for (const s of slides) {
   const t = s.shapes.find(x => x.ph === 'title' || x.ph === 'ctrTitle');
-  if (!t || t.y == null) continue;
+  if (!t) { sansTitre.push(s.file); continue; }
+  if (t.y == null) { titreSansPosition.push(s.file); continue; }
   for (const x of s.shapes) {
     if (x === t || !x.text || x.y == null) continue;
     if (x.y < t.y) findings.push({ sev: 'bloquant', msg: `S2 — texte au-dessus du titre (kicker interdit) : « ${x.text.slice(0, 60)} »`, where: s.file });
   }
 }
+if (sansTitre.length) non_juge.push(`S2 : aucun titre (espace réservé title ou ctrTitle) trouvé sur ${sansTitre.length} diapositive(s) — kicker non jugé sur : ${sansTitre.join(', ')}`);
+if (titreSansPosition.length) non_juge.push(`S2 : titre sans position propre (hérité du gabarit) sur ${titreSansPosition.length} diapositive(s) — kicker non jugé sur : ${titreSansPosition.join(', ')}`);
 
 // S3 — logos hors couverture/interlocuteurs (zone admise par le profil, TF-1490)
 const LOGO_MAX_CX = 2000000;

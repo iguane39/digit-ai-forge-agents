@@ -2214,6 +2214,18 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1381 (retours Produit-68 du 26/09/2026, RG-13) — S2 DIT LES DIAPOSITIVES OÙ IL N'A PAS TROUVÉ DE TITRE.
+// Sur la verte historique, les intercalaires 3 et 5 n'ont pas d'espace réservé titre : S2 ne peut rien juger
+// sur elles, et le non_juge doit les nommer (avant, il se taisait). Le rouge pptxgenjs, lui, a son titre
+// lu malgré `idx` avant `type` : le sur-titre est vu (cf. fixture charte-pptx-pptxgenjs au manifest).
+{
+  const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-charte-pptx-semantique.mjs'), path.join(SKILLDIR, 'fixtures', 'charte-pptx-semantique-green.pptx')], { encoding: 'utf8', timeout: 120000 });
+  let j = null; try { j = JSON.parse(r.stdout); } catch { /* verdict illisible : ko ci-dessous */ }
+  const dit = j && (j.non_juge || []).find((x) => /^S2 : aucun titre/.test(x));
+  if (!dit || !/slide3\.xml/.test(dit) || !/slide5\.xml/.test(dit) || /slide2\.xml/.test(dit)) ko('TF-1381 : S2 ne nomme pas, au non_juge, exactement les diapositives sans titre (3 et 5) — ' + (dit || 'aucune mention'));
+  else ok('TF-1381 : S2 nomme au non_juge les diapositives où il n\'a trouvé aucun titre (slide3.xml, slide5.xml)');
+}
+
 // TF-1492 (01/10/2026) — UNE CONFIGURATION D'INFRASTRUCTURE A SON ORACLE : LES STANDARDS, PUIS LA DATE.
 //
 // LE FAIT (lot Produit-03 - RETOURS - 20260929a, RA-48) : une date d'effet écrite en dur pour une
