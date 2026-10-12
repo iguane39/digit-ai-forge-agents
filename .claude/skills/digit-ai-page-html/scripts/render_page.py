@@ -424,9 +424,80 @@ MEASURE_JS = r"""
     if (!el || !n.textContent.trim() || !visible(el) || seenText.has(el)) continue;
     seenText.add(el);
     const s = getComputedStyle(el);
-    const fg = parseColor(s.color);
+    // TF-1368 (lot Produit-68 20260924a, RG-7) — UN TEXTE SVG SE PEINT PAR `fill`, SUR LA FORME
+    // POSEE DESSOUS. V2 comparait `color` (l'encre heritee de la page) au fond des ancetres HTML :
+    // 28 libelles sur 35 d'un schema remis, a 1:1 ou 1,05:1 sur leur boite, passaient. Pour un
+    // <text> ou <tspan>, l'encre est `fill`, et le fond est la derniere forme remplie qui le
+    // precede dans son groupe (puis dans les groupes englobants) et recouvre le centre du texte ;
+    // sans forme dessous, le fond est celui de la page sous le <svg>. Une encre ou une forme
+    // peinte par degrade ou motif (`url(...)`) se DECLARE non mesuree, jamais devinee.
+    const svgTexte = el.namespaceURI === 'http://www.w3.org/2000/svg' && el.closest('text');
+    let fg = parseColor(s.color);
+    let bgSvg = null;
+    if (svgTexte) {
+      const opa = (st) => (parseFloat(st.opacity) || (st.opacity === '0' ? 0 : 1));
+      // `fill` calcule se rend dans l'espace ou il est ecrit (oklch(), color-mix()…) : une
+      // couleur unie que parseColor ne lit pas se convertit par le navigateur lui-meme ; seuls
+      // `url(...)` (degrade, motif) et `none` restent non mesurables.
+      const versRgb = (c) => {
+        const direct = parseColor(c);
+        if (direct || !c || c === 'none' || c.startsWith('url(')) return direct;
+        const cv = (window.__tf1368cv ||= document.createElement('canvas'));
+        cv.width = cv.height = 1;
+        const ctx = cv.getContext('2d', { willReadFrequently: true });
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = '#000'; ctx.fillStyle = c;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+        return { r, g, b, a: a / 255 };
+      };
+      const fillTxt = versRgb(s.fill);
+      if (!fillTxt) {
+        issues.unmeasured.push({ what: label(el), detail:
+          `texte SVG peint par \`fill: ${s.fill.slice(0, 40)}\` — contraste NON MESURE (TF-1368) : `
+          + `une encre en degrade, motif ou \`none\` ne se reduit pas a une couleur` });
+        continue;
+      }
+      fg = { ...fillTxt, a: fillTxt.a * (parseFloat(s.fillOpacity) || 0) * opa(s) };
+      const rt = svgTexte.getBoundingClientRect();
+      const cx = rt.left + rt.width / 2, cy = rt.top + rt.height / 2;
+      const FORMES = new Set(['rect', 'circle', 'ellipse', 'polygon', 'path']);
+      let forme = null;
+      for (let enfant = svgTexte; enfant && !forme && enfant.tagName.toLowerCase() !== 'svg';
+           enfant = enfant.parentElement) {
+        for (let prec = enfant.previousElementSibling; prec && !forme; prec = prec.previousElementSibling) {
+          const candidats = FORMES.has(prec.tagName.toLowerCase()) ? [prec]
+            : [...prec.querySelectorAll('rect,circle,ellipse,polygon,path')].reverse();
+          for (const c of candidats) {
+            const cs = getComputedStyle(c);
+            if (cs.fill === 'none' || cs.display === 'none' || cs.visibility === 'hidden') continue;
+            const rc = c.getBoundingClientRect();
+            if (rc.width < 1 || rc.height < 1) continue;
+            if (cx >= rc.left && cx <= rc.right && cy >= rc.top && cy <= rc.bottom) { forme = c; break; }
+          }
+        }
+      }
+      const svgRacine = el.closest('svg');
+      const sousSvg = effectiveBg(svgRacine.parentElement || document.body);
+      if (forme) {
+        const fs_ = getComputedStyle(forme);
+        const fillForme = versRgb(fs_.fill);
+        if (!fillForme) {
+          issues.unmeasured.push({ what: label(el), detail:
+            `texte SVG sur une forme peinte par \`fill: ${fs_.fill.slice(0, 40)}\` — contraste NON `
+            + `MESURE (TF-1368) : un degrade ou un motif ne se reduit pas a une couleur` });
+          continue;
+        }
+        const aForme = fillForme.a * (parseFloat(fs_.fillOpacity) || 0) * opa(fs_);
+        if (aForme >= 0.99) bgSvg = { color: { ...fillForme, a: 1 } };
+        else if (sousSvg.image) bgSvg = sousSvg;
+        else bgSvg = { color: blend({ ...fillForme, a: aForme }, sousSvg.color) };
+      } else {
+        bgSvg = sousSvg;
+      }
+    }
     if (!fg) continue;
-    const bg = effectiveBg(el);
+    const bg = bgSvg || effectiveBg(el);
     if (bg.image) {
       issues.unmeasured.push({ what: label(el), detail: 'texte sur background-image — contraste non mesurable, à vérifier visuellement' });
       continue;
@@ -450,7 +521,7 @@ MEASURE_JS = r"""
     if (r < threshold) {
       issues.v2_contrast.push({ what: label(el), detail:
         `ratio ${r.toFixed(2)}:1 < ${threshold}:1 (${Math.round(size)}px${bold ? ' gras' : ''}, ` +
-        `texte ${s.color} sur fond rgb(${Math.round(bg.color.r)},${Math.round(bg.color.g)},${Math.round(bg.color.b)}))` });
+        `texte ${svgTexte ? 'SVG fill ' + s.fill : s.color} sur fond rgb(${Math.round(bg.color.r)},${Math.round(bg.color.g)},${Math.round(bg.color.b)}))` });
       if (issues.v2_contrast.length > 20) break;
     }
   }

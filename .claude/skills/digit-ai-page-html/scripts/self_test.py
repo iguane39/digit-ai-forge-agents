@@ -593,6 +593,10 @@ CAS_RENDU = {
     # les separe. La rouge doit sortir en NON MESURABLE, pas en contraste vert.
     "v2p-pseudo-element-peint.html": ("unmeasured", 1),
     "v2p-fond-mesurable.html": ("v2_contrast", 1),
+    # TF-1368 (lot Produit-68 20260924a, RG-7) : un texte SVG se juge sur `fill` et la forme posee
+    # dessous, pas sur l'encre heritee de la page. Sans la correction, la rouge rendait 0 constat.
+    "v2-svg-libelle-couleur-de-sa-boite.html": ("v2_contrast", 2),
+    "v2-svg-libelle-lisible-sur-sa-boite.html": ("v2_contrast", 0),
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
     # haut de boîte au suivant. Les deux pages sont identiques à une chose près —
     # un paragraphe hors de l'échelle d'espacement dans la rouge.

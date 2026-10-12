@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V2 — libelle SVG de la couleur de sa boite — 20260924a</title>
+<!--
+  Fixture de TF-1368 (lot Produit-68 20260924a, RG-7) — LE FAIT MESURE : sur le schema
+  d'architecture d'un rapport remis, 28 libelles sur 35 a 1:1 ou 1,05:1 sur leur boite, et V2
+  muet : il comparait l'encre HERITEE de la page (`color`, sombre) au fond du cadre (blanc).
+  Ici, deux libelles peints par `fill` presque de la teinte de leur boite. Attendu : au moins
+  1 constat v2_contrast (les deux libelles).
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+svg{display:block;width:100%;height:auto}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V2 — libelle SVG de la couleur de sa boite</h1>
+<svg viewBox="0 0 480 120" role="img" aria-label="Deux briques d'architecture">
+  <g><title>Passerelle</title>
+    <rect x="10" y="20" width="200" height="80" fill="#1E3A5F"/>
+    <text x="110" y="66" text-anchor="middle" font-size="16" fill="#22406A">Passerelle</text>
+  </g>
+  <g><title>Annuaire</title>
+    <rect x="260" y="20" width="200" height="80" fill="#E2E8F0"/>
+    <text x="360" y="66" text-anchor="middle" font-size="16" fill="#D5DCE6">Annuaire</text>
+  </g>
+</svg>
+</main></body></html>
