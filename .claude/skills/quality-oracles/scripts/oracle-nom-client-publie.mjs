@@ -876,8 +876,13 @@ try {
   // servir par empreinte ce qu'un commit ancien contient.
   const revs = (git(repo, 'rev-list', '--all').stdout || '').split('\n').filter(Boolean);
   revCount = revs.length;
-  const cheminsHisto = new Set((git(repo, 'log', '--all', '--name-only', '--format=').stdout || '')
-    .split('\n').map((x) => x.trim()).filter(Boolean));
+  // TF-1483 — LES NOMS DE FICHIERS SE LISENT AVEC `-z`. Sans lui, `git log --name-only` cite en style
+  // C tout chemin qui porte un octet non ASCII (`"synth\303\250se.md"`) : le terme accentué n'y
+  // figurait plus sous sa forme lisible, et C4/C5 ne le voyaient pas dans le NOM d'un fichier de
+  // l'histoire (73 chemins sur l'histoire du pilot, le 28/09/2026 — TF-1448 avait fermé le même trou
+  // pour les contenus seulement). Avec `-z`, git ne cite pas : les noms sont séparés par NUL.
+  const cheminsHisto = new Set((git(repo, 'log', '--all', '-z', '--name-only', '--format=').stdout || '')
+    .split('\0').map((x) => x.replace(/^\n+/, '')).filter(Boolean));
 
   // TF-0982 — LA DATE DE CHAQUE RÉVISION, en UNE invocation. Une par révision aurait coûté 909
   // appels sur le dépôt du pilot, sur un angle qui en coûte déjà 21 : la borne aurait payé sa
@@ -897,16 +902,20 @@ try {
   // c'est-à-dire au plus tard — soit l'inverse exact de ce qu'on mesure.
   // Un chemin sans date connue reste jugé SANS borne : la direction sûre.
   const dernierePresence = new Map();
-  for (const bloc of (git(repo, 'log', '--all', '--diff-filter=ACMRT', '--name-only', '--format=%x00%aI').stdout || '').split('\0')) {
-    const lignes = bloc.split('\n').map((x) => x.trim()).filter(Boolean);
-    const d = lignes.length ? (lignes[0].match(/^(\d{4}-\d{2}-\d{2}\S*)/) || [])[1] : null;
-    if (!d) continue;
-    for (const rel of lignes.slice(1)) {
-      const prec = dernierePresence.get(rel);
-      // La plus TARDIVE des présences, comparée en instants : deux fuseaux ne s'ordonnent pas par
-      // l'alphabet (27/09/2026).
-      if (!prec || Date.parse(d) > Date.parse(prec)) dernierePresence.set(rel, d);
-    }
+  // TF-1483 : `-z` ici aussi (voir plus haut). Le flux est une suite de jetons séparés par NUL : un
+  // jeton qui ouvre par l'octet SOH (\x01) est l'en-tête d'une révision (sa date d'auteur), tout
+  // autre jeton non vide est un NOM de fichier de cette révision (git y laisse un saut de ligne
+  // en tête du premier nom, retiré ici).
+  let dRev = null;
+  for (const jeton of (git(repo, 'log', '--all', '-z', '--diff-filter=ACMRT', '--name-only', '--format=%x01%aI').stdout || '').split('\0')) {
+    const j = jeton.replace(/^\n+/, '');
+    if (j.startsWith('\x01')) { dRev = (j.slice(1).trim().match(/^(\d{4}-\d{2}-\d{2}\S*)/) || [])[1] || null; continue; }
+    if (!j || !dRev) continue;
+    const rel = j;
+    const prec = dernierePresence.get(rel);
+    // La plus TARDIVE des présences, comparée en instants : deux fuseaux ne s'ordonnent pas par
+    // l'alphabet (27/09/2026).
+    if (!prec || Date.parse(dRev) > Date.parse(prec)) dernierePresence.set(rel, dRev);
   }
 
   for (const rel of cheminsHisto) if (!suivis.includes(rel)) for (const t of T) {

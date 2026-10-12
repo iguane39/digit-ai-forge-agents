@@ -987,6 +987,60 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1483 (28/09/2026) — LES NOMS DE FICHIERS DE L'HISTOIRE SE LISENT SANS CITATION. Angles C4/C5
+// lisaient `git log --name-only` sans `-z` : un chemin qui porte un octet non ASCII revenait cité en
+// style C (`"rapport-Fr\303\251gate.md"`) et un terme accentué n'y figurait plus sous sa forme lisible
+// (73 chemins non ASCII dans l'histoire du pilot, mesuré le 28/09 ; TF-1448 avait fermé ce trou pour
+// les contenus, pas pour les noms). Deux fichiers au terme accentué dans leur NOM, retirés de l'arbre :
+// l'un présent avant l'inscription du terme (2020-03-01), l'autre après. Sens rouge : avant le
+// correctif, aucun des deux n'est vu. Sens vert : sans borne les deux bloquent, avec la borne le premier
+// est une antériorité NOMMÉE (la date de dernière présence se lit bien dans le flux `-z`) et le second
+// reste BLOQUANT — la lecture `-z` ne désarme ni ne durcit la borne de D-65. Noms inventés.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1483-'));
+  try {
+    const TERME = 'Frégate';
+    const tables = path.join(tmp, 'tables'); fs.mkdirSync(tables);
+    const ecrireTable = (nom, obj) => { const p = path.join(tables, nom); fs.writeFileSync(p, JSON.stringify(obj), 'utf8'); return p; };
+    const tProduitsNu = ecrireTable('_produits-nu.json', { produits: {} });
+    const g = (r, env, ...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8', env });
+    const repo = path.join(tmp, 'depot'); fs.mkdirSync(repo);
+    const base = { ...process.env };
+    g(repo, base, 'init', '-q'); g(repo, base, 'config', 'user.email', 'banc@local'); g(repo, base, 'config', 'user.name', 'banc');
+    for (const c of [
+      { date: '2020-01-10T10:00:00+01:00', message: 'premier depot', ecrire: { ['rapport-' + TERME + '.md']: 'sans nom\n', 'garde.md': 'sans nom\n' } },
+      { date: '2020-02-01T10:00:00+01:00', message: 'retrait du rapport', retirer: ['rapport-' + TERME + '.md'] },
+      { date: '2021-01-10T10:00:00+01:00', message: 'second depot', ecrire: { ['bilan-' + TERME + '.md']: 'sans nom\n' } },
+      { date: '2021-02-01T10:00:00+01:00', message: 'retrait du bilan', retirer: ['bilan-' + TERME + '.md'] },
+    ]) {
+      for (const [f, txt] of Object.entries(c.ecrire || {})) fs.writeFileSync(path.join(repo, f), txt, 'utf8');
+      for (const f of c.retirer || []) fs.rmSync(path.join(repo, f), { force: true });
+      g(repo, base, 'add', '-A');
+      g(repo, { ...base, GIT_AUTHOR_DATE: c.date }, 'commit', '-q', '-m', c.message);
+    }
+    const jouer = (tClients) => {
+      const env = { ...process.env, FORGE_ROOT: tmp };
+      delete env.FORGE_PRODUITS_PSEUDO; delete env.FORGE_NOMS_INTERDITS; delete env.FORGE_PORTE_PAR_REVISION;
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduitsNu], { encoding: 'utf8', timeout: 300000, env });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const nom = (j, fichier) => (j ? (j.findings || []) : []).filter((f) => f.regle === 'C4' && f.where === fichier + ' (historique)');
+    const tNu = ecrireTable('_clients-nu.json', { noms: [TERME], identifiants: [], sigles: [] });
+    const tBorne = ecrireTable('_clients-borne.json', { noms: [TERME], identifiants: [], sigles: [], depuis: { [TERME]: '2020-03-01' } });
+    const jNu = jouer(tNu), jBorne = jouer(tBorne);
+    const R = 'rapport-' + TERME + '.md', B = 'bilan-' + TERME + '.md';
+    if (!jNu || !jBorne) ko('TF-1483 : sortie de l oracle inexploitable');
+    else if (nom(jNu, R).length !== 1 || nom(jNu, R)[0].sev !== 'bloquant' || nom(jNu, B).length !== 1 || nom(jNu, B)[0].sev !== 'bloquant')
+      ko('TF-1483 : sans borne, le terme accentué dans le NOM d un fichier retiré de l arbre doit bloquer (2 constats C4 attendus) — obtenu : ' + [R, B].map((f) => f + ' ' + nom(jNu, f).map((x) => x.sev).join('/')).join(' · '));
+    else if (nom(jBorne, R).length !== 1 || nom(jBorne, R)[0].sev !== 'anteriorite')
+      ko('TF-1483 : le nom présent seulement avant l inscription du terme doit être une antériorité nommée — obtenu : ' + nom(jBorne, R).map((x) => x.sev).join('/'));
+    else if (nom(jBorne, B).length !== 1 || nom(jBorne, B)[0].sev !== 'bloquant')
+      ko('TF-1483 : le nom présent après l inscription du terme doit rester BLOQUANT — obtenu : ' + nom(jBorne, B).map((x) => x.sev).join('/'));
+    else ok('TF-1483 : un terme accentué dans le NOM d un fichier retiré de l histoire est vu (2 bloquants sans borne) ; sous une borne au 2020-03-01 le nom d avant est une antériorité nommée et le nom d après reste bloquant');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables
