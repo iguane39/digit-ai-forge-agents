@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
 // TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
 const contratJSON = ecrivainDeContrat({ dernier: true });
@@ -24,7 +25,7 @@ const NJ = ['véracité factuelle (oracles déterministes)', 'AVIS OUTILLÉ non 
 const out = (verdict, findings, nj, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-judge', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 
-const SKILLDIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let rub = path.join(SKILLDIR, 'references', 'rubrique-juge.md');
 if (pArg) { try { const r = JSON.parse(fs.readFileSync(pArg, 'utf8')).juge?.rubrique; if (r) rub = path.isAbsolute(r) ? r : path.join(SKILLDIR, r); } catch {} }
 if (!fs.existsSync(rub)) out('SKIP', [], [...NJ, 'rubrique introuvable : ' + rub], 2);

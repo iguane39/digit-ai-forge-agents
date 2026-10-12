@@ -257,7 +257,7 @@
     "{skilldir}/profils/digit-ai.json"
    ],
    "red": "claims-red.md",
-   "green": "claims-green.md",
+   "green": "judge-green.md",
    "attendu_red": [
     "FAIL",
     "SKIP"

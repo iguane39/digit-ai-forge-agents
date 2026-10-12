@@ -805,6 +805,283 @@ else {
   } else ok('TF-0784 : toutes les copies d assets du socle embarquées dans les skills sont déclarées, scellées et à la parité — ' + j.findings[0].msg.slice(0, 120));
 }
 
+// TF-1480 (28/09/2026) — LA PARITÉ D'ASSETS SUR UNE CIBLE ABSENTE : SKIP MOTIVÉ, JAMAIS UNE PILE ENOENT.
+// Double sens : la cible absente rend exit 2, verdict SKIP et un motif qui la nomme ; la cible
+// présente (l'arborescence réelle des skills) n'est pas un SKIP — le garde ne court-circuite rien.
+{
+  const absente = path.join(os.tmpdir(), 'qo-1480-absent', 'rien');
+  const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-parite-assets.mjs'), absente], { encoding: 'utf8', timeout: 60000 });
+  let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* rendu plus bas */ }
+  const p = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-parite-assets.mjs'), SKILLSROOT], { encoding: 'utf8', timeout: 180000 });
+  let jp = null; try { jp = JSON.parse((p.stdout || '').trim()); } catch { /* rendu plus bas */ }
+  if (!j) ko('TF-1480 : cible absente — sortie non JSON (exit ' + r.status + ') : ' + String(r.stderr || '').split('\n')[0].slice(0, 120));
+  else if (j.verdict !== 'SKIP' || r.status !== 2) ko('TF-1480 : cible absente — attendu SKIP exit 2, reçu ' + j.verdict + ' exit ' + r.status);
+  else if (!(typeof j.motif === 'string' && j.motif.includes('qo-1480-absent'))) ko('TF-1480 : le motif du SKIP ne nomme pas la cible absente');
+  else if (!jp || jp.verdict === 'SKIP') ko('TF-1480 : la cible présente rend SKIP — le garde court-circuite le jugement');
+  else ok('TF-1480 : oracle-parite-assets sur une cible absente rend SKIP (exit 2) avec un motif qui la nomme, et juge toujours une cible présente (' + jp.verdict + ')');
+}
+
+// TF-1481 (28/09/2026) — LE JUGE TROUVE SA RUBRIQUE SOUS WINDOWS. Le dossier du skill se dérivait
+// de `new URL(import.meta.url).pathname` (« /C:/… »), que `path.resolve` préfixait d'une seconde
+// lettre de lecteur (« C:\C:\… ») : la rubrique n'était jamais trouvée, SKIP permanent. Sans appeler
+// de modèle : (A) un PATH vide arrête le juge à « CLI claude absent », donc APRÈS le contrôle de la
+// rubrique, qui a réussi ; (B) un profil dont la rubrique manque rend un SKIP qui nomme un chemin
+// SANS lettre de lecteur répétée (sens rouge : l'ancien motif contenait « C:\C:\ »).
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1481-'));
+  try {
+    const doc = path.join(tmp, 'doc.md'); fs.writeFileSync(doc, 'Un texte.\n');
+    const lire = (extra, env) => { const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-judge.mjs'), doc, ...extra], { encoding: 'utf8', timeout: 60000, env }); try { return JSON.parse((r.stdout || '').trim()); } catch { return null; } };
+    const a = lire([], { ...process.env, PATH: '', Path: '' });
+    const profil = path.join(tmp, 'profil.json'); fs.writeFileSync(profil, JSON.stringify({ juge: { rubrique: 'references/rubrique-absente.md' } }));
+    const b = lire(['--profil', profil], { ...process.env, PATH: '', Path: '' });
+    const doublee = (s) => /[A-Za-z]:[\\/]+[A-Za-z]:/.test(s || '');
+    if (!a || !b) ko('TF-1481 : sortie du juge illisible');
+    else if (/rubrique introuvable/.test(a.motif || '')) ko('TF-1481 : la rubrique du skill n est pas trouvée — ' + a.motif);
+    else if (!/CLI claude absent/.test(a.motif || '')) ko('TF-1481 : le juge ne va pas jusqu au contrôle de la CLI — motif « ' + (a.motif || '') + ' »');
+    else if (!/rubrique introuvable/.test(b.motif || '') || doublee(b.motif)) ko('TF-1481 : le motif de rubrique absente est faux ou porte une lettre de lecteur répétée — « ' + (b.motif || '') + ' »');
+    else ok('TF-1481 : oracle-judge trouve sa rubrique sous Windows (il atteint le contrôle de la CLI), et une rubrique absente est nommée par un chemin à lettre de lecteur unique');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1482 (28/09/2026) — T3 RECONNAÎT « CETTE PAGE EST EN LECTURE SEULE ». La formule exigeait
+// « page en lecture seule » collé : un verbe d'état entre le sujet et la mention faisait refuser une
+// page qui se déclare bel et bien. Double sens : les trois formulations avec verbe d'état sont
+// acceptées (T3 info), la négation « n'est pas en lecture seule » reste REFUSÉE (T3 bloquant) — la
+// formule élargie ne devient pas permissive.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1482-'));
+  try {
+    const t3 = (phrase) => {
+      const f = path.join(tmp, 'p.html');
+      fs.writeFileSync(f, '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Tableau</title></head><body>'
+        + '<h1>Tableau</h1><table><tr><th>Marché</th><th>Écart</th></tr><tr><td>Nord</td><td>2</td></tr></table>'
+        + '<p>Écart : la différence entre la cible et le relevé.</p><p>Marché : la zone suivie.</p><p>' + phrase + '</p></body></html>', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-lecture-tiers.mjs'), f], { encoding: 'utf8', timeout: 60000 });
+      try { const x = (JSON.parse((r.stdout || '').trim()).findings || []).find((g) => g.regle === 'T3'); return x ? x.sev : null; } catch { return null; }
+    };
+    const acceptees = ['Cette page est en lecture seule.', 'Cette vue reste volontairement en lecture seule.', 'Ce tableau demeure en lecture seule.', 'Page en lecture seule.']
+      .filter((p) => t3(p) !== 'info');
+    const refusees = ['Cette page n\'est pas en lecture seule.', 'Aucune mention ici.'].filter((p) => t3(p) !== 'bloquant');
+    if (acceptees.length) ko('TF-1482 : formulation(s) correcte(s) refusée(s) par T3 — ' + acceptees.join(' · '));
+    else if (refusees.length) ko('TF-1482 : T3 accepte à tort — ' + refusees.join(' · '));
+    else ok('TF-1482 : T3 accepte « est / reste / demeure (volontairement) en lecture seule » et refuse toujours « n\'est pas en lecture seule » et l\'absence de mention');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1227 (14/09/2026) + TF-1484 (28/09/2026) — CE QUE LE LANCEUR LIT D'UN ORACLE, ET CE QU'IL DIT.
+// Deux angles, un seul fil : la raison existe dans la sortie JSON de l'oracle et le lanceur ne
+// l'affichait pas. (TF-1227) render_page.py rend `breakpoints.<largeur>.issues.<règle>[]`, ni
+// `findings[]` ni `fails[]` : un FAIL valide et explicite se lisait « n'a pas su expliquer
+// pourquoi ». (TF-1484) un SKIP sans constat portait son motif à place fixe depuis TF-1447, et la
+// ligne restait muette. Oracle JOUET (un script qui lit le contenu du fichier jugé pour choisir sa
+// sortie) et registre jouet : aucun navigateur, aucun modèle. Sens rouge : un JSON qui ne porte
+// AUCUNE des formes connues garde le message d'échec muet — le lecteur ne devine rien.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1227-'));
+  try {
+    const stub = path.join(tmp, 'oracle-jouet.mjs');
+    fs.writeFileSync(stub, [
+      "import fs from 'node:fs';",
+      "const m = fs.readFileSync(process.argv[2], 'utf8').trim();",
+      "const iss = (o) => ({ '390': { issues: { v1_overflow: [{ what: 'document', detail: 'scrollWidth 2008px' }], v2_contrast: [o], unmeasured: ['zone non mesurée'] } }, '1280': { issues: { v2_contrast: [o] } } });",
+      "const o = { what: 'div.a « texte pâle »', detail: 'ratio 1.17:1 < 4.5:1' };",
+      "const sorties = {",
+      "  rendu: { verdict: 'FAIL', breakpoints: iss(o) },",
+      "  muet: { verdict: 'FAIL', breakpoints: { '390': { issues: { v1_overflow: [] } } } },",
+      "  skipmotif: { verdict: 'SKIP', findings: [], non_juge: ['limite'], motif: 'dépôt frère absent : raison jouet' },",
+      "  skipinfo: { verdict: 'SKIP', findings: [{ sev: 'info', msg: 'SANS OBJET jouet' }], non_juge: [], motif: 'SANS OBJET jouet' },",
+      "};",
+      "console.log(JSON.stringify(sorties[m]));",
+      "process.exit(m.startsWith('skip') ? 2 : 1);",
+    ].join('\n') + '\n', 'utf8');
+    const regJ = path.join(tmp, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [{ domaine: 'Jouet', ext: ['.txt'], type: 'cli', cmd: [process.execPath, stub, '{file}'], statut: 'ok' }] }), 'utf8');
+    const ligne = (mode) => {
+      const d = path.join(tmp, mode); fs.mkdirSync(d, { recursive: true });
+      const f = path.join(d, 'cible.txt'); fs.writeFileSync(f, mode + '\n', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), f, '--registre', regJ, '--no-cache'], { encoding: 'utf8', timeout: 120000 });
+      return (r.stdout || '').split(/\r?\n/).find((l) => /\[Jouet\]/.test(l)) || '';
+    };
+    const rendu = ligne('rendu'), muet = ligne('muet'), skipmotif = ligne('skipmotif'), skipinfo = ligne('skipinfo');
+    if (!/^ {2}❌ /.test(rendu) || /n'a pas su expliquer/.test(rendu) || !/3 constat\(s\) · v1_overflow \(390 px\) : document — scrollWidth 2008px ; v2_contrast \(390 px\) : div\.a « texte pâle » — ratio 1\.17:1/.test(rendu))
+      ko('TF-1227 : un FAIL au format render_page (breakpoints.*.issues) n est pas lu — ligne « ' + rendu.slice(0, 220) + ' »');
+    else if (/[4-9] constat/.test(rendu) || /1280 px/.test(rendu))
+      ko('TF-1227 : les constats ne sont pas dédoublonnés d une largeur à l autre — ligne « ' + rendu.slice(0, 220) + ' »');
+    else if (!/^ {2}❌ /.test(muet) || !/n'a pas su expliquer pourquoi/.test(muet))
+      ko('TF-1227 : un FAIL dont le JSON ne porte aucune forme connue doit garder le message d échec muet (jamais une raison devinée) — ligne « ' + muet.slice(0, 220) + ' »');
+    else if (!/^ {2}➖ /.test(skipmotif) || !/dépôt frère absent : raison jouet/.test(skipmotif))
+      ko('TF-1484 : le motif d un SKIP sans constat n est pas affiché sur sa ligne — « ' + skipmotif.slice(0, 220) + ' »');
+    else if (!/SANS OBJET jouet/.test(skipinfo) || /constat\(s\) · .*SANS OBJET jouet.*SANS OBJET jouet/.test(skipinfo))
+      ko('TF-1484 : un SKIP qui porte déjà son détail est modifié ou doublé — « ' + skipinfo.slice(0, 220) + ' »');
+    else ok('TF-1227 : un FAIL au format render_page (breakpoints.*.issues) est lu et dédoublonné d une largeur à l autre, un JSON sans aucune forme connue garde le message d échec muet ; TF-1484 : le motif d un SKIP sans constat s affiche sur sa ligne, un SKIP déjà détaillé reste intact');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1539 (01/10/2026) — `content_patterns` RESTREINT UNE ENTRÉE QUI DÉCLARE AUSSI `ext`.
+// Le lanceur fusionnait par UNION : tout fichier de l'extension était routé, motif lu ou non, et les
+// sept entrées à `ext` + motif jugeaient des fichiers que leur motif excluait. Registre jouet à trois
+// entrées (extension + motif ; motif seul ; extension seule) sur trois pages : une qui porte le
+// motif, une qui ne le porte pas, une trop grosse pour être lue (routée quand même, un routage ne
+// fait jamais taire un juge sur ce qu'il n'a pas lu). Sens rouge : l'ancienne union routait la page
+// SANS le motif vers l'entrée à extension + motif. Garde du plancher : l'entrée « Calculs / chiffres »
+// du vrai registre garde son extension et ne porte plus de motif, son routage ne bouge pas.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1539-'));
+  try {
+    const stub = path.join(tmp, 'oracle-jouet.mjs');
+    fs.writeFileSync(stub, "console.log(JSON.stringify({ verdict: 'PASS', findings: [], non_juge: [] }));\n", 'utf8');
+    const racine = path.join(tmp, 'racine'); fs.mkdirSync(racine);
+    fs.writeFileSync(path.join(racine, 'avec.html'), '<html><body><p>MOTIF-JOUET-1539</p></body></html>\n', 'utf8');
+    fs.writeFileSync(path.join(racine, 'sans.html'), '<html><body><p>rien de particulier</p></body></html>\n', 'utf8');
+    fs.writeFileSync(path.join(racine, 'gros.html'), '<html><body>' + 'x'.repeat(1100 * 1024) + '</body></html>\n', 'utf8');
+    const entree = (domaine, ext, motifs) => ({ domaine, ext, type: 'cli', cmd: [process.execPath, stub, '{file}'], statut: 'ok', ...(motifs ? { content_patterns: motifs } : {}) });
+    const regJ = path.join(tmp, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [
+      entree('JouetExtEtMotif', ['.html'], ['MOTIF-JOUET-1539']),
+      entree('JouetMotifSeul', [], ['MOTIF-JOUET-1539']),
+      entree('JouetExtSeule', ['.html'], null),
+    ] }), 'utf8');
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), racine, '--registre', regJ, '--no-cache', '--json'], { encoding: 'utf8', timeout: 120000 });
+    let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* sortie illisible */ }
+    const jugees = (dom) => j ? (j.resultats || []).filter((x) => x.domaine === dom).map((x) => path.basename(x.file)).sort().join(',') : '?';
+    const reg = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8'));
+    const calculs = reg.oracles.find((o) => o.domaine === 'Calculs / chiffres');
+    const cumul = reg.oracles.filter((o) => Array.isArray(o.ext) && o.ext.length && Array.isArray(o.content_patterns) && o.content_patterns.length).length;
+    if (!j) ko('TF-1539 : sortie de run-oracles inexploitable sur le registre jouet');
+    else if (jugees('JouetExtEtMotif') !== 'avec.html,gros.html') ko('TF-1539 : l entrée extension + motif doit juger la page qui porte le motif et la page illisible (trop grosse), pas la page sans motif — jugées : ' + jugees('JouetExtEtMotif'));
+    else if (jugees('JouetMotifSeul') !== 'avec.html') ko('TF-1539 : l entrée à motif seul doit juger la seule page qui porte le motif — jugées : ' + jugees('JouetMotifSeul'));
+    else if (jugees('JouetExtSeule') !== 'avec.html,gros.html,sans.html') ko('TF-1539 : l entrée à extension seule doit juger toutes les pages — jugées : ' + jugees('JouetExtSeule'));
+    else if (!calculs || !(calculs.ext || []).includes('.md') || !(calculs.ext || []).includes('.html') || calculs.content_patterns) ko('TF-1539 : l entrée « Calculs / chiffres » (plancher) doit garder md/html et ne plus porter de motif, sinon son routage rétrécit');
+    else ok('TF-1539 : un motif de contenu restreint l extension (page sans motif non routée, page illisible routée, motif seul et extension seule inchangés), et le plancher « Calculs / chiffres » route toujours tout md/html — ' + cumul + ' entrée(s) du registre déclarent encore les deux clés');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1485 (28/09/2026) — LE CONTRÔLE DE PRÉMISSE D'ACCÈS NE JUGE PAS UNE SYNTHÈSE. Mesuré le
+// 02/10/2026 sur les 385 .md du dossier `output` du pilot : 37 FAIL avant, 3 après (tous dans de vraies
+// analyses L99), 32 SKIP motivés en plus. Le déclencheur exige désormais qu'une prémisse soit écrite
+// dans le document, et écarte les restitutions de fin de tour. Trois documents portent le MÊME bloc
+// d'accès refusé sans contrôle positif : (A) une synthèse ouverte par « 0. Synthèse d'ouverture » qui
+// porte même le mot « prémisse », (B) un document qui ne parle d'aucune prémisse, (C) le document qui
+// pose une prémisse : seul (C) est jugé, et il reste FAIL — le déclencheur resserré ne désarme pas
+// le contrôle (les fixtures rouge et verte du manifest le prouvent aussi).
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1485-'));
+  try {
+    const bloc = "- **Le dépôt du socle** : l'accès à l'espace de travail https://exemple.invalid/groups/a1 a été refusé (403) hier.\n";
+    const docs = {
+      A: "---\ndestinataire: humain\n---\n\n# Titre\n\n## 0. Synthèse d'ouverture\n\nLe mandat est rendu ; une prémisse d'accès se mesure avant d'être dite invérifiable.\n\n" + bloc,
+      B: "# Journal de travail\n\nRien à signaler.\n\n" + bloc,
+      C: "# Analyse\n\nPrémisse P1 : l'espace est lisible.\n\n" + bloc,
+    };
+    const verdict = (k) => {
+      const f = path.join(tmp, k + '.md'); fs.writeFileSync(f, docs[k], 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-premisse-acces.mjs'), f], { encoding: 'utf8', timeout: 60000 });
+      try { const j = JSON.parse((r.stdout || '').trim()); return { v: j.verdict, motif: j.motif || '' }; } catch { return { v: '?', motif: '' }; }
+    };
+    const a = verdict('A'), b = verdict('B'), c = verdict('C');
+    if (a.v !== 'SKIP' || !/restitution/.test(a.motif)) ko('TF-1485 (A) : une synthèse ouverte par « 0. Synthèse d ouverture » doit rendre SKIP motivé « restitution » — rendu ' + a.v + ' « ' + a.motif.slice(0, 80) + ' »');
+    else if (b.v !== 'SKIP' || !/aucune prémisse/.test(b.motif)) ko('TF-1485 (B) : un document sans prémisse doit rendre SKIP motivé — rendu ' + b.v + ' « ' + b.motif.slice(0, 80) + ' »');
+    else if (c.v !== 'FAIL') ko('TF-1485 (C) : le document qui pose une prémisse et porte un refus sans contrôle positif doit rester FAIL — rendu ' + c.v);
+    else ok('TF-1485 : le même bloc d accès refusé est SKIP motivé dans une synthèse (A) et dans un document sans prémisse (B), et reste FAIL dans le document qui pose une prémisse (C)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1483 (28/09/2026) — LES NOMS DE FICHIERS DE L'HISTOIRE SE LISENT SANS CITATION. Angles C4/C5
+// lisaient `git log --name-only` sans `-z` : un chemin qui porte un octet non ASCII revenait cité en
+// style C (`"rapport-Fr\303\251gate.md"`) et un terme accentué n'y figurait plus sous sa forme lisible
+// (73 chemins non ASCII dans l'histoire du pilot, mesuré le 28/09 ; TF-1448 avait fermé ce trou pour
+// les contenus, pas pour les noms). Deux fichiers au terme accentué dans leur NOM, retirés de l'arbre :
+// l'un présent avant l'inscription du terme (2020-03-01), l'autre après. Sens rouge : avant le
+// correctif, aucun des deux n'est vu. Sens vert : sans borne les deux bloquent, avec la borne le premier
+// est une antériorité NOMMÉE (la date de dernière présence se lit bien dans le flux `-z`) et le second
+// reste BLOQUANT — la lecture `-z` ne désarme ni ne durcit la borne de D-65. Noms inventés.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1483-'));
+  try {
+    const TERME = 'Frégate';
+    const tables = path.join(tmp, 'tables'); fs.mkdirSync(tables);
+    const ecrireTable = (nom, obj) => { const p = path.join(tables, nom); fs.writeFileSync(p, JSON.stringify(obj), 'utf8'); return p; };
+    const tProduitsNu = ecrireTable('_produits-nu.json', { produits: {} });
+    const g = (r, env, ...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8', env });
+    const repo = path.join(tmp, 'depot'); fs.mkdirSync(repo);
+    const base = { ...process.env };
+    g(repo, base, 'init', '-q'); g(repo, base, 'config', 'user.email', 'banc@local'); g(repo, base, 'config', 'user.name', 'banc');
+    for (const c of [
+      { date: '2020-01-10T10:00:00+01:00', message: 'premier depot', ecrire: { ['rapport-' + TERME + '.md']: 'sans nom\n', 'garde.md': 'sans nom\n' } },
+      { date: '2020-02-01T10:00:00+01:00', message: 'retrait du rapport', retirer: ['rapport-' + TERME + '.md'] },
+      { date: '2021-01-10T10:00:00+01:00', message: 'second depot', ecrire: { ['bilan-' + TERME + '.md']: 'sans nom\n' } },
+      { date: '2021-02-01T10:00:00+01:00', message: 'retrait du bilan', retirer: ['bilan-' + TERME + '.md'] },
+    ]) {
+      for (const [f, txt] of Object.entries(c.ecrire || {})) fs.writeFileSync(path.join(repo, f), txt, 'utf8');
+      for (const f of c.retirer || []) fs.rmSync(path.join(repo, f), { force: true });
+      g(repo, base, 'add', '-A');
+      g(repo, { ...base, GIT_AUTHOR_DATE: c.date }, 'commit', '-q', '-m', c.message);
+    }
+    const jouer = (tClients) => {
+      const env = { ...process.env, FORGE_ROOT: tmp };
+      delete env.FORGE_PRODUITS_PSEUDO; delete env.FORGE_NOMS_INTERDITS; delete env.FORGE_PORTE_PAR_REVISION;
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduitsNu], { encoding: 'utf8', timeout: 300000, env });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const nom = (j, fichier) => (j ? (j.findings || []) : []).filter((f) => f.regle === 'C4' && f.where === fichier + ' (historique)');
+    const tNu = ecrireTable('_clients-nu.json', { noms: [TERME], identifiants: [], sigles: [] });
+    const tBorne = ecrireTable('_clients-borne.json', { noms: [TERME], identifiants: [], sigles: [], depuis: { [TERME]: '2020-03-01' } });
+    const jNu = jouer(tNu), jBorne = jouer(tBorne);
+    const R = 'rapport-' + TERME + '.md', B = 'bilan-' + TERME + '.md';
+    if (!jNu || !jBorne) ko('TF-1483 : sortie de l oracle inexploitable');
+    else if (nom(jNu, R).length !== 1 || nom(jNu, R)[0].sev !== 'bloquant' || nom(jNu, B).length !== 1 || nom(jNu, B)[0].sev !== 'bloquant')
+      ko('TF-1483 : sans borne, le terme accentué dans le NOM d un fichier retiré de l arbre doit bloquer (2 constats C4 attendus) — obtenu : ' + [R, B].map((f) => f + ' ' + nom(jNu, f).map((x) => x.sev).join('/')).join(' · '));
+    else if (nom(jBorne, R).length !== 1 || nom(jBorne, R)[0].sev !== 'anteriorite')
+      ko('TF-1483 : le nom présent seulement avant l inscription du terme doit être une antériorité nommée — obtenu : ' + nom(jBorne, R).map((x) => x.sev).join('/'));
+    else if (nom(jBorne, B).length !== 1 || nom(jBorne, B)[0].sev !== 'bloquant')
+      ko('TF-1483 : le nom présent après l inscription du terme doit rester BLOQUANT — obtenu : ' + nom(jBorne, B).map((x) => x.sev).join('/'));
+    else ok('TF-1483 : un terme accentué dans le NOM d un fichier retiré de l histoire est vu (2 bloquants sans borne) ; sous une borne au 2020-03-01 le nom d avant est une antériorité nommée et le nom d après reste bloquant');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1538 (01/10/2026) — LES DEUX VUES DU REGISTRE S'ACCORDENT, ET UN CONTRÔLE LE JUGE.
+// `registre-oracles.json` (machine) et `registre-oracles.md` (vue humaine) décrivent le même catalogue :
+// le 01/10 un oracle manquait à la vue et cinq lignes de tableau avaient une barre verticale non
+// échappée. `scripts/verifier-accord-registre.mjs` juge la version (V1), la présence du script de
+// chaque entrée dans la vue (V2) et la forme des tableaux (V3). (A) les deux vraies vues s'accordent ;
+// (B) trois fautes fabriquées sur une copie de la vue — version, script, barre non échappée — sont
+// refusées chacune par SA règle ; (C) le REMÈDE que chaque message prescrit, joué, ramène le PASS
+// (TF-1013) ; (D) un fichier absent rend SKIP motivé, jamais un PASS.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1538-'));
+  try {
+    const jsonReel = path.join(SKILLDIR, 'references', 'registre-oracles.json');
+    const vueReelle = fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.md'), 'utf8');
+    const juger = (texteVue, jsonPath) => {
+      const f = path.join(tmp, 'vue-' + Math.random().toString(36).slice(2) + '.md'); fs.writeFileSync(f, texteVue, 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'verifier-accord-registre.mjs'), '--json', jsonPath || jsonReel, '--vue', f], { encoding: 'utf8', timeout: 60000 });
+      try { const j = JSON.parse((r.stdout || '').trim()); return { v: j.verdict, regles: [...new Set((j.findings || []).map((x) => x.regle).filter(Boolean))].sort().join(','), motif: j.motif || '', code: r.status }; } catch { return { v: '?', regles: '', motif: '', code: r.status }; }
+    };
+    const version = JSON.parse(fs.readFileSync(jsonReel, 'utf8')).version;
+    const BARRE = String.fromCharCode(124), ANTI = String.fromCharCode(92);
+    // fautes
+    const fVersion = vueReelle.replace('(v' + version, '(v0.0.1');
+    const fScript = vueReelle.split('oracle-cadence-de-mission.mjs').join('oracle-introuvable-ici');
+    const echappee = ANTI + BARRE;
+    const iBarre = vueReelle.indexOf('<fichier' + echappee + 'dossier>');
+    const fBarre = iBarre < 0 ? null : vueReelle.replace('<fichier' + echappee + 'dossier>', '<fichier' + BARRE + 'dossier>');
+    const a = juger(vueReelle), bV = juger(fVersion), bS = juger(fScript), bB = fBarre ? juger(fBarre) : null;
+    const cV = juger(fVersion.replace('(v0.0.1', '(v' + version)), cS = juger(fScript.split('oracle-introuvable-ici').join('oracle-cadence-de-mission.mjs'));
+    const cB = fBarre ? juger(fBarre.replace('<fichier' + BARRE + 'dossier>', '<fichier' + echappee + 'dossier>')) : null;
+    const d = (() => { const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'verifier-accord-registre.mjs'), '--vue', path.join(tmp, 'absente.md')], { encoding: 'utf8', timeout: 60000 }); try { return { ...JSON.parse(r.stdout), code: r.status }; } catch { return { verdict: '?', code: r.status }; } })();
+    if (a.v !== 'PASS') ko('TF-1538 (A) : les deux vraies vues du registre ne s accordent pas — ' + a.v + ' ' + a.regles);
+    else if (!fBarre) ko('TF-1538 (B) : la ligne témoin « <fichier\\|dossier> » (promesses) n existe plus dans la vue — le cas de la barre non échappée ne mesure plus rien');
+    else if (bV.v !== 'FAIL' || bV.regles !== 'V1') ko('TF-1538 (B) : une version divergente doit être refusée par V1 seule — ' + bV.v + ' ' + bV.regles);
+    else if (bS.v !== 'FAIL' || bS.regles !== 'V2') ko('TF-1538 (B) : un script du JSON absent de la vue doit être refusé par V2 seule — ' + bS.v + ' ' + bS.regles);
+    else if (bB.v !== 'FAIL' || bB.regles !== 'V3') ko('TF-1538 (B) : une barre verticale non échappée doit être refusée par V3 seule — ' + bB.v + ' ' + bB.regles);
+    else if (cV.v !== 'PASS' || cS.v !== 'PASS' || cB.v !== 'PASS') ko('TF-1538 (C) : le remède prescrit par un message ne ramène pas le PASS — version ' + cV.v + ', script ' + cS.v + ', barre ' + cB.v);
+    else if (d.verdict !== 'SKIP' || d.code !== 2 || !/introuvable/.test(d.motif || '')) ko('TF-1538 (D) : une vue absente doit rendre SKIP motivé exit 2 — ' + d.verdict + ' exit ' + d.code);
+    else ok('TF-1538 : les deux vues du registre s accordent (version ' + version + '), V1 / V2 / V3 refusent chacune sa faute fabriquée, le remède prescrit ramène le PASS, et une vue absente rend SKIP motivé');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables

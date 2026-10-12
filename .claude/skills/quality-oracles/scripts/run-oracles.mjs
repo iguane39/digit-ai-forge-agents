@@ -263,8 +263,33 @@ function runCli(o, file) {
       // Le lecteur accepte donc LES DEUX FORMES. Il ne DEVINE rien : il lit ce que l'oracle a
       // ecrit, sous l'un ou l'autre nom.
       const texteDe = (x) => (typeof x === 'string' ? x : (x && (x.msg || x.message)) || '');
-      const raisons = obj && Array.isArray(obj.findings) && obj.findings.length ? obj.findings.map(texteDe)
+      // TF-1227 — UNE TROISIÈME FORME, celle de render_page.py : ni `findings[]` ni `fails[]`, mais
+      // `breakpoints.<largeur>.issues.<règle>[]`, des listes de {what, detail}. Le lecteur n'en
+      // connaissait que deux et annonçait « n'a pas su expliquer pourquoi » sur un JSON valide et
+      // explicite (14/09/2026). Un FAIL lit désormais ces constats, dédoublonnés d'une largeur à
+      // l'autre ; la largeur où le constat apparaît d'abord est dite. Rien n'est deviné : un JSON
+      // sans aucune de ces formes garde le message d'échec muet, qui le dit comme tel.
+      const raisonsRendu = () => {
+        const bp = obj && obj.breakpoints && typeof obj.breakpoints === 'object' ? obj.breakpoints : null;
+        if (!bp) return [];
+        const vus = new Set(), r = [];
+        for (const [w, d] of Object.entries(bp)) {
+          const iss = d && d.issues && typeof d.issues === 'object' ? d.issues : {};
+          for (const [regle, liste] of Object.entries(iss)) {
+            if (!Array.isArray(liste)) continue;
+            for (const x of liste) {
+              const t = typeof x === 'string' ? x : (x && x.what ? x.what + (x.detail ? ' — ' + x.detail : '') : JSON.stringify(x));
+              const k = regle + '|' + t;
+              if (vus.has(k)) continue;
+              vus.add(k); r.push({ regle, texte: `${regle} (${w} px) : ${t}` });
+            }
+          }
+        }
+        return r.sort((a, b) => (a.regle === 'unmeasured') - (b.regle === 'unmeasured')).map(x => x.texte);
+      };
+      let raisons = obj && Array.isArray(obj.findings) && obj.findings.length ? obj.findings.map(texteDe)
         : (obj && Array.isArray(obj.fails) && obj.fails.length ? obj.fails.map(texteDe) : []);
+      if (!raisons.length && verdict === 'FAIL') raisons = raisonsRendu();
       const nWarn = obj && Array.isArray(obj.findings) ? obj.findings.filter(f => f && f.sev === 'warn').length
         : (obj && Array.isArray(obj.warns) ? obj.warns.length : 0);
       // ---- TF-0815 : UNE LIGNE QUI RESUME DEUX CONSTATS SUR TROIS NE DIT PAS QU'ELLE EN CACHE UN.
@@ -288,8 +313,12 @@ function runCli(o, file) {
       // commande a rejouer — elle est deja connue du registre. Un echec muet est le pire des trois
       // comportements possibles, parce qu'il a l'air d'un verdict alors qu'il est une panne de
       // transmission.
+      // TF-1484 — LE MOTIF D'UN SKIP S'AFFICHE. Depuis TF-1447 tout SKIP porte `motif` à place fixe,
+      // mais ce lecteur ne lisait que les constats : la ligne d'un contrôle non joué restait muette
+      // à l'écran. Un SKIP sans constat prend donc son motif (jamais écrasé s'il a déjà un détail).
+      if (verdict === 'SKIP' && !detail && obj && typeof obj.motif === 'string' && obj.motif.trim()) detail = obj.motif.trim();
       if (verdict === 'FAIL' && !detail) {
-        detail = "l'oracle a ECHOUE et n'a pas su expliquer pourquoi — aucun `findings[]` ni `fails[]` "
+        detail = "l'oracle a ECHOUE et n'a pas su expliquer pourquoi — aucun `findings[]`, `fails[]` ni `breakpoints.*.issues` "
           + 'dans sa sortie JSON. Rejouer a la main pour voir ses constats : ' + parts.join(' ');
       }
       res({ verdict, detail, nWarn });
@@ -342,6 +371,16 @@ for (const f of files) {                                    // C2 — types rée
 
 for (const o of registry.oracles) {
   let matches = o.ext === 'any' ? [target] : (Array.isArray(o.ext) && o.ext.length ? files.filter(f => o.ext.includes(extOf(f))) : []);
+  // TF-1539 (01/10/2026) — `content_patterns` RESTREINT une entrée qui déclare aussi `ext`. La fusion
+  // se faisait par UNION : tout fichier de l'extension était routé, motif lu ou pas, et les entrées
+  // à `ext` + motif (« Données de démonstration », « <table ») jugeaient des fichiers que leur
+  // propre motif excluait. Désormais l'extension donne les candidats et le motif en garde ceux qui
+  // le portent. Un fichier dont le contenu n'a pas pu être lu (hors types texte, plus de 1 Mo)
+  // reste routé : un routage ne fait jamais taire un juge sur ce qu'il n'a pas lu.
+  if (o.ext !== 'any' && Array.isArray(o.ext) && o.ext.length && Array.isArray(o.content_patterns) && o.content_patterns.length) {
+    const portent = new Set(contentMatches(o));
+    matches = matches.filter(f => !contents.has(f) || portent.has(f));
+  }
   if (Array.isArray(o.trigger_files) && o.trigger_files.length && files.some(f => o.trigger_files.includes(path.basename(f)))) matches = [...new Set([...matches, target])];
   // Un oracle qui déclare des extensions ne juge QUE celles-là : content_patterns affine le
   // périmètre, il ne l'élargit pas hors du type de fichier visé (08/08/2026). Sans ce filtre,

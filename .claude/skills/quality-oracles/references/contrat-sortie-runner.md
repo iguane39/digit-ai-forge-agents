@@ -1,6 +1,6 @@
 # Contrat de SORTIE du lanceur d'oracles (`run-oracles.mjs`)
 
-> **Version du contrat : 1.2.0** — état du 2026-09-05, documenté le 2026-09-06 (TF-0824).
+> **Version du contrat : 1.3.0** — état du 2026-10-12 (TF-1227, TF-1484) ; contrat documenté le 2026-09-06 (TF-0824).
 > **Source de vérité** de ce que `scripts/run-oracles.mjs` **rend** à son appelant. Le contrat
 > d'ENTRÉE — ce qu'un oracle CLI doit émettre pour être lu, `{oracle, domaine, artefact, verdict,
 > findings[], non_juge[]}`, exit 0/1/2 — vit dans `SKILL.md` (section « Outillage », puce
@@ -79,6 +79,11 @@ vaut **quel que soit le verdict** : un `PASS` qui porte une raison porte le mêm
 - Les raisons sont lues dans `findings[]` en priorité, sinon dans `fails[]` ; une raison est soit
   une chaîne, soit un objet dont on prend `msg`, sinon `message`. C'est l'objet du changement du
   2026-08-26.
+- Un verdict `FAIL` sans `findings[]` ni `fails[]` est lu dans `breakpoints.<largeur>.issues.<règle>[]`,
+  la forme de `render_page.py` : chaque entrée `{what, detail}` devient la raison
+  `<règle> (<largeur> px) : <what> — <detail>`, dédoublonnée d'une largeur à l'autre (la première
+  largeur où elle apparaît est dite), la règle `unmeasured` en dernier. C'est l'objet du changement
+  du 2026-10-12 (TF-1227).
 - **Deux raisons au plus** sont écrites, dans l'ordre rendu par l'oracle, séparées par ` ; `. La
   troncature est délibérée : une ligne de verdict n'est pas un rapport, et le rapport complet
   vit dans le journal JSON (§5).
@@ -86,7 +91,7 @@ vaut **quel que soit le verdict** : un `PASS` qui porte une raison porte le mêm
 
 ### 2.2 Le champ `detail` quand l'oracle n'a rendu aucune raison
 
-Quatre replis existent, et un seul s'applique à la fois. Ils s'écrivent tels quels, **sans**
+Cinq replis existent, et un seul s'applique à la fois. Ils s'écrivent tels quels, **sans**
 en-tête de compte, puisqu'il n'y a rien à compter.
 
 | Situation | `detail` rendu |
@@ -94,12 +99,13 @@ en-tête de compte, puisqu'il n'y a rien à compter.
 | Sortie non parsable en JSON, code de retour 0 | `contrat JSON non émis — verdict non retenu (P5/R1)` |
 | Oracle tué par son `timeout_ms` | `timeout oracle (<ms> ms)` |
 | Oracle non lançable (pas de code de retour) | `oracle non exécutable` |
-| Aucun des trois, et verdict `PASS` ou `SKIP` | chaîne vide — le segment ` — <detail>` disparaît |
+| Aucun des trois, et verdict `SKIP` dont la sortie porte `motif` | le `motif` de l'oracle (TF-1484) |
+| Aucun des trois, et verdict `PASS` ou `SKIP` sans `motif` | chaîne vide — le segment ` — <detail>` disparaît |
 
-Un cinquième cas est un **garde-fou**, et il ne se tait jamais : un verdict `FAIL` qui arriverait
+Un sixième cas est un **garde-fou**, et il ne se tait jamais : un verdict `FAIL` qui arriverait
 ici avec un `detail` vide se voit substituer un message qui dit l'absence de raison et donne la
 commande à rejouer, sous la forme `l'oracle a ECHOUE et n'a pas su expliquer pourquoi — aucun
-`findings[]` ni `fails[]` dans sa sortie JSON. Rejouer a la main pour voir ses constats :
+`findings[]`, `fails[]` ni `breakpoints.*.issues` dans sa sortie JSON. Rejouer a la main pour voir ses constats :
 <commande>`. Un échec muet a l'air d'un verdict alors qu'il est une panne de transmission.
 
 ### 2.3 Les trois enrichissements de `detail`
@@ -200,6 +206,7 @@ Les deux versions antérieures sont datées de leur changement réel ; elles n'o
 | 1.0.0 | avant le 2026-08-26 | — | `detail` = les deux premiers `findings[].msg`, joints par ` ; `, sans en-tête. Un oracle émettant `fails[]` rendait un `detail` vide, et un `FAIL` pouvait donc être muet. |
 | 1.1.0 | 2026-08-26 | TF-0659 | Les raisons se lisent aussi dans `fails[]`, et une raison peut être une chaîne, un `msg` ou un `message`. Le garde-fou de §2.2 apparaît : un `FAIL` sans raison le dit et donne la commande à rejouer. Aucune ligne existante ne change de forme — ajout de sources et d'un repli. |
 | 1.2.0 | 2026-09-05 | TF-0815 | `detail` est préfixé de `<n> constat(s) · ` dès qu'une raison existe. **Rupture assumée** pour tout lecteur qui comparait `detail` mot pour mot : deux versions d'un même fichier portant deux puis trois constats du même oracle rendaient jusque-là une ligne identique, et le hook d'écriture concluait « 0 neuf » sur du travail neuf. |
+| 1.3.0 | 2026-10-12 | TF-1227, TF-1484 | Deux sources de `detail` s'ajoutent, sans changer la forme des lignes existantes : un `FAIL` sans `findings[]` ni `fails[]` lit `breakpoints.*.issues` (forme de `render_page.py`), et un `SKIP` sans constat prend le `motif` de l'oracle comme `detail`. Une ligne qui était muette ou en échec muet se remplit ; aucune ligne qui avait un détail ne change. |
 
 ## 8. Ce que ce contrat ne couvre pas
 

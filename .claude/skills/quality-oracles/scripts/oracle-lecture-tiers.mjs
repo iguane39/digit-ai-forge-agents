@@ -194,7 +194,7 @@ const HORS_MOT = '(?<![\\p{L}\\p{N}_])', FIN_MOT = '(?![\\p{L}\\p{N}_])';
     [/aria-sort\s*=/i, 'tri de colonne annoncé'],
   ];
   const offerts = GESTES.filter(([r]) => r.test(snap.sansCode)).map(([, n]) => n);
-  const lectureSeule = /\b(?:page|vue|tableau)\s+(?:de\s+|en\s+)?lecture\s+seule\b|\baucun\s+geste\s+n[\'’]est\s+offert\b/i.test(snap.corps);
+  const lectureSeule = /\b(?:page|vue|tableau)\s+(?:(?:est|reste|demeure)\s+(?:volontairement\s+|donc\s+|toujours\s+)?)?(?:de\s+|en\s+)?lecture\s+seule\b|\baucun\s+geste\s+n[\'’]est\s+offert\b/i.test(snap.corps);
   if (offerts.length) info('T3', 'geste(s) offert(s) : ' + offerts.join(', '));
   else if (lectureSeule) info('T3', 'aucun geste, et la page le DÉCLARE (lecture seule assumée)');
   else bloquant('T3', 'AUCUN GESTE OFFERT ET AUCUNE DÉCLARATION — la page n\'offre ni filtre, ni recherche, ni tri annoncé, ni repli, ni lien, et ne déclare pas être en lecture seule. '
