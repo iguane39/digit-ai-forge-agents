@@ -76,6 +76,27 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
 
 ## Workflow par défaut
 
+0. **Cadrer avant de générer** (TF-1383) — pour toute présentation remise à un commanditaire (enjeu
+   fort au sens du § 6 de la fiche de conception), jamais pour un brouillon de travail interne. Une
+   présentation remise conforme à ses oracles a été refusée à 9 demandes dont 5 sur le vocabulaire
+   du lecteur : la fiche, remplie après la remise, n'avait rien fixé. Trois gestes, avant toute
+   génération, avec les outils du pilot `digit-ai-factory` (chemin : `<racine des forges>/digit-ai-factory/`) :
+
+   ```bash
+   node oracles/oracle-gabarits-documents.mjs --livrable "<nom du deck>.pptx"
+   node oracles/oracle-gabarits-documents.mjs --fiche <fiche remplie>.md
+   ```
+
+   a. **Famille du catalogue (G8)** : la première commande résout la famille du livrable par son nom.
+      Aucune famille ne résout (FAIL de G8) : ce n'est pas une case à forcer, c'est un trou du catalogue ;
+      écrire `famille: aucune — candidature remontée` dans la fiche et le remonter au pilot.
+   b. **Fiche de conception (règle D8)** : remplir la fiche de conception du pilot (gabarits, documents, FICHE-CONCEPTION)
+      (lecteur défini par ce qu'il doit décider, vocabulaire fixé, intention de chaque partie), puis
+      la faire juger par G6 (seconde commande). Jamais d'emplacement `{…}` laissé.
+   c. **Validation humaine** de la fiche quand l'enjeu est fort, avant l'étape 1. Le vocabulaire fixé
+      par la fiche alimente le LEXIQUE.json que lira S5 à l'étape 8.
+
+   Sans pilot joignable : le dire à la restitution, ne pas déclarer le cadrage fait.
 1. **Charger le système de marque** — `node scripts/lire-marque.mjs` (options ci-dessus).
    Sortie JSON : les jetons par thème, les polices et les cotes, déjà convertis pour
    pptxgenjs (hexadécimal **sans dièse**, pouces depuis les px à 96 px/pouce, face de police).
@@ -235,7 +256,8 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   absence de valeur de marque en dur dans ce fichier (C4), règle de décision et ses 3 mutants
   (C5), verrou entre processus (C6), chaîne d'assainissement sur fixtures fictives (C7), essai
   réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne), pieds de
-  page d'un vrai deck pptxgenjs, remède joué (C9). Les
+  page d'un vrai deck pptxgenjs, remède joué (C9), commandes de l'étape 0 rejouées sur une fiche
+  remplie et une fiche vide (C10). Les
   deux polices sources fausses de C7 sortent de `fixtures/export/gen-source-defectueuse.py`.
 
 ## Non livré (constat daté du 2026-09-11, TF-1022)

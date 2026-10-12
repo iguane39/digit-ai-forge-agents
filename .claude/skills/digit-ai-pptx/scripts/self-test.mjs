@@ -48,6 +48,9 @@
 //        (6 constats) ; `scripts/poser-pieds-de-page.py`, le remède de l'étape 6 bis, joué, les supprime et
 //        l'oracle rend PASS ; le deck d'entrée reste intact, une sortie existante n'est jamais écrasée,
 //        des noms absents du deck rendent un refus net sans rien écrire.
+//   C10 — l'étape 0 du workflow, cadrer avant de générer (TF-1383) : SKILL.md prescrit la résolution de famille
+//        (G8) et le jugement de la fiche de conception (G6) ; les deux commandes sont rejouées sur le pilot :
+//        la fiche d'exemple remplie rend PASS, le modèle vide rend FAIL.
 //   C8 — sur demande (--essai-powerpoint) : l'essai réel par PowerPoint, joué seulement si AUCUN
 //        processus PowerPoint ne tourne, et avec --instance-neuve. L'instance lancée doit être
 //        quittée, le PPTX et le PDF écrits. Sans l'option, ou si PowerPoint tourne : non joué, dit.
@@ -99,6 +102,7 @@ const NON_JUGE = [
   "C6 prouve l'exclusion entre processus d'un même poste : un verrou n'arbitre pas deux postes, et chaque poste a sa propre instance PowerPoint",
   "C7 répare des polices fictives à une famille : l'équivalence octet pour octet avec PowerPoint sur des polices réelles est une mesure du produit (8 flux sur 8, 30/09/2026), rapportée et non rejouée ici",
   "C9 joue le remède sur un deck de jeu produit par pptxgenjs 4.0.1 : que PowerPoint ouvre sans réserve un espace réservé posé ainsi, sans correspondance dans un gabarit, n'est pas prouvé par ce contrôle",
+  "C10 prouve que les commandes prescrites distinguent une fiche remplie d'une fiche vide ; que l'agent remplisse réellement la fiche avant de générer, et que le lecteur y soit juste défini, n'est jugé par aucun contrôle de ce self-test",
   "C8 n'est joué que sur demande, et jamais quand PowerPoint tourne : sans lui, le chemin COM réel n'est prouvé par aucun contrôle de ce self-test",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
@@ -586,6 +590,32 @@ async function verifierChaine() {
   return { joue: true, findings };
 }
 
+// ----------------------------------------------- C10 : l'étape 0, cadrer avant de générer (TF-1383)
+// Le fait (retours Produit-68 du 26/09/2026, RG-15) : les étapes du workflow ne passaient ni par la famille du
+// catalogue (G8) ni par la fiche de conception amont (D8, jugée par G6) ; la fiche fut remplie après la remise.
+// Le contrôle joue les deux commandes que prescrit l'étape 0, telles qu'écrites dans SKILL.md : la fiche
+// remplie du pilot (exemple) rend PASS, le modèle vide rend FAIL — une commande qui ne distingue pas les deux
+// ne cadre rien.
+async function verifierCadrage() {
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  const findings = [];
+  const cmds = ['oracle-gabarits-documents.mjs --livrable', 'oracle-gabarits-documents.mjs --fiche'];
+  for (const c of cmds) if (!skillMd.includes(c)) findings.push(`C10 : l'étape 0 de SKILL.md ne prescrit plus « ${c} »`);
+  if (!/^0\. \*\*Cadrer avant de générer\*\*/m.test(skillMd)) findings.push("C10 : SKILL.md n'a plus d'étape 0 « Cadrer avant de générer » dans son workflow");
+  const { resolvePilot, motifPilotAbsent } = await import(pathToFileURL(path.join(SKILL_DIR, '..', 'quality-oracles', 'scripts', 'lib', 'pilot.mjs')).href).catch(() => ({}));
+  const pilot = resolvePilot ? resolvePilot(SKILL_DIR) : null;
+  if (!pilot) return { joue: false, findings, motif: 'C10 jouée sur le texte seul, commandes non rejouées : ' + (motifPilotAbsent ? motifPilotAbsent(SKILL_DIR) : 'module pilot.mjs du skill quality-oracles introuvable') };
+  const oracle = path.join(pilot, 'oracles', 'oracle-gabarits-documents.mjs');
+  const fiche = (nom) => {
+    const r = spawnSync(process.execPath, [oracle, '--fiche', path.join(pilot, 'gabarits', 'documents', nom)], { encoding: 'utf8', timeout: 60000 });
+    try { return JSON.parse(r.stdout).verdict; } catch { return '?'; }
+  };
+  const vert = fiche('FICHE-CONCEPTION-EXEMPLE.md'), rouge = fiche('FICHE-CONCEPTION.md');
+  if (vert !== 'PASS') findings.push(`C10 sens vert : la fiche d'exemple remplie rend ${vert} sous G6, attendu PASS`);
+  if (rouge !== 'FAIL') findings.push(`C10 sens rouge : le modèle de fiche vide rend ${rouge} sous G6, attendu FAIL`);
+  return { joue: true, findings };
+}
+
 // ---------------------------------- C9 : les pieds de page d'un deck pptxgenjs (TF-1382, sans PowerPoint)
 // Le fait (retours Produit-68 du 26/09/2026, RG-14) : pptxgenjs n'émet ni `ftr` ni `sldNum`, S4 les exige, et
 // le skill ne livrait aucune étape pour les poser. Le deck de jeu est un VRAI sortie de pptxgenjs 4.0.1
@@ -808,6 +838,9 @@ const c7 = await verifierChaine();
 if (c7.joue) findings.push(...c7.findings); else nonJuge.push(c7.motif);
 const c9 = verifierPieds();
 if (c9.joue) findings.push(...c9.findings); else nonJuge.push(c9.motif);
+const c10 = await verifierCadrage();
+findings.push(...c10.findings);
+if (!c10.joue) nonJuge.push(c10.motif);
 // C8 — l'essai réel, sur demande seulement, et jamais quand PowerPoint tourne
 let c8 = { joue: false, motif: "C8 NON JOUÉE : l'essai réel par PowerPoint ne se joue que sur demande (--essai-powerpoint)" };
 if (args.includes('--essai-powerpoint')) c8 = await essaiPowerPoint();
@@ -831,6 +864,7 @@ process.stdout.write(JSON.stringify({
     C6_verrou_entre_sessions: 'jouée',
     C7_chaine_assainissement: c7.joue ? 'jouée' : 'NON jouée (juge ou prérequis absents)',
     C9_pieds_de_page_pptxgenjs: c9.joue ? 'jouée' : 'NON jouée (oracle, deck de jeu ou python absents)',
+    C10_cadrage_amont: c10.joue ? 'jouée' : 'texte seul (pilot introuvable)',
     C8_essai_reel_powerpoint: c8.joue ? 'jouée' : 'NON jouée',
   },
   ...(c8.bilan ? { essai_powerpoint: c8.bilan } : {}),
