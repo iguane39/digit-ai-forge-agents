@@ -182,7 +182,11 @@ export function confronterBlocs(html, repere = '(html)') {
     }
     const attendu = blocCanonique(b.nom, src.get(b.nom), b.socle);
     const present = sortie.slice(b.debut, b.fin);
-    if (present === attendu) { ajour.push(`${repere} · ${b.nom}`); continue; }
+    // TF-1486 (28/09/2026) : une page extraite ou éditée en CRLF n'a pas dérivé — 4 faux écarts
+    // mesurés sur des pages dont les empreintes égalaient celles du socle. Seule la fin de ligne
+    // se neutralise ; tout autre octet reste un écart. `--ecrire` ne réécrit donc pas une telle page.
+    const lf = (t) => t.replace(/\r\n/g, '\n');
+    if (lf(present) === lf(attendu)) { ajour.push(`${repere} · ${b.nom}`); continue; }
     ecarts.push(`${repere} · ${b.nom} : copie PÉRIMÉE (${present.length} octets contre ${attendu.length})`);
     sortie = sortie.slice(0, b.debut) + attendu + sortie.slice(b.fin);
   }

@@ -3304,6 +3304,26 @@ def run_poseur_composants():
             (1, True), (rouge.returncode, "PÉRIMÉE" in rouge.stdout), "TF-0890 parite",
             rouge.stdout[-280:])
 
+        # ---- TF-1486 (28/09/2026) : une page extraite en CRLF garde sa parite ---------------
+        # Mesure de l'agent « harnais » : 4 faux ecarts sur deux pages dont les empreintes
+        # egalaient celles du socle installe — seules les fins de ligne avaient change. Sens vert :
+        # la page conforme, reecrite en CRLF, passe. Sens rouge : la meme page en CRLF avec un
+        # octet derive echoue toujours — la normalisation ne neutralise QUE la fin de ligne.
+        page_crlf = Path(atelier) / "livrable-crlf.html"
+        page_crlf.write_bytes(html.replace("\r\n", "\n").replace("\n", "\r\n").encode("utf-8"))
+        crlf = subprocess.run(["node", poseur, "--constat", str(page_crlf)],
+                              capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · une page conforme en CRLF garde sa parite (sens vert)",
+            0, crlf.returncode, "TF-1486 fins de ligne", crlf.stdout[-280:])
+        page_crlf.write_bytes(html.replace("\r\n", "\n").replace(
+            "data-composant=\"table-filters.js\"",
+            "data-composant=\"table-filters.js\" data-derive=\"1\"", 1).replace("\n", "\r\n").encode("utf-8"))
+        crlf_r = subprocess.run(["node", poseur, "--constat", str(page_crlf)],
+                                capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · en CRLF, un octet modifie ROMPT toujours la parite (sens rouge)",
+            (1, True), (crlf_r.returncode, "PÉRIMÉE" in crlf_r.stdout), "TF-1486 fins de ligne",
+            crlf_r.stdout[-280:])
+
         # ---- TF-0926 : la FEUILLE DU GABARIT, source synthetique `boilerplate.css` ----------
         #
         # Deux fixtures du socle portaient une copie FIGEE du CSS de `assets/boilerplate.html`,
