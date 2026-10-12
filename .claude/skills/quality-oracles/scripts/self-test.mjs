@@ -869,6 +869,55 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1227 (14/09/2026) + TF-1484 (28/09/2026) — CE QUE LE LANCEUR LIT D'UN ORACLE, ET CE QU'IL DIT.
+// Deux angles, un seul fil : la raison existe dans la sortie JSON de l'oracle et le lanceur ne
+// l'affichait pas. (TF-1227) render_page.py rend `breakpoints.<largeur>.issues.<règle>[]`, ni
+// `findings[]` ni `fails[]` : un FAIL valide et explicite se lisait « n'a pas su expliquer
+// pourquoi ». (TF-1484) un SKIP sans constat portait son motif à place fixe depuis TF-1447, et la
+// ligne restait muette. Oracle JOUET (un script qui lit le contenu du fichier jugé pour choisir sa
+// sortie) et registre jouet : aucun navigateur, aucun modèle. Sens rouge : un JSON qui ne porte
+// AUCUNE des formes connues garde le message d'échec muet — le lecteur ne devine rien.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1227-'));
+  try {
+    const stub = path.join(tmp, 'oracle-jouet.mjs');
+    fs.writeFileSync(stub, [
+      "import fs from 'node:fs';",
+      "const m = fs.readFileSync(process.argv[2], 'utf8').trim();",
+      "const iss = (o) => ({ '390': { issues: { v1_overflow: [{ what: 'document', detail: 'scrollWidth 2008px' }], v2_contrast: [o], unmeasured: ['zone non mesurée'] } }, '1280': { issues: { v2_contrast: [o] } } });",
+      "const o = { what: 'div.a « texte pâle »', detail: 'ratio 1.17:1 < 4.5:1' };",
+      "const sorties = {",
+      "  rendu: { verdict: 'FAIL', breakpoints: iss(o) },",
+      "  muet: { verdict: 'FAIL', breakpoints: { '390': { issues: { v1_overflow: [] } } } },",
+      "  skipmotif: { verdict: 'SKIP', findings: [], non_juge: ['limite'], motif: 'dépôt frère absent : raison jouet' },",
+      "  skipinfo: { verdict: 'SKIP', findings: [{ sev: 'info', msg: 'SANS OBJET jouet' }], non_juge: [], motif: 'SANS OBJET jouet' },",
+      "};",
+      "console.log(JSON.stringify(sorties[m]));",
+      "process.exit(m.startsWith('skip') ? 2 : 1);",
+    ].join('\n') + '\n', 'utf8');
+    const regJ = path.join(tmp, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [{ domaine: 'Jouet', ext: ['.txt'], type: 'cli', cmd: [process.execPath, stub, '{file}'], statut: 'ok' }] }), 'utf8');
+    const ligne = (mode) => {
+      const d = path.join(tmp, mode); fs.mkdirSync(d, { recursive: true });
+      const f = path.join(d, 'cible.txt'); fs.writeFileSync(f, mode + '\n', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), f, '--registre', regJ, '--no-cache'], { encoding: 'utf8', timeout: 120000 });
+      return (r.stdout || '').split(/\r?\n/).find((l) => /\[Jouet\]/.test(l)) || '';
+    };
+    const rendu = ligne('rendu'), muet = ligne('muet'), skipmotif = ligne('skipmotif'), skipinfo = ligne('skipinfo');
+    if (!/^ {2}❌ /.test(rendu) || /n'a pas su expliquer/.test(rendu) || !/3 constat\(s\) · v1_overflow \(390 px\) : document — scrollWidth 2008px ; v2_contrast \(390 px\) : div\.a « texte pâle » — ratio 1\.17:1/.test(rendu))
+      ko('TF-1227 : un FAIL au format render_page (breakpoints.*.issues) n est pas lu — ligne « ' + rendu.slice(0, 220) + ' »');
+    else if (/[4-9] constat/.test(rendu) || /1280 px/.test(rendu))
+      ko('TF-1227 : les constats ne sont pas dédoublonnés d une largeur à l autre — ligne « ' + rendu.slice(0, 220) + ' »');
+    else if (!/^ {2}❌ /.test(muet) || !/n'a pas su expliquer pourquoi/.test(muet))
+      ko('TF-1227 : un FAIL dont le JSON ne porte aucune forme connue doit garder le message d échec muet (jamais une raison devinée) — ligne « ' + muet.slice(0, 220) + ' »');
+    else if (!/^ {2}➖ /.test(skipmotif) || !/dépôt frère absent : raison jouet/.test(skipmotif))
+      ko('TF-1484 : le motif d un SKIP sans constat n est pas affiché sur sa ligne — « ' + skipmotif.slice(0, 220) + ' »');
+    else if (!/SANS OBJET jouet/.test(skipinfo) || /constat\(s\) · .*SANS OBJET jouet.*SANS OBJET jouet/.test(skipinfo))
+      ko('TF-1484 : un SKIP qui porte déjà son détail est modifié ou doublé — « ' + skipinfo.slice(0, 220) + ' »');
+    else ok('TF-1227 : un FAIL au format render_page (breakpoints.*.issues) est lu et dédoublonné d une largeur à l autre, un JSON sans aucune forme connue garde le message d échec muet ; TF-1484 : le motif d un SKIP sans constat s affiche sur sa ligne, un SKIP déjà détaillé reste intact');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables
