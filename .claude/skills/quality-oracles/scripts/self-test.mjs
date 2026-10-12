@@ -918,6 +918,45 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1539 (01/10/2026) — `content_patterns` RESTREINT UNE ENTRÉE QUI DÉCLARE AUSSI `ext`.
+// Le lanceur fusionnait par UNION : tout fichier de l'extension était routé, motif lu ou non, et les
+// sept entrées à `ext` + motif jugeaient des fichiers que leur motif excluait. Registre jouet à trois
+// entrées (extension + motif ; motif seul ; extension seule) sur trois pages : une qui porte le
+// motif, une qui ne le porte pas, une trop grosse pour être lue (routée quand même, un routage ne
+// fait jamais taire un juge sur ce qu'il n'a pas lu). Sens rouge : l'ancienne union routait la page
+// SANS le motif vers l'entrée à extension + motif. Garde du plancher : l'entrée « Calculs / chiffres »
+// du vrai registre garde son extension et ne porte plus de motif, son routage ne bouge pas.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1539-'));
+  try {
+    const stub = path.join(tmp, 'oracle-jouet.mjs');
+    fs.writeFileSync(stub, "console.log(JSON.stringify({ verdict: 'PASS', findings: [], non_juge: [] }));\n", 'utf8');
+    const racine = path.join(tmp, 'racine'); fs.mkdirSync(racine);
+    fs.writeFileSync(path.join(racine, 'avec.html'), '<html><body><p>MOTIF-JOUET-1539</p></body></html>\n', 'utf8');
+    fs.writeFileSync(path.join(racine, 'sans.html'), '<html><body><p>rien de particulier</p></body></html>\n', 'utf8');
+    fs.writeFileSync(path.join(racine, 'gros.html'), '<html><body>' + 'x'.repeat(1100 * 1024) + '</body></html>\n', 'utf8');
+    const entree = (domaine, ext, motifs) => ({ domaine, ext, type: 'cli', cmd: [process.execPath, stub, '{file}'], statut: 'ok', ...(motifs ? { content_patterns: motifs } : {}) });
+    const regJ = path.join(tmp, 'registre-jouet.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: [
+      entree('JouetExtEtMotif', ['.html'], ['MOTIF-JOUET-1539']),
+      entree('JouetMotifSeul', [], ['MOTIF-JOUET-1539']),
+      entree('JouetExtSeule', ['.html'], null),
+    ] }), 'utf8');
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), racine, '--registre', regJ, '--no-cache', '--json'], { encoding: 'utf8', timeout: 120000 });
+    let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* sortie illisible */ }
+    const jugees = (dom) => j ? (j.resultats || []).filter((x) => x.domaine === dom).map((x) => path.basename(x.file)).sort().join(',') : '?';
+    const reg = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8'));
+    const calculs = reg.oracles.find((o) => o.domaine === 'Calculs / chiffres');
+    const cumul = reg.oracles.filter((o) => Array.isArray(o.ext) && o.ext.length && Array.isArray(o.content_patterns) && o.content_patterns.length).length;
+    if (!j) ko('TF-1539 : sortie de run-oracles inexploitable sur le registre jouet');
+    else if (jugees('JouetExtEtMotif') !== 'avec.html,gros.html') ko('TF-1539 : l entrée extension + motif doit juger la page qui porte le motif et la page illisible (trop grosse), pas la page sans motif — jugées : ' + jugees('JouetExtEtMotif'));
+    else if (jugees('JouetMotifSeul') !== 'avec.html') ko('TF-1539 : l entrée à motif seul doit juger la seule page qui porte le motif — jugées : ' + jugees('JouetMotifSeul'));
+    else if (jugees('JouetExtSeule') !== 'avec.html,gros.html,sans.html') ko('TF-1539 : l entrée à extension seule doit juger toutes les pages — jugées : ' + jugees('JouetExtSeule'));
+    else if (!calculs || !(calculs.ext || []).includes('.md') || !(calculs.ext || []).includes('.html') || calculs.content_patterns) ko('TF-1539 : l entrée « Calculs / chiffres » (plancher) doit garder md/html et ne plus porter de motif, sinon son routage rétrécit');
+    else ok('TF-1539 : un motif de contenu restreint l extension (page sans motif non routée, page illisible routée, motif seul et extension seule inchangés), et le plancher « Calculs / chiffres » route toujours tout md/html — ' + cumul + ' entrée(s) du registre déclarent encore les deux clés');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables

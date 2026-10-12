@@ -371,6 +371,16 @@ for (const f of files) {                                    // C2 — types rée
 
 for (const o of registry.oracles) {
   let matches = o.ext === 'any' ? [target] : (Array.isArray(o.ext) && o.ext.length ? files.filter(f => o.ext.includes(extOf(f))) : []);
+  // TF-1539 (01/10/2026) — `content_patterns` RESTREINT une entrée qui déclare aussi `ext`. La fusion
+  // se faisait par UNION : tout fichier de l'extension était routé, motif lu ou pas, et les entrées
+  // à `ext` + motif (« Données de démonstration », « <table ») jugeaient des fichiers que leur
+  // propre motif excluait. Désormais l'extension donne les candidats et le motif en garde ceux qui
+  // le portent. Un fichier dont le contenu n'a pas pu être lu (hors types texte, plus de 1 Mo)
+  // reste routé : un routage ne fait jamais taire un juge sur ce qu'il n'a pas lu.
+  if (o.ext !== 'any' && Array.isArray(o.ext) && o.ext.length && Array.isArray(o.content_patterns) && o.content_patterns.length) {
+    const portent = new Set(contentMatches(o));
+    matches = matches.filter(f => !contents.has(f) || portent.has(f));
+  }
   if (Array.isArray(o.trigger_files) && o.trigger_files.length && files.some(f => o.trigger_files.includes(path.basename(f)))) matches = [...new Set([...matches, target])];
   // Un oracle qui déclare des extensions ne juge QUE celles-là : content_patterns affine le
   // périmètre, il ne l'élargit pas hors du type de fichier visé (08/08/2026). Sans ce filtre,

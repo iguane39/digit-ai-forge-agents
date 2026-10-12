@@ -147,7 +147,7 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
 
 ## Outillage (scripts)
 - **Orchestrateur** — `node scripts/run-oracles.mjs <cible> [--profil <nom|chemin>] [--niveau note|diffuse|production] [--no-cache]` : matching
-  par **extension + `trigger_files` + contenu** (`content_patterns`), bornés par **`chemins`** quand l'entrée en porte
+  par **extension + `trigger_files` + contenu** (`content_patterns`, qui RESTREINT les extensions d'une entrée qui déclare les deux — intersection, TF-1539), bornés par **`chemins`** quand l'entrée en porte
   (dossiers où l'oracle s'applique, TF-1446) et par **`parties_paquet`** (préfixes de parties qu'un paquet zip doit
   porter, `ppt/fonts/` par exemple — TF-1501), **type réel** (magic bytes ≠ extension = FAIL), exécution
   **parallèle** + **cache** par hash (jamais sur FAIL/SKIP) + `timeout_ms`, verdict **PASS / FAIL / INCONCLUSIF** (exit 0/1/2),
