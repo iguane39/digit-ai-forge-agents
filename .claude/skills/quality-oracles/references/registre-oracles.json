@@ -1158,7 +1158,7 @@
     "résolution colonne→colonne multi-saut (T6 vérifie que la référence directe existe, pas la chaîne complète)",
     "ingestion dans un catalogue (OpenMetadata ou autre) — instanciation, pas discipline",
     "T7 : la JUSTESSE du `namespace` déclaré. L'oracle constate qu'il est présent et qu'il ne se réduit pas à un nom de technologie ; il ne peut pas savoir si `databricks://adb-1234…` est bien l'instance qui a répondu. Un namespace faux mais bien formé passe — et c'est déjà infiniment mieux qu'un namespace absent, qui rend deux archives INDISCERNABLES au lieu de fausses",
-    "T7 : un lineage écrit aujourd'hui avec un `horodatage` antérieur au 2026-08-24 échappe au jugement. La borne d'antériorité est déclarée, donc contournable ; elle est préférée à la mise en échec rétroactive de tout lineage existant (R-33 bis : une règle bruyante se fait contourner au lieu de se corriger)",
+    "T7 : un lineage écrit aujourd'hui avec un `horodatage` antérieur au 2026-08-24 échappe au jugement. La borne d'antériorité est déclarée, donc contournable ; elle est préférée à la mise en échec rétroactive de tout lineage existant — c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec : « armer un gate que personne n'a exercé le ferait désarmer au premier faux positif »",
     "T8 : la pertinence métier d'un motif d'`entier: true` — l'oracle exige le motif écrit, il ne l'arbitre pas (même limite que CV4 de `oracles/oracle-couvrir.mjs` sur une exclusion motivée)",
     "T8 : une cible dont le nom de table ne correspond à aucun dataset des `entrees`/`sorties` — T8 juge la structure du référentiel de cibles, pas son rattachement au lineage porté par le même document"
    ]

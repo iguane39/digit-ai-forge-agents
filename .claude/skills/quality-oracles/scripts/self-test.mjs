@@ -478,7 +478,8 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
     // rejouer la commande avec le code d'origine pour écarter une régression.
     //
     // Un contrôle qui échoue selon la charge du poste est un contrôle qu'on apprend à ignorer —
-    // c'est nommément ce que R-33 bis existe pour empêcher. Deux corrections, aucune indulgence :
+    // c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec (« un gate
+    // qu'on apprend à contourner ne protège plus rien »). Deux corrections, aucune indulgence :
     //   1. l'indisponibilité se DÉCLARE au lieu d'échouer, sur le modèle des SKIP motivés
     //      d'oracle-sca : un outil externe absent ou trop lent n'est pas un défaut du code ;
     //   2. le message DISTINGUE les deux causes. Un délai dépassé et un JSON illisible ne se

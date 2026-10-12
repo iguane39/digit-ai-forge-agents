@@ -200,7 +200,9 @@ check("ledger TF-0385 : `oracles_verdict` sans `oracle` → FAIL qui NOMME le ch
 
 // LE SENS QUI COMPTE LE PLUS. Sans lui, ce contrôle mettrait en échec les trois ledgers du parc
 // dès son premier passage — et un contrôle qui met tout l'existant en échec se fait désactiver
-// (R-33 bis). L'antériorité se DÉCLARE, sur le modèle exact de R-32 bis du pilot.
+// (c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec : « armer un
+// gate que personne n'a exercé le ferait désarmer au premier faux positif »). L'antériorité se
+// DÉCLARE, sur le modèle exact de R-32 bis du pilot.
 check("ledger TF-0385 : un ledger SANS `schema_ledger` est DÉCLARÉ non vérifié, jamais mis en échec", () => {
   const lf = join(out, "ledger-anterieur.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "avant le schema" })]);

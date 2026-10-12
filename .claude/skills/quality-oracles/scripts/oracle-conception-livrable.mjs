@@ -30,7 +30,9 @@
 //
 // SÉVÉRITÉ DE C4 — ET C'EST UNE MESURE, PAS UN GOÛT. Le bloc d'intention n'existe nulle part
 // dans le parc au 02/09/2026 : rendre C4 bloquant d'emblée accuserait TOUS les documents et se
-// ferait désactiver dans la semaine (R-33 bis). C4 sort donc en AVERTISSEMENT — sauf quand le
+// ferait désactiver dans la semaine — c'est le motif que R-33 bis donne pour ne pas armer d'office
+// le verdict websec : « armer un gate que personne n'a exercé le ferait désarmer au premier faux
+// positif ». C4 sort donc en AVERTISSEMENT — sauf quand le
 // document a COMMENCÉ la discipline : dès qu'UN chapitre porte son bloc, les chapitres qui n'en
 // ont pas deviennent BLOQUANTS. Une discipline entamée et abandonnée en cours de document, elle,
 // n'est pas du bruit : c'est un défaut que l'auteur a lui-même déclaré vouloir éviter.
@@ -154,7 +156,8 @@ const compte = (terme) => {
 // mesuré sur les 103 documents .md/.html suivis du dépôt le 02/09/2026 : 35 FAIL sur 103,
 // c'est-à-dire un tiers du parc accusé pour des mots ordinaires — « 5 axes » cité une fois dans
 // une fiche, « gate » employé six fois dans une doc technique. Un contrôle qui accuse un tiers
-// du parc se fait désactiver dans la semaine (R-33 bis), et il aurait eu raison.
+// du parc se fait désactiver dans la semaine, et il aurait eu raison (même motif que R-33 bis
+// donne pour le verdict websec, cité plus haut).
 // Le défaut du 31/08 avait une signature précise : « 17 dimensions » ANNONCÉ **et** écrit une
 // trentaine de fois. Le BLOCAGE exige donc les deux marques ; une seule marque AVERTIT.
 const termesEriges = new Map();                       // terme normalisé -> { terme, occurrences, annonce }

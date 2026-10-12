@@ -43,7 +43,8 @@
  *      parc, cette règle plus stricte ne change RIEN pour 10 d'entre eux ; sur le seul
  *      concerné elle révèle 4 entrées sous le maximum (seq 129/130/134/135) là où la
  *      comparaison au précédent n'en voyait que 2. Ce n'est donc pas un contrôle qui met en
- *      échec tout l'existant (R-33 bis) : c'est un contrôle qui voit enfin ce qui existait.
+ *      échec tout l'existant (celui que le motif de R-33 bis dit voué à être désarmé, voir
+ *      plus haut) : c'est un contrôle qui voit enfin ce qui existait.
  *   3. `append` REFUSE un `ts` de payload antérieur au maximum du fichier. Cause racine des
  *      quatre écarts : l'entrée était horodatée à l'heure de l'ACTION (run de déploiement)
  *      alors qu'elle est consignée après coup, et le spread `{seq, ts, ...obj}` laissait
