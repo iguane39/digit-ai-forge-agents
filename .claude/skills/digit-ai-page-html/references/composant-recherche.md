@@ -106,6 +106,13 @@ input.value = ''; counter.textContent = ''; counter.classList.remove('zero');
   pas un `<mark>` HTML, et le mot trouvé DISPARAISSAIT du schéma pendant la recherche (mesuré sur
   l'exemple de référence des schémas : 7 931 caractères peints, 7 844 pendant la recherche de
   « pipeline »). Le style du surlignage SVG passe par `fill`, pas par `background`.
+- 🔴 **Une phrase coupée par le balisage en ligne se trouve (TF-1342, 12/10/2026)** : le motif
+  s'appliquait nœud texte par nœud texte, et « application <strong>laissée arrêtée</strong> »
+  restait introuvable (3 occurrences dans le texte, 2 comptées, sur un livrable servi). Il se
+  cherche désormais dans le texte continu d'un bloc (paragraphe, cellule, bloc de code, titre ;
+  le `<text>` dans un schéma SVG), et chaque occurrence se pose par plages sur les nœuds qu'elle
+  traverse : une enveloppe par nœud, un seul compte. Un élément `inline-block` reste une
+  frontière.
 - Le surlignage ignore les nœuds `MARK`, `SCRIPT`, `STYLE`, noms comparés sans casse — le
   `<style>` d'un schéma SVG compris (pas de double-surlignage ni de
   corruption de scripts).

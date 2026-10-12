@@ -74,34 +74,82 @@
     try { return new RegExp(pat, 'gi'); } catch (e) { return null; }
   }
 
+  // Le BLOC d'un nœud texte : l'ancêtre le plus proche qui n'est pas un élément EN LIGNE. Dans un
+  // schéma SVG, le bloc est le <text> qui le porte (un <tspan> y est en ligne). Une phrase coupée
+  // par une mise en gras, un code ou un lien reste ainsi UN texte à fouiller (TF-1342).
+  function blocDe(el, root) {
+    if (el.namespaceURI === SVG_NS) {
+      var t = el.closest ? el.closest('text') : null;
+      return t && root.contains(t) ? t : el;
+    }
+    var b = el;
+    while (b !== root && b.parentNode && b.nodeType === 1) {
+      var d = getComputedStyle(b).display;
+      if (d !== 'inline' && d !== 'contents') break;
+      b = b.parentNode;
+    }
+    return b;
+  }
+
   // Surligne les correspondances dans root et renvoie le nombre d'occurrences. Enveloppe les
   // nœuds texte trouvés, sans remplacer aucun élément (TF-1340) ; dans un texte SVG, l'enveloppe
   // est un <tspan>, que SVG peint, et non un <mark>, qu'il ignore (TF-1353). Les noms d'éléments
   // se comparent sans casse : le <style> et le <script> d'un SVG s'écrivent en minuscules.
+  //
+  // TF-1342 (lot Produit-64 20260923b, RD-19) — LE MOTIF S'APPLIQUAIT NŒUD TEXTE PAR NŒUD TEXTE :
+  // « application <strong>laissée arrêtée</strong> » figurait dans le texte de la page et restait
+  // introuvable (3 occurrences dans le texte, 2 comptées, mesuré sur un livrable servi). Le motif
+  // se cherche désormais dans le texte CONTINU d'un bloc (les nœuds texte consécutifs d'un même
+  // paragraphe, cellule, bloc de code, titre…), puis chaque correspondance est posée par PLAGES sur
+  // les nœuds qu'elle traverse : une occurrence à cheval sur trois nœuds donne trois enveloppes
+  // et compte UNE fois.
   function highlight(root, re) {
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-    var nodes = [], n, count = 0;
-    while ((n = walker.nextNode())) nodes.push(n);
-    for (var k = 0; k < nodes.length; k++) {
-      var tn = nodes[k], parent = tn.parentNode;
+    var groupes = [], courant = null, n;
+    while ((n = walker.nextNode())) {
+      var parent = n.parentNode;
       if (!parent || /^(MARK|SCRIPT|STYLE)$/i.test(parent.nodeName)
-          || (parent.getAttribute && parent.getAttribute('class') === 'find-hit')) continue;
-      var txt = tn.nodeValue; re.lastIndex = 0;
-      if (!re.test(txt)) continue; re.lastIndex = 0;
-      var svg = parent.namespaceURI === SVG_NS;
-      var frag = document.createDocumentFragment(), last = 0, m;
-      while ((m = re.exec(txt))) {
-        if (m.index > last) frag.appendChild(document.createTextNode(txt.slice(last, m.index)));
-        var mk = svg ? document.createElementNS(SVG_NS, 'tspan') : document.createElement('mark');
-        mk.setAttribute('class', 'find-hit');   // jamais 'find' : cf. avertissement en tête de fichier
-        mk.textContent = m[0];
-        frag.appendChild(mk);
-        count++;
-        last = m.index + m[0].length;
+          || (parent.getAttribute && parent.getAttribute('class') === 'find-hit')) {
+        courant = null;           // un nœud écarté coupe le texte continu
+        continue;
+      }
+      var bloc = blocDe(parent, root);
+      if (!courant || courant.bloc !== bloc) { courant = { bloc: bloc, noeuds: [] }; groupes.push(courant); }
+      courant.noeuds.push(n);
+    }
+    var count = 0;
+    for (var g = 0; g < groupes.length; g++) {
+      var noeuds = groupes[g].noeuds, texte = '', debuts = [];
+      for (var k = 0; k < noeuds.length; k++) { debuts.push(texte.length); texte += noeuds[k].nodeValue; }
+      var plages = [], m;
+      re.lastIndex = 0;
+      while ((m = re.exec(texte))) {
+        if (m[0].length) plages.push([m.index, m.index + m[0].length]);
         if (m.index === re.lastIndex) re.lastIndex++; // évite les boucles sur match vide
       }
-      if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
-      parent.replaceChild(frag, tn);
+      if (!plages.length) continue;
+      count += plages.length;
+      for (var j = 0; j < noeuds.length; j++) {
+        var tn = noeuds[j], txt = tn.nodeValue, d0 = debuts[j], d1 = d0 + txt.length;
+        var morceaux = [];
+        for (var p = 0; p < plages.length; p++) {
+          var a = Math.max(plages[p][0], d0), b = Math.min(plages[p][1], d1);
+          if (a < b) morceaux.push([a - d0, b - d0]);
+        }
+        if (!morceaux.length) continue;
+        var svg = tn.parentNode.namespaceURI === SVG_NS;
+        var frag = document.createDocumentFragment(), last = 0;
+        for (var q = 0; q < morceaux.length; q++) {
+          if (morceaux[q][0] > last) frag.appendChild(document.createTextNode(txt.slice(last, morceaux[q][0])));
+          var mk = svg ? document.createElementNS(SVG_NS, 'tspan') : document.createElement('mark');
+          mk.setAttribute('class', 'find-hit');   // jamais 'find' : cf. avertissement en tête de fichier
+          mk.textContent = txt.slice(morceaux[q][0], morceaux[q][1]);
+          frag.appendChild(mk);
+          last = morceaux[q][1];
+        }
+        if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+        tn.parentNode.replaceChild(frag, tn);
+      }
     }
     return count;
   }

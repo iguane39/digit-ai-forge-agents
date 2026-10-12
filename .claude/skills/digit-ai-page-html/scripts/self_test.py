@@ -2176,6 +2176,35 @@ def run_recherche_composants():
             cas("témoin : un mark HTML dans le texte SVG fait tomber les caractères peints "
                 "(sens rouge)", True, apres < avant, "TF-1353 contre-épreuve")
 
+        def phrase_coupee():
+            neuve()
+            texte = "() => document.getElementById('phrases').textContent"
+            avant = page.evaluate(texte)
+            page.fill("#find", "application laissée arrêtée")
+            cas("une phrase coupée par strong, code et lien se trouve (4 dans le texte)",
+                "4 occurrences",
+                page.evaluate("() => document.getElementById('findCount').textContent"),
+                "TF-1342")
+            cas("une occurrence à cheval pose une enveloppe par nœud traversé, texte intact",
+                [7, avant],
+                [page.evaluate("() => document.querySelectorAll('#phrases mark.find-hit').length"),
+                 page.evaluate(texte)],
+                "TF-1342")
+            page.fill("#find", "")
+            cas("la recherche effacée rend le paragraphe sans enveloppe", 0,
+                page.evaluate("() => document.querySelectorAll('#phrases mark').length"),
+                "TF-1342")
+
+        def temoin_noeud_par_noeud():
+            neuve()
+            n = page.evaluate(
+                "() => { const re = window.DigitAIFindInPage.buildRegex('application laissée "
+                "arrêtée'); const w = document.createTreeWalker(document.getElementById('phrases'),"
+                " NodeFilter.SHOW_TEXT); let n, c = 0; while ((n = w.nextNode())) {"
+                " c += (n.nodeValue.match(re) || []).length; } return c; }")
+            cas("témoin : le motif appliqué nœud texte par nœud texte n'en trouve qu'une "
+                "(sens rouge)", 1, n, "TF-1342 contre-épreuve")
+
         section("recherche effacée puis filtre", "TF-1340", filtre_apres_effacement)
         section("recherche active puis filtre", "TF-1340", filtre_pendant_recherche)
         section("recherche puis chevron", "TF-1340", chevron_pendant_recherche)
@@ -2183,6 +2212,8 @@ def run_recherche_composants():
         section("coupure recollée", "TF-1340", coupure_recollee)
         section("schéma SVG", "TF-1353", svg_peint)
         section("témoin mark SVG", "TF-1353 contre-épreuve", temoin_mark_svg)
+        section("phrase coupée par le balisage", "TF-1342", phrase_coupee)
+        section("témoin nœud par nœud", "TF-1342 contre-épreuve", temoin_noeud_par_noeud)
         navigateur.close()
     return out
 
