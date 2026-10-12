@@ -94,6 +94,13 @@ if (!sources.size) {
   out('SKIP', [{ sev: 'info', regle: 'P0', msg: `aucun asset .js/.css exploitable dans ${socle}`, where: socle }], NON_JUGE, 2);
 }
 
+// TF-1480 — UNE CIBLE ABSENTE EST UN SKIP MOTIVÉ, PAS UNE PILE ENOENT. Le socle présent, `pages()`
+// lisait la cible sans la tester : exit 1 et une trace technique, que le lanceur lisait comme un
+// défaut de l'artefact. Même modèle que les deux cas voisins (P0 : socle absent, socle vide).
+if (!fs.existsSync(cible)) {
+  out('SKIP', [{ sev: 'info', regle: 'P0', msg: `cible introuvable : ${cible} — rien n'est à comparer au socle`, where: cible }], NON_JUGE, 2);
+}
+
 // --- les pages à balayer ----------------------------------------------------
 function pages(p, acc = []) {
   const st = fs.statSync(p);

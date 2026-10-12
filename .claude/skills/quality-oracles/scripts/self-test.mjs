@@ -805,6 +805,22 @@ else {
   } else ok('TF-0784 : toutes les copies d assets du socle embarquées dans les skills sont déclarées, scellées et à la parité — ' + j.findings[0].msg.slice(0, 120));
 }
 
+// TF-1480 (28/09/2026) — LA PARITÉ D'ASSETS SUR UNE CIBLE ABSENTE : SKIP MOTIVÉ, JAMAIS UNE PILE ENOENT.
+// Double sens : la cible absente rend exit 2, verdict SKIP et un motif qui la nomme ; la cible
+// présente (l'arborescence réelle des skills) n'est pas un SKIP — le garde ne court-circuite rien.
+{
+  const absente = path.join(os.tmpdir(), 'qo-1480-absent', 'rien');
+  const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-parite-assets.mjs'), absente], { encoding: 'utf8', timeout: 60000 });
+  let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* rendu plus bas */ }
+  const p = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-parite-assets.mjs'), SKILLSROOT], { encoding: 'utf8', timeout: 180000 });
+  let jp = null; try { jp = JSON.parse((p.stdout || '').trim()); } catch { /* rendu plus bas */ }
+  if (!j) ko('TF-1480 : cible absente — sortie non JSON (exit ' + r.status + ') : ' + String(r.stderr || '').split('\n')[0].slice(0, 120));
+  else if (j.verdict !== 'SKIP' || r.status !== 2) ko('TF-1480 : cible absente — attendu SKIP exit 2, reçu ' + j.verdict + ' exit ' + r.status);
+  else if (!(typeof j.motif === 'string' && j.motif.includes('qo-1480-absent'))) ko('TF-1480 : le motif du SKIP ne nomme pas la cible absente');
+  else if (!jp || jp.verdict === 'SKIP') ko('TF-1480 : la cible présente rend SKIP — le garde court-circuite le jugement');
+  else ok('TF-1480 : oracle-parite-assets sur une cible absente rend SKIP (exit 2) avec un motif qui la nomme, et juge toujours une cible présente (' + jp.verdict + ')');
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables
