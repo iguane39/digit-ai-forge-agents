@@ -448,6 +448,80 @@ try {
     else kos.push('cas 13 (TF-1360) — ' + [v0, v1, v2, v3].map((v) => (v.stdout || '').trim().split('\n')[0]).join(' | '));
   }
 
+  // --- cas 14 : LA BORNE R-38 §4-5 EST PORTÉE PAR LE GABARIT (TF-1275) ------------------------
+  // Le pre-push du pilot portait cette section écrite à la main ; une repose pouvait l'effacer et
+  // un clone neuf ne l'avait pas. Le gabarit la porte, gardée par la présence du classeur
+  // `scripts/verifier-avance-publication.mjs` : un classeur jouet qui refuse sans `--go`.
+  {
+    const d14 = depot(racine, 'borne-r38', false);
+    git(d14, 'remote', 'add', 'origin', distantJetable(racine, 'borne-r38-distant'));
+    fs.mkdirSync(path.join(d14, 'scripts'), { recursive: true });
+    fs.writeFileSync(path.join(d14, 'scripts', 'verifier-avance-publication.mjs'),
+      'const i = process.argv.indexOf("--go");\n'
+      + 'if (i > 0 && process.argv[i + 1]) process.exit(0);\n'
+      + 'process.stdout.write(JSON.stringify({ enregistrements: [{ sha: "abc1234", classe: "explicite", sujet: "Regle modifiee", fichiers_hors_classe: ["REGLES.md"] }] }));\n'
+      + 'process.exit(1);\n');
+    sh(racine, 'node', [INSTALLEUR, d14, '--seul=pre-push']);
+    const r14 = sh(racine, 'node', [INSTALLEUR, d14, '--seul=pre-push']);
+    const h14 = fs.readFileSync(path.join(d14, '.git', 'hooks', 'pre-push'), 'utf8');
+    const p14r = sh(d14, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    const p14v = sh(d14, 'git', ['push', 'origin', 'main'], { ...ENV_JEU_ESSAI, FORGE_PUSH_GO: 'D-1 (a) du 12/10' });
+    if (/REPOSE/.test(r14.stdout || '') && h14.includes('verifier-avance-publication.mjs')
+        && p14r.status !== 0 && /GO humain explicite/.test(p14r.stderr || '') && /abc1234/.test(p14r.stderr || ''))
+      oks.push('cas 14 (TF-1275, sens rouge) — gabarit reposé, la borne R-38 y reste ; sans FORGE_PUSH_GO, l\'envoi d\'un enregistrement « explicite » est REFUSÉ, l\'enregistrement nommé');
+    else kos.push('cas 14 (TF-1275, sens rouge) — reposer « ' + (r14.stdout || '').trim().slice(0, 120) + ' », push exit ' + p14r.status + ' : ' + (p14r.stderr || '').trim().slice(0, 300));
+    if (p14v.status === 0) oks.push('cas 14 (TF-1275, sens vert) — avec FORGE_PUSH_GO déclaré, le même envoi passe la borne puis la porte des noms');
+    else kos.push('cas 14 (TF-1275, sens vert) — envoi avec GO refusé (exit ' + p14v.status + ') : ' + (p14v.stderr || '').trim().slice(0, 300));
+  }
+
+  // --- cas 15 : --essai DIT CE QU'IL FERAIT ET N'ÉCRIT RIEN (TF-1360, TF-1403) -----------------
+  // La repose du parc touche 14 dépôts réels : elle se joue d'abord à blanc.
+  {
+    const d15 = depot(racine, 'essai', false);
+    const hooks15 = path.join(d15, '.git', 'hooks');
+    const e15a = sh(racine, 'node', [INSTALLEUR, d15, '--essai']);
+    const rienPose = ['pre-push', 'pre-commit', 'commit-msg'].every((n) => !fs.existsSync(path.join(hooks15, n)));
+    sh(racine, 'node', [INSTALLEUR, d15, '--seul=pre-push']);
+    sansLigneTrap(path.join(hooks15, 'pre-push'));
+    const avant15 = fs.readFileSync(path.join(hooks15, 'pre-push'), 'utf8');
+    const e15b = sh(racine, 'node', [INSTALLEUR, d15, '--essai', '--seul=pre-push']);
+    if (rienPose && (e15a.stdout.match(/\(essai\) POSE/g) || []).length === 3 && /ESSAI : rien n'a été écrit/.test(e15a.stdout)
+        && /\(essai\) REPOSE/.test(e15b.stdout || '') && fs.readFileSync(path.join(hooks15, 'pre-push'), 'utf8') === avant15)
+      oks.push('cas 15 — --essai annonce les 3 poses puis la repose d\'un hameçon périmé, et n\'écrit RIEN');
+    else kos.push('cas 15 — --essai : « ' + (e15a.stdout || '').trim().slice(0, 160) + ' » / « ' + (e15b.stdout || '').trim().slice(0, 120) + ' », rien posé : ' + rienPose);
+  }
+
+  // --- cas 16 : LE PRE-PUSH NE JUGE QUE CE QUE L'ENVOI AJOUTE (TF-1555) -----------------------
+  // Un passé déjà publié porteur (envoyé avec --no-verify, comme le passif d'un dépôt réel) ne
+  // refuse plus chaque envoi suivant ; un ajout porteur, même retiré de l'arbre, refuse toujours.
+  {
+    const d16 = depot(racine, 'avance', false);
+    git(d16, 'remote', 'add', 'origin', distantJetable(racine, 'avance-distant'));
+    sh(racine, 'node', [INSTALLEUR, d16, '--seul=pre-push']);
+    const ecrire = (nom, txt, msg) => { fs.writeFileSync(path.join(d16, nom), txt); git(d16, 'add', '-A'); git(d16, 'commit', '-q', '-m', msg); };
+    ecrire('ancien.md', 'Note pour Zorglub.\n', 'Note ancienne');
+    git(d16, 'rm', '-q', 'ancien.md'); git(d16, 'commit', '-q', '-m', 'Retrait de la note');
+    sh(d16, 'git', ['push', '--no-verify', 'origin', 'main'], ENV_JEU_ESSAI);
+    ecrire('suite.md', 'Suite pseudonymisee pour Client-A.\n', 'Suite propre');
+    const complet = sh(racine, 'node', [ORACLE_SOURCE, d16], ENV_JEU_ESSAI);
+    const p16v = sh(d16, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (complet.status === 1 && p16v.status === 0)
+      oks.push('cas 16 (TF-1555, sens vert) — passé publié porteur : la porte sans --revs rend FAIL, l\'envoi d\'un ajout propre PASSE (seul l\'ajout est jugé)');
+    else kos.push('cas 16 (TF-1555, sens vert) — porte complète exit ' + complet.status + ', push exit ' + p16v.status + ' : ' + (p16v.stderr || '').trim().slice(0, 300));
+    ecrire('fuite.md', 'Livraison Zorglub.\n', 'Ajout neutre');
+    git(d16, 'rm', '-q', 'fuite.md'); git(d16, 'commit', '-q', '-m', 'Retrait');
+    const p16r = sh(d16, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (p16r.status !== 0 && /C4/.test(p16r.stderr || ''))
+      oks.push('cas 16 (TF-1555, sens rouge) — un ajout porteur retiré de l\'arbre dans le même envoi est REFUSÉ sur C4 : l\'histoire ajoutée reste jugée');
+    else kos.push('cas 16 (TF-1555, sens rouge) — push exit ' + p16r.status + ' : ' + (p16r.stderr || '').trim().slice(0, 300));
+    const tete = (git(d16, 'rev-parse', 'HEAD').stdout || '').trim();
+    const inval = sh(racine, 'node', [ORACLE_SOURCE, d16, '--revs=' + tete + ',--output=x'], ENV_JEU_ESSAI);
+    const inconnu = sh(racine, 'node', [ORACLE_SOURCE, d16, '--revs=' + 'f'.repeat(40)], ENV_JEU_ESSAI);
+    if (inval.status === 2 && /jeton refusé/.test(inval.stdout || '') && inconnu.status === 2 && /ne lit pas cette plage/.test(inconnu.stdout || ''))
+      oks.push('cas 16 (TF-1555) — --revs : une option git glissée et une empreinte inconnue font SKIP (exit 2), jamais une histoire vide jugée PASS');
+    else kos.push('cas 16 (TF-1555) — --revs invalide exit ' + inval.status + ', inconnu exit ' + inconnu.status);
+  }
+
   // --- cas 10 : LE FRONTMATTER DES SKILLS TOUCHÉS, AVANT LE COMMIT (TF-1337) -----------
   // LE FAIT : `accueil-factory` est entré au dépôt le 22/09 avec une description de plus de 1 024
   // caractères — la recette de quality-oracles l'aurait refusé, rien ne la jouait avant

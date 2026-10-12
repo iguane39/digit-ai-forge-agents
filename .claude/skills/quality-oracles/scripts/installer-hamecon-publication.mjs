@@ -43,7 +43,8 @@
 // peut pas lever en connaissance de cause se fait arracher au lieu d'être discuté. Le contournement
 // est un geste EXPLICITE, pas un défaut.
 //
-// Usage : node installer-hamecon-publication.mjs <depot…> [--retirer] [--verifier]
+// Usage : node installer-hamecon-publication.mjs <depot…> [--retirer] [--verifier] [--essai]
+//         (--essai : le même parcours sans rien écrire, chaque geste préfixé « (essai) ») ;
 //         [--seul=pre-push|pre-commit|commit-msg] pour n'agir que sur l'un d'eux (le
 //         commit-msg de TF-1071 juge le seul message, à l'écriture) ;
 //         [--seul=pre-commit-skills] pose le pre-commit des dépôts qui portent des skills
@@ -70,6 +71,16 @@
 // avant une correction du gabarit (sans `trap '' PIPE`, par exemple) se disait POSÉ. La propriété
 // tient à l'identifiant ; la fraîcheur se juge au CONTENU : signé mais différent du gabarit courant
 // (section propre exceptée) → PÉRIMÉ, compté manquant, et un lancement ordinaire le repose.
+//
+// LA BORNE R-38 §4-5 EST DANS LE GABARIT (TF-1275, 12/10/2026). Le pilot la portait dans une section
+// écrite à la main, qu'aucun outil ne posait : un clone neuf ne l'avait pas, et une repose pouvait
+// l'effacer. Le gabarit du pre-push la porte désormais, gardée par la présence de
+// `scripts/verifier-avance-publication.mjs` : elle joue au pilot et ne fait rien ailleurs.
+//
+// LE PRE-PUSH NE JUGE QUE CE QUE L'ENVOI AJOUTE (TF-1555, 12/10/2026). Il lit sur son entrée les
+// références envoyées et passe à la porte `--revs=<empreintes locales>,^<empreintes distantes>,--not,
+// --remotes=<distant>` : l'histoire déjà publiée n'est plus rejugée à chaque envoi, l'arbre courant
+// l'est toujours en entier.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -77,6 +88,9 @@ const args = process.argv.slice(2);
 const depots = args.filter((a) => !a.startsWith('--'));
 const retirer = args.includes('--retirer');
 const verifier = args.includes('--verifier');
+// --essai : le même parcours, sans rien écrire ni retirer ; chaque geste se dit préfixé « (essai) ».
+const essai = args.includes('--essai');
+const E = essai ? '(essai) ' : '';
 const seul = (args.find((a) => a.startsWith('--seul=')) || '').split('=')[1] || null;
 
 const MARQUE = 'oracle-nom-client-publie';
@@ -147,8 +161,44 @@ fi
 ${DEBUT_PROLONGEMENT}
 ${FIN_PROLONGEMENT}
 
+# --- R-38 par. 4-5 : la BORNE du GO, portee par le gabarit (TF-1275, 12/10/2026) ----------------
+# Le pre-push du pilot portait cette section ecrite a la main, et une repose par l'installeur
+# l'effacait sans bruit. Elle ne joue que dans un depot qui porte scripts/verifier-avance-publication.mjs
+# (le pilot) ; ailleurs, elle ne fait rien. Avant la porte des noms de client, elle classe ce qui est
+# en avance sur l'origine : restitution et candidatures en \`candidat\` passent d'office ; tout
+# enregistrement portant une decision, une cloture, une regle ou un contenu de produit exige le GO
+# humain explicite, declare par FORGE_PUSH_GO="<motif>".
 DEPOT="$(git rev-parse --show-toplevel)"
-SORTIE="$(node "$ORACLE" "$DEPOT" 2>&1)"
+if [ -f "$DEPOT/scripts/verifier-avance-publication.mjs" ]; then
+  if [ -n "$FORGE_PUSH_GO" ]; then
+    node "$DEPOT/scripts/verifier-avance-publication.mjs" --go "$FORGE_PUSH_GO" >/dev/null 2>&1 || { echo "PUBLICATION REFUSEE - verifier-avance-publication : motif de GO invalide." >&2; exit 1; }
+  else
+    SORTIE_AVANCE="$(node "$DEPOT/scripts/verifier-avance-publication.mjs" 2>&1)" || {
+      echo "PUBLICATION REFUSEE - un enregistrement en avance exige le GO humain explicite (R-38 par. 4-5) :" >&2
+      printf '%s\\n' "$SORTIE_AVANCE" | node -e 'let t="";process.stdin.on("data",d=>t+=d).on("end",()=>{try{const o=JSON.parse(t);for(const e of (o.enregistrements||[]).filter(x=>x.classe==="explicite"))console.error("  - "+e.sha+" "+(e.sujet||"").slice(0,80)+" : "+(e.fichiers_hors_classe||[]).join(", "))}catch{console.error(t.slice(0,800))}})' >&2
+      echo "  Avec le GO humain en main : FORGE_PUSH_GO=\\"D-N (x) du JJ/MM\\" git push ..." >&2
+      exit 1
+    }
+  fi
+fi
+
+# --- L'histoire jugee : les seules revisions que l'envoi ajoute (TF-1555, 12/10/2026) -----------
+# git donne sur l'entree une ligne par reference envoyee : <ref locale> <empreinte locale>
+# <ref distante> <empreinte distante>. La porte rejugeait toute l'histoire a chaque envoi (9 min 11 s
+# au pilot le 27/09/2026) ; elle ne juge plus que les revisions absentes du distant, et l'arbre
+# courant entier. Sans aucune ligne lue, elle juge toute l'histoire, comme avant.
+REVS=""
+while read -r REF_LOCALE SHA_LOCAL REF_DISTANTE SHA_DISTANT; do
+  case "$SHA_LOCAL" in *[!0]*) REVS="$REVS,$SHA_LOCAL" ;; esac
+  case "$SHA_DISTANT" in *[!0]*) git cat-file -e "$SHA_DISTANT^{commit}" 2>/dev/null && REVS="$REVS,^$SHA_DISTANT" ;; esac
+done
+ARG_REVS=""
+if [ -n "$REVS" ]; then
+  ARG_REVS="--revs=\${REVS#,}"
+  git remote get-url "$1" >/dev/null 2>&1 && ARG_REVS="$ARG_REVS,--not,--remotes=$1"
+fi
+
+SORTIE="$(node "$ORACLE" "$DEPOT" \${ARG_REVS:+"$ARG_REVS"} 2>&1)"
 VERDICT="$(printf '%s' "$SORTIE" | sed -n 's/.*"verdict":"\\([A-Z]*\\)".*/\\1/p')"
 
 if [ "$VERDICT" = "PASS" ]; then
@@ -471,16 +521,20 @@ for (const d of depots) {
       const present = txtCible !== null && estNotre(txtCible, h);
       const ancien = txtCible !== null && estAncien(txtCible, h);
       const vieux = present && perime(txtCible, h);
-      console.log(`  ${vieux ? 'PERIME  ' : present ? 'POSE    ' : ancien && propres.length ? 'PROLONGE' : ancien ? 'A-MIGRER' : 'MANQUANT'} ${etiquette}`
+      // TF-1275 — un hameçon étranger (le pre-commit propre au pilot, par exemple) n'est pas un manque :
+      // il est compté non posé par ce contrôle, mais il se nomme ETRANGER, jamais MANQUANT.
+      const etranger = txtCible !== null && !present && !ancien;
+      console.log(`  ${vieux ? 'PERIME  ' : present ? 'POSE    ' : ancien && propres.length ? 'PROLONGE' : ancien ? 'A-MIGRER' : etranger ? 'ETRANGER' : 'MANQUANT'} ${etiquette}`
         + (vieux ? ' — signé, mais différent du gabarit courant (section propre exceptée) : relancer sans --verifier pour le reposer (TF-1360)'
           : ancien && propres.length ? ' — ' + ditPropres()
-          : ancien ? ' — porte la marque sans la signature (TF-0994) : --migrer' : ''));
+          : ancien ? ' — porte la marque sans la signature (TF-0994) : --migrer'
+          : etranger ? ` — un ${h.nom} qui n'est pas de ce gabarit est posé : l'installeur n'y touche pas (--seul pour ne pas le viser)` : ''));
       present && !vieux ? poses++ : absents++;
       continue;
     }
 
     if (retirer) {
-      if (reprendre) { fs.rmSync(cible); console.log(`  RETIRE   ${etiquette}`); retires++; }
+      if (reprendre) { if (!essai) fs.rmSync(cible); console.log(`  ${E}RETIRE   ${etiquette}`); retires++; }
       else console.log(`  RIEN     ${etiquette} — aucun hameçon signé de ce contrôle`);
       continue;
     }
@@ -508,16 +562,16 @@ for (const d of depots) {
         console.log(`  CONFLIT  ${etiquette} — porte une section « ${DEBUT_PROLONGEMENT} » que le gabarit de ce ${h.nom} `
           + `n'a pas : la reposer l'effacerait, rien touché (TF-1402)`); absents++; continue;
       }
-      fs.writeFileSync(cible, contenu, { mode: 0o755 });
-      console.log(`  ${migre ? 'MIGRE   ' : 'REPOSE  '} ${etiquette}`
+      if (!essai) fs.writeFileSync(cible, contenu, { mode: 0o755 });
+      console.log(`  ${E}${migre ? 'MIGRE   ' : 'REPOSE  '} ${etiquette}`
         + (nonVide(section) ? ` — section propre conservée (${section.length} ligne(s), TF-1402)` : '')); deja++; continue;
     }
-    fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
-    console.log(`  POSE     ${etiquette}`);
+    if (!essai) fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
+    console.log(`  ${E}POSE     ${etiquette}`);
     poses++;
   }
 }
 console.log(verifier ? `\n${poses} posé(s), ${absents} manquant(s)`
-  : retirer ? `\n${retires} retiré(s)`
-  : `\n${poses} posé(s), ${deja} reposé(s), ${absents} non traité(s)`);
+  : retirer ? `\n${E}${retires} retiré(s)` + (essai ? " — ESSAI : rien n'a été retiré" : '')
+  : `\n${E}${poses} posé(s), ${deja} reposé(s), ${absents} non traité(s)` + (essai ? " — ESSAI : rien n'a été écrit" : ''));
 process.exit(verifier && absents ? 1 : 0);
