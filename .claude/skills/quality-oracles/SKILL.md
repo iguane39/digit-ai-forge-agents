@@ -230,7 +230,8 @@ regardaient la forme ; personne ne regardait ce que le livrable **dit à son lec
 l'endroit où elle s'applique : un contrôle neuf est **mesuré sur les documents réels du dépôt
 avant d'être rendu bloquant** ; celui qui accuse à côté se publie **en avertissant, avec son taux
 et son seuil**. Un contrôle qui accuse un tiers du parc se fait désactiver dans la semaine, et il
-aurait eu raison (R-33 bis).
+aurait eu raison — c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec :
+« armer un gate que personne n'a exercé le ferait désarmer au premier faux positif ».
 
 ## Ce que la campagne du 03/09/2026 a ajouté (registre v2.16.0)
 

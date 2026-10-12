@@ -100,7 +100,9 @@ for (const [name, info] of Object.entries(man.skills)) {
 // AVERTISSEMENT, jamais bloquant, et le motif est réel : le manifeste décrit ce qui a été
 // LIVRÉ. Tout skill monté n'a pas vocation à l'être — un skill tiers, un skill d'une autre
 // forge, un essai local. Bloquer ici ferait échouer l'ouverture de session sur la présence
-// d'un skill étranger, c'est-à-dire un gate qu'on apprendrait à contourner (R-33 bis). Le
+// d'un skill étranger, c'est-à-dire un gate qu'on apprendrait à contourner (le motif que R-33 bis
+// donne pour ne pas armer d'office le verdict websec : « un gate qu'on apprend à contourner ne
+// protège plus rien »). Le
 // signaler suffit à ce qu'il cesse d'être invisible.
 if (fs.existsSync(root)) {
   const declares = new Set(Object.keys(man.skills));

@@ -119,16 +119,40 @@ check("ledger TF-1204 : `etape_close` sans `etape` ni `resume` → FAIL qui NOMM
   // Le fait mesuré le 13/09 reste possible via un AUTRE écrivain que cet `append` durci (un
   // autre outil, un ledger antérieur au correctif) : `verify` doit continuer à le voir, après
   // coup, sur un ledger qu'il n'a pas lui-même gardé — c'est le fait mesuré original, inchangé.
+  // TF-1401 : horodatée APRÈS la naissance de la règle (22/09/2026) — avant, elle est antérieure.
   const lfTiers = join(out, "ledger-cloture-rouge-tiers.jsonl");
   ecrireBrut(lfTiers, [
-    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", schema_ledger: "1.0" },
-    { seq: 2, ts: "2026-01-01T10:00:01Z", type: "etape_close" },
+    { seq: 1, ts: "2026-09-23T10:00:00Z", type: "run_open", schema_ledger: "1.0" },
+    { seq: 2, ts: "2026-09-23T10:00:01Z", type: "etape_close" },
   ]);
   let sortie = null;
   try { execFileSync("node", [ledger, "verify", lfTiers], { stdio: "pipe" }); }
   catch (e) { sortie = String(e.stderr || "") + String(e.stdout || ""); }
   if (sortie === null) throw new Error("une cloture d etape vide a ete acceptee — c est le fait mesure du 13/09");
   if (!sortie.includes("`etape`")) throw new Error("l echec ne NOMME pas le champ etape : " + sortie);
+  if (!sortie.includes("`resume`")) throw new Error("l echec ne NOMME pas le champ resume : " + sortie);
+});
+
+// TF-1401 (24/09, corrigé le 12/10) — la règle du 22/09 ne juge pas les clôtures écrites avant
+// elle : 2 ledgers réels du parc, en schéma 1.0, rendaient FAIL pour cette seule raison.
+check("ledger TF-1401 : `etape_close` sans `resume` ANTÉRIEURE au 22/09 → PASS, comptée [ANTÉRIEUR] ; la même le 22/09 → FAIL", () => {
+  const lfAvant = join(out, "ledger-cloture-anterieure.jsonl");
+  ecrireBrut(lfAvant, [
+    { seq: 1, ts: "2026-09-05T16:28:49Z", type: "run_open", schema_ledger: "1.0" },
+    { seq: 2, ts: "2026-09-21T23:59:59Z", type: "etape_close", etape: "conception" },
+  ]);
+  const v = run(ledger, ["verify", lfAvant]);
+  if (!v.includes("[PASS]")) throw new Error("une cloture antérieure à sa règle doit passer : " + v);
+  if (!v.includes("[ANTÉRIEUR]") || !v.includes("seq 2")) throw new Error("l antériorité doit se DIRE, avec le seq : " + v);
+  const lfApres = join(out, "ledger-cloture-posterieure.jsonl");
+  ecrireBrut(lfApres, [
+    { seq: 1, ts: "2026-09-05T16:28:49Z", type: "run_open", schema_ledger: "1.0" },
+    { seq: 2, ts: "2026-09-22T00:00:00Z", type: "etape_close", etape: "conception" },
+  ]);
+  let sortie = null;
+  try { execFileSync("node", [ledger, "verify", lfApres], { stdio: "pipe" }); }
+  catch (e) { sortie = String(e.stderr || "") + String(e.stdout || ""); }
+  if (sortie === null) throw new Error("une cloture sans resume datée du jour de la règle a été acceptée");
   if (!sortie.includes("`resume`")) throw new Error("l echec ne NOMME pas le champ resume : " + sortie);
 });
 
@@ -176,7 +200,9 @@ check("ledger TF-0385 : `oracles_verdict` sans `oracle` → FAIL qui NOMME le ch
 
 // LE SENS QUI COMPTE LE PLUS. Sans lui, ce contrôle mettrait en échec les trois ledgers du parc
 // dès son premier passage — et un contrôle qui met tout l'existant en échec se fait désactiver
-// (R-33 bis). L'antériorité se DÉCLARE, sur le modèle exact de R-32 bis du pilot.
+// (c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec : « armer un
+// gate que personne n'a exercé le ferait désarmer au premier faux positif »). L'antériorité se
+// DÉCLARE, sur le modèle exact de R-32 bis du pilot.
 check("ledger TF-0385 : un ledger SANS `schema_ledger` est DÉCLARÉ non vérifié, jamais mis en échec", () => {
   const lf = join(out, "ledger-anterieur.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "avant le schema" })]);

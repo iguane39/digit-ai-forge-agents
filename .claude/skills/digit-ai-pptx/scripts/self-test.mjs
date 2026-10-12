@@ -452,7 +452,23 @@ const PY_SANS_POLICE = [
   '        zo.writestr(info, data)',
 ].join('\n');
 
-function verifierChaine() {
+// TF-1535 — le deck vert, plus les deux parties de propriétés que PowerPoint écrit, à nom FICTIF.
+const PY_AVEC_METADONNEES = [
+  'import sys, zipfile',
+  'src, dst = sys.argv[1:3]',
+  'CORE = (\'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\\n<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" \'',
+  '        \'xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Jouet</dc:title><dc:creator>Prenom Fictif</dc:creator>\'',
+  '        \'<cp:lastModifiedBy>Prenom Fictif</cp:lastModifiedBy><cp:revision>3</cp:revision></cp:coreProperties>\')',
+  'APP = (\'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\\n<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">\'',
+  '       \'<Application>Microsoft Office PowerPoint</Application><Company>Societe Fictive</Company><Manager>Chef Fictif</Manager></Properties>\')',
+  'with zipfile.ZipFile(src) as zi, zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zo:',
+  '    for info in zi.infolist():',
+  '        zo.writestr(info, zi.read(info.filename))',
+  '    zo.writestr("docProps/core.xml", CORE)',
+  '    zo.writestr("docProps/app.xml", APP)',
+].join('\n');
+
+async function verifierChaine() {
   if (!fs.existsSync(EXPORTEUR)) return { joue: true, findings: ["scripts/exporter-pptx.mjs — absent : ni verrou, ni assainissement"] };
   const vert = path.join(FIX_POLICES, 'polices-embarquees-green.pptx');
   const rouge = path.join(FIX_POLICES, 'polices-embarquees-red.pptx');
@@ -524,6 +540,35 @@ function verifierChaine() {
       if (!d) findings.push(`C7 — deck sans police non dérivé : ${String(g.stderr || '').trim().slice(-200)}`);
       else if (d.code !== 0 || d.j?.etat !== 'aucune') findings.push(`C7 — deck sans police : exit ${d.code}, état ${d.j?.etat} au lieu de 0 et aucune`);
       else if (!fs.readFileSync(s4).equals(fs.readFileSync(sans))) findings.push("C7 — deck sans police : la sortie diffère de l'entrée");
+
+      // TF-1535 — MÉTADONNÉES PERSONNELLES : le deck vert, plus un docProps/core.xml et un app.xml
+      // portant un nom de compte FICTIF, comme PowerPoint les écrit. Sens rouge : le juge les voit
+      // sur l'entrée. Sens vert : l'export les vide, le juge rejoué n'en voit plus, et seules les
+      // deux parties docProps changent.
+      const scriptMeta = path.join(tmp, 'avec-meta.py');
+      const avecMeta = path.join(tmp, 'avec-meta.pptx');
+      fs.writeFileSync(scriptMeta, PY_AVEC_METADONNEES);
+      const gm = spawnSync(py[0], [...py.slice(1), '-B', scriptMeta, vert, avecMeta], { encoding: 'utf8', timeout: 60000 });
+      if (gm.status !== 0) findings.push(`C7 — deck à métadonnées non dérivé : ${String(gm.stderr || '').trim().slice(-200)}`);
+      else {
+        const { metadonneesPersonnelles } = await import(pathToFileURL(EXPORTEUR).href);
+        const avantM = metadonneesPersonnelles(avecMeta) || [];
+        if (avantM.length !== 4) findings.push(`fixture-rouge — C7 TF-1535 : le juge voit ${avantM.length} champ(s) personnel(s) sur l'entrée au lieu de 4`);
+        const s8 = path.join(tmp, 'avec-meta-livre.pptx');
+        const m = exporterCli([avecMeta, '--deja-exporte', '--pptx', s8, '--polices', sources]);
+        const apresM = fs.existsSync(s8) ? metadonneesPersonnelles(s8) : null;
+        const av = empreintesDuPaquet(avecMeta), ap = fs.existsSync(s8) ? empreintesDuPaquet(s8) : new Map();
+        const changees = [...av.keys()].filter((n) => av.get(n) !== ap.get(n));
+        if (m.code !== 0 || m.j?.metadonnees?.controle !== 'PASS' || (m.j?.metadonnees?.videes || []).length !== 4) {
+          findings.push(`C7 TF-1535 : deck à métadonnées, exit ${m.code}, contrôle ${m.j?.metadonnees?.controle}, ${(m.j?.metadonnees?.videes || []).length} champ(s) vidé(s) au lieu de 0, PASS et 4 (${m.j?.motif})`);
+        } else if (!apresM || apresM.length) findings.push(`C7 TF-1535 : le deck livré porte encore ${apresM ? apresM.length : '?'} champ(s) personnel(s)`);
+        else if (ap.size !== av.size || changees.some((n) => !n.startsWith('docProps/')) || changees.length !== 2) {
+          findings.push(`C7 TF-1535 : parties changées ${changees.join(', ') || 'aucune'} — seules docProps/core.xml et docProps/app.xml doivent changer`);
+        } else {
+          const r = spawnSync(py[0], [...py.slice(1), '-c', 'import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); sys.exit(0 if z.testzip() is None else 1)', s8], { encoding: 'utf8', timeout: 60000 });
+          if (r.status !== 0) findings.push(`C7 TF-1535 : le deck nettoyé n'est pas un zip intègre (zipfile.testzip) : ${String(r.stderr || '').trim().slice(-200)}`);
+        }
+      }
     }
     // ROUGE — sortie déjà présente : rien n'est écrasé
     const s5 = path.join(tmp, 'existe.pptx');
@@ -703,7 +748,7 @@ if (fs.existsSync(skillMdPath)) {
 const c5 = verifierDecision();
 if (c5.joue) findings.push(...c5.findings); else nonJuge.push(c5.motif);
 findings.push(...await verifierVerrou());
-const c7 = verifierChaine();
+const c7 = await verifierChaine();
 if (c7.joue) findings.push(...c7.findings); else nonJuge.push(c7.motif);
 // C8 — l'essai réel, sur demande seulement, et jamais quand PowerPoint tourne
 let c8 = { joue: false, motif: "C8 NON JOUÉE : l'essai réel par PowerPoint ne se joue que sur demande (--essai-powerpoint)" };

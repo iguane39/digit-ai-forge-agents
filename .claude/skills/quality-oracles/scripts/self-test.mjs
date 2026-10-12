@@ -296,6 +296,20 @@ if (reg) for (const o of reg.oracles) {
   } finally { fs.rmSync(tmpF, { recursive: true, force: true }); }
 }
 
+// (3c bis) TF-1406 (constat du 24/09/2026) — oracle-restitution était inscrit à la vue humaine
+// depuis le 15/08 et absent de ce registre machine : le lanceur ne le jouait jamais. Il y entre
+// par son périmètre déclaratif : une page qui porte data-restitution sur son <body> le déclenche
+// (sens rouge), une page qui ne le porte pas ne le déclenche pas (sens vert).
+if (reg) {
+  const restit = reg.oracles.find((o) => (o.cmd || []).some((s) => /oracle-restitution\.mjs$/.test(s)));
+  const declenche = (html) => !!restit && (restit.content_patterns || []).some((p) => new RegExp(p, 'im').test(html));
+  const avec = declenche('<!doctype html>\n<html lang="fr">\n<body data-restitution="rapport">\n</body></html>');
+  const sans = declenche('<!doctype html>\n<html lang="fr">\n<body class="page">\n<p>data-restitution</p></body></html>');
+  (restit && avec && !sans && !(restit.ext || []).length)
+    ? ok('TF-1406 : oracle-restitution est au registre machine, déclenché par une page qui déclare data-restitution, jamais par une autre')
+    : ko(`TF-1406 : oracle-restitution ${restit ? 'présent' : 'ABSENT du registre machine'} — page déclarée ${avec ? 'routée' : 'NON routée'}, page non déclarée ${sans ? 'ROUTÉE' : 'non routée'}, ext ${JSON.stringify(restit?.ext)}`);
+}
+
 // (3d) TF-1326 (23/09/2026) — LE LANCEUR RÉSOUT L'INTERPRÉTEUR PYTHON, et un interpréteur
 // introuvable rend un SKIP MOTIVÉ. Le registre écrit `python3` ; sous Windows ce nom peut être
 // l'alias du Microsoft Store, qui répond « Python est introuvable » : le domaine « Régression
@@ -464,7 +478,8 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
     // rejouer la commande avec le code d'origine pour écarter une régression.
     //
     // Un contrôle qui échoue selon la charge du poste est un contrôle qu'on apprend à ignorer —
-    // c'est nommément ce que R-33 bis existe pour empêcher. Deux corrections, aucune indulgence :
+    // c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec (« un gate
+    // qu'on apprend à contourner ne protège plus rien »). Deux corrections, aucune indulgence :
     //   1. l'indisponibilité se DÉCLARE au lieu d'échouer, sur le modèle des SKIP motivés
     //      d'oracle-sca : un outil externe absent ou trop lent n'est pas un défaut du code ;
     //   2. le message DISTINGUE les deux causes. Un délai dépassé et un JSON illisible ne se
@@ -1317,6 +1332,53 @@ else {
     else if (c5de(jc).length) ko('TF-0880 collee : la cle COLLEE a des lettres fait encore un constat C5 (' + c5de(jc).length + ') — un identifiant de code n est pas un nom de produit');
     else if (jc.verdict !== 'PASS') ko('TF-0880 collee : le depot au seul identifiant ne rend pas PASS (' + jc.verdict + ')');
     else ok('TF-0880 collee : la cle collee a des lettres (« MDX' + CLE + ' » pour « ' + CLE + ' ») ne fait plus AUCUN constat C5');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-1456 (28/09 et 01/10/2026) — LE POINT MÉDIAN SÉPARE, ET LES ACCENTS SE REPLIENT.
+// LE FAIT : un nom d'affichage de produit en deux parties séparées par un point médian, publié
+// dans 6 fichiers, et la forme ACCENTUÉE d'un nom de produit, publiée dans 13, ont traversé la
+// porte : les variantes ne connaissaient que l'espace, le tiret et le souligné, et rien ne
+// repliait les accents. Clés INVENTÉES, dépôts jetables. Trois sens rouges, un vert :
+//   (1) « Portail · Bidule » pour la clé « Portail Bidule » → FAIL C5 ;
+//   (2) « Pôrtail Bîdule » pour la même clé → FAIL C5 ;
+//   (3) « Chrônopode » pour la clé d'un seul mot « Chronopode » → FAIL C5 ;
+//   (4) VERT — « Portail · Bidulerie » : la frontière tient avec le point médian, aucun constat.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c5-median-'));
+  try {
+    const tProduits = path.join(tmp, 'produits.json');
+    const tClients = path.join(tmp, 'clients.json');
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { 'Portail Bidule': 'Produit-96', Chronopode: 'Produit-95' } }), 'utf8');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+    const batir = (nom, contenu) => {
+      const r = path.join(tmp, nom);
+      fs.mkdirSync(r);
+      fs.writeFileSync(path.join(r, 'notes.md'), contenu, 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q'); g('config', 'user.email', 'banc@local'); g('config', 'user.name', 'banc');
+      g('add', '-A'); g('commit', '-q', '-m', 'depot jetable du banc');
+      return r;
+    };
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const c5 = (repo) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits], { encoding: 'utf8', timeout: 180000, env: envNu });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* dit ci-dessous */ }
+      return j ? (j.findings || []).filter((f) => f.regle === 'C5' && f.sev === 'bloquant').length : null;
+    };
+    const cas = [
+      ['median', 'Le guide du Portail · Bidule est remis demain.\n', true],
+      ['accents', 'Le guide du Pôrtail Bîdule est remis demain.\n', true],
+      ['mot-accentue', 'Le module Chrônopode est remis demain.\n', true],
+      ['frontiere', 'Le guide du Portail · Bidulerie est remis demain.\n', false],
+    ].map(([nom, texte, attendu]) => [nom, c5(batir(nom, texte)), attendu]);
+    const faux = cas.filter(([, n, attendu]) => n === null || (n > 0) !== attendu);
+    if (faux.length) ko('TF-1456 : ' + faux.map(([nom, n, attendu]) => `${nom} → ${n === null ? 'sortie illisible' : n + ' constat(s) C5'} (attendu ${attendu ? 'au moins 1' : '0'})`).join(' ; '));
+    else ok('TF-1456 : point médian et accents repliés — « Portail · Bidule », « Pôrtail Bîdule » et « Chrônopode » font FAIL C5, « Portail · Bidulerie » n en fait aucun');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 

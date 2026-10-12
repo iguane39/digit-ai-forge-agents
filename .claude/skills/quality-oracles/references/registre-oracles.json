@@ -927,6 +927,30 @@
    ]
   },
   {
+   "domaine": "Restitution lisible : la page se conçoit pour ses lecteurs",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{forges}/digit-ai-forge-design/oracles/oracle-restitution.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RL-1 vue d'ensemble (verdict, ≥ 3 KPI, navigation de vues), RL-3 KPI complets (valeur, définition, repère), RL-4 question des graphiques, RL-9 chemins de lecteurs, RL-10 manifeste d'écarts — en tête d oracle-restitution.mjs, référentiel {forges}/digit-ai-forge-design/REFERENTIEL-RESTITUTION.md",
+   "statut": "ok",
+   "non_juge": [
+    "RL-2 une question par vue (socle check_html L7)",
+    "RL-5 exploitabilité des tableaux (composant filtres-tableau G1-G6)",
+    "RL-6 effet des interactions : exige un rendu",
+    "RL-7 texte ancré : revue D8 de critique-le-design",
+    "RL-8 iso-contenu source→cible : contrôle de campagne"
+   ],
+   "content_patterns": [
+    "<body[^>]*\\sdata-restitution\\s*="
+   ],
+   "note": "TF-1406 (constat du 24/09/2026, indexé le 12/10/2026) — inscrit à registre-oracles.md depuis le 15/08 (TF-0235) mais absent de ce registre machine : le lanceur ne le jouait jamais. Périmètre déclaratif : seule une page qui porte data-restitution sur son <body> le déclenche (content_patterns, sans ext — une ext .html le ferait jouer, et rendre SKIP, sur toutes les pages). Les autres oracles de produit inscrits à la vue humaine (ex. oracle-da-pptx) vivent chez leur produit et n'entrent pas au lanceur général."
+  },
+  {
    "domaine": "Filtres de colonne sur tableaux de donnees",
    "ext": [
     ".html",
@@ -1134,7 +1158,7 @@
     "résolution colonne→colonne multi-saut (T6 vérifie que la référence directe existe, pas la chaîne complète)",
     "ingestion dans un catalogue (OpenMetadata ou autre) — instanciation, pas discipline",
     "T7 : la JUSTESSE du `namespace` déclaré. L'oracle constate qu'il est présent et qu'il ne se réduit pas à un nom de technologie ; il ne peut pas savoir si `databricks://adb-1234…` est bien l'instance qui a répondu. Un namespace faux mais bien formé passe — et c'est déjà infiniment mieux qu'un namespace absent, qui rend deux archives INDISCERNABLES au lieu de fausses",
-    "T7 : un lineage écrit aujourd'hui avec un `horodatage` antérieur au 2026-08-24 échappe au jugement. La borne d'antériorité est déclarée, donc contournable ; elle est préférée à la mise en échec rétroactive de tout lineage existant (R-33 bis : une règle bruyante se fait contourner au lieu de se corriger)",
+    "T7 : un lineage écrit aujourd'hui avec un `horodatage` antérieur au 2026-08-24 échappe au jugement. La borne d'antériorité est déclarée, donc contournable ; elle est préférée à la mise en échec rétroactive de tout lineage existant — c'est le motif que R-33 bis donne pour ne pas armer d'office le verdict websec : « armer un gate que personne n'a exercé le ferait désarmer au premier faux positif »",
     "T8 : la pertinence métier d'un motif d'`entier: true` — l'oracle exige le motif écrit, il ne l'arbitre pas (même limite que CV4 de `oracles/oracle-couvrir.mjs` sur une exclusion motivée)",
     "T8 : une cible dont le nom de table ne correspond à aucun dataset des `entrees`/`sorties` — T8 juge la structure du référentiel de cibles, pas son rattachement au lineage porté par le même document"
    ]

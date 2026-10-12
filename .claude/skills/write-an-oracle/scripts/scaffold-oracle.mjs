@@ -3,7 +3,7 @@
 // Produit en une commande : le squelette CLI (contrat JSON, exit 0/1/2, non_juge obligatoire),
 // la PAIRE DE FIXTURES rouge/verte (le squelette échoue d'office sur le marqueur DEFAUT —
 // remplacer par les vrais contrôles sans jamais casser la porte fixtures), l'entrée de
-// REGISTRE et l'entrée de MANIFEST. Sauvegardes .bak des fichiers modifiés.
+// REGISTRE et l'entrée de MANIFEST. Sauvegardes .bak le temps des écritures, retirées ensuite.
 //   node scaffold-oracle.mjs --nom X --domaine "…" --ext ".a,.b" [--skilldir <quality-oracles>]
 //
 // LE REGISTRE NE S'ÉCRIT QUE DANS SA SOURCE VERSIONNÉE (TF-1006, 16/09/2026).
@@ -100,9 +100,10 @@ const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
 const DOM = ${JSON.stringify(domaine)};
 const NJ = ['TODO : déclarer explicitement ce que cet oracle ne juge pas'];
-const out = (verdict, findings, nj, code) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-${nom}', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
-if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
-if (!${JSON.stringify(extList)}.includes(path.extname(file).toLowerCase())) out('SKIP', [], ['extension non gérée'], 2);
+// Contrat commun (TF-1447) : tout SKIP porte \`motif\`, la raison pour laquelle rien n'est jugé.
+const out = (verdict, findings, nj, code, motif) => { process.stdout.write(JSON.stringify({ oracle: 'oracle-${nom}', domaine: DOM, artefact: file || null, verdict, ...(verdict === 'SKIP' ? { motif } : {}), findings, non_juge: nj })); process.exit(code); };
+if (!file || !fs.existsSync(file)) out('SKIP', [], NJ, 2, 'fichier absent : ' + (file || '(aucun argument)'));
+if (!${JSON.stringify(extList)}.includes(path.extname(file).toLowerCase())) out('SKIP', [], NJ, 2, 'extension non gérée : ' + path.extname(file) + ' (attendu ${extList.join(', ')})');
 const text = fs.readFileSync(file, 'utf8');
 const findings = [];
 // --- CONTRÔLE-MARQUEUR (à remplacer) : présence du mot DEFAUT = échec localisant ---
@@ -116,17 +117,29 @@ const fxDir = path.join(SKILLDIR, 'fixtures');
 fs.writeFileSync(path.join(fxDir, `${nom}-red${extList[0]}`), 'exemple avec DEFAUT volontaire — remplacer par un vrai cas rouge du domaine\n', 'utf8');
 fs.writeFileSync(path.join(fxDir, `${nom}-green${extList[0]}`), 'exemple conforme — remplacer par un vrai cas vert du domaine\n', 'utf8');
 
-// 3) registre (sauvegarde .bak, ajout entrée — registre lu et validé AVANT les écritures)
-fs.copyFileSync(regPath, regPath + '.bak');
-reg.oracles.push({ domaine, ext: extList, type: 'cli', cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{file}'], checklist: 'TODO : checklist canonique du domaine (squelette scaffold)', statut: 'partiel', non_juge: ['TODO'] });
-fs.writeFileSync(regPath, rendreJson(reg, regForme), 'utf8');
+// 3) registre et 4) manifest — registre lu et validé AVANT les écritures. Les sauvegardes .bak ne
+// servent qu'à RESTAURER si une écriture échoue ; elles sont retirées ensuite, jamais laissées
+// dans le dépôt visé (TF-1537 : deux .bak trouvés dans la cible après chaque remontée).
+const sauvegardes = [];
+const sauvegarder = (p) => { fs.copyFileSync(p, p + '.bak'); sauvegardes.push(p); };
+try {
+  sauvegarder(regPath);
+  reg.oracles.push({ domaine, ext: extList, type: 'cli', cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{file}'], checklist: 'TODO : checklist canonique du domaine (squelette scaffold)', statut: 'partiel', non_juge: ['TODO'] });
+  fs.writeFileSync(regPath, rendreJson(reg, regForme), 'utf8');
 
-// 4) manifest fixtures (sauvegarde .bak)
-fs.copyFileSync(manPath, manPath + '.bak');
-const manBrut = fs.readFileSync(manPath, 'utf8');
-const man = JSON.parse(manBrut);
-man.fixtures.push({ nom, cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{fixture}'], red: `${nom}-red${extList[0]}`, green: `${nom}-green${extList[0]}`, attendu_red: ['FAIL'], attendu_green: ['PASS'] });
-fs.writeFileSync(manPath, rendreJson(man, formeDe(manBrut)), 'utf8');
+  sauvegarder(manPath);
+  const manBrut = fs.readFileSync(manPath, 'utf8');
+  const man = JSON.parse(manBrut);
+  man.fixtures.push({ nom, cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{fixture}'], red: `${nom}-red${extList[0]}`, green: `${nom}-green${extList[0]}`, attendu_red: ['FAIL'], attendu_green: ['PASS'] });
+  fs.writeFileSync(manPath, rendreJson(man, formeDe(manBrut)), 'utf8');
+} catch (e) {
+  for (const p of sauvegardes) fs.copyFileSync(p + '.bak', p);
+  console.error('échec d écriture du registre ou du manifest, fichiers restaurés : ' + e.message);
+  process.exitCode = 1;
+} finally {
+  for (const p of sauvegardes) fs.rmSync(p + '.bak', { force: true });
+}
+if (process.exitCode) process.exit(process.exitCode);
 
 console.log(`✅ oracle-${nom} scaffoldé :
   - ${path.relative(process.cwd(), oraclePath)}

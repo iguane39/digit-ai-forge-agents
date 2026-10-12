@@ -201,12 +201,23 @@ function resoudreProduits(artefact) {
  *  deux est pire qu'un contrôle absent. */
 function variantesProduit(nom) {
   if (typeof nom !== 'string' || nom.includes('.')) return null;
-  const mots = nom.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .split(/[\s\-_]+/).filter(Boolean);
+  // TF-1456 (28/09/2026, décision D-51 (a) du 02/10) : le POINT MÉDIAN sépare aussi deux mots —
+  // un nom d'affichage en deux parties « A · B » traversait la porte, publié dans 6 fichiers.
+  const mots = replier(nom).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .split(/[\s\-_·]+/).filter(Boolean);
   if (mots.length < 2 || mots.join('').length < 8) return null;
-  const corps = mots.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s\\-_]*');
+  const corps = mots.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s\\-_\\u00B7]*');
   return new RegExp(`(?<![A-Za-z0-9])${corps}(?![A-Za-z0-9])`, 'i');
 }
+
+/** TF-1456 (01/10/2026) — LES ACCENTS SE REPLIENT avant la recherche, des deux côtés : la clé et
+ *  le texte. Mesuré : la forme ACCENTUÉE d'un nom de produit, publiée dans 13 fichiers depuis le
+ *  21/08, passait la porte, parce que ni la graphie littérale ni les variantes ne repliaient les
+ *  accents. Le repli (décomposition canonique, marques retirées) garde la casse et la longueur
+ *  en caractères d'une lettre précomposée : les lignes et les bornes restent à leur place. */
+const replier = (s) => String(s).normalize('NFD').replace(/\p{M}+/gu, '').normalize('NFC');
+let dernierTexte = null, dernierReplie = null;
+const replierTexte = (s) => (s === dernierTexte ? dernierReplie : (dernierTexte = s, dernierReplie = replier(s)));
 
 // Une clé de table qui est un CHEMIN de disque n'est pas un nom de produit — même écart que
 // `scripts/generer-remplacements-historique.mjs` du pilot, qui les saute pour la même raison.
@@ -392,8 +403,9 @@ function termesProduits(table) {
                     bornees: formes.map(litteralProduit), depuis: borneDe(depuis, cle) });
       continue;
     }
-    termes.push({ cle, formes: null, litt: litteralProduit(cle), re: variantesProduit(cle),
-                  pseudo: pseudoDe(produits[cle]), depuis: borneDe(depuis, cle) });
+    const litt = litteralProduit(cle);
+    termes.push({ cle, formes: null, litt, littReplie: replier(cle) === cle ? litt : litteralProduit(replier(cle)),
+                  re: variantesProduit(cle), pseudo: pseudoDe(produits[cle]), depuis: borneDe(depuis, cle) });
   }
   return { termes, ignorees };
 }
@@ -402,7 +414,11 @@ function termesProduits(table) {
  *  variantes de graphie. Seule la frontière a changé le 07/09 — la forme d'un constat, non. */
 function porteProduit(hay, p) {
   if (p.bornees) return p.bornees.some(re => re.test(hay));
-  return p.litt.test(hay) || (p.re ? p.re.test(hay) : false);
+  if (p.litt.test(hay) || (p.re ? p.re.test(hay) : false)) return true;
+  // TF-1456 : la même recherche sur le texte aux accents repliés, contre la clé repliée.
+  const r = replierTexte(hay);
+  return r !== hay || p.littReplie !== p.litt
+    ? p.littReplie.test(r) || (p.re ? p.re.test(r) : false) : false;
 }
 
 // ---------------------------------------------------------------------------
