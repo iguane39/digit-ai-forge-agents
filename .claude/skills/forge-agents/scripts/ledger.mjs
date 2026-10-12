@@ -261,6 +261,15 @@ const CHAMPS_DUS_1_0 = {
   ],
 };
 
+//: TF-1401 (constat du 24/09/2026, corrigé le 12/10/2026) — UNE RÈGLE NE JUGE PAS CE QUI LUI
+//: EST ANTÉRIEUR. Les champs dus de `etape_close` sont nés le 22/09/2026 (6af56b8) DANS la table
+//: `1.0` : sans borne, ils jugeaient les clôtures écrites avant eux, et un journal `1.0` ouvert
+//: plus tôt ne pouvait plus tenir « ledger vérifié » sans réécrire son histoire. Mesuré le 12/10
+//: sur les 7 ledgers du parc : 2 rendaient FAIL pour cette seule raison (10 et 2 clôtures, du
+//: 05/09 au 11/09). Une entrée d'un type listé ici, horodatée AVANT la naissance de sa règle,
+//: n'est pas jugée sur sa forme : elle se COMPTE à voix haute (`[ANTÉRIEUR]`), jamais en silence.
+const NAISSANCE_CHAMPS_DUS = { etape_close: "2026-09-22T00:00:00Z" };
+
 //: TF-1366/D-18 (a), decision humaine du 26/09/2026 — sous 1.1, `run_open` doit porter
 //: `forges_mobilisees`. C'est la forme que lit `oracle-enclenchement.mjs` du pilot
 //: (`forgesMobilisees`/`forgeCanonique`) : nom complet (`digit-ai-forge-design`) ou court
@@ -663,6 +672,7 @@ if (cmd === "append") {
   const rapportSansContenu = () => `${sansContenu.length} entrée(s) sans contenu (rien d'autre ` +
     `que seq/ts/type) — ${sansContenu.map((x) => `ligne ${x.ligne} (seq ${x.seq})`).join(", ")}`;
 
+  const anterieurs = [];
   if (!champsDusVersion) {
     if (contraintsSousCourant.length) {
       console.log(
@@ -680,6 +690,8 @@ if (cmd === "append") {
   } else {
     const ecartsForme = [];
     for (const { ligne, e } of contraints) {
+      const naissance = NAISSANCE_CHAMPS_DUS[e.type];
+      if (naissance && instant(e.ts) < instant(naissance)) { anterieurs.push({ ligne, e }); continue; }
       for (const [champ, pourquoi, valider] of champsDusVersion[e.type]) {
         const valeur = e[champ];
         const estVide = valeur === undefined || valeur === null || String(valeur).trim() === "";
@@ -697,6 +709,11 @@ if (cmd === "append") {
     if (sansContenuBloquant) ecartsForme.push(`${rapportSansContenu()} — schéma 1.1 : une entrée ` +
       `sans contenu reste pour toujours dans un journal en ajout seul, et se lit ensuite comme une preuve (TF-1366)`);
     else if (sansContenu.length) console.log(`[SANS CONTENU] ${rapportSansContenu()}`);
+    if (anterieurs.length) {
+      console.log(`[ANTÉRIEUR] forme du payload — ${anterieurs.length} entrée(s) écrite(s) avant ` +
+        `la naissance de leur règle, non jugée(s) sur leur forme (TF-1401) : ${anterieurs.map(({ ligne, e }) =>
+          `ligne ${ligne} (${e.type}, seq ${e.seq}, règle du ${NAISSANCE_CHAMPS_DUS[e.type].slice(0, 10)})`).join(", ")}`);
+    }
     if (ecartsForme.length) {
       fail(`forme du payload (schéma ${schemaDeclare}) — ${ecartsForme.length} écart(s) :` +
         ecartsForme.map((x) => `\n         ${x}`).join(""));
@@ -704,7 +721,7 @@ if (cmd === "append") {
   }
 
   const forme = champsDusVersion
-    ? `forme vérifiée sur ${contraints.length} entrée(s) contrainte(s) (schéma ${schemaDeclare})`
+    ? `forme vérifiée sur ${contraints.length - anterieurs.length} entrée(s) contrainte(s) (schéma ${schemaDeclare})${anterieurs.length ? `, ${anterieurs.length} antérieure(s) à leur règle` : ""}`
     : schemaDeclare
       ? `forme NON vérifiée (schéma ${schemaDeclare} inconnu de ce vérificateur)`
       : "forme NON vérifiée (ledger antérieur au schéma)";
