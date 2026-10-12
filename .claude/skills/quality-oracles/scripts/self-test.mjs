@@ -821,6 +821,29 @@ else {
   else ok('TF-1480 : oracle-parite-assets sur une cible absente rend SKIP (exit 2) avec un motif qui la nomme, et juge toujours une cible présente (' + jp.verdict + ')');
 }
 
+// TF-1481 (28/09/2026) — LE JUGE TROUVE SA RUBRIQUE SOUS WINDOWS. Le dossier du skill se dérivait
+// de `new URL(import.meta.url).pathname` (« /C:/… »), que `path.resolve` préfixait d'une seconde
+// lettre de lecteur (« C:\C:\… ») : la rubrique n'était jamais trouvée, SKIP permanent. Sans appeler
+// de modèle : (A) un PATH vide arrête le juge à « CLI claude absent », donc APRÈS le contrôle de la
+// rubrique, qui a réussi ; (B) un profil dont la rubrique manque rend un SKIP qui nomme un chemin
+// SANS lettre de lecteur répétée (sens rouge : l'ancien motif contenait « C:\C:\ »).
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1481-'));
+  try {
+    const doc = path.join(tmp, 'doc.md'); fs.writeFileSync(doc, 'Un texte.\n');
+    const lire = (extra, env) => { const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-judge.mjs'), doc, ...extra], { encoding: 'utf8', timeout: 60000, env }); try { return JSON.parse((r.stdout || '').trim()); } catch { return null; } };
+    const a = lire([], { ...process.env, PATH: '', Path: '' });
+    const profil = path.join(tmp, 'profil.json'); fs.writeFileSync(profil, JSON.stringify({ juge: { rubrique: 'references/rubrique-absente.md' } }));
+    const b = lire(['--profil', profil], { ...process.env, PATH: '', Path: '' });
+    const doublee = (s) => /[A-Za-z]:[\\/]+[A-Za-z]:/.test(s || '');
+    if (!a || !b) ko('TF-1481 : sortie du juge illisible');
+    else if (/rubrique introuvable/.test(a.motif || '')) ko('TF-1481 : la rubrique du skill n est pas trouvée — ' + a.motif);
+    else if (!/CLI claude absent/.test(a.motif || '')) ko('TF-1481 : le juge ne va pas jusqu au contrôle de la CLI — motif « ' + (a.motif || '') + ' »');
+    else if (!/rubrique introuvable/.test(b.motif || '') || doublee(b.motif)) ko('TF-1481 : le motif de rubrique absente est faux ou porte une lettre de lecteur répétée — « ' + (b.motif || '') + ' »');
+    else ok('TF-1481 : oracle-judge trouve sa rubrique sous Windows (il atteint le contrôle de la CLI), et une rubrique absente est nommée par un chemin à lettre de lecteur unique');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables
