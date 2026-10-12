@@ -844,6 +844,31 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1482 (28/09/2026) — T3 RECONNAÎT « CETTE PAGE EST EN LECTURE SEULE ». La formule exigeait
+// « page en lecture seule » collé : un verbe d'état entre le sujet et la mention faisait refuser une
+// page qui se déclare bel et bien. Double sens : les trois formulations avec verbe d'état sont
+// acceptées (T3 info), la négation « n'est pas en lecture seule » reste REFUSÉE (T3 bloquant) — la
+// formule élargie ne devient pas permissive.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1482-'));
+  try {
+    const t3 = (phrase) => {
+      const f = path.join(tmp, 'p.html');
+      fs.writeFileSync(f, '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Tableau</title></head><body>'
+        + '<h1>Tableau</h1><table><tr><th>Marché</th><th>Écart</th></tr><tr><td>Nord</td><td>2</td></tr></table>'
+        + '<p>Écart : la différence entre la cible et le relevé.</p><p>Marché : la zone suivie.</p><p>' + phrase + '</p></body></html>', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-lecture-tiers.mjs'), f], { encoding: 'utf8', timeout: 60000 });
+      try { const x = (JSON.parse((r.stdout || '').trim()).findings || []).find((g) => g.regle === 'T3'); return x ? x.sev : null; } catch { return null; }
+    };
+    const acceptees = ['Cette page est en lecture seule.', 'Cette vue reste volontairement en lecture seule.', 'Ce tableau demeure en lecture seule.', 'Page en lecture seule.']
+      .filter((p) => t3(p) !== 'info');
+    const refusees = ['Cette page n\'est pas en lecture seule.', 'Aucune mention ici.'].filter((p) => t3(p) !== 'bloquant');
+    if (acceptees.length) ko('TF-1482 : formulation(s) correcte(s) refusée(s) par T3 — ' + acceptees.join(' · '));
+    else if (refusees.length) ko('TF-1482 : T3 accepte à tort — ' + refusees.join(' · '));
+    else ok('TF-1482 : T3 accepte « est / reste / demeure (volontairement) en lecture seule » et refuse toujours « n\'est pas en lecture seule » et l\'absence de mention');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables
