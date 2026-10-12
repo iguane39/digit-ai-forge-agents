@@ -78,11 +78,15 @@ const git = (cwd, ...a) => sh(cwd, 'git', a);
 /** Dépose une COPIE DE LA SOURCE de l'oracle à l'emplacement de repli du hameçon, sous une racine
  *  jetable : `<racine>/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/`. C'est ce
  *  qui fait juger au banc le code qu'on vient d'écrire, et non celui qui est monté sur le poste.
- *  L'oracle n'importe que des modules du cœur de Node : un seul fichier suffit. */
+ *  Depuis TF-1447 (28/09/2026) l'oracle importe aussi `lib/contrat.mjs` : sans lui, la copie ne
+ *  se chargeait plus, le hameçon lisait un verdict ILLISIBLE, et 10 cas du banc étaient rouges
+ *  (mesuré le 12/10/2026 sur la source d'avant cette ligne). Le lecteur de contrat ne dépend que
+ *  du cœur de Node : ces deux fichiers suffisent. */
 function poserOracleSource(racine) {
   const d = path.join(racine, 'digit-ai-forge-agents', '.claude', 'skills', 'quality-oracles', 'scripts');
-  fs.mkdirSync(d, { recursive: true });
+  fs.mkdirSync(path.join(d, 'lib'), { recursive: true });
   fs.copyFileSync(ORACLE_SOURCE, path.join(d, 'oracle-nom-client-publie.mjs'));
+  fs.copyFileSync(path.join(ICI, 'lib', 'contrat.mjs'), path.join(d, 'lib', 'contrat.mjs'));
   return d;
 }
 
@@ -353,6 +357,96 @@ try {
     .filter(([, c]) => c !== "trap '' PIPE");
   if (!sansTrapEnTete.length) oks.push('cas 9 — les TROIS hameçons posés (pre-push, pre-commit, commit-msg) ont trap \'\' PIPE pour première commande');
   else kos.push('cas 9 — hameçon(s) posé(s) dont la première commande n\'est pas trap \'\' PIPE : ' + sansTrapEnTete.map(([h, c]) => h + ' → « ' + c.slice(0, 60) + ' »').join(' ; '));
+
+  // --- cas 11 : AU REFUS, LES COMPTES PUIS LES SEULS BLOQUANTS (TF-1554) ----------------
+  // LE FAIT, 27/09/2026 au pilot : 4 constats bloquants suivis de 36 antériorités non bloquantes
+  // dans les 40 lignes imprimées, sans compte. Une porte jouet, déposée là où le hameçon cherche
+  // d'abord (la copie installée sous HOME), rend exactement cette sortie ; le refus doit dire les
+  // deux comptes, imprimer les 4 bloquants et taire les 36 antériorités en les comptant.
+  {
+    const maison = fs.mkdtempSync(path.join(os.tmpdir(), 'hamecon-comptes-'));
+    try {
+      const dPorte = path.join(maison, '.claude', 'skills', 'quality-oracles', 'scripts');
+      fs.mkdirSync(dPorte, { recursive: true });
+      const findings = [
+        ...Array.from({ length: 4 }, (_, i) => ({ sev: 'bloquant', regle: 'C5', where: 'BLOQ-' + i, msg: 'nom de produit' })),
+        ...Array.from({ length: 36 }, (_, i) => ({ sev: 'anteriorite', regle: 'C5', where: 'ANTER-' + i, msg: 'nom de produit — ANTÉRIORITÉ' })),
+      ];
+      fs.writeFileSync(path.join(dPorte, 'oracle-nom-client-publie.mjs'), 'process.stdout.write(' + JSON.stringify(JSON.stringify({
+        oracle: 'oracle-nom-client-publie', verdict: 'FAIL', findings,
+        comptes: { bloquants: { total: 4, rendus: 4 }, anteriorites: { total: 36, rendus: 36 } },
+        non_juge: ['limite generique de la porte'],
+      })) + '); process.exit(1);\n');
+      const d11 = depot(maison, 'comptes', false);
+      git(d11, 'remote', 'add', 'origin', distantJetable(maison, 'comptes-distant'));
+      sh(maison, 'node', [INSTALLEUR, d11, '--seul=pre-push']);
+      const p11 = sh(d11, 'git', ['push', 'origin', 'main'], { HOME: maison, USERPROFILE: maison, FORGE_ROOT: maison });
+      const e11 = p11.stderr || '';
+      const nB = (e11.match(/BLOQ-\d/g) || []).length, nA = (e11.match(/ANTER-\d/g) || []).length;
+      if (p11.status !== 0 && /4 constat\(s\) BLOQUANT\(S\)/.test(e11) && /36 anteriorite\(s\) tue\(s\)/.test(e11) && nB === 4 && nA === 0
+          && e11.indexOf('BLOQUANT(S)') < e11.indexOf('BLOQ-0'))
+        oks.push('cas 11 (TF-1554) — refus à 4 bloquants et 36 antériorités : les deux comptes en tête, les 4 bloquants imprimés, les 36 antériorités tues et comptées');
+      else kos.push(`cas 11 (TF-1554) — sortie du refus : exit ${p11.status}, ${nB} bloquant(s) et ${nA} antériorité(s) imprimés : ` + e11.trim().slice(0, 300));
+    } finally { try { fs.rmSync(maison, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
+  }
+
+  // --- cas 12 : UN PRE-PUSH QUI PROLONGE LE GABARIT N'EST JAMAIS ÉCRASÉ (TF-1402) --------------
+  // LE FAIT, 24/09/2026 : le pre-push du pilot, le gabarit plus sa borne R-38 §4-5, sans signature,
+  // était dit A-MIGRER, et --migrer l'aurait remplacé par le gabarit. Sens rouge : le même hameçon
+  // jouet (gabarit sans signature ni marqueurs, plus deux lignes propres) est dit PROLONGE et
+  // --migrer n'y touche pas. Sens vert : ses lignes entre les marqueurs et la signature ajoutée —
+  // le geste que le refus prescrit —, l'installeur le repose en CONSERVANT la section, qui joue.
+  {
+    const d12 = depot(racine, 'prolonge', false);
+    git(d12, 'remote', 'add', 'origin', distantJetable(racine, 'prolonge-distant'));
+    sh(racine, 'node', [INSTALLEUR, d12, '--seul=pre-push']);
+    const h12 = path.join(d12, '.git', 'hooks', 'pre-push');
+    const gabarit = fs.readFileSync(h12, 'utf8');
+    const PROPRES = ['echo "BORNE PROPRE DU DEPOT : envoi refuse sans GO" >&2', 'exit 1'];
+    const L = gabarit.split('\n');
+    const iD = L.indexOf('# >>> prolongement local >>>');
+    const iF = L.indexOf('# <<< prolongement local <<<');
+    const ancien = [...L.slice(0, iD), ...PROPRES, ...L.slice(iF + 1)].filter((l) => !l.startsWith('# hamecon-parc:')).join('\n');
+    fs.writeFileSync(h12, ancien, { mode: 0o755 });
+    const v12 = sh(racine, 'node', [INSTALLEUR, d12, '--seul=pre-push', '--verifier']);
+    const m12 = sh(racine, 'node', [INSTALLEUR, d12, '--seul=pre-push', '--migrer']);
+    if (iD >= 0 && iF > iD && /PROLONGE/.test(v12.stdout || '') && /CONFLIT/.test(m12.stdout || '') && /PROLONGÉ/.test(m12.stdout || '')
+        && fs.readFileSync(h12, 'utf8') === ancien)
+      oks.push('cas 12 (TF-1402, sens rouge) — un pre-push non signé qui porte deux lignes propres est dit PROLONGE, et --migrer le laisse intact');
+    else kos.push('cas 12 (TF-1402, sens rouge) — marqueurs ' + iD + '/' + iF + ', vérifier « ' + (v12.stdout || '').trim().slice(0, 160) + ' », migrer « ' + (m12.stdout || '').trim().slice(0, 160) + ' »');
+    const delimite = [...L.slice(0, iD + 1), ...PROPRES, ...L.slice(iF)].join('\n');
+    fs.writeFileSync(h12, delimite, { mode: 0o755 });
+    const r12 = sh(racine, 'node', [INSTALLEUR, d12, '--seul=pre-push']);
+    const apres12 = fs.readFileSync(h12, 'utf8');
+    const v12b = sh(racine, 'node', [INSTALLEUR, d12, '--seul=pre-push', '--verifier']);
+    const p12 = sh(d12, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (/REPOSE/.test(r12.stdout || '') && /section propre conservée/.test(r12.stdout || '') && apres12 === delimite
+        && /POSE /.test(v12b.stdout || '') && p12.status !== 0 && /BORNE PROPRE DU DEPOT/.test(p12.stderr || ''))
+      oks.push('cas 12 (TF-1402, sens vert) — section entre les marqueurs et signature ajoutée : reposé, section conservée, dit POSE, et la section JOUE (envoi d\'un dépôt propre refusé par elle)');
+    else kos.push('cas 12 (TF-1402, sens vert) — reposer « ' + (r12.stdout || '').trim().slice(0, 160) + ' », vérifier « ' + (v12b.stdout || '').trim().slice(0, 120) + ' », push exit ' + p12.status);
+  }
+
+  // --- cas 13 : UN HAMEÇON SIGNÉ MAIS PÉRIMÉ SE DIT PÉRIMÉ (TF-1360) ------------------------
+  // Le 28/09 : un pre-push posé avant la ligne trap '' PIPE, et signé, se disait POSÉ ; et un
+  // hameçon signé `v2` par une variante non publiée se disait A-MIGRER. La propriété tient à
+  // l'identifiant, la fraîcheur au contenu.
+  {
+    const d13 = depot(racine, 'perime', false);
+    sh(racine, 'node', [INSTALLEUR, d13, '--seul=pre-push']);
+    const h13 = path.join(d13, '.git', 'hooks', 'pre-push');
+    const verif = () => sh(racine, 'node', [INSTALLEUR, d13, '--seul=pre-push', '--verifier']);
+    const v0 = verif();
+    sansLigneTrap(h13);
+    const v1 = verif();
+    const r13 = sh(racine, 'node', [INSTALLEUR, d13, '--seul=pre-push']);
+    const v2 = verif();
+    fs.writeFileSync(h13, fs.readFileSync(h13, 'utf8').replace('# hamecon-parc: pre-push-nom-client v1', '# hamecon-parc: pre-push-nom-client v2'), { mode: 0o755 });
+    const v3 = verif();
+    if (v0.status === 0 && /POSE /.test(v0.stdout || '') && v1.status !== 0 && /PERIME/.test(v1.stdout || '')
+        && /REPOSE/.test(r13.stdout || '') && v2.status === 0 && /PERIME/.test(v3.stdout || '') && !/A-MIGRER/.test(v3.stdout || ''))
+      oks.push('cas 13 (TF-1360) — signé et à jour : POSE ; privé de trap \'\' PIPE : PERIME (exit 1), reposé par un lancement ordinaire ; signé v2 : PERIME, jamais A-MIGRER');
+    else kos.push('cas 13 (TF-1360) — ' + [v0, v1, v2, v3].map((v) => (v.stdout || '').trim().split('\n')[0]).join(' | '));
+  }
 
   // --- cas 10 : LE FRONTMATTER DES SKILLS TOUCHÉS, AVANT LE COMMIT (TF-1337) -----------
   // LE FAIT : `accueil-factory` est entré au dépôt le 22/09 avec une description de plus de 1 024
@@ -732,11 +826,25 @@ try {
     else kos.push('cas 6h ter — le hook signé n\'a pas été reposé : ' + (p6ht.stdout || '').trim().slice(0, 200));
 
     // --- (6h quater) migration EXPLICITE : l'ancien hook (marque sans signature) → --migrer ----
-    const p6hq = sh(cc, 'node', [INSTALLEUR, cite, '--migrer', '--seul=pre-commit']);
-    const txtMigre = fs.readFileSync(cibleCite, 'utf8');
+    // TF-1402 (12/10/2026) : l'ancien hook migré est un ancien GABARIT du parc (le gabarit courant
+    // privé de sa signature) — il n'a que des lignes du gabarit. Jusqu'au 12/10 ce cas migrait
+    // l'étranger de 6h bis, qui porte une ligne de code à lui : c'est désormais le sens rouge
+    // ci-dessous, parce que le migrer effaçait cette ligne, comme il aurait effacé R-38 au pilot.
+    const ancienGabarit = nu('pre-commit-ancien-gabarit');
+    const cibleAncien = path.join(ancienGabarit, '.git', 'hooks', 'pre-commit');
+    sh(cc, 'node', [INSTALLEUR, ancienGabarit, '--seul=pre-commit']);
+    fs.writeFileSync(cibleAncien, fs.readFileSync(cibleAncien, 'utf8').split('\n')
+      .filter((l) => !l.startsWith('# hamecon-parc:')).join('\n'), { mode: 0o755 });
+    const p6hq = sh(cc, 'node', [INSTALLEUR, ancienGabarit, '--migrer', '--seul=pre-commit']);
+    const txtMigre = fs.readFileSync(cibleAncien, 'utf8');
     if (/MIGRE/.test(p6hq.stdout || '') && txtMigre.includes('# hamecon-parc: pre-commit-anonymiser v1'))
-      oks.push('cas 6h quater — `--migrer` reprend un hook à la marque sans signature et le signe : la passe de migration est un geste décidé');
-    else kos.push('cas 6h quater — la migration explicite n\'a pas signé le hook : ' + (p6hq.stdout || '').trim().slice(0, 200));
+      oks.push('cas 6h quater — `--migrer` reprend un ancien gabarit à la marque sans signature et le signe : la passe de migration est un geste décidé');
+    else kos.push('cas 6h quater — la migration explicite n\'a pas signé l\'ancien gabarit : ' + (p6hq.stdout || '').trim().slice(0, 200));
+    const avantCite = fs.readFileSync(cibleCite, 'utf8');
+    const p6hqr = sh(cc, 'node', [INSTALLEUR, cite, '--migrer', '--seul=pre-commit']);
+    if (/CONFLIT/.test(p6hqr.stdout || '') && /PROLONGÉ/.test(p6hqr.stdout || '') && fs.readFileSync(cibleCite, 'utf8') === avantCite)
+      oks.push('cas 6h quater (sens rouge, TF-1402) — `--migrer` REFUSE un hook non signé qui porte une ligne de code absente du gabarit : PROLONGÉ, rien touché');
+    else kos.push('cas 6h quater (sens rouge, TF-1402) — un hook porteur de code propre a été migré, donc effacé : ' + (p6hqr.stdout || '').trim().slice(0, 200));
 
     // --- (6i) LE RETRAIT VAUT POUR LES DEUX HAMEÇONS --------------------------------------
     const ret6 = sh(cc, 'node', [INSTALLEUR, avecHook, '--retirer']);

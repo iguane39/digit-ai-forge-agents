@@ -50,7 +50,26 @@
 //         (TF-1337) — JAMAIS posé sans ce drapeau ;
 //         [--seul=pre-push-canal] pose le pre-push du CANAL CONFIDENTIEL, qui joue son propre
 //         contrôle avant l'envoi (D-30 (a), 27/09/2026) — JAMAIS posé sans ce drapeau ;
-//         [--migrer] reprend un hameçon qui porte la marque SANS la signature (TF-0994).
+//         [--migrer] reprend un hameçon qui porte la marque SANS la signature (TF-0994) — et le
+//         refuse s'il porte du code absent du gabarit (TF-1402, ci-dessous).
+//
+// UN HAMEÇON QUI PROLONGE LE GABARIT N'EST JAMAIS ÉCRASÉ (TF-1402, constat du 24/09/2026, corrigé
+// le 12/10/2026). Le pre-push du pilot commence par ce gabarit et y ajoute sa borne R-38 §4-5 ;
+// sans signature, il était classé « ancien », et `--migrer` l'aurait remplacé par le gabarit : la
+// borne disparaissait sans bruit. Deux règles désormais :
+//   · une section propre à un dépôt s'écrit entre les lignes `# >>> prolongement local >>>` et
+//     `# <<< prolongement local <<<` du pre-push ; l'installeur la RECOPIE à chaque repose ou
+//     migration, et dit CONFLIT plutôt que de la perdre là où le gabarit n'a pas ces lignes ;
+//   · `--migrer` refuse un hameçon non signé qui porte, hors de cette section, une ligne de code
+//     que le gabarit n'a pas : il dit PROLONGÉ, le nombre de lignes et la première, et ne touche à
+//     rien. Un ancien gabarit du parc, qui n'a que des lignes du gabarit, migre comme avant.
+//
+// UNE SIGNATURE SE RECONNAÎT À SON IDENTIFIANT, QUELLE QUE SOIT SA VERSION, ET `--verifier` DIT
+// PÉRIMÉ (TF-1360, 12/10/2026). Une variante non publiée a posé `v2` sur les forges d'un poste :
+// l'installeur, qui ne connaissait que `v1`, les disait A-MIGRER. Et un hameçon signé mais posé
+// avant une correction du gabarit (sans `trap '' PIPE`, par exemple) se disait POSÉ. La propriété
+// tient à l'identifiant ; la fraîcheur se juge au CONTENU : signé mais différent du gabarit courant
+// (section propre exceptée) → PÉRIMÉ, compté manquant, et un lancement ordinaire le repose.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -76,6 +95,11 @@ const MARQUE_COMMIT = 'pre-commit-anonymiser';
 const SIGNATURE = 'pre-push-nom-client';
 const SIGNATURE_COMMIT = 'pre-commit-anonymiser';
 const ligneSignature = (id) => `# hamecon-parc: ${id} v1`;
+// TF-1360 — l'identifiant fait la propriété, quelle que soit la version écrite après lui.
+const estSignature = (ligne, id) => new RegExp(`^# hamecon-parc: ${id} v\\d+$`).test(ligne.trimEnd());
+// TF-1402 — les deux lignes qui bornent la section propre d'un dépôt dans le pre-push.
+const DEBUT_PROLONGEMENT = '# >>> prolongement local >>>';
+const FIN_PROLONGEMENT = '# <<< prolongement local <<<';
 
 const HAMECON = `#!/bin/sh
 ${ligneSignature(SIGNATURE)}
@@ -118,6 +142,11 @@ if [ -z "$ORACLE" ]; then
   exit 1
 fi
 
+# Une section propre a CE depot (ex. la borne R-38 du pilot) s'ecrit entre les deux lignes
+# suivantes : l'installeur la recopie a chaque repose (TF-1402). Hors d'elles, tout est reecrit.
+${DEBUT_PROLONGEMENT}
+${FIN_PROLONGEMENT}
+
 DEPOT="$(git rev-parse --show-toplevel)"
 SORTIE="$(node "$ORACLE" "$DEPOT" 2>&1)"
 VERDICT="$(printf '%s' "$SORTIE" | sed -n 's/.*"verdict":"\\([A-Z]*\\)".*/\\1/p')"
@@ -140,7 +169,18 @@ printf '%s' "$SORTIE" | QO_VERDICT="$VERDICT" node -e '
       // trois lignes revient a refuser sans dire pourquoi. Sur FAIL, les constats portent le
       // motif et le non_juge reste un appendice — il garde donc sa borne.
       const skip = process.env.QO_VERDICT === "SKIP";
-      for (const f of (o.findings || []).slice(0, 40)) console.error("  " + (f.regle || "") + "  " + (f.where || "") + "  " + f.msg);
+      // TF-1554 (27/09/2026) : les antériorités ne refusent rien. Mêlées aux bloquants dans les
+      // 40 premières lignes, elles noyaient le motif (4 bloquants et 36 antériorités, mesuré au
+      // pilot). Les COMPTES d abord, puis les seuls bloquants, puis le nombre d antériorités tues.
+      const tous = o.findings || [];
+      const bloq = tous.filter((f) => f.sev !== "anteriorite");
+      const c = o.comptes || {};
+      const nBloq = c.bloquants && Number.isFinite(c.bloquants.total) ? c.bloquants.total : bloq.length;
+      const nAnter = c.anteriorites && Number.isFinite(c.anteriorites.total) ? c.anteriorites.total : tous.length - bloq.length;
+      if (!skip) console.error("  " + nBloq + " constat(s) BLOQUANT(S), ce qui refuse l envoi ; " + nAnter + " anteriorite(s), non bloquante(s)");
+      for (const f of bloq.slice(0, 40)) console.error("  " + (f.regle || "") + "  " + (f.where || "") + "  " + f.msg);
+      if (nBloq > Math.min(bloq.length, 40)) console.error("  ... " + (nBloq - Math.min(bloq.length, 40)) + " autre(s) constat(s) bloquant(s) non imprime(s) ici");
+      if (!skip && nAnter) console.error("  " + nAnter + " anteriorite(s) tue(s) ici : elles ne refusent rien (passif de l historique, compte au non_juge de la porte)");
       for (const n of (o.non_juge || []).slice(0, skip ? 12 : 3)) console.error(skip ? "  porte SKIP : " + n : "  · " + n);
     } catch { console.error(t.slice(0, 2000)); }
   });
@@ -358,21 +398,49 @@ exit 1
 // bloc de code recopié dériverait du premier au premier correctif. `id` distingue deux gabarits
 // d'un même hameçon git ; `surDemande` en retire un du jeu par défaut.
 const HAMECONS = [
-  { nom: 'pre-push', marque: MARQUE, signature: ligneSignature(SIGNATURE), contenu: HAMECON },
-  { nom: 'pre-commit', marque: MARQUE_COMMIT, signature: ligneSignature(SIGNATURE_COMMIT), contenu: HAMECON_COMMIT },
-  { nom: 'commit-msg', marque: MARQUE, signature: ligneSignature(SIGNATURE_MSG), contenu: HAMECON_MSG },
-  { id: 'pre-commit-skills', nom: 'pre-commit', marque: MARQUE_SKILLS, signature: ligneSignature(SIGNATURE_SKILLS),
+  { nom: 'pre-push', marque: MARQUE, sigId: SIGNATURE, contenu: HAMECON },
+  { nom: 'pre-commit', marque: MARQUE_COMMIT, sigId: SIGNATURE_COMMIT, contenu: HAMECON_COMMIT },
+  { nom: 'commit-msg', marque: MARQUE, sigId: SIGNATURE_MSG, contenu: HAMECON_MSG },
+  { id: 'pre-commit-skills', nom: 'pre-commit', marque: MARQUE_SKILLS, sigId: SIGNATURE_SKILLS,
     contenu: HAMECON_SKILLS, surDemande: true },
-  { id: 'pre-push-canal', nom: 'pre-push', marque: MARQUE_CANAL, signature: ligneSignature(SIGNATURE_CANAL),
+  { id: 'pre-push-canal', nom: 'pre-push', marque: MARQUE_CANAL, sigId: SIGNATURE_CANAL,
     contenu: HAMECON_CANAL, surDemande: true },
 ];
 const cle = (h) => h.id || h.nom;
 const migrer = args.includes('--migrer');
-// NÔTRE = la ligne de signature, entière, telle quelle. ANCIEN = la marque sans la signature :
-// un hameçon posé avant TF-0994, OU un étranger qui cite la marque — indiscernables par le texte,
-// d'où le geste explicite `--migrer` pour le reprendre.
-const estNotre = (txt, h) => txt.split(/\r?\n/).some((l) => l.trimEnd() === h.signature);
+// NÔTRE = une ligne de signature de CET identifiant, entière (TF-1360 : quelle que soit sa
+// version). ANCIEN = la marque sans la signature : un hameçon posé avant TF-0994, OU un étranger
+// qui cite la marque — indiscernables par le texte, d'où le geste explicite `--migrer`.
+const lignes = (txt) => txt.split(/\r?\n/);
+const estNotre = (txt, h) => lignes(txt).some((l) => estSignature(l, h.sigId));
 const estAncien = (txt, h) => !estNotre(txt, h) && txt.includes(h.marque);
+
+// TF-1402 — la section propre : les lignes STRICTEMENT entre les deux marqueurs (null sans eux).
+function prolongementDe(txt) {
+  const L = lignes(txt);
+  const i = L.findIndex((l) => l.trimEnd() === DEBUT_PROLONGEMENT);
+  const j = L.findIndex((l) => l.trimEnd() === FIN_PROLONGEMENT);
+  return i >= 0 && j > i ? L.slice(i + 1, j) : null;
+}
+const horsProlongement = (txt) => {
+  const L = lignes(txt);
+  const i = L.findIndex((l) => l.trimEnd() === DEBUT_PROLONGEMENT);
+  const j = L.findIndex((l) => l.trimEnd() === FIN_PROLONGEMENT);
+  return (i >= 0 && j > i ? [...L.slice(0, i + 1), ...L.slice(j)] : L).map((l) => l.trimEnd()).join('\n').trimEnd();
+};
+const nonVide = (section) => !!section && section.some((l) => l.trim());
+// Le gabarit, sa section propre remplie par celle du hameçon en place ; null si le gabarit n'a pas
+// de section et que le hameçon en place en porte une : on ne la perd pas, on dit CONFLIT.
+function contenuAvec(h, section) {
+  if (!nonVide(section)) return h.contenu;
+  const L = h.contenu.split('\n');
+  const i = L.findIndex((l) => l === DEBUT_PROLONGEMENT);
+  return i < 0 ? null : [...L.slice(0, i + 1), ...section, ...L.slice(i + 1)].join('\n');
+}
+// Les lignes de CODE d'un hameçon en place, hors section propre, que le gabarit n'a pas.
+const code = (txt) => lignes(txt).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+const lignesPropres = (txt, h) => { const g = new Set(code(h.contenu)); return code(horsProlongement(txt)).filter((l) => !g.has(l)); };
+const perime = (txt, h) => horsProlongement(txt) !== horsProlongement(h.contenu);
 // Sans `--seul`, le jeu par défaut ; `--retirer` emporte aussi un hameçon posé sur demande.
 const choisis = seul ? HAMECONS.filter((h) => cle(h) === seul) : HAMECONS.filter((h) => retirer || !h.surDemande);
 if (!choisis.length) {
@@ -390,14 +458,24 @@ for (const d of depots) {
     const etiquette = `${cle(h).padEnd(10)} ${d}`;
 
     const txtCible = fs.existsSync(cible) ? fs.readFileSync(cible, 'utf8') : null;
-    const reprendre = txtCible !== null && (estNotre(txtCible, h) || (migrer && estAncien(txtCible, h)));
+    // TF-1402 — un ancien qui porte du code hors du gabarit est un PROLONGEMENT : jamais migré.
+    const propres = txtCible !== null && estAncien(txtCible, h) ? lignesPropres(txtCible, h) : [];
+    const ditPropres = () => `PROLONGÉ — porte la marque sans la signature, et ${propres.length} ligne(s) de code `
+      + `absente(s) du gabarit (1re : « ${propres[0].slice(0, 80)} ») : --migrer l'effacerait. Entourer la `
+      + `section propre des lignes « ${DEBUT_PROLONGEMENT} » et « ${FIN_PROLONGEMENT} », ajouter `
+      + `« ${ligneSignature(h.sigId)} » en 2e ligne, puis relancer l'installeur ; ou, si ce n'est qu'un `
+      + `ancien gabarit du parc, le supprimer puis relancer l'installeur (TF-1402)`;
+    const reprendre = txtCible !== null && (estNotre(txtCible, h) || (migrer && estAncien(txtCible, h) && !propres.length));
 
     if (verifier) {
       const present = txtCible !== null && estNotre(txtCible, h);
       const ancien = txtCible !== null && estAncien(txtCible, h);
-      console.log(`  ${present ? 'POSE    ' : ancien ? 'A-MIGRER' : 'MANQUANT'} ${etiquette}`
-        + (ancien ? ' — porte la marque sans la signature (TF-0994) : --migrer' : ''));
-      present ? poses++ : absents++;
+      const vieux = present && perime(txtCible, h);
+      console.log(`  ${vieux ? 'PERIME  ' : present ? 'POSE    ' : ancien && propres.length ? 'PROLONGE' : ancien ? 'A-MIGRER' : 'MANQUANT'} ${etiquette}`
+        + (vieux ? ' — signé, mais différent du gabarit courant (section propre exceptée) : relancer sans --verifier pour le reposer (TF-1360)'
+          : ancien && propres.length ? ' — ' + ditPropres()
+          : ancien ? ' — porte la marque sans la signature (TF-0994) : --migrer' : ''));
+      present && !vieux ? poses++ : absents++;
       continue;
     }
 
@@ -413,16 +491,26 @@ for (const d of depots) {
     if (txtCible !== null) {
       if (!reprendre) {
         // TF-1337 — deux gabarits du parc se disputent le même hameçon git : le dire tel quel.
-        const autre = txtCible.split(/\r?\n/).find((l) => l.startsWith('# hamecon-parc:') && l.trimEnd() !== h.signature);
-        const motif = estAncien(txtCible, h)
+        const autre = lignes(txtCible).find((l) => l.startsWith('# hamecon-parc:') && !estSignature(l, h.sigId));
+        const motif = estAncien(txtCible, h) && propres.length ? ditPropres()
+          : estAncien(txtCible, h)
           ? `porte la marque « ${h.marque} » sans la signature — ancien hameçon du parc, ou étranger qui la cite : --migrer pour le reprendre`
           : autre ? `un autre ${h.nom} du parc est déjà posé (« ${autre.trim()} ») — un dépôt n'a qu'un ${h.nom}`
           : `un ${h.nom} ÉTRANGER existe déjà`;
         console.log(`  CONFLIT  ${etiquette} — ${motif}, rien touché`); absents++; continue;
       }
       const migre = !estNotre(txtCible, h);
-      fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
-      console.log(`  ${migre ? 'MIGRE   ' : 'REPOSE  '} ${etiquette}`); deja++; continue;
+      // TF-1402 — la section propre en place passe dans le gabarit ; sans place pour elle, on ne
+      // la perd pas : CONFLIT, rien touché.
+      const section = prolongementDe(txtCible);
+      const contenu = contenuAvec(h, section);
+      if (contenu === null) {
+        console.log(`  CONFLIT  ${etiquette} — porte une section « ${DEBUT_PROLONGEMENT} » que le gabarit de ce ${h.nom} `
+          + `n'a pas : la reposer l'effacerait, rien touché (TF-1402)`); absents++; continue;
+      }
+      fs.writeFileSync(cible, contenu, { mode: 0o755 });
+      console.log(`  ${migre ? 'MIGRE   ' : 'REPOSE  '} ${etiquette}`
+        + (nonVide(section) ? ` — section propre conservée (${section.length} ligne(s), TF-1402)` : '')); deja++; continue;
     }
     fs.writeFileSync(cible, h.contenu, { mode: 0o755 });
     console.log(`  POSE     ${etiquette}`);
