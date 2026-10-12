@@ -90,6 +90,19 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    arrondis sans cadre), placement **contain-fit** (ratio préservé, jamais d'étirement).
 6. Construire le PPTX avec pptxgenjs, **en n'écrivant que des valeurs venues de l'étape 1** :
    aucune couleur ni police littérale dans le script de génération — les lire depuis le JSON.
+   **Nommer le pied de page et la pagination** avec l'option `objectName` de pptxgenjs, exactement
+   « Pied de page » et « Pagination » : pptxgenjs ne sait pas écrire les espaces réservés `ftr` et
+   `sldNum` que la règle S4 de l'étape 8 exige, et l'étape 6 bis les pose à partir de ces noms.
+6 bis. **Poser les espaces réservés de pied de page** (TF-1382), sur tout deck construit par pptxgenjs :
+
+   ```bash
+   python scripts/poser-pieds-de-page.py <deck pptxgenjs>.pptx --out <deck avec pieds>.pptx
+   ```
+
+   Chaque forme nommée « Pied de page » ou « Pagination » devient l'espace réservé `ftr` ou `sldNum` ;
+   sa position, son texte et sa mise en forme ne changent pas. Le deck d'entrée n'est jamais modifié et
+   une sortie existante jamais écrasée. **Exit 1** : aucune forme ne porte ces noms, le script de
+   génération doit les nommer. L'étape 7 prend le deck avec pieds en entrée.
 7. **Exporter par PowerPoint**, jamais par un script maison : le PPTX ressort avec ses polices
    embarquées, et le PDF sert la passe QA et la remise.
 
@@ -199,6 +212,9 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   attendues dans `attendu.json`) et `fixtures/marque-sans-blue` (rouge, exit 2). Node, sans dépendance.
 - `scripts/fetch_drive_assets.py` — liste / cherche par tag / télécharge / valide des images d'un dossier Drive public (raccourcis `images`, `logos`, `profils` ; webp reconnu). **Requiert Pillow.**
 - `scripts/prepare_images.py` — prépare pour embarquement PPTX : transcodage webp/gif→PNG, coins arrondis (masque alpha, **sans cadre**), calcul contain-fit, manifest JSON. **Requiert Pillow.**
+- `scripts/poser-pieds-de-page.py` — **l'étape 6 bis** : pose les espaces réservés `ftr` et `sldNum`
+  que pptxgenjs n'émet pas, sur les formes nommées « Pied de page » et « Pagination ». Python
+  standard, sans dépendance. Exit 0 posé, 1 aucune forme nommée, 2 usage ou sortie existante.
 - `scripts/exporter-pptx.mjs` — **l'export par PowerPoint** de l'étape 7 : verrou entre sessions,
   appel de `scripts/exporter-powerpoint.ps1`, jugement des polices embarquées, réencodage si FAIL,
   métadonnées personnelles vidées puis rejugées (TF-1535), livraison tout ou rien. Rapport JSON ; exit 0 livré, 1 refus, 2 non joué.
@@ -212,7 +228,8 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   de client (C2), consommation effective du système de marque sur les deux fixtures (C3),
   absence de valeur de marque en dur dans ce fichier (C4), règle de décision et ses 3 mutants
   (C5), verrou entre processus (C6), chaîne d'assainissement sur fixtures fictives (C7), essai
-  réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne). Les
+  réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne), pieds de
+  page d'un vrai deck pptxgenjs, remède joué (C9). Les
   deux polices sources fausses de C7 sortent de `fixtures/export/gen-source-defectueuse.py`.
 
 ## Non livré (constat daté du 2026-09-11, TF-1022)

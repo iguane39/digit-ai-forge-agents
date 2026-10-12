@@ -44,6 +44,10 @@
 //        rouge réencodée puis rejugée PASS avec ses seules parties de police changées, rouge sans
 //        police source refusée sans rien écrire, deck sans police livré tel quel, sortie existante
 //        jamais écrasée.
+//   C9 — les pieds de page d'un deck pptxgenjs (TF-1382) : sur un vrai deck de pptxgenjs 4.0.1, S4 échoue
+//        (6 constats) ; `scripts/poser-pieds-de-page.py`, le remède de l'étape 6 bis, joué, les supprime et
+//        l'oracle rend PASS ; le deck d'entrée reste intact, une sortie existante n'est jamais écrasée,
+//        des noms absents du deck rendent un refus net sans rien écrire.
 //   C8 — sur demande (--essai-powerpoint) : l'essai réel par PowerPoint, joué seulement si AUCUN
 //        processus PowerPoint ne tourne, et avec --instance-neuve. L'instance lancée doit être
 //        quittée, le PPTX et le PDF écrits. Sans l'option, ou si PowerPoint tourne : non joué, dit.
@@ -94,6 +98,7 @@ const NON_JUGE = [
   "C5 joue la RÈGLE de décision sur des faits donnés : que les faits soient bien relevés sur une vraie instance (numéros de processus, visibilité, présentations ouvertes) ne se prouve que par C8",
   "C6 prouve l'exclusion entre processus d'un même poste : un verrou n'arbitre pas deux postes, et chaque poste a sa propre instance PowerPoint",
   "C7 répare des polices fictives à une famille : l'équivalence octet pour octet avec PowerPoint sur des polices réelles est une mesure du produit (8 flux sur 8, 30/09/2026), rapportée et non rejouée ici",
+  "C9 joue le remède sur un deck de jeu produit par pptxgenjs 4.0.1 : que PowerPoint ouvre sans réserve un espace réservé posé ainsi, sans correspondance dans un gabarit, n'est pas prouvé par ce contrôle",
   "C8 n'est joué que sur demande, et jamais quand PowerPoint tourne : sans lui, le chemin COM réel n'est prouvé par aucun contrôle de ce self-test",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
@@ -581,6 +586,57 @@ async function verifierChaine() {
   return { joue: true, findings };
 }
 
+// ---------------------------------- C9 : les pieds de page d'un deck pptxgenjs (TF-1382, sans PowerPoint)
+// Le fait (retours Produit-68 du 26/09/2026, RG-14) : pptxgenjs n'émet ni `ftr` ni `sldNum`, S4 les exige, et
+// le skill ne livrait aucune étape pour les poser. Le deck de jeu est un VRAI sortie de pptxgenjs 4.0.1
+// (quality-oracles/fixtures/charte-pptx-pptxgenjs-brut.pptx), pieds nommés par objectName.
+function verifierPieds() {
+  const py = pythonQuiRepond();
+  const oracle = path.join(SKILL_DIR, '..', 'quality-oracles', 'scripts', 'oracle-charte-pptx-semantique.mjs');
+  const brut = path.join(SKILL_DIR, '..', 'quality-oracles', 'fixtures', 'charte-pptx-pptxgenjs-brut.pptx');
+  const script = path.join(SKILL_DIR, 'scripts', 'poser-pieds-de-page.py');
+  const absents = [['python', py], ['oracle-charte-pptx-semantique', fs.existsSync(oracle)], ['deck pptxgenjs de jeu', fs.existsSync(brut)], ['poser-pieds-de-page.py', fs.existsSync(script)]].filter(([, v]) => !v).map(([k]) => k);
+  if (absents.length) return { joue: false, motif: `C9 NON JOUÉE : ${absents.join(', ')} introuvable(s)` };
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'pieds-'));
+  const findings = [];
+  try {
+    const poser = (...a) => {
+      const r = spawnSync(py[0], [...py.slice(1), script, ...a], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONUTF8: '1' } });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* rapport illisible : le code le dit */ }
+      return { code: r.status, j };
+    };
+    const juger = (f) => {
+      const r = spawnSync(process.execPath, [oracle, f], { encoding: 'utf8', timeout: 120000 });
+      try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [] }; }
+    };
+    const s4 = (j) => (j.findings || []).filter((x) => /^S4 /.test(x.msg));
+    const avant = fs.readFileSync(brut);
+    // sens ROUGE : le deck tel que pptxgenjs l'écrit échoue à S4 sur ses trois diapositives de contenu
+    const rouge = s4(juger(brut));
+    if (rouge.length !== 6) findings.push(`C9 sens rouge : le deck brut de pptxgenjs rend ${rouge.length} constat(s) S4, attendu 6 (3 diapositives x pied et pagination)`);
+    // sens VERT : le remède prescrit (étape 6 bis), JOUÉ, supprime les six constats
+    const sortie = path.join(dossier, 'livre.pptx');
+    const r1 = poser(brut, '--out', sortie);
+    if (r1.code !== 0 || !r1.j || r1.j.formes_devenues_espaces_reserves !== 6) findings.push(`C9 : poser-pieds-de-page rend code ${r1.code} et ${r1.j ? r1.j.formes_devenues_espaces_reserves : '?'} forme(s) posée(s), attendu 0 et 6`);
+    else {
+      const apres = juger(sortie);
+      if (s4(apres).length) findings.push(`C9 sens vert : après le remède, S4 rend encore ${s4(apres).length} constat(s) — ${s4(apres)[0].msg}`);
+      else if (apres.verdict !== 'PASS') findings.push(`C9 sens vert : après le remède, l'oracle rend ${apres.verdict} (${(apres.findings || []).map((x) => x.msg).join(' · ').slice(0, 160)})`);
+    }
+    if (!avant.equals(fs.readFileSync(brut))) findings.push('C9 : le deck d\'entrée a été modifié — le script doit écrire ailleurs');
+    // jamais d'écrasement
+    const r2 = poser(brut, '--out', sortie);
+    if (r2.code !== 2) findings.push(`C9 : une sortie existante est écrasée ou mal refusée (code ${r2.code}, attendu 2)`);
+    // des noms que le deck ne porte pas : refus net, rien d'écrit
+    const vide = path.join(dossier, 'vide.pptx');
+    const r3 = poser(brut, '--out', vide, '--pied', 'Nom absent', '--pagination', 'Autre nom absent');
+    if (r3.code !== 1 || fs.existsSync(vide)) findings.push(`C9 : des noms absents du deck devraient rendre code 1 sans rien écrire (code ${r3.code}, sortie ${fs.existsSync(vide) ? 'écrite' : 'absente'})`);
+  } finally {
+    try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return { joue: true, findings };
+}
+
 // ------------------------------------------------ C8 : l'essai réel par PowerPoint, sur demande
 function processusPowerPoint() {
   const r = spawnSync('tasklist', ['/FI', 'IMAGENAME eq POWERPNT.EXE', '/FO', 'CSV', '/NH'], { encoding: 'utf8', timeout: 30000, windowsHide: true });
@@ -750,6 +806,8 @@ if (c5.joue) findings.push(...c5.findings); else nonJuge.push(c5.motif);
 findings.push(...await verifierVerrou());
 const c7 = await verifierChaine();
 if (c7.joue) findings.push(...c7.findings); else nonJuge.push(c7.motif);
+const c9 = verifierPieds();
+if (c9.joue) findings.push(...c9.findings); else nonJuge.push(c9.motif);
 // C8 — l'essai réel, sur demande seulement, et jamais quand PowerPoint tourne
 let c8 = { joue: false, motif: "C8 NON JOUÉE : l'essai réel par PowerPoint ne se joue que sur demande (--essai-powerpoint)" };
 if (args.includes('--essai-powerpoint')) c8 = await essaiPowerPoint();
@@ -772,6 +830,7 @@ process.stdout.write(JSON.stringify({
     C5_decision_quitter_powerpoint: c5.joue ? 'jouée' : 'NON jouée (Windows seulement)',
     C6_verrou_entre_sessions: 'jouée',
     C7_chaine_assainissement: c7.joue ? 'jouée' : 'NON jouée (juge ou prérequis absents)',
+    C9_pieds_de_page_pptxgenjs: c9.joue ? 'jouée' : 'NON jouée (oracle, deck de jeu ou python absents)',
     C8_essai_reel_powerpoint: c8.joue ? 'jouée' : 'NON jouée',
   },
   ...(c8.bilan ? { essai_powerpoint: c8.bilan } : {}),
