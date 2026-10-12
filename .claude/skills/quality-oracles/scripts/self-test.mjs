@@ -1041,6 +1041,47 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1538 (01/10/2026) — LES DEUX VUES DU REGISTRE S'ACCORDENT, ET UN CONTRÔLE LE JUGE.
+// `registre-oracles.json` (machine) et `registre-oracles.md` (vue humaine) décrivent le même catalogue :
+// le 01/10 un oracle manquait à la vue et cinq lignes de tableau avaient une barre verticale non
+// échappée. `scripts/verifier-accord-registre.mjs` juge la version (V1), la présence du script de
+// chaque entrée dans la vue (V2) et la forme des tableaux (V3). (A) les deux vraies vues s'accordent ;
+// (B) trois fautes fabriquées sur une copie de la vue — version, script, barre non échappée — sont
+// refusées chacune par SA règle ; (C) le REMÈDE que chaque message prescrit, joué, ramène le PASS
+// (TF-1013) ; (D) un fichier absent rend SKIP motivé, jamais un PASS.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1538-'));
+  try {
+    const jsonReel = path.join(SKILLDIR, 'references', 'registre-oracles.json');
+    const vueReelle = fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.md'), 'utf8');
+    const juger = (texteVue, jsonPath) => {
+      const f = path.join(tmp, 'vue-' + Math.random().toString(36).slice(2) + '.md'); fs.writeFileSync(f, texteVue, 'utf8');
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'verifier-accord-registre.mjs'), '--json', jsonPath || jsonReel, '--vue', f], { encoding: 'utf8', timeout: 60000 });
+      try { const j = JSON.parse((r.stdout || '').trim()); return { v: j.verdict, regles: [...new Set((j.findings || []).map((x) => x.regle).filter(Boolean))].sort().join(','), motif: j.motif || '', code: r.status }; } catch { return { v: '?', regles: '', motif: '', code: r.status }; }
+    };
+    const version = JSON.parse(fs.readFileSync(jsonReel, 'utf8')).version;
+    const BARRE = String.fromCharCode(124), ANTI = String.fromCharCode(92);
+    // fautes
+    const fVersion = vueReelle.replace('(v' + version, '(v0.0.1');
+    const fScript = vueReelle.split('oracle-cadence-de-mission.mjs').join('oracle-introuvable-ici');
+    const echappee = ANTI + BARRE;
+    const iBarre = vueReelle.indexOf('<fichier' + echappee + 'dossier>');
+    const fBarre = iBarre < 0 ? null : vueReelle.replace('<fichier' + echappee + 'dossier>', '<fichier' + BARRE + 'dossier>');
+    const a = juger(vueReelle), bV = juger(fVersion), bS = juger(fScript), bB = fBarre ? juger(fBarre) : null;
+    const cV = juger(fVersion.replace('(v0.0.1', '(v' + version)), cS = juger(fScript.split('oracle-introuvable-ici').join('oracle-cadence-de-mission.mjs'));
+    const cB = fBarre ? juger(fBarre.replace('<fichier' + BARRE + 'dossier>', '<fichier' + echappee + 'dossier>')) : null;
+    const d = (() => { const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'verifier-accord-registre.mjs'), '--vue', path.join(tmp, 'absente.md')], { encoding: 'utf8', timeout: 60000 }); try { return { ...JSON.parse(r.stdout), code: r.status }; } catch { return { verdict: '?', code: r.status }; } })();
+    if (a.v !== 'PASS') ko('TF-1538 (A) : les deux vraies vues du registre ne s accordent pas — ' + a.v + ' ' + a.regles);
+    else if (!fBarre) ko('TF-1538 (B) : la ligne témoin « <fichier\\|dossier> » (promesses) n existe plus dans la vue — le cas de la barre non échappée ne mesure plus rien');
+    else if (bV.v !== 'FAIL' || bV.regles !== 'V1') ko('TF-1538 (B) : une version divergente doit être refusée par V1 seule — ' + bV.v + ' ' + bV.regles);
+    else if (bS.v !== 'FAIL' || bS.regles !== 'V2') ko('TF-1538 (B) : un script du JSON absent de la vue doit être refusé par V2 seule — ' + bS.v + ' ' + bS.regles);
+    else if (bB.v !== 'FAIL' || bB.regles !== 'V3') ko('TF-1538 (B) : une barre verticale non échappée doit être refusée par V3 seule — ' + bB.v + ' ' + bB.regles);
+    else if (cV.v !== 'PASS' || cS.v !== 'PASS' || cB.v !== 'PASS') ko('TF-1538 (C) : le remède prescrit par un message ne ramène pas le PASS — version ' + cV.v + ', script ' + cS.v + ', barre ' + cB.v);
+    else if (d.verdict !== 'SKIP' || d.code !== 2 || !/introuvable/.test(d.motif || '')) ko('TF-1538 (D) : une vue absente doit rendre SKIP motivé exit 2 — ' + d.verdict + ' exit ' + d.code);
+    else ok('TF-1538 : les deux vues du registre s accordent (version ' + version + '), V1 / V2 / V3 refusent chacune sa faute fabriquée, le remède prescrit ramène le PASS, et une vue absente rend SKIP motivé');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0820 (05/09/2026) — C5 : LA PORTE DE PUBLICATION JUGE AUSSI LES NOMS DE PRODUITS.
 //
 // LE FAIT PAYÉ : le 05/09, la passe de réécriture d'historique du pilot — dérivée des DEUX tables

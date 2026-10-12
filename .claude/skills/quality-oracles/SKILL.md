@@ -154,6 +154,10 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   **bilan 4 états** par fichier (jugé / exempté / délégué / signalé — somme = nb de fichiers, aucun silence), exemptions, journal `<cible>.oracles.json` + historique `*-historique.jsonl`.
   Le journal et chaque ligne d'historique portent l'**empreinte du contenu jugé** au format existant `forge-ops/empreinte@1`
   (`{format, release, ts, fichiers:{chemin: sha256 complet}}`) : un verdict dit désormais SUR QUOI il a été rendu.
+- **Accord des deux vues du registre** — `node scripts/verifier-accord-registre.mjs [--json …] [--vue …]` (TF-1538) :
+  la version de l'en-tête de `registre-oracles.md` est celle du JSON (V1), le script de chaque entrée du JSON est nommé
+  dans la vue (V2), chaque ligne de tableau de la vue a les colonnes de son en-tête (V3, une barre verticale s'écrit `\|`).
+  Jouée par la recette, dans les deux sens ; ce n'est pas un oracle de livrable, il n'a pas d'entrée au registre.
 - **Où vivent les journaux** — sous un segment de livraison (`output/`, `old/`, `dist/`, `build/`), les journaux
   sortent AU-DESSUS du premier segment rencontré, dans un `.oracles/` qui rejoue l'arborescence relative.
   Corrigé le 22/08/2026 (TF-0501) : l'intention « ce que le client reçoit ne contient pas les traces de son audit »
