@@ -927,6 +927,30 @@
    ]
   },
   {
+   "domaine": "Restitution lisible : la page se conçoit pour ses lecteurs",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{forges}/digit-ai-forge-design/oracles/oracle-restitution.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "RL-1 vue d'ensemble (verdict, ≥ 3 KPI, navigation de vues), RL-3 KPI complets (valeur, définition, repère), RL-4 question des graphiques, RL-9 chemins de lecteurs, RL-10 manifeste d'écarts — en tête d oracle-restitution.mjs, référentiel {forges}/digit-ai-forge-design/REFERENTIEL-RESTITUTION.md",
+   "statut": "ok",
+   "non_juge": [
+    "RL-2 une question par vue (socle check_html L7)",
+    "RL-5 exploitabilité des tableaux (composant filtres-tableau G1-G6)",
+    "RL-6 effet des interactions : exige un rendu",
+    "RL-7 texte ancré : revue D8 de critique-le-design",
+    "RL-8 iso-contenu source→cible : contrôle de campagne"
+   ],
+   "content_patterns": [
+    "<body[^>]*\\sdata-restitution\\s*="
+   ],
+   "note": "TF-1406 (constat du 24/09/2026, indexé le 12/10/2026) — inscrit à registre-oracles.md depuis le 15/08 (TF-0235) mais absent de ce registre machine : le lanceur ne le jouait jamais. Périmètre déclaratif : seule une page qui porte data-restitution sur son <body> le déclenche (content_patterns, sans ext — une ext .html le ferait jouer, et rendre SKIP, sur toutes les pages). Les autres oracles de produit inscrits à la vue humaine (ex. oracle-da-pptx) vivent chez leur produit et n'entrent pas au lanceur général."
+  },
+  {
    "domaine": "Filtres de colonne sur tableaux de donnees",
    "ext": [
     ".html",

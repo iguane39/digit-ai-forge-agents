@@ -296,6 +296,20 @@ if (reg) for (const o of reg.oracles) {
   } finally { fs.rmSync(tmpF, { recursive: true, force: true }); }
 }
 
+// (3c bis) TF-1406 (constat du 24/09/2026) — oracle-restitution était inscrit à la vue humaine
+// depuis le 15/08 et absent de ce registre machine : le lanceur ne le jouait jamais. Il y entre
+// par son périmètre déclaratif : une page qui porte data-restitution sur son <body> le déclenche
+// (sens rouge), une page qui ne le porte pas ne le déclenche pas (sens vert).
+if (reg) {
+  const restit = reg.oracles.find((o) => (o.cmd || []).some((s) => /oracle-restitution\.mjs$/.test(s)));
+  const declenche = (html) => !!restit && (restit.content_patterns || []).some((p) => new RegExp(p, 'im').test(html));
+  const avec = declenche('<!doctype html>\n<html lang="fr">\n<body data-restitution="rapport">\n</body></html>');
+  const sans = declenche('<!doctype html>\n<html lang="fr">\n<body class="page">\n<p>data-restitution</p></body></html>');
+  (restit && avec && !sans && !(restit.ext || []).length)
+    ? ok('TF-1406 : oracle-restitution est au registre machine, déclenché par une page qui déclare data-restitution, jamais par une autre')
+    : ko(`TF-1406 : oracle-restitution ${restit ? 'présent' : 'ABSENT du registre machine'} — page déclarée ${avec ? 'routée' : 'NON routée'}, page non déclarée ${sans ? 'ROUTÉE' : 'non routée'}, ext ${JSON.stringify(restit?.ext)}`);
+}
+
 // (3d) TF-1326 (23/09/2026) — LE LANCEUR RÉSOUT L'INTERPRÉTEUR PYTHON, et un interpréteur
 // introuvable rend un SKIP MOTIVÉ. Le registre écrit `python3` ; sous Windows ce nom peut être
 // l'alias du Microsoft Store, qui répond « Python est introuvable » : le domaine « Régression

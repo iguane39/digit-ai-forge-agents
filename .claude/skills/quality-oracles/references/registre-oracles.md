@@ -453,6 +453,13 @@ dépôt). Mêmes conséquences assumées que pour les forges design et conceptio
 - **v2.11.1** : `timeout_ms: 600000` posé sur les deux oracles claims — le budget
   par défaut de 120 s tuait `oracle-claims` sur les livrables de ~500 Ko (PASS en
   7 min lancé seul, constaté sur le rapport SEO Produit-02 du 15/08, TF-0239).
+- **Registre machine (TF-1406, 12/10/2026)** : cette ligne n'avait pas d'entrée dans
+  `registre-oracles.json`, si bien que `run-oracles.mjs` ne jouait jamais cet oracle. Elle y
+  entre par `content_patterns` (`<body … data-restitution=`) et sans `ext` : une page non
+  déclarée ne le déclenche pas. Rejoué au lanceur sur les fixtures de forge-design :
+  `restitution-rouge.html` FAIL, `restitution-verte.html` PASS. Les oracles portés par un
+  produit (section suivante, ex. `oracle-da-pptx`) vivent chez lui et restent hors du lanceur
+  général : ils ne s'indexent pas au registre machine.
 
 <!-- Section REPORTÉE par le pilot le 10/09/2026 (TF-1006, mandat humain A-6). Une session d'engagement l'avait écrite le 10/09 à 08:21 dans la COPIE INSTALLÉE (~/.claude/skills), jamais dans cette source ; la propagation suivante l'a effacée en silence, et le pilot l'a reportée ici depuis sa lecture d'avant l'effacement, après pseudonymisation par la chaîne du parc. L'oracle décrit vit dans le dépôt du produit ; ce registre ne fait que l'indexer. Règle rappelée : une remontée §4 s'écrit ICI, dans la source versionnée — la copie installée est réécrite à chaque propagation. -->
 
