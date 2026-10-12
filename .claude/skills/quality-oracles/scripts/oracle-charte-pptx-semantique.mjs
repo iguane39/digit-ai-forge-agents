@@ -5,8 +5,9 @@
 // qu'oracle-pptx — R3 : pas de réimplémentation zip maison). Checklist canonique :
 //   S1 bijection stricte sommaire ↔ intercalaires : chaque entrée numérotée du slide « Sommaire »
 //      a un intercalaire portant le même numéro et le même intitulé, et réciproquement ;
-//   S2 aucun kicker au-dessus d'un titre : aucune forme texte positionnée au-dessus du
-//      placeholder titre d'un slide. Le titre se lit quel que soit le rang de l'attribut `type`
+//   S2 aucun kicker au-dessus d'un titre : aucune forme texte dont le BAS est au-dessus du haut du
+//      placeholder titre ET dont l'étendue horizontale recouvre celle du titre (TF-1380) ; un repère
+//      posé À CÔTÉ du titre n'est pas un sur-titre. Le titre se lit quel que soit le rang de l'attribut `type`
 //      dans `<p:ph>` (TF-1381 : pptxgenjs 4.0.1 écrit `idx` avant `type`, sur plusieurs lignes) ;
 //      les diapositives où aucun titre n'est trouvé sont DITES au non_juge, jamais passées en silence ;
 //   S3 aucun logo hors couverture (slide 1) et slide « interlocuteurs » — logo = image de
@@ -96,9 +97,10 @@ for idx, target in enumerate(order):
     for sp in re.findall(r"<p:sp>.*?</p:sp>", xml, re.S):
         ph = re.search(r'<p:ph\\b[^>]*?\\btype="([^"]+)"', sp)
         off = re.search(r'<a:off x="(-?\\d+)" y="(-?\\d+)"', sp)
+        ext = re.search(r'<a:ext cx="(\\d+)" cy="(\\d+)"', sp)
         txt = " ".join(t for t in re.findall(r"<a:t>([^<]*)</a:t>", sp)).strip()
         paras = [" ".join(re.findall(r"<a:t>([^<]*)</a:t>", p)).strip() for p in re.findall(r"<a:p>.*?</a:p>", sp, re.S)]
-        shapes.append({"ph": ph.group(1) if ph else None, "y": int(off.group(2)) if off else None, "text": txt, "paras": [p for p in paras if p]})
+        shapes.append({"ph": ph.group(1) if ph else None, "x": int(off.group(1)) if off else None, "y": int(off.group(2)) if off else None, "cx": int(ext.group(1)) if ext else None, "cy": int(ext.group(2)) if ext else None, "text": txt, "paras": [p for p in paras if p]})
     imgs = []
     for pic in re.findall(r"<p:pic>.*?</p:pic>", xml, re.S):
         ext = re.search(r'<a:ext cx="(\\d+)" cy="(\\d+)"', pic)
@@ -154,7 +156,12 @@ for (const s of slides) {
   if (t.y == null) { titreSansPosition.push(s.file); continue; }
   for (const x of s.shapes) {
     if (x === t || !x.text || x.y == null) continue;
-    if (x.y < t.y) findings.push({ sev: 'bloquant', msg: `S2 — texte au-dessus du titre (kicker interdit) : « ${x.text.slice(0, 60)} »`, where: s.file });
+    // TF-1380 : un sur-titre est une forme dont le BAS est au-dessus du haut du titre ET dont l'étendue
+    // horizontale recouvre celle du titre ; un repère à côté du titre n'en est pas un. Sans dimensions
+    // lues, repli sur le seul haut (comportement d'avant) : on ne relâche rien faute de mesure.
+    const bas = x.cy != null ? x.y + x.cy : x.y;
+    const recouvre = (x.x == null || x.cx == null || t.x == null || t.cx == null) || (x.x < t.x + t.cx && x.x + x.cx > t.x);
+    if (bas < t.y && recouvre) findings.push({ sev: 'bloquant', msg: `S2 — texte au-dessus du titre (kicker interdit) : « ${x.text.slice(0, 60)} »`, where: s.file });
   }
 }
 if (sansTitre.length) non_juge.push(`S2 : aucun titre (espace réservé title ou ctrTitle) trouvé sur ${sansTitre.length} diapositive(s) — kicker non jugé sur : ${sansTitre.join(', ')}`);

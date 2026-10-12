@@ -507,6 +507,26 @@
    "provenance": "TF-1381 (retours Produit-68 du 26/09/2026, RG-13) : S1 et S2 ne trouvaient pas le titre d'un deck écrit par pptxgenjs 4.0.1, qui place idx avant type sur plusieurs lignes ; le rouge ne rendait que S4, S1 se déclarait non jugé en silence. Decks FICTIFS produits par un vrai pptxgenjs (fixtures/gen-charte-pptx-pptxgenjs-fixtures.mjs) ; le vert passe par digit-ai-pptx/scripts/poser-pieds-de-page.py (TF-1382)"
   },
   {
+   "nom": "charte-pptx-repere-cote",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-repere-red.pptx",
+   "green": "charte-pptx-repere-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S2 — texte au-dessus du titre (kicker interdit) : « 2 / 3 »"
+   ],
+   "provenance": "TF-1380 (retours Produit-68 du 26/09/2026, RG-12) : S2 jugeait « au-dessus du titre » sur le seul haut des formes ; une pastille « N / M » à gauche du titre, recentrée sur sa 1re ligne (haut 2 pt plus haut), rendait 10 constats bloquants. Le même deck FICTIF (fixtures/gen-charte-pptx-repere-fixtures.py) : vert avec la pastille à gauche du titre, rouge avec elle au-dessus du titre, sur son étendue horizontale"
+  },
+  {
    "nom": "charte-pptx-lexique",
    "cmd": [
     "node",
