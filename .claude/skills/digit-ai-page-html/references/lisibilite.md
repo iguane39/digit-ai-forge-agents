@@ -1491,12 +1491,40 @@ page ». Les numéros de ligne cités sont ceux du texte extrait. Pilot injoigna
 
 Fixtures : `style-annonce-nominalisee.html` (rouge), `style-nomme.html` (verte).
 
+## Classes d'artefact — une page lue par une machine (TF-1589, RT-115, 13/10/2026)
+
+**Le fait.** Le 22/09/2026, cinq pages engendrées comme source pour l'assistant d'ingestion d'une
+plateforme tierce rendaient FAIL sur 9 occurrences de L7, avec 9 avertissements L30. Chaque
+paragraphe y est repris tel quel comme contenu du livret remis au voyageur. Les satisfaire aurait
+injecté 9 phrases de méta-discours dans ce livret. Les 33 autres règles étaient vertes et utiles.
+
+**La règle.** Une page dont le lecteur est une machine (source de données, page générée pour un
+autre outil) se déclare `source-machine`. Deux voies : `check_html.py page.html
+--classe=source-machine`, ou `<meta name="classe-artefact" content="source-machine">` dans la
+page. La ligne de commande prime sur la page ; sans l'une ni l'autre, la classe est `page-lue`.
+Sous `source-machine`, trois mesures écrites pour un humain qui parcourt la page ne sont pas
+jouées :
+- L7, le chapeau `.ch-apprend` de chaque chapitre ;
+- L25, le sommaire exigé au-delà de trois chapitres ;
+- la partie de L30 qui exige un `.contenu` par chapitre.
+
+Elles sont nommées au périmètre de non-mesure (`non_juge`) de chaque exécution. Tout le reste est
+jugé, dont la glose du jargon et le dénominateur de couverture de L30 : une donnée lue par une
+machine dit encore « sur combien ». Une valeur de `classe-artefact` inconnue est signalée en
+avertissement, et la page est jugée en `page-lue`. Si un humain lit aussi la page, la classe est
+fausse : la retirer.
+
+Fixtures : `source-machine-livret.html` (rouge sans la classe, verte avec),
+`source-machine-declaree.html` (verte par sa balise `meta`), `source-machine-vrai-defaut.html`
+(rouge sur A2 et G1 malgré la classe).
+
 ## Lancer le contrôle
 
 ```bash
 python scripts/check_html.py page.html                 # charte + a11y + print + L1-L30
 python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L30)
 python scripts/check_html.py page.html --output json
+python scripts/check_html.py page.html --classe=source-machine   # page lue par une machine (TF-1589)
 python scripts/render_page.py page.html                # V1-V14 + L2 mesuré au rendu
 python scripts/self_test.py                            # fixtures rouges et vertes du skill
 ```

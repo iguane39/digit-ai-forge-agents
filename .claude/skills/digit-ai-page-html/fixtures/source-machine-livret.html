@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Livret d'accueil · source d'ingestion — 20261013a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- Fixture TF-1589 (RT-115) — une page dont le LECTEUR est un agent d'ingestion : chaque
+     paragraphe est repris tel quel comme contenu d'un livret remis au voyageur. Elle ne porte
+     volontairement ni chapeau .ch-apprend (L7), ni bloc .contenu (L30), et son sommaire omet le
+     chapitre des mentions (L25) : sous la classe page-lue elle ÉCHOUE, sous la classe
+     source-machine elle PASSE. Tout le reste est conforme. -->
+<style>
+:root { --head: "Roboto", system-ui, sans-serif; --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A; --bg: #FAFBFF; --line: #E6EAF2; --faint: #64748B; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+.wrap { max-width: clamp(75vw, 1680px, 92vw); margin: 0 auto; padding: 24px; }
+.toc-d { color: var(--faint); }
+@media (max-width: 640px) { .wrap { padding: 12px; } }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Livret d'accueil de la maison du port</h1>
+<nav aria-label="Sommaire">
+  <ul>
+    <li><a href="#arrivee">Arrivée <span class="toc-d">horaires et remise des clés</span></a></li>
+    <li><a href="#logement">Logement <span class="toc-d">équipements de la maison</span></a></li>
+    <li><a href="#alentours">Alentours <span class="toc-d">marchés et promenades proches</span></a></li>
+    <li><a href="#depart">Départ <span class="toc-d">horaires et restitution des clés</span></a></li>
+  </ul>
+</nav>
+<section id="arrivee">
+  <h2>Arrivée</h2>
+  <p>Les clés vous attendent dans la boîte à code près de la porte bleue, à partir de seize heures.</p>
+</section>
+<section id="logement">
+  <h2>Logement</h2>
+  <p>La maison compte deux chambres et une cuisine équipée qui donne sur le jardin.</p>
+</section>
+<section id="alentours">
+  <h2>Alentours</h2>
+  <p>Le marché se tient le samedi matin sur la place de l'église, à dix minutes à pied.</p>
+</section>
+<section id="depart">
+  <h2>Départ</h2>
+  <p>Merci de laisser les clés dans la boîte à code avant onze heures le jour du départ.</p>
+</section>
+<section id="mentions">
+  <h2>Mentions</h2>
+  <p>Les informations de ce livret sont tenues à jour par la propriétaire de la maison.</p>
+</section>
+</main>
+</body>
+</html>

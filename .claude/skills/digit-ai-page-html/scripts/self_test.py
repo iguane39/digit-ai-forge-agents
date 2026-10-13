@@ -1936,6 +1936,82 @@ def run_avertissements_13_10():
     return out
 
 
+def run_classe_source_machine():
+    """TF-1589 (RT-115) — la classe d'artefact `source-machine`, jouée dans ses deux sens.
+
+    La même page de livret (lue par un agent d'ingestion) ÉCHOUE sous `page-lue` sur L7 et L25 et
+    s'avertit sur le .contenu de L30 ; sous `source-machine`, demandée ou déclarée, elle PASSE.
+    La page à vrais défauts échoue encore sur A2 et G1 malgré la classe, et le dénominateur de
+    couverture de L30 reste jugé. Le périmètre de non-mesure NOMME les règles retirées.
+    """
+    out = []
+    PREF = ("L7 ", "L25 ", "L30 chapitre #")
+
+    def lire(nom):
+        return (FIXTURES / nom).read_text(encoding="utf-8")
+
+    def cas(nom, tenu, attendu, obtenu):
+        out.append({"fixture": nom, "verdict": "OK" if tenu else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1589 classe source-machine", "detail": ""})
+
+    f, w = check(lire("source-machine-livret.html"))
+    vus = sorted(codes(f) & {"L7", "L25"})
+    w30 = [x for x in w if x.startswith("L30 chapitre #")]
+    cas("source-machine-livret.html (page-lue, défaut)", vus == ["L25", "L7"] and len(w30) == 4,
+        "ROUGE : L7 + L25 en échec, 4 avertissements L30 .contenu", f"{vus}, {len(w30)} L30")
+
+    f, w = check(lire("source-machine-livret.html"), classe="source-machine")
+    retires = [x for x in f + w if x.startswith(PREF)]
+    cas("source-machine-livret.html (--classe=source-machine)", not f and not retires,
+        "VERTE : 0 échec, aucun L7 / L25 / L30 .contenu", f"{len(f)} échec(s), {len(retires)} retiré(s) restant(s)")
+
+    f, w = check(lire("source-machine-declaree.html"))
+    cas("source-machine-declaree.html (meta classe-artefact)", not f,
+        "VERTE : la classe déclarée par la page suffit", f"{len(f)} échec(s) : {codes(f)}")
+
+    f, _ = check(lire("source-machine-declaree.html"), classe="page-lue")
+    vus = sorted(codes(f) & {"L7", "L25"})
+    cas("source-machine-declaree.html (--classe=page-lue)", vus == ["L25", "L7"],
+        "ROUGE : la ligne de commande prime sur la déclaration", str(vus))
+
+    f, _ = check(lire("source-machine-vrai-defaut.html"))
+    obtenu = sorted(codes(f, RE_CODE_AG) | codes(f))
+    cas("source-machine-vrai-defaut.html (classe déclarée)", obtenu == ["A2", "G1"],
+        "ROUGE : A2 + G1 en échec, et rien d'autre", str(obtenu))
+
+    f, w = check(lire("l30-couverture-muette.html"), regles="L", classe="source-machine")
+    f30 = [x for x in f if x.startswith("L30")]
+    w30 = [x for x in w if x.startswith("L30")]
+    cas("l30-couverture-muette.html (--classe=source-machine)", len(f30) == 3 and len(w30) == 1,
+        "ROUGE : dénominateur de couverture L30 toujours jugé (3 FAIL / 1 WARN)",
+        f"{len(f30)} FAIL / {len(w30)} WARN")
+
+    inconnue = lire("source-machine-declaree.html").replace(
+        'content="source-machine"', 'content="source-machin"')
+    f, w = check(inconnue)
+    signale = any(x.startswith("classe d'artefact inconnue") for x in w)
+    cas("classe déclarée inconnue (faute de frappe)", signale and "L7" in codes(f),
+        "ROUGE : avertie, et jugée en page-lue", f"avertie={signale}, L7={'L7' in codes(f)}")
+
+    outil = Path(__file__).resolve().parent / "check_html.py"
+    for options, attendu in ((["--classe=source-machine"], True), ([], False)):
+        r = subprocess.run([sys.executable, "-X", "utf8", str(outil),
+                            str(FIXTURES / "source-machine-livret.html"), "--output", "json",
+                            "--sans-style", *options],
+                           capture_output=True, text=True, encoding="utf-8", timeout=120)
+        try:
+            j = json.loads(r.stdout)
+            note = [n for n in j["non_juge"] if n.startswith("CLASSE D'ARTEFACT source-machine")]
+            nomme = bool(note) and all(c in note[0] for c in ("L7", "L25", "L30"))
+            tenu = nomme == attendu and (j["verdict"] == "PASS") == attendu
+            obtenu = f"verdict {j['verdict']}, règles nommées au non_juge : {nomme}"
+        except Exception as e:                   # noqa: BLE001
+            tenu, obtenu = False, f"sortie JSON illisible : {e}"
+        cas(f"source-machine-livret.html CLI {' '.join(options) or '(sans classe)'}", tenu,
+            f"non_juge {'nomme' if attendu else 'ne nomme pas'} L7 / L25 / L30", obtenu)
+    return out
+
+
 def run_matrice_etats():
     """TF-0493 (23/08/2026) — LA MATRICE D'ETATS, et les deux defauts qu'un client a trouves.
 
@@ -4429,7 +4505,7 @@ def main():
            + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
            + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable()
-           + run_avertissements_13_10())
+           + run_avertissements_13_10() + run_classe_source_machine())
     rendu = run_rendu()
     if rendu:
         res += rendu

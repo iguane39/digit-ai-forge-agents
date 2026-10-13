@@ -7,13 +7,19 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.28.0"
+  version: "1.28.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.28.1 (13/10/2026)** — **une page lue par une machine se déclare, au lieu d'être exemptée à la
+main.** · `check_html.py --classe=source-machine`, ou `<meta name="classe-artefact"
+content="source-machine">` dans la page : L7, L25 et le `.contenu` de L30 ne sont pas mesurés, et
+sont nommés au périmètre de non-mesure ; tout le reste est jugé, dont le dénominateur de couverture
+de L30 (TF-1589, RT-115 ; `references/lisibilite.md`, classes d'artefact).
 
 **1.28.0 (13/10/2026)** — **six retours humains sur des pages rendues corrigés à la cause, et leurs
 règles neuves entrent en avertissement.** · **L25 / L6 / `sommaire_perdu`** reconnaissent une barre
