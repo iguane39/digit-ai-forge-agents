@@ -593,6 +593,21 @@ CAS_RENDU = {
     # les separe. La rouge doit sortir en NON MESURABLE, pas en contraste vert.
     "v2p-pseudo-element-peint.html": ("unmeasured", 1),
     "v2p-fond-mesurable.html": ("v2_contrast", 1),
+    # TF-1368 (lot Produit-68 20260924a, RG-7) : un texte SVG se juge sur `fill` et la forme posee
+    # dessous, pas sur l'encre heritee de la page. Sans la correction, la rouge rendait 0 constat.
+    "v2-svg-libelle-couleur-de-sa-boite.html": ("v2_contrast", 2),
+    "v2-svg-libelle-lisible-sur-sa-boite.html": ("v2_contrast", 0),
+    # TF-1369 (lot Produit-68 20260924a, RG-8) : une fleche se juge par son trace. Rouge : une
+    # traversee et une confusion (l'ancienne mesure ne voyait que la seconde, par sa boite) ;
+    # verte : une fleche coudee dont la boite recouvre une brique sans la toucher (l'ancienne
+    # mesure l'accusait).
+    "v4-fleche-traverse-boite.html": ("v4_overlap", 2),
+    "v4-fleche-contourne-boite.html": ("v4_overlap", 0),
+    "v4-grille-de-graphe.html": ("v4_overlap", 0),
+    # TF-1417 (lot Produit-64 20260924e, RD-27) : un decor peint sur l'ANCETRE du texte aveugle son
+    # contraste — un constat par ancetre ; le meme decor en element frere n'en rend aucun.
+    "decor-rail-sur-ancetre.html": ("decor_sur_ancetre", 1),
+    "decor-rail-frere-du-texte.html": [("decor_sur_ancetre", 0), ("unmeasured", 0)],
     # V7 : le rythme vertical se mesure au blanc ENTRE les boîtes, pas au pas d'un
     # haut de boîte au suivant. Les deux pages sont identiques à une chose près —
     # un paragraphe hors de l'échelle d'espacement dans la rouge.
@@ -3304,6 +3319,26 @@ def run_poseur_composants():
             (1, True), (rouge.returncode, "PÉRIMÉE" in rouge.stdout), "TF-0890 parite",
             rouge.stdout[-280:])
 
+        # ---- TF-1486 (28/09/2026) : une page extraite en CRLF garde sa parite ---------------
+        # Mesure de l'agent « harnais » : 4 faux ecarts sur deux pages dont les empreintes
+        # egalaient celles du socle installe — seules les fins de ligne avaient change. Sens vert :
+        # la page conforme, reecrite en CRLF, passe. Sens rouge : la meme page en CRLF avec un
+        # octet derive echoue toujours — la normalisation ne neutralise QUE la fin de ligne.
+        page_crlf = Path(atelier) / "livrable-crlf.html"
+        page_crlf.write_bytes(html.replace("\r\n", "\n").replace("\n", "\r\n").encode("utf-8"))
+        crlf = subprocess.run(["node", poseur, "--constat", str(page_crlf)],
+                              capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · une page conforme en CRLF garde sa parite (sens vert)",
+            0, crlf.returncode, "TF-1486 fins de ligne", crlf.stdout[-280:])
+        page_crlf.write_bytes(html.replace("\r\n", "\n").replace(
+            "data-composant=\"table-filters.js\"",
+            "data-composant=\"table-filters.js\" data-derive=\"1\"", 1).replace("\n", "\r\n").encode("utf-8"))
+        crlf_r = subprocess.run(["node", poseur, "--constat", str(page_crlf)],
+                                capture_output=True, text=True, encoding="utf-8")
+        cas("poseur · en CRLF, un octet modifie ROMPT toujours la parite (sens rouge)",
+            (1, True), (crlf_r.returncode, "PÉRIMÉE" in crlf_r.stdout), "TF-1486 fins de ligne",
+            crlf_r.stdout[-280:])
+
         # ---- TF-0926 : la FEUILLE DU GABARIT, source synthetique `boilerplate.css` ----------
         #
         # Deux fixtures du socle portaient une copie FIGEE du CSS de `assets/boilerplate.html`,
@@ -4212,6 +4247,111 @@ def run_canevas_differentiel():
     return out
 
 
+def run_mesure_de_bruit():
+    """TF-1225 (14/09/2026) — UNE COMMANDE REND LE TAUX D'ACCUSATION D'UNE REGLE SUR UN PARC.
+
+    LE FAIT PAYE. A environ 30 s par page, les mesures de bruit de TF-0847 et de V15 n'ont porte
+    que sur 79 et 82 des 471 pages consommatrices. `mesurer_bruit.py` rend toutes les familles
+    d'un seul rendu par page, en parallele, et garde chaque rendu en cache par empreinte (page +
+    outil + largeurs). Trois cas, sur deux fixtures V19 copiees dans un atelier jetable :
+      · le compte est juste : 1 page accusee sur 2 pour `mot_coupe`, taux 0,5 ;
+      · la seconde passe ne rend RIEN : les 2 pages viennent du cache ;
+      · sens rouge du cache : une page modifiee d'un octet est rendue a nouveau (1 sur 2 du cache).
+    Silencieux si playwright est absent.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    outil = str(Path(__file__).resolve().parent / "mesurer_bruit.py")
+    atelier = Path(tempfile.mkdtemp(prefix="self-test-bruit-"))
+    out = []
+    try:
+        parc = atelier / "parc"
+        parc.mkdir()
+        for nom in ("v19-mot-coupe-sans-trait-union.html", "v19-mot-entier-colonne-large.html"):
+            shutil.copy(FIXTURES / nom, parc / nom)
+        cache = atelier / "cache"
+
+        def passe():
+            r = subprocess.run([sys.executable, "-X", "utf8", outil, str(parc), "--familles", "mot_coupe",
+                                "--jobs", "2", "--cache", str(cache), "--output", "json"],
+                               capture_output=True, text=True, encoding="utf-8")
+            try:
+                return json.loads(r.stdout)["apres"]
+            except Exception:  # noqa: BLE001
+                return {"erreur": (r.stderr or r.stdout)[-200:]}
+
+        p1 = passe()
+        f1 = (p1.get("familles") or {}).get("mot_coupe", {})
+        ok = p1.get("mesurees") == 2 and f1.get("pages_accusees") == 1 and f1.get("taux") == 0.5
+        out.append({"fixture": "mesure de bruit · compte et taux", "verdict": "OK" if ok else "ECHEC",
+                    "attendu": "2 mesurees, 1 accusee, taux 0.5",
+                    "obtenu": f"{p1.get('mesurees')} mesurees, {f1.get('pages_accusees')} accusee(s), taux {f1.get('taux')}",
+                    "regle": "TF-1225 mesure de bruit", "detail": "" if ok else str(p1)[:300]})
+        p2 = passe()
+        ok = p2.get("depuis_cache") == 2
+        out.append({"fixture": "mesure de bruit · seconde passe prise au cache", "verdict": "OK" if ok else "ECHEC",
+                    "attendu": 2, "obtenu": p2.get("depuis_cache"), "regle": "TF-1225 cache par empreinte",
+                    "detail": "" if ok else str(p2)[:300]})
+        page = parc / "v19-mot-entier-colonne-large.html"
+        page.write_text(page.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        p3 = passe()
+        ok = p3.get("depuis_cache") == 1
+        out.append({"fixture": "mesure de bruit · page modifiee rendue a nouveau (sens rouge)",
+                    "verdict": "OK" if ok else "ECHEC", "attendu": 1, "obtenu": p3.get("depuis_cache"),
+                    "regle": "TF-1225 cache par empreinte", "detail": "" if ok else str(p3)[:300]})
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
+def badges_non_cables(css: str, gabarit: str) -> list[str]:
+    """Les jetons qu'une variante `.badge.<x>` emploie sans que le gabarit les pose dans ses
+    trois projections (clair, sombre, impression) — rend « variante : --jeton (n projection(s)) »."""
+    ecarts = []
+    for m in re.finditer(r"\.badge\.([\w-]+)\s*\{([^}]*)\}", css):
+        for jeton in re.findall(r"var\(--([\w-]+)", m.group(2)):
+            n = len(re.findall(r"--" + re.escape(jeton) + r"\s*:", gabarit))
+            if n < 3:
+                ecarts.append(f"{m.group(1)} : --{jeton} ({n} projection(s))")
+    return ecarts
+
+
+def run_badge_defavorable():
+    """TF-1263 (15/09/2026) — LE SOCLE PORTE UNE VARIANTE DE BADGE POUR UN ETAT DEFAVORABLE.
+
+    LE FAIT PAYE. composants.md §2 ne portait que trois variantes (ok, part, info) ; 9 occurrences
+    de `badge ko` ecrites dans la bibliotheque du pilot avant que la classe existe se rendaient en
+    texte nu, et chaque consommateur reinventait son rouge. La variante `ko` est desormais au
+    catalogue, cablee sur les jetons rouges du gabarit.
+      · sens vert : la variante `ko` existe, et toute variante du catalogue n'emploie que des
+        jetons poses dans les trois projections du gabarit ;
+      · sens rouge : une variante cablee sur un jeton que le gabarit ne pose pas est vue.
+    """
+    racine = FIXTURES.parent
+    comp = (racine / "references" / "composants.md").read_text(encoding="utf-8")
+    gabarit = (racine / "assets" / "boilerplate.html").read_text(encoding="utf-8")
+    section = comp.split("## 2 —", 1)[-1].split("\n## 3 —", 1)[0]
+    out = []
+    a_ko = bool(re.search(r"\.badge\.ko\s*\{", section)) and 'class="badge ko"' in section
+    out.append({"fixture": "composants.md §2 · variante ko", "verdict": "OK" if a_ko else "ECHEC",
+                "attendu": "regle .badge.ko et exemple HTML", "obtenu": str(a_ko),
+                "regle": "TF-1263 badge defavorable", "detail": ""})
+    ecarts = badges_non_cables(section, gabarit)
+    out.append({"fixture": "composants.md §2 · jetons des variantes", "verdict": "OK" if not ecarts else "ECHEC",
+                "attendu": "0 jeton absent du gabarit", "obtenu": "; ".join(ecarts) or "0",
+                "regle": "TF-1263 badge defavorable", "detail": ""})
+    rouge = badges_non_cables(".badge.zz { --_dot: var(--rouge-maison); background: var(--red-fill); }", gabarit)
+    ok = rouge == ["zz : --rouge-maison (0 projection(s))"]
+    out.append({"fixture": "sens rouge · variante sur un rouge maison", "verdict": "OK" if ok else "ECHEC",
+                "attendu": "le jeton --rouge-maison nomme, --red-fill accepte", "obtenu": str(rouge),
+                "regle": "TF-1263 badge defavorable", "detail": ""})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -4223,7 +4363,7 @@ def main():
            + run_assets_inlinables() + run_assets_echelle_4pt() + run_fins_de_ligne_declarees()
            + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
-           + run_echeance_forme_ancienne() + run_mesure_prete())
+           + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable())
     rendu = run_rendu()
     if rendu:
         res += rendu
@@ -4298,6 +4438,10 @@ def main():
     poseur = run_poseur_composants()
     if poseur:
         res += poseur
+    # TF-1225 — la mesure de bruit d'une regle sur un parc : un rendu par page, cache par empreinte.
+    bruit = run_mesure_de_bruit()
+    if bruit:
+        res += bruit
     # TF-0935 — le composant d'infobulle : un `title` de sept objets rendu en puces, et la
     # contre-epreuve qu'une seule ligne reste un paragraphe. Aucun oracle de marquage ne voit
     # ce qu'un composant FAIT.

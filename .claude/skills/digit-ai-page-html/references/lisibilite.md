@@ -18,6 +18,9 @@ règles, qui trouvent les règles suivantes.
 
 ## Deux régimes, jamais confondus
 
+Chaque règle de ce document relève d'un seul des deux régimes ci-dessous, et le tableau dit qui
+juge dans chacun.
+
 | Régime | Qui juge | Ce qu'il couvre |
 |---|---|---|
 | **Contrôle mécanique** | `scripts/check_html.py` | Ce qui se décide sans lire : présence, longueur, résolution d'ancre, seuil de lignes, valeur d'attribut. |
@@ -422,7 +425,7 @@ chapitre apporte/présente les éléments annoncés par son titre ») ; chapeau 
 **Deux formes acceptées.** Un libellé visible d'au moins **8 caractères** nommant la cible ;
 ou un libellé court accompagné d'un `title` / `aria-label` d'au moins 12 caractères qui la
 nomme. **La sortie la plus simple se dit en premier (TF-0434)** : un libellé qui est un
-**identifiant du document** (H5, E2, 1.5, ADR 0022) n'est pas muet pour son lecteur — il est
+**identifiant du document** (H5, E2, 1.5, ADR 0022 : une décision d'architecture numérotée) n'est pas muet pour son lecteur — il est
 elliptique pour un lecteur d'écran ; il reste court et prend un `title` de 12 caractères.
 L'allonger nuirait à la lecture.
 
@@ -595,8 +598,8 @@ messages du socle ne sont pas fiables — c'est plus coûteux que la règle elle
 
 **Règle.** Une convention de balisage interne n'a **rien à faire dans le texte rendu**. Le
 défaut fondateur (14/08, rapport Produit-10) : un livrable **diffusé** portait 71 occurrences de
-marqueurs `[c:ec-sources]` en clair dans ses phrases — « 85 [c:ec-sources] sources Veltis »,
-« 258 [c:ec-claims] lignes de tableau ». Il était PASS à `check_html.py`, PASS à
+marqueurs `[c:ec-sources]` en clair dans ses phrases — « `85 [c:ec-sources] sources Veltis` »,
+« `258 [c:ec-claims] lignes de tableau` ». Il était PASS à `check_html.py`, PASS à
 `render_page.py` sur cinq largeurs, PASS à 24 contrôles d'interactions maison. **Aucun oracle
 ne lisait le texte rendu.** C'est l'humain qui l'a vu, au premier coup d'œil, capture à
 l'appui.

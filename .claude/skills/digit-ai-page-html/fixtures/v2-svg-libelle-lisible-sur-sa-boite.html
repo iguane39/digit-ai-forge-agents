@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V2 — libelle SVG lisible sur sa boite — 20260924a</title>
+<!--
+  Fixture VERTE de TF-1368 : les memes briques, libelles peints en blanc sur la boite sombre et
+  en encre sombre sur la boite claire, plus un libelle pose a meme le canevas (fond : la page
+  sous le <svg>). L'encre heritee de la page (`color`, sombre) contredirait le libelle blanc :
+  l'ancienne mesure l'aurait juge sur un fond blanc. Attendu : 0 constat v2_contrast.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+svg{display:block;width:100%;height:auto}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V2 — libelle SVG lisible sur sa boite</h1>
+<svg viewBox="0 0 480 150" role="img" aria-label="Deux briques d'architecture">
+  <g><title>Passerelle</title>
+    <rect x="10" y="20" width="200" height="80" fill="#1E3A5F"/>
+    <text x="110" y="66" text-anchor="middle" font-size="16" fill="#FFFFFF">Passerelle</text>
+  </g>
+  <g><title>Annuaire</title>
+    <rect x="260" y="20" width="200" height="80" fill="#E2E8F0"/>
+    <text x="360" y="66" text-anchor="middle" font-size="16" fill="#0F172A">Annuaire</text>
+  </g>
+  <text x="240" y="135" text-anchor="middle" font-size="14" fill="#334155">Flux de lecture seule</text>
+</svg>
+</main></body></html>

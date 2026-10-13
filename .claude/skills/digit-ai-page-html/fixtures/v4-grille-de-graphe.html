@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — grille de graphique sur ses barres — 20261012a</title>
+<!--
+  Fixture VERTE de TF-1369 : un histogramme dont les lignes de grille traversent les barres par
+  construction. Ce ne sont pas des liaisons (aucun marqueur de fleche, extremites dans le vide) :
+  la passe des fleches ne les juge pas. Mesure du 12/10/2026 sur l'exemple des barres empilees du
+  socle : 19 faux constats avant cette distinction. Attendu : 0 constat v4_overlap.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+svg{display:block;width:100%;height:auto}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — grille de graphique sur ses barres</h1>
+<svg viewBox="0 0 400 200" role="img" aria-label="Histogramme de trois mois">
+  <rect x="60" y="60" width="60" height="120" fill="#1E3A5F"/>
+  <rect x="170" y="100" width="60" height="80" fill="#0F766E"/>
+  <rect x="280" y="40" width="60" height="140" fill="#1E3A5F"/>
+  <line x1="40" y1="80" x2="380" y2="80" stroke="#CBD5E1" stroke-width="1"/>
+  <line x1="40" y1="130" x2="380" y2="130" stroke="#CBD5E1" stroke-width="1"/>
+  <line x1="40" y1="180" x2="380" y2="180" stroke="#334155" stroke-width="1"/>
+</svg>
+</main></body></html>

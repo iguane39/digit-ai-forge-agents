@@ -16,9 +16,9 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | # | Défaut | Critère binaire (réussi/raté) | Vérification |
 |---|---|---|---|
 | V1 | Texte ou élément qui sort de son cadre / de la page | Aucun débordement horizontal du document ; aucun contenu hors de la zone de son conteneur | **Mesuré** — `render_page.py` (scrollWidth vs clientWidth, bounding boxes vs viewport) |
-| V2 | Texte illisible — clair sur fond clair, sombre sur sombre | Ratio de contraste **≥ 4.5:1** (WCAG AA) pour le texte courant ; ≥ 3:1 pour le texte large (≥ 24px, ou ≥ 18.66px gras) | **Mesuré** — `render_page.py` (couleur effective vs fond effectif, formule WCAG) |
+| V2 | Texte illisible — clair sur fond clair, sombre sur sombre | Ratio de contraste **≥ 4.5:1** (WCAG AA) pour le texte courant ; ≥ 3:1 pour le texte large (≥ 24px, ou ≥ 18.66px gras) | **Mesuré** — `render_page.py` (couleur effective vs fond effectif, formule WCAG). Un texte SVG (`<text>`, `<tspan>`) se juge sur son `fill` contre la forme remplie posée dessous dans son groupe, ou à défaut contre la page sous le `<svg>` ; un `fill` en `url(...)` est déclaré non mesuré (TF-1368) |
 | V3 | Éléments non alignés | Les éléments frères d'un même groupe partagent leur bord d'alignement (écart ≤ 2px) | **Mesuré (avertissement)** — `render_page.py` ; l'arbitrage final reste visuel (un décalage peut être voulu) |
-| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok="<id de l'élément recouvert>"` — une **paire**, pas un interrupteur (TF-1146). La forme nue exempte encore l'élément entier, mais elle est **recensée** (famille `overlap_en_bloc`, avertissement). Une étiquette déclarée de sa marque (`data-etiquette-de`, `.etiquette-marque`) et **contenue** dans son rectangle n'est pas un chevauchement (RT-124) |
+| V4 | Éléments qui se chevauchent | Zéro intersection non voulue de bounding boxes entre éléments frères | **Mesuré** — `render_page.py` (intersections significatives) ; les superpositions voulues se déclarent via `data-overlap-ok="<id de l'élément recouvert>"` — une **paire**, pas un interrupteur (TF-1146). La forme nue exempte encore l'élément entier, mais elle est **recensée** (famille `overlap_en_bloc`, avertissement). Une étiquette déclarée de sa marque (`data-etiquette-de`, `.etiquette-marque`) et **contenue** dans son rectangle n'est pas un chevauchement (RT-124). Une **liaison** SVG (`line`, `polyline`, `path` sans remplissage, à marqueur de flèche ou accrochée à deux boîtes) se juge par son **tracé** échantillonné tous les 2 px, plus par sa boîte englobante : elle ne traverse aucune boîte qui n'est ni son départ ni son arrivée, ne court pas sur une autre liaison au-delà de 24 px, et ne barre aucun texte ; une grille ou un axe de graphique n'est pas une liaison (TF-1369) |
 | V5 | Flèches ou filets qui croisent un élément | Aucun connecteur à travers un nœud ou un texte ; routage en L pur (règle `digit-ai-schemas`) | **Visuel** — rendu + inspection (boucle render-view-fix) |
 | V6 | Image déformée ou débordante | Ratio d'origine préservé (contain-fit), image dans sa zone, sans cadre parasite (règle `digit-ai-pptx`) | **Visuel** — rendu + inspection ; contain-fit garanti à la source par `prepare_images.py` |
 | **V8** | **Contenu ROGNÉ par un débordement masqué** | Aucun élément dont `overflow` vaut `hidden` ou `clip` ne cache du contenu : `scrollHeight` ≤ `clientHeight` et `scrollWidth` ≤ `clientWidth` (tolérance 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme le nombre d'éléments de texte invisibles et cite les trois premiers. Troncature voulue ET visible (une ligne, points de suspension) admise ; troncature assumée déclarée par `data-rognage-assume` |
@@ -33,7 +33,7 @@ décision reste à l'œil sur les PNG produits. Les entrées en gras sont celles
 | **V17** | **Conteneur bridé sur une page de données** | Sur une page `data-page="donnees"`, à partir de **1 280 px** de fenêtre, le conteneur principal (`.wrap`, `main`, ou l'élément porteur de `data-page`) occupe **≥ 96 %** de la largeur de la fenêtre | **Mesuré (bloquant)** — `render_page.py` ; nomme la largeur mesurée, celle de la fenêtre et le `max-width` calculé. Troisième angle de la page de données : V12 juge le tableau dans sa boîte, V13 le bloc dans son conteneur, V17 le conteneur dans la fenêtre — un plafond de confort (`--w: clamp(75vw, 1680px, 92vw)`) rendait PASS aux deux premiers |
 | **V18** | **Ce que le 4K montre et que 1920 taisait** | À partir de **2 560 px** de fenêtre, **(a)** aucun paragraphe de prose que rien ne tient ne dépasse **135 caractères par ligne** (mesure : caractères du bloc ÷ lignes réellement peintes, `Range.getClientRects`) ; **(b)** sur une page de données (`data-page="donnees"`, `data-restitution="registre|suivi"`, ou tableau dominant d'au moins 8 lignes et 4 colonnes), le tableau principal occupe **≥ 85 %** de la largeur que son conteneur lui offre (L26) | **Mesuré (bloquant)** — `render_page.py`, **uniquement aux largeurs ≥ 2 560 px** : les deux défauts n'existent pas en deçà, et la grille par défaut les couvre (3840, 2560, 1920, 1280, 768, 390). Règle amont : **E5** du pilot (`references/BEST-PRACTICES-HTML.md` § E, 12/09/2026) — une page se conçoit à 1920 et se vérifie jusqu'à 3840. **Arbitrage tranché** (décision humaine du 15/09/2026, « 13a », TF-1069) : le plafond posé le 12/09 était 100 caractères par ligne, sous le token `.chap.lire` du socle (1 080 px, E4), mesuré à **134** caractères par ligne en 16 px — condamner la forme qu'un gabarit prescrit mettait le gabarit en défaut, jamais l'auteur. L'étude d'opportunité du 14/09 (TF-1069) a arbitré entre resserrer `.chap.lire` et porter le plafond à 135 ; la décision retient la seconde option, la moins destructrice pour l'existant : `.chap.lire` reste à 1 080 px, son token (134 cpl) passe désormais SOUS le plafond. **Frontière restante** : un paragraphe TENU par un conteneur de lecture (`.lire`, `[data-mesure-lecture]`) plus large que ce token reste, lui, jamais bloqué même au-delà de 135 — sa mesure est publiée en **non mesurable**, la même frontière qu'avant l'arbitrage |
 | **V15 ter** | **En-tête de tableau masqué par l'empilement des collants** | Après défilement, un `<th>` `sticky` se pose au **bas du dernier élément collant qui le surplombe**, à 4 px près | **Mesuré (bloquant)** — `render_page.py` ; nomme l'élément coupable et les pixels masqués. Troisième branche de V15 : l'en-tête se tient à son `top` déclaré (les deux autres branches rendent PASS) et reste illisible, parce que `--hh` est un **token** et non une mesure. Jugé à chaque largeur — c'est la largeur qui décide du nombre de lignes de l'en-tête |
-| **V19** | **Mot coupé en deux lignes sans trait d'union** | Aucun mot d'un nœud de texte visible n'a ses rectangles (`Range.getClientRects`) répartis sur deux lignes (écart de `top` > 2px) | **Mesuré (bloquant)** — `render_page.py` ; nomme l'élément porteur et le mot coupé. Complète **L19** de `check_html.py`, statique, qui ne vise que `overflow-wrap:anywhere`/`break-all` et déclarait elle-même ce contrôle de rendu absent — `break-word`, légitime sur la prose, peut casser un mot sans le signaler. Même exemption que L19 : `data-coupure-ok="<raison>"`. Portée alignée sur L19 : `code`, `pre`, `kbd`, `samp`, `a[href]` non jugés |
+| **V19** | **Mot coupé en deux lignes sans trait d'union** | Aucun mot d'un nœud de texte visible n'a ses rectangles (`Range.getClientRects`) répartis sur deux lignes (écart de `top` > 2px) | **Mesuré (avertissement)** — `render_page.py` ; nomme l'élément porteur et le mot coupé. Avertissement depuis la mesure de bruit du 12/10/2026 : 8 pages sur 385 existantes accusées (TF-1350, consigne « règle neuve à bruit non nul »). Complète **L19** de `check_html.py`, statique, qui ne vise que `overflow-wrap:anywhere`/`break-all` et déclarait elle-même ce contrôle de rendu absent — `break-word`, légitime sur la prose, peut casser un mot sans le signaler. Même exemption que L19 : `data-coupure-ok="<raison>"`. Portée alignée sur L19 : `code`, `pre`, `kbd`, `samp`, `a[href]` non jugés |
 | V7 | Espacement irrégulier entre éléments répétés | **Blanc entre les boîtes** constant d'un frère au suivant, dans une même série (tolérance ≤ 2px) | **Mesuré (avertissement)** — `render_page.py`, plafonné à 20 constats détaillés puis agrégé ; arbitrage final visuel |
 
 ### V9 : un actif visuel se valide dans le CONTEXTE où il est servi, jamais sur son fichier
@@ -284,6 +284,40 @@ jugées à cette largeur. Levier connu quand la capture ne passe pas : `--timeou
 navigateur). Preuve à double sens dans `self_test.py` (`run_capture_manquee`) : la même page
 jouée au délai normal puis à **1 ms**, et le banc exige qu'aucun traceback ne sorte et que le
 verdict soit rendu dans les deux cas.
+
+### Mesurer le bruit d'une règle sur tout le parc, en une commande (TF-1225, 12/10/2026)
+
+Une règle neuve du rendu se mesure chez les pages qui existent déjà, avant d'entrer (TF-0965). À
+30 s par page, les mesures du 14/09 s'étaient contentées de 79 et 82 pages sur 471.
+`scripts/mesurer_bruit.py` rend chaque page **une fois** par version de l'outil et compte toutes
+les familles de ce seul rendu ; il garde chaque rendu en **cache par empreinte** (octets de la
+page, de `render_page.py` et de `check_html.py`, largeurs) et joue les rendus **en parallèle**.
+`--avant-ref <révision git>` joue en plus le socle de cette révision : la sortie donne, par
+famille, les pages accusées avant et après, le taux d'accusation et les pages nouvellement
+accusées.
+
+```
+python scripts/mesurer_bruit.py <pages|dossiers>… --avant-ref HEAD --widths 1440 --jobs 5
+```
+
+Mesure du 12/10/2026, 385 pages existantes (79 du pilot et des forges, 306 de dossiers de
+livrables produits), 1 440 px, 5 rendus en parallèle, deux versions : 658 rendus effectifs
+(112 repris du cache) en 37 min, soit 3,3 s de mur par rendu. Une seconde passe sur 79 pages inchangées a pris 1 s, tout venant du cache.
+Résultats qui ont fixé la sévérité des règles du jour :
+
+| Règle | Avant | Après | Décision |
+|---|---|---|---|
+| V19 mot coupé (TF-1350) | — | 8 pages, 76 constats | bruit non nul : **avertissement** |
+| Décor sur l'ancêtre (TF-1417) | — | 6 pages, 31 constats | bruit non nul : **avertissement** |
+| V2 texte SVG sur sa forme (TF-1368) | 185 pages, 2 406 | 192 pages, 2 566 | correction d'une règle bloquante : 7 pages nouvellement accusées, dont 2 canevas sans feuille de style, réellement noir sur noir rendus seuls ; échantillon vérifié : vrais écarts de 4,05 à 4,31:1 |
+| V4 liaisons par leur tracé (TF-1369) | 58 pages, 4 431 | 59 pages, 3 013 | correction d'une règle bloquante, mesurée après son dernier réglage (306 pages produits et 81 du pilot et des forges) : 1 418 constats de boîte englobante disparus ; une page nouvellement accusée, `exemple-reference.html` de `digit-ai-schemas`, où une flèche barre le titre d'une bande |
+
+Ce que la commande ne juge pas : l'état initial seul (aucun `--etats-ouverts`, aucune matrice),
+les seules largeurs demandées ; une page dont le rendu échoue est comptée à part ; elle ne découvre
+pas les consommateurs, on lui donne le parc. Une liste longue passée par `xargs` se découpe en
+plusieurs appels, donc en plusieurs rapports : `--liste <fichier>` lit les chemins dans un fichier,
+un par ligne. Une entrée introuvable est listée, jamais écartée sans un mot, et `--avant-ref` se fige
+en sha au lancement : un commit fait pendant la mesure ne change pas l'« avant ».
 
 ### Seuil de hauteur : au-delà, la page n'est plus jugeable visuellement (TF-1139, 15/09/2026)
 

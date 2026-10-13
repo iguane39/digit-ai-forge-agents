@@ -44,6 +44,7 @@ clair, et « couleur seule » viole WCAG 1.4.1).
 <span class="badge ok">Adopter</span>
 <span class="badge part">Adapter</span>
 <span class="badge info">Info</span>
+<span class="badge ko">Écarter</span>
 ```
 ```css
 .badge { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 600;
@@ -52,7 +53,13 @@ clair, et « couleur seule » viole WCAG 1.4.1).
 .badge.ok   { --_dot: var(--green); background: var(--green-fill); border-color: var(--green-line); }
 .badge.part { --_dot: var(--amber); background: var(--amber-fill); border-color: var(--amber-line); }
 .badge.info { --_dot: var(--teal);  background: var(--teal-fill);  border-color: var(--teal-line); }
+.badge.ko   { --_dot: var(--red);   background: var(--red-fill);   border-color: var(--red-line); }
 ```
+
+La variante `ko` dit un état **défavorable** : bloquant, écarté, refusé, probabilité forte d'un
+risque. Elle se câble sur les jetons `--red`, `--red-fill` et `--red-line` du gabarit, posés dans
+ses trois projections (clair, sombre, impression) : aucun consommateur ne pose son propre rouge
+(TF-1263).
 
 ## 3 — Barre de progression 🟡
 
@@ -278,6 +285,12 @@ après renormalisation est un tableau qui a trop de colonnes : le replier, ou en
   `node scripts/embarquer-composants.mjs --poser <page.html> --composants table-filters.js,table-filters.css`,
   vérifier avec `--constat <page.html>`. Un défaut du composant se corrige ici, à la source ;
   une copie éditée sur place perd son sceau et redevient une fourche.
+- **Un décor se peint sur un élément frère du texte, jamais sur son ancêtre** (TF-1417). Un rail
+  de gouttière, une bande ou un dégradé posé en `::before` / `::after` sur le conteneur d'un texte
+  rend le contraste de TOUT ce texte non mesurable : 440 lignes « NON MESURABLE » sur une page de
+  guide le 24/09/2026, 4 une fois le rail sorti en `<div class="ch-rail" aria-hidden="true">`,
+  frère des paragraphes. `render_page.py` le signale (famille `decor_sur_ancetre`, un constat par
+  ancêtre, en avertissement : le bruit mesuré sur les pages existantes n'est pas nul) ; une puce ou une pastille de moins de 24 px n'est pas un décor.
 - Tous les composants ci-dessus supposent le bloc `:root` du boilerplate. Après intégration,
   **relancer les oracles** (`check_html.py` puis `render_page.py`) : ne jamais juger un rendu
   depuis le seul code (cf. `zero-defaut-visuel.md`).
