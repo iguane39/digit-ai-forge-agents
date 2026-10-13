@@ -5,7 +5,7 @@
   "note": "M5 (note P1 §3/D3) : versions réelles montées dans {repo forge}/.claude/skills, extraites mécaniquement des frontmatters — comparées par l'oracle etat-forge (O3) en début de session forge. Source claude.ai de la file des candidats : /areas/forge-file-candidats.md.",
   "skills": {
     "accueil-factory": {
-      "version": "1.0.1",
+      "version": "1.1.0",
       "source": "frontmatter SKILL.md"
     },
     "ameliore-un-skill": {
@@ -29,7 +29,7 @@
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-page-html": {
-      "version": "1.28.0",
+      "version": "1.28.1",
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-pptx": {
