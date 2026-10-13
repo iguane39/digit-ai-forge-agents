@@ -12,7 +12,7 @@ description: >
   qu'un dépôt préexistant veut adopter le dispositif. Ne pas déclencher dans un projet déjà
   instrumenté (son `CLAUDE.md` et ses hameçons font le travail), ni pour un « factory pattern »
   ou une « AbstractFactory » (conception logicielle, sans rapport).
-version: 1.0.1
+version: 1.1.0
 ---
 
 # Accueil de la forge Digit-AI
@@ -46,10 +46,13 @@ Un candidat n'est le pilot que s'il porte `CLAUDE.md` **et** `bootstrap.mjs`. An
 retenu en une ligne, avant toute autre chose : une session qui ne dit pas où elle a trouvé sa
 doctrine ne permet pas de vérifier qu'elle a trouvé la bonne.
 
-**Introuvable ?** Ne rien supposer et ne rien improviser : dire qu'il est introuvable, lister les
-chemins essayés, et proposer l'installation — `git clone https://github.com/iguane39/digit-ai-factory`
-puis `node bootstrap.mjs --pull`, qui clone les forges à côté du pilot, propage leurs skills et
-doit finir sur « Poste prêt ». Attendre l'accord avant d'installer quoi que ce soit.
+**Introuvable, ou node absent ?** Ne rien supposer, ne rien improviser et **ne rien demander** :
+dire les chemins essayés, puis lancer l'installateur du pilot depuis le dossier du projet —
+`installer.ps1` sous Windows, `installer.sh` ailleurs (commandes dans `AGENTS.md` du pilot). Il
+pose lui-même git, node et uv en portée utilisateur, sans droit administrateur, clone le pilot et
+les forges, propage les skills, installe le projet et finit sur « FACTORY DIGIT-AI
+OPÉRATIONNELLE ». Installer un outil sans coût ni effet irréversible n'est pas une décision
+humaine (TF-1637, 13/10/2026) : la question « comment installer node ? » est un défaut.
 
 **Un second clone du pilot est un piège**, et le poste en a porté un : 110 enregistrements de
 retard, absent de la liste, jamais mis à jour, et une candidature ingérée dedans a été instruite
@@ -78,8 +81,9 @@ repars d'un dossier vide », aucun geste n'existait.
 **L'adoption ne repart JAMAIS d'un dossier vide** et ne déplace aucun fichier. Sa phase 0 est
 idempotente et non destructive : `node <pilot>\scripts\adopter-projet-existant.mjs .` relève ce qui
 est déjà là, crée seulement ce qui manque, laisse intact tout fichier préexistant en le nommant, et
-consigne l'écart initial au carnet des écarts assumés du projet plutôt que de l'imposer. À jouer
-d'abord avec `--essai`, qui montre et n'écrit rien.
+consigne l'écart initial au carnet des écarts assumés du projet plutôt que de l'imposer.
+L'installateur la joue d'office : parce qu'elle ne modifie aucun fichier existant, elle ne se
+soumet pas à accord. `--essai` reste disponible pour montrer sans écrire.
 
 ## 4. Dérouler le protocole d'accueil du pilot
 
@@ -99,7 +103,8 @@ Deux règles du noyau qui mordent dès ce moment :
 
 ## Ce que ce skill ne fait pas
 
-- Il n'écrit rien chez un produit sans que le run soit ouvert et l'accord donné.
+- Il n'écrit rien chez un produit sans que le run soit ouvert et l'accord donné, hors du socle
+  que l'installateur pose sans rien modifier de l'existant.
 - Il ne recopie ni le protocole d'accueil, ni les règles de projet, ni la liste des forges : il les
   lit chez le pilot, qui fait foi.
 - Il ne juge pas si le pilot est à jour : c'est `bootstrap.mjs` qui le mesure et le dit.
