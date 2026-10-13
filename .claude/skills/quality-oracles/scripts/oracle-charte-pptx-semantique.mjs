@@ -345,12 +345,34 @@ for (const s of slides) {
   }
 }
 
-if (findings.length) out('FAIL', 1);
+// S8 — la typographie française tient aux coupures de ligne (TF-1384, RG-16 du 26/09/2026) : sur une
+// présentation, des deux-points ouvraient une ligne, « (point » finissait une ligne et « 4) » ouvrait la
+// suivante, un titre se coupait entre « chapitre » et « 4 » ; deux remises remplacées le même jour pour
+// la typographie seule. Une espace ORDINAIRE devant : ; ! ?, à l'intérieur de « », entre un nom et son
+// numéro ou entre un mois et son année est un point de coupure que PowerPoint peut prendre. Règle NEUVE :
+// AVERTISSEMENT (D-70 (b)), un constat par diapositive ; le placement réel des coupures reste une mesure
+// de rendu (non_juge). Même table que L35 du socle HTML (check_html.py).
+const TYPO_FR = [
+  [/(?<=[^\s\u00a0\u202f]) (?=[:;!?](?:[\s\u00a0\u202f]|$))/g, 'devant une ponctuation haute'],
+  [/« | »/g, "à l'intérieur de guillemets"],
+  [/\b(?:chapitres?|points?|étapes?|lots?|phases?|parties?|annexes?|sections?|versions?|articles?|pages?|tomes?|niveaux?|paliers?|vagues?|sprints?|semaines?) \d+\b/gi, 'entre un nom et son numéro'],
+  [/\b(?:janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre) \d{4}\b/gi, 'entre un mois et son année'],
+];
+for (const s of slides) {
+  const vus = [];
+  for (const x of s.shapes) for (const p of x.paras) for (const [re, quoi] of TYPO_FR) {
+    for (const m of p.matchAll(re)) vus.push(`${quoi} (« ${p.slice(Math.max(0, m.index - 16), m.index + m[0].length + 6).trim()} »)`);
+  }
+  if (vus.length) findings.push({ sev: 'avertissement', msg: `S8 typographie française — ${vus.length} espace(s) ordinaire(s) là où la ligne ne doit pas couper : ${vus.slice(0, 3).join(' · ')}${vus.length > 3 ? ' …' : ''} — remède : espace insécable (U+00A0, ou fine U+202F)`, where: s.file });
+}
+non_juge.push('S8 : le placement RÉEL des coupures de ligne (mesure de rendu PowerPoint) — S8 juge les espaces ordinaires qui les permettent, pas les lignes peintes');
+
+if (findings.some(f => f.sev === 'bloquant')) out('FAIL', 1);
 // TF-1490 : un PASS dit quelles règles il a jouées — sous un profil qui ne déclare pas S3 ou S4, elles ne l'ont pas été.
 const regles34 = (CHARTE.logos === 'couverture-interlocuteurs' && CHARTE.pied_de_page === 'espace-reserve') ? 'S1-S4 vérifiés'
   : `S1-S2 vérifiés, S3 ${CHARTE.logos === 'couverture-interlocuteurs' ? 'vérifiée' : CHARTE.logos === 'partout' ? 'sans zone à juger' : 'NON jouée'}, `
     + `S4 ${['espace-reserve', 'zone-texte'].includes(CHARTE.pied_de_page) ? 'vérifiée (' + CHARTE.pied_de_page + ')' : 'NON jouée'}${duProfil}`;
 findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), ${regles34}`
   + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)')
-  + (s6Etat ? ` ; S6 — ${s6Etat}` : ' ; S6 non jouée (motif au non_juge)') + ' ; S7 (E-11) vérifiée', where: path.basename(file) });
+  + (s6Etat ? ` ; S6 — ${s6Etat}` : ' ; S6 non jouée (motif au non_juge)') + ' ; S7 (E-11) vérifiée ; S8 (typographie) jouée en avertissement', where: path.basename(file) });
 out('PASS', 0);
