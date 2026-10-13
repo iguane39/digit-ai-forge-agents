@@ -4311,13 +4311,50 @@ def exemption_declaree(source, hors=()):
     return tuple(familles), " · ".join(motifs)
 
 
-def check(html: str, regles: str = "tout", source=None):
+# TF-1589 (RT-115, lot Produit-02 20261001b) — LA CLASSE D'ARTEFACT « source-machine ».
+# Mesure du 22/09/2026 : cinq pages engendrées comme SOURCE pour l'assistant d'ingestion d'une
+# plateforme tierce rendaient FAIL sur 9 occurrences de L7, avec 9 avertissements L30. Chaque
+# paragraphe y est repris tel quel comme contenu du livret remis au voyageur : un chapeau
+# « ce que ce chapitre vous apprend » y devient du méta-discours livré au client final. Les
+# 33 autres règles étaient vertes, et utiles. La page dont le lecteur est une machine se
+# DÉCLARE (`--classe=source-machine`, ou `<meta name="classe-artefact" content="source-machine">`)
+# au lieu d'une exemption écrite à la main dans chaque produit. Sous cette classe, trois mesures
+# écrites pour un lecteur humain qui parcourt la page sont retirées, et NOMMÉES au périmètre de
+# non-mesure : L7 (chapeau), L25 (sommaire), et la moitié de L30 qui exige un `.contenu` par
+# chapitre. Tout le reste est jugé, dont le dénominateur de couverture de L30 et la glose du
+# jargon : une donnée lue par une machine doit encore dire « sur combien ».
+CLASSES_ARTEFACT = ("page-lue", "source-machine")
+CLASSE_PAR_DEFAUT = "page-lue"
+PREFIXES_HORS_SOURCE_MACHINE = ("L7 ", "L25 ", "L30 chapitre #")
+
+
+def classe_artefact(html: str, demandee=None):
+    """(classe, origine, inconnue) — la classe d'artefact sous laquelle la page est jugée.
+
+    Ordre : la classe DEMANDÉE en ligne de commande, puis celle que la page DÉCLARE dans
+    `<meta name="classe-artefact">`, puis `page-lue`. `inconnue` porte une valeur déclarée par la
+    page hors de CLASSES_ARTEFACT : elle est ignorée, et signalée — une faute de frappe ne doit
+    pas faire juger en silence une page sous une classe qu'elle ne croit pas avoir."""
+    if demandee:
+        return demandee, "ligne de commande", None
+    for n in construire(html).racine.descendants():
+        if n.tag == "meta" and (n.att("name") or "").strip().lower() == "classe-artefact":
+            val = (n.att("content") or "").strip().lower()
+            if val in CLASSES_ARTEFACT:
+                return val, "déclarée par la page (meta classe-artefact)", None
+            return CLASSE_PAR_DEFAUT, "défaut", val
+    return CLASSE_PAR_DEFAUT, "défaut", None
+
+
+def check(html: str, regles: str = "tout", source=None, classe=None):
     """Retourne (fails, warns) — deux listes de messages.
 
     `source` (chemin du fichier) n'est lu que pour confronter le registre
     d'exemptions déclarées ci-dessus : sans lui, aucune exemption ne s'applique.
+    `classe` (TF-1589) : classe d'artefact demandée ; sans elle, celle que la page déclare.
     """
     fails, warns = [], []
+    classe, _, classe_inconnue = classe_artefact(html, classe)
     familles, motif = exemption_declaree(source, hors=(FAMILLE_AUTOPORTANCE, FAMILLE_A4_VERSION))
     if regles in ("tout", "charte"):
         f, w = check_charte(html)
@@ -4374,6 +4411,17 @@ def check(html: str, regles: str = "tout", source=None):
                     "exemption L déclarée SANS EFFET sur ce fichier — plus aucun contrôle "
                     "écarté : retirer sa ligne de EXEMPTIONS_DECLAREES (check_html.py).")
             f = gardes
+        # TF-1589 — sous la classe source-machine, ces mesures ne sont pas jouées : elles sont
+        # retirées ici et nommées au périmètre de non-mesure (non_juge), jamais en silence.
+        if classe == "source-machine":
+            f = [x for x in f if not x.startswith(PREFIXES_HORS_SOURCE_MACHINE)]
+            w = [x for x in w if not x.startswith(PREFIXES_HORS_SOURCE_MACHINE)]
+        if classe_inconnue is not None:
+            warns.append(
+                f"classe d'artefact inconnue « {classe_inconnue[:40]} » déclarée par "
+                "<meta name=\"classe-artefact\"> — ignorée, la page est jugée en "
+                f"« {CLASSE_PAR_DEFAUT} ». Valeurs admises : {', '.join(CLASSES_ARTEFACT)} "
+                "(lisibilite.md, classes d'artefact).")
         fails += f
         warns += w
         # L32 / L33 (TF-1147) : les identifiants SVG se jugent sur le TEXTE du document, pas sur
@@ -4586,11 +4634,22 @@ def manques_du_renvoi_forge_design(texte: str) -> list:
     return manques
 
 
-def non_juge() -> list:
-    """Ce que check_html.py ne mesure pas — publié à chaque exécution, PASS ou FAIL."""
+def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
+    """Ce que check_html.py ne mesure pas — publié à chaque exécution, PASS ou FAIL.
+
+    TF-1589 : sous la classe `source-machine`, les règles retirées s'y ajoutent, en tête."""
     gabarit = Path(__file__).resolve().parent.parent / "references" / "gabarit-revue-de-lecture.md"
     ou = str(gabarit) if gabarit.is_file() else f"{GABARIT_REVUE} (INTROUVABLE depuis ce script)"
-    return [
+    classe_notes = []
+    if classe == "source-machine":
+        classe_notes = [
+            f"CLASSE D'ARTEFACT source-machine ({origine or 'demandée'}) — la page est lue par "
+            "une machine, pas parcourue par un humain (TF-1589). NE SONT PAS MESURÉES : L7 "
+            "(chapeau .ch-apprend de chaque chapitre), L25 (sommaire au-delà de trois chapitres) "
+            "et la partie de L30 qui exige un .contenu par chapitre. Restent jugés : tout le "
+            "reste, dont la glose du jargon et le dénominateur de couverture de L30. Si un "
+            "humain lit aussi cette page, la classe est fausse : la retirer"]
+    return classe_notes + [
         "LA REVUE DE LECTURE N'A PAS ÉTÉ JOUÉE ICI. Elle est OBLIGATOIRE avant toute livraison "
         "(TF-0422) et ce script ne la remplace pas : il lit un fichier, elle regarde des "
         "captures comme le fait le destinataire. Sur le cas fondateur, trois oracles verts et "
@@ -4717,6 +4776,10 @@ def main():
     ap.add_argument("--sans-style", action="store_true", dest="sans_style",
                     help="ne pas jouer l'oracle d'écriture du pilot sur le texte visible "
                          "(TF-1624 ; joué par défaut, en avertissement)")
+    ap.add_argument("--classe", choices=list(CLASSES_ARTEFACT), default=None,
+                    help="classe d'artefact (défaut : page-lue, ou celle que la page déclare par "
+                         "<meta name=\"classe-artefact\">). source-machine : page lue par une "
+                         "machine — L7, L25 et le .contenu de L30 ne sont pas mesurés (TF-1589)")
     args = ap.parse_args()
     if args.version_regles:
         print(json.dumps(jeu_de_regles(), ensure_ascii=False))
@@ -4733,20 +4796,22 @@ def main():
     else:
         html, source = SAMPLE, "(échantillon intégré)"
 
-    fails, warns = check(html, args.regles, source=args.path)
+    classe, origine, _ = classe_artefact(html, args.classe)
+    fails, warns = check(html, args.regles, source=args.path, classe=classe)
     if args.path and not args.sans_style and args.regles != "charte":
         warns = warns + juger_style_html(html)
     verdict = "PASS" if not fails else "FAIL"
 
     if args.output == "json":
         print(json.dumps(
-            {"source": source, "regles": args.regles, "verdict": verdict,
+            {"source": source, "regles": args.regles, "classe": classe, "verdict": verdict,
              "version_regles": jeu_de_regles(), "fails": fails, "warns": warns,
-             "non_juge": non_juge()},
+             "non_juge": non_juge(classe, origine)},
             ensure_ascii=False, indent=2))
     else:
         print(f"Source  : {source}")
         print(f"Règles  : {args.regles}")
+        print(f"Classe  : {classe} ({origine})")
         jeu = jeu_de_regles()
         print(f"Verdict : {verdict}")
         print(f"Règles  : {jeu['nombre']} règles, empreinte {jeu['empreinte']} "
@@ -4764,7 +4829,7 @@ def main():
         # Le périmètre de non-mesure sort TOUJOURS, et il sort en dernier : c'est là que le
         # lecteur s'arrête. Un « aucun problème détecté » sans lui se lit comme un travail fini.
         print("\nPérimètre de NON-MESURE (ce verdict ne dit rien de ceci) :")
-        for note in non_juge():
+        for note in non_juge(classe, origine):
             print(f"  non jugé — {note}")
 
     sys.exit(0 if not fails else 1)
