@@ -54,6 +54,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 const INSTALLEUR = path.join(ICI, 'installer-hamecon-publication.mjs');
 const ORACLE_SOURCE = path.join(ICI, 'oracle-nom-client-publie.mjs');
+// TF-1221 — la porte des secrets (règle SP2 sur les fichiers que l'envoi ajoute).
+const PORTE_SECRETS_SOURCE = path.join(ICI, 'porte-secrets-publies.mjs');
 // TF-0980 — le lanceur du hameçon de COMMIT, et la racine du parc telle que ce dépôt la voit.
 // `<forge>/.claude/skills/quality-oracles/scripts` → `<forge>` → la racine du parc.
 const LANCEUR_SOURCE = path.join(ICI, 'pre-commit-anonymiser.mjs');
@@ -87,6 +89,8 @@ function poserOracleSource(racine) {
   fs.mkdirSync(path.join(d, 'lib'), { recursive: true });
   fs.copyFileSync(ORACLE_SOURCE, path.join(d, 'oracle-nom-client-publie.mjs'));
   fs.copyFileSync(path.join(ICI, 'lib', 'contrat.mjs'), path.join(d, 'lib', 'contrat.mjs'));
+  // TF-1221 — le pre-push joue aussi la porte des secrets, cherchée au même repli.
+  fs.copyFileSync(PORTE_SECRETS_SOURCE, path.join(d, 'porte-secrets-publies.mjs'));
   return d;
 }
 
@@ -377,6 +381,8 @@ try {
         comptes: { bloquants: { total: 4, rendus: 4 }, anteriorites: { total: 36, rendus: 36 } },
         non_juge: ['limite generique de la porte'],
       })) + '); process.exit(1);\n');
+      // TF-1221 — le pre-push joue la porte des secrets avant celle des noms : la vraie, à côté du jouet.
+      fs.copyFileSync(PORTE_SECRETS_SOURCE, path.join(dPorte, 'porte-secrets-publies.mjs'));
       const d11 = depot(maison, 'comptes', false);
       git(d11, 'remote', 'add', 'origin', distantJetable(maison, 'comptes-distant'));
       sh(maison, 'node', [INSTALLEUR, d11, '--seul=pre-push']);
@@ -520,6 +526,115 @@ try {
     if (inval.status === 2 && /jeton refusé/.test(inval.stdout || '') && inconnu.status === 2 && /ne lit pas cette plage/.test(inconnu.stdout || ''))
       oks.push('cas 16 (TF-1555) — --revs : une option git glissée et une empreinte inconnue font SKIP (exit 2), jamais une histoire vide jugée PASS');
     else kos.push('cas 16 (TF-1555) — --revs invalide exit ' + inval.status + ', inconnu exit ' + inconnu.status);
+  }
+
+  // --- cas 17 : UN PORTEUR DE SECRETS AJOUTÉ PAR L'ENVOI EST REFUSÉ (TF-1221) ------------------
+  // Des porteurs de secrets ont été publiés chez deux produits : la règle SP2 ne se jouait que depuis
+  // le pilot. Le pre-push la joue sur les fichiers que l'envoi ajoute. Chaque sens se juge sur la
+  // seule preuve qui compte, la branche au distant ; le remède que dit le refus est joué et passe.
+  {
+    const auDistant17 = (distant) => spawnSync('git', ['--git-dir=' + distant, 'rev-parse', '--verify', '-q', 'refs/heads/main'], { encoding: 'utf8' }).status === 0;
+    const preparer = (nom) => {
+      const d = depot(racine, nom, false);
+      const distant = distantJetable(racine, nom + '-distant');
+      git(d, 'remote', 'add', 'origin', distant);
+      sh(racine, 'node', [INSTALLEUR, d, '--seul=pre-push']);
+      return { d, distant };
+    };
+    const ajouter = (d, fichiers, msg, force) => {
+      for (const [nom, txt] of Object.entries(fichiers)) fs.writeFileSync(path.join(d, nom), txt);
+      git(d, 'add', ...(force ? ['-f'] : []), '--', ...Object.keys(fichiers));
+      git(d, 'commit', '-q', '-m', msg);
+    };
+
+    // (17a) sens ROUGE : un `.env` suivi ajouté → refusé, rien au distant, le fichier nommé
+    const a = preparer('secret-rouge');
+    ajouter(a.d, { '.env': 'CLE=valeur-de-recette\n' }, 'Configuration locale');
+    const p17a = sh(a.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    const e17a = p17a.stderr || '';
+    if (p17a.status !== 0 && !auDistant17(a.distant) && /PUBLICATION REFUSEE/.test(e17a) && /SP2\s+\.env \(/.test(e17a)
+        && /aucune ligne du \.gitignore/.test(e17a) && !/valeur-de-recette/.test(e17a))
+      oks.push('cas 17a (TF-1221, sens rouge) — un `.env` suivi ajouté par l\'envoi : REFUSÉ, rien au distant, SP2 nomme le fichier et sa révision, le contenu n\'est jamais imprimé');
+    else kos.push('cas 17a (TF-1221, sens rouge) — push exit ' + p17a.status + ', au distant : ' + auDistant17(a.distant) + ' : ' + e17a.trim().slice(0, 400));
+
+    // (17b) le REMÈDE dit par le refus, joué : retiré du suivi, ignoré, dernier enregistrement réécrit → publié
+    git(a.d, 'rm', '-q', '--cached', '--', '.env');
+    fs.writeFileSync(path.join(a.d, '.gitignore'), '.env\n');
+    git(a.d, 'add', '.gitignore');
+    git(a.d, 'commit', '-q', '--amend', '--no-edit');
+    const p17b = sh(a.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (p17b.status === 0 && auDistant17(a.distant) && fs.existsSync(path.join(a.d, '.env')))
+      oks.push('cas 17b (TF-1221, remède joué) — `git rm --cached`, `.env` au .gitignore, `git commit --amend` : PUBLIÉ, le `.env` reste sur le disque, ignoré');
+    else kos.push('cas 17b (TF-1221, remède joué) — push exit ' + p17b.status + ' : ' + (p17b.stderr || '').trim().slice(0, 300));
+
+    // (17c) sens VERT, borne du gabarit : `.env.example` versionné exprès, `.env` ignoré non suivi → publié
+    const c = preparer('secret-vert');
+    fs.writeFileSync(path.join(c.d, '.env'), 'CLE=valeur\n');
+    ajouter(c.d, { '.gitignore': '.env\n', '.env.example': 'CLE=\n' }, 'Gabarit de configuration');
+    const p17c = sh(c.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (p17c.status === 0 && auDistant17(c.distant))
+      oks.push('cas 17c (TF-1221, sens vert) — `.env.example` ajouté et `.env` ignoré non suivi : PUBLIÉ, la bonne pratique n\'est pas accusée');
+    else kos.push('cas 17c (TF-1221, sens vert) — push exit ' + p17c.status + ' : ' + (p17c.stderr || '').trim().slice(0, 300));
+
+    // (17d) borne d'antériorité : un porteur DÉJÀ publié ne refuse pas l'envoi suivant ; un porteur
+    // ajouté puis retiré de l'arbre dans le même envoi part dans l'histoire, et il est refusé.
+    const ant = preparer('secret-anteriorite');
+    ajouter(ant.d, { '.npmrc': 'registry=x\n' }, 'Configuration npm');
+    sh(ant.d, 'git', ['push', '--no-verify', 'origin', 'main'], ENV_JEU_ESSAI);
+    ajouter(ant.d, { 'suite.md': 'Suite.\n' }, 'Suite');
+    const p17d = sh(ant.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    ajouter(ant.d, { 'cle.pem': 'x\n' }, 'Certificat');
+    git(ant.d, 'rm', '-q', '--', 'cle.pem'); git(ant.d, 'commit', '-q', '-m', 'Retrait du certificat');
+    const p17d2 = sh(ant.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (p17d.status === 0 && p17d2.status !== 0 && /SP2\s+cle\.pem/.test(p17d2.stderr || '') && !/\.npmrc/.test(p17d2.stderr || ''))
+      oks.push('cas 17d (TF-1221, borne) — `.npmrc` déjà publié : l\'envoi suivant PASSE ; `cle.pem` ajouté puis retiré dans le même envoi : REFUSÉ, l\'histoire ajoutée est jugée');
+    else kos.push('cas 17d (TF-1221, borne) — envoi après antériorité exit ' + p17d.status + ', ajout retiré exit ' + p17d2.status + ' : ' + (p17d2.stderr || '').trim().slice(0, 300));
+
+    // (17e) borne : ajouté de FORCE malgré un .gitignore qui le couvre → refusé, et le refus le dit
+    const f = preparer('secret-force');
+    ajouter(f.d, { '.gitignore': 'credentials.json\n' }, 'Ignorer les identifiants');
+    ajouter(f.d, { 'credentials.json': '{}\n' }, 'Identifiants', true);
+    const p17e = sh(f.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (p17e.status !== 0 && !auDistant17(f.distant) && /credentials\.json/.test(p17e.stderr || '') && /ajouté de force/.test(p17e.stderr || ''))
+      oks.push('cas 17e (TF-1221, borne) — `credentials.json` ajouté par `git add -f` malgré le .gitignore : REFUSÉ, « ajouté de force » dit');
+    else kos.push('cas 17e (TF-1221, borne) — push exit ' + p17e.status + ' : ' + (p17e.stderr || '').trim().slice(0, 300));
+
+    // (17f) porte INTROUVABLE → refus motivé ; --revs invalide → SKIP (exit 2), jamais PASS
+    const desert17 = fs.mkdtempSync(path.join(os.tmpdir(), 'sans-porte-'));
+    try {
+      fs.writeFileSync(path.join(desert17, '_noms-interdits.json'), fs.readFileSync(path.join(racine, '_noms-interdits.json')));
+      const dir17 = poserOracleSource(desert17);
+      fs.rmSync(path.join(dir17, 'porte-secrets-publies.mjs'));
+      const d17f = depot(desert17, 'sans-porte', false);
+      const r17f = distantJetable(desert17, 'sans-porte-distant');
+      git(d17f, 'remote', 'add', 'origin', r17f);
+      sh(desert17, 'node', [INSTALLEUR, d17f, '--seul=pre-push']);
+      const p17f = sh(d17f, 'git', ['push', 'origin', 'main'], { HOME: desert17, USERPROFILE: desert17, FORGE_ROOT: desert17 });
+      const tete17 = (git(d17f, 'rev-parse', 'HEAD').stdout || '').trim();
+      const skip17 = sh(racine, 'node', [PORTE_SECRETS_SOURCE, d17f, '--revs=' + tete17 + ',--output=x']);
+      const inconnu17 = sh(racine, 'node', [PORTE_SECRETS_SOURCE, d17f, '--revs=' + 'f'.repeat(40)]);
+      if (p17f.status !== 0 && !auDistant17(r17f) && /porte des secrets .*introuvable/.test(p17f.stderr || '')
+          && skip17.status === 2 && /jeton refusé/.test(skip17.stdout || '') && inconnu17.status === 2 && /ne lit pas cette plage/.test(inconnu17.stdout || ''))
+        oks.push('cas 17f (TF-1221) — porte des secrets INTROUVABLE : envoi REFUSÉ, motif dit ; option glissée ou empreinte inconnue : SKIP (exit 2), jamais PASS');
+      else kos.push('cas 17f (TF-1221) — sans porte exit ' + p17f.status + ', jeton exit ' + skip17.status + ', inconnu exit ' + inconnu17.status + ' : ' + (p17f.stderr || '').trim().slice(0, 300));
+    } finally { try { fs.rmSync(desert17, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
+
+    // (17g) PARITÉ de la famille avec l'oracle du pilot : la copie ne dérive pas en silence
+    const oraclePilot = path.join(RACINE_PARC, 'digit-ai-factory', 'oracles', 'oracle-secrets-hors-perimetre.mjs');
+    if (!fs.existsSync(oraclePilot)) {
+      oks.push('cas 17g — NON JOUÉ : l\'oracle du pilot est absent de cette machine (' + oraclePilot + ') ; la parité de la famille n\'est pas mesurée ici — dit, jamais tu');
+    } else {
+      const noms = ['.env', '.ENV', '.env.local', '.env.production', '.env.example', '.env.exemple', '.env.sample', '.env.template', '.env.dist',
+        'cle.pem', 'id.key', 'a.p12', 'a.pfx', 'a.jks', 'cle.pem.example', 'credentials', 'credentials.json', 'secret', 'secrets', 'secrets.yaml',
+        'secret-x', 'secrets_y', '.npmrc', '.databrickscfg', 'README.md', 'package.json', 'tokens.css', 'environnement.md', 'mykey.txt', 'monsecret.txt'];
+      const sonde = spawnSync(process.execPath, ['--input-type=module', '-e',
+        'const [a, b] = await Promise.all([import(' + JSON.stringify(pathToFileURL(oraclePilot).href) + '), import(' + JSON.stringify(pathToFileURL(PORTE_SECRETS_SOURCE).href) + ')]);'
+        + 'const n = ' + JSON.stringify(noms) + '; process.stdout.write(JSON.stringify(n.filter((x) => a.PORTEUR_DE_SECRETS(x) !== b.PORTEUR_DE_SECRETS(x))));'],
+      { encoding: 'utf8', env: envBanc({}) });
+      const ecarts = (() => { try { return JSON.parse(sonde.stdout); } catch { return null; } })();
+      if (Array.isArray(ecarts) && !ecarts.length) oks.push('cas 17g (TF-1221) — la famille copiée et celle du pilot rendent le même jugement sur ' + noms.length + ' noms : la copie n\'a pas dérivé');
+      else kos.push('cas 17g (TF-1221) — la famille copiée a dérivé de celle du pilot : ' + (ecarts ? ecarts.join(', ') : (sonde.stderr || sonde.stdout || '').trim().slice(0, 300)));
+    }
   }
 
   // --- cas 10 : LE FRONTMATTER DES SKILLS TOUCHÉS, AVANT LE COMMIT (TF-1337) -----------

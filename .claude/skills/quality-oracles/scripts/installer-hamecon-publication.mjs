@@ -81,6 +81,11 @@
 // références envoyées et passe à la porte `--revs=<empreintes locales>,^<empreintes distantes>,--not,
 // --remotes=<distant>` : l'histoire déjà publiée n'est plus rejugée à chaque envoi, l'arbre courant
 // l'est toujours en entier.
+//
+// LE PRE-PUSH REFUSE AUSSI UN PORTEUR DE SECRETS AJOUTÉ (TF-1221, 13/10/2026). Avant la porte des noms,
+// il joue `porte-secrets-publies.mjs` sur les mêmes révisions : la règle SP2 d'`oracle-secrets-hors-
+// perimetre` (pilot), copiée seule parce que l'oracle du pilot juge le disque d'un parc et sort en 0
+// chez un produit. Porte introuvable ou SKIP : refus motivé, comme pour la porte des noms.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -197,6 +202,46 @@ if [ -n "$REVS" ]; then
   ARG_REVS="--revs=\${REVS#,}"
   git remote get-url "$1" >/dev/null 2>&1 && ARG_REVS="$ARG_REVS,--not,--remotes=$1"
 fi
+
+# --- SP2 (R-14) : aucun porteur de secrets ajoute par l'envoi (TF-1221, 13/10/2026) -------------
+# Des fichiers porteurs de secrets ont ete publies chez deux produits : l'oracle de R-14 ne se jouait
+# que depuis le pilot. Ce hameçon joue la regle SP2 sur les seuls fichiers que l'envoi ajoute, par une
+# copie autonome de la regle (porte-secrets-publies.mjs, a cote de la porte des noms) : l'oracle du
+# pilot juge le disque d'un parc et sort en 0 chez un produit. Porte introuvable, plage illisible
+# (SKIP) ou porteur ajoute (FAIL) : l'envoi est REFUSE, et le motif dit.
+PORTE_SECRETS=""
+for CANDIDAT in \\
+  "$HOME/.claude/skills/quality-oracles/scripts/porte-secrets-publies.mjs" \\
+  "$RACINE/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/porte-secrets-publies.mjs"
+do
+  [ -f "$CANDIDAT" ] && PORTE_SECRETS="$CANDIDAT" && break
+done
+if [ -z "$PORTE_SECRETS" ]; then
+  echo "PUBLICATION REFUSEE — la porte des secrets (porte-secrets-publies.mjs) est introuvable : SKIP, et SKIP refuse." >&2
+  echo "  cherche dans : ~/.claude/skills/... puis \\$RACINE/digit-ai-forge-agents/..." >&2
+  echo "  Contournement explicite si vous savez ce que vous faites : git push --no-verify" >&2
+  exit 1
+fi
+SORTIE_SECRETS="$(node "$PORTE_SECRETS" "$DEPOT" \${ARG_REVS:+"$ARG_REVS"} 2>&1)"
+case "$SORTIE_SECRETS" in
+  *'"verdict":"PASS"'*) ;;
+  *)
+    echo "" >&2
+    echo "PUBLICATION REFUSEE — un porteur de secrets est ajoute par cet envoi, ou la porte des secrets ne peut pas juger (SP2, R-14) :" >&2
+    printf '%s' "$SORTIE_SECRETS" | node -e '
+      let t = ""; process.stdin.on("data", (d) => (t += d)).on("end", () => {
+        try {
+          const o = JSON.parse(t);
+          console.error("  verdict " + o.verdict + " de porte-secrets-publies");
+          if (o.motif) console.error("  porte SKIP : " + o.motif);
+          for (const f of (o.findings || [])) console.error("  " + f.regle + "  " + f.where + "  " + f.msg);
+        } catch { console.error("  sortie illisible : " + t.slice(0, 2000)); }
+      });
+    ' >&2
+    echo "  Corrigez, ou contournez EXPLICITEMENT : git push --no-verify" >&2
+    exit 1
+    ;;
+esac
 
 SORTIE="$(node "$ORACLE" "$DEPOT" \${ARG_REVS:+"$ARG_REVS"} 2>&1)"
 VERDICT="$(printf '%s' "$SORTIE" | sed -n 's/.*"verdict":"\\([A-Z]*\\)".*/\\1/p')"
