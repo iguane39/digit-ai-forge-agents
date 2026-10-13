@@ -250,7 +250,7 @@ MEASURE_JS = r"""
                    contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
-                   decor_sur_ancetre: [],
+                   decor_sur_ancetre: [], entete_desaligne: [],
                    unmeasured: [] };
   const doc = document.documentElement;
 
@@ -1529,7 +1529,8 @@ MEASURE_JS = r"""
         `${Math.round(__DONNEES_CONTENEUR_MIN__ * 100)} %) — max-width calcule ` +
         `${cs.maxWidth}. Une page qui se DECLARE page de donnees est PLEINE LARGEUR ` +
         `adaptative : la place existe, la page doit la prendre. Retirer le plafond sur ce ` +
-        `conteneur ; la colonne de lecture reste legitime CHAPITRE par chapitre (.chap.lire)` });
+        `conteneur ; la prose y est pleine largeur par defaut, une colonne de lecture (.chap.lire) ` +
+        `reste une OPTION DECLAREE chapitre par chapitre (TF-1622)` });
     }
   }
 
@@ -1584,8 +1585,12 @@ MEASURE_JS = r"""
     // une barre sticky mesuree encore en fenetre apres 20 000 px de defilement, et cette famille
     // rendait BLOQUANT aux six largeurs en designant les cartes. Elle juge desormais LE PLUS
     // PERMANENT : si UNE navigation reste atteignable, le lecteur n'a rien perdu.
+    // TF-1626 (RA-6, 13/10/2026) — une barre d'onglets (role=tablist, deux onglets au moins)
+    // navigue elle aussi : « un menu vertical en plus des onglets n'a aucun intérêt ». Collante,
+    // elle suffit ; elle est jugee ici comme les autres navigations, sur sa permanence.
     const navs = [...document.querySelectorAll(
-      'nav.toc, nav[aria-label^="Sommaire"], nav[aria-label^="sommaire"]')];
+      'nav.toc, nav[aria-label^="Sommaire"], nav[aria-label^="sommaire"], [role="tablist"]')]
+      .filter((n) => n.getAttribute('role') !== 'tablist' || n.querySelectorAll('[role="tab"]').length >= 2);
     const hauteur = document.documentElement.scrollHeight;
     if (chapitres.length > __SOMMAIRE_MIN_CHAP__ && navs.length
         && hauteur > window.innerHeight * __SOMMAIRE_MIN_ECRANS__) {
@@ -1606,6 +1611,71 @@ MEASURE_JS = r"""
           `(position: sticky; top: var(--hh)), bande repliable sur mobile. Il suffit qu'UNE ` +
           `tienne — une barre en titres seuls et un sommaire annote ne s'excluent pas (TF-1145)` });
       }
+    }
+  }
+
+  // ---- TF-1623 (RA-4, 13/10/2026) : L'EN-TETE ALIGNE SUR SA COLONNE ---------------------
+  //
+  // Retour humain : « les entetes de colonnes ne sont pas alignes avec les contenus ». Valeurs
+  // numeriques a droite, `<th>` a gauche, et le declencheur de filtre poussait encore le
+  // libelle de 30 px : aucune famille ne mesurait l'alignement d'un en-tete sur ses cellules.
+  // Mesure : le bord du LIBELLE de l'en-tete (texte propre, hors declencheur, panneau et note
+  // du composant) contre le bord du CONTENU de la premiere cellule visible de sa colonne, du
+  // cote ou la cellule s'aligne (droite, gauche ou centre). Ecart > 6 px : avertissement.
+  {
+    const bordTexte = (el, exclus) => {
+      const r = document.createRange();
+      const rects = [];
+      const marcher = (n) => {
+        for (const c of n.childNodes) {
+          if (c.nodeType === 3 && c.textContent.trim()) {
+            r.selectNodeContents(c);
+            rects.push(...[...r.getClientRects()].filter((x) => x.width > 0.5 && x.height > 0.5));
+          } else if (c.nodeType === 1 && !(exclus && c.matches(exclus))) marcher(c);
+        }
+      };
+      marcher(el);
+      if (!rects.length) return null;
+      return { gauche: Math.min(...rects.map((x) => x.left)), droite: Math.max(...rects.map((x) => x.right)) };
+    };
+    let vusA = 0;
+    for (const t of document.querySelectorAll('table')) {
+      if (vusA >= 6 || !visible(t)) continue;
+      const tete = t.tHead && t.tHead.rows[t.tHead.rows.length - 1];
+      const ligne = [...t.tBodies].flatMap((b) => [...b.rows])
+        .find((tr) => visible(tr) && !tr.hasAttribute('data-tf-empty') && !tr.hasAttribute('data-detail'));
+      if (!tete || !ligne || tete.cells.length !== ligne.cells.length) continue;
+      [...tete.cells].forEach((th, i) => {
+        if (vusA >= 6) return;
+        const td = ligne.cells[i];
+        if (!td || th.colSpan > 1 || td.colSpan > 1) return;
+        const a = getComputedStyle(td).textAlign;
+        const bt = bordTexte(th, '.tf-btn, .tf-panel, .tf-unique, button, [hidden]');
+        // Cote cellule : la BOITE de chaque enfant (un badge porte son propre padding, son bord est
+        // celui que l'oeil aligne), le texte nu par ses lignes peintes.
+        const bd = (() => {
+          const r = document.createRange(), xs = [];
+          for (const c of td.childNodes) {
+            if (c.nodeType === 3 && c.textContent.trim()) {
+              r.selectNodeContents(c);
+              xs.push(...[...r.getClientRects()].filter((x) => x.width > 0.5));
+            } else if (c.nodeType === 1 && visible(c)) xs.push(c.getBoundingClientRect());
+          }
+          return xs.length ? { gauche: Math.min(...xs.map((x) => x.left)), droite: Math.max(...xs.map((x) => x.right)) } : null;
+        })();
+        if (!bt || !bd) return;
+        const cote = (a === 'right' || a === 'end') ? 'droite' : (a === 'center' ? 'centre' : 'gauche');
+        const ecart = cote === 'droite' ? Math.abs(bt.droite - bd.droite)
+          : cote === 'gauche' ? Math.abs(bt.gauche - bd.gauche)
+          : Math.abs((bt.gauche + bt.droite) / 2 - (bd.gauche + bd.droite) / 2);
+        if (ecart <= 6) return;
+        vusA++;
+        issues.entete_desaligne.push({ what: label(th), detail:
+          `libelle d'en-tete decale de ${Math.round(ecart)}px par rapport aux valeurs de sa ` +
+          `colonne, alignees a ${cote} — l'oeil ne relie plus le libelle a sa colonne. Aligner ` +
+          `le <th> comme ses cellules ; le composant de filtres le fait pour une colonne ` +
+          `alignee a droite (th.tf-num, declencheur a gauche du libelle, TF-1623)` });
+      });
     }
   }
 
@@ -2132,6 +2202,15 @@ MESURE_LARGE_JS = r"""
         + `conteneur de lecture declare (${nomDe(tenu)}) : il n'est pas compte en defaut. La `
         + `mesure est publiee pour que l'ecart entre le token du socle et le plafond de E5 `
         + `s'arbitre sur un chiffre` });
+    } else if (pageDonnees) {
+      // TF-1622 (RA-3, 13/10/2026) — retour humain : « pourquoi ce n'est pas affiche sur toute
+      // la largeur et sur une moitie de colonne uniquement ? ». Sur une page de DONNEES, la prose
+      // occupe la pleine largeur PAR DEFAUT ; la colonne de lecture (.chap.lire,
+      // data-mesure-lecture) est une OPTION DECLAREE. Cette branche poussait vers la bride que le
+      // lecteur refuse : la mesure est publiee, jamais comptee en defaut.
+      notes.push({ what: nomDe(el), detail: `V18 — ${socle}. Page de DONNEES : prose pleine `
+        + `largeur par defaut (TF-1622), non comptee en defaut ; une colonne de lecture se `
+        + `DECLARE (.chap.lire, data-mesure-lecture) si l'auteur la veut` });
     } else {
       proses.push({ what: nomDe(el), detail: `${socle} — au-dela de ${MAX_CPL} caracteres, l'oeil `
         + `perd le debut de la ligne suivante. La mesure de lecture se pose sur le CONTENEUR `
@@ -2250,31 +2329,59 @@ TOUT_DEPLIER_JS = """() => {
     return { applique: true, lignes_detail, motif: dit.join(', ') };
 }"""
 
+# TF-1618 (RA-1, 13/10/2026) — LE PREMIER .tf-btn DU DOCUMENT PEUT DORMIR DANS UN ONGLET MASQUE.
+# LE FAIT : sur une page a onglets, l'etat « filtre-sans-resultat » actionnait le declencheur d'un
+# tableau range dans un panneau d'onglet masque ; son message d'etat vide existait (« Aucune ligne
+# ne correspond aux filtres », « 0 ligne sur 8 ») mais restait invisible, et l'etat etait declare
+# MUET. Servie avec l'ancre de l'onglet, la meme page passait. Les etats de filtre ne retiennent
+# donc que les declencheurs VISIBLES ; si tous sont masques, ils ouvrent d'abord l'onglet qui porte
+# le premier (l'element qui le controle : aria-controls ou lien #id), comme un lecteur, et le disent.
+DECLENCHEURS_FILTRE_JS = """
+        const vu = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+        const reveler = (el) => {
+          for (let p = el.parentElement; p; p = p.parentElement) {
+            if (!p.id || vu(p)) continue;
+            const id = (window.CSS && CSS.escape) ? CSS.escape(p.id) : p.id;
+            const t = document.querySelector('[aria-controls="' + id + '"], a[href="#' + id + '"]');
+            if (t) { t.click(); return vu(el); }
+          }
+          return false;
+        };
+        const tous = [...document.querySelectorAll('.tf-btn')];
+        let b = tous.filter(vu), revele = '';
+        if (!b.length && tous.length && reveler(tous[0])) {
+          b = tous.filter(vu);
+          revele = ' (onglet du tableau ouvert d abord : ses declencheurs etaient masques)';
+        }
+        const absent = (motif) => ({ applique: false, motif: tous.length
+          ? `${tous.length} declencheur(s) .tf-btn, tous MASQUES, et aucun onglet ne les revele` : motif });
+"""
+
 ETATS_MATRICE = [
     ("tout-deplie", TOUT_DEPLIER_JS),
-    ("filtre-premiere-colonne", """() => {
-        const b = [...document.querySelectorAll('.tf-btn')];
-        if (!b.length) return { applique: false, motif: 'aucun declencheur de filtre (.tf-btn) — page sans tableau filtrable' };
+    ("filtre-premiere-colonne", """() => {""" + DECLENCHEURS_FILTRE_JS + """
+        if (!b.length) return absent('aucun declencheur de filtre (.tf-btn) — page sans tableau filtrable');
         b[0].click();
-        return { applique: true, motif: 'panneau de la PREMIERE colonne ouvert' };
+        return { applique: true, motif: 'panneau de la PREMIERE colonne ouvert' + revele };
     }"""),
-    ("filtre-derniere-colonne", """() => {
-        const b = [...document.querySelectorAll('.tf-btn')];
-        if (!b.length) return { applique: false, motif: 'aucun declencheur de filtre (.tf-btn)' };
+    ("filtre-derniere-colonne", """() => {""" + DECLENCHEURS_FILTRE_JS + """
+        if (!b.length) return absent('aucun declencheur de filtre (.tf-btn)');
         if (b.length < 2) return { applique: false, motif: 'une seule colonne filtrable — meme etat que la premiere, non rejoue' };
         b[b.length - 1].click();
-        return { applique: true, motif: `panneau de la DERNIERE colonne ouvert (${b.length} colonnes filtrables) — un panneau ne deborde pas du meme cote a droite qu a gauche` };
+        return { applique: true, motif: `panneau de la DERNIERE colonne ouvert (${b.length} colonnes filtrables) — un panneau ne deborde pas du meme cote a droite qu a gauche` + revele };
     }"""),
-    ("filtre-sans-resultat", r"""() => {
-        const b = document.querySelector('.tf-btn');
-        if (!b) return { applique: false, motif: 'aucun declencheur de filtre (.tf-btn)' };
+    ("filtre-sans-resultat", r"""() => {""" + DECLENCHEURS_FILTRE_JS + r"""
+        if (!b.length) return absent('aucun declencheur de filtre (.tf-btn)');
+        b = b[0];
         b.click();
-        const panneau = document.querySelector('.tf-panel:not([hidden])') || document;
+        const hote = b.closest('th') || b.parentElement;
+        const panneau = (hote && hote.querySelector('.tf-panel:not([hidden])'))
+          || document.querySelector('.tf-panel:not([hidden])') || document;
         const aucun = panneau.querySelector('.tf-none')
           || [...panneau.querySelectorAll('button, label')].find((e) => /^\s*aucun/i.test(e.textContent || ''));
         if (!aucun) return { applique: false, motif: 'panneau ouvert, mais aucune bascule « Aucun » (.tf-none) a actionner' };
         aucun.click();
-        return { applique: true, motif: 'toutes les valeurs decochees — le tableau ne doit plus porter AUCUNE ligne, et le dire' };
+        return { applique: true, motif: 'toutes les valeurs decochees — le tableau ne doit plus porter AUCUNE ligne, et le dire' + revele };
     }"""),
     ("recherche-sans-correspondance", """() => {
         const champ = document.querySelector('.tf-search, input[type=search]');
@@ -2667,6 +2774,8 @@ FAMILLES = [
     # mesurer_bruit.py a 1 440 px : 0 page sur 79 du pilot et des forges, 6 pages sur 385 du parc
     # complet, 31 constats) ; la regle d'auteur l'interdit (composants.md, Note d'usage).
     ("decor_sur_ancetre", "Décor peint sur l'ancêtre du texte (contraste aveuglé)", "avertissement"),
+    # TF-1623 (RA-4, 13/10/2026) : regle neuve, en avertissement (D-70 (b)).
+    ("entete_desaligne", "En-tete de colonne desaligne de ses valeurs", "avertissement"),
     ("unmeasured", "Non mesurable — à vérifier à l'œil", "info"),
 ]
 # UNE ÉCHÉANCE DÉPASSÉE DURCIT LA FAMILLE, elle ne l'adoucit jamais : la table déclare la

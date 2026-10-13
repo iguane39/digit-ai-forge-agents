@@ -37,6 +37,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
 
 # Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression
@@ -239,6 +240,74 @@ MOTS_CREUX = {"détail", "détails", "detail", "details", "plus", "info", "infos
 # refuse d'assumer. Le lecteur ne peut ni comparer, ni trier, ni repérer la valeur
 # aberrante — et il ne sait pas ce qu'il devrait en conclure.
 RE_SEGMENT = re.compile(r"^[^;]{3,}?\s[—–]\s[^;]{3,}$")
+
+# L12 (virgules, TF-1621) — un élément d'énumération est un groupe NOMINAL court : quatre mots
+# au plus, quarante caractères au plus. Le premier élément vit à la fin du premier segment
+# (« Les domaines couverts sont la finance ») ; le dernier peut être lié par « et » ou « ou ».
+SEUIL_ENUM_VIRGULES = 4
+RE_FIN_PHRASE_L12 = re.compile(r"(?<=[.!?;:])\s+")
+RE_DERNIER_LIE = re.compile(r"^\S+(?:\s+\S+){0,3}\s+(?:et|ou)\s+\S+(?:\s+\S+){0,3}$", re.I)
+
+
+# L35 (TF-1384) — les points de coupure INTERDITS par la typographie française. L'espace jugée est
+# l'espace ORDINAIRE (U+0020) : une insécable (U+00A0) ou une fine insécable (U+202F) tient la ligne.
+BLOCS_TYPO = ("p", "li", "dd", "dt", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6",
+              "figcaption", "caption", "blockquote", "summary", "label", "button")
+RE_TYPO_FR = {
+    "ponctuation": re.compile(r"(?<=[^\s\u00a0\u202f]) (?=[:;!?](?:[\s\u00a0\u202f]|$))"),
+    "guillemets": re.compile(r"« | »"),
+    "numero": re.compile(r"\b(?:chapitres?|points?|étapes?|lots?|phases?|parties?|annexes?|"
+                         r"sections?|versions?|articles?|pages?|tomes?|niveaux?|paliers?|"
+                         r"vagues?|sprints?|semaines?) \d+\b", re.I),
+    "mois": re.compile(r"\b(?:janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|"
+                       r"septembre|octobre|novembre|décembre|decembre) \d{4}\b", re.I),
+}
+LIBELLES_TYPO_FR = {
+    "ponctuation": "devant une ponctuation haute",
+    "guillemets": "à l'intérieur de guillemets",
+    "numero": "entre un nom et son numéro",
+    "mois": "entre un mois et son année",
+}
+
+# L36 (TF-1283) — les marqueurs d'un sujet EN COURS DE GOUVERNANCE, lus sur le texte visible. Ils
+# disent l'ÉTAT d'un arbitrage (ce qui n'est pas encore décidé), jamais la DESTINATION d'une
+# escalade : « faire trancher par la Design Authority » n'en est pas un.
+RE_CONTENU_AUTEUR = re.compile(
+    r"en cours d['’]arbitrage|(?:pas|non) (?:encore )?tranch[ée]e?s?\b|s[ée]ances? (?:à|a) planifier|"
+    r"verdicts? non vers[ée]s?|non arr[êe]t[ée]e?s?\b|propos[ée]e?s?,? (?:mais )?pas (?:encore )?arr[êe]t[ée]e?s?|"
+    r"candidate? (?:à|a) l['’][ée]l[ée]vation|en cours de versement|relev[ée]e?s?,? non d[ée]cid[ée]e?s?",
+    re.I)
+
+
+def _langue_francaise(a) -> bool:
+    """La page se déclare en français (`lang` absent : le socle est en français)."""
+    for n in a.racine.descendants():
+        if n.tag == "html":
+            return (n.att("lang") or "fr").strip().lower().startswith("fr")
+    return True
+
+
+def _element_court(seg: str) -> bool:
+    s = seg.strip().rstrip(".!?;:")
+    return bool(s) and len(s) <= 40 and len(s.split()) <= 4
+
+
+def _enumeration_virgules(phrase: str) -> int:
+    """Le plus grand nombre d'éléments d'une énumération par virgules dans une phrase."""
+    segs = re.split(r"(?<!\d),|,(?!\d)", phrase)   # « 9,7 » est un nombre décimal, pas une virgule d'énumération
+    meilleur = 0
+    for i in range(len(segs) - 1):
+        n, j = 1, i + 1                     # segs[i] porte le premier élément à sa fin
+        while j < len(segs):
+            if RE_DERNIER_LIE.match(segs[j].strip().rstrip(".!?;:")):
+                n += 2                      # « c et d » : deux éléments, et la fin de l'énumération
+                break
+            if not _element_court(segs[j]):
+                break
+            n += 1
+            j += 1
+        meilleur = max(meilleur, n)
+    return meilleur
 
 # L9(c) — volume minimal qu'un dépliant doit cacher pour mériter un clic.
 SEUIL_DEPLIANT = 200
@@ -766,6 +835,39 @@ def _sommaires(a: Arbre):
     return [n for n in a.racine.descendants()
             if n.tag == "nav" and ("toc" in n.classes()
                                    or (n.att("aria-label") or "").lower().startswith("sommaire"))]
+
+
+def _barres_onglets(a: Arbre):
+    """Les barres d'onglets qui NAVIGUENT : un `role="tablist"` portant au moins deux `role="tab"`.
+
+    TF-1626 (RA-6, 13/10/2026). Retour humain, mot pour mot : « Un menu vertical en plus des
+    onglets n'a aucun intérêt, redondance ». L25 et L6 n'acceptaient qu'un `<nav>` de liens
+    annotés ; une page à onglets échouait L25, et la session avait AJOUTÉ un menu latéral pour
+    passer — la règle fabriquait la redondance que le lecteur refuse. Une barre d'onglets est une
+    navigation : chaque onglet ouvre le panneau qu'il contrôle (`aria-controls`) ou l'ancre qu'il
+    vise (`href="#id"`), et les chapitres de ce panneau sont atteints par lui. Sa permanence au
+    défilement se mesure au rendu (`sommaire_perdu`, qui la compte parmi les navigations)."""
+    barres = []
+    for n in a.racine.descendants():
+        if (n.att("role") or "").strip().lower() != "tablist":
+            continue
+        onglets = [o for o in n.descendants() if (o.att("role") or "").strip().lower() == "tab"]
+        if len(onglets) >= 2:
+            barres.append((n, onglets))
+    return barres
+
+
+def _cibles_onglets(barres) -> set:
+    """Les id que les onglets ouvrent : panneaux contrôlés et ancres visées."""
+    cibles = set()
+    for _, onglets in barres:
+        for o in onglets:
+            for c in (o.att("aria-controls") or "").split():
+                cibles.add(c)
+            href = (o.att("href") or "").strip()
+            if href.startswith("#") and len(href) > 1:
+                cibles.add(href[1:])
+    return cibles
 
 
 def _sommaire(a: Arbre):
@@ -2743,8 +2845,11 @@ def check_lisibilite(html: str, a: Arbre):
     # doctrines, et onze échecs sur un menu que le destinataire a explicitement demandé sans
     # annonces disparaissent. Une page qui n'en porte nulle part échoue exactement comme avant.
     tocs = _sommaires(a)
+    onglets = _barres_onglets(a)       # TF-1626 : une barre d'onglets navigue, elle aussi
     if not tocs:
-        warns.append("L6 aucun sommaire détecté (nav.toc ou aria-label=\"Sommaire\").")
+        if not onglets:
+            warns.append("L6 aucun sommaire détecté (nav.toc, aria-label=\"Sommaire\" ou barre "
+                         "role=\"tablist\").")
     else:
         def _annonces_de(nav):
             return [e for lien in nav.descendants() if lien.tag == "a"
@@ -3068,6 +3173,82 @@ def check_lisibilite(html: str, a: Arbre):
                      f"(« {extrait}… », {ou}) — au-delà de 3, c'est un tableau ou "
                      "une liste, avec une ligne qui dit ce qu'il faut y voir.")
 
+    # --- L12 (virgules) : une énumération de QUATRE noms ou plus dans une phrase (TF-1621) ---
+    # RA-2, retour humain du 13/10/2026 : « Pourquoi les éléments qui sont listés ne sont pas sous
+    # forme de liste ? » — huit domaines énumérés par des virgules dans un paragraphe d'une fiche.
+    # La règle E-11 d'ECRITURE.md (« une liste énumère ») n'était jugée ici que sur les segments
+    # « clé — valeur » ; la page fautive passait. AVERTISSEMENT : règle neuve opposable à tous les
+    # produits, son bruit est mesuré sur le parc avant toute bascule (D-70 (b)).
+    vus_l12 = 0
+    for p in [n for n in a.racine.descendants() if n.tag in ("p", "li", "dd")]:
+        if vus_l12 >= 6:
+            break
+        if _contenu_cite(p) or any(x.tag in ("p", "li", "dd") for x in p.descendants()):
+            continue
+        n_max, extrait = 0, ""
+        for phrase in RE_FIN_PHRASE_L12.split(p.texte_propre()):
+            n = _enumeration_virgules(phrase)
+            if n > n_max:
+                n_max, extrait = n, phrase.strip()
+        if n_max >= SEUIL_ENUM_VIRGULES:
+            vus_l12 += 1
+            warns.append(f"L12 énumération en prose (avertissement) : {n_max} éléments séparés "
+                         f"par des virgules dans une phrase (« {extrait[:70]}… », {p.chemin()}) — "
+                         "au-delà de trois, une liste à puces (E-11) : le lecteur compte, compare "
+                         "et repère l'élément qu'il cherche.")
+
+    # --- L35 : la typographie française tient aux coupures de ligne (TF-1384) ----------
+    # RG-16 (26/09/2026) : sur une présentation, des deux-points ouvraient une ligne, « (point »
+    # finissait une ligne et « 4) » ouvrait la suivante, un titre se coupait entre « chapitre » et
+    # « 4 » — deux remises remplacées le même jour pour la typographie seule, et aucune règle du
+    # socle ne parlait de l'espace insécable. Une espace ORDINAIRE devant une ponctuation haute,
+    # à l'intérieur des guillemets, entre un nom et son numéro ou entre un mois et son année est
+    # un point de coupure : le navigateur peut y couper la ligne. AVERTISSEMENT (règle neuve).
+    if _langue_francaise(a):
+        typo = {k: [] for k in RE_TYPO_FR}
+        for bloc in [n for n in a.racine.descendants() if n.tag in BLOCS_TYPO]:
+            if any(x.tag in BLOCS_TYPO for x in bloc.descendants()):
+                continue
+            if _cite(bloc) or _contenu_cite(bloc) or any(x.tag in BALISES_CITATION for x in bloc.descendants()):
+                continue
+            t = re.sub(r"[ \t\r\n]+", " ", bloc.texte()).strip()
+            for cle, rx in RE_TYPO_FR.items():
+                for m in rx.finditer(t):
+                    typo[cle].append(t[max(0, m.start() - 18):m.end() + 6].strip())
+        total = sum(len(v) for v in typo.values())
+        if total:
+            detail = " · ".join(f"{len(v)} {LIBELLES_TYPO_FR[k]} (« {v[0]} »)" for k, v in typo.items() if v)
+            warns.append(f"L35 typographie française (avertissement) : {total} espace(s) ordinaire(s) "
+                         f"là où la ligne ne doit pas couper — {detail}. Remède : espace insécable "
+                         "(&nbsp;, U+00A0 ; la fine U+202F est acceptée mais hors de la liste blanche des glyphes, TF-0490) devant : ; ! ? et à l'intérieur de « », entre un nom "
+                         "et son numéro, entre un mois et son année.")
+
+    # --- L36 : le contenu d'AUTEUR n'est pas livré au lecteur (TF-1283) -----------------
+    # Récidive mesurée le 21/09/2026 (classe contenu-d-auteur-livre-au-lecteur, TF-1142) : le
+    # porteur avait demandé le 15/09 de sortir du guide développeur l'état des arbitrages ; six
+    # jours plus tard, un chapitre neuf en réintroduisait 13 emplacements (« ce qui n'est pas
+    # tranché », « séance à planifier », « proposée, pas arrêtée », « en cours d'arbitrage »…),
+    # dont un injecté par le GÉNÉRATEUR et absent de la source — et sept oracles rendaient PASS.
+    # La règle lit le texte VISIBLE de la page rendue. Elle juge l'ÉTAT d'un sujet en cours de
+    # gouvernance, pas la DESTINATION d'une escalade (« faire trancher par la Design Authority »
+    # reste un geste du lecteur). AVERTISSEMENT (règle neuve) ; zone citée (data-cite) exclue.
+    auteur = []
+    for bloc in [n for n in a.racine.descendants() if n.tag in BLOCS_TYPO]:
+        if any(x.tag in BLOCS_TYPO for x in bloc.descendants()):
+            continue
+        if _cite(bloc) or _contenu_cite(bloc):
+            continue
+        t = bloc.texte_propre()
+        for m in RE_CONTENU_AUTEUR.finditer(t):
+            auteur.append((m.group(0), bloc.chemin()))
+    if auteur:
+        exemples = " · ".join(f"« {x} » ({ou})" for x, ou in auteur[:3])
+        warns.append(f"L36 contenu d'auteur livré au lecteur (avertissement) : {len(auteur)} "
+                     f"marqueur(s) d'un sujet en cours de gouvernance — {exemples}"
+                     f"{' …' if len(auteur) > 3 else ''}. Le lecteur reçoit ce qui est ARRÊTÉ ; "
+                     "l'état des arbitrages vit dans le document d'auteur (classe "
+                     "contenu-d-auteur-livre-au-lecteur).")
+
     # --- L15 : glyphes en content: CSS hors liste blanche (AVERTISSEMENT) ---
     # TF-0435 (lot Produit-05 20260820b) : un chevron écrit content: "\25B6" passait tous les
     # oracles et s'affichait en tofu sur mobile — la pile de repli mono n'a pas ce caractère.
@@ -3166,8 +3347,14 @@ def check_lisibilite(html: str, a: Arbre):
         return toc is not None and any(p is toc for p in h.ancetres())
     chapitres = [n for n in a.racine.descendants()
                  if n.tag == "h2" and not _dans_le_nav(n) and (n.att("data-toc") or "").strip() != "hors"]
+    # TF-1626 (RA-6) : une barre d'onglets (role="tablist", deux onglets au moins) est un
+    # sommaire. Un chapitre est atteint par elle quand l'onglet contrôle son panneau ou vise son
+    # ancre ; un nav, s'il existe aussi, ajoute ses ancres. Exiger un menu EN PLUS des onglets
+    # fabriquait la redondance refusée par le lecteur.
+    onglets_l25 = _barres_onglets(a)
+    cibles_onglets = _cibles_onglets(onglets_l25)
     if len(chapitres) > 3:
-        if toc is None:
+        if toc is None and not onglets_l25:
             fails.append(
                 f"L25 page à {len(chapitres)} chapitres sans sommaire — au-delà de trois "
                 "chapitres (ou deux écrans), un sommaire est VISIBLE EN PERMANENCE : "
@@ -3178,7 +3365,7 @@ def check_lisibilite(html: str, a: Arbre):
                 "`sommaire_perdu`).")
         else:
             vises = set()
-            for lien in [n for n in toc.descendants() if n.tag == "a"]:
+            for lien in ([n for n in toc.descendants() if n.tag == "a"] if toc is not None else []):
                 href = (lien.att("href") or "").strip()
                 if href.startswith("#"):
                     vises.add(href[1:])
@@ -3186,7 +3373,9 @@ def check_lisibilite(html: str, a: Arbre):
             for h in chapitres:
                 ancres = {h.att("id")} | {p.att("id") for p in h.ancetres()
                                           if p.tag in ("section", "article", "div", "main")}
-                if not (ancres & vises):
+                # un onglet atteint TOUT son panneau, quel que soit l'élément qui le porte
+                panneaux = {p.att("id") for p in h.ancetres() if p.att("id")}
+                if not (ancres & vises) and not (panneaux & cibles_onglets):
                     oublies.append(h.texte_propre()[:40] or "(titre vide)")
             if oublies:
                 fails.append(
@@ -4434,6 +4623,87 @@ def non_juge() -> list:
     ]
 
 
+# ---------------------------------------------------------------------------
+# TF-1624 (RA-5, 13/10/2026) — LE STYLE DU TEXTE VISIBLE D'UNE PAGE.
+# Retour humain : « Le terme "Ce que" ne devait plus être utilisé » — 20 tournures dans le texte
+# d'une page HTML. La famille `annonce-nominalisee` (EC-8 d'oracle-ecriture, pilot) existait
+# depuis le 16/09 ; elle ne jugeait que les `.md`, et la page passait. Le texte VISIBLE de la page
+# est ramené à un Markdown de lecture — titres en `#`, en-têtes de tableau en ligne d'en-tête,
+# blocs en paragraphes, code et zones citées (data-cite) exclus — puis jugé par l'oracle d'écriture
+# du pilot, par le même chemin que `check_markdown.py --style`. Ses constats entrent ici en
+# AVERTISSEMENT (règle neuve opposable à tous les produits). Les numéros de ligne cités sont ceux
+# du texte extrait, pas du source HTML.
+# ---------------------------------------------------------------------------
+BLOCS_STYLE = ("p", "li", "dd", "dt", "blockquote", "figcaption", "caption", "summary")
+
+
+def texte_visible_markdown(a: Arbre) -> str:
+    lignes: list[str] = []
+
+    def exclu(n) -> bool:
+        return n.tag in ("script", "style", "template", "noscript", "head", "svg") \
+            or n.tag in BALISES_CITATION or "data-cite" in n.attrs or "hidden" in n.attrs \
+            and n.att("role") != "tabpanel"
+
+    def visiter(n):
+        if exclu(n):
+            return
+        if re.fullmatch(r"h[1-6]", n.tag):
+            t = n.texte_propre()
+            if t:
+                lignes.extend(["#" * int(n.tag[1]) + " " + t, ""])
+            return
+        if n.tag == "table":
+            rangs = [r for r in n.descendants() if r.tag == "tr"]
+            for i, r in enumerate(rangs):
+                cellules = [c.texte_propre().replace("|", "/") for c in r.enfants
+                            if not isinstance(c, str) and c.tag in ("td", "th")]
+                if not cellules:
+                    continue
+                lignes.append("| " + " | ".join(cellules) + " |")
+                if i == 0:
+                    lignes.append("|" + "---|" * len(cellules))
+            lignes.append("")
+            return
+        if n.tag in BLOCS_STYLE and not any(x.tag in BLOCS_STYLE or re.fullmatch(r"h[1-6]", x.tag)
+                                            for x in n.descendants()):
+            t = n.texte_propre()
+            if t:
+                lignes.extend([t, ""])
+            return
+        for e in n.enfants:
+            if not isinstance(e, str):
+                visiter(e)
+
+    visiter(a.racine)
+    return "\n".join(lignes)
+
+
+def juger_style_html(html: str) -> list:
+    """Avertissements de l'oracle d'écriture du pilot sur le texte visible de la page."""
+    try:
+        from check_markdown import juger_style  # même dossier : même résolution du pilot
+    except Exception as e:                       # noqa: BLE001
+        return [f"EC (texte rendu, avertissement) style NON JOUÉ : check_markdown illisible ({e})"]
+    md = texte_visible_markdown(construire(html))
+    if len(md.split()) < 20:
+        return []
+    import tempfile
+    d = tempfile.mkdtemp(prefix="style-html-")
+    try:
+        cible = Path(d) / "texte-visible.md"
+        cible.write_text(md, encoding="utf-8")
+        st = juger_style(cible)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    if st.get("verdict") in ("SKIP", "ERREUR") and st.get("motif"):
+        return [f"EC (texte rendu, avertissement) style NON JOUÉ : {st['motif']}"]
+    # Seuls les constats BLOQUANTS de l'oracle d'écriture remontent : ses avertissements et ses
+    # « non jugé » (en-tête Markdown absent, lexique introuvable, texte trop court) parlent d'un
+    # document Markdown que la page n'est pas, et feraient trois lignes de bruit par page.
+    return [f"{x} — texte visible de la page (avertissement, TF-1624)" for x in st.get("fails", [])]
+
+
 def main():
     ap = argparse.ArgumentParser(description="Conformité HTML au socle Digit-AI.")
     ap.add_argument("path", nargs="?", help="Chemin du fichier HTML (sinon échantillon).")
@@ -4444,6 +4714,9 @@ def main():
                     help="imprimer l'identité du jeu de règles (codes + empreinte) et sortir — "
                          "TF-0366 : c'est ce que R-32 recopie au journal pour qu'un verdict "
                          "archivé dise sous quelles règles il a été rendu")
+    ap.add_argument("--sans-style", action="store_true", dest="sans_style",
+                    help="ne pas jouer l'oracle d'écriture du pilot sur le texte visible "
+                         "(TF-1624 ; joué par défaut, en avertissement)")
     args = ap.parse_args()
     if args.version_regles:
         print(json.dumps(jeu_de_regles(), ensure_ascii=False))
@@ -4461,6 +4734,8 @@ def main():
         html, source = SAMPLE, "(échantillon intégré)"
 
     fails, warns = check(html, args.regles, source=args.path)
+    if args.path and not args.sans_style and args.regles != "charte":
+        warns = warns + juger_style_html(html)
     verdict = "PASS" if not fails else "FAIL"
 
     if args.output == "json":

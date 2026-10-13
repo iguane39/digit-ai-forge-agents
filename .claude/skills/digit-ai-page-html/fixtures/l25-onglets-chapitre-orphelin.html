@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L25 quatre chapitres sous une barre d onglets, un chapitre hors panneau — 20261013a</title>
+<style>
+[hidden]{display:none !important}
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+[role="tablist"]{position:sticky;top:0;background:var(--surface)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+.ch-apprend{color:var(--muted)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff} [role="tabpanel"][hidden]{display:block}}
+</style></head>
+<!--
+  Fixture L25 ROUGE (TF-1626, RA-6, 13/10/2026) : jumelle de l25-onglets-sans-menu.
+
+  Retour humain : « Un menu vertical en plus des onglets n a aucun interet, redondance ». La page
+  porte quatre chapitres repartis sous une barre d onglets collante, et AUCUN nav : chaque
+  onglet controle le panneau qui porte ses chapitres. Avant TF-1626, L25 refusait la page
+  (« page a 4 chapitres sans sommaire ») et la session avait ajoute un menu lateral pour passer.
+
+  Difference unique : un cinquieme chapitre pose HORS de tout panneau, qu aucun onglet n atteint.
+  Reconnaitre la barre d onglets ne doit pas eteindre la completude du plan.
+
+  Attendu : L25 (sommaire incomplet) et elle seule.
+-->
+<body><main class="wrap">
+<h1>Console de suivi</h1>
+<p>Deux vues, quatre chapitres : la barre d onglets donne le plan et reste en haut de l ecran.</p>
+<div class="tabs" data-tabs><div role="tablist" aria-label="Vues"><button type="button" role="tab" id="tab-a" aria-controls="pan-a" aria-selected="true">Activite</button><button type="button" role="tab" id="tab-b" aria-controls="pan-b" aria-selected="false" tabindex="-1">Pilotage</button></div>
+<section role="tabpanel" id="pan-a" aria-labelledby="tab-a">
+<section id="c1"><h2>Volumes</h2>
+<p class="ch-apprend">Ce chapitre montre la lecture des volumes annuels, mesure par mesure, et la conclusion a en tirer
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : la lecture des volumes annuels. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+<section id="c2"><h2>Saisonnalite</h2>
+<p class="ch-apprend">Ce chapitre montre la repartition dans l annee, mesure par mesure, et la conclusion a en tirer
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : la repartition dans l annee. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+</section>
+<section role="tabpanel" id="pan-b" aria-labelledby="tab-b" hidden>
+<section id="c3"><h2>Strategie</h2>
+<p class="ch-apprend">Ce chapitre montre les paliers d ouverture retenus, mesure par mesure, et la conclusion a en tirer
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : les paliers d ouverture retenus. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+<section id="c4"><h2>Hypotheses</h2>
+<p class="ch-apprend">Ce chapitre montre les points a confirmer, mesure par mesure, et la conclusion a en tirer
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : les points a confirmer. Le texte est court parce que seul le plan de la page est en
+cause ici, pas son contenu.</p></section>
+</section>
+</div>
+<section id="c5"><h2>Annexes</h2>
+<p class="ch-apprend">Ce chapitre montre les sources des chiffres, mesure par mesure, et la conclusion a en tirer
+pour la suite de la lecture.</p>
+<p>Corps du chapitre : les sources des chiffres. Aucun onglet ne mene ici.</p></section>
+</main></body></html>

@@ -165,7 +165,9 @@
        1 260 px dans une fenetre de 1 370 et a 1 680 dans une fenetre de 1 920, alors que I1 et
        L26 disent « pleine largeur adaptative ». Sept colonnes de mapping n'entrent pas dans
        1 260 px ; la place existe, la page doit la prendre. La colonne de lecture reste
-       accessible a la PROSE par `.chap.lire`, qui n'est pas touche ici.
+       accessible a la PROSE par `.chap.lire`, qui n'est pas touche ici — en OPTION DECLAREE :
+       TF-1622 (RA-3, 13/10/2026), par defaut la prose d'une page de donnees occupe la pleine
+       largeur (« pourquoi ce n'est pas affiche sur toute la largeur ? »), V18 ne la compte plus.
        Mesure : .wrap 1 370/1 370 px et 1 920/1 920 px apres, contre 1 260 et 1 680 avant.
        Controle : famille `conteneur_bride_donnees` de render_page.py (>= 96 % a >= 1 280 px). */
     [data-page="donnees"] .wrap,
@@ -370,7 +372,7 @@
              un aller-retour : references/jargon-a-gloser.json (daté, sourcé, éditable). -->
         <p class="contenu">Ce chapitre contient {l'inventaire de ce qui suit}, et se distingue
            de {le chapitre voisin} en ce qu'il {la différence, en une proposition}.</p>
-        <p class="termes">Termes employés — <dfn>{Terme}</dfn> : {la glose, en une phrase}.</p>
+        <p class="termes">Termes employés — <dfn>{Terme}</dfn>&nbsp;: {la glose, en une phrase}.</p>
         <p>{Contenu en balises sémantiques. Décliner les couleurs via les tokens
            <code>:root</code> uniquement, jamais en dur.}</p>
 

@@ -69,7 +69,7 @@ window.addEventListener('load', function () {
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="table-filters.js" data-empreinte="sha256:9af4ae15d11d04634690232aa93e99aa8ab8c68545144f65f3386404a9cbacf9">
+<script data-composant="table-filters.js" data-empreinte="sha256:1260259330bd1aabb7086d3f8ef0b2fec4eb580477d55047c402c353e4d4ea66">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
@@ -489,6 +489,7 @@ window.addEventListener('load', function () {
         var th = e.col && e.col.th;
         if (th) {
           th.removeAttribute('data-tf-forme');
+          th.classList.remove('tf-num');
           var u = th.querySelector('.tf-unique'); if (u) u.parentNode.removeChild(u);
         }
       });
@@ -535,6 +536,17 @@ window.addEventListener('load', function () {
           u.textContent = 'une seule valeur';
           col.th.appendChild(u);
         }
+        /* TF-1623 (RA-4, 13/10/2026) — « les entetes de colonnes ne sont pas alignes avec les
+           contenus ». Une cellule numerique s'aligne a droite, son `<th>` restait a gauche, et le
+           declencheur (bouton + marge, 30 px) poussait encore le libelle. L'en-tete suit
+           desormais l'alignement CALCULE de sa colonne : a droite, il prend la classe `tf-num`
+           (feuille du composant) et son declencheur flotte A GAUCHE du libelle — le bord droit
+           du libelle tombe sur celui des valeurs, sans compensation a calculer. */
+        try {
+          var premiere = lignes.length && lignes[0].cells[col.index];
+          var aligne = premiere ? window.getComputedStyle(premiere).textAlign : '';
+          if (aligne === 'right' || aligne === 'end') col.th.classList.add('tf-num');
+        } catch (e) { /* alignement non lisible : l'en-tete garde le sien */ }
         col.th.appendChild(b);
         col.th.appendChild(ui.panneau);
         Array.prototype.forEach.call(ui.options.querySelectorAll('.tf-opt'), function (cb) {

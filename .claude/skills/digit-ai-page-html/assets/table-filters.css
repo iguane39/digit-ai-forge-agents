@@ -20,6 +20,11 @@
 .tf-btn:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 /* filtre ACTIF : l'état se voit sans ouvrir le panneau */
 .tf-btn.tf-on { background: var(--blue); color: var(--surface); border-color: var(--blue); }
+/* TF-1623 (RA-4) : colonne alignée à droite (valeurs numériques) — l'en-tête suit sa colonne,
+   et le déclencheur passe À GAUCHE du libellé : les bords droits du libellé et des valeurs
+   coïncident. La classe est posée par le composant d'après l'alignement calculé des cellules. */
+th.tf-num { text-align: right; }
+th.tf-num .tf-btn { float: left; margin-left: 0; margin-right: 8px; }
 
 .tf-panel {
   position: absolute; z-index: 30; top: calc(100% + 4px); left: 0;

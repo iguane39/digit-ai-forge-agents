@@ -376,6 +376,12 @@ lecture de ~1 080 px centré, le texte le remplit. `section.chap.duo` : grille 7
 encart utile (KPI, légende, figure), repli sous 1 100 px. `render_page.py` L2 juge désormais
 quelle que soit la propriété CSS qui bride, et 1920 px est dans les largeurs par défaut.
 
+**Page de données (TF-1622, RA-3, 13/10/2026).** Sur une page qui se déclare `data-page="donnees"`,
+la prose occupe la **pleine largeur par défaut** ; `.chap.lire` y est une **option déclarée**, jamais
+une prescription. Retour humain : « pourquoi ce n'est pas affiché sur toute la largeur et sur une
+moitié de colonne uniquement ? ». V18 (a) ne compte plus en défaut la prose large d'une page de
+données : il publie sa mesure.
+
 ## 12 — Lecteur de source embarquée 🔴 (dès qu'un livrable CITE un document du dépôt)
 
 `assets/source-reader.js` — **le composant que la règle A1 rendait nécessaire, et qui n'existait

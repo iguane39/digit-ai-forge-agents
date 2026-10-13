@@ -116,7 +116,7 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.css — copie du socle digit-ai-page-html/assets/table-filters.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="table-filters.css" data-empreinte="sha256:36a64400e5c944a5dbbdfbed124f8cd27baee82db16795997024bbc6bc8e84aa">
+<style data-composant="table-filters.css" data-empreinte="sha256:37baa677db20f762891a3b339e1b7898c0e92518e77e51d5876a38a70f36a2fd">
 /* table-filters.css — habillage charté du composant de filtres de colonne (D-12).
    TF-0176 (13/08) : un composant se livre AVEC son CSS — livré nu, il sort en rendu brut
    navigateur chez tous ses hôtes (constaté sur le dashboard forge-tests du 13/08, refusé
@@ -139,6 +139,11 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
 .tf-btn:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue)); outline-offset: var(--focus-decalage, 1px); }
 /* filtre ACTIF : l'état se voit sans ouvrir le panneau */
 .tf-btn.tf-on { background: var(--blue); color: var(--surface); border-color: var(--blue); }
+/* TF-1623 (RA-4) : colonne alignée à droite (valeurs numériques) — l'en-tête suit sa colonne,
+   et le déclencheur passe À GAUCHE du libellé : les bords droits du libellé et des valeurs
+   coïncident. La classe est posée par le composant d'après l'alignement calculé des cellules. */
+th.tf-num { text-align: right; }
+th.tf-num .tf-btn { float: left; margin-left: 0; margin-right: 8px; }
 
 .tf-panel {
   position: absolute; z-index: 30; top: calc(100% + 4px); left: 0;
@@ -627,7 +632,7 @@ window.BancArbre = {
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="table-filters.js" data-empreinte="sha256:9af4ae15d11d04634690232aa93e99aa8ab8c68545144f65f3386404a9cbacf9">
+<script data-composant="table-filters.js" data-empreinte="sha256:1260259330bd1aabb7086d3f8ef0b2fec4eb580477d55047c402c353e4d4ea66">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
@@ -1047,6 +1052,7 @@ window.BancArbre = {
         var th = e.col && e.col.th;
         if (th) {
           th.removeAttribute('data-tf-forme');
+          th.classList.remove('tf-num');
           var u = th.querySelector('.tf-unique'); if (u) u.parentNode.removeChild(u);
         }
       });
@@ -1093,6 +1099,17 @@ window.BancArbre = {
           u.textContent = 'une seule valeur';
           col.th.appendChild(u);
         }
+        /* TF-1623 (RA-4, 13/10/2026) — « les entetes de colonnes ne sont pas alignes avec les
+           contenus ». Une cellule numerique s'aligne a droite, son `<th>` restait a gauche, et le
+           declencheur (bouton + marge, 30 px) poussait encore le libelle. L'en-tete suit
+           desormais l'alignement CALCULE de sa colonne : a droite, il prend la classe `tf-num`
+           (feuille du composant) et son declencheur flotte A GAUCHE du libelle — le bord droit
+           du libelle tombe sur celui des valeurs, sans compensation a calculer. */
+        try {
+          var premiere = lignes.length && lignes[0].cells[col.index];
+          var aligne = premiere ? window.getComputedStyle(premiere).textAlign : '';
+          if (aligne === 'right' || aligne === 'end') col.th.classList.add('tf-num');
+        } catch (e) { /* alignement non lisible : l'en-tete garde le sien */ }
         col.th.appendChild(b);
         col.th.appendChild(ui.panneau);
         Array.prototype.forEach.call(ui.options.querySelectorAll('.tf-opt'), function (cb) {

@@ -220,6 +220,11 @@ CAS = {
     "l30-terme-employe-comme-mot.html": {"L30"},
     "l25-chapitres-sans-sommaire.html": {"L25"},
     "l25-sommaire-lateral.html": set(),
+    # TF-1626 (RA-6, 13/10/2026) — « un menu vertical en plus des onglets n'a aucun intérêt ».
+    # Une barre role=tablist est un sommaire : la verte (4 chapitres sous 2 onglets, aucun nav)
+    # rendait L25 avant la correction ; la rouge pose un 5e chapitre qu'aucun onglet n'atteint.
+    "l25-onglets-sans-menu.html": set(),
+    "l25-onglets-chapitre-orphelin.html": {"L25"},
     "l26-donnees-colonne-de-lecture.html": {"L26"},
     "l26-donnees-pleine-largeur.html": set(),
     "l27-entetes-sans-definition.html": {"L27"},
@@ -624,6 +629,10 @@ CAS_RENDU = {
     "donnees-tableau-entier.html": ("rognage_donnees", 0),
     "donnees-prose-etroite.html": ("prose_etroite", 1),
     "donnees-prose-pleine.html": ("prose_etroite", 0),
+    # TF-1623 (RA-4, 13/10/2026) — l'en-tete aligne sur sa colonne. Rouge : valeurs a droite,
+    # <th> a gauche ; verte : la MEME page avec le composant de filtres, qui pose th.tf-num.
+    "entete-desaligne.html": ("entete_desaligne", 1),
+    "entete-aligne-composant.html": ("entete_desaligne", 0),
     # TF-0930 (lot Produit-10 20260908b) — le troisieme angle de la page de donnees : le
     # CONTENEUR contre la FENETRE. La paire porte le MEME token `--w` du socle ; la seule
     # difference est la regle qui en exempte une page declaree page de donnees. La rouge
@@ -729,6 +738,9 @@ CAS_RENDU_LARGE = {
     "v18-donnees-tableau-plein.html": [("v18_tableau_etrique", 0), ("v18_prose_etiree", 0)],
     "v18-chap-lire-socle.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
     "v18-cpl-au-dela-135.html": [("v18_prose_etiree", 1), ("v18_tableau_etrique", 0)],
+    # TF-1622 (RA-3) : sur une page de DONNEES, la prose pleine largeur est le defaut ; V18 (a)
+    # la comptait en defaut et poussait vers .chap.lire (1 avant, 0 apres). Rouge : v18-prose-etiree.
+    "v18-donnees-prose-pleine.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
 }
 
 
@@ -1875,6 +1887,55 @@ def run_emphase_partagee():
              'regle': 'TF-0720 fonction partagee', 'detail': '' if tenu else str(detail)[:200]}
             for nom, tenu, detail in cas]
 
+def run_avertissements_13_10():
+    """Campagne du 13/10/2026 — les règles NEUVES du socle entrent en AVERTISSEMENT (D-70 (b)).
+
+    Chaque paire prouve ses deux sens sur les avertissements (les échecs restent vides : une règle
+    neuve ne bloque pas) : TF-1621 L12 virgules, TF-1384 L35 typographie, TF-1283 L36 contenu
+    d'auteur ; et TF-1624, le style du texte visible joué par la ligne de commande (EC-8 de
+    l'oracle d'écriture du pilot : SKIP motivé si le pilot est absent du poste).
+    """
+    out = []
+    PAIRES = [("l12-enumeration-virgules.html", "L12 énumération en prose", True, "TF-1621"),
+              ("l12-virgules-prose.html", "L12 énumération en prose", False, "TF-1621"),
+              ("l35-typo-espaces-ordinaires.html", "L35 ", True, "TF-1384"),
+              ("l35-typo-insecables.html", "L35 ", False, "TF-1384"),
+              ("l36-contenu-auteur.html", "L36 ", True, "TF-1283"),
+              ("l36-escalade-du-lecteur.html", "L36 ", False, "TF-1283")]
+    for nom, prefixe, attendu, tf in PAIRES:
+        fails, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+        vu = any(w.startswith(prefixe) for w in warns)
+        bloque = [f for f in fails if f.startswith(prefixe.strip().split()[0] + " ")]
+        ok = vu == attendu and not bloque
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"{tf} avertissement {'présent' if attendu else 'absent'}, 0 échec",
+                    "obtenu": f"avertissement {'présent' if vu else 'absent'}, {len(bloque)} échec(s)",
+                    "regle": prefixe.strip(), "detail": ""})
+    outil = Path(__file__).resolve().parent / "check_html.py"
+    for nom, attendu in (("style-annonce-nominalisee.html", True), ("style-nomme.html", False)):
+        r = subprocess.run([sys.executable, "-X", "utf8", str(outil), str(FIXTURES / nom),
+                            "--output", "json"], capture_output=True, text=True, encoding="utf-8")
+        try:
+            j = json.loads(r.stdout)
+        except Exception:                        # noqa: BLE001
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "sortie JSON",
+                        "obtenu": "illisible", "regle": "EC (texte rendu)", "detail": r.stderr[:160]})
+            continue
+        non_joue = [w for w in j["warns"] if "style NON JOUÉ" in w]
+        vu = any(w.startswith("EC-8") and "TF-1624" in w for w in j["warns"])
+        if non_joue:
+            out.append({"fixture": nom, "verdict": "OK", "attendu": "TF-1624 EC-8 (SKIP motivé)",
+                        "obtenu": "oracle d'écriture injoignable, DIT", "regle": "EC (texte rendu)",
+                        "detail": non_joue[0][:160]})
+            continue
+        ok = vu == attendu and not any(f.startswith("EC") for f in j["fails"])
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"TF-1624 EC-8 {'présent' if attendu else 'absent'} en avertissement",
+                    "obtenu": f"EC-8 {'présent' if vu else 'absent'}", "regle": "EC (texte rendu)",
+                    "detail": ""})
+    return out
+
+
 def run_matrice_etats():
     """TF-0493 (23/08/2026) — LA MATRICE D'ETATS, et les deux defauts qu'un client a trouves.
 
@@ -1902,6 +1963,10 @@ def run_matrice_etats():
     CAS = {
         "mat-aucun-muet.html": {"filtre-sans-resultat": ("etat_muet", 1)},
         "mat-aucun-annonce.html": {"filtre-sans-resultat": ("etat_muet", 0)},
+        # TF-1618 (RA-1) : le tableau dort dans un onglet MASQUE. L'etat ouvre l'onglet d'abord ;
+        # la verte annonce (0), la rouge reste muette (1) — ouvrir l'onglet ne tait pas le defaut.
+        "mat-onglet-masque-annonce.html": {"filtre-sans-resultat": ("etat_muet", 0)},
+        "mat-onglet-masque-muet.html": {"filtre-sans-resultat": ("etat_muet", 1)},
         "mat-panneau-deborde.html": {"filtre-derniere-colonne": ("v1_overflow", 2),
                                      "filtre-premiere-colonne": ("v1_overflow", 0)},
         "mat-panneau-ancre-droite.html": {"filtre-derniere-colonne": ("v1_overflow", 0)},
@@ -4363,7 +4428,8 @@ def main():
            + run_assets_inlinables() + run_assets_echelle_4pt() + run_fins_de_ligne_declarees()
            + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
-           + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable())
+           + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable()
+           + run_avertissements_13_10())
     rendu = run_rendu()
     if rendu:
         res += rendu

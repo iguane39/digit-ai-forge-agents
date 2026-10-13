@@ -1016,6 +1016,17 @@ croit tenir le plan de la page.
   écrans, et il n'est **plus dans la fenêtre** aux 60 % de la page. Un sommaire qui défile avec
   le texte ne navigue plus rien, et aucun contrôle statique ne peut le voir.
 
+**Une barre d'onglets est un sommaire (TF-1626, RA-6, 13/10/2026).** Retour humain : « Un menu
+vertical en plus des onglets n'a aucun intérêt, redondance ». L25 et L6 n'acceptaient qu'un `nav`
+de liens annotés : une page à onglets échouait L25, et la session avait ajouté un menu latéral pour
+passer — la règle fabriquait la redondance refusée. Un `role="tablist"` portant au moins deux
+`role="tab"` compte désormais : un chapitre est atteint quand son onglet contrôle le panneau qui le
+porte (`aria-controls`) ou vise son ancre ; `sommaire_perdu` juge la barre sur sa permanence au
+défilement, comme un `nav`. Un chapitre qu'aucun onglet n'atteint reste un sommaire incomplet
+(fixtures `l25-onglets-sans-menu.html`, verte, et `l25-onglets-chapitre-orphelin.html`, rouge).
+Mesure du parc (239 pages au socle, 13/10/2026) : la règle ne fait que relâcher — aucune page
+nouvellement accusée.
+
 **Le geste, une fois pour toutes** — il consomme le même token que le thead collant (L29) :
 
 ```css
@@ -1422,6 +1433,63 @@ légende, et `data-series-source` revient à 1. Un SVG qui ne déclare rien n'es
 convention — zéro constat nouveau.
 
 Fixtures : `l34-serie-unique.html` (rouge, avertissement), `l34-series-tracees.html` (verte).
+
+## L12 (virgules) — Une énumération de quatre noms ou plus est une liste (TF-1621, RA-2, 13/10/2026)
+
+**Le fait.** Retour humain sur une fiche : « Pourquoi les éléments qui sont listés ne sont pas sous
+forme de liste ? » — huit domaines énumérés par des virgules dans un paragraphe. L12 ne voyait que
+les segments « clé — valeur » enchaînés par des points-virgules ; la page passait.
+
+**La règle.** Dans un `p`, `li` ou `dd` (hors zone citée), une phrase qui enchaîne **quatre
+éléments ou plus** séparés par des virgules — groupes nominaux de quatre mots au plus, le dernier
+lié par « et » ou « ou » — est signalée : une liste à puces (E-11). **Avertissement** (règle neuve).
+Bruit mesuré : 193 pages averties sur 239 pages au socle du parc (13/10/2026), 798 constats (six au plus par page), parenthèses énumératives comprises — la règle E-11 était appliquée nulle part, d'où l'avertissement ; une virgule décimale (« 9,7 ») n'est pas une virgule d'énumération.
+
+Fixtures : `l12-enumeration-virgules.html` (rouge), `l12-virgules-prose.html` (verte).
+
+## L35 — La typographie française tient aux coupures de ligne (TF-1384, RG-16, 13/10/2026)
+
+**Le fait.** Sur une présentation, des deux-points ouvraient une ligne, « (point » finissait une
+ligne et « 4) » ouvrait la suivante, un titre se coupait entre « chapitre » et « 4 » : deux remises
+remplacées le même jour pour la seule typographie. Aucune règle du socle ne parlait de l'espace
+insécable.
+
+**La règle.** Une espace **ordinaire** devant `:` `;` `!` `?`, à l'intérieur de `« »`, entre un nom
+et son numéro (« chapitre 4 ») ou entre un mois et son année (« septembre 2026 ») est un point de
+coupure que le navigateur peut prendre. Remède : `&nbsp;` (U+00A0) ; la fine insécable U+202F est acceptée par la règle mais n'est pas dans la liste blanche des glyphes du socle (TF-0490), donc à éviter.
+Page déclarée dans une autre langue : non jugée. **Avertissement**, un constat par page. La même
+table juge les decks (S8 d'`oracle-charte-pptx-semantique`). Bruit mesuré : 232 pages accusées sur 239 pages au socle du parc (13/10/2026) — l'espace insécable n'était tenue presque nulle part, d'où l'avertissement.
+
+Fixtures : `l35-typo-espaces-ordinaires.html` (rouge), `l35-typo-insecables.html` (verte).
+
+## L36 — Le contenu d'auteur n'est pas livré au lecteur (TF-1283, RD-15, 13/10/2026)
+
+**Le fait.** Le 15/09, un porteur demande de sortir d'un guide développeur l'état des arbitrages ;
+le 21/09, un chapitre neuf en réintroduit 13 emplacements (« ce qui n'est pas tranché », « séance à
+planifier », « proposée, pas arrêtée »…), dont un injecté par le générateur, et sept oracles rendent
+PASS : la classe `contenu-d-auteur-livre-au-lecteur` n'était jugée que sur les gabarits.
+
+**La règle.** Sur le texte **visible** de la page rendue, les marqueurs d'un sujet en cours de
+gouvernance (« en cours d'arbitrage », « pas / non tranché », « séance à planifier », « verdicts non
+versés », « non arrêté », « proposée, pas arrêtée », « candidat à l'élévation », « en cours de
+versement », « relevé, non décidé ») sont signalés. La règle juge l'**état** d'un sujet, jamais la
+**destination** d'une escalade : « se fait trancher par la Design Authority » est un geste du
+lecteur. Zone citée (`data-cite`) exclue. **Avertissement**. Bruit mesuré : 25 pages accusées sur 239 pages au socle du parc (13/10/2026), dont des onglets « Non tranché » de spécifications produit et des gabarits de compte rendu qui listent les points ouverts — cas où l'état est le sujet, d'où l'avertissement.
+
+Fixtures : `l36-contenu-auteur.html` (rouge), `l36-escalade-du-lecteur.html` (verte).
+
+## Style du texte visible — l'oracle d'écriture joue sur la page (TF-1624, RA-5, 13/10/2026)
+
+**Le fait.** Retour humain : « Le terme "Ce que" ne devait plus être utilisé » — 20 tournures dans
+le texte d'une page. EC-8 d'`oracle-ecriture` (pilot) ne jugeait que les `.md`.
+
+**La règle.** `check_html.py <page>` ramène le texte visible à un Markdown de lecture (titres,
+en-têtes de tableau, blocs ; code et zones citées exclus) et le fait juger par l'oracle d'écriture
+du pilot ; ses constats **bloquants** entrent en **avertissement**, suffixés « texte visible de la
+page ». Les numéros de ligne cités sont ceux du texte extrait. Pilot injoignable : dit, jamais tu.
+`--sans-style` s'en passe. Bruit mesuré : 192 pages averties sur 239 pages au socle du parc (13/10/2026), dont 120 portant EC-8 et 138 EC-9 ; 3 pages non jouées (délai de l'oracle dépassé), dites comme telles.
+
+Fixtures : `style-annonce-nominalisee.html` (rouge), `style-nomme.html` (verte).
 
 ## Lancer le contrôle
 
