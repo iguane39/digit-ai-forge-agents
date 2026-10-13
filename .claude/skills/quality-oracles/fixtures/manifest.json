@@ -50,6 +50,26 @@
    ]
   },
   {
+   "nom": "secrets-tests",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-secrets.mjs",
+    "{fixture}"
+   ],
+   "red": "secrets-tests-red",
+   "green": "secrets-tests-green",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "secret en clair"
+   ],
+   "provenance": "TF-1349, mesure du 24/09/2026 chez un produit — oracle-secrets classait bloquants des mots de passe de fixtures et un libelle d interface (4 bloquants sur 5, tous faux). La verte (valeur dans tests/*.test.js, libelles « Mot de passe ») rendait FAIL avant la correction et rend PASS, ses constats retrogrades en avertissement ; la rouge porte la MEME valeur hors de tout fichier de test."
+  },
+  {
    "nom": "sast",
    "cmd": [
     "node",
@@ -569,6 +589,26 @@
    "provenance": "TF-1390 (retours Produit-68 du 26/09/2026, RG-19) : E-11 de ECRITURE.md n'avait aucun juge sur un deck, son seul juge L12 ne lisant que du HTML ; 7 listes en ligne séparées par « · » sur une diapositive, oracle-ecriture PASS, vues du seul destinataire. Decks FICTIFS (fixtures/gen-charte-pptx-liste-en-ligne-fixtures.py) : le vert porte les mêmes éléments en paragraphes, et garde ce qui ressemble à une liste sans en être une (pied de page, « 01 · Contexte », ligne de couverture)"
   },
   {
+   "nom": "charte-pptx-typographie",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-typographie-red.pptx",
+   "green": "charte-pptx-typographie-green.pptx",
+   "attendu_red": [
+    "PASS"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S8 typographie française — 6 espace(s) ordinaire(s)"
+   ],
+   "provenance": "TF-1384 (retours Produit-68 du 26/09/2026, RG-16) : des deux-points ouvraient une ligne, « (point » finissait une ligne et « 4) » ouvrait la suivante, un titre se coupait entre « chapitre » et « 4 » ; deux remises remplacees le meme jour pour la typographie seule, aucune regle ne parlant de l espace insecable. S8 est un AVERTISSEMENT (regle neuve, D-70 (b)) : les deux decks FICTIFS (fixtures/gen-charte-pptx-typographie-fixtures.py) rendent PASS, seule la rouge porte le constat S8 ; la verte porte le meme texte en espaces insecables."
+  },
+  {
    "nom": "charte-pptx-lexique",
    "cmd": [
     "node",
@@ -1077,6 +1117,50 @@
     "SANS SA FORMULE"
    ],
    "provenance": "TF-0760, lot Produit-12 - RETOURS - 20260831e du 31/08/2026 — une carte de chaleur exacte case par case et fausse dans son ensemble : un produit affiche a 0 % en tests alors qu il porte une porte de couverture bloquante. Le denominateur etait fabrique par les declarations des AUTRES acteurs, et la regle du produit accuse avait ete routee hors du corpus. Trouve par l ETONNEMENT DU LECTEUR, pas par un controle."
+  },
+  {
+   "nom": "calculs-effectif-fenetre",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}"
+   ],
+   "red": "calculs-effectif-fenetre-red.html",
+   "green": "calculs-effectif-fenetre-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "N1",
+    "cardinal réel 3"
+   ],
+   "provenance": "TF-1573, campagne D-55 (a) du 03/10/2026 — la fenetre fixe de 2 000 caracteres de lib/effectifs.mjs lisait TRONQUE un tableau plus long qu elle (« trois constats » face a 3 lignes lues a 2) et englobait la liste d une section voisine : 4 pages du parc en FAIL a tort. La verte rendait FAIL N1 deux fois avant la correction ; la rouge annonce quatre constats sur un tableau de trois, lu en entier."
+  },
+  {
+   "nom": "calculs-date",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "calculs-date-red.md",
+   "green": "calculs-date-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "N3",
+    "SANS SA FORMULE"
+   ],
+   "provenance": "TF-1574, campagne D-55 (a) du 03/10/2026 — une date « 29/09 » voisine d un tableau de parts etait lue comme la fraction 29 / 9 par la formule de lib/mesure.mjs : une page passait de FAIL a PASS sur N3 alors que son pourcentage restait sans denominateur. La rouge rendait PASS avant la correction ; la verte ecrit sa base a cote de la meme date."
   },
   {
    "nom": "calculs-unites",

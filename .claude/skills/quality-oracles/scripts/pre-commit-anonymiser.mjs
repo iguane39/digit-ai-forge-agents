@@ -124,14 +124,16 @@ if (typeof passer !== 'function') refus([
 
 // --- les fichiers de l'INDEX du dépôt courant ----------------------------------------------
 // Ajoutés, copiés, modifiés ou renommés — jamais les supprimés, et jamais l'histoire. Le même
-// filtre que chez le pilot, appliqué au dépôt qui commite au lieu du sien.
-const dif = spawnSync('git', ['-C', DEPOT, 'diff', '--cached', '--name-only', '--diff-filter=ACM'],
+// filtre que chez le pilot, appliqué au dépôt qui commite au lieu du sien. Lecture -z (TF-1633) :
+// sans elle, git cite en style C un chemin à octet non ASCII ("synth\303\250se.md"), le fichier
+// cité est introuvable et son contenu échappe à l'anonymisation.
+const dif = spawnSync('git', ['-C', DEPOT, 'diff', '--cached', '--name-only', '-z', '--diff-filter=ACM'],
   { encoding: 'utf8', maxBuffer: 64e6 });
 if (dif.status !== 0) refus([
   "COMMIT REFUSÉ — impossible de lire l'index de " + DEPOT + '.',
   '  ' + String(dif.stderr || '').trim().slice(0, 200),
 ]);
-const fichiers = String(dif.stdout || '').split('\n').map((s) => s.trim()).filter(Boolean);
+const fichiers = String(dif.stdout || '').split('\0').filter(Boolean);
 
 let r;
 try { r = passer({ fichiers, racine: DEPOT, ecrire: !essai }); }

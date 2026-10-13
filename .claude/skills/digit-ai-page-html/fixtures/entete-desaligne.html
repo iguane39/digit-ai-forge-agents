@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — en-tetes et valeurs numeriques desalignes — 20261013a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --r-sm:6px;--mark:#FEF08A;--head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{margin:0 auto;padding:24px;max-width:960px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+table{border-collapse:collapse;width:100%}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1623 (RA-4, 13/10/2026), sens ROUGE. Retour humain : « les entetes de colonnes ne sont pas
+  alignes avec les contenus ». Les valeurs numeriques sont a droite, leurs <th> a gauche. Attendu :
+  au moins 1 constat entete_desaligne (avertissement). Le sens vert est entete-aligne-composant.html.
+-->
+<body><main class="wrap">
+<h1>Volumes par marche</h1>
+<table id="volumes"><thead><tr><th>Marche</th><th>Volume annuel</th><th>Valeur moyenne</th></tr></thead>
+<tbody>
+<tr><td>Nord</td><td class="num">1 000</td><td class="num">84 €</td></tr>
+<tr><td>Centre</td><td class="num">12 500</td><td class="num">112 €</td></tr>
+<tr><td>Sud</td><td class="num">250</td><td class="num">63 €</td></tr>
+</tbody></table>
+</main></body></html>

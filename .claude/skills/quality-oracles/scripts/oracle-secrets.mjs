@@ -35,12 +35,27 @@ const HIGH = [
 const ASSIGN = /\b(pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key|client[_-]?secret)\b\s*[:=]\s*['"]([^'"]{6,})['"]/gi;
 const PLACEHOLDER = /\{\{|\$\{|<[^>]+>|x{3,}|changeme|example|redacted|\*{3,}|placeholder|todo|env[:.]|process\.env|os\.environ|getenv/i;
 
+// TF-1349 (24/09/2026) — DONNÉES DE TEST ET LIBELLÉS. Mesuré chez un produit : 4 constats bloquants sur
+// 5, tous faux — des mots de passe de FIXTURES et un libellé d'interface (« password: 'Mot de passe' »).
+// Une affectation dans un fichier de test (dossier tests/, fixtures/, __tests__/, spec/, e2e/,
+// testdata/ ; fichier *.test.*, *.spec.*, test_*.py, conftest.py) est RÉTROGRADÉE en avertissement,
+// jamais retirée : elle reste nommée. Une valeur faite de mots séparés par des espaces est un libellé,
+// pas un secret. Les FORMATS de jeton reconnus (HIGH : clé AWS, PAT GitHub, clé privée…) restent
+// bloquants partout, fichiers de test compris : un vrai jeton dans une fixture est une fuite.
+const FICHIER_DE_TEST = /(?:^|[\\/])(?:tests?|__tests__|spec|specs|fixtures?|e2e|testdata)[\\/]|(?:^|[\\/])(?:[^\\/]+\.(?:test|spec)\.[a-z0-9]+|test_[^\\/]+\.py|[^\\/]+_test\.(?:py|go)|conftest\.py)$/i;
+const LIBELLE = /^[\p{L}'’.,!?:\-]+(?:\s+[\p{L}'’.,!?:\-]+)+$/u;
 function scanText(txt, file, findings) {
   for (const [re, label] of HIGH) { const m = txt.match(re); if (m) findings.push({ sev: 'bloquant', msg: 'secret probable : ' + label, where: file + ' · ' + m[0].slice(0, 6) + '…' }); }
+  // Le chemin jugé est RELATIF À LA CIBLE scannée : un dossier de test du produit compte, le dossier
+  // où la cible elle-même est rangée ne compte pas (une cible fichier n'est jugée que sur son nom).
+  const rel = fs.statSync(target).isDirectory() ? path.relative(target, file) : path.basename(file);
+  const deTest = FICHIER_DE_TEST.test(rel);
   let m;
   while ((m = ASSIGN.exec(txt))) {
     const val = m[2];
     if (PLACEHOLDER.test(val) || /^(true|false|null|none|)$/i.test(val)) findings.push({ sev: 'warn', msg: 'affectation « ' + m[1] + ' » à valeur non réelle (placeholder/env) — OK', where: file });
+    else if (LIBELLE.test(val.trim())) findings.push({ sev: 'warn', msg: 'affectation « ' + m[1] + ' » à un LIBELLÉ (mots séparés par des espaces), pas à un secret — rétrogradée (TF-1349)', where: file });
+    else if (deTest) findings.push({ sev: 'warn', msg: 'valeur en clair dans un fichier de TEST : affectation « ' + m[1] + ' » — rétrogradée en avertissement (TF-1349) ; vérifier qu\'elle n\'ouvre aucun service réel', where: file + ' · ' + val.slice(0, 4) + '…' });
     else findings.push({ sev: 'bloquant', msg: 'secret en clair : affectation « ' + m[1] + ' »', where: file + ' · ' + val.slice(0, 4) + '…' });
   }
 }

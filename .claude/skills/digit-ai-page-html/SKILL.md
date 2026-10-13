@@ -7,13 +7,26 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.27.0"
+  version: "1.28.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.28.0 (13/10/2026)** — **six retours humains sur des pages rendues corrigés à la cause, et leurs
+règles neuves entrent en avertissement.** · **L25 / L6 / `sommaire_perdu`** reconnaissent une barre
+`role="tablist"` comme sommaire : plus de menu latéral exigé en plus des onglets (TF-1626, RA-6).
+· **Page de données** : prose pleine largeur par défaut, `.chap.lire` en option déclarée, V18 (a)
+ne la compte plus (TF-1622, RA-3). · Le composant de filtres aligne l'en-tête d'une colonne
+alignée à droite (`th.tf-num`, déclencheur à gauche du libellé) et la famille
+**`entete_desaligne`** mesure l'écart libellé / valeurs, en avertissement (TF-1623, RA-4).
+· `--matrice-etats` ne joue plus un déclencheur de filtre MASQUÉ : il ouvre d'abord l'onglet qui
+le porte (TF-1618, RA-1). · En avertissement : **L12** sur une énumération de quatre noms ou plus
+par virgules (TF-1621, RA-2), **L35** typographie française aux coupures de ligne (TF-1384),
+**L36** contenu d'auteur livré au lecteur (TF-1283), et `check_html.py` joue l'oracle d'écriture
+du pilot sur le **texte visible** de la page (`--sans-style` pour s'en passer ; TF-1624, RA-5).
 
 **1.27.0 (12/10/2026)** — **le rendu juge le tracé d'une flèche et l'encre d'un texte SVG, et une
 règle neuve se mesure sur tout le parc avant d'entrer.** · **V2** juge un `<text>` SVG sur son

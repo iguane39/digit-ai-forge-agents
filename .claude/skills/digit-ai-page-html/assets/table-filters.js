@@ -417,6 +417,7 @@
         var th = e.col && e.col.th;
         if (th) {
           th.removeAttribute('data-tf-forme');
+          th.classList.remove('tf-num');
           var u = th.querySelector('.tf-unique'); if (u) u.parentNode.removeChild(u);
         }
       });
@@ -463,6 +464,17 @@
           u.textContent = 'une seule valeur';
           col.th.appendChild(u);
         }
+        /* TF-1623 (RA-4, 13/10/2026) — « les entetes de colonnes ne sont pas alignes avec les
+           contenus ». Une cellule numerique s'aligne a droite, son `<th>` restait a gauche, et le
+           declencheur (bouton + marge, 30 px) poussait encore le libelle. L'en-tete suit
+           desormais l'alignement CALCULE de sa colonne : a droite, il prend la classe `tf-num`
+           (feuille du composant) et son declencheur flotte A GAUCHE du libelle — le bord droit
+           du libelle tombe sur celui des valeurs, sans compensation a calculer. */
+        try {
+          var premiere = lignes.length && lignes[0].cells[col.index];
+          var aligne = premiere ? window.getComputedStyle(premiere).textAlign : '';
+          if (aligne === 'right' || aligne === 'end') col.th.classList.add('tf-num');
+        } catch (e) { /* alignement non lisible : l'en-tete garde le sien */ }
         col.th.appendChild(b);
         col.th.appendChild(ui.panneau);
         Array.prototype.forEach.call(ui.options.querySelectorAll('.tf-opt'), function (cb) {

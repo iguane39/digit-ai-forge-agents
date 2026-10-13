@@ -59,7 +59,7 @@
 <!-- COMPOSANT-EMBARQUE:DEBUT boilerplate.css — copie du socle digit-ai-page-html/assets/boilerplate.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="boilerplate.css" data-empreinte="sha256:e530881580c22318487e7ffa22050a1242b9447f13dff92d0ac0d6798204bddd">
+<style data-composant="boilerplate.css" data-empreinte="sha256:4cb668d8d80efdd559158214fe0ba98a6fbe25990a56f93e3961d302c0efac43">
     :root {
       /* Couleurs — marque & surfaces */
       --blue: #2563EB;
@@ -112,9 +112,9 @@
          jamais lu n'est pas neutre, c'est la trace visible d'une doctrine abandonnee, en tete
          du fichier que tout auteur de page copie. Le prochain le rebrancherait. */
       --w: clamp(75vw, 1680px, 92vw);
-      /* Familles (repli système obligatoire) */
-      --head: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
-      --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      /* Familles (repli système obligatoire) — charte des présentations (D-5 (a), D-11 (a)) */
+      --head: "Montserrat", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --sans: "Inter", "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
       --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
       /* Année de référence (token isolé) */
       --annee-ref: "2026";
@@ -173,15 +173,24 @@
        1 260 px dans une fenetre de 1 370 et a 1 680 dans une fenetre de 1 920, alors que I1 et
        L26 disent « pleine largeur adaptative ». Sept colonnes de mapping n'entrent pas dans
        1 260 px ; la place existe, la page doit la prendre. La colonne de lecture reste
-       accessible a la PROSE par `.chap.lire`, qui n'est pas touche ici.
+       accessible a la PROSE par `.chap.lire`, qui n'est pas touche ici — en OPTION DECLAREE :
+       TF-1622 (RA-3, 13/10/2026), par defaut la prose d'une page de donnees occupe la pleine
+       largeur (« pourquoi ce n'est pas affiche sur toute la largeur ? »), V18 ne la compte plus.
        Mesure : .wrap 1 370/1 370 px et 1 920/1 920 px apres, contre 1 260 et 1 680 avant.
        Controle : famille `conteneur_bride_donnees` de render_page.py (>= 96 % a >= 1 280 px). */
     [data-page="donnees"] .wrap,
     .wrap[data-page="donnees"] { max-width: none; padding: 20px 28px 48px; }
     /* TF-0932 — l'entrée en matière d'un chapitre : ce qu'il contient, puis ses termes. */
-    .contenu { margin: .2em 0 .8em; color: var(--muted, #475569); }
-    .termes { margin: 0 0 1em; font-size: .92em; color: var(--muted, #475569); }
-    .termes dfn { font-style: normal; font-weight: 600; color: var(--ink, #0f172a); }
+    /* TF-1238 (22/09/2026) — LE REPLI LITTÉRAL EST RETIRÉ, ET IL ÉTAIT PIRE QUE REDONDANT.
+       `var(--muted, #475569)` promettait de secourir un jeton absent ; or `--muted` est posé
+       sans condition au `:root` de cette coquille, donc le repli ne pouvait jamais servir — et
+       sa valeur ne correspondait PAS au jeton : `#475569` contre `#64748B`. En thème sombre le
+       jeton devient `#A9B4C4`, que le repli aurait contredit plus franchement encore. Une
+       valeur de secours qui ne peut pas s'exécuter et qui ment sur ce qu'elle secourt est une
+       dette pure : elle fait échouer le contrôle des jetons sans rien garantir en échange. */
+    .contenu { margin: .2em 0 .8em; color: var(--muted); }
+    .termes { margin: 0 0 1em; font-size: .92em; color: var(--muted); }
+    .termes dfn { font-style: normal; font-weight: 600; color: var(--ink); }
     .chap.lire { max-width: 1080px; margin-left: auto; margin-right: auto; }
     .chap.duo { display: grid; grid-template-columns: 7fr 5fr; gap: 32px; align-items: start; }
     @media (max-width: 1100px) { .chap.duo { grid-template-columns: 1fr; } }

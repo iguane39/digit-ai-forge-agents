@@ -51,6 +51,16 @@ const FORMULE = [
   /\bcalcul[ée]?\s+(?:comme|sur|par)\b/i,
   /\brapport[ée]?\s+[àa]\b/i,
 ];
+// TF-1574 (03/10/2026, campagne D-55 (a)) — UNE DATE « JJ/MM » N'EST PAS UNE FRACTION. Sur le parc,
+// une page passait de FAIL à PASS sur N3 parce qu'un « 29/09 » voisin était pris pour « 29 sur 9 » :
+// faux négatif, le pourcentage restait sans dénominateur. Une paire jour/mois plausible (1-31 / 1-12)
+// est retirée AVANT de chercher une formule quand un contexte de date l'entoure : une année qui suit
+// (« 29/09/2026 »), un mot de date qui précède (« le », « du », « au », « depuis », « mis à jour »…),
+// ou une heure qui suit (« 29/09 à 11:30 »). « 12 / 17 » et « 3/12 » nus restent des fractions.
+const DATE_JJ_MM = /\b(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])(?:\/\d{2,4}\b|(?=\s+(?:à|a)\s+\d{1,2}\s*(?:h|:)))/g;
+const DATE_APRES_MOT = /\b(le|du|au|depuis|jusqu['’]au|d[èe]s\s+le|avant\s+le|apr[èe]s\s+le|mis\s+[àa]\s+jour|relev[ée]e?s?|dat[ée]e?s?|[ée]ch[ée]ance|semaine\s+du)(\s+)(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\b/gi;
+const sansDates = (s) => String(s || '').replace(DATE_JJ_MM, ' ').replace(DATE_APRES_MOT, '$1$2 ');
+
 // En-têtes qui PORTENT le dénominateur : une colonne de comptes à côté d'une colonne de parts
 // suffit à ce que le lecteur retrouve la formule.
 const ENTETE_COMPTE = /\b(nombre|nb|effectif|compte|count|base|cardinal|total|d[ée]nominateur|sur)\b/i;
@@ -133,7 +143,7 @@ export function verifierMesures(text, ext, base, dir, cfg = {}) {
   const nu = (ext === '.md' ? text : text.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' '));
   const lignesNu = nu.split('\n');
   const formules = (Array.isArray(cfg.formules) && cfg.formules.length ? cfg.formules.map(s => new RegExp(s, 'i')) : FORMULE);
-  const aFormule = (s) => formules.some(r => r.test(s));
+  const aFormule = (s) => { const t = sansDates(s); return formules.some(r => r.test(t)); };
 
   // ---- N3 — un pourcentage publié sans sa formule ---------------------------------------------
   for (const t of extractTables(text, ext)) {
@@ -297,6 +307,7 @@ export function verifierMesures(text, ext, base, dir, cfg = {}) {
 export const NON_JUGE_MESURE = [
   'N3 : la JUSTESSE du dénominateur écrit — sa présence est vérifiée, jamais sa pertinence (« on ne mesure un acteur que sur ce qu\'il a eu l\'occasion de faire » reste une revue humaine)',
   'N3 : les pourcentages en pleine prose hors table et hors titre — les mécaniser produirait plus de bruit que de gain',
+  'N3 : une paire « JJ/MM » sans contexte de date (ni année, ni heure, ni mot de date devant) reste lue comme une fraction (TF-1574)',
   'N4 : les unités hors de la liste connue (€, €/an, %, nuits, séjours, jours, j/h, h, km, m²) et les unités écrites en toutes lettres dans la prose',
   'N4 (U2) : une multiplication et une unité de flux posées dans DEUX cellules d\'une même ligne de tableau ne se rapprochent que par le libellé de la grandeur (l\'en-tête ou la ligne qui la déclare en flux) — l\'unité jugée est la cellule, l\'élément de liste ou le bloc, jamais la ligne du source (TF-1440)',
   'N4 (U2) : le × de la notation d\'effort prescrite (complexité × durée, « moyen × court ») n\'est pas lu comme une multiplication — un × entre un nombre et une unité reste jugé (TF-1440)',

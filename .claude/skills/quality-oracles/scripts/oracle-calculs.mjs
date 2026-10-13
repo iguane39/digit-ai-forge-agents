@@ -285,7 +285,10 @@ const tables = extractTables(text, ext);
 // TRONQUÉS, et la mesure du parc du 03/10/2026 l'a montré : 4 pages SKIP devenues FAIL sur des
 // cardinaux coupés (« trois constats » ≠ 2 lignes d'un tableau qui en a 3). Ce volet retire déjà
 // les balises sur le texte entier, sans découpage par ligne : il n'avait pas le défaut de RT-122.
-const eff = verifierEffectifs(brut, ext, path.basename(file));
+// TF-1573 (13/10/2026) : la fenêtre de lib/effectifs.mjs est bornée par le CONTENEUR du titre et
+// l'ancre se lit en entier ; le volet est rebranché sur le texte RENDU, comme les autres (un
+// tableau construit dans un <template> ou cité dans un commentaire n'est plus une ancre).
+const eff = verifierEffectifs(text, ext, path.basename(file));
 
 // ---- TF-0760 / TF-0777 : « un chiffre publié énonce son dénominateur, et une unité se lit » ---
 // N3 pourcentage sans sa formule · N4 unités des en-têtes · N5 hypothèse calculable depuis la

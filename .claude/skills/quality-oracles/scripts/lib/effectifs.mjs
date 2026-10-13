@@ -43,6 +43,9 @@ const RX_EFFECTIF = new RegExp(
   'gi');
 
 const valeur = t => (/^\d+$/.test(t) ? parseInt(t, 10) : LETTRES[t.toLowerCase()]);
+// TF-1573 : un nombre à zéro initial (« 05 Points », « 02 Actions ») numérote un chapitre de page HTML, il
+// ne compte rien. Le texte rendu, plus court, avait fait entrer ces titres dans la fenêtre d'une ancre.
+const NUMEROTATION = /^0\d/;
 const RX_PUCE = /^(\s*)(?:[-*+]|\d{1,3}[.)])\s+\S/;
 const RX_ID = /^[A-Z]{1,3}[-_]?\d{1,3}$/;
 
@@ -98,16 +101,30 @@ function listeMd(lines, j) {
 }
 
 // ---- cardinal d'une ancre HTML ----------------------------------------------------------------
+// TF-1573 (03/10/2026, campagne D-55 (a)) — LA FENÊTRE EST BORNÉE PAR LE CONTENEUR, PAS PAR UN
+// NOMBRE DE CARACTÈRES. L'ancre était cherchée ET LUE dans les 2 000 caractères qui suivent le
+// titre : un tableau plus long que ce reste était compté TRONQUÉ (« trois constats » face à un
+// tableau de 3 lignes lu à 2), et sur le texte rendu, plus court, la fenêtre englobait des
+// tableaux voisins — 4 pages du parc en FAIL à tort. Désormais : l'ancre doit OUVRIR dans la
+// section du titre (ni autre titre, ni fin de section/article avant elle, et toujours dans les
+// 2 000 caractères qui le suivent), puis le tableau ou la liste se lit EN ENTIER jusqu'à sa
+// balise fermante, dans le texte complet.
 function ancreHtml(text, from) {
   const zone = text.slice(from, from + 2000);
   const mList = zone.search(/<(?:table|ul|ol)\b/i);
   if (mList < 0) return null;
   const avant = zone.slice(0, mList);
   if (/<h[1-6]\b/i.test(avant)) return null;                     // un autre titre s'intercale
+  if (/<\/(?:section|article|main|aside|details)\s*>/i.test(avant)) return null;   // le conteneur du titre est clos
+  // Même borne que l'ancre Markdown (au plus deux blocs de prose intercalés) : sur le texte rendu, la
+  // fenêtre de 2 000 caractères porte plus de contenu que sur le source, et l'ancre doit rester IMMÉDIATE.
+  if ((avant.match(/<(?:p|div|blockquote|pre|figure|dl)\b/gi) || []).length > 2) return null;
   const ligne = text.slice(0, from + mList).split('\n').length;
-  const reste = zone.slice(mList);
+  const reste = text.slice(from + mList);
   if (/^<table\b/i.test(reste)) {
-    const bloc = (reste.match(/^<table[\s\S]*?<\/table>/i) || [reste])[0];
+    const fermee = reste.match(/^<table[\s\S]*?<\/table>/i);
+    if (!fermee) return null;                                    // tableau jamais refermé : non mesurable
+    const bloc = fermee[0];
     const trs = [...bloc.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map(m => m[0]);
     const data = trs.filter(tr => !/<th\b/i.test(tr));
     const prem = data.map(tr => { const c = tr.match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/i); return c ? c[1].replace(/<[^>]+>/g, '').trim() : ''; });
@@ -116,7 +133,9 @@ function ancreHtml(text, from) {
     if (utiles < 2) return null;
     return { type: 'tableau', ligne, cardinal: ids.length === prem.length && ids.length ? new Set(ids).size : utiles, detail: ids.length === prem.length && ids.length ? 'identifiants distincts : ' + ids.join(', ') : utiles + ' ligne(s) de données' };
   }
-  const bloc = (reste.match(/^<(ul|ol)[\s\S]*?<\/\1>/i) || [reste])[0];
+  const fermee = reste.match(/^<(ul|ol)[\s\S]*?<\/\1>/i);
+  if (!fermee) return null;                                      // liste jamais refermée : non mesurable
+  const bloc = fermee[0];
   const n = (bloc.match(/<li\b/gi) || []).length;
   return n >= 2 ? { type: 'liste', ligne, cardinal: n, detail: n + ' item(s)' } : null;
 }
@@ -138,6 +157,7 @@ export function verifierEffectifs(text, ext, base) {
       const ligne = text.slice(0, h.index).split('\n').length;
       for (const m of titre.matchAll(RX_EFFECTIF)) {
         if (fourchette(titre, m.index)) continue;
+        if (NUMEROTATION.test(m[1])) continue;                   // « 05 Points » : un numéro de chapitre, pas un compte
         const ancrable = ouvre(titre, m.index);
         annoncesToutes.push({ n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne, ancre: ancrable ? () => ancreHtml(text, h.index + h[0].length) : () => null });
       }
@@ -146,6 +166,7 @@ export function verifierEffectifs(text, ext, base) {
     const plat = text.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, ' ').replace(/<[^>]+>/g, ' ');
     for (const m of plat.matchAll(RX_EFFECTIF)) {
       if (fourchette(plat, m.index)) continue;
+      if (NUMEROTATION.test(m[1])) continue;
       annoncesToutes.push({ n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne: 0, ancre: () => null });
     }
   } else {

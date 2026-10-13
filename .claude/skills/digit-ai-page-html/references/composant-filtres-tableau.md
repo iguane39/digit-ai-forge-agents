@@ -31,6 +31,17 @@ Preuve attendue de toute extension : un test d'interactions (voir
 [`references/tests-interactions.md`](tests-interactions.md)) — l'oracle statique ne voit pas
 une facette détruite.
 
+## L'en-tête suit l'alignement de sa colonne (TF-1623, RA-4, 13/10/2026)
+
+Retour humain : « les entêtes de colonnes ne sont pas alignés avec les contenus ». Les valeurs
+numériques s'alignaient à droite, leur `<th>` restait à gauche, et le déclencheur (bouton et marge,
+30 px) poussait encore le libellé. À `init()`, le composant lit l'alignement **calculé** de la
+première cellule de chaque colonne filtrée ; aligné à droite, le `<th>` reçoit `tf-num` : libellé à
+droite, déclencheur flottant **à gauche** du libellé, bords droits du libellé et des valeurs
+confondus sans compensation à calculer. Mesure au rendu : famille `entete_desaligne` de
+`render_page.py` (bord du libellé contre la boîte du contenu de la cellule, écart au-delà de 6 px), en avertissement. Bruit mesuré le 13/10/2026 à 1 920 px : 5 pages accusées sur 206 pages à tableau du parc, 18 constats (une première écriture qui lisait le texte d'un badge, et non sa boîte, en accusait 102). Fixtures
+`entete-desaligne.html` (rouge) et `entete-aligne-composant.html` (verte).
+
 ## L'ancrage du panneau ne DÉFAIT PAS le collage du socle (TF-0899, 07/09)
 
 `.tf-panel` est un `position: absolute` : il lui faut un **ancêtre positionné**, et le `<th>`

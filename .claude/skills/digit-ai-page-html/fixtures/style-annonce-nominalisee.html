@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Guide de lecture · fixture style — 20261013a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--mark:#FEF08A;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+table{border-collapse:collapse;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1624 (RA-5, 13/10/2026), sens ROUGE. Retour humain : « Le terme "Ce que" ne devait plus être
+  utilisé ». La tournure est en TITRE et en EN-TÊTE DE COLONNE, positions où EC-8 d'oracle-ecriture
+  la refuse. Avant TF-1624, check_html.py ne jouait pas le style du texte visible : rien ne la voyait.
+  Attendu : un avertissement EC-8 « texte visible de la page ».
+-->
+<body><main class="wrap">
+<h1>Guide de lecture du tableau de bord</h1>
+<p>Cette page explique comment lire les indicateurs du tableau de bord mensuel, colonne par colonne, et à qui signaler un écart constaté.</p>
+<h2>Ce que ce guide couvre</h2>
+<p>Le guide couvre les six indicateurs publiés chaque mois, leur source et leur seuil d'alerte.</p>
+<table><thead><tr><th>Indicateur</th><th>Ce que mesure la colonne</th></tr></thead>
+<tbody>
+<tr><td>Disponibilité</td><td>Part du temps où le service répond, relevée chaque minute.</td></tr>
+<tr><td>Délai de traitement</td><td>Temps médian entre la demande et sa clôture, en jours ouvrés.</td></tr>
+</tbody></table>
+<h2>Ce qu'il ne couvre pas</h2>
+<p>Les indicateurs financiers sont publiés dans un autre document, tenu par la direction financière.</p>
+</main></body></html>

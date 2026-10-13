@@ -74,10 +74,18 @@ for (const f of codeFiles) {
   });
 }
 // outils faisant autorité si présents (complètent le repli)
-if (have('semgrep')) {
-  const g = spawnSync('semgrep', ['--quiet', '--json', '--config', 'auto', target], { encoding: 'utf8', timeout: 120000 });
-  try { (JSON.parse(g.stdout || '{}').results || []).forEach(r => findings.push({ sev: 'bloquant', msg: 'semgrep ' + (r.check_id || '').split('.').pop(), where: (r.path || '') + ':' + (r.start && r.start.line) })); } catch {}
-} else NJ.push('semgrep non installé — règles intégrées utilisées (couverture moindre)');
+// TF-1349 (24/09/2026) — L'ÉCHELLE DE RÉSOLUTION DE SEMGREP : le PATH, puis `uvx semgrep`. Mesuré chez
+// un produit : semgrep, absent du PATH mais joignable par uvx, a trouvé un constat réel que cet oracle
+// rendait PASS sur ses seules règles intégrées. Une voie qui échoue (téléchargement, sortie hors JSON)
+// se DIT au non_juge, elle ne se tait plus.
+const SEMGREP = have('semgrep') ? { cmd: 'semgrep', pre: [], voie: 'semgrep (PATH)' }
+  : have('uvx') ? { cmd: 'uvx', pre: ['semgrep'], voie: 'uvx semgrep' } : null;
+if (SEMGREP) {
+  const g = spawnSync(SEMGREP.cmd, [...SEMGREP.pre, '--quiet', '--json', '--config', 'auto', target], { encoding: 'utf8', timeout: 300000 });
+  let lu = null; try { lu = JSON.parse(g.stdout || ''); } catch { /* sortie illisible : dite plus bas */ }
+  if (lu) (lu.results || []).forEach(r => findings.push({ sev: 'bloquant', msg: 'semgrep ' + (r.check_id || '').split('.').pop(), where: (r.path || '') + ':' + (r.start && r.start.line) }));
+  else NJ.push(SEMGREP.voie + ' injoignable (exit ' + g.status + (g.error ? ', ' + g.error.code : '') + ') — règles intégrées seules (couverture moindre)');
+} else NJ.push('semgrep non installé et uvx absent — règles intégrées utilisées (couverture moindre)');
 if (have('bandit') && codeFiles.some(f => f.endsWith('.py'))) {
   const b = spawnSync('bandit', ['-r', target, '-f', 'json'], { encoding: 'utf8', timeout: 120000 });
   try { (JSON.parse(b.stdout || '{}').results || []).forEach(r => { if (/HIGH|MEDIUM/i.test(r.issue_severity)) findings.push({ sev: r.issue_severity === 'HIGH' ? 'bloquant' : 'warn', msg: 'bandit ' + r.test_id + ' ' + r.issue_text.slice(0, 60), where: r.filename + ':' + r.line_number }); }); } catch {}
