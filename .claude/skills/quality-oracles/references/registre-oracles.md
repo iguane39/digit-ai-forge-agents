@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.37.0, alignée sur le JSON le 12/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.38.0, alignée sur le JSON le 13/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -54,7 +54,7 @@
 | Calculs / chiffres | `scripts/oracle-calculs.mjs` — re-somme exécutée des lignes Total des tables md/html (+ déclenchement par contenu) ; **N1 (TF-0718, 02/09/2026)** effectif annoncé en **chiffres OU en lettres** suivi d'un nom dénombrable, en tête d'une liste ou d'un tableau, rapproché du **cardinal réel** de l'ancre (identifiants distincts si la 1re colonne en porte) ; **N2** compte contradictoire pour le même nom dans le même document ; hors tables → recompute manuel ; **N3 (TF-0760, 02/09/2026)** un **pourcentage mesuré publié sans sa formule** écrite à côté (fraction, colonne de comptes, ou note « base : … » / « dénominateur … ») est un défaut — cibles, seuils, poids et bandes exemptés ; **N4 (TF-0777)** les **unités des en-têtes se lisent** : même grandeur à deux unités, cellule qui contredit son en-tête, unité de **flux** (€/an) consommée par une multiplication par un **compte d'événements** ; **N5 (TF-0777, avertissement)** une **hypothèse portant sur une grandeur que la source de données déclarée contient** est calculable ; **13/10/2026** : la fenêtre d'ancre de N1 est bornée par le conteneur du titre et l'ancre se lit en entier, sur le texte rendu (TF-1573), et une date « JJ/MM » en contexte de date n'est plus lue comme une fraction par N3 (TF-1574) | cli | ⚙️ |
 | Traçabilité des affirmations chiffrées | `scripts/oracle-claims.mjs` — montant € sans source ni « à vérifier » = bloquant ; incohérence intra-document ; actif selon profil | cli | ⚙️ |
 | Nommage / convention de livraison | `scripts/oracle-nommage.mjs` — convention du profil (**Q3-bis, 09/08/2026** : `<Projet> - <Objet> - AAAAMMJJ{a…}` — le nom du projet prime sur l'émetteur, le motif date + indice est le discriminant) ; nom ne se réclamant pas de la convention → SKIP | cli | ✅ |
-| Jugement rédactionnel (LLM-juge externe) | `scripts/oracle-judge.mjs` — rubrique figée 5 axes via CLI claude ; AVIS OUTILLÉ, invocation explicite, jamais promu en verdict | cli | ⚙️ |
+| Jugement rédactionnel (LLM-juge externe) | `scripts/oracle-judge.mjs` — rubrique figée 5 axes via CLI claude ; AVIS OUTILLÉ, invocation explicite, jamais promu en verdict. Rubrique **lecteur visé** (`--lecteur-vise`, TF-1392/TF-1394) : 2 relecteurs, constat retenu s'ils s'accordent, question répétée remontée à l'humain, motif « changerait un fait » sans fait cité signalé — SIGNALEMENT, exit 0 | cli | ⚙️ |
 | Design généré : marqueurs de slop | `node {pilot}/../digit-ai-forge-design/oracles/run-oracles-design.mjs <page.html> --oracle slop --contrat-runner` — **emprunte le point d'entrée de forge-design** pour que la passe d'imputation au socle s'applique (TF-1241, 22/09/2026 : appelé en direct, le juge imputait à l'auteur les constats d'un composant embarqué qu'il n'a pas le droit de modifier) — S1 bandeau latéral > 1px, S2 texte en dégradé, S3 polices réflexes, S4 noir/blanc purs, S5 palette IA, S6 emojis, S7 grille clonée, S8 easing daté, S9 rayon uniforme, S10 sparkline décoratif ; déclenché par contenu (« Données de démonstration »), jamais sur toute page HTML | cli | ✅ |
 | Système de marque : traçabilité des tokens | `node {pilot}/../digit-ai-forge-design/oracles/run-oracles-design.mjs <page.html> --oracle tokens --contrat-runner` — **emprunte le point d'entrée de forge-design**, même motif (TF-1241) — T1 couleur en dur, T2 police en dur, T3 échelle 4pt, T4 parité clair/sombre, T5 contraste ≥ 4.5:1 (paires opaques seulement), T6 chroma aux extrêmes | cli | ✅ |
 | Mouvement : craft de l'animation | `node {forges}/digit-ai-forge-design/oracles/oracle-motion.mjs <page.html>` — R1 `transition: all`, R2 entrée en `scale(0)`, R3 `ease-in` sur de l'UI, R4 durée > 300 ms sans justification déclarée, R5 `transform-origin: center` sur élément ancré, R6 propriété de layout animée, R7 survol animé sans `@media (hover: hover) and (pointer: fine)` ; dérivé de `review-animations` (Emil Kowalski, MIT) | cli | ✅ |
@@ -757,3 +757,16 @@ juger est l'oracle inscrit ici. Il joue le contrat de douze points du prompt ré
 (recette du skill, 36 contrôles). La paire du manifeste porte le cas limite 2 : un constat
 rattaché à un contrôle évalué, écrit en fiche au lieu d'être cité. **Statut partiel** : la
 méthode n'a encore été exercée par aucune mission réelle, et ses fixtures sont fictives.
+
+## Rubrique du 13/10/2026 — le relecteur qui joue le lecteur visé (TF-1392, TF-1394, v2.38.0)
+
+- **Règle** : `oracle-judge --lecteur-vise` prépare la consigne de 2 relecteurs (`--preparer`), ou les
+  lance (`--juge claude`), puis agrège leurs lectures (`--lectures a.json,b.json`). Un constat n'est
+  retenu que si les 2 refusent l'unité ; un désaccord se trace sans constat. Une question qui revient
+  d'une lecture à l'autre (`--precedente`) remonte à l'humain avant la remise ; dans `REVUE.md`
+  (`--revue`), un motif « changerait un fait » cite le fait protégé.
+- **Force** : SIGNALEMENT (décisions D-2 (a) et D-3 (a) du 13/10/2026). Verdict PASS, exit 0, aucun
+  constat `bloquant`. Bascule seulement sur décision humaine, après une mesure sur 100 unités au moins
+  (revue le 2026-11-10).
+- **Preuve** : paire `judge-lecteur-vise` du manifeste et bloc TF-1392/TF-1394 de la recette, sur des
+  lectures enregistrées, sans appel de modèle. Mode d'emploi : `references/lecteur-vise.md`.

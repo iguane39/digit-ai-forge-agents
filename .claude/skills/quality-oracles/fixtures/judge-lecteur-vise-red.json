@@ -1,0 +1,25 @@
+{
+ "commentaire": "Lectures ENREGISTRÉES de deux relecteurs (TF-1392). L'unité u3 reprend mot pour mot le bloquant refusé par son lecteur humain (« Je ne comprends pas », lot Produit-02 20260922a, unité P4 de l'étude du 13/10/2026) ; les deux relecteurs la refusent, comme à la mesure du 13/10 (A FLOU, B FLOU). Accord des deux : constat RETENU. Aucun appel de modèle n'est rejoué par la fixture.",
+ "lectures": [
+  {
+   "relecteur": "A",
+   "lecteur": "le porteur du produit, qui décide de la mise en production",
+   "unites": [
+    {"id": "u1", "extrait": "Mise en production du 20 octobre", "redite": "Le document parle de la mise en production prévue le 20 octobre.", "verdict": "COMPRIS", "question": ""},
+    {"id": "u2", "extrait": "La mise en production est prête : les 14 tests", "redite": "Tout est prêt, les 14 tests passent depuis le 12 octobre.", "verdict": "COMPRIS", "question": ""},
+    {"id": "u3", "extrait": "Bloquant : il suppose une session ouverte dans le compte.", "redite": "Quelque chose bloque, lié à une session dans un compte.", "verdict": "FLOU", "question": "Qui est « il », et de quel compte parle-t-on ?"},
+    {"id": "u4", "extrait": "Décision attendue : lancer la mise en production le 20 octobre", "redite": "Je dois choisir entre lancer le 20 octobre ou reporter d'une semaine.", "verdict": "COMPRIS", "question": ""}
+   ]
+  },
+  {
+   "relecteur": "B",
+   "lecteur": "un décideur non technique",
+   "unites": [
+    {"id": "u1", "extrait": "Mise en production du 20 octobre", "redite": "Il s'agit de la mise en production du 20 octobre.", "verdict": "COMPRIS", "question": ""},
+    {"id": "u2", "extrait": "La mise en production est prête : les 14 tests", "redite": "Les 14 tests passent, la mise en production est prête.", "verdict": "COMPRIS", "question": ""},
+    {"id": "u3", "extrait": "Bloquant : il suppose une session ouverte dans le compte.", "redite": "", "verdict": "FLOU", "question": "Qu'est-ce qui suppose une session, et qui doit l'ouvrir ?"},
+    {"id": "u4", "extrait": "Décision attendue : lancer la mise en production le 20 octobre", "redite": "On me demande de lancer le 20 octobre ou de reporter.", "verdict": "COMPRIS", "question": ""}
+   ]
+  }
+ ]
+}

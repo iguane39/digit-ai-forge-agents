@@ -289,6 +289,33 @@
    "dependant_outil": "CLI claude (juge externe)"
   },
   {
+   "nom": "judge-lecteur-vise",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-judge.mjs",
+    "{skilldir}/fixtures/judge-lecteur-vise-doc.md",
+    "--lecteur-vise",
+    "--lectures",
+    "{fixture}"
+   ],
+   "red": "judge-lecteur-vise-red.json",
+   "green": "judge-lecteur-vise-green.json",
+   "attendu_red": [
+    "PASS"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "CONSTAT RETENU (2 relecteurs sur 2",
+    "SIGNALEMENT, jamais bloquant"
+   ],
+   "attendu_messages_green": [
+    "DÉSACCORD TRACÉ, non retenu"
+   ],
+   "provenance": "TF-1392, D-2 (a) du 13/10/2026 : rubrique « lecteur visé » en SIGNALEMENT (verdict PASS des deux côtés, jamais FAIL). Le rouge porte l'unité P4 de l'étude du 13/10/2026 (« il suppose une session ouverte dans le compte », refusée par son lecteur humain, lot Produit-02 20260922a), refusée par les 2 relecteurs : constat RETENU. Le vert porte les mêmes lectures avec un seul refus : désaccord tracé, aucun constat (l'absence de constat au vert est vérifiée par le bloc TF-1392 de la recette). Lectures enregistrées : aucun appel de modèle."
+  },
+  {
    "nom": "calculs-grandtotal",
    "cmd": [
     "node",

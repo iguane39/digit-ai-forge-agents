@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.16.0"
+  version: "2.17.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -211,7 +211,9 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   sans init, puis D1 une date d'effet écrite en dur jugée contre le mois d'application — TF-1492) ·
   **image de conteneur** (`oracle-image-conteneur.mjs` : C1 aucune couche reprise du cache du poste, C2 trivy HIGH/CRITICAL sur
   une image construite --no-cache — invocation explicite, TF-1499) ·
-  **judge** (LLM-juge externe `claude -p`, rubrique figée — avis outillé, invocation explicite).
+  **judge** (LLM-juge externe `claude -p`, rubrique figée — avis outillé, invocation explicite ; rubrique **lecteur visé** par
+  `--lecteur-vise` : 2 relecteurs jouent le lecteur de la fiche, constat retenu seulement s'ils s'accordent, question répétée
+  remontée à l'humain, suites dans `REVUE.md`, SIGNALEMENT jamais bloquant — mode d'emploi [`references/lecteur-vise.md`](references/lecteur-vise.md), TF-1392, TF-1394).
 - **Oracles délégués** (registre) : rendu HTML → `render_page.py` (digit-ai-page-html) ; données → `data-quality-auditor` ; prompts → `prompt-analyzer-l99` ; schémas → `digit-ai-schemas` ; kit RefAudit (externe, projet client). Skill/kit délégué absent de l'environnement → **jamais de substitution silencieuse** : contrôle manuel tracé (§2) et signalement (R6).
 - **Bibliothèque partagée** — `scripts/lib/` : `num.mjs` (parsing des nombres affichés, libellés de totaux), `tables.mjs`
   (extraction tables md/html), `claims-extract.mjs` (affirmations labellisées) — source unique consommée par calculs, claims et coherence.

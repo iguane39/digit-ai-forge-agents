@@ -844,6 +844,75 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1392 + TF-1394 (13/10/2026, décisions D-2 (a) et D-3 (a)) — LA RUBRIQUE « LECTEUR VISÉ »
+// D'ORACLE-JUDGE, SA PARTIE MÉCANIQUE, SANS AUCUN APPEL DE MODÈLE. Deux relecteurs jouent le
+// lecteur ; le script agrège des lectures ENREGISTRÉES. Chaque règle dans ses deux sens :
+//   R1 une redite vide est un refus (rouge) ; une redite écrite et COMPRIS n'en est pas un (vert) ;
+//   R2 accord des 2 → constat retenu (manifest, rouge) ; un seul refus → AUCUN constat (vert) ;
+//   R3 la même question à la lecture suivante remonte à l'humain (rouge) ; une question sans
+//      rapport, ou une unité comprise avant, ne remonte pas (vert) ;
+//   R4 « changerait un fait » sans fait cité est un constat (rouge) ; avec le fait cité, non (vert) ;
+//      un constat retenu absent de REVUE.md est signalé (rouge) ;
+//   et TOUT est signalement : aucun cas ne sort en 1, aucun constat n'est `bloquant`.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1392-'));
+  try {
+    const DOC = path.join(SKILLDIR, 'fixtures', 'judge-lecteur-vise-doc.md');
+    const ROUGE = path.join(SKILLDIR, 'fixtures', 'judge-lecteur-vise-red.json');
+    const VERT = path.join(SKILLDIR, 'fixtures', 'judge-lecteur-vise-green.json');
+    const codes = [];
+    const jouer = (extra) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-judge.mjs'), DOC, '--lecteur-vise', ...extra], { encoding: 'utf8', timeout: 60000 });
+      codes.push(r.status);
+      try { return JSON.parse((r.stdout || '').trim()); } catch { return null; }
+    };
+    const msgs = (j) => JSON.stringify((j && j.findings) || []);
+    const ecrireJ = (nom, o) => { const f = path.join(tmp, nom); fs.writeFileSync(f, JSON.stringify(o)); return f; };
+    const echecs = [];
+    // R2 vert : le désaccord ne produit AUCUN constat retenu.
+    const v = jouer(['--lectures', VERT]);
+    if (!v || /CONSTAT RETENU/.test(msgs(v))) echecs.push('R2 vert : un désaccord produit un constat retenu');
+    // R1 : deux relecteurs disent COMPRIS sur u2 sans savoir la redire → refus des deux → retenu.
+    const paquet = JSON.parse(fs.readFileSync(VERT, 'utf8'));
+    for (const l of paquet.lectures) { const u = l.unites.find((x) => x.id === 'u2'); u.redite = ''; }
+    const r1 = jouer(['--lectures', ecrireJ('r1.json', paquet)]);
+    if (!r1 || !(r1.findings || []).some((f) => f.where === 'u2' && /CONSTAT RETENU/.test(f.msg)))
+      echecs.push('R1 rouge : une unité que les 2 relecteurs ne savent pas redire n est pas retenue');
+    if (v && (v.findings || []).some((f) => f.where === 'u2' && f.sev === 'warn')) echecs.push('R1 vert : une unité redite et COMPRISE est signalée');
+    // R3 : la lecture agrégée du rouge, rejouée comme précédente du rouge → question répétée.
+    const prec = path.join(tmp, 'revue-lecteur.json');
+    jouer(['--lectures', ROUGE, '--ecrire', prec]);
+    const r3 = jouer(['--lectures', ROUGE, '--precedente', prec]);
+    if (!fs.existsSync(prec) || !/QUESTION RÉPÉTÉE[^"]*MONTRER À L HUMAIN AVANT LA REMISE/.test(msgs(r3))) echecs.push('R3 rouge : la même question à deux lectures ne remonte pas à l humain');
+    const precVide = ecrireJ('prec-vide.json', { retenus: [], desaccords: [] });
+    const precAutre = ecrireJ('prec-autre.json', { retenus: [{ id: 'u3', questions: ['Quelle date de mise en production retenir ?'] }], desaccords: [] });
+    if (/QUESTION RÉPÉTÉE/.test(msgs(jouer(['--lectures', ROUGE, '--precedente', precVide])))) echecs.push('R3 vert : une unité comprise à la lecture précédente remonte comme répétée');
+    if (/QUESTION RÉPÉTÉE/.test(msgs(jouer(['--lectures', ROUGE, '--precedente', precAutre])))) echecs.push('R3 vert : une question sans rapport remonte comme répétée');
+    // R4 : les suites dans REVUE.md.
+    const revue = (txt) => { const f = path.join(tmp, 'REVUE.md'); fs.writeFileSync(f, '# Revue de lecture\n\n| Unité | Constat | Suite | Preuve |\n|---|---|---|---|\n' + txt + '\n'); return f; };
+    const sansFait = jouer(['--lectures', ROUGE, '--revue', revue('| u3 | « il » non désigné | sans suite : changerait un fait | 2026-10-13 |')]);
+    if (!/MOTIF SANS FAIT CITÉ/.test(msgs(sansFait))) echecs.push('R4 rouge : « changerait un fait » sans fait cité passe (une date dans la colonne Preuve ne compte pas)');
+    const avecFait = jouer(['--lectures', ROUGE, '--revue', revue('| u3 | « il » non désigné | sans suite : changerait un fait : « le compte de recette du client, seul autorisé » | 2026-10-13 |')]);
+    if (/MOTIF SANS FAIT CITÉ|SUITE ABSENTE/.test(msgs(avecFait))) echecs.push('R4 vert : un motif qui cite son fait est signalé');
+    const absente = jouer(['--lectures', ROUGE, '--revue', revue('| u1 | rien | — | — |')]);
+    if (!/SUITE ABSENTE de REVUE.md pour le constat retenu u3/.test(msgs(absente))) echecs.push('R4 rouge : un constat retenu sans suite dans REVUE.md n est pas signalé');
+    if (/SUITE ABSENTE/.test(msgs(jouer(['--lectures', ROUGE, '--revue', revue('| u3 | « il » non désigné | réécrit : « la recette exige d être connecté au compte du client » | relu |')])))) echecs.push('R4 vert : une suite écrite est déclarée absente');
+    // Un relecteur seul ne se retient pas : SKIP motivé, jamais un PASS d un seul avis.
+    const seul = jouer(['--lectures', ecrireJ('seul.json', JSON.parse(fs.readFileSync(ROUGE, 'utf8')).lectures[0])]);
+    if (!seul || seul.verdict !== 'SKIP' || !/deux relecteurs exigés/.test(seul.motif || '')) echecs.push('un relecteur seul n est pas refusé (SKIP motivé attendu)');
+    // --preparer : la consigne porte la rubrique, le lecteur du front matter et le document.
+    const prep = jouer(['--preparer', path.join(tmp, 'prep')]);
+    const consigne = path.join(tmp, 'prep', 'consigne-relecteur.md');
+    const ct = fs.existsSync(consigne) ? fs.readFileSync(consigne, 'utf8') : '';
+    if (!prep || prep.verdict !== 'SKIP' || !/LECTEUR VISÉ ---\nle porteur du produit/.test(ct) || !/il suppose une session ouverte/.test(ct) || !/COMPRIS\|FLOU\|INCOMPRIS/.test(ct)) echecs.push('--preparer : consigne absente ou incomplète');
+    // Signalement seulement.
+    if (codes.some((c) => c === 1)) echecs.push('un cas sort en 1 : la rubrique bloque, alors qu elle est en signalement (D-2 (a))');
+    if ([v, r1, r3, sansFait, absente].some((j) => j && (j.findings || []).some((f) => f.sev === 'bloquant'))) echecs.push('un constat est bloquant');
+    if (echecs.length) ko('TF-1392/TF-1394 : ' + echecs.join(' · '));
+    else ok('TF-1392/TF-1394 : rubrique lecteur visé — accord des 2 relecteurs retenu, désaccord tracé sans constat, redite vide refusée, question répétée remontée à l humain (et pas une question sans rapport), motif « changerait un fait » sans fait cité signalé (pas avec le fait), suite absente signalée, relecteur seul refusé, consigne préparée ; ' + codes.length + ' appels, aucun en exit 1, aucun appel de modèle');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1482 (28/09/2026) — T3 RECONNAÎT « CETTE PAGE EST EN LECTURE SEULE ». La formule exigeait
 // « page en lecture seule » collé : un verbe d'état entre le sujet et la mention faisait refuser une
 // page qui se déclare bel et bien. Double sens : les trois formulations avec verbe d'état sont
