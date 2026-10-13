@@ -4247,6 +4247,67 @@ def run_canevas_differentiel():
     return out
 
 
+def run_mesure_de_bruit():
+    """TF-1225 (14/09/2026) — UNE COMMANDE REND LE TAUX D'ACCUSATION D'UNE REGLE SUR UN PARC.
+
+    LE FAIT PAYE. A environ 30 s par page, les mesures de bruit de TF-0847 et de V15 n'ont porte
+    que sur 79 et 82 des 471 pages consommatrices. `mesurer_bruit.py` rend toutes les familles
+    d'un seul rendu par page, en parallele, et garde chaque rendu en cache par empreinte (page +
+    outil + largeurs). Trois cas, sur deux fixtures V19 copiees dans un atelier jetable :
+      · le compte est juste : 1 page accusee sur 2 pour `mot_coupe`, taux 0,5 ;
+      · la seconde passe ne rend RIEN : les 2 pages viennent du cache ;
+      · sens rouge du cache : une page modifiee d'un octet est rendue a nouveau (1 sur 2 du cache).
+    Silencieux si playwright est absent.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    outil = str(Path(__file__).resolve().parent / "mesurer_bruit.py")
+    atelier = Path(tempfile.mkdtemp(prefix="self-test-bruit-"))
+    out = []
+    try:
+        parc = atelier / "parc"
+        parc.mkdir()
+        for nom in ("v19-mot-coupe-sans-trait-union.html", "v19-mot-entier-colonne-large.html"):
+            shutil.copy(FIXTURES / nom, parc / nom)
+        cache = atelier / "cache"
+
+        def passe():
+            r = subprocess.run([sys.executable, "-X", "utf8", outil, str(parc), "--familles", "mot_coupe",
+                                "--jobs", "2", "--cache", str(cache), "--output", "json"],
+                               capture_output=True, text=True, encoding="utf-8")
+            try:
+                return json.loads(r.stdout)["apres"]
+            except Exception:  # noqa: BLE001
+                return {"erreur": (r.stderr or r.stdout)[-200:]}
+
+        p1 = passe()
+        f1 = (p1.get("familles") or {}).get("mot_coupe", {})
+        ok = p1.get("mesurees") == 2 and f1.get("pages_accusees") == 1 and f1.get("taux") == 0.5
+        out.append({"fixture": "mesure de bruit · compte et taux", "verdict": "OK" if ok else "ECHEC",
+                    "attendu": "2 mesurees, 1 accusee, taux 0.5",
+                    "obtenu": f"{p1.get('mesurees')} mesurees, {f1.get('pages_accusees')} accusee(s), taux {f1.get('taux')}",
+                    "regle": "TF-1225 mesure de bruit", "detail": "" if ok else str(p1)[:300]})
+        p2 = passe()
+        ok = p2.get("depuis_cache") == 2
+        out.append({"fixture": "mesure de bruit · seconde passe prise au cache", "verdict": "OK" if ok else "ECHEC",
+                    "attendu": 2, "obtenu": p2.get("depuis_cache"), "regle": "TF-1225 cache par empreinte",
+                    "detail": "" if ok else str(p2)[:300]})
+        page = parc / "v19-mot-entier-colonne-large.html"
+        page.write_text(page.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        p3 = passe()
+        ok = p3.get("depuis_cache") == 1
+        out.append({"fixture": "mesure de bruit · page modifiee rendue a nouveau (sens rouge)",
+                    "verdict": "OK" if ok else "ECHEC", "attendu": 1, "obtenu": p3.get("depuis_cache"),
+                    "regle": "TF-1225 cache par empreinte", "detail": "" if ok else str(p3)[:300]})
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
 def badges_non_cables(css: str, gabarit: str) -> list[str]:
     """Les jetons qu'une variante `.badge.<x>` emploie sans que le gabarit les pose dans ses
     trois projections (clair, sombre, impression) — rend « variante : --jeton (n projection(s)) »."""
@@ -4377,6 +4438,10 @@ def main():
     poseur = run_poseur_composants()
     if poseur:
         res += poseur
+    # TF-1225 — la mesure de bruit d'une regle sur un parc : un rendu par page, cache par empreinte.
+    bruit = run_mesure_de_bruit()
+    if bruit:
+        res += bruit
     # TF-0935 — le composant d'infobulle : un `title` de sept objets rendu en puces, et la
     # contre-epreuve qu'une seule ligne reste un paragraphe. Aucun oracle de marquage ne voit
     # ce qu'un composant FAIT.

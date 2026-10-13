@@ -7,13 +7,29 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.26.0"
+  version: "1.27.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.27.0 (12/10/2026)** — **le rendu juge le tracé d'une flèche et l'encre d'un texte SVG, et une
+règle neuve se mesure sur tout le parc avant d'entrer.** · **V2** juge un `<text>` SVG sur son
+`fill`, contre la forme remplie posée dessous, plus sur l'encre héritée de la page (TF-1368 :
+28 libellés sur 35 d'un schéma remis à 1:1, V2 muet). · **V4** juge une liaison SVG par son tracé
+échantillonné : traversée d'une boîte intermédiaire et flèches confondues sont vues, la boîte
+englobante d'une flèche coudée n'accuse plus ses voisines (TF-1369 : 4 431 constats V4 ramenés à
+3 013 sur 387 pages existantes, une seule page nouvellement accusée). · Famille
+**`decor_sur_ancetre`**, en avertissement : un décor en `::before` / `::after` sur l'ancêtre d'un
+texte aveugle son contraste (TF-1417), règle d'auteur dans `composants.md`. · **V19 passe en
+avertissement** : 8 pages sur 385 existantes accusées (TF-1350). · **`scripts/mesurer_bruit.py`**
+(TF-1225) : un rendu par page partagé entre familles, cache par empreinte, rendus parallèles,
+avant/après par `--avant-ref`. · Badge **`ko`** au catalogue, sur le rouge du gabarit (TF-1263) ;
+le poseur de composants n'accuse plus une page en CRLF (TF-1486) ; chemins cités résolus (C1,
+TF-1222) et références conformes à `check_markdown` (TF-1269). **Version MINEURE** : deux familles
+bloquantes jugent plus juste, aucune ne disparaît.
 
 **1.26.0 (28/09/2026)** — **`check_completude.py` compte aussi la structure.** TF-1436 (lot
 Produit-78 20260928a, RP-2) : une liste numérotée fondue en un paragraphe, ou un titre rétrogradé
@@ -674,6 +690,9 @@ contrôles que le producteur lance de toute façon.
 - Les quatre oracles de `digit-ai-forge-design` qui jugent cette même page, et leur ligne de
   commande : section ci-dessus (TF-1173) — `oracle-slop`, `oracle-tokens`, `oracle-mobile`,
   `oracle-images`, lancés ensemble par `<racine>/digit-ai-forge-design/oracles/run-oracles-design.mjs`
+- Bruit d'une règle du rendu sur un parc, avant/après, en une commande : `scripts/mesurer_bruit.py`
+  (TF-1225) — [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md), « Mesurer le
+  bruit d'une règle »
 - Charte & tokens : [references/charte-et-tokens.md](references/charte-et-tokens.md)
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)

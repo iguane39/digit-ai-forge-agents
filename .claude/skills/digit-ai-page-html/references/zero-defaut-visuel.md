@@ -285,6 +285,40 @@ navigateur). Preuve à double sens dans `self_test.py` (`run_capture_manquee`) :
 jouée au délai normal puis à **1 ms**, et le banc exige qu'aucun traceback ne sorte et que le
 verdict soit rendu dans les deux cas.
 
+### Mesurer le bruit d'une règle sur tout le parc, en une commande (TF-1225, 12/10/2026)
+
+Une règle neuve du rendu se mesure chez les pages qui existent déjà, avant d'entrer (TF-0965). À
+30 s par page, les mesures du 14/09 s'étaient contentées de 79 et 82 pages sur 471.
+`scripts/mesurer_bruit.py` rend chaque page **une fois** par version de l'outil et compte toutes
+les familles de ce seul rendu ; il garde chaque rendu en **cache par empreinte** (octets de la
+page, de `render_page.py` et de `check_html.py`, largeurs) et joue les rendus **en parallèle**.
+`--avant-ref <révision git>` joue en plus le socle de cette révision : la sortie donne, par
+famille, les pages accusées avant et après, le taux d'accusation et les pages nouvellement
+accusées.
+
+```
+python scripts/mesurer_bruit.py <pages|dossiers>… --avant-ref HEAD --widths 1440 --jobs 5
+```
+
+Mesure du 12/10/2026, 385 pages existantes (79 du pilot et des forges, 306 de dossiers de
+livrables produits), 1 440 px, 5 rendus en parallèle, deux versions : 658 rendus effectifs
+(112 repris du cache) en 37 min, soit 3,3 s de mur par rendu. Une seconde passe sur 79 pages inchangées a pris 1 s, tout venant du cache.
+Résultats qui ont fixé la sévérité des règles du jour :
+
+| Règle | Avant | Après | Décision |
+|---|---|---|---|
+| V19 mot coupé (TF-1350) | — | 8 pages, 76 constats | bruit non nul : **avertissement** |
+| Décor sur l'ancêtre (TF-1417) | — | 6 pages, 31 constats | bruit non nul : **avertissement** |
+| V2 texte SVG sur sa forme (TF-1368) | 185 pages, 2 406 | 192 pages, 2 566 | correction d'une règle bloquante : 7 pages nouvellement accusées, dont 2 canevas sans feuille de style, réellement noir sur noir rendus seuls ; échantillon vérifié : vrais écarts de 4,05 à 4,31:1 |
+| V4 liaisons par leur tracé (TF-1369) | 58 pages, 4 431 | 59 pages, 3 013 | correction d'une règle bloquante, mesurée après son dernier réglage (306 pages produits et 81 du pilot et des forges) : 1 418 constats de boîte englobante disparus ; une page nouvellement accusée, `exemple-reference.html` de `digit-ai-schemas`, où une flèche barre le titre d'une bande |
+
+Ce que la commande ne juge pas : l'état initial seul (aucun `--etats-ouverts`, aucune matrice),
+les seules largeurs demandées ; une page dont le rendu échoue est comptée à part ; elle ne découvre
+pas les consommateurs, on lui donne le parc. Une liste longue passée par `xargs` se découpe en
+plusieurs appels, donc en plusieurs rapports : `--liste <fichier>` lit les chemins dans un fichier,
+un par ligne. Une entrée introuvable est listée, jamais écartée sans un mot, et `--avant-ref` se fige
+en sha au lancement : un commit fait pendant la mesure ne change pas l'« avant ».
+
 ### Seuil de hauteur : au-delà, la page n'est plus jugeable visuellement (TF-1139, 15/09/2026)
 
 **Le seuil est `50 000 px` de `scrollHeight` CSS**, mesuré **avant** toute tentative de capture,
