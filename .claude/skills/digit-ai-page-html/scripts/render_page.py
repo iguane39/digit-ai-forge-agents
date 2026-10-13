@@ -2657,7 +2657,11 @@ FAMILLES = [
     # `break-all`, jamais `break-word` (légitime sur la prose), et le contrôle de RENDU que
     # `lisibilite.md` §L19 annonçait n'existait pas. Bloquant au même titre que V13 (bloc de texte
     # étriqué) : un mot illisible EST le premier défaut qu'un lecteur voit.
-    ("mot_coupe", "V19 mot coupé sur deux lignes sans trait d'union", "bloquant"),
+    # TF-1350 — V19 entre en AVERTISSEMENT : regle neuve dont le bruit sur les pages existantes
+    # n'est pas nul (12/10/2026, mesurer_bruit.py a 1 440 px : 0 page sur 79 du pilot et des
+    # forges, 8 pages sur 385 du parc complet, 76 constats). Une echeance (references/
+    # echeances.json, cle `mot_coupe`) peut la durcir, jamais l'adoucir.
+    ("mot_coupe", "V19 mot coupé sur deux lignes sans trait d'union", "avertissement"),
     # TF-1417 — un decor peint sur l'ANCETRE du texte rend son contraste non mesurable.
     # AVERTISSEMENT : regle neuve dont le bruit sur les pages existantes n'est pas nul (12/10/2026,
     # mesurer_bruit.py a 1 440 px : 0 page sur 79 du pilot et des forges, 6 pages sur 385 du parc
