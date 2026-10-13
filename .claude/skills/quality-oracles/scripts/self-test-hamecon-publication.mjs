@@ -925,6 +925,19 @@ try {
       oks.push('cas 6b — la substitution est JOURNALISÉE dans le dépôt qui commite : qui relit son diff peut savoir pourquoi son fichier a changé');
     else kos.push('cas 6b — aucun journal de substitution : une correction silencieuse et non tracée est indiscernable d\'une corruption');
 
+    // --- (6b ter) TF-1633 : un NOM DE FICHIER ACCENTUÉ est lu, pas cité --------------------
+    // Sans -z, git rend « "synth\303\250se.md" » : le chemin cité est introuvable, le contenu
+    // n'est jamais relu et le nom entre dans l'objet git. Le sens rouge est le code d'avant.
+    const accent = nu('nom-accentue');
+    sh(cc, 'node', [INSTALLEUR, accent]);
+    fs.writeFileSync(path.join(accent, 'synthèse.md'), 'Synthèse remise a Zorglub ce matin.\n');
+    git(accent, 'add', '-A');
+    const c6t = sh(accent, 'git', ['commit', '-q', '-m', 'synthese du banc'], ENV_COMMIT);
+    const commiteAccent = lireCommite(accent, 'synthèse.md');
+    if (c6t.status === 0 && /Client-A/.test(commiteAccent) && !/Zorglub/.test(commiteAccent))
+      oks.push('cas 6b ter — NOM DE FICHIER ACCENTUÉ : l\'index est lu en -z, le contenu est pseudonymisé (TF-1633)');
+    else kos.push('cas 6b ter — fichier « synthèse.md » : le nom réel entre dans le commit (exit ' + c6t.status + ') — lecture de l\'index sans -z, chemin cité en style C. Commité : ' + commiteAccent.trim().slice(0, 120));
+
     // --- (6c) LE DÉPÔT QUI COMMITE, ET LUI SEUL -------------------------------------------
     // C'EST LE CAS QUI JUSTIFIE CE FICHIER. Le script du pilot calcule sa racine depuis son
     // propre emplacement : posé ailleurs, il anonymiserait l'index DU PILOT pendant qu'on commite
