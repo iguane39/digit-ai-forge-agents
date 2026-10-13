@@ -74,9 +74,9 @@
       "source": "frontmatter SKILL.md"
     },
     "quality-oracles": {
-      "version": "2.16.0",
+      "version": "2.17.0",
       "source": "frontmatter SKILL.md",
-      "registre": "2.37.0"
+      "registre": "2.38.0"
     },
     "write-an-expert": {
       "version": null,
