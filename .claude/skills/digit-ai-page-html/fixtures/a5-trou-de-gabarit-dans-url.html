@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture A5 — rouge : un trou de gabarit dans une police embarquée — 20261014a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- TF-1682, sens ROUGE. La forme de deux pages d'un produit (corps d'un document assemblé
+     plus tard par un script) : le second bloc de style embarque ses polices par un TROU de
+     gabarit dans l'url(), que l'assembleur remplit. Le navigateur lit cette url() sans
+     broncher ; le découpage de la feuille aux accolades la lit de travers, et `check()` levait
+     une IndexError sur le faux sélecteur obtenu (« … base64, »). Attendu : aucun plantage, un
+     avertissement A5 « lue de travers », aucun échec A5. La verte est
+     `a5-polices-embarquees.html` : la même police, charge utile réelle. -->
+<style>
+:root {
+  --head: "Roboto", system-ui, sans-serif;
+  --sans: "DM Sans", system-ui, sans-serif;
+  --ink: #0F172A;
+  --muted: #64748B;
+  --line: #E6EAF2;
+  --surface: #FFFFFF;
+  --bg: #FAFBFF;
+  --accent: #2a5db0;
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 24px 64px; }
+h1, h2 { font-family: var(--head); font-weight: 800; color: var(--ink); line-height: 1.2; }
+p { margin: 0 0 1em; }
+a { color: var(--accent); }
+.carte { background: var(--surface); border: 1px solid var(--line); padding: 16px; }
+.note { color: var(--muted); font-size: .85rem; }
+@media print { body { background: #fff; } .note { color: #000; } }
+</style>
+<style>
+@font-face { font-family: 'DM Sans'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(data:font/woff2;base64,{{POLICE_TEXTE}}) format('woff2'); }
+@font-face { font-family: 'Roboto'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(data:font/woff2;base64,{{POLICE_TITRES}}) format('woff2'); }
+.carte .titre { font-family: var(--head); font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+<h1>Une police embarquée par un trou de gabarit</h1>
+<h2>Ce que la page prouve</h2>
+<p>Le second bloc de style attend ses polices d'un assembleur. Tant qu'il ne les a pas
+posées, la feuille porte une accolade dans une valeur.</p>
+<div class="carte">
+  <p class="titre">Lecture de la feuille</p>
+  <p class="note">Le navigateur lit la feuille entière ; l'oracle la lit de travers à partir
+  du trou, et le dit.</p>
+</div>
+</main>
+</body>
+</html>

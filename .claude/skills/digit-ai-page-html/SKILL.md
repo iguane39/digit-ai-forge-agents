@@ -7,13 +7,17 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.29.0"
+  version: "1.30.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.30.0 (14/10/2026)** — **`check_html.py` ne plante plus sur une accolade dans une valeur de la
+feuille** : un trou de gabarit dans une `url()` levait une IndexError, la page est jugée et A5
+avertit que la lecture de la feuille y est partielle (TF-1682).
 
 **1.29.0 (14/10/2026)** — **cinq retours de produits corrigés à la cause ; les deux règles neuves
 entrent en avertissement.** · **L37** : une ligne en statut défavorable (Écart, Partiel, Non
@@ -407,7 +411,11 @@ si la page vise aussi le PDF.
   faux G1) — trois passes complètes sur une page de 188 Ko avant de bissecter la feuille à la
   main. Même famille que RA-1 (retour du 13/08 : un `</script` en clair dans un composant embarqué) pour la balise de script fermante. Contrôlé par `check_html.py`
   (FAIL bloquant, deux branches : résidu de balisage dans un sélecteur, et **densité de règles**
-  — moins d'une règle par 2 000 caractères sur un bloc d'au moins 1 000).
+  — moins d'une règle par 2 000 caractères sur un bloc d'au moins 1 000). **Accolade dans une
+  valeur (TF-1682, avertissement)** : un trou de gabarit dans une `url()` (`{{POLICE}}`) se lit
+  sans peine au navigateur, mais `check_html.py` découpe la feuille aux accolades ; il levait une
+  IndexError sur deux pages, qui n'étaient jugées par rien. Il les juge et dit que sa lecture de
+  la feuille y est partielle : juger la page assemblée.
 - **Titre au motif A4** : `{Marque} — {Objet} · {Client} — {YYYYMMDD}{a,b,c…}`. Deux FAIL
   distincts, parce que les deux manques ne se corrigent pas du même geste : titre d'un seul
   bloc (pas de marque séparée de l'objet), et absence d'indice de version **daté** — « V1 »

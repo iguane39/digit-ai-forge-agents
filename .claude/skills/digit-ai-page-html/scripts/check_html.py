@@ -1777,7 +1777,10 @@ def check_lisibilite(html: str, a: Arbre):
     cl_masquees, cl_tronquees = set(CL_LECTEUR_ECRAN_SEUL), {"truncate", "text-ellipsis",
                                                               "ellipsis", "tronque"}
     for sel, d in css:
-        sujet = re.findall(r"\.([\w-]+)", sel.split(",")[-1].split()[-1]) if sel.split() else []
+        # TF-1682 : un « sélecteur » qui finit par une virgule (feuille lue de travers par une
+        # accolade dans une valeur, A5) n'a pas de dernier composé : il ne désigne rien.
+        dernier = sel.split(",")[-1].split()
+        sujet = re.findall(r"\.([\w-]+)", dernier[-1]) if dernier else []
         if not sujet:
             continue
         decl = " ".join(f"{k}:{v}" for k, v in d.items())
@@ -4139,6 +4142,15 @@ A5_DENSITE_PLANCHER = 0.5    # règles pour 1 000 caractères (plus faible mesur
 # réellement diluée par du texte reste rouge (fixture a5-polices-et-feuille-ecrasee.html).
 RE_A5_URL_DATA = re.compile(
     r"url\(\s*(?:\"data:[^\"]*\"|'data:[^']*'|data:[^)]*)\s*\)", re.I)
+# TF-1682 (14/10/2026) — UNE ACCOLADE DANS UNE VALEUR. Deux pages d'un produit portaient un trou
+# de gabarit dans leur police embarquée (`url(data:font/woff2;base64,{{POLICE}})`). Le navigateur
+# lit cette url() sans broncher ; le découpage de `regles_css`, qui coupe la feuille aux
+# accolades, la lit de travers à partir de là, et `check()` levait une IndexError sur le faux
+# sélecteur obtenu : la page n'était jugée par rien. Le plantage est levé ; ce constat dit que
+# les contrôles qui lisent la feuille y sont partiels. AVERTISSEMENT : la page n'est pas fautive
+# aux yeux du navigateur, c'est la lecture de l'oracle qui l'est.
+RE_A5_ACCOLADE_VALEUR = re.compile(
+    r"\{\{[^{}]*\}\}|\{%[^{}]*%\}|url\(\s*[^)]*[{}][^)]*\)", re.I)
 
 
 def check_feuille_parsable(a: Arbre):
@@ -4167,6 +4179,16 @@ def check_feuille_parsable(a: Arbre):
                     "presque aucune règle n'est pas une feuille, c'est un texte : la page est "
                     "rendue NUE et tout oracle de rendu mesurera des symptômes sans lien avec la "
                     "cause. Ouvrir le bloc et chercher ce qui précède la première accolade.")
+        trou = RE_A5_ACCOLADE_VALEUR.search(re.sub(r"/\*.*?\*/", " ", bloc, flags=re.S))
+        if trou:
+            extrait = " ".join(trou.group(0).split())
+            extrait = extrait if len(extrait) <= 70 else extrait[:40] + "…" + extrait[-25:]
+            warns.append(
+                f"A5 feuille de style {i} lue de travers (avertissement) : une accolade dans une "
+                f"valeur — « {extrait} ». Le navigateur la lit, mais ce script découpe la feuille "
+                "aux accolades : les règles qui suivent sont lues de travers, et les contrôles qui "
+                "lisent la feuille (L2, L5, L3 des infobulles…) y sont partiels. Un trou de "
+                "gabarit non résolu le plus souvent : juger la page ASSEMBLÉE (TF-1682).")
     return fails, warns
 
 

@@ -1976,6 +1976,38 @@ def run_avertissements_14_10():
     return out
 
 
+def run_accolade_dans_une_valeur():
+    """TF-1682 — une accolade dans une valeur de la feuille ne fait plus planter `check()`.
+
+    La rouge porte la forme de deux pages d'un produit : un trou de gabarit dans l'url() d'une
+    police embarquée. Avant le correctif, `check()` levait une IndexError sur le faux sélecteur
+    « … base64, » et la page n'était jugée par rien. Attendu sur la rouge, dans chaque famille :
+    aucune exception ; en famille charte, l'avertissement A5 « lue de travers » et aucun échec A5.
+    La verte (même police, charge utile réelle) ne porte pas cet avertissement.
+    """
+    out = []
+    for nom, attendu in (("a5-trou-de-gabarit-dans-url.html", True),
+                         ("a5-polices-embarquees.html", False)):
+        html = (FIXTURES / nom).read_text(encoding="utf-8")
+        try:
+            for famille in ("L", "tout"):
+                fails, warns = check(html, regles=famille)
+        except Exception as e:  # noqa: BLE001 — le défaut même que ce cas garde
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "TF-1682 aucun plantage",
+                        "obtenu": f"{type(e).__name__}: {e}", "regle": "A5 accolade",
+                        "detail": ""})
+            continue
+        vu = any(w.startswith("A5 ") and "lue de travers" in w for w in warns)
+        a5 = [f for f in fails if f.startswith("A5 ")]
+        ok = vu == attendu and not a5
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"TF-1682 aucun plantage, avertissement A5 "
+                               f"{'présent' if attendu else 'absent'}, 0 échec A5",
+                    "obtenu": f"avertissement {'présent' if vu else 'absent'}, {len(a5)} échec(s) A5",
+                    "regle": "A5 accolade", "detail": "" if ok else " | ".join(a5)[:200]})
+    return out
+
+
 def run_classe_source_machine():
     """TF-1589 (RT-115) — la classe d'artefact `source-machine`, jouée dans ses deux sens.
 
@@ -4828,7 +4860,7 @@ def main():
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
            + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable()
            + run_avertissements_13_10() + run_avertissements_14_10()
-           + run_classe_source_machine())
+           + run_accolade_dans_une_valeur() + run_classe_source_machine())
     rendu = run_rendu()
     if rendu:
         res += rendu
