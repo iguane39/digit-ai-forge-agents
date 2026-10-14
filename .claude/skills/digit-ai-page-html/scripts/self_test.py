@@ -1951,20 +1951,36 @@ def run_avertissements_13_10():
 
 
 def run_avertissements_14_10():
-    """Campagne du 14/10/2026 — deux règles NEUVES du socle, en AVERTISSEMENT (D-70 (b)).
+    """Campagne du 14/10/2026 — deux règles NEUVES du socle, entrées en AVERTISSEMENT (D-70 (b)).
 
     TF-1665 (RT-33) : L12 lit aussi les cellules de tableau qui enchaînent plusieurs faits par des
-    points-virgules. TF-1664 (RT-58) : L37, une ligne en statut défavorable porte son action —
-    deux sorties vertes, la colonne d'action et le lien interne vers l'action. Chaque fixture est
-    jugée sur l'avertissement attendu ET sur l'absence d'échec de la même règle.
+    points-virgules ; jugée sur l'avertissement attendu ET sur l'absence d'échec de la même règle.
+    TF-1664 (RT-58) : L37, une ligne en statut défavorable porte son action — deux sorties vertes,
+    la colonne d'action et le lien interne vers l'action. TF-1688 (décision humaine « Traite A1 »
+    du 14/10/2026, sur 8 pages averties du parc, toutes de vrais cas) : L37 BLOQUE. La rouge est
+    jugée sur l'échec attendu et sur l'absence d'avertissement L37 restant ; les vertes sur
+    l'absence des deux.
     """
     out = []
+    BLOQUANTES = {"L37 "}
     PAIRES = [("l12-cellule-points-virgules.html", "L12 énumération en cellule", True, "TF-1665"),
               ("l12-cellule-en-puces.html", "L12 énumération en cellule", False, "TF-1665"),
-              ("l37-ecart-sans-remede.html", "L37 ", True, "TF-1664"),
-              ("l37-ecart-avec-remede.html", "L37 ", False, "TF-1664"),
-              ("l37-ecart-lien-vers-action.html", "L37 ", False, "TF-1664")]
+              ("l37-ecart-sans-remede.html", "L37 ", True, "TF-1688"),
+              ("l37-ecart-avec-remede.html", "L37 ", False, "TF-1688"),
+              ("l37-ecart-lien-vers-action.html", "L37 ", False, "TF-1688")]
     for nom, prefixe, attendu, tf in PAIRES:
+        if prefixe in BLOQUANTES:
+            fails, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+            vu = any(f.startswith(prefixe) for f in fails)
+            reste = [w for w in warns if w.startswith(prefixe)]
+            ok = vu == attendu and not reste
+            out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                        "attendu": f"{tf} échec {'présent' if attendu else 'absent'}, "
+                                   "0 avertissement",
+                        "obtenu": f"échec {'présent' if vu else 'absent'}, "
+                                  f"{len(reste)} avertissement(s)",
+                        "regle": prefixe.strip(), "detail": "" if ok else " | ".join(reste)[:200]})
+            continue
         fails, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
         vu = any(w.startswith(prefixe) for w in warns)
         bloque = [f for f in fails if f.startswith(prefixe.strip().split()[0] + " ")]

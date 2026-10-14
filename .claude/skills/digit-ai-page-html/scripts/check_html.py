@@ -3277,7 +3277,9 @@ def check_lisibilite(html: str, a: Arbre):
     # d'écart à un remède (L3 juge la légende, L10 l'exemple de lecture, L27 la définition).
     # Une ligne dont une cellule porte un statut DÉFAVORABLE porte aussi son action : une cellule
     # non vide d'une colonne d'action (Action, Remédiation, Correctif, À faire…), ou un lien
-    # interne (`href="#…"`) vers l'action, hors de la cellule de statut. AVERTISSEMENT (D-70 (b)).
+    # interne (`href="#…"`) vers l'action, hors de la cellule de statut. Entrée en avertissement
+    # (D-70 (b)) ; BLOQUANTE depuis TF-1688 (décision humaine du 14/10/2026, sur 8 pages averties
+    # du parc, toutes de vrais cas).
     def _norm_statut(s):
         s = unicodedata.normalize("NFD", s or "")
         s = "".join(c for c in s if unicodedata.category(c) != "Mn").lower()
@@ -3315,7 +3317,7 @@ def check_lisibilite(html: str, a: Arbre):
                 sans_remede.append(tr)
                 valeur = valeur or statuts[0].texte_propre()
         if sans_remede:
-            warns.append(f"L37 écart sans remède (avertissement) : {len(sans_remede)} ligne(s) sur "
+            fails.append(f"L37 écart sans remède : {len(sans_remede)} ligne(s) sur "
                          f"{en_ecart} en statut défavorable (« {valeur[:24]} ») ne disent pas quoi "
                          f"faire ({t.chemin()}) — chaque ligne en écart porte son action : une "
                          "colonne Action / Remédiation renseignée, ou un lien interne (#…) vers "

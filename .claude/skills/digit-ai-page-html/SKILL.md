@@ -17,7 +17,9 @@ et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
 
 **1.30.0 (14/10/2026)** — **`check_html.py` ne plante plus sur une accolade dans une valeur de la
 feuille** : un trou de gabarit dans une `url()` levait une IndexError, la page est jugée et A5
-avertit que la lecture de la feuille y est partielle (TF-1682).
+avertit que la lecture de la feuille y est partielle (TF-1682). · **L37 bloque** : une ligne en
+statut défavorable sans action échoue, sur décision humaine prise au vu de son bruit (8 pages du
+parc, toutes de vrais cas ; 2 passent de PASS à FAIL — TF-1688, `references/lisibilite.md`).
 
 **1.29.0 (14/10/2026)** — **cinq retours de produits corrigés à la cause ; les deux règles neuves
 entrent en avertissement.** · **L37** : une ligne en statut défavorable (Écart, Partiel, Non

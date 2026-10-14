@@ -1498,10 +1498,14 @@ statut. Valeurs défavorables du socle (casse et accents ignorés, cellule de 40
 Écart, En écart, Partiel, Non conforme, KO, FAIL, Échec, Non tenu. Une page en déclare d'autres par
 `data-statut-defavorable="Valeur A|Valeur B"` sur le tableau, ou marque une cellule par
 `data-statut-defavorable`. Une ligne tenue dit « aucune action » et pourquoi — c'est l'usage, la
-règle ne l'exige pas. **Avertissement**, une ligne par tableau. Bruit mesuré : 8 pages averties sur
-192 pages HTML du parc (14/10/2026) : sept rapports d'audit dont les verdicts « Partiel » ou
-« Non conforme » ne portent pas leur action ligne à ligne — le cas même de RT-58 — et une étude
-d'opportunité (une ligne « partiel »).
+règle ne l'exige pas. **Bloquante** depuis TF-1688, une ligne par tableau. Entrée en
+avertissement (D-70 (b)) avec un bruit mesuré de 8 pages averties sur 192 pages HTML du parc
+(14/10/2026) : sept rapports d'audit dont les verdicts « Partiel » ou « Non conforme » ne portent
+pas leur action ligne à ligne — le cas même de RT-58 — et une étude d'opportunité (une ligne
+« partiel »). Tous de vrais cas : la décision humaine du 14/10/2026 l'a passée en échec. Remesure
+du même jour sur 215 pages déclarant `:root` sous `c:\dev\*\{output,docs,livrables,forge}` : les
+mêmes 8 pages en échec L37, 0 avertissement ; 2 d'entre elles passent de PASS à FAIL, les 6
+autres échouaient déjà sur d'autres règles.
 
 Fixtures : `l37-ecart-sans-remede.html` (rouge), `l37-ecart-avec-remede.html` (verte, colonne
 d'action), `l37-ecart-lien-vers-action.html` (verte, lien interne).
