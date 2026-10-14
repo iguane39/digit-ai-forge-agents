@@ -1191,10 +1191,14 @@ de **catégories** sur le seul mot « date » de leur en-tête : « Ce qui date 
 verbe) et « Date du fichier lue dans » (des libellés de sources). Aucune cellule ne portait une date,
 et le produit a dû renommer ses en-têtes. Une colonne n'est désormais jugée temporelle que si **au
 moins une** de ses cellules porte du temps : une valeur d'ordre (`data-v`, `data-sort`, ISO,
-`<time>`) ou un libellé qui a l'air d'une date (mois en toutes lettres ou abrégé, année, date
-chiffrée, trimestre T1-T4, semestre, semaine, jour relatif J+n). Une vraie colonne de mois en
-libellés seuls reste rouge. Fixtures : `l28-entete-homonyme.html` (verte),
-`l28-entete-homonyme-et-vraie-date.html` (rouge, la même page plus une vraie colonne de dates).
+`<time>`) ou un libellé qui a l'air d'une date : mois ou jour en toutes lettres, mot de période
+(semaine, trimestre, semestre), abréviation de mois **précédée d'un quantième** (« 14 déc. »),
+année, date chiffrée **complète** (« 03/04/2026 »), jour relatif signé (J-7, M+3). Ne comptent pas
+seuls, parce qu'ils sont aussi des codes : un décimal ou une version (« 1.2 »), un code T1-T4,
+S1-S4 ou Q1-Q4 sans son année, une abréviation de trois lettres (« mar », « dec ») — relevé de la
+revue forge-design du 14/10/2026. Une vraie colonne de mois en libellés seuls reste rouge.
+Fixtures : `l28-entete-homonyme.html` et `l28-codes-non-temporels.html` (vertes),
+`l28-entete-homonyme-et-vraie-date.html` et `l28-abreviations-datees.html` (rouges).
 Bruit mesuré : 0 page accusée avant comme après sur 192 pages HTML du parc (14/10/2026), la règle
 ne jugeant que les pages déclarées `data-page="donnees"`.
 

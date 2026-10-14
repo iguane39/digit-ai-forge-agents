@@ -579,9 +579,12 @@ session que le script de connexion du produit a enregistré (Playwright
 chaque état d'une matrice rechargé reste connecté. L'oracle ne se connecte jamais lui-même et ne lit
 pas le fichier ; il est refusé sur un fichier `file://` et sur une origine non locale, et le
 verdict déclare la session au non jugé. `--theme sombre` rend la page sous
-`prefers-color-scheme: dark` ; le thème rendu est toujours déclaré, et une page à thème sombre se
-juge deux fois. Fixtures du banc : `session-connexion.html`, `session-application.html`,
-`theme-sombre-deborde.html`.
+`prefers-color-scheme: dark` **et** pose `data-theme="dark"` sur `<html>` avant les scripts de la
+page, à chaque chargement ; le thème rendu est toujours déclaré, et une page à thème sombre se
+juge deux fois. Les noms d'`oracle-exploitabilite` (`digit-ai-forge-design`) sont acceptés tels
+quels : `--etat-connexion` pour `--etat-session`, `--theme dark|light` pour `sombre|clair`.
+Fixtures du banc : `session-connexion.html`, `session-application.html`,
+`theme-sombre-deborde.html`, `theme-attribut-sombre.html`.
 
 Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de la largeur
 qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'une grille —

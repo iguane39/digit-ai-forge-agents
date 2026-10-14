@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Defaut du theme sombre par attribut — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+[data-theme="dark"]{--ink:#E2E8F0;--line:#334155;--surface:#0F172A;--bg:#020617}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+main{padding:24px}
+h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
+.bandeau{padding:12px;background:var(--surface);border:1px solid var(--line)}
+[data-theme="dark"] .bandeau{width:2400px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1674 (lot Produit-80 20261012b, RD-1 ; revue forge-design du 14/10/2026). Un theme sombre
+  porte par l'ATTRIBUT data-theme="dark" sur <html> (bascule de l'application), et non par
+  prefers-color-scheme. Le bandeau ne deborde (V1) que sous cet attribut : rendue sans --theme, la
+  page passe ; avec --theme dark, render_page.py pose l'attribut avant les scripts et le
+  debordement est vu.
+-->
+<body><main>
+<h1>Tableau de bord</h1>
+<div class="bandeau">Bandeau des indicateurs de la semaine.</div>
+</main></body></html>

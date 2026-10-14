@@ -236,6 +236,11 @@ CAS = {
     # ajoute une vraie colonne de dates en libellés seuls, qui reste rouge.
     "l28-entete-homonyme.html": set(),
     "l28-entete-homonyme-et-vraie-date.html": {"L28"},
+    # Revue forge-design du 14/10 : un décimal ou une version (« 1.2 »), un code T1-T4 / S1-S4 /
+    # Q1-Q4 et une abréviation seule (« mar », « dec ») ne sont pas du temps ; avec leur quantième
+    # ou leur année, ils le redeviennent.
+    "l28-codes-non-temporels.html": set(),
+    "l28-abreviations-datees.html": {"L28"},
     "l29-thead-sous-entete-collant.html": {"L29"},
     "l29-thead-decale-par-token.html": set(),
     # TF-0227 (lot Produit-10 du 14/08) : 71 marqueurs [c:id] dans un livrable DIFFUSE, PASS
@@ -2723,7 +2728,8 @@ def run_session_et_theme():
             "0 V1 dans les etats (chaque rechargement retombe sur la connexion)",
             "illisible" if mat_sans is None else f"{v1_etats(mat_sans)} V1 dans les etats",
             "un etat a ete joue dans l'application sans session : le banc ne garde plus l'acces")
-        mat, rm = juger(f"{base}/app.html", ["--etat-session", str(etat), "--matrice-etats"])
+        # `--etat-connexion` : le nom d'oracle-exploitabilite (forge-design), alias de --etat-session.
+        mat, rm = juger(f"{base}/app.html", ["--etat-connexion", str(etat), "--matrice-etats"])
         etats_v1 = v1_etats(mat)
         cas("session · matrice d'etats dans la session", etats_v1 >= 1,
             ">=1 V1 dans un etat rejoue (le rechargement reste connecte)",
@@ -2742,6 +2748,21 @@ def run_session_et_theme():
                 and any("THEME RENDU : sombre" in x for x in sombre.get("non_juge", [])),
                 ">=1 V1, theme sombre declare", f"{v1(sombre)} V1, {sombre.get('theme')}",
                 "le schema sombre n'a pas ete rendu, ou pas declare")
+        # Un theme sombre porte par l'ATTRIBUT data-theme (bascule de l'application), joue avec
+        # l'alias `--theme dark` d'oracle-exploitabilite.
+        a_clair, rac = juger(f"{base}/theme-attribut-sombre.html", [])
+        a_sombre, ras = juger(f"{base}/theme-attribut-sombre.html", ["--theme", "dark"])
+        if a_clair is None or a_sombre is None:
+            cas("theme par attribut · rapports", False, "rapports lisibles", "illisible",
+                ((rac.stderr if a_clair is None else ras.stderr) or "")[:160])
+        else:
+            cas("theme par attribut · sans --theme", v1(a_clair) == 0, "0 V1 (sans data-theme)",
+                v1(a_clair), "la page deborde sans l'attribut : la fixture ne prouve plus rien")
+            cas("theme par attribut · --theme dark (alias)",
+                v1(a_sombre) >= 1 and a_sombre.get("theme") == "sombre",
+                ">=1 V1, data-theme pose, theme sombre declare",
+                f"{v1(a_sombre)} V1, {a_sombre.get('theme')}",
+                "data-theme n'a pas ete pose avant les scripts, ou l'alias dark n'est pas lu")
         for nom, cible, options, motif in (
                 ("session · refusee sur un fichier", str(FIXTURES / "session-application.html"),
                  ["--etat-session", str(etat)], "INSTANCE SERVIE"),

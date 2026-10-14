@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L28 codes qui ressemblent a du temps — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L28 VERTE (TF-1677, revue forge-design du 14/10/2026).
+
+  Une colonne de CODES dont l'en-tete porte le mot « date » comme un verbe, et dont les cellules
+  ressemblent a du temps sans en etre : un numero de version (« 1.2 »), un decimal (« 3.5 »), un
+  code de palier (« T3 », « S2 », « Q1 ») et des sigles de trois lettres (« mar », « dec »). La
+  premiere ecriture de la garde de TF-1677 les lisait comme des dates et accusait la colonne.
+
+  Attendu : aucune regle. La jumelle `l28-abreviations-datees.html` porte les memes formes
+  accompagnees de leur quantieme ou de leur annee : elle doit rester rouge sur L28.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Paliers de la regle</h1>
+<p>Chaque ligne dit quel code date la regle dans le referentiel des paliers.</p>
+<table>
+<thead><tr>
+<th data-definition="Nom de la regle. Source : referentiel interne. Ordre : alphabetique.">Regle</th>
+<th data-definition="Code du referentiel qui date la regle. Valeurs : codes. Source : referentiel des paliers.">Code qui date la regle</th>
+</tr></thead>
+<tbody>
+<tr><td>Regle A</td><td>1.2</td></tr>
+<tr><td>Regle B</td><td>3.5</td></tr>
+<tr><td>Regle C</td><td>T3</td></tr>
+<tr><td>Regle D</td><td>S2</td></tr>
+<tr><td>Regle E</td><td>Q1</td></tr>
+<tr><td>Regle F</td><td>mar</td></tr>
+<tr><td>Regle G</td><td>dec</td></tr>
+</tbody></table>
+</main></body></html>

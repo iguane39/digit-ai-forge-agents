@@ -3192,6 +3192,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
     # mode fichier reste le defaut : sans URL, `cibler` rend exactement l'ancien comportement.
     cible = html_path if isinstance(html_path, Cible) else cibler(html_path, origine_distante)
     # TF-1674 — session authentifiee et theme : verifies AVANT tout lancement de navigateur.
+    theme = ALIAS_THEME.get(theme, theme)
     etat_session = verifier_etat_session(cible, etat_session)
     contexte = options_contexte(etat_session, theme)
     ensure_browser_path()
@@ -3219,6 +3220,18 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
         for width in widths:
             page = browser.new_page(viewport={"width": width, "height": 900},
                                     device_scale_factor=scale, **contexte)
+            if theme is not None:
+                # TF-1674 — `data-theme` pose AVANT les scripts de la page, a chaque chargement
+                # (matrices comprises) : une bascule par attribut se juge comme une bascule par
+                # prefers-color-scheme. Un script de la page peut le reecrire : c'est declare.
+                # Au moment du script d'initialisation, <html> n'existe pas encore : il se pose
+                # des que l'analyseur l'insere, avant tout script de la page.
+                page.add_init_script(
+                    "(function (v) { function poser() { var h = document.documentElement;"
+                    " if (h) { h.setAttribute('data-theme', v); return true; } return false; }"
+                    " if (!poser()) { new MutationObserver(function (m, o) {"
+                    " if (poser()) o.disconnect(); }).observe(document, {childList: true}); }"
+                    " })(%s)" % json.dumps(SCHEMAS_PLAYWRIGHT[theme]))
             page.goto(cible.url)
             page.wait_for_load_state("networkidle")
             page.evaluate("document.fonts && document.fonts.ready")
@@ -3544,7 +3557,9 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
     # qui porte un theme sombre (prefers-color-scheme: dark) n'a vu juger que sa moitie claire.
     report["theme"] = theme or "clair (defaut du navigateur)"
     report["non_juge"].append(
-        f"THEME RENDU : {THEMES_RENDU.get(theme, 'clair')} uniquement (prefers-color-scheme). "
+        f"THEME RENDU : {THEMES_RENDU.get(theme, 'clair')} uniquement (prefers-color-scheme"
+        + (f", et data-theme=\"{SCHEMAS_PLAYWRIGHT[theme]}\" pose sur <html> avant les scripts de "
+           "la page, qu'un script de la page peut reecrire" if theme else "") + "). "
         "L'autre schema de couleurs n'est ni rendu ni mesure ici : le rejouer avec "
         f"--theme {'clair' if theme == 'sombre' else 'sombre'} si la page en porte un (TF-1674)")
 
@@ -3885,6 +3900,7 @@ def cibler(entree, origine_distante: bool = False) -> Cible:
 # fichier est passe tel quel au navigateur, son contenu n'est ni lu ni publie.
 THEMES_RENDU = {"clair": "clair (light)", "sombre": "sombre (dark)"}
 SCHEMAS_PLAYWRIGHT = {"clair": "light", "sombre": "dark"}
+ALIAS_THEME = {"light": "clair", "dark": "sombre"}
 
 
 def verifier_etat_session(cible: Cible, etat_session) -> Path | None:
@@ -4017,16 +4033,21 @@ def main() -> None:
                          "de la page (ex. [role=tabpanel], section.chap) — un panneau masqué "
                          "est rendu visible le temps de sa capture. C'est la matière de la "
                          "revue de lecture (references/gabarit-revue-de-lecture.md)")
-    ap.add_argument("--etat-session", type=Path, default=None, dest="etat_session",
+    # `--etat-connexion` et `--theme dark|light` : les noms d'oracle-exploitabilite de
+    # digit-ai-forge-design, pour qu'une chaine les passe tels quels aux deux outils.
+    ap.add_argument("--etat-session", "--etat-connexion", type=Path, default=None,
+                    dest="etat_session",
                     help="TF-1674 : juge une application DERRIERE UNE CONNEXION. Fichier d'etat de "
                          "session enregistre par le script de connexion du produit (Playwright "
                          "context.storage_state). Toutes les pages ouvertes, matrices comprises, "
                          "partagent cette session. Instance servie LOCALE seulement ; le contenu "
                          "du fichier n'est ni lu ni publie")
-    ap.add_argument("--theme", choices=sorted(THEMES_RENDU), default=None,
-                    help="TF-1674 : schema de couleurs rendu (prefers-color-scheme). Defaut : celui "
-                         "du navigateur, clair. Une page a theme sombre se juge DEUX fois")
+    ap.add_argument("--theme", choices=sorted(THEMES_RENDU) + sorted(ALIAS_THEME), default=None,
+                    help="TF-1674 : schema de couleurs rendu — prefers-color-scheme du navigateur "
+                         "ET attribut data-theme pose sur <html> avant les scripts de la page. "
+                         "Defaut : clair, sans data-theme. Une page a theme sombre se juge DEUX fois")
     args = ap.parse_args()
+    args.theme = ALIAS_THEME.get(args.theme, args.theme)
     if args.familles:
         print(json.dumps({"schema": "digit-ai/familles-mesure@1",
                           "familles": {c: {"libelle": l, "severite": sev} for c, l, sev in FAMILLES}},

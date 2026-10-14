@@ -920,11 +920,18 @@ RE_VALEUR_ISO = re.compile(r"^\d{4}-\d{2}(?:-\d{2})?(?:[T ].*)?$")
 # l'entrée » (date est un verbe) et « Date du fichier lue dans » (libellés de sources) portaient
 # le mot sans porter une seule date, et L28 les accusait.
 RE_CELLULE_TEMPS = re.compile(
+    # Un mois ou un jour EN TOUTES LETTRES, ou un mot de période.
     r"\b(?:janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|"
-    r"d[ée]cembre|janv|f[ée]vr|avr|juil|sept|oct|nov|d[ée]c|january|february|march|april|may|"
-    r"june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|dec|"
-    r"lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|semaine|trimestre|semestre)\b\.?"
-    r"|\b(?:19|20)\d{2}\b|\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b|\b[TQS][1-4]\b|\b[JMS][+-]\d+\b",
+    r"d[ée]cembre|january|february|march|april|june|july|august|september|october|november|"
+    r"december|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|semaine|trimestre|semestre)\b"
+    # Une abréviation de mois ne compte que précédée d'un quantième (« 14 déc. ») : seule, « mar »,
+    # « dec » ou « oct » sont aussi des codes et des mots (revue forge-design du 14/10/2026).
+    r"|\b\d{1,2}\s+(?:janv|f[ée]vr|avr|juil|sept|oct|nov|d[ée]c|jan|feb|mar|apr|may|jun|jul|"
+    r"aug|sep|dec)\b"
+    # Une année, une date chiffrée COMPLÈTE (« 1.2 » ou « 3.5 » sont un décimal ou une version),
+    # un jour relatif signé (J-7, M+3). Un code T1-T4, S1-S4, Q1-Q4 seul n'est pas du temps : il
+    # le devient avec son année, que l'alternative de l'année lit déjà.
+    r"|\b(?:19|20)\d{2}\b|\b\d{1,2}([/.])\d{1,2}\1\d{2,4}\b|\b[JM][+-]\d+\b",
     re.I)
 
 BALISES_CITATION = ("code", "pre", "kbd", "samp")
