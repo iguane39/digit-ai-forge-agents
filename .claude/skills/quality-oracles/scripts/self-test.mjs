@@ -310,6 +310,45 @@ if (reg) {
     : ko(`TF-1406 : oracle-restitution ${restit ? 'présent' : 'ABSENT du registre machine'} — page déclarée ${avec ? 'routée' : 'NON routée'}, page non déclarée ${sans ? 'ROUTÉE' : 'non routée'}, ext ${JSON.stringify(restit?.ext)}`);
 }
 
+// (3c ter) TF-1687 (14/10/2026) — deux oracles livrés le 14/10 par des forges sœurs entrent au
+// registre machine, en INVOCATION EXPLICITE : oracle-exploitabilite (forge-design, X0-X5) et la
+// règle O18 d'oracle-ops (forge-ops, --revisions-actives). Deux preuves : aucun déclencheur ne
+// les route d'office (ext, content_patterns, trigger_files vides), et la COMMANDE du registre,
+// placeholders résolus, rend FAIL sur la rouge et PASS sur la verte de la forge. Forge ou
+// fixture absente de ce poste : SKIP motivé, jamais un vert inventé.
+if (reg) {
+  const PAIRES_1687 = [
+    { script: /oracle-exploitabilite\.mjs$/, rouge: 'digit-ai-forge-design/oracles/fixtures/exploitabilite-rouge.html',
+      verte: 'digit-ai-forge-design/oracles/fixtures/exploitabilite-verte.html' },
+    { script: /oracle-ops\.mjs$/, rouge: 'digit-ai-forge-ops/fixtures/o18-revisions-actives/rouge.json',
+      verte: 'digit-ai-forge-ops/fixtures/o18-revisions-actives/verte.json' },
+  ];
+  for (const p of PAIRES_1687) {
+    const e = reg.oracles.find((o) => (o.cmd || []).some((s) => p.script.test(s)));
+    const nom = String(p.script).replace(/^\/|\\|\$\/$/g, '');
+    if (!e) { ko(`TF-1687 : ${nom} ABSENT du registre machine`); continue; }
+    const routeur = [...(e.ext || []), ...(e.content_patterns || []), ...(e.trigger_files || [])];
+    if (routeur.length) { ko(`TF-1687 : ${nom} est routé d'office (${JSON.stringify(routeur)}) — l'entrée doit rester en invocation explicite`); continue; }
+    const fRouge = FORGES && path.join(FORGES, p.rouge);
+    const fVerte = FORGES && path.join(FORGES, p.verte);
+    if (!FORGES || !fs.existsSync(fRouge) || !fs.existsSync(fVerte)) {
+      ok(`TF-1687 : ${nom} au registre, en invocation explicite — commande non rejouée : ${FORGES ? 'fixtures absentes de ce poste' : motifForgesAbsentes(SKILLDIR)}`);
+      continue;
+    }
+    const jouer = (cible) => {
+      const [bin, ...reste] = e.cmd.map((s) => s.replace(MARQUEUR_FORGES, FORGES).replace('{file}', cible));
+      const r = spawnSync(bin === 'node' ? process.execPath : bin, reste, { encoding: 'utf8', timeout: 180000 });
+      let v = '?'; try { v = JSON.parse(r.stdout).verdict; } catch {}
+      return { v, code: r.status };
+    };
+    const r = jouer(fRouge), v = jouer(fVerte);
+    if (r.v === 'SKIP' || v.v === 'SKIP') ok(`TF-1687 : ${nom} au registre, en invocation explicite — l'oracle rend SKIP sur ce poste (outillage de rendu absent), commande non jugée`);
+    else (r.v === 'FAIL' && r.code === 1 && v.v === 'PASS' && v.code === 0)
+      ? ok(`TF-1687 : ${nom} au registre, en invocation explicite, et sa commande rend FAIL sur la rouge, PASS sur la verte`)
+      : ko(`TF-1687 : la commande du registre pour ${nom} ne tient pas ses deux sens — rouge ${r.v} (exit ${r.code}), verte ${v.v} (exit ${v.code})`);
+  }
+}
+
 // (3d) TF-1326 (23/09/2026) — LE LANCEUR RÉSOUT L'INTERPRÉTEUR PYTHON, et un interpréteur
 // introuvable rend un SKIP MOTIVÉ. Le registre écrit `python3` ; sous Windows ce nom peut être
 // l'alias du Microsoft Store, qui répond « Python est introuvable » : le domaine « Régression

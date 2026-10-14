@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.38.0, alignée sur le JSON le 13/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.39.0, alignée sur le JSON le 14/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -61,6 +61,8 @@
 | Cible mobile : contrat d'usage tactile | `node {forges}/digit-ai-forge-design/oracles/oracle-mobile.mjs <page.html> --si-cible-mobile` — joué sur les seules cibles mobiles, SANS OBJET ailleurs, règle partagée avec le point d'entrée de forge-design (lib/cible-mobile.mjs, TF-1322, 23/09/2026) — M1 viewport et zoom, M2 cibles ≥ 44 px, M3 safe-area-inset, M4 reflow des tables sous 768 px, M5 orientation paysage, M6 prefers-reduced-motion, M7 prefers-reduced-transparency | cli | ✅ |
 | Visuels générés : traçabilité et budget | `node {forges}/digit-ai-forge-design/oracles/oracle-images.mjs <page.html>` — I1 alt utile, I2 plafond unitaire, I3 plafond global 10 Mo, I4 zéro image réseau, I5 manifeste de génération, I6 complétude prompt/modèle/date | cli | ✅ |
 | Corpus design : résolution des sources | `node {forges}/digit-ai-forge-design/oracles/oracle-corpus.mjs <dossier>` — C1 colonnes, C2 cellules, C3 statuts, C4 unicité, C5 polices réflexes, C6 sources résolues, C7 monoculture inter-clients (invocation explicite par dossier) | cli | ✅ |
+| Écran d'application : exploitabilité au volume réel des données | `node {forges}/digit-ai-forge-design/oracles/oracle-exploitabilite.mjs <page.html\|url> [--etat-connexion etat.json] [--theme dark]` — **X0** cible jugeable (une redirection vers une connexion est signalée, l'écran n'est pas jugé) · **X1** l'écran tient en 4 hauteurs de fenêtre, hors tableaux filtrables du socle · **X2** ligne médiane d'un tableau de 5 lignes ou plus à 80 px au plus · **X3** aucune valeur machine visible (snake_case, objet sérialisé) · **X4** colonnes côte à côte dans un rapport de 3 au plus au-delà de 1 500 px · **X5** un en-tête de ligne en 3 lignes au plus. Se joue sur l'écran rendu, de préférence une instance **servie et alimentée** : sur le seul jeu de démonstration il ne prouve rien. **Invocation explicite** (TF-1654, inscrit le 14/10/2026 par TF-1687) | cli | ✅ |
+| Exploitation : révisions actives d'une application Container Apps (O-18) | `node {forges}/digit-ai-forge-ops/oracles/oracle-ops.mjs --revisions-actives <capture.json>` — **O18** sur la sortie capturée de `az containerapp revision list -o json` : chaque application ne garde actives que ses révisions servies (trafic > 0) et une N-1 saine à 0 % ; toute autre révision active est bloquante, nommée avec sa commande de désactivation (réversible). Aucun appel réseau ; capture vide ou introuvable : SKIP. **Invocation explicite** (TF-1639, inscrit le 14/10/2026 par TF-1687) | cli | ✅ |
 | Exigences produit : testabilité de l'énoncé | `node {forges}/digit-ai-forge-conception/oracles/oracle-exigences.mjs <EXIGENCES.json>` — E1 champs obligatoires, E2 identifiant unique et non réaffecté, E3 critère chiffré avec unité ou binaire observable, E4 liste noire de termes subjectifs, E5 palier valide, E6 énoncé atomique | cli | ✅ |
 | Traçabilité besoin ↔ exigence ↔ vue (référentiel de conception) | `node {forges}/digit-ai-forge-conception/oracles/oracle-tracabilite.mjs <EXIGENCES.json> [--vue <fichier>]…` — T1 aucun orphelin des deux côtés, T2 exactement un critère, T3 vue alignée sur l'empreinte sha256 de sa source, T4 statut épistémique porteur de sa source | cli | ✅ |
 | Couverture de la surface fonctionnelle | `node {forges}/digit-ai-forge-conception/oracles/oracle-surface.mjs <EXIGENCES.json> [--seuil 95]` — S1 tout élément non couvert est NOMMÉ, S2 ratio publié avec sa liste, S3 lien de surface valide ou raison `hors_surface` | cli | ✅ |
@@ -770,3 +772,21 @@ méthode n'a encore été exercée par aucune mission réelle, et ses fixtures s
   (revue le 2026-11-10).
 - **Preuve** : paire `judge-lecteur-vise` du manifeste et bloc TF-1392/TF-1394 de la recette, sur des
   lectures enregistrées, sans appel de modèle. Mode d'emploi : `references/lecteur-vise.md`.
+
+## Inscription du 14/10/2026 — deux oracles des forges sœurs (TF-1687, v2.39.0)
+
+- **Le fait** : deux oracles livrés le 14/10/2026 n'étaient au registre ni machine ni humain, donc
+  sur le chemin d'aucun producteur. `oracle-exploitabilite.mjs` (forge-design, TF-1654 et
+  `--etat-connexion` de TF-1674) juge un écran d'application au volume réel de ses données ;
+  la règle O18 d'`oracle-ops.mjs` (forge-ops, TF-1639) borne les révisions actives d'une
+  application Container Apps.
+- **Routage** : invocation explicite pour les deux (`ext` vide, aucun déclencheur). Le premier juge
+  un écran rendu, de préférence servi et alimenté, qu'aucun fichier ne désigne ; le second lit une
+  capture JSON de la plateforme, qui ne se reconnaît pas à son extension. Les autres règles
+  d'`oracle-ops` (O1 à O17) restent appelées par forge-ops. La citation d'`oracle-exploitabilite`
+  dans la méthode de `critique-le-design` relève de forge-design.
+- **Preuve** : bloc TF-1687 de la recette. Il vérifie qu'aucun déclencheur ne route les deux
+  entrées, puis joue la commande du registre, placeholders résolus, sur la paire de chaque forge :
+  `exploitabilite-rouge.html` FAIL (X1 à X5), `exploitabilite-verte.html` PASS ;
+  `o18-revisions-actives/rouge.json` FAIL (2 constats O18), `verte.json` PASS. Forge absente du
+  poste : SKIP motivé.
