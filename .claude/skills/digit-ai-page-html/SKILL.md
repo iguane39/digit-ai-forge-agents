@@ -1,7 +1,7 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L30 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L37 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
@@ -19,7 +19,9 @@ et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
 feuille** : un trou de gabarit dans une `url()` levait une IndexError, la page est jugée et A5
 avertit que la lecture de la feuille y est partielle (TF-1682). · **L37 bloque** : une ligne en
 statut défavorable sans action échoue, sur décision humaine prise au vu de son bruit (8 pages du
-parc, toutes de vrais cas ; 2 passent de PASS à FAIL — TF-1688, `references/lisibilite.md`).
+parc, toutes de vrais cas ; 2 passent de PASS à FAIL — TF-1688, `references/lisibilite.md`). ·
+La plage des règles L annoncée en prose (description comprise) dit **L1–L37**, et la recette la
+compare à la dernière règle écrite (TF-1689).
 
 **1.29.0 (14/10/2026)** — **cinq retours de produits corrigés à la cause ; les deux règles neuves
 entrent en avertissement.** · **L37** : une ligne en statut défavorable (Écart, Partiel, Non
@@ -624,7 +626,7 @@ pour toute la forge**, les autres skills livrables la citent sans la redéfinir.
 Enfin, contrôler la **lisibilité** — ce que le lecteur peut effectivement lire et utiliser :
 
 ```bash
-python scripts/check_html.py page.html --regles L     # L1-L14 seules
+python scripts/check_html.py page.html --regles L     # L1-L37 seules
 python scripts/self_test.py                           # prouve que chaque règle échoue
 ```
 
@@ -753,7 +755,7 @@ contrôles que le producteur lance de toute façon.
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
 - Checklist canonique zéro défaut visuel V1–V18 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
-- Règles de lisibilité L1–L30 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
+- Règles de lisibilité L1–L37 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants
 

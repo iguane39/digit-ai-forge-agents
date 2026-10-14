@@ -1,4 +1,4 @@
-# Lisibilité — règles L1 à L12
+# Lisibilité — règles L1 à L37
 
 Une page peut être **exacte, chartée, accessible et illisible**. La charte règle la forme,
 `zero-defaut-visuel.md` règle le rendu ; ce document règle ce que le lecteur peut
@@ -1584,8 +1584,8 @@ Fixtures : `source-machine-livret.html` (rouge sans la classe, verte avec),
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L30
-python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L30)
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L37
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L37)
 python scripts/check_html.py page.html --output json
 python scripts/check_html.py page.html --classe=source-machine   # page lue par une machine (TF-1589)
 python scripts/render_page.py page.html                # V1-V14 + L2 mesuré au rendu

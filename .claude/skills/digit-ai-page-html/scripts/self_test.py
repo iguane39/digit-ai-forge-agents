@@ -2024,6 +2024,43 @@ def run_accolade_dans_une_valeur():
     return out
 
 
+ANNONCES_PLAGE_L = (
+    re.compile(r"règles de lisibilité L1[–-]L(\d+)", re.I),
+    re.compile(r"--regles L\s+#\s*L1[–-]L(\d+)"),
+    re.compile(r"^# Lisibilité — règles L1 à L(\d+)", re.M),
+    re.compile(r"check_html\.py page\.html\b.*\bL1[–-]L(\d+)"),
+)
+
+
+def plages_l_perimees(texte, derniere):
+    """Les plages « L1–Lnn » annoncées en prose dont la borne n'est pas la dernière règle L."""
+    return [m.group(0) for rx in ANNONCES_PLAGE_L for m in rx.finditer(texte)
+            if int(m.group(1)) != derniere]
+
+
+def run_compte_regles_en_prose():
+    """TF-1689 — la plage des règles L annoncée en prose suit la dernière règle écrite.
+
+    La description du skill annonçait « L1–L30 » alors que L37 existait : un compte écrit à la
+    main ne suit pas sa source. La borne se DÉRIVE ici des titres « ## Lnn » de lisibilite.md et
+    se compare à chaque annonce de SKILL.md (description comprise) et de lisibilite.md. Les deux
+    sens sont joués sur un texte jouet : une plage périmée est vue, une plage juste ne l'est pas.
+    """
+    ref = (FIXTURES.parent / "references" / "lisibilite.md").read_text(encoding="utf-8")
+    derniere = max(int(n) for n in re.findall(r"^## L(\d+)\b", ref, re.M))
+    skill = (FIXTURES.parent / "SKILL.md").read_text(encoding="utf-8")
+    perimees = plages_l_perimees(skill, derniere) + plages_l_perimees(ref, derniere)
+    vues = sum(len(list(rx.finditer(t))) for rx in ANNONCES_PLAGE_L for t in (skill, ref))
+    rouge = plages_l_perimees("les règles de lisibilité L1–L30 à fixtures rouges", 37)
+    vert = plages_l_perimees("les règles de lisibilité L1–L37 à fixtures rouges", 37)
+    ok = not perimees and vues > 0 and len(rouge) == 1 and not vert
+    return [{"fixture": "SKILL.md + lisibilite.md", "verdict": "OK" if ok else "ECHEC",
+             "attendu": f"TF-1689 plages L1–L{derniere}, rouge jouet vue, vert jouet muet",
+             "obtenu": f"{vues} annonce(s), {len(perimees)} périmée(s), rouge {len(rouge)}, "
+                       f"vert {len(vert)}",
+             "regle": "TF-1689 compte en prose", "detail": " | ".join(perimees)[:200]}]
+
+
 def run_classe_source_machine():
     """TF-1589 (RT-115) — la classe d'artefact `source-machine`, jouée dans ses deux sens.
 
@@ -4876,7 +4913,8 @@ def main():
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
            + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable()
            + run_avertissements_13_10() + run_avertissements_14_10()
-           + run_accolade_dans_une_valeur() + run_classe_source_machine())
+           + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
+           + run_classe_source_machine())
     rendu = run_rendu()
     if rendu:
         res += rendu
