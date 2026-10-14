@@ -231,6 +231,11 @@ CAS = {
     "l27-dictionnaire-de-colonnes.html": set(),
     "l28-mois-sans-ordre.html": {"L28"},
     "l28-mois-ordonnes.html": set(),
+    # TF-1677 (lot 20261001b, seq 209) — le mot « date » d'un en-tête ne fait pas une colonne
+    # temporelle : la verte n'a que des catégories sous deux en-têtes homonymes ; la jumelle y
+    # ajoute une vraie colonne de dates en libellés seuls, qui reste rouge.
+    "l28-entete-homonyme.html": set(),
+    "l28-entete-homonyme-et-vraie-date.html": {"L28"},
     "l29-thead-sous-entete-collant.html": {"L29"},
     "l29-thead-decale-par-token.html": set(),
     # TF-0227 (lot Produit-10 du 14/08) : 71 marqueurs [c:id] dans un livrable DIFFUSE, PASS
@@ -625,6 +630,10 @@ CAS_RENDU = {
     # (TF-0778), le sommaire colle par `position: sticky; top: var(--hh)` (TF-0772).
     "ctrl-rangee-desalignee.html": ("controles_desalignes", 1),
     "ctrl-rangee-alignee.html": ("controles_desalignes", 0),
+    # TF-1663 (RT-8) — la grille sommaire lateral + contenu n'est pas une rangee de formulaire ;
+    # la jumelle porte une vraie rangee decalee DANS le contenu, qui doit rester rouge.
+    "ctrl-grille-sommaire-contenu.html": ("controles_desalignes", 0),
+    "ctrl-grille-sommaire-rangee-desalignee.html": ("controles_desalignes", 1),
     "donnees-tableau-rogne.html": ("rognage_donnees", 1),
     "donnees-tableau-entier.html": ("rognage_donnees", 0),
     "donnees-prose-etroite.html": ("prose_etroite", 1),
@@ -1936,6 +1945,32 @@ def run_avertissements_13_10():
     return out
 
 
+def run_avertissements_14_10():
+    """Campagne du 14/10/2026 — deux règles NEUVES du socle, en AVERTISSEMENT (D-70 (b)).
+
+    TF-1665 (RT-33) : L12 lit aussi les cellules de tableau qui enchaînent plusieurs faits par des
+    points-virgules. TF-1664 (RT-58) : L37, une ligne en statut défavorable porte son action —
+    deux sorties vertes, la colonne d'action et le lien interne vers l'action. Chaque fixture est
+    jugée sur l'avertissement attendu ET sur l'absence d'échec de la même règle.
+    """
+    out = []
+    PAIRES = [("l12-cellule-points-virgules.html", "L12 énumération en cellule", True, "TF-1665"),
+              ("l12-cellule-en-puces.html", "L12 énumération en cellule", False, "TF-1665"),
+              ("l37-ecart-sans-remede.html", "L37 ", True, "TF-1664"),
+              ("l37-ecart-avec-remede.html", "L37 ", False, "TF-1664"),
+              ("l37-ecart-lien-vers-action.html", "L37 ", False, "TF-1664")]
+    for nom, prefixe, attendu, tf in PAIRES:
+        fails, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+        vu = any(w.startswith(prefixe) for w in warns)
+        bloque = [f for f in fails if f.startswith(prefixe.strip().split()[0] + " ")]
+        ok = vu == attendu and not bloque
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"{tf} avertissement {'présent' if attendu else 'absent'}, 0 échec",
+                    "obtenu": f"avertissement {'présent' if vu else 'absent'}, {len(bloque)} échec(s)",
+                    "regle": prefixe.strip(), "detail": "" if ok else " | ".join(bloque)[:200]})
+    return out
+
+
 def run_classe_source_machine():
     """TF-1589 (RT-115) — la classe d'artefact `source-machine`, jouée dans ses deux sens.
 
@@ -2576,6 +2611,151 @@ def run_instance_servie():
         srv.shutdown()
         srv.server_close()
         shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
+def run_session_et_theme():
+    """TF-1674 (lot Produit-80 20261012b, RD-1) — UNE APPLICATION CONNECTEE, ET SON THEME SOMBRE.
+
+    LE BANC SERT UNE APPLICATION DERRIERE UNE CONNEXION. Meme serveur que `run_instance_servie`
+    (127.0.0.1, port libre, arrete en finally), avec une seule regle : `/app.html` sert
+    l'application a qui presente le cookie de session du banc, et l'ecran de connexion a tous
+    les autres. L'application porte un debordement V1 ; l'ecran de connexion est sain.
+      - sans --etat-session : l'oracle juge l'ecran de connexion, 0 V1, PASS. C'est le trou.
+      - avec --etat-session : l'application est jugee, au moins 1 V1, FAIL.
+      - la matrice d'etats rejoue chaque etat sur une page rechargee : elle reste DANS la
+        session (au moins 1 V1 sur un etat), au lieu de retomber sur l'ecran de connexion.
+    LE THEME. `theme-sombre-deborde.html` ne deborde que sous prefers-color-scheme: dark : 0 V1
+    sans --theme, au moins 1 avec --theme sombre.
+    LES BORNES. --etat-session est refuse sur un fichier et sur une origine distante, et le
+    rapport DECLARE la session et le theme rendus.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import functools
+    import http.server
+    import socketserver
+    import tempfile
+    import threading
+
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    tmp = Path(tempfile.mkdtemp(prefix="self-test-session-"))
+    out = []
+    JETON = "jeton-de-banc"
+
+    def juger(cible, options):
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, cible, "--widths", "1440",
+                            "--output", "json", "--out", str(tmp)] + options,
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return json.loads(r.stdout), r
+        except Exception:
+            return None, r
+
+    def v1(rapport):
+        n = 0
+        for data in (rapport.get("breakpoints") or {}).values():
+            n += len(((data.get("issues") or {}).get("v1_overflow")) or [])
+            for e in (data.get("etats") or {}).values():
+                n += len(((e.get("issues") or {}).get("v1_overflow")) or [])
+        return n
+
+    def cas(nom, tenu, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if tenu else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1674", "detail": "" if tenu else detail})
+
+    class BancHTTP(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    class Garde(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *_a):
+            pass
+
+        def do_GET(self):  # noqa: N802 — nom impose par la bibliotheque standard
+            if self.path.split("?")[0] == "/app.html":
+                connecte = ("session=" + JETON) in (self.headers.get("Cookie") or "")
+                self.path = "/session-application.html" if connecte else "/session-connexion.html"
+            return super().do_GET()
+
+    srv = BancHTTP(("127.0.0.1", 0), functools.partial(Garde, directory=str(FIXTURES)))
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{port}"
+    etat = tmp / "etat-session.json"
+    etat.write_text(json.dumps({"cookies": [{
+        "name": "session", "value": JETON, "domain": "127.0.0.1", "path": "/", "expires": -1,
+        "httpOnly": True, "secure": False, "sameSite": "Lax"}], "origins": []}),
+        encoding="utf-8")
+    try:
+        sans, rs = juger(f"{base}/app.html", [])
+        avec, ra = juger(f"{base}/app.html", ["--etat-session", str(etat)])
+        if sans is None or avec is None:
+            cas("session · rapports", False, "rapports lisibles", "illisible",
+                ((rs.stderr if sans is None else ra.stderr) or "")[:160])
+        else:
+            cas("session · sans --etat-session (le trou)", v1(sans) == 0 and sans["verdict"] == "PASS",
+                "ecran de connexion juge : 0 V1, PASS", f"{v1(sans)} V1, {sans['verdict']}",
+                "sans session, l'oracle devait juger l'ecran de connexion")
+            cas("session · avec --etat-session", v1(avec) >= 1 and avec["verdict"] == "FAIL",
+                "application jugee : >=1 V1, FAIL", f"{v1(avec)} V1, {avec['verdict']}",
+                "la session n'a pas ete chargee : l'application n'est pas jugee")
+            cas("session · declaree au non juge",
+                any("SESSION AUTHENTIFIEE" in x for x in avec.get("non_juge", []))
+                and not any(JETON in x for x in avec.get("non_juge", [])),
+                "session declaree, jeton jamais publie", "voir non_juge",
+                "un verdict connecte doit le dire, sans publier le contenu de la session")
+        # L'etat « tout-deplie » recharge la page puis ouvre son <details> : il n'est JOUE que si
+        # le rechargement est reste dans l'application (l'ecran de connexion n'en porte pas), et
+        # ce sont les constats de CET etat qui se comptent, pas ceux de l'etat initial.
+        def v1_etats(rapport):
+            return 0 if rapport is None else sum(
+                len(((e.get("issues") or {}).get("v1_overflow")) or [])
+                for d in (rapport.get("breakpoints") or {}).values()
+                for e in (d.get("etats") or {}).values())
+
+        mat_sans, _ = juger(f"{base}/app.html", ["--matrice-etats"])
+        cas("session · matrice d'etats SANS session (le trou)",
+            mat_sans is not None and v1_etats(mat_sans) == 0,
+            "0 V1 dans les etats (chaque rechargement retombe sur la connexion)",
+            "illisible" if mat_sans is None else f"{v1_etats(mat_sans)} V1 dans les etats",
+            "un etat a ete joue dans l'application sans session : le banc ne garde plus l'acces")
+        mat, rm = juger(f"{base}/app.html", ["--etat-session", str(etat), "--matrice-etats"])
+        etats_v1 = v1_etats(mat)
+        cas("session · matrice d'etats dans la session", etats_v1 >= 1,
+            ">=1 V1 dans un etat rejoue (le rechargement reste connecte)",
+            "illisible" if mat is None else f"{etats_v1} V1 dans les etats",
+            (rm.stderr or "")[:160] if mat is None else "aucun etat joue dans l'application")
+        clair, rc = juger(f"{base}/theme-sombre-deborde.html", [])
+        sombre, rso = juger(f"{base}/theme-sombre-deborde.html", ["--theme", "sombre"])
+        if clair is None or sombre is None:
+            cas("theme · rapports", False, "rapports lisibles", "illisible",
+                ((rc.stderr if clair is None else rso.stderr) or "")[:160])
+        else:
+            cas("theme · sans --theme (clair)", v1(clair) == 0, "0 V1 (le defaut est sombre)",
+                v1(clair), "la page deborde deja en clair : la fixture ne prouve plus rien")
+            cas("theme · --theme sombre", v1(sombre) >= 1
+                and sombre.get("theme") == "sombre"
+                and any("THEME RENDU : sombre" in x for x in sombre.get("non_juge", [])),
+                ">=1 V1, theme sombre declare", f"{v1(sombre)} V1, {sombre.get('theme')}",
+                "le schema sombre n'a pas ete rendu, ou pas declare")
+        for nom, cible, options, motif in (
+                ("session · refusee sur un fichier", str(FIXTURES / "session-application.html"),
+                 ["--etat-session", str(etat)], "INSTANCE SERVIE"),
+                ("session · refusee sur une origine distante", "https://exemple.invalid/app.html",
+                 ["--origine-distante", "--etat-session", str(etat)], "NON LOCALE")):
+            r = subprocess.run([sys.executable, "-X", "utf8", rendu, cible] + options,
+                               capture_output=True, text=True, encoding="utf-8")
+            texte = (r.stderr or "") + (r.stdout or "")
+            cas(nom, r.returncode != 0 and motif in texte, "refus nomme", r.returncode,
+                texte.strip()[:160])
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        shutil.rmtree(tmp, ignore_errors=True)
     return out
 
 
@@ -4306,6 +4486,127 @@ def run_canevas_modele_donnees():
     return out
 
 
+# TF-1660 — les valeurs d'une INSTANCE plausible du gabarit multi-bandes. Un trou laisse vide
+# serait jugé par L11 : chaque {{PLACEHOLDER}} du gabarit reçoit une valeur, et le cas le vérifie.
+INSTANCE_MULTI_BANDES = {
+    "TITRE_PAGE": "Digit-AI - Brief Produit-A - Architecture detaillee - 20261014a",
+    "EYEBROW": "Brief d'architecture · Produit-A",
+    "H1_DEBUT": "La chaîne de", "H1_ACCENT": "livraison", "H1_FIN": "du produit",
+    "LEDE": "Cette page permet de décider où placer le contrôle humain dans la chaîne de "
+            "livraison du produit.",
+    "VERSION": "V1a · 14 octobre 2026", "TYPE": "Brief d'architecture",
+    "PERIMETRE": "Chaîne de livraison", "TITRE_SECTION": "Vue d'ensemble de la chaîne",
+    "INTRO_SECTION": "Le schéma se lit de haut en bas. Chaque bande regroupe les éléments d'une "
+                     "même couche, et les flèches suivent des couloirs dédiés.",
+    "TITRE_SCHEMA": "Chaîne de livraison par couches",
+    "DESC_SCHEMA": "Cinq bandes, des entrées jusqu'aux intégrations externes.",
+    "NOM_BANDE_1": "Entrées et acteurs", "NOM_BANDE_2": "Pipelines",
+    "NOM_BANDE_3": "Environnements", "NOM_BANDE_4": "Observabilité",
+    "NOM_BANDE_5": "Intégrations numérotées", "NOM_SOURCE_1": "Dépôt de code",
+    "TRIGGER": "push sur main", "EFFET": "lance le pipeline M1", "OWNER": "équipe produit",
+    "TITRE_SOURCE_1": "Dépôt de code", "SOUSTITRE_1": "Branche principale",
+    "LIGNE_1": "git · revue obligatoire", "LIGNE_2": "2 relecteurs",
+    "NOM_ACTEUR": "Responsable de mise en production", "PROFIL": "lead technique",
+    "ACTION": "approuve la promotion", "GROUPE": "grp-mep", "TITRE_ACTEUR": "Approbateur MEP",
+    "SOUSTITRE_ACTEUR": "Lead technique", "LIGNE_1_ACTEUR": "approuve la promotion",
+    "LIGNE_2_ACTEUR": "groupe grp-mep",
+    "TOOLTIP_FLECHE_1": "Déclenchement | Un push sur main lance M1 | Aucune action humaine",
+    "NOM_PIPELINE": "M1 · Construction", "POOL": "pool-linux", "SP": "sc-dev",
+    "VG": "vg-commun", "ETAPES": "build, tests, analyse", "ARTEFACT": "image.tar",
+    "TITRE_PIPELINE": "M1 · Construction", "CHEMIN_YAML": "ci/build.yml",
+    "TRIGGER_PIPELINE": "push sur main", "POOL_PIPELINE": "pool-linux", "SC_PIPELINE": "sc-dev",
+    "ETAPE_1": "build et tests", "ETAPE_2": "analyse statique",
+    "ARTEFACT_PIPELINE": "image conteneur", "REF_INTEGRATIONS": "Réf. intégrations 1", "N": "1",
+    "NOM_INTEGRATION": "Registre d'images", "DESCRIPTION_INTEG": "Stocke les images construites",
+    "PIPELINES_REFERENTS": "M1", "NOM_INTEG": "Registre d'images",
+    "SOUSTITRE_INTEG": "Images signées", "PIPELINES_REF": "M1",
+    "LEGENDE_FIGURE": "Chaîne de livraison par couches, des entrées aux intégrations.",
+    "TYPE_FOOTER": "Brief d'architecture", "AUDIENCE": "Équipe produit",
+}
+
+
+def run_gabarit_multi_bandes():
+    """TF-1660 (lot Produit-81 20261013b, RT-5) — LE GABARIT INSTANCIE PASSE LES DEUX ORACLES.
+
+    LE FAIT. La page instanciee telle que le gabarit `template-multi-bandes.html` la prescrit
+    rendait des bloquants des la premiere execution, et il a fallu six cycles de correction chez
+    le produit pour atteindre PASS sans changer une couleur rendue. Mesure du 14/10/2026 sur une
+    instance du gabarit de ce depot, aux six largeurs par defaut : 11, 11, 11, 11, 9 et 9
+    bloquants — 9 V4 de contenance (la pastille de bande et son titre, le cadre `svg-frame` et
+    ce qu'il contient, le N de la legende sur son cercle) et 2 L2 (bride de 820 px posee sur
+    `.lede` et `.section-intro`). Le gabarit lui-meme passait `check_html.py` : ses deux
+    exemptions de gabarit a trous tombent a l'instanciation, et personne n'avait juge l'instance.
+
+    CE QUI A CHANGE DANS LE GABARIT : pastilles et N de legende en `<g>` titres (TF-0424) ; le
+    cadre declare PAR PAIRES ce qu'il contient (`data-overlap-ok`, TF-1146), les pipelines
+    restant juges entre eux ; la mesure de lecture posee sur un conteneur declare
+    (`data-mesure-lecture`, `data-colonne-ok`).
+
+    DEUX SENS : l'instance rend 0 echec `check_html.py` et 0 bloquant aux six largeurs ; la MEME
+    instance privee de ses declarations `data-overlap-ok` fait revenir des bloquants a chaque
+    largeur — sans ce second sens, un gabarit qui aurait cesse de dessiner son cadre passerait.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    gabarit = (Path(__file__).resolve().parents[2] / "digit-ai-schemas" / "assets"
+               / "template-multi-bandes.html")
+    if not gabarit.exists():
+        return [{"fixture": "gabarit multi-bandes", "verdict": "ECHEC",
+                 "attendu": "gabarit present", "obtenu": "absent", "regle": "TF-1660",
+                 "detail": str(gabarit)}]
+    import tempfile
+    brut = gabarit.read_text(encoding="utf-8")
+    instance = re.sub(r"\{\{([A-Z_0-9]+)\}\}",
+                      lambda m: INSTANCE_MULTI_BANDES.get(m.group(1), m.group(0)), brut)
+    out = []
+    restes = sorted(set(re.findall(r"\{\{[A-Z_0-9]+\}\}", instance)))
+    out.append({"fixture": "gabarit multi-bandes · instance complete",
+                "verdict": "OK" if not restes else "ECHEC", "attendu": "0 trou",
+                "obtenu": len(restes), "regle": "TF-1660",
+                "detail": "" if not restes else "trous sans valeur : " + " ".join(restes)})
+    fails, _ = check(instance)
+    out.append({"fixture": "gabarit multi-bandes · instance · check_html",
+                "verdict": "OK" if not fails else "ECHEC", "attendu": "0 echec",
+                "obtenu": len(fails), "regle": "TF-1660",
+                "detail": "" if not fails else " · ".join(f[:90] for f in fails[:3])})
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    tmp = Path(tempfile.mkdtemp(prefix="self-test-multi-bandes-"))
+    sans = instance.replace(" data-overlap-ok=", " data-sans-declaration=")
+    try:
+        for nom, contenu, attendu in (("gabarit multi-bandes · instance · rendu", instance, 0),
+                                      ("gabarit multi-bandes · sans data-overlap-ok (sens rouge)",
+                                       sans, 1)):
+            cible = tmp / ("mb-%s.html" % ("instance" if attendu == 0 else "nue"))
+            cible.write_text(contenu, encoding="utf-8")
+            r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(cible), "--output",
+                                "json", "--out", str(tmp)],
+                               capture_output=True, text=True, encoding="utf-8")
+            try:
+                bps = json.loads(r.stdout)["breakpoints"]
+            except Exception:
+                out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "rendu lisible",
+                            "obtenu": "illisible", "regle": "TF-1660",
+                            "detail": (r.stderr or r.stdout or "")[:160]})
+                continue
+            par_largeur = {w: int(b.get("blocking") or 0) for w, b in bps.items()}
+            total = sum(par_largeur.values())
+            if attendu == 0:
+                ok = total == 0
+                attente = "0 bloquant sur %d largeurs" % len(bps)
+            else:
+                ok = all(n >= 1 for n in par_largeur.values())
+                attente = "au moins 1 bloquant a chaque largeur (%d)" % len(bps)
+            out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attente,
+                        "obtenu": "%d bloquant(s)" % total, "regle": "TF-1660",
+                        "detail": "" if ok else json.dumps(par_largeur)})
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return out
+
+
 def run_canevas_differentiel():
     """TF-0938 (08/09/2026) — LE CANEVAS DIFFERENTIEL TIENT SES PROPRES REGLES, MESURE.
 
@@ -4505,7 +4806,8 @@ def main():
            + run_kpi_perimetre()
            + run_capture_tuiles() + run_perimetre_non_mesure() + run_v9_echelles()
            + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable()
-           + run_avertissements_13_10() + run_classe_source_machine())
+           + run_avertissements_13_10() + run_avertissements_14_10()
+           + run_classe_source_machine())
     rendu = run_rendu()
     if rendu:
         res += rendu
@@ -4544,6 +4846,11 @@ def main():
     servie = run_instance_servie()
     if servie:
         res += servie
+    # TF-1674 — une application derriere une connexion se juge CONNECTEE (etat de session du
+    # produit), matrices comprises ; un theme sombre se rend sur demande et se declare.
+    session = run_session_et_theme()
+    if session:
+        res += session
     # TF-0768/0769/0781/0782 — le composant de filtres joue DANS un navigateur : ses defauts
     # sont des defauts d'execution, qu'aucun oracle de marquage ne peut voir.
     filtres = run_filtres_runtime()
@@ -4608,6 +4915,11 @@ def main():
     erd = run_canevas_modele_donnees()
     if erd:
         res += erd
+    # TF-1660 — le gabarit multi-bandes de digit-ai-schemas, INSTANCIE : ses exemptions de
+    # gabarit a trous tombent a l'instanciation, et c'est l'instance que le produit livre.
+    multi_bandes = run_gabarit_multi_bandes()
+    if multi_bandes:
+        res += multi_bandes
     # TF-0952 — le tableau arborescent : le defaut n'est pas dans le HTML, il est dans ce que le
     # lecteur RECOIT a l'ouverture. 296 lignes d'un coup est un defaut ; seul un navigateur le dit.
     arbre = run_table_arbre_runtime()

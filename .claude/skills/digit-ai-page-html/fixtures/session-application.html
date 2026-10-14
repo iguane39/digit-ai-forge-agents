@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Application connectee — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+main{padding:24px}
+h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
+.bandeau{width:2400px;padding:12px;background:var(--surface);border:1px solid var(--line)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1674 (lot Produit-80 20261012b, RD-1). L'APPLICATION que le banc ne sert qu'a une session
+  valide. Elle porte un vrai defaut : un bandeau de 2 400 px qui deborde a 1 440 px (V1). Le
+  defaut n'est visible qu'a l'oracle qui charge l'etat de session (--etat-session) ; sans lui,
+  l'oracle juge l'ecran de connexion et rend PASS.
+-->
+<body><main>
+<h1>Tableau de bord</h1>
+<div class="bandeau">Bandeau des indicateurs de la semaine, trop large pour la fenetre.</div>
+<details><summary>Methode de calcul des indicateurs de la semaine</summary>
+<p>Chaque indicateur est recalcule chaque lundi a partir des journaux de la semaine ecoulee, puis compare a la moyenne des quatre semaines precedentes ; un ecart de plus de dix pour cent est signale en tete du tableau de bord.</p>
+</details>
+</main></body></html>

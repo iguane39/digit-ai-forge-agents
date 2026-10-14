@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — rangee decalee dans une grille sommaire et contenu — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+h2{font-family:var(--head);font-size:1.1rem;margin:24px 0 8px}
+.mise-en-page{display:grid;grid-template-columns:260px 1fr;gap:24px;max-width:1400px;margin:0 auto;padding:24px}
+nav.toc{position:sticky;top:0;align-self:start}
+nav.toc input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit}
+nav.toc ul{list-style:none;padding:0;margin:12px 0 0}
+nav.toc li{margin:0 0 8px}
+.long{height:2800px}
+.long p{max-width:none;margin:0 0 12px;color:var(--muted)}
+.rangee{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
+.champ label{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
+.champ input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de la famille `controles_desalignes` (TF-1663, lot Produit-81 20261013b, RT-8).
+
+  La MEME grille sommaire et contenu que `ctrl-grille-sommaire-contenu.html`, et dans le contenu
+  une vraie rangee de quatre champs sur DEUX hauteurs (deux etiquettes portent leur statut dans
+  leur libelle, cas fondateur TF-0773). Les gardes de TF-1663 ecartent la navigation et la
+  region de page ; elles ne doivent pas faire taire une rangee de champs imbriquee.
+
+  Attendu a 1440 px : au moins 1 constat `controles_desalignes`.
+-->
+<body><div class="mise-en-page">
+<nav class="toc" aria-label="Sommaire">
+  <label for="q">Rechercher dans la page</label><input id="q" type="search">
+  <ul><li><a href="#c1">Chapitre 1</a></li><li><a href="#c2">Chapitre 2</a></li></ul>
+</nav>
+<main>
+  <h1 id="c1">Hypotheses de la simulation</h1>
+  <div class="rangee">
+    <div class="champ"><label for="a">Volume annuel (hypothese a confirmer par le comite du 15/09)</label><input id="a" type="text" value="1 000"></div>
+    <div class="champ"><label for="b">Part de marche</label><input id="b" type="text" value="12 %"></div>
+    <div class="champ"><label for="c">Valeur moyenne (valeur provisoire, source a verifier)</label><input id="c" type="text" value="84 EUR"></div>
+    <div class="champ"><label for="d">Duree</label><input id="d" type="text" value="3,4 nuits"></div>
+  </div>
+  <div class="long"><p>Le detail des hypotheses suit, chapitre par chapitre.</p></div>
+  <h2 id="c2">Resultats</h2>
+</main>
+</div></body></html>

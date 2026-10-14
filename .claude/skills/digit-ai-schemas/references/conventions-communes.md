@@ -166,7 +166,7 @@ Exemple :
 
 ### Script de rendu
 
-Le script JavaScript qui transforme ces `<title>` en tooltips HTML stylés est dans `assets/tooltip-script.html`. **Toujours l'inclure** dans la page hôte juste avant `</body>`. Il :
+Le script JavaScript qui transforme ces `<title>` en tooltips HTML stylés est **embarqué dans `assets/template-multi-bandes.html`** (bloc « SCRIPT TOOLTIPS CUSTOM », juste avant `</body>`, avec sa feuille `.nh-tooltip`) : une page hôte construite depuis ce gabarit le porte déjà. Une page hôte construite autrement le reprend de ce gabarit, au même endroit. Il n'existe pas de fichier `assets/tooltip-script.html` (TF-1660 : ce renvoi pointait vers un fichier absent du paquet). Il :
 - Intercepte le hover sur tous les éléments porteurs de `<title>` dans les `.diagram-wrap svg`
 - Désactive le tooltip natif du navigateur (souvent étalé sur une seule ligne, sans formatage)
 - Affiche à la place un tooltip HTML carré, fond slate-800, puces avec marqueur violet, codes en monospace
@@ -205,8 +205,8 @@ Toujours déclarer ces variables dans `:root` de la page hôte pour permettre le
   --c-blue-bg:   #dbeafe;   --c-blue-fg:   #1d4ed8;   --c-blue-stroke:   #93c5fd;
   --c-teal-bg:   #ccfbf1;   --c-teal-fg:   #0f766e;   --c-teal-stroke:   #5eead4;
   --c-coral-bg:  #fee2e2;   --c-coral-fg:  #b91c1c;   --c-coral-stroke:  #fca5a5;
-  --c-amber-bg:  var(--c-amber-bg);   --c-amber-fg:  var(--c-amber-fg);   --c-amber-stroke:  var(--c-amber-stroke);
-  --c-gray-bg:   var(--c-gray-bg);   --c-gray-fg:   var(--c-gray-fg);   --c-gray-stroke:   var(--line-strong);
+  --c-amber-bg:  #fef3c7;   --c-amber-fg:  #92400e;   --c-amber-stroke:  #fcd34d;
+  --c-gray-bg:   #f1f3f7;   --c-gray-fg:   #374151;   --c-gray-stroke:   #cbd5e1;
   /* Jetons nommes par TF-0856 (04/09/2026) : ces valeurs vivaient en dur dans les canevas. */
   --c-purple-mid: #7c3aed;
   --c-purple-deep: #4c1d95;
@@ -261,13 +261,20 @@ Le SVG utilise **toujours `viewBox`**, jamais `width` / `height` fixes en pixels
 
 ```css
 @media (max-width: 720px) {
-  /* SVG en scroll horizontal sur petit écran via overflow-x du wrapper */
+  /* Le SVG se RÉDUIT à la largeur (max-width: 100%; height: auto, §9) : jamais de défilement
+     horizontal, jamais de min-width sur le SVG. */
 }
 @media print {
   .diagram-wrap { background: var(--bg); break-inside: avoid; }
   body { font-size: 11pt; }
 }
 ```
+
+**Pas de défilement horizontal (TF-1660, 14/10/2026).** Cette section prescrivait « le scroll
+horizontal via `overflow-x` du wrapper » ; le socle `digit-ai-page-html` juge V1 **bloquant même
+dans un conteneur `overflow-x:auto`** (`composants.md` §6), et la page instanciée rendait 4 V1 à
+390 px. Le schéma se réduit à la largeur offerte ; un schéma devenu illisible une fois réduit se
+découpe, il ne défile pas.
 
 Le rendu doit être directement utilisable via "Imprimer en PDF" du navigateur sans réglage particulier. Tester systématiquement.
 
@@ -281,7 +288,7 @@ Toujours présente en bas du SVG (ou à la fin de la page si plusieurs schémas)
 Format des items de légende :
 ```svg
 <g transform="translate(40, 1108)">
-  <rect x="0" y="0" width="14" height="14" rx="3" style="fill:var(--c-purple-bg)" style="stroke:var(--c-purple-fg)"/>
+  <rect x="0" y="0" width="14" height="14" rx="3" style="fill:var(--c-purple-bg);stroke:var(--c-purple-fg)"/>
   <text x="22" y="11" class="svg-ts" style="font-size:11px">Pipelines Agent IA</text>
   <!-- ...autres items espacés de ~180px... -->
 </g>

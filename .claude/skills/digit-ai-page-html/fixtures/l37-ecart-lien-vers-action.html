@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Comparatif des pipelines — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--mark:#FEF08A;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1664 (RT-58, lot Produit-64 20261012b), sens VERT par le LIEN INTERNE. Le meme tableau que
+  `l37-ecart-sans-remede.html` ; chaque ligne en ecart renvoie, par un lien interne, a la
+  modification qui la leve, decrite plus bas dans la page.
+  Attendu : aucun avertissement L37.
+-->
+<body><main class="wrap">
+<h1>Comparatif des pipelines</h1>
+<p>Le statut dit si le pipeline tient le point de controle : Conforme, Partiel ou Ecart.</p>
+<table>
+<thead><tr><th>Point de controle</th><th>Statut</th><th>Constat</th></tr></thead>
+<tbody>
+<tr><td>PC-01 revue de code</td><td>Conforme</td><td>Deux relecteurs exiges sur la branche principale.</td></tr>
+<tr><td>PC-02 analyse statique</td><td>Partiel</td><td>Lancee sur la branche principale seulement, voir <a href="#mod-01">la modification 01</a>.</td></tr>
+<tr><td>PC-07 passage par la recette</td><td>Écart</td><td>Neuf commits servis sans passer par la recette, voir <a href="#mod-02">la modification 02</a>.</td></tr>
+</tbody></table>
+<h2>Modifications</h2>
+<p id="mod-01">Modification 01 : lancer l analyse statique sur chaque demande de fusion.</p>
+<p id="mod-02">Modification 02 : bloquer la promotion qui saute la recette.</p>
+</main></body></html>

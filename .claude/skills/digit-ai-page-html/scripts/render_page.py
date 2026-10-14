@@ -1387,15 +1387,30 @@ MEASURE_JS = r"""
   // GARDES : on ne juge qu'une rangee reelle (deux enfants d'une meme grille ou boite flexible
   // dont les boites se recouvrent verticalement), et l'ecart declare se tait
   // (`data-alignement-ok`).
+  //
+  // TF-1663 (lot Produit-81 20261013b, RT-8) — UNE GRILLE DE MISE EN PAGE N'EST PAS UNE RANGEE.
+  // La grille « sommaire lateral + contenu » d'une page au socle (L25) a deux enfants qui portent
+  // chacun un controle : le champ de recherche du sommaire (L13) et le premier bouton de filtre
+  // d'un tableau, 3 000 px plus bas dans <main>. Mesure du 13/10 : bloquant a 1280, 1920, 2560 et
+  // 3840 px, « ecart de 2 920px », et le seul geste offert etait data-alignement-ok sur la page
+  // entiere, qui faisait taire la regle pour toute vraie rangee qu'elle contient. Deux gardes,
+  // aucune ne touche une rangee de champs :
+  //   · un enfant dont le premier controle vit sous un <nav> est une NAVIGATION, pas un champ ;
+  //   · un enfant plus haut que la fenetre est une REGION de page, pas la cellule d'un champ
+  //     (une etiquette et son champ ne font jamais un ecran de haut).
+  // Les grilles imbriquees restent jugees : une rangee de champs DANS <main> l'est toujours.
   {
     const premierControle = (el) => el.matches('input, select, textarea, button')
       ? el : el.querySelector('input, select, textarea, button');
+    const hauteurFenetre = window.innerHeight || 900;
     for (const boite of document.body.querySelectorAll('*')) {
       const cs = getComputedStyle(boite);
       if (cs.display !== 'grid' && cs.display !== 'flex') continue;
       if (boite.closest('table, nav, .tf-panel')) continue;
       const enfants = [...boite.children]
-        .filter((c) => visible(c) && premierControle(c) && visible(premierControle(c)));
+        .filter((c) => visible(c) && premierControle(c) && visible(premierControle(c)))
+        .filter((c) => !premierControle(c).closest('nav')
+                       && c.getBoundingClientRect().height <= hauteurFenetre);
       if (enfants.length < 2) continue;
       const boites = enfants.map((c) => ({ c, r: c.getBoundingClientRect(),
                                            ctrl: premierControle(c).getBoundingClientRect() }));
@@ -3171,10 +3186,14 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
         capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None,
         matrice_etats: bool = False, matrice_toutes_largeurs: bool = False,
         hauteur_max: int = CAPTURE_HAUTEUR_MAX, matrice_paires: bool = False,
-        paires_max: int = PAIRES_MAX_DEFAUT, origine_distante: bool = False) -> int:
+        paires_max: int = PAIRES_MAX_DEFAUT, origine_distante: bool = False,
+        etat_session: Path | None = None, theme: str | None = None) -> int:
     # TF-1093 — un chemin, une URL servie ou une Cible deja construite entrent tous ici. Le
     # mode fichier reste le defaut : sans URL, `cibler` rend exactement l'ancien comportement.
     cible = html_path if isinstance(html_path, Cible) else cibler(html_path, origine_distante)
+    # TF-1674 — session authentifiee et theme : verifies AVANT tout lancement de navigateur.
+    etat_session = verifier_etat_session(cible, etat_session)
+    contexte = options_contexte(etat_session, theme)
     ensure_browser_path()
     ensure_local_fonts()
     try:
@@ -3199,7 +3218,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
         browser = p.chromium.launch()
         for width in widths:
             page = browser.new_page(viewport={"width": width, "height": 900},
-                                    device_scale_factor=scale)
+                                    device_scale_factor=scale, **contexte)
             page.goto(cible.url)
             page.wait_for_load_state("networkidle")
             page.evaluate("document.fonts && document.fonts.ready")
@@ -3508,12 +3527,26 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             "verdict ne vaut que pour CETTE instance et cet instant — un contenu servi change "
             "sans que le fichier bouge. La page distante, si elle l'est, est une DONNEE TIERCE : "
             "lue, jamais authentifiee, aucun secret saisi")
+        if etat_session is not None:
+            report["non_juge"].append(
+                f"SESSION AUTHENTIFIEE (TF-1674) : etat de session charge depuis {etat_session} "
+                "(contenu jamais lu ni publie par l'oracle). Le verdict porte sur l'application "
+                "telle que la voit CETTE session : un ecran reserve a un autre role, et l'ecran de "
+                "connexion lui-meme, ne sont pas juges ici")
     else:
         report["non_juge"].append(
             "OUVERTE EN `file://` : les actifs references en chemin ABSOLU (`/…`) ne resolvent "
             "pas ici et disparaissent sans bruit, et tout comportement garde par "
             "`location.protocol` ne s'execute pas. Ne pas lire ce PASS comme un verdict sur le "
             "livrable SERVI : le rejouer sur une instance servie (TF-1093)")
+
+    # TF-1674 — LE THEME RENDU SE DIT. Sans --theme, le navigateur rend le schema clair : une page
+    # qui porte un theme sombre (prefers-color-scheme: dark) n'a vu juger que sa moitie claire.
+    report["theme"] = theme or "clair (defaut du navigateur)"
+    report["non_juge"].append(
+        f"THEME RENDU : {THEMES_RENDU.get(theme, 'clair')} uniquement (prefers-color-scheme). "
+        "L'autre schema de couleurs n'est ni rendu ni mesure ici : le rejouer avec "
+        f"--theme {'clair' if theme == 'sombre' else 'sombre'} si la page en porte un (TF-1674)")
 
     # TF-1370 — SEUL L'ETAT INITIAL EST JUGE PAR DEFAUT, ET CE RAPPORT LE DIT. --etats-ouverts
     # et les matrices (--matrice-etats, --matrice-paires) rejouent chacun des etats DECLARES et
@@ -3841,6 +3874,48 @@ def cibler(entree, origine_distante: bool = False) -> Cible:
     return Cible(chemin.resolve().as_uri(), chemin.stem, False, chemin, "file://")
 
 
+# TF-1674 (lot Produit-80 20261012b, RD-1) — UNE APPLICATION DERRIERE UNE CONNEXION SE JUGE
+# CONNECTEE. Juger l'instantane sans script d'une application OIDC produisait des faux constats
+# (V1, « Tableau ROGNE », L2 sur la racine) et rendait --matrice-etats injouable : chaque etat
+# rechargeait la page et retombait sur l'ecran de connexion. L'oracle ne se connecte JAMAIS
+# lui-meme et ne lit aucun secret : il charge l'ETAT DE SESSION que le script de connexion du
+# produit a enregistre (`context.storage_state(path=...)` de Playwright), et toutes les pages
+# qu'il ouvre — matrices comprises — partagent ce contexte. Bornes : une instance SERVIE et
+# LOCALE seulement (une origine distante reste une donnee tierce, jamais authentifiee) ; le
+# fichier est passe tel quel au navigateur, son contenu n'est ni lu ni publie.
+THEMES_RENDU = {"clair": "clair (light)", "sombre": "sombre (dark)"}
+SCHEMAS_PLAYWRIGHT = {"clair": "light", "sombre": "dark"}
+
+
+def verifier_etat_session(cible: Cible, etat_session) -> Path | None:
+    """L'etat de session n'est accepte que pour une instance servie en local, et doit exister."""
+    if etat_session is None:
+        return None
+    chemin = Path(etat_session)
+    if not cible.servie:
+        sys.exit("ERREUR : --etat-session n'a de sens que sur une INSTANCE SERVIE (url "
+                 "http://localhost:…) — un fichier ouvert en file:// n'a pas de session")
+    hote = (urlsplit(cible.url).hostname or "").lower()
+    if hote not in HOTES_LOCAUX:
+        sys.exit(f"ERREUR : --etat-session refuse sur une origine NON LOCALE ({cible.origine}). "
+                 "Une page distante est une DONNEE TIERCE : lue, jamais authentifiee. Servir "
+                 "l'application en local et rejouer")
+    if not chemin.is_file():
+        sys.exit(f"ERREUR : etat de session introuvable : {chemin} — l'enregistrer par le script "
+                 "de connexion du produit (Playwright : context.storage_state(path=...))")
+    return chemin
+
+
+def options_contexte(etat_session: Path | None, theme: str | None) -> dict:
+    """Les options du contexte de navigateur : session chargee, schema de couleurs."""
+    options = {}
+    if etat_session is not None:
+        options["storage_state"] = str(etat_session)
+    if theme is not None:
+        options["color_scheme"] = SCHEMAS_PLAYWRIGHT[theme]
+    return options
+
+
 def _dossier_captures(cible: Cible, out_dir: Path | None) -> Path:
     """Où déposer les PNG. `--out` explicite fait foi ; sinon, jamais un arbre de livraison."""
     if out_dir is not None:
@@ -3942,6 +4017,15 @@ def main() -> None:
                          "de la page (ex. [role=tabpanel], section.chap) — un panneau masqué "
                          "est rendu visible le temps de sa capture. C'est la matière de la "
                          "revue de lecture (references/gabarit-revue-de-lecture.md)")
+    ap.add_argument("--etat-session", type=Path, default=None, dest="etat_session",
+                    help="TF-1674 : juge une application DERRIERE UNE CONNEXION. Fichier d'etat de "
+                         "session enregistre par le script de connexion du produit (Playwright "
+                         "context.storage_state). Toutes les pages ouvertes, matrices comprises, "
+                         "partagent cette session. Instance servie LOCALE seulement ; le contenu "
+                         "du fichier n'est ni lu ni publie")
+    ap.add_argument("--theme", choices=sorted(THEMES_RENDU), default=None,
+                    help="TF-1674 : schema de couleurs rendu (prefers-color-scheme). Defaut : celui "
+                         "du navigateur, clair. Une page a theme sombre se juge DEUX fois")
     args = ap.parse_args()
     if args.familles:
         print(json.dumps({"schema": "digit-ai/familles-mesure@1",
@@ -3961,7 +4045,8 @@ def main() -> None:
                          args.capture_timeout, args.sections,
                          args.matrice_etats, args.matrice_toutes_largeurs,
                          args.hauteur_max, args.matrice_paires, args.paires_max,
-                         args.origine_distante))
+                         args.origine_distante, etat_session=args.etat_session,
+                         theme=args.theme))
 
 
 if __name__ == "__main__":

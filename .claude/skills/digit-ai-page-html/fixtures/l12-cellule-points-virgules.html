@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Constats par point de controle — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--mark:#FEF08A;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1665 (RT-33, lot Produit-64 20261012b), sens ROUGE. Deux cellules de constat enchainent
+  deux faits par un point-virgule, mot pour mot le cas PC-07 du comparatif remis. Aucune n a trois
+  segments « cle — valeur » : la branche historique de L12 ne voyait rien.
+  Attendu : avertissement L12 en cellule, aucun echec L12.
+-->
+<body><main class="wrap">
+<h1>Constats par point de controle</h1>
+<table>
+<thead><tr><th>Point de controle</th><th>Constat</th></tr></thead>
+<tbody>
+<tr><td>PC-01 revue de code</td><td>Deux relecteurs exiges sur la branche principale.</td></tr>
+<tr><td>PC-07 passage par la recette</td><td>Aucun controle ; et 9 commits servis en production ne sont jamais passes par env/dev ni env/uat.</td></tr>
+<tr><td>PC-09 journal des deploiements</td><td>Le journal existe en production ; il manque sur les deux autres environnements.</td></tr>
+</tbody></table>
+</main></body></html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L28 en-tete qui dit date sans porter de date — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--mark:#FEF08A;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture L28 VERTE (TF-1677, lot 20261001b, seq 209).
+
+  LE FAIT : L28 accusait comme colonnes temporelles deux colonnes de CATEGORIES, sur le seul mot
+  « date » de leur en-tete : « Ce qui date l'entree » (date est un verbe) et « Date du fichier
+  lue dans » (des libelles de sources). Aucune cellule ne porte une date. Le produit a renomme
+  ses en-tetes pour passer.
+
+  Attendu : aucune regle. La jumelle `l28-entete-homonyme-et-vraie-date.html` ajoute une vraie
+  colonne de dates en libelles seuls : elle doit rester rouge sur L28.
+-->
+<body><main class="wrap" data-page="donnees">
+<h1>Provenance des entrees</h1>
+<p>Chaque ligne dit quel evenement date l'entree, et dans quelle source la date du fichier se lit.</p>
+<table>
+<thead><tr>
+<th data-definition="Nom de l'entree du registre. Source : registre interne. Ordre : alphabetique.">Entree</th>
+<th data-definition="Evenement qui fixe la date de l'entree. Valeurs : categories. Source : regle de gestion.">Ce qui date l'entree</th>
+<th data-definition="Support ou se lit la date du fichier. Valeurs : categories. Source : inventaire des sources.">Date du fichier lue dans</th>
+</tr></thead>
+<tbody>
+<tr><td>Contrat cadre</td><td>Signature</td><td>en-tete du document</td></tr>
+<tr><td>Avenant</td><td>Notification</td><td>metadonnees du fichier</td></tr>
+<tr><td>Bon de commande</td><td>Validation</td><td>nom du fichier</td></tr>
+<tr><td>Facture</td><td>Emission</td><td>corps du courriel</td></tr>
+</tbody></table>
+</main></body></html>

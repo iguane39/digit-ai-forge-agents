@@ -1186,6 +1186,18 @@ valeur d'ordre, sur une page de données. C'est le pendant de **G8** du composan
 ([`composant-filtres-tableau.md`](composant-filtres-tableau.md)) : la même valeur sert au tri et
 à l'ordre de la facette.
 
+**Le mot de l'en-tête ne fait pas la colonne (TF-1677, 14/10/2026).** L28 accusait deux colonnes
+de **catégories** sur le seul mot « date » de leur en-tête : « Ce qui date l'entrée » (le mot est un
+verbe) et « Date du fichier lue dans » (des libellés de sources). Aucune cellule ne portait une date,
+et le produit a dû renommer ses en-têtes. Une colonne n'est désormais jugée temporelle que si **au
+moins une** de ses cellules porte du temps : une valeur d'ordre (`data-v`, `data-sort`, ISO,
+`<time>`) ou un libellé qui a l'air d'une date (mois en toutes lettres ou abrégé, année, date
+chiffrée, trimestre T1-T4, semestre, semaine, jour relatif J+n). Une vraie colonne de mois en
+libellés seuls reste rouge. Fixtures : `l28-entete-homonyme.html` (verte),
+`l28-entete-homonyme-et-vraie-date.html` (rouge, la même page plus une vraie colonne de dates).
+Bruit mesuré : 0 page accusée avant comme après sur 192 pages HTML du parc (14/10/2026), la règle
+ne jugeant que les pages déclarées `data-page="donnees"`.
+
 ## L29 — En-tête collant contre thead collant : le socle tranche (TF-0754, 02/09/2026)
 
 **Le fait payé.** B1 (« header sticky », verdict *adapter*) et B6 (« tableau triable, thead
@@ -1446,6 +1458,49 @@ lié par « et » ou « ou » — est signalée : une liste à puces (E-11). **A
 Bruit mesuré : 193 pages averties sur 239 pages au socle du parc (13/10/2026), 798 constats (six au plus par page), parenthèses énumératives comprises — la règle E-11 était appliquée nulle part, d'où l'avertissement ; une virgule décimale (« 9,7 ») n'est pas une virgule d'énumération.
 
 Fixtures : `l12-enumeration-virgules.html` (rouge), `l12-virgules-prose.html` (verte).
+
+## L12 (cellules) — Une cellule qui enchaîne des faits par des points-virgules est une liste (TF-1665, RT-33, 14/10/2026)
+
+**Le fait.** Sur un comparatif remis, 25 cellules de constat sur 52 enchaînaient deux faits ou plus
+par un point-virgule (« aucun contrôle ; et 9 commits servis en production ne sont jamais passés par
+env/dev ni env/uat »). Le porteur a demandé des puces. Les deux branches de L12 ne voyaient rien :
+l'une ne lit que des paires « clé — valeur », et seulement au-delà de trois ; l'autre ne lit que
+des virgules.
+
+**La règle.** Une cellule `<td>` dont le texte se coupe en **deux segments ou plus** sur le
+point-virgule, chacun d'au moins deux mots, est signalée : une liste à puces par fait dans la
+cellule (`<ul>`). Une cellule déjà structurée (liste, paragraphes, dépliant), une cellule citée
+(`data-cite`) et une cellule de code ne sont pas jugées ; « Paris ; Lyon » n'enchaîne pas deux
+faits. Le seuil de la prose courante ne bouge pas. **Avertissement**, une ligne par tableau.
+Bruit mesuré : 47 pages averties sur 192 pages HTML du parc (14/10/2026) — des colonnes de constats,
+de sources et de motifs écrites en phrases à points-virgules, d'où l'avertissement.
+
+Fixtures : `l12-cellule-points-virgules.html` (rouge), `l12-cellule-en-puces.html` (verte).
+
+## L37 — Un écart dit son remède, ligne à ligne (TF-1664, RT-58, 14/10/2026)
+
+**Le fait.** Un comparatif portait deux colonnes de statut ; 21 lignes sur 26 étaient en « Écart » ou
+« Partiel », et aucune ne disait quoi faire : les remèdes vivaient dans un autre tableau, sans renvoi
+ligne à ligne. `check_html.py`, `render_page.py` et les oracles de `digit-ai-forge-design` rendaient
+PASS ; le porteur l'a renvoyé : « pour chaque ligne de la comparaison, fournis les actions de
+remédiation ». L3 juge la légende des statuts, L10 l'exemple de lecture, L27 la définition des
+colonnes : aucune règle ne reliait une valeur d'écart à un remède.
+
+**La règle.** Dans un tableau, une ligne dont une cellule porte un statut **défavorable** porte
+aussi son **action** : une cellule renseignée d'une colonne d'action (en-tête Action, Remédiation,
+Remède, Correctif, À faire, Prochaine étape, Plan d'action, Recommandation, Levée, Mesure
+corrective), ou un **lien interne** (`href="#…"`) vers l'action qui la lève, hors de la cellule de
+statut. Valeurs défavorables du socle (casse et accents ignorés, cellule de 40 caractères au plus) :
+Écart, En écart, Partiel, Non conforme, KO, FAIL, Échec, Non tenu. Une page en déclare d'autres par
+`data-statut-defavorable="Valeur A|Valeur B"` sur le tableau, ou marque une cellule par
+`data-statut-defavorable`. Une ligne tenue dit « aucune action » et pourquoi — c'est l'usage, la
+règle ne l'exige pas. **Avertissement**, une ligne par tableau. Bruit mesuré : 8 pages averties sur
+192 pages HTML du parc (14/10/2026) : sept rapports d'audit dont les verdicts « Partiel » ou
+« Non conforme » ne portent pas leur action ligne à ligne — le cas même de RT-58 — et une étude
+d'opportunité (une ligne « partiel »).
+
+Fixtures : `l37-ecart-sans-remede.html` (rouge), `l37-ecart-avec-remede.html` (verte, colonne
+d'action), `l37-ecart-lien-vers-action.html` (verte, lien interne).
 
 ## L35 — La typographie française tient aux coupures de ligne (TF-1384, RG-16, 13/10/2026)
 

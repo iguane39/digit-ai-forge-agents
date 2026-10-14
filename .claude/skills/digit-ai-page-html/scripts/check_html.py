@@ -39,6 +39,7 @@ import os
 import re
 import shutil
 import sys
+import unicodedata
 
 # Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression
 # de caractères hors Latin-1 (✅, ①-⑤, tirets cadratins…). Garde-fou si non supporté.
@@ -247,6 +248,25 @@ RE_SEGMENT = re.compile(r"^[^;]{3,}?\s[—–]\s[^;]{3,}$")
 SEUIL_ENUM_VIRGULES = 4
 RE_FIN_PHRASE_L12 = re.compile(r"(?<=[.!?;:])\s+")
 RE_DERNIER_LIE = re.compile(r"^\S+(?:\s+\S+){0,3}\s+(?:et|ou)\s+\S+(?:\s+\S+){0,3}$", re.I)
+
+# L12 (cellules, TF-1665) — une cellule de tableau qui enchaîne DEUX faits ou plus par des
+# points-virgules (« aucun contrôle ; et 9 commits servis en production ne sont jamais passés par
+# env/dev »). Le seuil de la prose courante (plus de trois segments « clé — valeur ») ne voit pas
+# une cellule : elle en a rarement trois, et ses faits ne sont pas des paires. Un segment compte
+# s'il porte au moins deux mots ; une cellule chiffrée ou de code n'est pas une colonne de texte.
+RE_SEGMENT_CELLULE = re.compile(r"[^\W\d_]{2,}.*\s+\S{2,}", re.S)
+
+# L37 (TF-1664) — UN ÉCART DIT SON REMÈDE, LIGNE À LIGNE. Les valeurs de statut que le socle lit
+# comme DÉFAVORABLES (texte de la cellule, accents et casse ignorés), et le vocabulaire d'un
+# en-tête de colonne d'ACTION. Une page déclare d'autres valeurs défavorables par
+# `data-statut-defavorable="Valeur A|Valeur B"` sur le tableau, ou marque une cellule par
+# `data-statut-defavorable`.
+STATUTS_DEFAVORABLES = ("ecart", "en ecart", "partiel", "partielle", "non conforme",
+                        "non-conforme", "ko", "fail", "echec", "non tenu", "non tenue")
+RE_TH_ACTION = re.compile(
+    r"\b(actions?|r[ée]m[ée]diations?|rem[èe]des?|correctifs?|corrections?|[àa] faire|"
+    r"prochaines? [ée]tapes?|plan d.action|recommandations?|lev[ée]e|mesures? correctives?)\b",
+    re.I)
 
 
 # L35 (TF-1384) — les points de coupure INTERDITS par la typographie française. L'espace jugée est
@@ -894,6 +914,18 @@ RE_TH_TEMPS = re.compile(
     r"ann[ée]e|annee|[ée]ch[ée]ance|echeance|jour|semaine|calendrier|horizon)\b", re.I)
 # Une valeur qui porte son ordre en clair : ISO date, mois ISO, ou horodatage.
 RE_VALEUR_ISO = re.compile(r"^\d{4}-\d{2}(?:-\d{2})?(?:[T ].*)?$")
+# TF-1677 (lot 20261001b, seq 209) — une cellule qui a l'AIR d'une valeur de temps : un mois en
+# toutes lettres ou abrégé, une année, une date chiffrée, un trimestre, un semestre, une semaine,
+# un jour relatif. L'en-tête seul ne suffit pas à faire une colonne temporelle : « Ce qui date
+# l'entrée » (date est un verbe) et « Date du fichier lue dans » (libellés de sources) portaient
+# le mot sans porter une seule date, et L28 les accusait.
+RE_CELLULE_TEMPS = re.compile(
+    r"\b(?:janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|"
+    r"d[ée]cembre|janv|f[ée]vr|avr|juil|sept|oct|nov|d[ée]c|january|february|march|april|may|"
+    r"june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|dec|"
+    r"lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|semaine|trimestre|semestre)\b\.?"
+    r"|\b(?:19|20)\d{2}\b|\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b|\b[TQS][1-4]\b|\b[JMS][+-]\d+\b",
+    re.I)
 
 BALISES_CITATION = ("code", "pre", "kbd", "samp")
 
@@ -3197,6 +3229,88 @@ def check_lisibilite(html: str, a: Arbre):
                          "au-delà de trois, une liste à puces (E-11) : le lecteur compte, compare "
                          "et repère l'élément qu'il cherche.")
 
+    # --- L12 (cellules) : plusieurs faits enchaînés par des points-virgules dans une cellule (TF-1665) ---
+    # RT-33 du lot Produit-64 20261012b : 25 cellules de constat sur 52 d'un comparatif remis
+    # enchaînaient deux faits ou plus par un point-virgule ; le porteur a demandé des puces. Les deux
+    # branches de L12 ci-dessus ne voyaient rien : l'une ne lit que des paires « clé — valeur » et
+    # seulement au-delà de trois, l'autre que des virgules. AVERTISSEMENT (D-70 (b)) : une règle
+    # neuve n'entre en échec qu'après la mesure de son bruit sur le parc. Une cellule qui porte déjà
+    # une liste ou des blocs, une cellule citée (data-cite) et une cellule de code ne sont pas
+    # jugées.
+    for t in [n for n in a.racine.descendants() if n.tag == "table"]:
+        cellules_l12 = []
+        for td in (n for n in t.descendants() if n.tag == "td"):
+            # Une cellule déjà structurée en blocs (liste, paragraphes, dépliant) n'est pas une
+            # phrase : ses points-virgules se lisent dans des blocs que le lecteur voit séparés.
+            if _contenu_cite(td) or any(x.tag in ("ul", "ol", "code", "pre", "table", "p", "div",
+                                                  "details", "dl", "blockquote")
+                                        for x in td.descendants()):
+                continue
+            segments = [s.strip() for s in td.texte_propre().split(";")]
+            faits = [s for s in segments if RE_SEGMENT_CELLULE.search(s)]
+            if len(segments) >= 2 and len(faits) >= 2:
+                cellules_l12.append(td)
+        if cellules_l12:
+            extrait = cellules_l12[0].texte_propre()
+            warns.append(f"L12 énumération en cellule (avertissement) : {len(cellules_l12)} "
+                         f"cellule(s) enchaînent plusieurs faits par des points-virgules "
+                         f"(« {extrait[:70]}… », {cellules_l12[0].chemin()}) — une liste à puces "
+                         "par fait dans la cellule (`<ul>`) : le lecteur compte les faits et "
+                         "lit chacun seul (E-11).")
+
+    # --- L37 : un écart dit son remède, ligne à ligne (TF-1664) ------------------------------
+    # RT-58 du lot Produit-64 20261012b : un comparatif portait deux colonnes de statut, 21 lignes
+    # sur 26 en « Écart » ou « Partiel », et AUCUNE ne disait quoi faire — les remèdes vivaient
+    # dans un autre tableau, sans renvoi ligne à ligne. check_html, render_page et les oracles de
+    # forge-design rendaient PASS ; le porteur l'a renvoyé : « pour chaque ligne de la
+    # comparaison, fournis les actions de remédiation ». Aucune règle ne reliait une valeur
+    # d'écart à un remède (L3 juge la légende, L10 l'exemple de lecture, L27 la définition).
+    # Une ligne dont une cellule porte un statut DÉFAVORABLE porte aussi son action : une cellule
+    # non vide d'une colonne d'action (Action, Remédiation, Correctif, À faire…), ou un lien
+    # interne (`href="#…"`) vers l'action, hors de la cellule de statut. AVERTISSEMENT (D-70 (b)).
+    def _norm_statut(s):
+        s = unicodedata.normalize("NFD", s or "")
+        s = "".join(c for c in s if unicodedata.category(c) != "Mn").lower()
+        return re.sub(r"^[^\w]+|[^\w]+$", "", re.sub(r"\s+", " ", s)).strip()
+
+    for t in [n for n in a.racine.descendants() if n.tag == "table"]:
+        declares = {_norm_statut(v) for v in (t.att("data-statut-defavorable") or "").split("|")
+                    if v.strip()}
+        defavorables = set(STATUTS_DEFAVORABLES) | declares
+        entetes = [n for n in t.descendants() if n.tag == "th"
+                   and n.parent is not None and n.parent.tag == "tr"
+                   and any(x.tag == "thead" for x in n.ancetres())]
+        idx_action = set()
+        if entetes:
+            freres = [c for c in entetes[0].parent.enfants
+                      if isinstance(c, Noeud) and c.tag in ("th", "td")]
+            idx_action = {i for i, c in enumerate(freres) if RE_TH_ACTION.search(c.texte_propre())}
+        lignes = [tr for tr in t.descendants() if tr.tag == "tr"
+                  and not any(x.tag == "thead" for x in tr.ancetres())]
+        en_ecart, sans_remede, valeur = 0, [], ""
+        for tr in lignes:
+            cellules = [c for c in tr.enfants if isinstance(c, Noeud) and c.tag in ("td", "th")]
+            statuts = [c for c in cellules if "data-statut-defavorable" in c.attrs
+                       or (len(c.texte_propre()) <= 40
+                           and _norm_statut(c.texte_propre()) in defavorables)]
+            if not statuts:
+                continue
+            en_ecart += 1
+            action = any(i in idx_action and len(re.sub(r"[\W_]+", "", c.texte_propre())) >= 3
+                         for i, c in enumerate(cellules))
+            lien = any(x.tag == "a" and (x.att("href") or "").startswith("#")
+                       and len(x.att("href") or "") > 1
+                       for c in cellules if c not in statuts for x in c.descendants())
+            if not (action or lien):
+                sans_remede.append(tr)
+                valeur = valeur or statuts[0].texte_propre()
+        if sans_remede:
+            warns.append(f"L37 écart sans remède (avertissement) : {len(sans_remede)} ligne(s) sur "
+                         f"{en_ecart} en statut défavorable (« {valeur[:24]} ») ne disent pas quoi "
+                         f"faire ({t.chemin()}) — chaque ligne en écart porte son action : une "
+                         "colonne Action / Remédiation renseignée, ou un lien interne (#…) vers "
+                         "l'action qui la lève ; une ligne tenue dit « aucune action » et pourquoi.")
+
     # --- L35 : la typographie française tient aux coupures de ligne (TF-1384) ----------
     # RG-16 (26/09/2026) : sur une présentation, des deux-points ouvraient une ligne, « (point »
     # finissait une ligne et « 4) » ouvrait la suivante, un titre se coupait entre « chapitre » et
@@ -3463,6 +3577,16 @@ def check_lisibilite(html: str, a: Arbre):
                     if len(tds) > idx:
                         cellules.append(tds[idx])
                 if not cellules:
+                    continue
+                # TF-1677 — le mot de l'en-tête ne fait pas la colonne : il faut qu'au moins une
+                # cellule porte du temps (valeur d'ordre, ou libellé qui a l'air d'une date).
+                # Une colonne de catégories dont l'en-tête dit « date » comme un verbe n'est pas
+                # jugée ; une vraie colonne de mois en libellés seuls reste rouge.
+                if not any(c.att("data-v") or c.att("data-sort")
+                           or RE_VALEUR_ISO.match(c.texte_propre())
+                           or RE_CELLULE_TEMPS.search(c.texte_propre())
+                           or any(x.tag == "time" for x in c.descendants())
+                           for c in cellules):
                     continue
                 sans_ordre = [c for c in cellules
                               if not (c.att("data-v") or c.att("data-sort")

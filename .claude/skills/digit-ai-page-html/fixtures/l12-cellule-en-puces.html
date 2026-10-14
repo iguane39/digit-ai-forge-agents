@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Constats par point de controle — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--mark:#FEF08A;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+ul.cellule{margin:0;padding-left:18px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1665 (RT-33, lot Produit-64 20261012b), sens VERT. Le meme tableau que
+  `l12-cellule-points-virgules.html`, corrige comme le produit l a fait : une liste a puces par
+  fait dans la cellule (ul.cellule). Une cellule a un seul fait reste une phrase, et un
+  point-virgule entre deux mots seuls (« Paris ; Lyon ») n enchaine pas deux faits.
+  Attendu : aucun avertissement L12 en cellule.
+-->
+<body><main class="wrap">
+<h1>Constats par point de controle</h1>
+<table>
+<thead><tr><th>Point de controle</th><th>Constat</th><th>Sites</th></tr></thead>
+<tbody>
+<tr><td>PC-01 revue de code</td><td>Deux relecteurs exiges sur la branche principale.</td><td>Paris ; Lyon</td></tr>
+<tr><td>PC-07 passage par la recette</td><td><ul class="cellule"><li>Aucun controle.</li><li>9 commits servis en production ne sont jamais passes par env/dev ni env/uat.</li></ul></td><td>Paris</td></tr>
+<tr><td>PC-09 journal des deploiements</td><td><ul class="cellule"><li>Le journal existe en production.</li><li>Il manque sur les deux autres environnements.</li></ul></td><td>Lyon</td></tr>
+</tbody></table>
+</main></body></html>

@@ -7,13 +7,26 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.28.1"
+  version: "1.29.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.29.0 (14/10/2026)** — **cinq retours de produits corrigés à la cause ; les deux règles neuves
+entrent en avertissement.** · **L37** : une ligne en statut défavorable (Écart, Partiel, Non
+conforme…) porte son action, colonne d'action ou lien interne (TF-1664, RT-58). · **L12 en
+cellule** : deux faits ou plus enchaînés par des points-virgules dans une cellule de tableau
+(TF-1665, RT-33). · **L28** ne juge plus une colonne sur le seul mot « date » de son en-tête : une
+cellule au moins doit porter du temps (TF-1677). · **`controles_desalignes`** ne prend plus la
+grille sommaire latéral + contenu pour une rangée de formulaire (TF-1663, RT-8). ·
+**`render_page.py --etat-session` et `--theme`** : une application derrière une connexion se juge
+connectée, matrices comprises, et un thème sombre se rend sur demande (TF-1674, RD-1). · Le
+gabarit multi-bandes de `digit-ai-schemas`, **instancié**, passe `check_html.py` et
+`render_page.py` aux six largeurs, rejoué par le self-test (TF-1660, RT-5). Détail et bruit mesuré :
+`references/lisibilite.md` (L12 en cellule, L28, L37), `references/zero-defaut-visuel.md` (V11).
 
 **1.28.1 (13/10/2026)** — **une page lue par une machine se déclare, au lieu d'être exemptée à la
 main.** · `check_html.py --classe=source-machine`, ou `<meta name="classe-artefact"
@@ -559,6 +572,16 @@ toute autre origine **arrête l'outil** tant que `--origine-distante` n'est pas 
 distante reste une **donnée tierce** — lecture seule, aucune authentification, aucune saisie de
 secret. Le geste attendu est de servir la page en local (`python -m http.server` dans son dossier).
 **Le mode fichier reste le défaut** : sans URL, rien de tout cela ne s'active.
+
+**UNE APPLICATION DERRIÈRE UNE CONNEXION (TF-1674).** `--etat-session <fichier>` charge l'état de
+session que le script de connexion du produit a enregistré (Playwright
+`context.storage_state(path=…)`) : la page jugée est l'application, plus l'écran de connexion, et
+chaque état d'une matrice rechargé reste connecté. L'oracle ne se connecte jamais lui-même et ne lit
+pas le fichier ; il est refusé sur un fichier `file://` et sur une origine non locale, et le
+verdict déclare la session au non jugé. `--theme sombre` rend la page sous
+`prefers-color-scheme: dark` ; le thème rendu est toujours déclaré, et une page à thème sombre se
+juge deux fois. Fixtures du banc : `session-connexion.html`, `session-application.html`,
+`theme-sombre-deborde.html`.
 
 Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de la largeur
 qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'une grille —

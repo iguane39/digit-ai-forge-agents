@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — grille sommaire et contenu, pas une rangee — 20261014a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+h2{font-family:var(--head);font-size:1.1rem;margin:24px 0 8px}
+.mise-en-page{display:grid;grid-template-columns:260px 1fr;gap:24px;max-width:1400px;margin:0 auto;padding:24px}
+nav.toc{position:sticky;top:0;align-self:start}
+nav.toc input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit}
+nav.toc ul{list-style:none;padding:0;margin:12px 0 0}
+nav.toc li{margin:0 0 8px}
+.long{height:2800px}
+.long p{max-width:none;margin:0 0 12px;color:var(--muted)}
+.filtre{padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);
+ color:var(--ink);font:inherit}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de la famille `controles_desalignes` (TF-1663, lot Produit-81 20261013b, RT-8).
+
+  Le cas paye, reduit a sa forme : la grille de mise en page d'une page au socle, un sommaire
+  lateral (L25) qui porte son champ de recherche (L13), et un contenu dont le premier controle
+  (le bouton de filtre d'un tableau) vit 2 800 px plus bas. Avant la correction : « 2 controles
+  d'une meme rangee sur 2 hauteurs — ecart de 2 920px », bloquant a 1280, 1920, 2560 et 3840 px.
+  Ces deux enfants sont une NAVIGATION et une REGION de page, pas deux champs d'une rangee.
+
+  Attendu a 1440 px : 0 constat `controles_desalignes`. La fixture jumelle
+  `ctrl-grille-sommaire-rangee-desalignee.html` pose une vraie rangee decalee DANS le contenu :
+  elle doit rester rouge.
+-->
+<body><div class="mise-en-page">
+<nav class="toc" aria-label="Sommaire">
+  <label for="q">Rechercher dans la page</label><input id="q" type="search">
+  <ul><li><a href="#c1">Chapitre 1</a></li><li><a href="#c2">Chapitre 2</a></li></ul>
+</nav>
+<main>
+  <h1 id="c1">Registre des contrats</h1>
+  <div class="long"><p>Le registre se lit de haut en bas ; le tableau filtrable est plus bas.</p></div>
+  <h2 id="c2">Tableau</h2>
+  <button class="filtre" type="button">Filtrer la colonne Statut</button>
+</main>
+</div></body></html>
