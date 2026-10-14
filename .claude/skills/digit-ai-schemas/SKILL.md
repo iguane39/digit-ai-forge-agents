@@ -55,7 +55,7 @@ Gabarit minimal d'un nœud et d'une flèche avec tooltips :
 
 Le SVG est toujours encapsulé dans une page HTML autonome Digit-AI : eyebrow majuscules espacées + H1 Montserrat 800 (42px) + sous-titre Inter + bloc méta `V{n}{indice} · {date longue}` ; diagram-wrap (fond gris très clair, bordure, radius 12px, padding 28px 20px, overflow-x auto) ; caption `Figure N — Description courte.` en italique gris 13px ; footer flex space-between avec brand à gauche. Détails (variables CSS, responsive, print) dans `references/conventions-communes.md`.
 
-Nommage : `{Marque} - {TypeDoc} {Client} - {Scope} - {YYYYMMDD}{indice}.{ext}` (ex. `Digit-AI - Brief POC-Hub - Architecture detaillee - 20260527d.html`). Indice alphabétique incrémenté à chaque itération du jour, redémarre à `a` chaque jour. Numéro de version (V0, V1…) affiché dans le bloc méta du contenu, **jamais dans le nom de fichier**.
+Nommage : `{Marque} - {TypeDoc} {Client} - {Scope} - {YYYYMMDD}{indice}.{ext}` (ex. `Digit-AI - Brief Produit-A - Architecture detaillee - 20260527d.html`). Indice alphabétique incrémenté à chaque itération du jour, redémarre à `a` chaque jour. Numéro de version (V0, V1…) affiché dans le bloc méta du contenu, **jamais dans le nom de fichier**.
 
 **Aucune police distante (A1/D-10, TF-0308) — et les faces sont EMBARQUÉES (TF-0336).** Les gabarits ne portent plus de `<link>` vers `fonts.googleapis.com` : un livrable qui téléphone au chargement signale au serveur tiers quand et d'où il est lu, et perd son rendu hors ligne. Ne pas remettre ces `<link>` dans une page produite.
 
