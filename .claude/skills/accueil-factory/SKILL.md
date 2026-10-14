@@ -12,7 +12,7 @@ description: >
   qu'un dépôt préexistant veut adopter le dispositif. Ne pas déclencher dans un projet déjà
   instrumenté (son `CLAUDE.md` et ses hameçons font le travail), ni pour un « factory pattern »
   ou une « AbstractFactory » (conception logicielle, sans rapport).
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Accueil de la forge Digit-AI
@@ -85,8 +85,20 @@ consigne l'écart initial au carnet des écarts assumés du projet plutôt que d
 L'installateur la joue d'office : parce qu'elle ne modifie aucun fichier existant, elle ne se
 soumet pas à accord. `--essai` reste disponible pour montrer sans écrire.
 
+**Le dépôt est celui de l'utilisateur, sans question (14/10/2026).** Ne jamais demander « ce
+dépôt est-il le vôtre ou celui d'un tiers ? » : le socle se pose dans le dépôt. Le mode hors
+dépôt ne s'ouvre que si le message de l'utilisateur dit lui-même que le dépôt est à un tiers.
+
+**Une demande d'installation finit sur la bannière (14/10/2026).** La réponse s'ouvre sur la
+ligne « FACTORY DIGIT-AI OPÉRATIONNELLE » recopiée telle quelle, puis dit ce qui a été posé et
+relit les écarts de départ sans en trancher aucun. Jamais « <projet> est maintenant adopté ».
+Sans intention de run concrète dans le message, aucune question ne suit : ni douleur, ni
+intention, ni forge attendue. La session s'arrête sur « Pour commencer, dites ce que vous
+voulez obtenir ».
+
 ## 4. Dérouler le protocole d'accueil du pilot
 
+Seulement quand le message porte une intention de run concrète.
 `references\ACCUEIL.md` du pilot, ses 7 étapes, **dans l'ordre et sans improvisation** : identifier
 l'intention, la reformuler en 2 à 5 phrases sans jargon, nommer les forges mobilisées et pourquoi,
 afficher leurs catalogues tels quels — un service déclaré s'annonce comme non prouvé —, lister
