@@ -474,7 +474,7 @@ CAS_RENDU = {
     # désormais QUELLE QUE SOIT la propriété ; la mesure de lecture se pose sur le conteneur
     # (.chap.lire), jamais sur le paragraphe.
     "l2r-texte-width-min.html": ("l2_width", 1),       # bride par width:min(ch)
-    "l2r-chap-lire.html": ("l2_width", 0),             # conteneur de lecture, texte plein
+    "l2r-chap-lire.html": [("l2_width", 0), ("l2_conteneur", 0)],  # conteneur centre, texte plein (TF-1799)
     # TF-0444 (21/08) : <colgroup>/<col> DÉCLARENT des largeurs, ils ne mettent rien en page —
     # leur boîte englobe celle du tableau, donc tout tableau à colgroup rendait deux faux
     # positifs BLOQUANTS (50 mesurés sur un livrable sain). Les deux sens sont dus : sans la
@@ -612,6 +612,11 @@ CAS_RENDU = {
     # dessous, pas sur l'encre heritee de la page. Sans la correction, la rouge rendait 0 constat.
     "v2-svg-libelle-couleur-de-sa-boite.html": ("v2_contrast", 2),
     "v2-svg-libelle-lisible-sur-sa-boite.html": ("v2_contrast", 0),
+    # Complement « reste-svg-sombre » (15/10/2026) — un fond ecrit en oklch() est un fond : V2 ne
+    # lisait que rgb(), sautait le panneau et jugeait le libelle sur le blanc par defaut. Avant :
+    # clair 2 constats (faux), sombre 0 (manque) ; apres : 0 et >= 1.
+    "v2-svg-panneau-oklch-clair.html": ("v2_contrast", 0),
+    "v2-svg-panneau-oklch-sombre.html": ("v2_contrast", 1),
     # TF-1369 (lot Produit-68 20260924a, RG-8) : une fleche se juge par son trace. Rouge : une
     # traversee et une confusion (l'ancienne mesure ne voyait que la seconde, par sa boite) ;
     # verte : une fleche coudee dont la boite recouvre une brique sans la toucher (l'ancienne
@@ -647,6 +652,15 @@ CAS_RENDU = {
     # <th> a gauche ; verte : la MEME page avec le composant de filtres, qui pose th.tf-num.
     "entete-desaligne.html": ("entete_desaligne", 1),
     "entete-aligne-composant.html": ("entete_desaligne", 0),
+    # TF-1800 (lot Produit-83 20261015b, RA-6) — un en-tete reserve au lecteur d'ecran (boite de
+    # 1 px rognee, dans le <th> ou sur le <th>) ne se desaligne de rien : 1 constat avant, 0 apres.
+    "entete-masque-accessibilite.html": ("entete_desaligne", 0),
+    # TF-1799 (lot Produit-83 20261015b, RA-5) — les remedes que les messages L2 nomment, JOUES :
+    # page d'application declaree page de donnees, colonne etroite declaree. Le conteneur centre
+    # est l2r-chap-lire (ci-dessus). Chacun passe toutes les familles L2 de la largeur de lecture.
+    "l2-remede-page-application.html": [("l2_width", 0), ("l2_conteneur", 0), ("prose_etroite", 0),
+                                        ("conteneur_bride_donnees", 0)],
+    "l2-remede-colonne-declaree.html": [("l2_width", 0), ("l2_conteneur", 0)],
     # TF-0930 (lot Produit-10 20260908b) — le troisieme angle de la page de donnees : le
     # CONTENEUR contre la FENETRE. La paire porte le MEME token `--w` du socle ; la seule
     # difference est la regle qui en exempte une page declaree page de donnees. La rouge
@@ -2036,6 +2050,108 @@ def run_accolade_dans_une_valeur():
     return out
 
 
+def jetons_solid_absents(charte: str, gabarit: str) -> list[str]:
+    """TF-1744 — les jetons `--*-solid` que la charte définit (et que le message de V16 prescrit)
+    sans que le gabarit de départ les pose dans ses trois projections (clair, sombre, impression)."""
+    jetons = sorted(set(re.findall(r"--([a-z]+-solid)\s*:", charte)))
+    return [f"--{j} ({n} projection(s))" for j in jetons
+            if (n := len(re.findall(r"--" + re.escape(j) + r"\s*:", gabarit))) < 3]
+
+
+def run_avertissements_15_10():
+    """Campagne du 15/10/2026 — retours Produit-03 (08/09) et Produit-64 (15/10) sur check_html.
+
+    TF-1742 (RA-41) : L38, un listing dont les lignes renvoient leur détail vers des sections d'un
+    autre chapitre qui complètent le même objet — avertissement (règle neuve, D-70 (b)).
+    TF-1763 (RT-68) : L3 bis juge le `<title>` d'un groupe SVG et le title d'un lien de ligne de
+    tableau ligne par ligne contre le texte de SON groupe ou de SA ligne, préfixe de code retiré —
+    avertissement, au même rang que les recopies de TF-1609.
+    TF-1743 (RA-42) : « Indice » sur des numéros de version AAAAMMJJ<lettre> n'est pas une colonne
+    calculée ; le même mot sur des valeurs calculées reste accusé (sens rouge).
+    TF-1744 (RA-43) : les jetons `*-solid` que V16 prescrit sont posés par le gabarit de départ.
+    """
+    out = []
+    PAIRES = [("l38-listing-detail-ailleurs.html", "L38 ", True, "TF-1742"),
+              ("l38-listing-detail-dans-la-ligne.html", "L38 ", False, "TF-1742"),
+              ("l37-ecart-lien-vers-action.html", "L38 ", False, "TF-1742"),
+              ("l3-infobulle-recopie-sa-carte.html", "L3 infobulle qui RECOPIE sa ", True, "TF-1763"),
+              ("l3-infobulle-complete-sa-carte.html", "L3 infobulle qui RECOPIE sa ", False, "TF-1763")]
+    for nom, prefixe, attendu, tf in PAIRES:
+        fails, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+        vus = [w for w in warns if w.startswith(prefixe)]
+        bloque = [f for f in fails if f.startswith(prefixe)]
+        ok = bool(vus) == attendu and not bloque
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"{tf} avertissement {'présent' if attendu else 'absent'}, 0 échec",
+                    "obtenu": f"{len(vus)} avertissement(s), {len(bloque)} échec(s)",
+                    "regle": prefixe.strip(), "detail": "" if ok else " | ".join(vus + bloque)[:300]})
+    for nom, attendu in (("l3-indice-de-version.html", False), ("l3-indice-calcule.html", True)):
+        fails, _ = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+        vu = [f for f in fails if f.startswith("L3 colonne calculée sans formule")]
+        ok = bool(vu) == attendu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"TF-1743 échec colonne calculée {'présent' if attendu else 'absent'}",
+                    "obtenu": f"{len(vu)} échec(s)", "regle": "L3 colonne calculée",
+                    "detail": "" if ok else " | ".join(vu)[:200]})
+    racine = FIXTURES.parent
+    charte = (racine / "references" / "charte-et-tokens.md").read_text(encoding="utf-8")
+    gabarit = (racine / "assets" / "boilerplate.html").read_text(encoding="utf-8")
+    absents = jetons_solid_absents(charte, gabarit)
+    nb = len(set(re.findall(r"--([a-z]+-solid)\s*:", charte)))
+    out.append({"fixture": "assets/boilerplate.html · jetons *-solid (V16)",
+                "verdict": "OK" if nb >= 6 and not absents else "ECHEC",
+                "attendu": f"TF-1744 {nb} jeton(s) *-solid posés dans les 3 projections",
+                "obtenu": "; ".join(absents) or "0 absent", "regle": "TF-1744 remède dans le gabarit",
+                "detail": ""})
+    rouge = jetons_solid_absents(charte, ":root { --green-fill: #F2FCF5; }")
+    out.append({"fixture": "sens rouge · gabarit sans *-solid",
+                "verdict": "OK" if len(rouge) == nb and nb >= 6 else "ECHEC",
+                "attendu": f"{nb} jeton(s) nommés absents", "obtenu": str(len(rouge)),
+                "regle": "TF-1744 remède dans le gabarit", "detail": ""})
+    return out
+
+
+def run_l2_remedes_nommes():
+    """TF-1799 (lot Produit-83 20261015b, RA-5) — UNE RÈGLE QUI INTERDIT SON PROPRE REMÈDE.
+
+    Brider le paragraphe donnait « bride par max-width » ; brider le conteneur, « conteneur de
+    lecture calé à gauche » ; aucun message ne nommait `data-page="donnees"`. Les deux messages
+    doivent désormais nommer les sorties qui passent : conteneur CENTRÉ, page de données déclarée,
+    colonne étroite déclarée. Chacune est jouée et PASSE par une fixture de CAS_RENDU
+    (l2r-chap-lire, l2-remede-page-application, l2-remede-colonne-declaree).
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-l2-remedes-")
+    out = []
+    try:
+        for nom, famille in (("l2r-texte-a-50-pourcent.html", "l2_width"),
+                             ("l2c-conteneur-cale-a-gauche.html", "l2_conteneur")):
+            r = subprocess.run(
+                [sys.executable, "-X", "utf8", str(Path(__file__).resolve().parent / "render_page.py"),
+                 str(FIXTURES / nom), "--widths", "1440", "--output", "json", "--out", captures],
+                capture_output=True, text=True, encoding="utf-8")
+            try:
+                details = [i.get("detail", "") for i in
+                           json.loads(r.stdout)["breakpoints"]["1440"]["issues"][famille]]
+            except Exception:  # noqa: BLE001
+                details = []
+            manques = [m for m in ('data-page="donnees"', "data-colonne-ok", "centr")
+                       if not details or not all(m in d for d in details)]
+            ok = bool(details) and not manques
+            out.append({"fixture": f"{nom} · message {famille}", "verdict": "OK" if ok else "ECHEC",
+                        "attendu": "TF-1799 le message nomme les 3 remèdes qui passent",
+                        "obtenu": f"{len(details)} constat(s), manque : {', '.join(manques) or 'rien'}",
+                        "regle": "TF-1799 remède nommé", "detail": "" if ok else " | ".join(details)[:300]})
+    finally:
+        shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 ANNONCES_PLAGE_L = (
     re.compile(r"règles de lisibilité L1[–-]L(\d+)", re.I),
     re.compile(r"--regles L\s+#\s*L1[–-]L(\d+)"),
@@ -2810,6 +2926,23 @@ def run_session_et_theme():
                 and not any(JETON in x for x in avec.get("non_juge", [])),
                 "session declaree, jeton jamais publie", "voir non_juge",
                 "un verdict connecte doit le dire, sans publier le contenu de la session")
+            # TF-1788 (lot Produit-83 20261015b, RA-4) — la MIRE se reconnait et se dit : sans
+            # session, l'oracle nomme le geste (--etat-session) ; connecte, il n'en dit rien.
+            mire_sans = [x for x in sans.get("non_juge", []) if "MIRE DE CONNEXION" in x]
+            cas("session · mire vue sans --etat-session, geste nomme (TF-1788)",
+                bool(mire_sans) and all("--etat-session" in x for x in mire_sans),
+                "non_juge MIRE DE CONNEXION + --etat-session", f"{len(mire_sans)} ligne(s)",
+                "une mire jugee en silence : le verdict passe pour celui de l'application")
+            cas("session · aucune mire dite une fois connecte (TF-1788)",
+                not any("MIRE DE CONNEXION" in x for x in avec.get("non_juge", [])),
+                "0 ligne MIRE", "voir non_juge", "l'application connectee est prise pour une mire")
+        fichier, rf = juger(str(FIXTURES / "session-connexion.html"), [])
+        mire_f = [] if fichier is None else [x for x in fichier.get("non_juge", [])
+                                             if "MIRE DE CONNEXION" in x]
+        cas("session · mire sur un fichier : servir puis --etat-session (TF-1788)",
+            bool(mire_f) and all("INSTANCE SERVIE" in x and "--etat-session" in x for x in mire_f),
+            "non_juge MIRE + instance servie + --etat-session", f"{len(mire_f)} ligne(s)",
+            (rf.stderr or "")[:160] if fichier is None else "mire non dite en mode fichier")
         # L'etat « tout-deplie » recharge la page puis ouvre son <details> : il n'est JOUE que si
         # le rechargement est reste dans l'application (l'ecran de connexion n'en porte pas), et
         # ce sont les constats de CET etat qui se comptent, pas ceux de l'etat initial.
@@ -2874,14 +3007,25 @@ def run_session_et_theme():
                 v1(stocke) >= 1 and not any("NON RENDU" in x for x in stocke.get("non_juge", [])),
                 ">=1 V1, theme sombre rendu", f"{v1(stocke)} V1",
                 "le script du socle a reecrit data-theme : le sombre n'a pas ete rendu")
+            # TF-1775 (15/10/2026) — le theme demande TIENT face au script de la page : un
+            # observateur remet data-theme a chaque reecriture. La page qui impose le clair est
+            # donc rendue sombre, et la reecriture contree se DIT (« THEME TENU »).
             non_rendu = any("THEME DEMANDE NON RENDU" in x for x in impose.get("non_juge", []))
-            constat = any("TF-1718" in (u.get("detail") or "")
-                          for d in (impose.get("breakpoints") or {}).values()
-                          for u in ((d.get("issues") or {}).get("unmeasured") or []))
-            cas("theme impose par la page · ecart DIT (TF-1718)", non_rendu and constat,
-                "non_juge THEME DEMANDE NON RENDU + constat non mesurable a la largeur",
-                f"non_juge {non_rendu}, constat {constat}",
-                "un theme demande et non rendu passe en silence")
+            tenu = any("THEME TENU" in x for x in impose.get("non_juge", []))
+            cas("theme impose par la page · tenu et DIT (TF-1775)", tenu and not non_rendu,
+                "non_juge THEME TENU, aucun THEME DEMANDE NON RENDU",
+                f"tenu {tenu}, non rendu {non_rendu}",
+                "la reecriture de la page l'emporte sur le theme demande, ou passe en silence")
+        cle, rcl = juger(f"{base}/theme-cle-propre-clair.html", ["--theme", "sombre"])
+        if cle is None:
+            cas("theme · cle propre de la page · rapport", False, "rapport lisible", "illisible",
+                (rcl.stderr or "")[:160])
+        else:
+            cas("theme · page qui relit sa propre cle et pose light : sombre rendu (TF-1775)",
+                v1(cle) >= 1 and not any("NON RENDU" in x for x in cle.get("non_juge", []))
+                and any("THEME TENU" in x for x in cle.get("non_juge", [])),
+                ">=1 V1, aucun NON RENDU, THEME TENU dit", f"{v1(cle)} V1",
+                "la page a reecrit data-theme : le sombre n'a pas ete rendu")
         for nom, cible, options, motif in (
                 ("session · refusee sur un fichier", str(FIXTURES / "session-application.html"),
                  ["--etat-session", str(etat)], "INSTANCE SERVIE"),
@@ -4948,10 +5092,14 @@ def main():
            + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable()
            + run_avertissements_13_10() + run_avertissements_14_10()
            + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
-           + run_classe_source_machine())
+           + run_classe_source_machine() + run_avertissements_15_10())
     rendu = run_rendu()
     if rendu:
         res += rendu
+    # TF-1799 — les messages L2 nomment les remedes qui passent.
+    remedes_l2 = run_l2_remedes_nommes()
+    if remedes_l2:
+        res += remedes_l2
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 au rendu : ecran d'application declare page de donnees — 20261015a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--mark:#FEF08A;--line:#E6EAF2;--surface:#FFFFFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--surface)}
+.ecran{margin:0;padding:24px}
+.chapo{color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.ecran{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1799 (lot Produit-83 20261015b, RA-5), sens VERT : le REMEDE que les messages L2 prescrivent
+  desormais pour un ecran d'application ou une page de donnees, JOUE. Sur la page d'origine,
+  brider le paragraphe donnait « bride par max-width », brider le conteneur « conteneur de lecture
+  cale a gauche », et aucun des deux messages ne nommait la sortie qui passe. Ici l'ecran se
+  declare page de donnees (data-page="donnees" sur sa racine) et sa prose prend la largeur.
+  Attendu a 1440 px : 0 l2_width, 0 l2_conteneur, 0 prose_etroite, 0 conteneur_bride_donnees.
+-->
+<body><main class="ecran" data-page="donnees">
+<h1>Etablissements a qualifier</h1>
+<p class="chapo">Cet ecran liste les etablissements remontes par la collecte du jour et pas encore
+qualifies. Chaque ligne porte la commune, le secteur et la date de collecte ; la qualification se
+fait ligne par ligne, et un etablissement qualifie quitte la liste au rechargement suivant.</p>
+<table><thead><tr><th>Etablissement</th><th>Commune</th><th>Secteur</th><th>Collecte</th></tr></thead>
+<tbody>
+<tr><td>Boulangerie du centre</td><td>Commune A</td><td>Alimentaire</td><td>15/10/2026</td></tr>
+<tr><td>Garage de la gare</td><td>Commune B</td><td>Automobile</td><td>15/10/2026</td></tr>
+<tr><td>Librairie des quais</td><td>Commune C</td><td>Culture</td><td>15/10/2026</td></tr>
+</tbody></table>
+</main></body></html>

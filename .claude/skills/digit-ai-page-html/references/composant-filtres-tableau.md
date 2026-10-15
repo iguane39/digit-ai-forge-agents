@@ -40,7 +40,11 @@ première cellule de chaque colonne filtrée ; aligné à droite, le `<th>` reç
 droite, déclencheur flottant **à gauche** du libellé, bords droits du libellé et des valeurs
 confondus sans compensation à calculer. Mesure au rendu : famille `entete_desaligne` de
 `render_page.py` (bord du libellé contre la boîte du contenu de la cellule, écart au-delà de 6 px), en avertissement. Bruit mesuré le 13/10/2026 à 1 920 px : 5 pages accusées sur 206 pages à tableau du parc, 18 constats (une première écriture qui lisait le texte d'un badge, et non sa boîte, en accusait 102). Fixtures
-`entete-desaligne.html` (rouge) et `entete-aligne-composant.html` (verte).
+`entete-desaligne.html` (rouge) et `entete-aligne-composant.html` (verte). Un en-tête **réservé au
+lecteur d'écran** (motif `visually-hidden` : boîte de 1 px, `clip` ou `clip-path` qui le rogne), dans
+le `<th>` ou sur le `<th>`, ne se voit pas et n'est pas mesuré (TF-1800, lot Produit-83 20261015b :
+une colonne d'actions sans libellé visible rendait « décalé de 176px ») ; fixture verte
+`entete-masque-accessibilite.html`.
 
 ## L'ancrage du panneau ne DÉFAIT PAS le collage du socle (TF-0899, 07/09)
 

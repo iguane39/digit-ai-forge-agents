@@ -20,6 +20,8 @@ h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
   data-theme en « light » quoi qu'on lui demande. Rendue avec --theme sombre, elle reste claire ;
   render_page.py doit le DIRE (non_juge « THEME DEMANDE NON RENDU » et constat non mesurable a la
   largeur), au lieu d'un verdict qui laisse croire que le sombre a ete juge.
+  TF-1775 (15/10/2026) : le theme demande TIENT desormais face a ce script (observateur actif sur
+  data-theme) ; la page est rendue sombre et la reecriture contree se dit (« THEME TENU »).
 -->
 <body><main>
 <h1>Tableau de bord</h1>

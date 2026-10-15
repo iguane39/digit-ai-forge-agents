@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Ordonnancement des etapes de MEP — 20261015a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1742 (lot Produit-03 20260908a, RA-41), sens ROUGE. Classe page-html-liste-renvoi-sans-detail,
+  fondee par TF-0757. Un listing de quatre actions dont chaque ligne renvoie, par une ancre
+  interne, a une section d'un AUTRE chapitre qui reprend la meme action et la COMPLETE : le
+  lecteur du listing n'a pas toute l'information, elle vit dans un chapitre suivant.
+  Attendu : l'avertissement L38 (regle neuve, avertissement), aucun echec L38.
+-->
+<body><main class="wrap">
+<h1>Ordonnancement des etapes de MEP</h1>
+<h2 id="listing">Les actions de la mise en production</h2>
+<table>
+<thead><tr><th>Action</th><th>Acteur</th><th>Detail</th></tr></thead>
+<tbody>
+<tr><td>A1 Geler les ecritures</td><td>Exploitant</td><td><a href="#a1">le detail de A1</a></td></tr>
+<tr><td>A2 Sauvegarder la base</td><td>Exploitant</td><td><a href="#a2">le detail de A2</a></td></tr>
+<tr><td>A3 Deployer la version</td><td>Integrateur</td><td><a href="#a3">le detail de A3</a></td></tr>
+<tr><td>A4 Rouvrir les ecritures</td><td>Exploitant</td><td><a href="#a4">le detail de A4</a></td></tr>
+</tbody></table>
+<h2>Le mode operatoire de chaque action</h2>
+<section id="a1"><h3>A1 Geler les ecritures</h3>
+<p>La veille au soir, l exploitant suspend les traitements planifies de comptabilite, verifie
+qu aucune ecriture n est en cours dans le journal, puis pose le drapeau de gel sur la base de
+production ; en cas d echec, il previent le responsable de la bascule avant minuit.</p></section>
+<section id="a2"><h3>A2 Sauvegarder la base</h3>
+<p>L exploitant lance la sauvegarde complete de la base de production, controle la taille du
+fichier obtenu contre celle de la veille, copie la sauvegarde sur le second site et consigne
+son empreinte dans le registre de bascule avant de donner la main a l integrateur.</p></section>
+<section id="a3"><h3>A3 Deployer la version</h3>
+<p>L integrateur deploie l image validee en recette, rejoue les migrations de schema dans
+l ordre du lot, verifie la page de sante de chaque service puis lance les trois parcours de
+controle ; un parcours rouge declenche le retour arriere sans attendre de decision.</p></section>
+<section id="a4"><h3>A4 Rouvrir les ecritures</h3>
+<p>Une fois les parcours verts, l exploitant retire le drapeau de gel, relance les traitements
+planifies suspendus la veille, surveille la premiere heure de journal et transmet le compte
+rendu de bascule au responsable avec l empreinte de la sauvegarde et la version deployee.</p></section>
+</main></body></html>

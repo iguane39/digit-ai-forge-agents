@@ -78,6 +78,14 @@
          registre entier n'est ecrit nulle part se fait reinventer, et deux reinventions donnent
          deux rouges dans deux livrables de la meme maison. */
       --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
+      /* TF-1744 (lot Produit-03 20260908a, RA-43) : les fonds PLEINS des badges d'etat, a encre
+         BLANCHE (TF-0910), que le message bloquant de V16 prescrit. Ils vivaient dans
+         references/charte-et-tokens.md et pas ici : une page partie du gabarit devait recopier
+         les valeurs a la main, et un produit a neutralise ses teintes au lieu d'appliquer le
+         remede. Un `-fill` est un fond de CARTE ; un badge d'etat prend un `-solid`. Valeurs
+         identiques dans les trois projections : l'encre blanche y tient 6,4:1 au moins. */
+      --green-solid: #166534; --teal-solid:  #0F5F8F; --amber-solid: #92400E;
+      --red-solid:   #B91C1C; --slate-solid: #4B5563; --violet-solid: #7E22CE;
       /* TF-0754 (02/09) : hauteur de l'EN-TETE COLLANT. Le socle a tranche — l'en-tete garde le
          bord haut, le thead collant et le sommaire lateral se decalent de var(--hh). Un token
          consomme sans etre pose vaudrait 0 et ramenerait la collision (controle L29). */
@@ -125,6 +133,8 @@
       --teal:  #5FE6D6; --teal-fill:  #0E2A27; --teal-line:  #164E48;
       --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
       --red:   #F5A3A3; --red-fill:   #2C1416; --red-line:   #4C1F22;
+      --green-solid: #166534; --teal-solid:  #0F5F8F; --amber-solid: #92400E;
+      --red-solid:   #B91C1C; --slate-solid: #4B5563; --violet-solid: #7E22CE;
     }
 
     * { box-sizing: border-box; }
@@ -330,6 +340,8 @@
         --teal:#0E9488;  --teal-fill:#EFFDFB;  --teal-line:#C7F0EA;
         --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
         --red:#B91C1C;   --red-fill:#FEF2F2;    --red-line:#F6CFCF;
+        --green-solid:#166534; --teal-solid:#0F5F8F; --amber-solid:#92400E;
+        --red-solid:#B91C1C;   --slate-solid:#4B5563; --violet-solid:#7E22CE;
       }
       body { background: var(--surface); }
       .wrap { max-width: none; padding: 0; }

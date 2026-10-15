@@ -82,7 +82,9 @@ Séparation volontaire entre **principes** (règles stables) et **valeurs param�
   colorimétrique — un glyphe par palier, pris dans la liste blanche du socle (`✓ ↔ → ✗ –`), plus
   une légende qui donne **couleur + forme + libellé** (WCAG 1.4.1). Mesuré par
   `render_page.py` **V16** ; fixtures `v16-etats-pastel.html` (5 paires indiscernables, 0
-  constat de contraste) et `v16-etats-pleins.html` (0 / 0).
+  constat de contraste) et `v16-etats-pleins.html` (0 / 0). Les six `*-solid` sont posés par
+  `assets/boilerplate.html` dans ses trois projections, clair, sombre et impression (TF-1744, lot
+  Produit-03 20260908a, RA-43) : le remède que V16 prescrit est dans le fichier d'où l'on part.
 - **Le quatrième registre était employé et non documenté (TF-0755, 02/09/2026).** Un rapport de
   conformité a eu besoin d'un registre « refus / non déclaré » — bas d'échelle d'une carte de
   chaleur — ne l'a pas trouvé dans le socle, et l'a **inventé** comme extension locale. Or le

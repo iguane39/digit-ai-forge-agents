@@ -201,6 +201,8 @@ RE_MARQUEUR_TRAVAIL = re.compile(
 RE_TH_SCORE = re.compile(
     r"^\s*(score|note|indice|priorit[ée]|pond[ée]ration|classement|"
     r"criticit[ée]|s[ée]v[ée]rit[ée])\b", re.I)
+# TF-1743 — l'indice de version d'un livrable : huit chiffres de date, une ou deux lettres de rang.
+RE_INDICE_VERSION = re.compile(r"^\s*\d{8}[a-z]{1,2}\s*$")
 
 # Valeurs opaques : empreinte hexadécimale, ou jeton codé en kebab-case à trois
 # segments ou plus (`ia-assistee-validation-humaine`). Ni l'une ni l'autre ne se
@@ -821,6 +823,28 @@ def _lignes_tbody(table: Noeud) -> int:
     corps = [n for n in table.descendants() if n.tag == "tbody"]
     cible = corps[0] if corps else table
     return sum(1 for n in cible.descendants() if n.tag == "tr")
+
+
+def _valeurs_de_colonne(th: Noeud) -> list:
+    """Les textes des cellules de corps de tableau au rang de ce `<th>` (lignes sans colspan)."""
+    if th.parent is None:
+        return []
+    rang = [x for x in th.parent.enfants if isinstance(x, Noeud) and x.tag in ("th", "td")]
+    if th not in rang:
+        return []
+    idx = rang.index(th)
+    table = next((x for x in th.ancetres() if x.tag == "table"), None)
+    if table is None:
+        return []
+    out = []
+    for tr in (n for n in table.descendants() if n.tag == "tr"):
+        if any(x.tag == "thead" for x in tr.ancetres()):
+            continue
+        cells = [x for x in tr.enfants if isinstance(x, Noeud) and x.tag in ("th", "td")]
+        if th in cells or len(cells) <= idx:
+            continue
+        out.append(cells[idx].texte_propre())
+    return out
 
 
 def _sommaires(a: Arbre):
@@ -1611,6 +1635,13 @@ def check_lisibilite(html: str, a: Arbre):
         libelle = th.texte_propre()
         if not RE_TH_SCORE.match(libelle):
             continue
+        # TF-1743 (lot Produit-03 20260908a, RA-42) — « Indice » est AUSSI, dans la maison, le
+        # numéro de version d'un livrable (AAAAMMJJ suivi d'une lettre de rang, règles 4 et 5 du
+        # projet). Une colonne dont TOUTES les valeurs ont cette forme n'est pas calculée : elle
+        # n'a pas de formule à publier. Le même mot sur des valeurs calculées reste accusé.
+        valeurs = [v for v in _valeurs_de_colonne(th) if v]
+        if valeurs and all(RE_INDICE_VERSION.match(v) for v in valeurs):
+            continue
         if not decrit_par(th):
             fails.append(f'L3 colonne calculée sans formule : « {libelle} » — la colonne '
                          "qui ordonne le tableau doit publier son calcul et y renvoyer "
@@ -1958,6 +1989,66 @@ def check_lisibilite(html: str, a: Arbre):
                 if forme:
                     recopies.append((att, aide[:60], ou, forme))
 
+    # --- L3 bis (suite) : une infobulle qui RECOPIE SA CARTE ou SA LIGNE (TF-1763, 15/10) -------
+    #
+    # LE FAIT (lot Produit-64 20261015g, RT-68, quatrième retour humain : 08/09, 03/10, 12/10,
+    # 15/10). Sur une page, 27 titres SVG de groupe sur 54 recopiaient le texte de leur carte —
+    # `<title>C1 — texte</title>`, carte « C1 · N2 » puis le même texte coupé sur trois `<text>` —
+    # et 12 infobulles de code sur 58 recopiaient leur ligne de tableau. L3 bis compare à
+    # l'ÉGALITÉ : le préfixe de code et l'étiquette de niveau suffisaient à passer.
+    # LA MESURE. La variante par inclusion, écartée le 08/09 sur le voisinage du PARENT (faux
+    # positifs mesurés), se rouvre ici sur un voisinage ÉTROIT, celui que le commentaire de
+    # RT-118 demandait : le groupe SVG qui porte le `<title>`, la ligne `<tr>` qui porte l'élément
+    # à title. Le title se juge LIGNE PAR LIGNE, préfixe de code retiré (« C1 — », « RA-41 : ») ;
+    # une ligne de moins de six signes utiles est une étiquette, elle n'est pas jugée. Si TOUTES
+    # les lignes jugées se lisent déjà dans le texte visible du groupe ou de la ligne, l'infobulle
+    # n'apprend rien. Une seule ligne neuve suffit à passer. Avertissement (règle neuve, D-70 (b)),
+    # sortie déclarative inchangée : `data-legende-ok`.
+    deja_vus = {r[2] for r in redondantes} | {r[2] for r in recopies}
+    RE_PREFIXE_CODE = re.compile(
+        r"^[\s·—–:|-]*[A-Z]{1,6}-?\d{1,5}[a-z]?(?:\.\d{1,3})?(?=[\s·—–:|-]|$)[\s·—–:|-]*")
+
+    def _lignes_jugees(aide):
+        lignes = []
+        for brute in re.split(r"[\r\n]+", aide):
+            ligne = brute
+            for _ in range(3):
+                plus_court = RE_PREFIXE_CODE.sub("", ligne, count=1)
+                if plus_court == ligne:
+                    break
+                ligne = plus_court
+            nl = _norme_legende(ligne)
+            if len(nl) >= 6:
+                lignes.append(nl)
+        return lignes
+
+    recopies_groupe = []
+    for n in a.racine.descendants():
+        porteurs = []
+        if n.tag == "title" and _dans_svg(n) and n.parent is not None:
+            p = n.parent
+            groupe = p if p.tag == "g" else next((x for x in p.ancetres() if x.tag == "g"), None)
+            if groupe is not None:
+                porteurs.append(("<title>", n.texte(), p, groupe, "sa carte"))
+        elif n.tag not in ("td", "th", "tr", "title", "[racine]", "html", "head", "body"):
+            ligne_tr = next((x for x in n.ancetres() if x.tag == "tr"), None)
+            if ligne_tr is not None:
+                for att in ("title", "data-tip"):
+                    v = (n.att(att) or "").strip()
+                    if v:
+                        porteurs.append((att, v, n, ligne_tr, "sa ligne de tableau"))
+        for att, aide, cible, portee, quoi in porteurs:
+            ou = cible.chemin()
+            if ou in deja_vus or _tronque(cible):
+                continue
+            if any("data-legende-ok" in x.attrs for x in [n, cible, *cible.ancetres()]):
+                continue
+            lignes = _lignes_jugees(aide)
+            vu = _norme_legende(_texte_vu(portee))
+            if lignes and vu and all(l in vu for l in lignes):
+                recopies_groupe.append((att, re.sub(r"\s+", " ", aide).strip()[:60], ou, quoi))
+                deja_vus.add(ou)
+
     # --- L3 bis (suite) : une DEFINITION DE COLONNE qui recopie son en-tete (TF-0954, 08/09)
     #
     # LE FAIT. La loi posee par L3 bis est « une explication qui recopie son porteur n'est pas une
@@ -2119,6 +2210,18 @@ def check_lisibilite(html: str, a: Arbre):
             "se nomme par `aria-label`. Répétition VOULUE → `data-legende-ok` sur l'élément ou un "
             "ancêtre.")
         (fails if RECOPIE_BLOQUANTE else warns).append(message)
+
+    if recopies_groupe:
+        att, aide, ou, quoi = recopies_groupe[0]
+        cartes = sum(1 for r in recopies_groupe if r[3] == "sa carte")
+        warns.append(
+            f"L3 infobulle qui RECOPIE sa carte ou sa ligne (avertissement) : "
+            f"{len(recopies_groupe)} élément(s), dont {cartes} groupe(s) SVG — le {att} « {aide}… » "
+            f"ne dit rien que {quoi} n'affiche déjà, une fois son préfixe de code retiré ({ou}). "
+            "Jugé ligne par ligne contre le texte visible du groupe ou de la ligne (TF-1763, "
+            "quatrième retour humain) : une infobulle porte au moins une ligne que la carte "
+            "n'écrit pas — qui, quand, ce qui en dépend, le coût de ne pas faire — ou elle "
+            "disparaît. Répétition VOULUE → `data-legende-ok` sur l'élément ou un ancêtre.")
 
     # --- L4 : liste longue filtrable --------------------------------------
     for t in [n for n in a.racine.descendants() if n.tag == "table"]:
@@ -3322,6 +3425,87 @@ def check_lisibilite(html: str, a: Arbre):
                          f"faire ({t.chemin()}) — chaque ligne en écart porte son action : une "
                          "colonne Action / Remédiation renseignée, ou un lien interne (#…) vers "
                          "l'action qui la lève ; une ligne tenue dit « aucune action » et pourquoi.")
+
+    # --- L38 : un listing porte son détail, il ne le renvoie pas à un autre chapitre (TF-1742) --
+    # LE FAIT (lot Produit-03 20260908a, RA-41 ; classe page-html-liste-renvoi-sans-detail, fondée
+    # le 03/09 par TF-0757, deuxième occurrence). Un listing de neuf actions dont le détail vivait
+    # dans SIX chapitres : le chapitre 3 reprenait et complétait chaque ligne du tableau du
+    # chapitre 2. check_html PASS (36 règles), render_page PASS en trois états, l'oracle de
+    # filtres PASS ; le destinataire : « le listing affiche des informations, mais pas toutes, et
+    # certaines autres sont reprises et complétées dans les chapitres suivants ».
+    # LA MESURE. Une ligne de corps de tableau renvoie par une ancre interne (`href="#…"`) vers un
+    # élément HORS du tableau ; la section visée (l'élément, ou le titre et ce qui le suit
+    # jusqu'au titre suivant de même rang) S'OUVRE sur l'objet de la ligne (son titre commence
+    # par le texte de la première cellule) et porte au moins 15 mots que la ligne n'a pas. Deux
+    # lignes au moins, vers deux cibles distinctes : une référence commune à toutes les lignes
+    # (une procédure de retour arrière) n'est pas le détail d'un objet. Une ligne en statut
+    # défavorable est écartée : son lien vers l'action est le remède que L37 prescrit.
+    # AVERTISSEMENT (règle neuve, D-70 (b)). Sortie déclarative : `data-renvoi-ok` sur le tableau.
+    # Hors mesure, et publié au périmètre de non-mesure : un objet du sujet ABSENT du listing (les
+    # phases A′ et C du cas fondateur), et un complément écrit ailleurs sans lien depuis la ligne.
+    def _mots(txt):
+        return set(re.findall(r"[^\W\d_]{3,}", (txt or "").lower()))
+
+    def _cle(txt):
+        return re.sub(r"[^0-9a-zà-ÿ]+", "", (txt or "").lower())
+
+    def _section_visee(cible):
+        """(titre, texte) de la section qu'ouvre `cible`."""
+        m = re.match(r"^h([1-6])$", cible.tag)
+        if m and cible.parent is not None:
+            rang, vu, morceaux = int(m.group(1)), False, []
+            for f in cible.parent.enfants:
+                if f is cible:
+                    vu = True
+                    continue
+                if not vu or not isinstance(f, Noeud):
+                    continue
+                mf = re.match(r"^h([1-6])$", f.tag)
+                if mf and int(mf.group(1)) <= rang:
+                    break
+                morceaux.append(f.texte_propre())
+            return cible.texte_propre(), cible.texte_propre() + " " + " ".join(morceaux)
+        titre = next((d for d in cible.descendants() if re.match(r"^h[1-6]$", d.tag)), None)
+        texte = cible.texte_propre()
+        return (titre.texte_propre() if titre is not None else texte[:120]), texte
+
+    ids_l38 = {n.att("id"): n for n in a.racine.descendants() if n.att("id")}
+    for t in [n for n in a.racine.descendants() if n.tag == "table"]:
+        if any("data-renvoi-ok" in x.attrs for x in [t, *t.ancetres()]):
+            continue
+        dans_table = set(map(id, t.descendants()))
+        renvois = {}
+        for tr in (x for x in t.descendants() if x.tag == "tr"
+                   and not any(y.tag == "thead" for y in x.ancetres())):
+            cellules = [c for c in tr.enfants if isinstance(c, Noeud) and c.tag in ("td", "th")]
+            if not cellules:
+                continue
+            if any(len(c.texte_propre()) <= 40 and _norm_statut(c.texte_propre())
+                   in STATUTS_DEFAVORABLES for c in cellules):
+                continue
+            cle = _cle(cellules[0].texte_propre())
+            if len(cle) < 2:
+                continue
+            mots_ligne = _mots(tr.texte_propre())
+            for lien in (x for x in tr.descendants() if x.tag == "a"):
+                href = (lien.att("href") or "").strip()
+                cible = ids_l38.get(href[1:]) if href.startswith("#") and len(href) > 1 else None
+                if cible is None or id(cible) in dans_table:
+                    continue
+                titre, texte = _section_visee(cible)
+                neufs = _mots(texte) - mots_ligne
+                if _cle(titre).startswith(cle) and len(neufs) >= 15:
+                    renvois.setdefault(href, (cellules[0].texte_propre(), len(neufs)))
+        if len(renvois) >= 2:
+            href, (objet, nb) = next(iter(renvois.items()))
+            warns.append(
+                f"L38 listing qui renvoie son détail ailleurs (avertissement) : {len(renvois)} "
+                f"ligne(s) de {t.chemin()} renvoient vers une section d'un autre chapitre qui "
+                f"reprend le même objet et le complète — « {objet[:40]} » → {href}, {nb} mots que la "
+                "ligne n'a pas (TF-1742, classe page-html-liste-renvoi-sans-detail). Le lecteur du "
+                "listing n'a pas toute l'information : la porter DANS la ligne (ligne dépliable, "
+                "L9 et L17) et retirer la section qui la double, ou déclarer un listing de renvoi "
+                "voulu par `data-renvoi-ok` sur le tableau.")
 
     # --- L35 : la typographie française tient aux coupures de ligne (TF-1384) ----------
     # RG-16 (26/09/2026) : sur une présentation, des deux-points ouvraient une ligne, « (point »
@@ -4823,6 +5007,16 @@ def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
         "chose. Un intitulé de navigation juste et incompréhensible passe",
         "L'ADÉQUATION DU CONTENU À SON LECTEUR DÉCLARÉ n'est pas jugée : qu'un chapitre "
         "appartienne au public que la page annonce est un jugement, pas une mesure",
+        # TF-1742 / TF-1763 (15/10/2026) — les trous que L38 et L3 bis laissent, publiés.
+        "L'EXHAUSTIVITÉ D'UN LISTING n'est jugée qu'en partie : L38 voit une ligne qui renvoie, par "
+        "une ancre, vers une section qui reprend son objet et le complète. Un objet du sujet ABSENT "
+        "du listing, et un complément écrit dans un autre chapitre SANS lien depuis la ligne, "
+        "passent ici : la revue de lecture compare le listing au reste de la page",
+        "UNE INFOBULLE QUI PARAPHRASE n'est pas jugée. L3 bis voit la redite exacte de la cible et "
+        "de son voisinage, la recopie d'une cible de lien ou d'une légende, et, ligne par ligne, "
+        "la recopie du texte de SON groupe SVG ou de SA ligne de tableau, préfixe de code retiré "
+        "(TF-1763). L'inclusion dans un texte plus large que le groupe ou la ligne (le parent, la "
+        "section), et la même phrase dite autrement, relèvent de la revue de lecture",
         "LE RENDU N'EST PAS JUGÉ ICI. Débordements, contrastes, chevauchements, croisements et "
         "images relèvent de `render_page.py`, qui publie son propre périmètre de non-mesure. Un "
         "PASS de ce seul script ne dit rien de ce que le lecteur voit",

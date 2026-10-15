@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V2 — libelle SVG sur un panneau peint en oklch — 20261015a</title>
+<!--
+  Fixture VERTE (complement « reste-svg-sombre » du 15/10/2026, maquette sombre de la forge design).
+  Un <svg> sans fond propre, pose sur un panneau dont le fond est ecrit en oklch(). V2 ne lisait
+  que rgb() : le fond oklch etait saute, la remontee finissait sur le blanc par defaut, et un
+  libelle clair sur panneau sombre sortait a 2,14:1. Ici le libelle est lisible sur son panneau.
+  Attendu : 0 constat v2_contrast.
+-->
+<style>
+:root{--ink:#0F172A;--sans:"DM Sans",system-ui,sans-serif;--fond-page:oklch(0.17 0.010 250);
+ --fond-surface:oklch(0.22 0.014 250)}
+body{margin:0;font-family:var(--sans);color:oklch(0.96 0.006 250);background:var(--fond-page)}
+main{max-width:70ch;margin:0 auto;padding:24px}
+.panneau{background:var(--fond-surface);padding:16px;border-radius:8px}
+svg{display:block;width:100%;height:auto}
+.graphe text{fill:oklch(0.92 0.012 250);font-size:14px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V2 — libelle SVG sur un panneau oklch</h1>
+<section class="panneau"><h2>Volume hebdomadaire</h2>
+<svg class="graphe" viewBox="0 0 640 200" role="img" aria-label="Volume par semaine">
+  <line x1="0" y1="176" x2="640" y2="176" stroke="oklch(0.40 0.012 250)"/>
+  <text x="0" y="194">S-6</text><text x="600" y="194">S-0</text>
+</svg></section>
+</main></body></html>

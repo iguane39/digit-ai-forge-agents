@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('appli-produit-theme'); } catch (e) {}
+  document.documentElement.setAttribute('data-theme', stocke === 'dark' ? 'dark' : 'light');
+})();
+</script>
+<title>Digit-AI — Theme relu dans la cle propre de la page — 20261015b</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+:root[data-theme="dark"]{--ink:#E2E8F0;--line:#334155;--surface:#0F172A;--bg:#020617}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+main{padding:24px}
+h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
+.bandeau{padding:12px;background:var(--surface);border:1px solid var(--line)}
+:root[data-theme="dark"] .bandeau{width:2400px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1775 (lot Produit-83 20261015, retour de la forge design). Une application relit SON PROPRE
+  choix de theme, sous une cle que render_page ne connait pas (`appli-produit-theme`), et pose
+  data-theme="light" quand elle n'y trouve rien. Sous --theme sombre, render_page ne posait que la
+  cle du socle (`digitai-theme`) et son observateur se deconnectait apres la premiere pose : la
+  page se rendait claire, le sombre etait seulement DECLARE non rendu. Le bandeau ne deborde (V1)
+  qu'en sombre. Attendu sous --theme sombre : au moins 1 V1, aucun « THEME DEMANDE NON RENDU », et
+  la reecriture contree DITE au non juge.
+-->
+<body><main>
+<h1>Tableau de bord</h1>
+<div class="bandeau">Bandeau des indicateurs de la semaine.</div>
+</main></body></html>

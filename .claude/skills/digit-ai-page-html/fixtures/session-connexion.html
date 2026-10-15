@@ -15,7 +15,17 @@ h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
   de session. Il est sain : un oracle qui ne charge pas la session juge CET ecran, rend PASS, et
   ne voit jamais l'application (`session-application.html`), qui porte un debordement.
 -->
+<!--
+  TF-1788 (lot Produit-83 20261015b, RA-4). L'ecran porte la MIRE elle-meme (formulaire avec un
+  champ mot de passe) : render_page la reconnait et dit, au non juge, que seule la mire a ete
+  jugee et que l'application connectee se juge avec --etat-session.
+-->
 <body><main>
 <h1>Connexion</h1>
 <p>Identifiez-vous pour acceder a l'application.</p>
+<form action="/connexion" method="post">
+<p><label for="id">Identifiant</label><br><input id="id" name="id" type="text" autocomplete="username"></p>
+<p><label for="mdp">Mot de passe</label><br><input id="mdp" name="mdp" type="password" autocomplete="current-password"></p>
+<p><button type="submit">Se connecter</button></p>
+</form>
 </main></body></html>

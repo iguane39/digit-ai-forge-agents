@@ -351,10 +351,23 @@ MEASURE_JS = r"""
   }
 
   // ---- V2 : contraste WCAG ----------------------------------------------
+  // Complement « reste-svg-sombre » (15/10/2026) — UN FOND ECRIT EN oklch() EST UN FOND. Le
+  // navigateur rend la couleur calculee dans l'espace ou elle est ecrite (oklch, oklab, lab, lch,
+  // color()…) : seule la forme rgb() etait lue, un panneau sombre en oklch etait SAUTE, la remontee
+  // finissait sur le blanc par defaut, et un libelle clair d'une maquette sombre sortait a 2,14:1.
+  // Une couleur unie dans un autre espace se convertit par le navigateur lui-meme (canevas 1 px).
   const parseColor = (c) => {
-    const m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
-    if (!m) return null;
-    return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+    const m = (c || '').match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
+    if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+    if (!/^\s*(?:oklch|oklab|lab|lch|color|hsla?|hwb)\(|^\s*#/i.test(c || '')) return null;
+    const cv = (window.__rpCouleurCv ||= document.createElement('canvas'));
+    cv.width = cv.height = 1;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = '#000'; ctx.fillStyle = c;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    return { r, g, b, a: a / 255 };
   };
   const lum = ({ r, g, b }) => {
     const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
@@ -1054,11 +1067,14 @@ MEASURE_JS = r"""
         vus.add(cle);
         issues.l2_width.push({ what: label(el), detail:
           `largeur ${Math.round(w1)}px pour ${Math.round(w2)}px disponibles ` +
-          `(ratio ${ratio.toFixed(2)}, seuil __L2_MIN_RATIO__) — bride par ${bride} ; ` +
-          `poser la mesure de lecture sur le CONTENEUR (.chap.lire), pas sur le texte, ET la ` +
-          `declarer par data-mesure-lecture sur ce conteneur des lors qu'il a des freres plus ` +
-          `larges (listes de reperes, tableaux) — sans quoi la correction cree une rupture ` +
-          `d'alignement entre freres, mesuree deux fois le 24/08` });
+          `(ratio ${ratio.toFixed(2)}, seuil __L2_MIN_RATIO__) — bride par ${bride}. Trois ` +
+          `sorties PASSENT (TF-1799, chacune jouee au banc) : (1) document de lecture — la bride ` +
+          `sur le CONTENEUR, centré (.chap.lire, margin-inline:auto), pas sur le texte, et ` +
+          `data-mesure-lecture sur ce conteneur s'il a des freres plus larges ; un conteneur ` +
+          `bride CALE A GAUCHE echoue a « conteneur de lecture calé à gauche » ; (2) ecran ` +
+          `d'application ou page de donnees — data-page="donnees" sur sa racine, et la prose ` +
+          `prend la largeur ; (3) colonne etroite voulue — la bride sur le conteneur, declaree ` +
+          `par data-colonne-ok` });
       }
     }
   }
@@ -1119,9 +1135,12 @@ MEASURE_JS = r"""
       issues.l2_conteneur.push({ what: label(boite.n), detail:
         `conteneur de lecture calé à gauche — ${Math.round(boite.rn.width)}px pour ` +
         `${Math.round(boite.rp.width)}px offerts, ${Math.round(droite)}px de vide à droite ` +
-        `contre ${Math.round(gauche)}px à gauche, et aucun contenu voisin. Centrer la colonne ` +
-        `(.chap.lire) ou lui donner un voisin utile ; si elle est étroite à dessein, le ` +
-        `déclarer par data-colonne-ok` });
+        `contre ${Math.round(gauche)}px à gauche, et aucun contenu voisin. Trois sorties ` +
+        `PASSENT (TF-1799, chacune jouee au banc) : la colonne centrée (.chap.lire, ` +
+        `margin-inline:auto) ou un voisin utile a sa droite ; ecran d'application ou page de ` +
+        `donnees — data-page="donnees" sur sa racine et la bride retiree, la prose prend la ` +
+        `largeur ; colonne etroite a dessein — data-colonne-ok sur le conteneur. Reporter la ` +
+        `bride sur le paragraphe ne passe pas : « bride par max-width » l'accuse` });
     }
   }
 
@@ -1646,12 +1665,23 @@ MEASURE_JS = r"""
           if (c.nodeType === 3 && c.textContent.trim()) {
             r.selectNodeContents(c);
             rects.push(...[...r.getClientRects()].filter((x) => x.width > 0.5 && x.height > 0.5));
-          } else if (c.nodeType === 1 && !(exclus && c.matches(exclus))) marcher(c);
+          } else if (c.nodeType === 1 && !(exclus && c.matches(exclus)) && !masqueA11y(c)) marcher(c);
         }
       };
       marcher(el);
       if (!rects.length) return null;
       return { gauche: Math.min(...rects.map((x) => x.left)), droite: Math.max(...rects.map((x) => x.right)) };
+    };
+    // TF-1800 (lot Produit-83 20261015b, RA-6) — un texte RESERVE AU LECTEUR D'ECRAN (motif
+    // visually-hidden : boite de 1 px, clip ou clip-path qui le rogne) ne se voit pas : il ne se
+    // desaligne de rien. Il etait mesure, et une colonne d'actions sans libelle visible rendait
+    // « decale de 176px ». Un tel element est exclu, qu'il soit le <th> ou dans le <th>.
+    const masqueA11y = (el) => {
+      const s = getComputedStyle(el), r = el.getBoundingClientRect();
+      if (s.position === 'absolute' && (r.width <= 1.5 || r.height <= 1.5)) return true;
+      if (/rect\(\s*0(px)?[\s,]+0(px)?[\s,]+0(px)?[\s,]+0(px)?\s*\)/.test(s.clip || '')) return true;
+      if (/inset\(\s*50%/.test(s.clipPath || '')) return true;
+      return false;
     };
     let vusA = 0;
     for (const t of document.querySelectorAll('table')) {
@@ -1663,7 +1693,7 @@ MEASURE_JS = r"""
       [...tete.cells].forEach((th, i) => {
         if (vusA >= 6) return;
         const td = ligne.cells[i];
-        if (!td || th.colSpan > 1 || td.colSpan > 1) return;
+        if (!td || th.colSpan > 1 || td.colSpan > 1 || masqueA11y(th)) return;
         const a = getComputedStyle(td).textAlign;
         const bt = bordTexte(th, '.tf-btn, .tf-panel, .tf-unique, button, [hidden]');
         // Cote cellule : la BOITE de chaque enfant (un badge porte son propre padding, son bord est
@@ -1921,6 +1951,12 @@ MEASURE_JS = r"""
 #      une AUTRE boite de defilement que la fenetre — un ancetre a `overflow` non `visible`
 #      (TF-0900). CONSTAT : la cause est reelle, le geste correctif appartient a la page.
 # La mesure n'a besoin d'aucun jeton : elle compare le `top` RENDU au `top` DECLARE.
+# TF-1788 — une mire de connexion : un champ mot de passe VISIBLE dans la page rendue.
+MIRE_JS = r"""() => [...document.querySelectorAll('input[type="password"]')].some((el) => {
+  const s = getComputedStyle(el), r = el.getBoundingClientRect();
+  return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 1 && r.height > 1;
+})"""
+
 MESURE_ENTETE_JS = r"""
 () => {
   const poses = [], decolles = [], masques = [], brides = [];
@@ -3215,6 +3251,8 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
     blocking_total = 0
     captures_manquees: list[int] = []
     theme_non_rendu: list[str] = []      # TF-1718 : largeurs ou la page a reecrit le theme demande
+    theme_tenu: list[str] = []           # TF-1775 : largeurs ou la page a reecrit data-theme, contree
+    mires_vues: list[int] = []           # TF-1788 : largeurs ou une mire de connexion est rendue
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -3234,9 +3272,21 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                 page.add_init_script(
                     "(function (v) { try { localStorage.setItem('digitai-theme', v); } catch (e) {} })(%s)"
                     % json.dumps(SCHEMAS_PLAYWRIGHT[theme]))
+                # TF-1775 (lot Produit-83 du 15/10/2026) — ET LE THEME TIENT. Une page qui relit SA
+                # propre cle (autre que `digitai-theme`) reecrivait data-theme apres la premiere
+                # pose, et l'observateur s'etait deconnecte : le sombre n'etait que declare non
+                # rendu. Un second observateur, actif tant que la page vit, remet la valeur
+                # demandee a CHAQUE reecriture et compte les reecritures contrees
+                # (`window.__rpThemeContre`). Il ne vit que dans le navigateur de l'oracle, jamais
+                # dans le livrable (meme patron que injecterThemeSombre de digit-ai-forge-design).
                 page.add_init_script(
-                    "(function (v) { function poser() { var h = document.documentElement;"
-                    " if (h) { h.setAttribute('data-theme', v); return true; } return false; }"
+                    "(function (v) { window.__rpThemeContre = 0;"
+                    " function garder(h) { new MutationObserver(function () {"
+                    " if (h.getAttribute('data-theme') !== v) { window.__rpThemeContre++;"
+                    " h.setAttribute('data-theme', v); } }).observe(h, {attributes: true,"
+                    " attributeFilter: ['data-theme']}); }"
+                    " function poser() { var h = document.documentElement;"
+                    " if (h) { h.setAttribute('data-theme', v); garder(h); return true; } return false; }"
                     " if (!poser()) { new MutationObserver(function (m, o) {"
                     " if (poser()) o.disconnect(); }).observe(document, {childList: true}); }"
                     " })(%s)" % json.dumps(SCHEMAS_PLAYWRIGHT[theme]))
@@ -3271,12 +3321,30 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                 page.wait_for_timeout(250)
 
             issues = page.evaluate(js)
+            # TF-1788 (lot Produit-83 20261015b, RA-4) — UNE MIRE DE CONNEXION SE RECONNAIT. Sans
+            # --etat-session, une application derriere connexion se rend en mire, et le verdict
+            # portait sur la mire sans le dire : la consigne de l'etape ne nommait pas l'option.
+            # Un champ mot de passe VISIBLE suffit a la reconnaitre ; elle se dit a la largeur
+            # (non mesurable) et au non_juge, avec le geste qui juge l'application connectee.
+            try:
+                mire = page.evaluate(MIRE_JS)
+            except Exception:  # noqa: BLE001 — une sonde qui leve ne decide de rien
+                mire = False
+            if mire:
+                mires_vues.append(width)
+                issues["unmeasured"].append({
+                    "what": "mire de connexion (champ mot de passe visible)",
+                    "detail": "seule la mire est jugee a cette largeur, pas l'application qu'elle "
+                              "garde : rejouer avec --etat-session <etat de session> (TF-1788)"})
             # TF-1718 — LE THEME DEMANDE EST-IL CELUI QUI EST RENDU ? Un script de la page peut
             # reecrire data-theme apres le script d'initialisation ; un rendu « sombre » reste
             # alors clair, et ses mesures parlent du clair. L'ecart se dit a la largeur et au
             # non_juge, jamais en silence.
             if theme is not None:
                 effectif = page.evaluate("() => document.documentElement.getAttribute('data-theme')")
+                contre = page.evaluate("() => window.__rpThemeContre || 0")
+                if contre:
+                    theme_tenu.append(f"{width} px : {contre} reecriture(s)")
                 if effectif != SCHEMAS_PLAYWRIGHT[theme]:
                     theme_non_rendu.append(f"{width} px : data-theme=\"{effectif}\"")
                     issues["unmeasured"].append({
@@ -3574,6 +3642,25 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             "`location.protocol` ne s'execute pas. Ne pas lire ce PASS comme un verdict sur le "
             "livrable SERVI : le rejouer sur une instance servie (TF-1093)")
 
+    # TF-1788 — LA MIRE SE DIT, avec le geste qui juge l'application connectee.
+    if mires_vues:
+        largeurs = ", ".join(f"{w} px" for w in mires_vues)
+        if cible.servie and etat_session is None:
+            geste = ("l'application qu'elle garde n'est PAS jugee. La juger connectee : enregistrer "
+                     "l'etat de session par le script de connexion du produit (Playwright "
+                     "`context.storage_state(path=...)`) puis rejouer avec --etat-session <fichier>")
+        elif cible.servie:
+            geste = ("l'etat de session charge ne passe pas la mire (session expiree, ou d'une autre "
+                     "origine) : l'application n'est PAS jugee. Regenerer l'etat de session puis "
+                     "rejouer avec --etat-session <fichier>")
+        else:
+            geste = ("si cette page est l'ecran de connexion d'une application, l'application "
+                     "connectee se juge sur l'INSTANCE SERVIE (URL locale) avec --etat-session "
+                     "<fichier> — refusee sur un fichier")
+        report["non_juge"].append(
+            f"MIRE DE CONNEXION RENDUE ({largeurs}) : un champ mot de passe visible, le verdict porte "
+            f"sur la mire ; {geste} (TF-1788)")
+
     # TF-1674 — LE THEME RENDU SE DIT. Sans --theme, le navigateur rend le schema clair : une page
     # qui porte un theme sombre (prefers-color-scheme: dark) n'a vu juger que sa moitie claire.
     report["theme"] = theme or "clair (defaut du navigateur)"
@@ -3583,6 +3670,12 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
            "la page, qu'un script de la page peut reecrire" if theme else "") + "). "
         "L'autre schema de couleurs n'est ni rendu ni mesure ici : le rejouer avec "
         f"--theme {'clair' if theme == 'sombre' else 'sombre'} si la page en porte un (TF-1674)")
+    if theme_tenu:
+        report["non_juge"].append(
+            f"THEME TENU CONTRE LA PAGE : --theme {theme} demande, la page a reecrit data-theme "
+            f"({' ; '.join(theme_tenu)}) et l'oracle l'a remis a chaque fois (TF-1775). Le theme "
+            f"{theme} est celui qui est mesure ; le livrable, lui, ne l'affiche que si son propre "
+            "choix (bouton, cle de stockage) y mene")
     if theme_non_rendu:
         report["non_juge"].append(
             f"THEME DEMANDE NON RENDU : --theme {theme} demande, mais la page a reecrit data-theme "

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Cartographie des capacites — 20261015b</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+svg text{font-family:var(--sans);font-size:12px;fill:var(--ink)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1763 (lot Produit-64 20261015g, RT-68), sens VERT. Les memes cartes et la meme table que
+  `l3-infobulle-recopie-sa-carte.html`. Chaque infobulle garde son code et le rappel du texte, mais
+  porte AU MOINS UNE LIGNE que la carte ou la ligne n'affiche pas : qui, quand, ce qui en depend.
+  Une ligne qui apprend quelque chose suffit — la regle juge ligne par ligne.
+  Attendu : aucun avertissement ni echec « L3 infobulle qui RECOPIE sa carte ou sa ligne ».
+-->
+<body><main class="wrap">
+<h1>Cartographie des capacites</h1>
+<svg viewBox="0 0 640 120" width="640" height="120" role="img" aria-label="Trois capacites">
+<g id="c1"><title>C1 — Geler les ecritures comptables avant la bascule
+Par l exploitant, la veille au soir ; bloque C2 tant qu il n est pas fait</title>
+<rect x="0" y="0" width="200" height="110" fill="var(--surface)" stroke="var(--line)"/>
+<text x="10" y="20">C1 · N2</text><text x="10" y="44">Geler les ecritures</text>
+<text x="10" y="62">comptables avant</text><text x="10" y="80">la bascule</text></g>
+<g id="c2"><title>C2 — Copie chiffree, empreinte consignee au registre de bascule</title>
+<rect x="220" y="0" width="200" height="110" fill="var(--surface)" stroke="var(--line)"/>
+<text x="230" y="20">C2 · N1</text><text x="230" y="44">Sauvegarder la base</text>
+<text x="230" y="62">de production sur</text><text x="230" y="80">le second site</text></g>
+<g id="c3"><title>C3 — Trois parcours de controle ; un parcours rouge declenche le retour arriere</title>
+<rect x="440" y="0" width="200" height="110" fill="var(--surface)" stroke="var(--line)"/>
+<text x="450" y="20">C3 · N3</text><text x="450" y="44">Deployer la version</text>
+<text x="450" y="62">validee en recette</text></g>
+</svg>
+<table>
+<thead><tr><th>Code</th><th>Capacite</th></tr></thead>
+<tbody>
+<tr><td><a href="#c1" title="C1 — niveau N2 : bloque la sauvegarde tant qu il n est pas fait">C1</a></td><td>Geler les ecritures comptables avant la bascule</td></tr>
+<tr><td><a href="#c2" title="C2 : environ quarante minutes, a lancer avant minuit">C2</a></td><td>Sauvegarder la base de production sur le second site</td></tr>
+</tbody></table>
+</main></body></html>

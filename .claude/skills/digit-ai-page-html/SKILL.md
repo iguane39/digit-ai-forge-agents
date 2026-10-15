@@ -1,19 +1,37 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L37 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L38 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.30.0"
+  version: "1.31.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.31.0 (15/10/2026)** — **neuf retours de produits corrigés à la cause ; les deux règles neuves
+entrent en avertissement.** · **L38** : une ligne de listing qui renvoie, par une ancre, vers une
+section d'un autre chapitre qui reprend son objet et le complète (TF-1742, classe
+`page-html-liste-renvoi-sans-detail`). · **L3 bis** juge le `<title>` d'un groupe SVG et le `title`
+d'un élément de ligne de tableau ligne par ligne contre le texte de SON groupe ou de SA ligne,
+préfixe de code retiré (TF-1763) ; la paraphrase et l'inclusion plus large sont publiées au
+périmètre de non-mesure. · « Indice » sur des numéros de version AAAAMMJJ<lettre> n'est plus une
+colonne calculée (TF-1743). · `assets/boilerplate.html` pose les six jetons `*-solid` que V16
+prescrit, dans ses trois projections (TF-1744). · `render_page.py` reconnaît une **mire de
+connexion** (champ mot de passe visible) et nomme `--etat-session` (TF-1788) ; les messages L2
+nomment les trois sorties qui passent, dont `data-page="donnees"`, chacune jouée au banc (TF-1799) ;
+`entete_desaligne` ne mesure plus un en-tête réservé au lecteur d'écran (TF-1800) ; sous `--theme`,
+le thème demandé tient contre une page qui réécrit `data-theme` depuis sa propre clé (TF-1775) ;
+V2 lit un fond écrit en `oklch()` (ou tout autre espace de couleur) au lieu de le sauter et de
+juger le texte sur un blanc supposé : une maquette sombre de la forge design rendait 2 faux
+constats à 2,14:1 à chaque largeur, 0 après (fixtures `v2-svg-panneau-oklch-clair.html` et
+`-sombre.html`).
 
 **1.30.0 (14/10/2026)** — **`check_html.py` ne plante plus sur une accolade dans une valeur de la
 feuille** : un trou de gabarit dans une `url()` levait une IndexError, la page est jugée et A5
@@ -593,13 +611,21 @@ pas le fichier ; il est refusé sur un fichier `file://` et sur une origine non 
 verdict déclare la session au non jugé. `--theme sombre` rend la page sous
 `prefers-color-scheme: dark` **et** pose `data-theme="dark"` sur `<html>` avant les scripts de la
 page, à chaque chargement, ainsi que le choix stocké du socle (`digitai-theme`, RV-9), que le
-script d'initialisation du gabarit relit et réécrit (TF-1718) ; le thème rendu est toujours
-déclaré, une page qui réécrit quand même `data-theme` le voit dire au non jugé (« THEME DEMANDE NON
-RENDU ») et à chaque largeur, et une page à thème sombre se juge deux fois. Les noms d'`oracle-exploitabilite` (`digit-ai-forge-design`) sont acceptés tels
+script d'initialisation du gabarit relit et réécrit (TF-1718) ; un observateur actif tant que la
+page vit remet `data-theme` à la valeur demandée à chaque réécriture, y compris celle d'une page qui
+relit sa propre clé (TF-1775), et la réécriture contrée se dit au non jugé (« THEME TENU CONTRE LA
+PAGE ») ; un écart qui subsisterait se dit encore (« THEME DEMANDE NON RENDU »). Le thème rendu est
+toujours déclaré, et une page à thème sombre se juge deux fois. Les noms d'`oracle-exploitabilite` (`digit-ai-forge-design`) sont acceptés tels
 quels : `--etat-connexion` pour `--etat-session`, `--theme dark|light` pour `sombre|clair`.
-Fixtures du banc : `session-connexion.html`, `session-application.html`,
+**Une mire se reconnaît (TF-1788, lot Produit-83 20261015b, RA-4).** Sans `--etat-session`, une
+application derrière connexion se rend en mire, et le verdict portait sur la mire sans le dire. Dès
+qu'un champ mot de passe **visible** est rendu, `render_page.py` le dit à la largeur (non mesurable)
+et au non jugé (« MIRE DE CONNEXION RENDUE »), avec le geste : sur une instance servie, enregistrer
+l'état de session par le script de connexion du produit puis rejouer avec `--etat-session` ; avec
+une session chargée qui ne passe pas la mire, la régénérer ; sur un fichier, servir l'application.
+Fixtures du banc : `session-connexion.html` (porte la mire), `session-application.html`,
 `theme-sombre-deborde.html`, `theme-attribut-sombre.html`, `theme-choix-stocke-sombre.html`,
-`theme-force-clair.html`.
+`theme-force-clair.html`, `theme-cle-propre-clair.html`.
 
 Il mesure les bloquants **L2-rendu** (un bloc de texte occupe au moins 85 % de la largeur
 qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'une grille —
@@ -629,7 +655,7 @@ pour toute la forge**, les autres skills livrables la citent sans la redéfinir.
 Enfin, contrôler la **lisibilité** — ce que le lecteur peut effectivement lire et utiliser :
 
 ```bash
-python scripts/check_html.py page.html --regles L     # L1-L37 seules
+python scripts/check_html.py page.html --regles L     # L1-L38 seules
 python scripts/self_test.py                           # prouve que chaque règle échoue
 ```
 
@@ -758,7 +784,7 @@ contrôles que le producteur lance de toute façon.
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
 - Checklist canonique zéro défaut visuel V1–V18 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
-- Règles de lisibilité L1–L37 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
+- Règles de lisibilité L1–L38 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants
 

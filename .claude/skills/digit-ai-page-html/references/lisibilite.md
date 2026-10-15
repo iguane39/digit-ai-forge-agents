@@ -1,4 +1,4 @@
-# Lisibilité — règles L1 à L37
+# Lisibilité — règles L1 à L38
 
 Une page peut être **exacte, chartée, accessible et illisible**. La charte règle la forme,
 `zero-defaut-visuel.md` règle le rendu ; ce document règle ce que le lecteur peut
@@ -151,6 +151,15 @@ dépasse jamais **15 à 20 %** de la largeur utile.
   apporte une confirmation indépendante. Un vrai tableau de données à deux colonnes de
   valeurs comparables reste PASS, et une fixture verte le prouve à chaque recette.
 
+**Les trois sorties qui passent (TF-1799, lot Produit-83 20261015b, RA-5).** Brider le paragraphe
+échoue à « bride par max-width » ; brider un conteneur **calé à gauche** échoue à « conteneur de
+lecture calé à gauche » ; et aucun des deux messages ne nommait `data-page="donnees"`. Ils nomment
+désormais les trois sorties, et chacune est jouée au banc et passe : (1) document de lecture — la
+bride sur le conteneur **centré** (`.chap.lire`, `margin-inline: auto`), fixture `l2r-chap-lire.html` ;
+(2) écran d'application ou page de données — `data-page="donnees"` sur sa racine, la prose prend la
+largeur (L26), fixture `l2-remede-page-application.html` ; (3) colonne étroite voulue — la bride sur le
+conteneur, déclarée par `data-colonne-ok`, fixture `l2-remede-colonne-declaree.html`.
+
 **Revue de lecture.** Que les blocs qui doivent occuper la pleine largeur (synthèse, verdict,
 blocage principal) l'occupent réellement — et que la mesure de lecture retenue serve le
 propos plutôt que l'habitude.
@@ -252,6 +261,23 @@ son texte. **Avertissement** : mesuré le 12/10 sur 1 979 pages de dépôts prod
 aperçu discutable ; le bruit n'étant pas démontré nul, la règle n'est pas bloquante. La paraphrase
 (« Appliquer avant de fusionner » sur une cellule qui dit « l'application précède la fusion ») n'est
 pas mesurable : elle passe à la revue de lecture.
+
+**(e quater) L'infobulle qui recopie SA carte ou SA ligne** (TF-1763, Produit-64 RT-68, 15/10/2026,
+quatrième retour humain). Sur une page, 27 titres SVG de groupe sur 54 recopiaient leur carte
+(`<title>C1 — texte</title>`, carte « C1 · N2 » puis le même texte coupé sur trois `<text>`) et 12
+infobulles de code sur 58 recopiaient leur ligne de tableau : (e bis) compare à l'égalité, le
+préfixe de code et l'étiquette suffisaient à passer. Exigence : le `<title>` d'un groupe SVG (ou d'une
+forme d'un groupe), et le `title` / `data-tip` d'un élément placé dans une ligne de tableau, se
+jugent **ligne par ligne**, préfixe de code retiré (« C1 — », « RA-41 : ») ; une ligne de moins de six
+signes utiles est une étiquette et n'est pas jugée. Si toutes les lignes jugées se lisent déjà dans le
+texte visible du groupe ou de la ligne, l'infobulle n'apprend rien. Une ligne neuve suffit à passer :
+qui, quand, ce qui en dépend. Le voisinage est étroit à dessein, c'est la condition que la mesure du
+03/10 posait pour rouvrir l'inclusion. **Avertissement** (règle neuve) : mesuré le 15/10/2026 sur
+les mêmes 2 007 pages que L38, 11 pages de 6 dépôts, toutes des infobulles de ligne ou de carte
+qui redisent leur texte ; aucune inspection exhaustive, donc pas de passage en bloquant. Au périmètre de non-mesure :
+l'inclusion dans un texte plus large (le parent, la section) et la paraphrase. Fixtures
+`l3-infobulle-recopie-sa-carte.html` (rouge) et `l3-infobulle-complete-sa-carte.html` (verte).
+**Un title de groupe porte** ce que la carte n'affiche pas ; son code en tête est permis.
 
 **(f) L'objet d'un système source CITÉ mais jamais joint** (TF-0934, 08/09/2026). Le lendemain
 de (e), le même livrable portait des colonnes « Source héritée » nommant les objets d'un
@@ -1581,11 +1607,43 @@ Fixtures : `source-machine-livret.html` (rouge sans la classe, verte avec),
 `source-machine-declaree.html` (verte par sa balise `meta`), `source-machine-vrai-defaut.html`
 (rouge sur A2 et G1 malgré la classe).
 
+## L38 — Un listing porte son détail, il ne le renvoie pas à un autre chapitre (TF-1742, RA-41, 15/10/2026)
+
+**Le fait.** Un mode opératoire listait neuf actions dans un tableau du chapitre 2 ; le chapitre 3
+reprenait chaque ligne et la complétait, et le détail du reste vivait dans quatre autres chapitres.
+`check_html.py` PASS (36 règles), `render_page.py` PASS en trois états, l'oracle de filtres PASS ; le
+destinataire : « le listing actuel affiche des informations, mais pas toutes les informations, et
+certaines autres sont reprises et / ou complétées dans les chapitres suivants ». La classe
+`page-html-liste-renvoi-sans-detail` existait depuis le 03/09 (TF-0757) : la connaissance était au
+référentiel, la mesure nulle part.
+
+**La règle.** Une ligne de corps de tableau qui renvoie, par une ancre interne (`href="#…"`), vers
+une section HORS du tableau dont le titre s'ouvre sur l'objet de la ligne (le texte de sa première
+cellule) et qui porte au moins **15 mots** que la ligne n'a pas, renvoie son détail ailleurs. Deux
+lignes au moins, vers deux cibles distinctes, font l'avertissement : une référence commune à toutes
+les lignes (une procédure de retour arrière) n'est pas le détail d'un objet. Une ligne en statut
+défavorable est écartée, son lien vers l'action est le remède de L37. Remède : porter le détail
+DANS la ligne (ligne dépliable, L9 et L17) et retirer la section qui le double. Listing de renvoi
+voulu : `data-renvoi-ok` sur le tableau. **Avertissement** (règle neuve, D-70 (b)). Bruit mesuré le
+15/10/2026 sur 2 007 pages HTML des dépôts produits de `c:\dev` (hors forges, pilot, `old/`,
+`node_modules`, worktrees), en lecture seule : 11 pages de 3 dépôts, 27 tableaux. Parmi elles, le
+mode opératoire de MEP du cas fondateur (une version antérieure) ; les autres sont des index de
+catalogue dont chaque ligne renvoie à sa fiche, la forme que le destinataire a refusée, mais qu'un
+index assumé peut déclarer. Le bruit n'est pas démontré nul : la règle reste un avertissement.
+
+**Hors mesure, publié au périmètre de non-mesure.** Un objet du sujet ABSENT du listing (les phases
+A′ et C du cas fondateur) et un complément écrit dans un autre chapitre sans lien depuis la ligne :
+ils restent à la revue de lecture.
+
+Fixtures : `l38-listing-detail-ailleurs.html` (rouge), `l38-listing-detail-dans-la-ligne.html`
+(verte, détail dans la ligne et une référence commune), et `l37-ecart-lien-vers-action.html` reste
+verte (le remède de L37 n'est pas accusé).
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L37
-python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L37)
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L38
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L38)
 python scripts/check_html.py page.html --output json
 python scripts/check_html.py page.html --classe=source-machine   # page lue par une machine (TF-1589)
 python scripts/render_page.py page.html                # V1-V14 + L2 mesuré au rendu

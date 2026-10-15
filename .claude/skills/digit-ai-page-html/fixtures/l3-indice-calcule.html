@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Priorisation des chantiers — 20261015a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1743 (lot Produit-03 20260908a, RA-42), sens ROUGE. Le meme mot « Indice », cette fois sur une
+  colonne qui ORDONNE le tableau par une valeur calculee (0,82, 0,64…) et ne publie pas son calcul.
+  L'exception de l'indice de version ne doit pas eteindre la regle : la colonne reste accusee.
+  Attendu : l'echec « L3 colonne calculee sans formule : « Indice » ».
+-->
+<body><main class="wrap">
+<h1>Priorisation des chantiers</h1>
+<table>
+<thead><tr><th>Indice</th><th>Chantier</th></tr></thead>
+<tbody>
+<tr><td>0,82</td><td>Refonte du parcours de commande</td></tr>
+<tr><td>0,64</td><td>Migration de la base clients</td></tr>
+<tr><td>0,31</td><td>Nouveau tableau de bord</td></tr>
+</tbody></table>
+</main></body></html>

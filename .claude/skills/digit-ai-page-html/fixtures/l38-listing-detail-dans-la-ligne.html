@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Ordonnancement des etapes de MEP — 20261015b</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1742 (lot Produit-03 20260908a, RA-41), sens VERT. Le meme listing que
+  `l38-listing-detail-ailleurs.html`, mais chaque ligne PORTE son mode operatoire, dans la ligne.
+  La seule ancre sortante de chaque ligne vise UNE section commune a toutes (la procedure de
+  retour arriere) : une reference partagee n'est pas le detail d'une action.
+  Attendu : aucun avertissement ni echec L38.
+-->
+<body><main class="wrap">
+<h1>Ordonnancement des etapes de MEP</h1>
+<h2 id="listing">Les actions de la mise en production</h2>
+<table>
+<thead><tr><th>Action</th><th>Acteur</th><th>Mode operatoire</th></tr></thead>
+<tbody>
+<tr><td>A1 Geler les ecritures</td><td>Exploitant</td><td>La veille au soir, suspendre les traitements
+planifies de comptabilite, verifier qu aucune ecriture n est en cours, poser le drapeau de gel ; en
+cas d echec, <a href="#retour">revenir en arriere</a>.</td></tr>
+<tr><td>A2 Sauvegarder la base</td><td>Exploitant</td><td>Lancer la sauvegarde complete, controler sa
+taille contre celle de la veille, la copier sur le second site, consigner son empreinte ; en cas d
+echec, <a href="#retour">revenir en arriere</a>.</td></tr>
+<tr><td>A3 Deployer la version</td><td>Integrateur</td><td>Deployer l image validee en recette, rejouer
+les migrations, verifier la page de sante, lancer les trois parcours de controle ; un parcours rouge :
+<a href="#retour">revenir en arriere</a>.</td></tr>
+<tr><td>A4 Rouvrir les ecritures</td><td>Exploitant</td><td>Retirer le drapeau de gel, relancer les
+traitements suspendus, surveiller la premiere heure de journal, transmettre le compte rendu ; en cas
+d echec, <a href="#retour">revenir en arriere</a>.</td></tr>
+</tbody></table>
+<h2 id="retour">La procedure de retour arriere</h2>
+<p>Restaurer la sauvegarde consignee, redeployer la version precedente, retirer le drapeau de gel
+et prevenir le responsable de la bascule ; cette procedure vaut pour chacune des actions A1 a A4,
+quelle que soit l etape ou l echec est constate pendant la nuit de mise en production.</p>
+</main></body></html>

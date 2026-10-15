@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 au rendu : colonne etroite declaree — 20261015a</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+.col-lecture{width:min(100%,82ch)} .col-lecture p{max-width:none}
+</style></head>
+<!--
+  TF-1799 (lot Produit-83 20261015b, RA-5), sens VERT : la troisieme sortie que les messages L2
+  nomment, JOUEE. La meme colonne calee a gauche que `l2c-conteneur-cale-a-gauche.html`, etroite
+  A DESSEIN, et qui le DECLARE sur son conteneur (data-colonne-ok). La bride est sur le conteneur,
+  pas sur le paragraphe : « bride par max-width » ne s'applique pas non plus.
+  Attendu a 1440 px : 0 l2_width, 0 l2_conteneur.
+-->
+<body><main class="wrap">
+<h1>L2 rendu — une colonne etroite voulue, et declaree</h1>
+<section class="col-lecture" data-colonne-ok="note de cadrage lue en colonne, a dessein"><p>Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. Une phrase de lecture courante qui remplit sa ligne. </p></section></main></body></html>
