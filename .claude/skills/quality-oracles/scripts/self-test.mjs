@@ -2961,6 +2961,70 @@ else {
   }
 }
 
+// TF-1702 (lot Produit-82 20261014b, RA-3) — LE PÉRIMÈTRE VERSIONNÉ. run-oracles et oracle-secrets
+// jugeaient le DISQUE : un `.env` ignoré par git rendait FAIL le verdict du dépôt. `--versionne` borne
+// le jugement à `git ls-files -co --exclude-standard`. Le banc monte un dépôt jetable : un `.env`
+// ignoré qui porte un mot de passe, un fichier suivi sain. Quatre sens : sans l'option, le disque est
+// jugé (FAIL, le comportement d'avant reste le défaut) ; avec, PASS et le `.env` nommé au non_juge ;
+// un fichier NEUF non ignoré qui porte un secret reste jugé (FAIL) ; hors d'un dépôt git, l'option ne
+// fait taire personne (disque entier jugé, et dit). Puis run-oracles bout à bout : son domaine secrets
+// suit l'option, et son journal écrit le périmètre jugé. Valeurs assemblées : aucun scanner ne doit
+// lire ce fichier comme une fuite.
+{
+  const aGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!aGit) ok('TF-1702 NON JUGÉ sur ce poste : git absent');
+  else {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-perimetre-'));
+    const SECRETS = path.join(SKILLDIR, 'scripts', 'oracle-secrets.mjs');
+    const juger = (cible, ...extra) => {
+      const r = spawnSync(process.execPath, [SECRETS, cible, ...extra], { encoding: 'utf8', timeout: 120000 });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const mdp = "password = '" + 'k8Fq2' + 'LmZ9xWv' + "'\n";
+    try {
+      const depot = path.join(tmp, 'depot');
+      fs.mkdirSync(depot);
+      spawnSync('git', ['init', '-q'], { cwd: depot });
+      fs.writeFileSync(path.join(depot, '.gitignore'), '.env\n');
+      fs.writeFileSync(path.join(depot, '.env'), mdp);
+      fs.writeFileSync(path.join(depot, 'app.py'), 'print("ok")\n');
+      spawnSync('git', ['add', '.gitignore', 'app.py'], { cwd: depot });
+      const disque = juger(depot), versionne = juger(depot, '--versionne');
+      !disque || disque.verdict !== 'FAIL' ? ko(`TF-1702 défaut inchangé : sans --versionne, le disque doit rester jugé (FAIL sur le .env), verdict ${disque && disque.verdict}`)
+        : ok('TF-1702 défaut inchangé : sans --versionne, le disque est jugé et le .env ignoré fait échouer (FAIL)');
+      const dit = versionne && versionne.non_juge.some(x => /périmètre VERSIONNÉ/.test(x) && /\.env/.test(x));
+      !versionne || versionne.verdict !== 'PASS' || !dit ? ko(`TF-1702 sens vert : avec --versionne, verdict ${versionne && versionne.verdict}, .env nommé au non_juge : ${!!dit}`)
+        : ok('TF-1702 sens vert : avec --versionne, le .env ignoré par git n\'est pas jugé (PASS) et il est nommé au non_juge');
+      fs.writeFileSync(path.join(depot, 'neuf.py'), mdp);
+      const neuf = juger(depot, '--versionne');
+      fs.rmSync(path.join(depot, 'neuf.py'));
+      !neuf || neuf.verdict !== 'FAIL' || !neuf.findings.some(f => f.sev === 'bloquant' && /neuf\.py/.test(f.where || ''))
+        ? ko(`TF-1702 sens rouge : un fichier neuf non ignoré qui porte un secret doit rester jugé sous --versionne, verdict ${neuf && neuf.verdict}`)
+        : ok('TF-1702 sens rouge : sous --versionne, un fichier neuf non ignoré qui porte un secret est jugé (FAIL)');
+      const horsGit = path.join(tmp, 'hors-git');
+      fs.mkdirSync(horsGit);
+      fs.writeFileSync(path.join(horsGit, '.env'), mdp);
+      const hg = juger(horsGit, '--versionne');
+      !hg || hg.verdict !== 'FAIL' || !hg.non_juge.some(x => /DISQUE entier est jugé/.test(x))
+        ? ko(`TF-1702 hors dépôt git : --versionne doit juger le disque entier et le dire, verdict ${hg && hg.verdict}`)
+        : ok('TF-1702 hors dépôt git : --versionne ne fait taire personne — disque entier jugé (FAIL), et dit au non_juge');
+      // Bout à bout : le domaine secrets de run-oracles suit l'option, et le journal dit le périmètre.
+      const lancer = (...extra) => {
+        const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), depot, '--json', '--no-cache', ...extra], { encoding: 'utf8', timeout: 300000 });
+        try { return JSON.parse(r.stdout); } catch { return null; }
+      };
+      const secretsDe = j => (j && j.resultats || []).filter(x => x.domaine === 'Sécurité / secrets').map(x => x.verdict).join(',');
+      const roDisque = lancer(), roVersionne = lancer('--versionne');
+      !roDisque || secretsDe(roDisque) !== 'FAIL' || roDisque.perimetre !== 'disque'
+        ? ko(`TF-1702 run-oracles sans option : secrets ${secretsDe(roDisque)}, périmètre ${roDisque && roDisque.perimetre} — attendu FAIL sur le disque`)
+        : ok('TF-1702 run-oracles sans option : périmètre « disque » écrit au journal, secrets FAIL sur le .env');
+      !roVersionne || secretsDe(roVersionne) !== 'PASS' || roVersionne.perimetre !== 'versionne'
+        ? ko(`TF-1702 run-oracles --versionne : secrets ${secretsDe(roVersionne)}, périmètre ${roVersionne && roVersionne.perimetre} — attendu PASS sur le contenu versionné`)
+        : ok('TF-1702 run-oracles --versionne : périmètre « versionne » écrit au journal, oracle-secrets borné par QO_PERIMETRE (PASS)');
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

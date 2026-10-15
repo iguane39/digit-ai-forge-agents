@@ -146,7 +146,7 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
 (un PASS de niveau inférieur n'est jamais recyclé plus haut) — sans jamais descendre sous §2 et §5.
 
 ## Outillage (scripts)
-- **Orchestrateur** — `node scripts/run-oracles.mjs <cible> [--profil <nom|chemin>] [--niveau note|diffuse|production] [--no-cache]` : matching
+- **Orchestrateur** — `node scripts/run-oracles.mjs <cible> [--profil <nom|chemin>] [--niveau note|diffuse|production] [--no-cache] [--versionne]` (`--versionne` : seul le contenu que git suit ou suivrait est jugé, TF-1702) : matching
   par **extension + `trigger_files` + contenu** (`content_patterns`, qui RESTREINT les extensions d'une entrée qui déclare les deux — intersection, TF-1539), bornés par **`chemins`** quand l'entrée en porte
   (dossiers où l'oracle s'applique, TF-1446) et par **`parties_paquet`** (préfixes de parties qu'un paquet zip doit
   porter, `ppt/fonts/` par exemple — TF-1501), **type réel** (magic bytes ≠ extension = FAIL), exécution

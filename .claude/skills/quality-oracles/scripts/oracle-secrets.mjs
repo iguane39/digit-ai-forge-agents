@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
+import { perimetreVersionneDemande, fichiersVersionnes, cleDeChemin } from './lib/perimetre.mjs';
 // TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
 const contratJSON = ecrivainDeContrat({ info: true });
 
@@ -22,6 +23,17 @@ function emit(verdict, findings = [], non_juge = NJ) {
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
 }
 if (!target || !fs.existsSync(target)) emit('SKIP', [{ sev: 'info', msg: 'cible absente' }]);
+// TF-1702 (lot Produit-82 20261014b, RA-3) — `--versionne` (ou QO_PERIMETRE=versionne, posé par
+// run-oracles) : seul le contenu que git suit ou suivrait est jugé (lib/perimetre.mjs). Un `.env`
+// ignoré n'est pas une fuite du dépôt ; il reste nommé au non_juge. Hors dépôt git : disque entier, dit.
+let PERIMETRE = null;
+if (perimetreVersionneDemande()) {
+  const p = fichiersVersionnes(target);
+  if (p.fichiers) PERIMETRE = p.fichiers;
+  else NJ.push('périmètre VERSIONNÉ demandé, mais ' + p.motif + ' : le DISQUE entier est jugé (TF-1702)');
+}
+const horsPerimetre = [];
+const dansPerimetre = f => { if (!PERIMETRE || PERIMETRE.has(cleDeChemin(f))) return true; horsPerimetre.push(f); return false; };
 
 const HIGH = [
   [/-----BEGIN (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----/, 'clé privée'],
@@ -74,7 +86,7 @@ function listFiles(p) {
 }
 
 const findings = [];
-for (const f of listFiles(target)) {
+for (const f of listFiles(target).filter(dansPerimetre)) {
   let buf; try { buf = fs.readFileSync(f); } catch { continue; }
   if (buf.includes(0)) continue; // binaire
   try { scanText(new TextDecoder('utf-8', { fatal: false }).decode(buf), f, findings); } catch {}
@@ -97,12 +109,18 @@ if (spawnSync(process.platform === 'win32' ? 'where' : 'which', ['gitleaks'], { 
   if (g.status === 1) {
     if (!Array.isArray(lus) || !lus.length) findings.push({ sev: 'bloquant', msg: 'gitleaks a détecté des secrets', where: (g.stdout || g.stderr || '').split('\n').slice(0, 2).join(' | ') });
     else for (const x of lus) {
+      if (x.File && !dansPerimetre(String(x.File))) continue;     // TF-1702 : hors du contenu versionné
       const ou = String(x.File || '?') + ':' + (x.StartLine ?? '?');
       if (JOURNAL_ORACLES.test(path.basename(String(x.File || ''))) && EMPREINTE.test(String(x.Secret || ''))) findings.push({ sev: 'warn', msg: 'gitleaks ' + (x.RuleID || '?') + ' sur une EMPREINTE SHA-256 d\'un journal d\'oracles, pas un secret — rétrogradée (TF-1701)', where: ou });
       else findings.push({ sev: 'bloquant', msg: 'gitleaks ' + (x.RuleID || '?') + ' : secret probable', where: ou + ' · ' + String(x.Secret || '').slice(0, 4) + '…' });
     }
   }
 } else NJ.push('gitleaks non installé — scanner intégré utilisé (couverture moindre)');
+if (PERIMETRE) {
+  const noms = [...new Set(horsPerimetre.map(f => path.relative(fs.statSync(target).isDirectory() ? target : path.dirname(target), path.resolve(f)).split(path.sep).join('/')))];
+  NJ.push('périmètre VERSIONNÉ (git ls-files -co --exclude-standard, TF-1702) : ' + noms.length + ' fichier(s) du disque ignoré(s) par git et NON jugé(s)'
+    + (noms.length ? ' — ' + noms.slice(0, 5).join(', ') + (noms.length > 5 ? ' (+' + (noms.length - 5) + ')' : '') : ''));
+}
 
 const blocking = findings.filter(f => f.sev === 'bloquant');
 if (blocking.length) emit('FAIL', findings);

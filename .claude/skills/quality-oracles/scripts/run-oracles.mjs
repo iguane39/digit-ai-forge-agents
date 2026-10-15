@@ -8,7 +8,7 @@
 // applique les exemptions tracées (.oracles-exemptions.json, expirées = FAIL),
 // détecte les types réels (magic bytes ≠ extension = FAIL), et écrit un JOURNAL
 // (<cible>.oracles.json) + un HISTORIQUE (*-historique.jsonl, anti-recopie §5).
-//   node run-oracles.mjs <fichier|dossier> [--json] [--profil <nom|chemin>] [--no-cache]
+//   node run-oracles.mjs <fichier|dossier> [--json] [--profil <nom|chemin>] [--no-cache] [--versionne]
 //   exit 0 = PASS · 1 = FAIL · 2 = INCONCLUSIF (0 PASS, 0 FAIL : personne n'a jugé).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
 import { resolvePython } from './lib/python.mjs';
+import { perimetreVersionneDemande, fichiersVersionnes, cleDeChemin } from './lib/perimetre.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
@@ -25,7 +26,7 @@ const args = process.argv.slice(2);
 const JSONOUT = args.includes('--json');
 const NOCACHE = args.includes('--no-cache');
 const target = args.find(a => !a.startsWith('--'));
-if (!target || !fs.existsSync(target)) { console.error('usage: node run-oracles.mjs <fichier|dossier> [--json] [--profil <nom|chemin>] [--no-cache]'); process.exit(2); }
+if (!target || !fs.existsSync(target)) { console.error('usage: node run-oracles.mjs <fichier|dossier> [--json] [--profil <nom|chemin>] [--no-cache] [--versionne]'); process.exit(2); }
 
 // ---- profil (C1) : politiques contextuelles — nom (→ profils/<nom>.json) ou chemin ------------
 const profArg = args.includes('--profil') ? args[args.indexOf('--profil') + 1] : (process.env.QO_PROFIL || 'digit-ai');
@@ -68,7 +69,15 @@ function walk(p) {
   }
   return out;
 }
-const files = walk(target);
+// TF-1702 (lot Produit-82 20261014b, RA-3) — `--versionne` : le contenu que git suit ou suivrait
+// (`git ls-files -co --exclude-standard`, lib/perimetre.mjs), pas le disque. Un `.env` ignoré, une
+// sortie locale non versionnée ne font plus échouer le verdict du DÉPÔT. Les oracles lancés héritent
+// de QO_PERIMETRE=versionne (ceux qui parcourent un dossier eux-mêmes, oracle-secrets d'abord, s'y
+// bornent). Hors dépôt git : le disque entier est jugé, et le journal le dit.
+const VERSIONNE = perimetreVersionneDemande(args);
+const perimetre = VERSIONNE ? fichiersVersionnes(target) : null;
+if (VERSIONNE) process.env.QO_PERIMETRE = 'versionne';
+const files = perimetre && perimetre.fichiers ? walk(target).filter(f => perimetre.fichiers.has(cleDeChemin(f))) : walk(target);
 const targetIsFile = fs.statSync(target).isFile();   // une cible fichier est un fichier comme les autres (exemptions + bilan) ; seul un dossier-target injecté via trigger_files est hors bilan
 const extOf = f => path.extname(f).toLowerCase();
 const rel = f => path.relative(process.cwd(), f) || f;
@@ -490,7 +499,9 @@ const verdictOracles = nFail ? 'FAIL' : (nPass ? 'PASS' : 'INCONCLUSIF');
 // PRONONCE et le code de sortie.
 const perime = bouges.length > 0;
 const verdict = perime ? 'PERIME' : verdictOracles;
-const journal = { cible: target, date_iso: new Date().toISOString(), registre_version: registry.version, profil: path.basename(profilPath, '.json'), niveau: NIVEAU, verdict, resume: { pass: nPass, fail: nFail, skip: nSkip, cache: cacheHits }, bilan_fichiers: bilan, bilan_complet: bilanOk, exemptions_actives: exemptes, resultats: results, actions_couverture: actions,
+const journal = { cible: target, date_iso: new Date().toISOString(), registre_version: registry.version, profil: path.basename(profilPath, '.json'), niveau: NIVEAU, verdict,
+  // TF-1702 : le périmètre jugé se dit — `disque` par défaut, `versionne` sur demande ; le motif d'un repli.
+  perimetre: perimetre && perimetre.fichiers ? 'versionne' : 'disque', perimetre_motif: perimetre && !perimetre.fichiers ? 'périmètre versionné demandé, mais ' + perimetre.motif + ' : le disque entier est jugé' : null, resume: { pass: nPass, fail: nFail, skip: nSkip, cache: cacheHits }, bilan_fichiers: bilan, bilan_complet: bilanOk, exemptions_actives: exemptes, resultats: results, actions_couverture: actions,
   // D5 : `release` porte le chemin de la cible, le format reste `empreinte@1` inchange.
   empreinte: perime ? null : empreinteApres,
   // D6 : quand les bords divergent, l'empreinte est OMISE plutot que fausse, et le motif ecrit.
@@ -509,7 +520,8 @@ const exitCode = (verdict === 'FAIL' || verdict === 'PERIME') ? 1 : verdict === 
 
 if (JSONOUT) { process.stdout.write(JSON.stringify(journal)); process.exit(exitCode); }
 const L = '─'.repeat(70);
-console.log(L); console.log('Oracles qualité — ' + target + '  [profil : ' + journal.profil + ' · niveau : ' + NIVEAU + ']'); console.log(L);
+console.log(L); console.log('Oracles qualité — ' + target + '  [profil : ' + journal.profil + ' · niveau : ' + NIVEAU + ' · périmètre : ' + journal.perimetre + ']'); console.log(L);
+if (journal.perimetre_motif) console.log('  ⚠ ' + journal.perimetre_motif + ' (TF-1702)');
 for (const r of results) console.log(`  ${r.verdict === 'PASS' ? '✅' : r.verdict === 'FAIL' ? '❌' : '➖'} [${r.domaine}] ${r.file}${r.detail ? ' — ' + r.detail : ''}`);
 for (const e of exemptes) console.log(`  🔶 [${e.domaine}] ${e.file} — EXEMPTÉ : ${e.justification} (échéance ${e.expire})`);
 if (actions.length) { console.log('\n  Couverture — domaines à vérifier hors oracle CLI (action) :'); for (const a of actions) console.log(`   • [${a.domaine}] ${a.hint}${a.statut === 'todo' ? ' (oracle à outiller)' : ''}`); }
