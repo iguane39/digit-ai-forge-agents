@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
+import { borneVersionnee } from './lib/perimetre.mjs';
 // TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
 const contratJSON = ecrivainDeContrat({ info: true });
 
@@ -29,7 +30,9 @@ const NJ = ['dépendances transitives non épinglées (version inconnue → non 
 const raisons = [];                                  // pourquoi une partie n'a PAS été vérifiée
 let courant = '';                                    // TF-1700 : le manifeste en cours, qui nomme ses non-vérifiés
 const nonVerifie = (m) => { const t = courant ? courant + ' : ' + m : m; raisons.push(t); NJ.push(t); };
+let direPerimetre = () => {};   // TF-1729 : les manifestes hors du périmètre versionné se nomment au non_juge, avant toute sortie
 function emit(verdict, findings = [], non_juge = NJ) {
+  direPerimetre(); direPerimetre = () => {};
   process.stdout.write(contratJSON({ oracle: 'oracle-sca', domaine: DOM, artefact: target || null, verdict, findings, non_juge }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
 }
@@ -59,12 +62,17 @@ const chercher = (dir) => {
   }
   return out;
 };
-const manifestes = isDir ? chercher(target) : (MANIFESTES.includes(path.basename(target)) ? [target] : []);
+// TF-1729 — `--versionne` (ou QO_PERIMETRE=versionne, posé par run-oracles --versionne) : seuls les
+// manifestes que git suit ou suivrait sont lus, comme oracle-secrets depuis TF-1702. Un manifeste
+// ignoré par git (copie locale, sortie d'outil) est nommé au non_juge, jamais interrogé.
+const borne = borneVersionnee(target, NJ);
+direPerimetre = borne.dire;
+const manifestes = (isDir ? chercher(target) : (MANIFESTES.includes(path.basename(target)) ? [target] : [])).filter(borne.dans);
 const nomM = f => (isDir ? path.relative(target, f) : path.basename(f)).split(path.sep).join('/');
 const reqs = manifestes.filter(f => path.basename(f) === 'requirements.txt');
 const pkgs = manifestes.filter(f => path.basename(f) === 'package.json');
 if (!reqs.length && !pkgs.length) emit('SKIP', [{ sev: 'info', msg: 'aucun manifeste (requirements.txt / package.json) détecté'
-  + (isDir ? ' dans le dossier ni dans ses sous-dossiers (hors ' + ECARTES.join(', ') + ')' : '') }]);
+  + (isDir ? ' dans le dossier ni dans ses sous-dossiers (hors ' + ECARTES.join(', ') + ')' : '') + (borne.actif ? ', dans le périmètre versionné' : '') }]);
 if (isDir) NJ.push('manifestes rangés sous ' + ECARTES.join(', ') + ' : non lus (TF-1700)');
 
 const findings = []; let checked = false;

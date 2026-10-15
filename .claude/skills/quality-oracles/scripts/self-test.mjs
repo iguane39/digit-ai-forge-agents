@@ -3042,6 +3042,78 @@ else {
     : ok('TF-1705 sens vert : aucune requête à paramètres liés (%s, %(nom)s, second argument d\'execute) n\'est accusée');
 }
 
+// TF-1729 (15/10/2026, reste de TF-1702) — oracle-sast et oracle-sca suivent le PÉRIMÈTRE VERSIONNÉ.
+// Sous run-oracles --versionne, seul oracle-secrets s'y bornait : oracle-sca, lancé sur le DOSSIER dès
+// qu'un manifeste y apparaît, lisait aussi un manifeste ignoré par git, et oracle-sast appelé sur un
+// dossier jugeait du code ignoré. Banc sur un dépôt jetable : `genere/` ignoré porte un appel
+// os.system et un manifeste épinglé sur une version vulnérable ; le contenu suivi est sain. Sens :
+// sans l'option, le disque reste jugé (FAIL) ; avec `--versionne` ou QO_PERIMETRE=versionne (la voie
+// de run-oracles), PASS et le fichier ignoré nommé au non_juge ; un fichier NEUF non ignoré reste jugé
+// (FAIL) ; hors dépôt git, l'option ne fait taire personne. oracle-sca joue sur les données OSV figées.
+{
+  const aGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!aGit) ok('TF-1729 NON JUGÉ sur ce poste : git absent');
+  else {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-perimetre-sast-sca-'));
+    const FIGE = '--osv-fige=' + path.join(SKILLDIR, 'fixtures', 'sca-osv-fige.json');
+    const juger = (oracle, cible, extra = [], env = {}) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', oracle), cible, ...extra],
+        { encoding: 'utf8', timeout: 300000, env: { ...process.env, QO_PERIMETRE: '', ...env } });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const nomme = (j, nom) => !!j && j.non_juge.some(x => /périmètre VERSIONNÉ/.test(x) && x.includes(nom));
+    const accuse = (j, nom) => !!j && j.findings.some(f => f.sev === 'bloquant' && String(f.where || '').replace(/\\/g, '/').includes(nom));
+    const appel = 'import os\n\n\ndef lancer(cmd):\n    os.system(cmd)\n';
+    try {
+      const depot = path.join(tmp, 'depot');
+      fs.mkdirSync(path.join(depot, 'genere'), { recursive: true });
+      spawnSync('git', ['init', '-q'], { cwd: depot });
+      fs.writeFileSync(path.join(depot, '.gitignore'), 'genere/\n');
+      fs.writeFileSync(path.join(depot, 'app.py'), 'print("ok")\n');
+      fs.writeFileSync(path.join(depot, 'requirements.txt'), 'packaging==24.1\n');
+      fs.writeFileSync(path.join(depot, 'genere', 'outil.py'), appel);
+      fs.writeFileSync(path.join(depot, 'genere', 'requirements.txt'), 'requests==2.19.0\n');
+      spawnSync('git', ['add', '.gitignore', 'app.py', 'requirements.txt'], { cwd: depot });
+      // oracle-sast
+      const sDisque = juger('oracle-sast.mjs', depot), sVers = juger('oracle-sast.mjs', depot, ['--versionne']);
+      const sEnv = juger('oracle-sast.mjs', depot, [], { QO_PERIMETRE: 'versionne' });
+      !sDisque || sDisque.verdict !== 'FAIL' || !accuse(sDisque, 'genere/outil.py') ? ko(`TF-1729 sast, défaut inchangé : sans --versionne, le code ignoré doit rester jugé (FAIL sur genere/outil.py), verdict ${sDisque && sDisque.verdict}`)
+        : ok('TF-1729 sast, défaut inchangé : sans --versionne, le disque est jugé et genere/outil.py ignoré fait échouer (FAIL)');
+      !sVers || sVers.verdict !== 'PASS' || !nomme(sVers, 'genere/outil.py') ? ko(`TF-1729 sast, sens vert : avec --versionne, verdict ${sVers && sVers.verdict}, genere/outil.py nommé au non_juge : ${nomme(sVers, 'genere/outil.py')}`)
+        : ok('TF-1729 sast, sens vert : avec --versionne, le code ignoré par git n\'est pas jugé (PASS) et il est nommé au non_juge');
+      !sEnv || sEnv.verdict !== 'PASS' || !nomme(sEnv, 'genere/outil.py') ? ko(`TF-1729 sast, voie de run-oracles : sous QO_PERIMETRE=versionne, verdict ${sEnv && sEnv.verdict}`)
+        : ok('TF-1729 sast, voie de run-oracles : QO_PERIMETRE=versionne borne le jugement comme --versionne (PASS, fichier ignoré nommé)');
+      // oracle-sca
+      const cDisque = juger('oracle-sca.mjs', depot, [FIGE]), cVers = juger('oracle-sca.mjs', depot, [FIGE, '--versionne']);
+      const cEnv = juger('oracle-sca.mjs', depot, [FIGE], { QO_PERIMETRE: 'versionne' });
+      !cDisque || cDisque.verdict !== 'FAIL' || !accuse(cDisque, 'genere/requirements.txt') ? ko(`TF-1729 sca, défaut inchangé : sans --versionne, le manifeste ignoré doit rester lu (FAIL sur genere/requirements.txt), verdict ${cDisque && cDisque.verdict}`)
+        : ok('TF-1729 sca, défaut inchangé : sans --versionne, le manifeste ignoré est lu et requests==2.19.0 fait échouer (FAIL)');
+      !cVers || cVers.verdict !== 'PASS' || !nomme(cVers, 'genere/requirements.txt') ? ko(`TF-1729 sca, sens vert : avec --versionne, verdict ${cVers && cVers.verdict}, genere/requirements.txt nommé au non_juge : ${nomme(cVers, 'genere/requirements.txt')}`)
+        : ok('TF-1729 sca, sens vert : avec --versionne, le manifeste ignoré par git n\'est pas lu (PASS) et il est nommé au non_juge');
+      !cEnv || cEnv.verdict !== 'PASS' || !nomme(cEnv, 'genere/requirements.txt') ? ko(`TF-1729 sca, voie de run-oracles : sous QO_PERIMETRE=versionne, verdict ${cEnv && cEnv.verdict}`)
+        : ok('TF-1729 sca, voie de run-oracles : QO_PERIMETRE=versionne borne la lecture des manifestes comme --versionne (PASS)');
+      // Sens rouge : un fichier NEUF que le .gitignore ne couvre pas reste jugé.
+      fs.mkdirSync(path.join(depot, 'outils'));
+      fs.writeFileSync(path.join(depot, 'neuf.py'), appel);
+      fs.writeFileSync(path.join(depot, 'outils', 'requirements.txt'), 'requests==2.19.0\n');
+      const sNeuf = juger('oracle-sast.mjs', depot, ['--versionne']), cNeuf = juger('oracle-sca.mjs', depot, [FIGE, '--versionne']);
+      !sNeuf || sNeuf.verdict !== 'FAIL' || !accuse(sNeuf, 'neuf.py') || accuse(sNeuf, 'genere/') ? ko(`TF-1729 sast, sens rouge : sous --versionne, un fichier neuf non ignoré doit rester jugé et seul lui accusé, verdict ${sNeuf && sNeuf.verdict}`)
+        : ok('TF-1729 sast, sens rouge : sous --versionne, un fichier neuf non ignoré est jugé (FAIL sur neuf.py), le code ignoré reste hors du verdict');
+      !cNeuf || cNeuf.verdict !== 'FAIL' || !accuse(cNeuf, 'outils/requirements.txt') || accuse(cNeuf, 'genere/') ? ko(`TF-1729 sca, sens rouge : sous --versionne, un manifeste neuf non ignoré doit rester lu et seul lui accusé, verdict ${cNeuf && cNeuf.verdict}`)
+        : ok('TF-1729 sca, sens rouge : sous --versionne, un manifeste neuf non ignoré est lu (FAIL sur outils/requirements.txt), le manifeste ignoré reste hors du verdict');
+      // Hors dépôt git : l'option ne fait taire personne.
+      const horsGit = path.join(tmp, 'hors-git');
+      fs.mkdirSync(horsGit);
+      fs.writeFileSync(path.join(horsGit, 'outil.py'), appel);
+      fs.writeFileSync(path.join(horsGit, 'requirements.txt'), 'requests==2.19.0\n');
+      const sHg = juger('oracle-sast.mjs', horsGit, ['--versionne']), cHg = juger('oracle-sca.mjs', horsGit, [FIGE, '--versionne']);
+      const repli = j => !!j && j.verdict === 'FAIL' && j.non_juge.some(x => /DISQUE entier est jugé/.test(x));
+      !repli(sHg) || !repli(cHg) ? ko(`TF-1729 hors dépôt git : --versionne doit juger le disque entier et le dire, sast ${sHg && sHg.verdict}, sca ${cHg && cHg.verdict}`)
+        : ok('TF-1729 hors dépôt git : sous --versionne, oracle-sast et oracle-sca jugent le disque entier (FAIL) et le disent au non_juge');
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

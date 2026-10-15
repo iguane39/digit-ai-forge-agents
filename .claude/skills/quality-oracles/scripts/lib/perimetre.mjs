@@ -33,3 +33,25 @@ export function fichiersVersionnes(cible) {
   if (r.status !== 0) return { motif: 'la cible n\'est pas dans un dépôt git (' + (String(r.stderr || '').trim().split(/\r?\n/)[0] || 'exit ' + r.status).slice(0, 120) + ')' };
   return { fichiers: new Set(r.stdout.split('\0').filter(Boolean).map(p => cleDeChemin(path.resolve(dossier, p)))) };
 }
+
+/** TF-1729 (15/10/2026) — LA BORNE D'UN ORACLE QUI PARCOURT LE DISQUE LUI-MÊME (oracle-sast, oracle-sca).
+ *  Sous `--versionne` ou QO_PERIMETRE=versionne, `dans(f)` ne garde que les fichiers du périmètre et
+ *  retient le nom des autres ; `dire()` les nomme au non_juge (`nj`), avec leur compte. Sans l'option,
+ *  `dans` garde tout et rien n'est dit. Hors dépôt git, le repli sur le disque entier se dit à la création. */
+export function borneVersionnee(cible, nj, argv = process.argv) {
+  const libre = { actif: false, dans: () => true, dire: () => {} };
+  if (!perimetreVersionneDemande(argv)) return libre;
+  const p = fichiersVersionnes(cible);
+  if (!p.fichiers) { nj.push('périmètre VERSIONNÉ demandé, mais ' + p.motif + ' : le DISQUE entier est jugé (TF-1729)'); return libre; }
+  const base = fs.statSync(cible).isDirectory() ? cible : path.dirname(cible);
+  const hors = new Set();
+  return {
+    actif: true,
+    dans: f => { if (p.fichiers.has(cleDeChemin(f))) return true; hors.add(path.relative(base, path.resolve(f)).split(path.sep).join('/')); return false; },
+    dire: () => {
+      const noms = [...hors];
+      nj.push('périmètre VERSIONNÉ (git ls-files -co --exclude-standard, TF-1729) : ' + noms.length + ' fichier(s) du disque ignoré(s) par git et NON jugé(s)'
+        + (noms.length ? ' — ' + noms.slice(0, 5).join(', ') + (noms.length > 5 ? ' (+' + (noms.length - 5) + ')' : '') : ''));
+    },
+  };
+}

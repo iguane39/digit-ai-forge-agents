@@ -10,13 +10,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
+import { borneVersionnee } from './lib/perimetre.mjs';
 // TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
 const contratJSON = ecrivainDeContrat({ info: true });
 
 const target = process.argv[2];
 const DOM = 'Sécurité : SAST (injection / exécution dangereuse)';
 const NJ = ['analyse de flux (taint) inter-fichiers', 'faux négatifs des patterns indirects', 'logique métier'];
+let direPerimetre = () => {};   // TF-1729 : les fichiers hors du périmètre versionné se nomment au non_juge, avant toute sortie
 function emit(verdict, findings = [], non_juge = NJ) {
+  direPerimetre(); direPerimetre = () => {};
   process.stdout.write(contratJSON({ oracle: 'oracle-sast', domaine: DOM, artefact: target || null, verdict, findings, non_juge }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
 }
@@ -35,8 +38,14 @@ function listFiles(p) {
   }
   return out;
 }
-const codeFiles = listFiles(target).filter(f => CODE.includes(path.extname(f).toLowerCase()));
-if (!codeFiles.length) emit('SKIP', [{ sev: 'info', msg: 'aucun fichier de code source' }]);
+// TF-1729 — `--versionne` (ou QO_PERIMETRE=versionne, posé par run-oracles --versionne) : seul le code
+// que git suit ou suivrait est jugé, comme oracle-secrets depuis TF-1702 ; les règles intégrées comme
+// les constats de semgrep et de bandit. Un fichier ignoré par git est nommé au non_juge, jamais jugé.
+const borne = borneVersionnee(target, NJ);
+direPerimetre = borne.dire;
+const codeFiles = listFiles(target).filter(f => CODE.includes(path.extname(f).toLowerCase())).filter(borne.dans);
+if (!codeFiles.length) emit('SKIP', [{ sev: 'info', msg: 'aucun fichier de code source' + (borne.actif ? ' dans le périmètre versionné' : '') }]);
+const horsBorne = f => borne.actif && f && !borne.dans(path.resolve(String(f)));   // constat d'un outil hors du périmètre
 
 const SQLKW = /\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|WHERE|FROM)\b/i;
 // TF-1705 (lot Produit-82 20261014c, RA-4) — `%s` et `%(nom)s` écrits DANS le littéral sont les
@@ -91,12 +100,12 @@ const SEMGREP = have('semgrep') ? { cmd: 'semgrep', pre: [], voie: 'semgrep (PAT
 if (SEMGREP) {
   const g = spawnSync(SEMGREP.cmd, [...SEMGREP.pre, '--quiet', '--json', '--config', 'auto', target], { encoding: 'utf8', timeout: 300000 });
   let lu = null; try { lu = JSON.parse(g.stdout || ''); } catch { /* sortie illisible : dite plus bas */ }
-  if (lu) (lu.results || []).forEach(r => findings.push({ sev: 'bloquant', msg: 'semgrep ' + (r.check_id || '').split('.').pop(), where: (r.path || '') + ':' + (r.start && r.start.line) }));
+  if (lu) (lu.results || []).filter(r => !horsBorne(r.path)).forEach(r => findings.push({ sev: 'bloquant', msg: 'semgrep ' + (r.check_id || '').split('.').pop(), where: (r.path || '') + ':' + (r.start && r.start.line) }));
   else NJ.push(SEMGREP.voie + ' injoignable (exit ' + g.status + (g.error ? ', ' + g.error.code : '') + ') — règles intégrées seules (couverture moindre)');
 } else NJ.push('semgrep non installé et uvx absent — règles intégrées utilisées (couverture moindre)');
 if (have('bandit') && codeFiles.some(f => f.endsWith('.py'))) {
   const b = spawnSync('bandit', ['-r', target, '-f', 'json'], { encoding: 'utf8', timeout: 120000 });
-  try { (JSON.parse(b.stdout || '{}').results || []).forEach(r => { if (/HIGH|MEDIUM/i.test(r.issue_severity)) findings.push({ sev: r.issue_severity === 'HIGH' ? 'bloquant' : 'warn', msg: 'bandit ' + r.test_id + ' ' + r.issue_text.slice(0, 60), where: r.filename + ':' + r.line_number }); }); } catch {}
+  try { (JSON.parse(b.stdout || '{}').results || []).filter(r => !horsBorne(r.filename)).forEach(r => { if (/HIGH|MEDIUM/i.test(r.issue_severity)) findings.push({ sev: r.issue_severity === 'HIGH' ? 'bloquant' : 'warn', msg: 'bandit ' + r.test_id + ' ' + r.issue_text.slice(0, 60), where: r.filename + ':' + r.line_number }); }); } catch {}
 }
 
 const blocking = findings.filter(f => f.sev === 'bloquant');
