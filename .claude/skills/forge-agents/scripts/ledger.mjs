@@ -124,6 +124,10 @@
  * lignes a, b — deux écrivains sans verrou commun »), EN TÊTE des écarts, distinct de toute
  * autre rupture.
  *
+ * RECTIFICATION DES FORGES MOBILISÉES (TF-1722, 15/10/2026). Une entrée `rectification_forges_mobilisees`
+ * (TF-1715 du pilot) sans `forges_mobilisees` non vide ou sans `cause` est refusée à l'écriture, quel
+ * que soit le schéma : le juge de l'enclenchement l'ignorerait (constante CHAMPS_RECTIFICATION_FORGES).
+ *
  * SCHÉMA 1.1 — FORGES MOBILISÉES (décision humaine D-18 (a), 26/09/2026). Sous 1.1, `run_open`
  * doit porter `forges_mobilisees` (table CHAMPS_DUS_PAR_VERSION ci-dessous) — la forme que lit
  * `oracle-enclenchement.mjs` du pilot. Les champs dus sont désormais PAR VERSION : un journal qui
@@ -308,6 +312,21 @@ const CHAMPS_DUS_PAR_VERSION = {
 const TYPE_RECTIFICATION = "rectification_horodatage";
 const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "ts_reel_estime", "cause"];
 
+//: TF-1722 (15/10/2026) — la rectification PAR AJOUT d'une déclaration fausse de `forges_mobilisees`
+//: (TF-1715, CONTRAT-INTERFACE.md §3 du pilot) porte la liste corrigée ENTIÈRE et sa `cause`. Le juge
+//: du pilot (`oracle-enclenchement.mjs`, `rectificationsForges`) IGNORE en le disant une rectification
+//: sans liste ou sans cause ; `append` l'acceptait comme un type libre, et l'entrée inopérante restait
+//: pour toujours dans le journal. Refusée À L'ÉCRITURE, QUEL QUE SOIT LE SCHÉMA déclaré, comme les
+//: quatre champs dus d'une `rectification_horodatage` : un type né le 15/10/2026 n'a aucun existant à
+//: ménager, et seule une entrée NEUVE est jugée ici. La forme exigée est celle de `run_open` sous 1.1
+//: (tableau de chaînes non vides) : plus stricte que le juge, qui accepte aussi une chaîne à virgules.
+const TYPE_RECTIFICATION_FORGES = "rectification_forges_mobilisees";
+const CHAMPS_RECTIFICATION_FORGES = [
+  ["forges_mobilisees", "la liste corrigée ENTIÈRE des forges mobilisées — sans elle, le juge de l enclenchement ignore la rectification", validerForgesMobilisees],
+  ["cause", "pourquoi la déclaration précédente était fausse — sans elle, le juge de l enclenchement ignore la rectification",
+    (v) => (typeof v === "string" ? null : `doit etre une CHAINE (recu ${typeof v})`)],
+];
+
 //: TF-1422 (28/09/2026) : l'INSTANT que désigne un `ts`, en millisecondes, ou NaN s'il n'en
 //: désigne aucun (absent, vide, illisible). Deux écritures d'une même heure (`…T09:30:00+02:00`
 //: et `…T07:30:00.000Z`) désignent le même instant ; comparées comme chaînes, elles s'ordonnaient
@@ -387,6 +406,20 @@ if (cmd === "append") {
   const clesUtiles = Object.keys(obj).filter((k) => k !== "type" && k !== "ts");
   if (clesUtiles.length === 0) {
     fail(`entrée refusée : aucun contenu au-delà de \`type\` (${JSON.stringify(obj.type)}) — une entrée sans contenu reste pour toujours dans un journal en ajout seul, et se lit ensuite comme une preuve (TF-1366)`);
+  }
+  // TF-1722 : une rectification de `forges_mobilisees` sans liste non vide ou sans `cause` est
+  // refusée avant le verrou, quel que soit le schéma — le juge du pilot l'ignorerait.
+  if (obj.type === TYPE_RECTIFICATION_FORGES) {
+    const manquants = [];
+    for (const [champ, pourquoi, valider] of CHAMPS_RECTIFICATION_FORGES) {
+      const valeur = obj[champ];
+      if (valeur === undefined || valeur === null || String(valeur).trim() === "") { manquants.push(`\`${champ}\` ${champ in obj ? "vide" : "absent"} — ${pourquoi}`); continue; }
+      const probleme = valider(valeur);
+      if (probleme) manquants.push(`\`${champ}\` ${probleme} — ${pourquoi}`);
+    }
+    if (manquants.length) {
+      fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-1722) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
+    }
   }
   const lockFile = `${file}.lock`;
   acquireLock(lockFile);

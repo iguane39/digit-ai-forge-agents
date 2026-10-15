@@ -819,6 +819,51 @@ check("ledger D-18 (a) : un journal qui déclare 1.0 reste jugé selon 1.0 — `
   if (!v.includes("[PASS]")) throw new Error("un run_open 1.0 sans forges_mobilisees ne doit PAS être mis en échec (D-18, sans rien de neuf) : " + v);
 });
 
+// ============================================================================================
+// TF-1722 (15/10/2026) — une `rectification_forges_mobilisees` (TF-1715 du pilot) sans liste non
+// vide ou sans `cause` est REFUSÉE à l'écriture, quel que soit le schéma : le juge de
+// l'enclenchement l'ignorerait. Sur le code d'avant, les quatre rouges s'écrivaient (type libre).
+// ============================================================================================
+const RECTIF_COMPLETE = { type: "rectification_forges_mobilisees", forges_mobilisees: ["agents", "design"], cause: "le run_open déclarait ops à tort : aucune MEP dans ce run" };
+const RECTIF_ROUGES = [
+  ["sans liste", { type: "rectification_forges_mobilisees", cause: "x" }, "`forges_mobilisees` absent"],
+  ["liste vide", { type: "rectification_forges_mobilisees", forges_mobilisees: [], cause: "x" }, "`forges_mobilisees` vide"],
+  ["sans cause", { type: "rectification_forges_mobilisees", forges_mobilisees: ["agents"] }, "`cause` absent"],
+  ["cause blanche", { type: "rectification_forges_mobilisees", forges_mobilisees: ["agents"], cause: "  " }, "`cause` vide"],
+];
+for (const [schema, ouverture] of [["1.1", { type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents", "ops"], substrat: "x" }],
+  ["absent", { type: "run_open", substrat: "ledger antérieur au schéma" }]]) {
+  check(`ledger TF-1722 : schéma ${schema} — une rectification_forges_mobilisees incomplète (${RECTIF_ROUGES.map((r) => r[0]).join(", ")}) est refusée, nommée, rien n'est écrit`, () => {
+    const lf = join(out, `ledger-rectif-forges-${schema}.jsonl`);
+    run(ledger, ["append", lf, JSON.stringify(ouverture)]);
+    const avant = readFileSync(lf, "utf8");
+    for (const [nom, payload, motif] of RECTIF_ROUGES) {
+      let err = null;
+      try { execFileSync("node", [ledger, "append", lf, JSON.stringify(payload)], { encoding: "utf8", stdio: "pipe" }); }
+      catch (e) { err = String(e.stderr || ""); }
+      if (err === null) throw new Error(`rectification « ${nom} » acceptée — elle aurait dû être refusée`);
+      if (!err.includes(motif) || !err.includes("TF-1722")) throw new Error(`refus de « ${nom} » sans le motif « ${motif} » : ${err.slice(0, 200)}`);
+      if (readFileSync(lf, "utf8") !== avant) throw new Error(`le refus de « ${nom} » a quand même écrit dans le ledger`);
+    }
+    // Sens vert : la rectification complète s'écrit, et le journal reste intègre.
+    run(ledger, ["append", lf, JSON.stringify(RECTIF_COMPLETE)]);
+    const v = run(ledger, ["verify", lf]);
+    if (!v.includes("[PASS]")) throw new Error("une rectification complète doit laisser le ledger intègre : " + v);
+  });
+}
+// Accord avec le juge du pilot (lecture seule) : ce que `append` refuse, `rectificationsForges` le
+// rend invalide ; ce qu'il accepte, le juge le retient. Pilot absent : non joué, et dit.
+{
+  const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-enclenchement.mjs");
+  if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-1722 : accord avec oracle-enclenchement — juge du pilot introuvable (${juge})`);
+  else await checkAsync("ledger TF-1722 : accord avec le juge du pilot — les rectifications refusées à l'écriture sont celles qu'oracle-enclenchement ignore", async () => {
+    const { rectificationsForges } = await import(new URL(`file:///${juge.split("\\").join("/")}`).href);
+    const lus = rectificationsForges([...RECTIF_ROUGES.map((r) => r[1]), RECTIF_COMPLETE].map((e, i) => ({ seq: i + 2, ...e })));
+    const valides = lus.map((r) => r.valide).join(",");
+    if (valides !== "false,false,false,false,true") throw new Error(`le juge rend ${valides} pour [4 rouges, 1 verte], attendu false,false,false,false,true`);
+  });
+}
+
 check("ledger D-18 (a) : `schema_ledger` déclaré mais INCONNU de ce vérificateur → [NON VÉRIFIÉ], jamais mis en échec", () => {
   const lf = join(out, "ledger-schema-inconnu.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "9.9", substrat: "version future" })]);
