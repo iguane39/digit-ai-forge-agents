@@ -2915,6 +2915,52 @@ else {
   }
 }
 
+// TF-1701 (lot Produit-82 20261014b, RA-2) — GITLEAKS LISAIT LES EMPREINTES D'UN JOURNAL D'ORACLES
+// COMME DES CLÉS. Sa règle `generic-api-key` accusait les empreintes SHA-256 indexées par des chemins
+// contenant `make_htpasswd` ou `masquer_secrets`, et oracle-secrets rendait FAIL sur la preuve d'un run.
+// Trois dossiers jouent les deux sens : la verte (le journal, ses seules empreintes) passe, ses deux
+// constats rétrogradés et nommés ; la rouge « journal » porte en plus une vraie valeur de clé, qui
+// reste bloquante ; la rouge « hors journal » porte la même empreinte dans un fichier qui n'est pas un
+// journal, qui reste bloquante aussi. Les valeurs sont assemblées ici pour qu'aucun scanner ne lise ce
+// fichier comme une fuite. Sans gitleaks sur le poste, le cas le dit.
+{
+  const aGitleaks = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['gitleaks'], { encoding: 'utf8' }).status === 0;
+  if (!aGitleaks) ok('TF-1701 NON JUGÉ sur ce poste : gitleaks absent (le scanner intégré ne lit pas ces empreintes)');
+  else {
+    const H1 = 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb';
+    const H2 = '3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d';
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-gitleaks-journal-'));
+    const juger = (dossier) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-secrets.mjs'), dossier], { encoding: 'utf8', timeout: 120000 });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const bloquantsGitleaks = j => (j && j.findings || []).filter(f => f.sev === 'bloquant' && /^gitleaks /.test(f.msg));
+    try {
+      const preuve = path.join(tmp, 'vert', 'forge', 'etapes', 'p2');
+      fs.mkdirSync(preuve, { recursive: true });
+      fs.writeFileSync(path.join(preuve, '_oracles-journal.json'), JSON.stringify({ verdict: 'PASS', empreinte: { format: 'forge-ops/empreinte@1', fichiers: { 'scripts/make_htpasswd.py': H1, 'scripts/masquer_secrets.py': H2 } } }, null, 2));
+      const rougeJ = path.join(tmp, 'rouge-journal');
+      fs.mkdirSync(rougeJ);
+      fs.writeFileSync(path.join(rougeJ, '_oracles-journal.json'), JSON.stringify({ empreinte: { fichiers: { 'scripts/make_htpasswd.py': H1 } }, resultats: [{ ['api' + '_key']: 'Zx8vQ2mN' + '7pL4rT9w' + 'K3sB6yH1' + 'aE5uD0cR' }] }, null, 2));
+      const rougeF = path.join(tmp, 'rouge-hors-journal');
+      fs.mkdirSync(rougeF);
+      fs.writeFileSync(path.join(rougeF, 'config.json'), JSON.stringify({ fichiers: { 'scripts/make_htpasswd.py': H1 } }, null, 2));
+      const v = juger(path.join(tmp, 'vert')), rj = juger(rougeJ), rf = juger(rougeF);
+      const retro = (v && v.findings || []).filter(f => f.sev === 'warn' && /TF-1701/.test(f.msg));
+      !v ? ko('TF-1701 sens vert : sortie d\'oracle-secrets illisible')
+        : v.verdict !== 'PASS' || retro.length !== 2 ? ko(`TF-1701 sens vert : verdict ${v.verdict}, ${retro.length} empreinte(s) rétrogradée(s) au lieu de 2 — ${JSON.stringify(v.findings).slice(0, 160)}`)
+          : ok('TF-1701 sens vert : les 2 empreintes SHA-256 d\'un journal d\'oracles rangé en preuve sont rétrogradées et nommées, verdict PASS');
+      const enJournal = bloquantsGitleaks(rj).filter(f => /_oracles-journal\.json:/.test(f.where || ''));
+      !rj ? ko('TF-1701 sens rouge (journal) : sortie illisible')
+        : rj.verdict !== 'FAIL' || enJournal.length !== 1 ? ko(`TF-1701 sens rouge (journal) : verdict ${rj.verdict}, ${enJournal.length} constat(s) bloquant(s) de gitleaks dans le journal au lieu de 1 — une vraie clé dans un journal doit rester bloquante`)
+          : ok('TF-1701 sens rouge (journal) : une valeur de clé qui n\'est pas une empreinte reste bloquante dans un journal, localisée (fichier:ligne)');
+      !rf ? ko('TF-1701 sens rouge (hors journal) : sortie illisible')
+        : rf.verdict !== 'FAIL' || bloquantsGitleaks(rf).length !== 1 ? ko(`TF-1701 sens rouge (hors journal) : verdict ${rf.verdict} — une empreinte hors d'un journal d'oracles doit rester bloquante`)
+          : ok('TF-1701 sens rouge (hors journal) : la même empreinte dans un fichier qui n\'est pas un journal reste bloquante');
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

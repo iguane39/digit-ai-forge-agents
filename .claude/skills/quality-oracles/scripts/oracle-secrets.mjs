@@ -7,6 +7,7 @@
 // dépendances (SCA : pip-audit / npm audit / OSV) → déclaré en non_juge.
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[]} ; exit 0/1/2.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
@@ -79,9 +80,28 @@ for (const f of listFiles(target)) {
   try { scanText(new TextDecoder('utf-8', { fatal: false }).decode(buf), f, findings); } catch {}
 }
 // gitleaks en complément si présent
+// TF-1701 (lot Produit-82 20261014b, RA-2) — SES CONSTATS SE LISENT UN PAR UN. Le verdict ne lisait
+// que le code de sortie de gitleaks : sa règle `generic-api-key` prenait pour des clés les empreintes
+// SHA-256 d'un journal d'oracles (`"scripts/masquer_secrets.py": "<64 hex>"`), et l'oracle rendait
+// FAIL sur la preuve d'un run. Le rapport JSON de gitleaks est lu : une valeur qui est EXACTEMENT
+// une empreinte hexadécimale (16 ou 64 caractères), dans un fichier nommé comme un journal de
+// run-oracles, est rétrogradée en avertissement et reste nommée ; tout autre constat, y compris dans
+// un journal, reste bloquant et se localise (fichier:ligne, règle). Rapport illisible : bloquant.
+const JOURNAL_ORACLES = /^(?:_oracles-journal(?:-historique)?\.jsonl?|.+\.oracles(?:-historique)?\.jsonl?|(?:.+)?\.oracles-cache\.json)$/i;
+const EMPREINTE = /^(?:[0-9a-f]{16}|[0-9a-f]{64})$/;
 if (spawnSync(process.platform === 'win32' ? 'where' : 'which', ['gitleaks'], { encoding: 'utf8' }).status === 0) {
-  const g = spawnSync('gitleaks', ['detect', '--no-git', '--no-banner', '-s', target], { encoding: 'utf8' });
-  if (g.status === 1) findings.push({ sev: 'bloquant', msg: 'gitleaks a détecté des secrets', where: (g.stdout || g.stderr || '').split('\n').slice(0, 2).join(' | ') });
+  const rapport = path.join(os.tmpdir(), `qo-gitleaks-${process.pid}-${Date.now()}.json`);
+  const g = spawnSync('gitleaks', ['detect', '--no-git', '--no-banner', '-s', target, '--report-format', 'json', '--report-path', rapport], { encoding: 'utf8' });
+  let lus = null; try { lus = JSON.parse(fs.readFileSync(rapport, 'utf8')); } catch { /* illisible : bloquant ci-dessous */ }
+  try { fs.rmSync(rapport, { force: true }); } catch { /* rapport temporaire : rien à garder */ }
+  if (g.status === 1) {
+    if (!Array.isArray(lus) || !lus.length) findings.push({ sev: 'bloquant', msg: 'gitleaks a détecté des secrets', where: (g.stdout || g.stderr || '').split('\n').slice(0, 2).join(' | ') });
+    else for (const x of lus) {
+      const ou = String(x.File || '?') + ':' + (x.StartLine ?? '?');
+      if (JOURNAL_ORACLES.test(path.basename(String(x.File || ''))) && EMPREINTE.test(String(x.Secret || ''))) findings.push({ sev: 'warn', msg: 'gitleaks ' + (x.RuleID || '?') + ' sur une EMPREINTE SHA-256 d\'un journal d\'oracles, pas un secret — rétrogradée (TF-1701)', where: ou });
+      else findings.push({ sev: 'bloquant', msg: 'gitleaks ' + (x.RuleID || '?') + ' : secret probable', where: ou + ' · ' + String(x.Secret || '').slice(0, 4) + '…' });
+    }
+  }
 } else NJ.push('gitleaks non installé — scanner intégré utilisé (couverture moindre)');
 
 const blocking = findings.filter(f => f.sev === 'bloquant');
