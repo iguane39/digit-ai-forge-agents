@@ -106,6 +106,27 @@
    "provenance": "TF-1705 (lot Produit-82 20261014c, RA-4, 14/10/2026) — oracle-sast accusait d'injection SQL conn.execute(\"… ANY(%s)\", (ids,)) : le %s de psycopg est un paramètre lié. La verte (quatre requêtes à paramètres liés, %s et %(nom)s, valeurs en second argument) rendait FAIL sur trois lignes avant la correction et rend PASS ; la rouge (la même requête formatée hors du littéral : % (ids,), % nom, + nom +) reste FAIL sur ses trois lignes, prouvées une à une par le bloc TF-1705 du self-test."
   },
   {
+   "nom": "sast-sql-format",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sast.mjs",
+    "{fixture}"
+   ],
+   "red": "sast-sql-format-red.py",
+   "green": "sast-sql-format-green.py",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "chaîne formatée par .format() dans execute()",
+    "f-string dans execute()"
+   ],
+   "provenance": "TF-1730 (constat de TF-1705, lot Produit-82 20261014c, 15/10/2026) : une requête construite par \"…{}\".format(x) passée à execute() n'était accusée par aucune règle intégrée (bandit B608 la voit, en avertissement seulement), ni une f-string entre triples guillemets ou à préfixe rf dont le texte SQL porte une apostrophe. Sur l'oracle d'avant : rouge PASS, aucune ligne accusée par une règle intégrée ; après : lignes 7, 11, 15, 19 et 23 accusées."
+  },
+  {
    "nom": "perf",
    "cmd": [
     "node",

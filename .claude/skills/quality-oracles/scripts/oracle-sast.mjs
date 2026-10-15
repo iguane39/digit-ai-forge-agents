@@ -2,7 +2,7 @@
 // oracle-sast — Domaine « Sécurité : SAST (injection / exécution dangereuse) ».
 // Analyse statique du code source. Utilise semgrep / bandit s'ils sont installés
 // (autorité) ; sinon, jeu de règles INTÉGRÉES déterministes (injection SQL par
-// concaténation/f-string, eval/exec, shell=True, os.system, child_process.exec
+// concaténation/f-string/.format(), eval/exec, shell=True, os.system, child_process.exec
 // interpolé, désérialisation non sûre, innerHTML dynamique…). Verdict FAIL si motif
 // bloquant. Complète oracle-secrets (secrets) et oracle-sca (dépendances).
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[]} ; exit 0/1/2.
@@ -56,8 +56,14 @@ const SQLKW = /\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|WHERE|FROM)\b/i;
 const sansLitteraux = ln => ln.replace(/("""|''')[\s\S]*?\1|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, '""');
 const SQL_FORMATEE_HORS_LITTERAL = /\bexecute(?:script)?\s*\([^)]*(?:%\s*[A-Za-z_(\[{]|\+\s*[A-Za-z_("']|[A-Za-z0-9_)\]"']\s*\+)/i;
 // règles intégrées : [regex, sévérité, message, langs]
+// TF-1730 (15/10/2026, constat de TF-1705) — deux formes que la règle f-string ne voyait pas : la
+// chaîne formatée par `.format()` passée à execute() (`execute("… '{}'".format(nom))`, ce que bandit
+// B608 accuse et la règle intégrée non), et la f-string à préfixe `rf`/`fr` ou entre triples
+// guillemets. Le littéral doit porter une accolade et être suivi de `.format(` : une requête
+// paramétrée (`execute("… %s", (nom,))`) et un `.format()` hors d'execute() ne sont pas accusés.
 const RULES = [
-  [/\b(?:cursor\.)?execute(?:script)?\s*\(\s*f["'][^"']*\{/i, 'bloquant', 'injection SQL : f-string dans execute()', 'py'],
+  [/\b(?:cursor\.)?execute(?:script)?\s*\(\s*(?:f[rb]?|[rb]f)("""|'''|"|')(?:(?!\1)[^\\]|\\.)*?\{/i, 'bloquant', 'injection SQL : f-string dans execute()', 'py'],
+  [/\bexecute(?:script)?\s*\(\s*[rbu]?("""|'''|"|')(?:(?!\1)[^\\]|\\.)*?\{[^}]*\}(?:(?!\1)[^\\]|\\.)*?\1\s*\.\s*format\s*\(/i, 'bloquant', 'injection SQL : chaîne formatée par .format() dans execute()', 'py'],
   [/\b(?:cursor\.)?execute(?:script)?\s*\([^)]*(?:%|\+)\s*[A-Za-z_]/i, 'bloquant', 'injection SQL : chaîne concaténée/formatée dans execute()', 'py'],
   [/\b(?:query|execute|raw)\s*\(\s*`[^`]*\$\{/i, 'bloquant', 'injection SQL : template literal ${} dans une requête', 'js'],
   [/\b(?:query|execute)\s*\([^)]*\+[^)]*/i, 'warn', 'requête construite par concaténation (vérifier paramétrage)', 'js'],

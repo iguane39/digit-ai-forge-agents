@@ -3114,6 +3114,25 @@ else {
   }
 }
 
+// TF-1730 (15/10/2026, constat de TF-1705) — UNE REQUÊTE CONSTRUITE PAR .format() EST UNE INJECTION.
+// La paire du manifest prouve le verdict ; ce cas prouve la LIGNE et la RÈGLE intégrée, sans bandit
+// ni semgrep (leurs constats sont écartés du compte) : dans la rouge, les trois `.format()` (lignes 7,
+// 11, 15) et les deux f-strings que la règle d'origine manquait (triples guillemets ligne 19, préfixe
+// rf ligne 23) sont accusés ; dans la verte, aucune requête paramétrée ni le `.format()` d'un message
+// de journal ne l'est.
+{
+  const lignes = (fixture) => {
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-sast.mjs'), path.join(SKILLDIR, 'fixtures', fixture)], { encoding: 'utf8', timeout: 300000 });
+    let j = null; try { j = JSON.parse(r.stdout); } catch { return null; }
+    return j.findings.filter(f => /^injection SQL : (chaîne formatée par \.format\(\)|f-string) dans execute\(\)$/.test(f.msg)).map(f => Number(String(f.where).split(':').pop())).sort((a, b) => a - b).join(',');
+  };
+  const rouge = lignes('sast-sql-format-red.py'), vert = lignes('sast-sql-format-green.py');
+  rouge !== '7,11,15,19,23' ? ko(`TF-1730 sens rouge : lignes accusées « ${rouge} », attendu 7,11,15,19,23 — une requête construite par .format() ou par une f-string doit être accusée par la règle intégrée`)
+    : ok('TF-1730 sens rouge : les trois requêtes construites par .format() (lignes 7, 11, 15) et les f-strings à triples guillemets ou préfixe rf (lignes 19, 23) sont accusées par la règle intégrée');
+  vert !== '' ? ko(`TF-1730 sens vert : lignes accusées « ${vert} » sur des requêtes paramétrées ou un .format() hors d'execute()`)
+    : ok('TF-1730 sens vert : aucune requête paramétrée, ni le .format() d\'un message de journal, n\'est accusée');
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));
