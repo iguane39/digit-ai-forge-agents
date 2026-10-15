@@ -27,7 +27,8 @@ const optFige = (process.argv.find(a => a.startsWith('--osv-fige=')) || '').slic
 const DOM = 'Sécurité : vulnérabilités de dépendances (SCA)';
 const NJ = ['dépendances transitives non épinglées (version inconnue → non interrogée)', 'vulnérabilités hors bases publiques'];
 const raisons = [];                                  // pourquoi une partie n'a PAS été vérifiée
-const nonVerifie = (m) => { raisons.push(m); NJ.push(m); };
+let courant = '';                                    // TF-1700 : le manifeste en cours, qui nomme ses non-vérifiés
+const nonVerifie = (m) => { const t = courant ? courant + ' : ' + m : m; raisons.push(t); NJ.push(t); };
 function emit(verdict, findings = [], non_juge = NJ) {
   process.stdout.write(contratJSON({ oracle: 'oracle-sca', domaine: DOM, artefact: target || null, verdict, findings, non_juge }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
@@ -42,14 +43,35 @@ if (optFige) {
 }
 const have = c => spawnSync(process.platform === 'win32' ? 'where' : 'which', [c], { encoding: 'utf8' }).status === 0;
 const isDir = fs.statSync(target).isDirectory();
-const find = name => { const p = isDir ? path.join(target, name) : (path.basename(target) === name ? target : null); return p && fs.existsSync(p) ? p : null; };
-const req = find('requirements.txt'); const pkg = find('package.json');
-if (!req && !pkg) emit('SKIP', [{ sev: 'info', msg: 'aucun manifeste (requirements.txt / package.json) détecté' }]);
+// TF-1700 (lot Produit-82 20261014b, RA-1) — LES MANIFESTES SE CHERCHENT DANS LES SOUS-DOSSIERS.
+// run-oracles déclenche cet oracle sur le DOSSIER dès qu'un manifeste y apparaît, à n'importe quelle
+// profondeur ; l'oracle ne lisait que la racine et rendait SKIP « aucun manifeste » sur un dépôt
+// qui portait `tests/requirements.txt`. Les dossiers écartés sont ceux que le lanceur ne parcourt
+// pas (dépendances installées, environnements, sorties, fixtures) ; ils sont dits au non_juge.
+const MANIFESTES = ['requirements.txt', 'package.json'];
+const ECARTES = ['node_modules', '.git', '.venv', 'venv', 'dist', 'build', '__pycache__', 'fixtures', 'old', 'Old'];
+const chercher = (dir) => {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (ECARTES.includes(e.name)) continue;
+    const fp = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...chercher(fp)); else if (MANIFESTES.includes(e.name)) out.push(fp);
+  }
+  return out;
+};
+const manifestes = isDir ? chercher(target) : (MANIFESTES.includes(path.basename(target)) ? [target] : []);
+const nomM = f => (isDir ? path.relative(target, f) : path.basename(f)).split(path.sep).join('/');
+const reqs = manifestes.filter(f => path.basename(f) === 'requirements.txt');
+const pkgs = manifestes.filter(f => path.basename(f) === 'package.json');
+if (!reqs.length && !pkgs.length) emit('SKIP', [{ sev: 'info', msg: 'aucun manifeste (requirements.txt / package.json) détecté'
+  + (isDir ? ' dans le dossier ni dans ses sous-dossiers (hors ' + ECARTES.join(', ') + ')' : '') }]);
+if (isDir) NJ.push('manifestes rangés sous ' + ECARTES.join(', ') + ' : non lus (TF-1700)');
 
 const findings = []; let checked = false;
 
 // --- Python : pip-audit sinon OSV (ou données figées) ---
-if (req) {
+for (const req of reqs) {
+  courant = nomM(req); const avant = findings.length;
   if (!FIGE && have('pip-audit')) {
     const r = spawnSync('pip-audit', ['-r', req, '-f', 'json'], { encoding: 'utf8' });
     let j = null; try { j = JSON.parse(r.stdout || ''); } catch { /* sortie inexploitable : non vérifié */ }
@@ -70,9 +92,11 @@ if (req) {
       else { checked = true; r.forEach((vulns, i) => (vulns || []).forEach(id => findings.push({ sev: 'bloquant', msg: 'PyPI ' + deps[i].name + '@' + deps[i].version + ' : ' + id }))); }
     }
   }
+  findings.slice(avant).forEach(f => { f.where = courant; });
 }
 // --- npm : npm audit sinon OSV (ou données figées) ---
-if (pkg) {
+for (const pkg of pkgs) {
+  courant = nomM(pkg); const avant = findings.length;
   const dir = path.dirname(pkg);
   if (!FIGE && have('npm') && (fs.existsSync(path.join(dir, 'package-lock.json')) || fs.existsSync(path.join(dir, 'npm-shrinkwrap.json')))) {
     // Sous Windows, npm est un script `npm.cmd` : Node refuse de le lancer sans shell (status null,
@@ -96,7 +120,9 @@ if (pkg) {
       }
     } catch { nonVerifie('package.json illisible → dépendances npm NON vérifiées'); }
   }
+  findings.slice(avant).forEach(f => { f.where = courant; });
 }
+courant = '';
 
 /** Les vulnérabilités de chaque requête — depuis les données figées si désignées, sinon OSV.
  *  `null` = non vérifiable (réseau injoignable, ou requête absente des données figées). */
@@ -124,4 +150,4 @@ async function osvBatch(queries) {
 
 if (!checked) emit('SKIP', findings.length ? findings : [{ sev: 'info', msg: 'SCA non vérifiable — ' + (raisons.join(' ; ') || 'outils absents et OSV injoignable') }]);
 if (findings.some(f => f.sev === 'bloquant')) emit('FAIL', findings);
-emit('PASS', [{ sev: 'info', msg: 'aucune vulnérabilité connue sur les dépendances épinglées vérifiées' }]);
+emit('PASS', [{ sev: 'info', msg: 'aucune vulnérabilité connue sur les dépendances épinglées vérifiées — manifeste(s) lu(s) : ' + manifestes.map(nomM).join(', ') }]);

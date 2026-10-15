@@ -194,6 +194,28 @@
    "dependant_outil": "aucun sous --osv-fige (TF-1107 : données figées datées) ; en usage réel pip-audit / npm audit / OSV (réseau)"
   },
   {
+   "nom": "sca-sous-dossier",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sca.mjs",
+    "{fixture}",
+    "--osv-fige={skilldir}/fixtures/sca-osv-fige.json"
+   ],
+   "red": "sca-sous-dossier-red",
+   "green": "sca-sous-dossier-green",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "PyPI requests@2.19.0"
+   ],
+   "dependant_outil": "aucun sous --osv-fige (TF-1107 : données figées datées)",
+   "provenance": "TF-1700 (lot Produit-82 20261014b, RA-1, 14/10/2026) — run-oracles déclenche oracle-sca sur le DOSSIER dès qu'un manifeste y apparaît ; l'oracle ne lisait que la racine et rendait SKIP « aucun manifeste » sur un dépôt qui portait tests/requirements.txt. Les deux dossiers ne portent leur manifeste que dans tests/ : avant la correction, rouge et verte rendaient SKIP ; après, la rouge (requests==2.19.0) FAIL et la verte (packaging==24.1) PASS."
+  },
+  {
    "nom": "a11y",
    "cmd": [
     "python3",
