@@ -715,6 +715,10 @@ CAS_RENDU = {
     # recouvre vraiment : un V4.
     "v4-sticky-survol-opaque.html": ("v4_overlap", 0),
     "v4-sticky-transparent.html": ("v4_overlap", 1),
+    # reste-v4-opaque (15/10/2026) — un fond de barre ecrit en oklch() se lit : opaque, il survole
+    # (1 constat avant, 0 apres) ; a 60 %, il recouvre et reste accuse.
+    "v4-sticky-oklch-opaque.html": ("v4_overlap", 0),
+    "v4-sticky-oklch-translucide.html": ("v4_overlap", 1),
     # TF-1350 (24/09/2026, lot Produit-64 20260924a, RD-21) — V19, LE CONTROLE DE RENDU QUE L19
     # (statique) ANNONCAIT SANS LE JOUER. Le fait mesure : « Remediation » en gras dans une
     # cellule etroite, `overflow-wrap:break-word` (legitime sur la prose, hors du perimetre de

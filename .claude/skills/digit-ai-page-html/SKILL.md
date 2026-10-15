@@ -31,7 +31,8 @@ le thème demandé tient contre une page qui réécrit `data-theme` depuis sa pr
 V2 lit un fond écrit en `oklch()` (ou tout autre espace de couleur) au lieu de le sauter et de
 juger le texte sur un blanc supposé : une maquette sombre de la forge design rendait 2 faux
 constats à 2,14:1 à chaque largeur, 0 après (fixtures `v2-svg-panneau-oklch-clair.html` et
-`-sombre.html`).
+`-sombre.html`) ; V4 lit de même le fond d'une barre collante, et une barre opaque écrite en
+`oklch()` survole sans être accusée (fixtures `v4-sticky-oklch-opaque.html` et `-translucide.html`).
 
 **1.30.0 (14/10/2026)** — **`check_html.py` ne plante plus sur une accolade dans une valeur de la
 feuille** : un trou de gabarit dans une `url()` levait une IndexError, la page est jugée et A5

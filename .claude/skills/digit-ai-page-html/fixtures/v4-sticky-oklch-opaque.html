@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 barre collante en oklch — 20261015a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+header.doc.colle{position:sticky;top:0;z-index:20;background:oklch(0.98 0.006 250);height:64px;display:flex;align-items:center;padding:0 20px}
+div.layout{margin-top:-40px;padding:48px 20px 400px;background:var(--surface)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de V4 (reste-v4-opaque, campagne du 15/10/2026), jumelle de v4-sticky-survol-opaque.html.
+  La barre collante a un fond opaque, ecrit en oklch() : V4 lisait seulement rgb(), jugeait la barre non opaque et accusait le survol (faux chevauchement).
+  Attendu a 1440 px : 0 `v4_overlap`.
+-->
+<body>
+<div class="page">
+<header class="doc colle"><strong>Console des volumes</strong></header>
+<div class="layout"><h1>Volumes</h1><p>Contenu qui passe sous la barre collante.</p></div>
+</div>
+</body></html>

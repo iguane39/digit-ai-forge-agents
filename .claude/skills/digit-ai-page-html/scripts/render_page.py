@@ -712,11 +712,11 @@ MEASURE_JS = r"""
         // conditions ensemble : `sticky`, z-index au-dessus de l'autre, fond opaque. Une barre
         // transparente ou sous l'autre reste jugee (fixture v4-sticky-transparent.html).
         const zIndex = (s) => { const z = parseInt(s.zIndex, 10); return isNaN(z) ? 0 : z; };
+        // reste-v4-opaque (15/10/2026) : le fond se lit par parseColor, qui convertit aussi
+        // oklch(), lab(), hsl(), # … — une barre opaque ecrite en oklch etait jugee transparente.
         const opaque = (s) => {
-          const m = (s.backgroundColor || '').match(/rgba?\(([^)]*)\)/);
-          if (!m) return false;
-          const p = m[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat);
-          return p.length < 4 || p[3] >= 1;
+          const c = parseColor(s.backgroundColor || '');
+          return !!c && c.a >= 0.99;
         };
         const survole = (s, t) => s.position === 'sticky' && zIndex(s) > zIndex(t) && opaque(s);
         if (survole(sa, sb) || survole(sb, sa)) continue;
