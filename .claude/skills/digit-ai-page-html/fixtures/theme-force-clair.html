@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+document.documentElement.setAttribute('data-theme', 'light');
+</script>
+<title>Digit-AI — Theme impose par la page — 20261015a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+:root[data-theme="dark"]{--ink:#E2E8F0;--line:#334155;--surface:#0F172A;--bg:#020617}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+main{padding:24px}
+h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
+.bandeau{padding:12px;background:var(--surface);border:1px solid var(--line)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1718 (lot Produit-83 20261014a, RA-2). Une page qui IMPOSE son theme : son script reecrit
+  data-theme en « light » quoi qu'on lui demande. Rendue avec --theme sombre, elle reste claire ;
+  render_page.py doit le DIRE (non_juge « THEME DEMANDE NON RENDU » et constat non mesurable a la
+  largeur), au lieu d'un verdict qui laisse croire que le sombre a ete juge.
+-->
+<body><main>
+<h1>Tableau de bord</h1>
+<div class="bandeau">Bandeau des indicateurs de la semaine.</div>
+</main></body></html>

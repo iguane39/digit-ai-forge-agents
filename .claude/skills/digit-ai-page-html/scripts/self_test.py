@@ -2860,6 +2860,28 @@ def run_session_et_theme():
                 ">=1 V1, data-theme pose, theme sombre declare",
                 f"{v1(a_sombre)} V1, {a_sombre.get('theme')}",
                 "data-theme n'a pas ete pose avant les scripts, ou l'alias dark n'est pas lu")
+        # TF-1718 (lot Produit-83 20261014a, RA-2) — le theme sombre du SOCLE : clair par defaut,
+        # sombre seulement par le choix du lecteur, relu dans le stockage local par le script
+        # d'initialisation, qui REECRIT data-theme. Avant TF-1718, --theme sombre rendait cette page
+        # claire (0 V1) sur un PASS. Et une page qui impose son theme le DIT au rapport.
+        stocke, rst = juger(f"{base}/theme-choix-stocke-sombre.html", ["--theme", "sombre"])
+        impose, rim = juger(f"{base}/theme-force-clair.html", ["--theme", "sombre"])
+        if stocke is None or impose is None:
+            cas("theme du socle · rapports", False, "rapports lisibles", "illisible",
+                ((rst.stderr if stocke is None else rim.stderr) or "")[:160])
+        else:
+            cas("theme du socle · --theme sombre pose le choix stocke (TF-1718)",
+                v1(stocke) >= 1 and not any("NON RENDU" in x for x in stocke.get("non_juge", [])),
+                ">=1 V1, theme sombre rendu", f"{v1(stocke)} V1",
+                "le script du socle a reecrit data-theme : le sombre n'a pas ete rendu")
+            non_rendu = any("THEME DEMANDE NON RENDU" in x for x in impose.get("non_juge", []))
+            constat = any("TF-1718" in (u.get("detail") or "")
+                          for d in (impose.get("breakpoints") or {}).values()
+                          for u in ((d.get("issues") or {}).get("unmeasured") or []))
+            cas("theme impose par la page · ecart DIT (TF-1718)", non_rendu and constat,
+                "non_juge THEME DEMANDE NON RENDU + constat non mesurable a la largeur",
+                f"non_juge {non_rendu}, constat {constat}",
+                "un theme demande et non rendu passe en silence")
         for nom, cible, options, motif in (
                 ("session · refusee sur un fichier", str(FIXTURES / "session-application.html"),
                  ["--etat-session", str(etat)], "INSTANCE SERVIE"),

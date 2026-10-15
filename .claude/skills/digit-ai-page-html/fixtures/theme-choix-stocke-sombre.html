@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  document.documentElement.setAttribute('data-theme', stocke === 'dark' ? 'dark' : 'light');
+})();
+</script>
+<title>Digit-AI — Defaut du theme sombre choisi par le lecteur — 20261015a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+:root[data-theme="dark"]{--ink:#E2E8F0;--line:#334155;--surface:#0F172A;--bg:#020617}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+main{padding:24px}
+h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
+.bandeau{padding:12px;background:var(--surface);border:1px solid var(--line)}
+:root[data-theme="dark"] .bandeau{width:2400px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1718 (lot Produit-83 20261014a, RA-2). Le theme sombre du SOCLE : clair par defaut, sombre
+  seulement si le lecteur l'a choisi (bouton, RV-9), choix relu dans le stockage local
+  (`digitai-theme`) par le script d'initialisation du gabarit, qui REECRIT data-theme. Le bandeau
+  ne deborde (V1) qu'en sombre : avec --theme sombre, render_page.py doit poser ce choix et voir
+  le debordement ; avant TF-1718, la page se rendait claire et passait.
+-->
+<body><main>
+<h1>Tableau de bord</h1>
+<div class="bandeau">Bandeau des indicateurs de la semaine.</div>
+</main></body></html>

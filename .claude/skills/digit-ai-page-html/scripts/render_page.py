@@ -3214,6 +3214,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                     "breakpoints": {}, "verdict": None, "non_juge": []}
     blocking_total = 0
     captures_manquees: list[int] = []
+    theme_non_rendu: list[str] = []      # TF-1718 : largeurs ou la page a reecrit le theme demande
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -3226,6 +3227,13 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                 # prefers-color-scheme. Un script de la page peut le reecrire : c'est declare.
                 # Au moment du script d'initialisation, <html> n'existe pas encore : il se pose
                 # des que l'analyseur l'insere, avant tout script de la page.
+                # TF-1718 (lot Produit-83 20261014a, RA-2) — LE CHOIX STOCKE DU SOCLE AUSSI. Le
+                # gabarit du socle (RV-9, clair par defaut) relit `digitai-theme` dans le stockage
+                # local et REECRIT data-theme a « light » : le rendu « sombre » restait clair, sur un
+                # PASS. Le choix du lecteur est donc pose comme si le bouton avait ete presse.
+                page.add_init_script(
+                    "(function (v) { try { localStorage.setItem('digitai-theme', v); } catch (e) {} })(%s)"
+                    % json.dumps(SCHEMAS_PLAYWRIGHT[theme]))
                 page.add_init_script(
                     "(function (v) { function poser() { var h = document.documentElement;"
                     " if (h) { h.setAttribute('data-theme', v); return true; } return false; }"
@@ -3263,6 +3271,19 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                 page.wait_for_timeout(250)
 
             issues = page.evaluate(js)
+            # TF-1718 — LE THEME DEMANDE EST-IL CELUI QUI EST RENDU ? Un script de la page peut
+            # reecrire data-theme apres le script d'initialisation ; un rendu « sombre » reste
+            # alors clair, et ses mesures parlent du clair. L'ecart se dit a la largeur et au
+            # non_juge, jamais en silence.
+            if theme is not None:
+                effectif = page.evaluate("() => document.documentElement.getAttribute('data-theme')")
+                if effectif != SCHEMAS_PLAYWRIGHT[theme]:
+                    theme_non_rendu.append(f"{width} px : data-theme=\"{effectif}\"")
+                    issues["unmeasured"].append({
+                        "what": f"theme {theme} demande (--theme)",
+                        "detail": f"la page a reecrit data-theme en « {effectif} » apres le script "
+                                  f"d'initialisation : les mesures de cette largeur portent sur ce "
+                                  f"theme-la, pas sur le theme {theme} (TF-1718)"})
             # TF-0901 — V15 se mesure APRES DEFILEMENT, donc apres la passe principale et avant
             # la capture (qui remet la page en haut). Ne leve jamais : une page sans tableau rend
             # une liste vide, et une panne se declare au non_juge plutot que d'emporter le reste.
@@ -3562,6 +3583,11 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
            "la page, qu'un script de la page peut reecrire" if theme else "") + "). "
         "L'autre schema de couleurs n'est ni rendu ni mesure ici : le rejouer avec "
         f"--theme {'clair' if theme == 'sombre' else 'sombre'} si la page en porte un (TF-1674)")
+    if theme_non_rendu:
+        report["non_juge"].append(
+            f"THEME DEMANDE NON RENDU : --theme {theme} demande, mais la page a reecrit data-theme "
+            f"apres le script d'initialisation ({' ; '.join(theme_non_rendu)}). Le theme {theme} "
+            "n'a PAS ete mesure a ces largeurs, malgre le verdict (TF-1718)")
 
     # TF-1370 — SEUL L'ETAT INITIAL EST JUGE PAR DEFAUT, ET CE RAPPORT LE DIT. --etats-ouverts
     # et les matrices (--matrice-etats, --matrice-paires) rejouent chacun des etats DECLARES et
