@@ -39,6 +39,13 @@ const codeFiles = listFiles(target).filter(f => CODE.includes(path.extname(f).to
 if (!codeFiles.length) emit('SKIP', [{ sev: 'info', msg: 'aucun fichier de code source' }]);
 
 const SQLKW = /\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|WHERE|FROM)\b/i;
+// TF-1705 (lot Produit-82 20261014c, RA-4) — `%s` et `%(nom)s` écrits DANS le littéral sont les
+// marqueurs des paramètres liés de psycopg (`execute("… ANY(%s)", (ids,))`) : ce n'est pas un
+// formatage. La règle « concaténée/formatée » se confirme donc sur la ligne aux littéraux VIDÉS :
+// seul un `%` ou un `+` posé HORS de la chaîne (`"…'%s'" % nom`, `"…'" + nom`, `sql + "…"`) reste
+// une injection. Les littéraux d'une ligne sont vidés, triples guillemets d'abord, échappements tenus.
+const sansLitteraux = ln => ln.replace(/("""|''')[\s\S]*?\1|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, '""');
+const SQL_FORMATEE_HORS_LITTERAL = /\bexecute(?:script)?\s*\([^)]*(?:%\s*[A-Za-z_(\[{]|\+\s*[A-Za-z_("']|[A-Za-z0-9_)\]"']\s*\+)/i;
 // règles intégrées : [regex, sévérité, message, langs]
 const RULES = [
   [/\b(?:cursor\.)?execute(?:script)?\s*\(\s*f["'][^"']*\{/i, 'bloquant', 'injection SQL : f-string dans execute()', 'py'],
@@ -68,6 +75,7 @@ for (const f of codeFiles) {
       if (rl !== 'any' && rl !== lang) continue;
       if (re.test(ln)) {
         if (/injection SQL/.test(msg) && !SQLKW.test(ln) && !SQLKW.test(lines[i + 1] || '')) continue; // exiger un mot-clé SQL proche
+        if (/concaténée\/formatée/.test(msg) && !SQL_FORMATEE_HORS_LITTERAL.test(sansLitteraux(ln))) continue; // TF-1705
         findings.push({ sev, msg, where: path.relative(process.cwd(), f) + ':' + (i + 1) });
       }
     }

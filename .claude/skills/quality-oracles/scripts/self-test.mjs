@@ -3025,6 +3025,23 @@ else {
   }
 }
 
+// TF-1705 (lot Produit-82 20261014c, RA-4) — LE MARQUEUR %s DE PSYCOPG N'EST PAS UNE INJECTION.
+// La paire du manifest prouve le verdict ; ce cas prouve la LIGNE : dans la rouge, chacune des trois
+// requêtes formatées hors du littéral (`% (ids,)`, `% nom`, `+ nom +`) reste accusée, et dans la
+// verte, aucune des quatre requêtes à paramètres liés (`%s`, `%(nom)s`, second argument) ne l'est.
+{
+  const lignes = (fixture) => {
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-sast.mjs'), path.join(SKILLDIR, 'fixtures', fixture)], { encoding: 'utf8', timeout: 300000 });
+    let j = null; try { j = JSON.parse(r.stdout); } catch { return null; }
+    return j.findings.filter(f => /concaténée\/formatée/.test(f.msg)).map(f => Number(String(f.where).split(':').pop())).sort((a, b) => a - b).join(',');
+  };
+  const rouge = lignes('sast-sql-formatee-red.py'), vert = lignes('sast-sql-parametres-green.py');
+  rouge !== '7,11,15' ? ko(`TF-1705 sens rouge : lignes accusées « ${rouge} », attendu 7,11,15 — un vrai formatage de chaîne SQL doit rester accusé`)
+    : ok('TF-1705 sens rouge : les trois requêtes formatées hors du littéral (lignes 7, 11, 15) restent accusées');
+  vert !== '' ? ko(`TF-1705 sens vert : lignes accusées « ${vert} » sur des requêtes à paramètres liés psycopg`)
+    : ok('TF-1705 sens vert : aucune requête à paramètres liés (%s, %(nom)s, second argument d\'execute) n\'est accusée');
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

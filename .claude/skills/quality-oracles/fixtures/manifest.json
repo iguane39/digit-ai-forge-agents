@@ -86,6 +86,26 @@
    ]
   },
   {
+   "nom": "sast-sql-parametres",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sast.mjs",
+    "{fixture}"
+   ],
+   "red": "sast-sql-formatee-red.py",
+   "green": "sast-sql-parametres-green.py",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "chaîne concaténée/formatée dans execute()"
+   ],
+   "provenance": "TF-1705 (lot Produit-82 20261014c, RA-4, 14/10/2026) — oracle-sast accusait d'injection SQL conn.execute(\"… ANY(%s)\", (ids,)) : le %s de psycopg est un paramètre lié. La verte (quatre requêtes à paramètres liés, %s et %(nom)s, valeurs en second argument) rendait FAIL sur trois lignes avant la correction et rend PASS ; la rouge (la même requête formatée hors du littéral : % (ids,), % nom, + nom +) reste FAIL sur ses trois lignes, prouvées une à une par le bloc TF-1705 du self-test."
+  },
+  {
    "nom": "perf",
    "cmd": [
     "node",
