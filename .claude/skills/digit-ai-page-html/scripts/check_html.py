@@ -4895,8 +4895,21 @@ def texte_visible_markdown(a: Arbre) -> str:
 
 def juger_style_html(html: str) -> list:
     """Avertissements de l'oracle d'écriture du pilot sur le texte visible de la page."""
+    # TF-1717 (lot Produit-83 20261014a, RA-1) — chargé PAR SON CHEMIN, à côté de ce script. Un
+    # `import` nu dépend du chemin de recherche de Python : sous `python -I` (mode isolé), le dossier
+    # du script n'y est plus, et l'oracle d'écriture ne tournait pas, sur un PASS.
     try:
-        from check_markdown import juger_style  # même dossier : même résolution du pilot
+        import importlib.util
+        source = Path(__file__).resolve().parent / "check_markdown.py"
+        spec = importlib.util.spec_from_file_location("check_markdown", source)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"{source} introuvable")
+        module = sys.modules.get("check_markdown")
+        if module is None or Path(getattr(module, "__file__", "") or "").resolve() != source:
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["check_markdown"] = module
+            spec.loader.exec_module(module)
+        juger_style = module.juger_style         # même dossier : même résolution du pilot
     except Exception as e:                       # noqa: BLE001
         return [f"EC (texte rendu, avertissement) style NON JOUÉ : check_markdown illisible ({e})"]
     md = texte_visible_markdown(construire(html))

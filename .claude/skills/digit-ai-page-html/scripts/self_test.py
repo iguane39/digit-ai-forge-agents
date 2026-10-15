@@ -1926,9 +1926,14 @@ def run_avertissements_13_10():
                     "obtenu": f"avertissement {'présent' if vu else 'absent'}, {len(bloque)} échec(s)",
                     "regle": prefixe.strip(), "detail": ""})
     outil = Path(__file__).resolve().parent / "check_html.py"
-    for nom, attendu in (("style-annonce-nominalisee.html", True), ("style-nomme.html", False)):
-        r = subprocess.run([sys.executable, "-X", "utf8", str(outil), str(FIXTURES / nom),
+    # TF-1717 (Produit-83 20261014a, RA-1) : la rouge rejouée sous `python -I`, mode isolé qui
+    # retire le dossier du script du chemin de recherche — le chargement de check_markdown y tient.
+    for nom, attendu, isole in (("style-annonce-nominalisee.html", True, []),
+                                ("style-nomme.html", False, []),
+                                ("style-annonce-nominalisee.html", True, ["-I"])):
+        r = subprocess.run([sys.executable, *isole, "-X", "utf8", str(outil), str(FIXTURES / nom),
                             "--output", "json"], capture_output=True, text=True, encoding="utf-8")
+        nom = nom + (" (python -I, TF-1717)" if isole else "")
         try:
             j = json.loads(r.stdout)
         except Exception:                        # noqa: BLE001
@@ -1937,6 +1942,13 @@ def run_avertissements_13_10():
             continue
         non_joue = [w for w in j["warns"] if "style NON JOUÉ" in w]
         vu = any(w.startswith("EC-8") and "TF-1624" in w for w in j["warns"])
+        # TF-1717 : seul le pilot ABSENT justifie un SKIP ; un check_markdown illisible, posé à
+        # côté de check_html, est une panne de l'outil, jamais un motif.
+        if any("check_markdown illisible" in w for w in non_joue):
+            out.append({"fixture": nom, "verdict": "ECHEC", "attendu": "TF-1717 check_markdown chargé",
+                        "obtenu": "check_markdown illisible", "regle": "EC (texte rendu)",
+                        "detail": non_joue[0][:160]})
+            continue
         if non_joue:
             out.append({"fixture": nom, "verdict": "OK", "attendu": "TF-1624 EC-8 (SKIP motivé)",
                         "obtenu": "oracle d'écriture injoignable, DIT", "regle": "EC (texte rendu)",
