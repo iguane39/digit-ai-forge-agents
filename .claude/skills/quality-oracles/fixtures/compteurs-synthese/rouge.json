@@ -1,0 +1,9 @@
+{
+ "commentaire": "TF-1727 — fixture ROUGE d'oracle-compteurs-synthese (PC-6), sur la même table que la verte. Le défaut du lot Produit-12 du 14/10/2026 (RS-31) : l'en-tête compte les fichiers à dater parmi les rangés et affiche 97 % ; la table en donne 9 sur 12, soit 75 %.",
+ "table": "table.csv",
+ "compteurs": [
+  { "id": "total", "libelle": "fichiers traités", "valeur": 12 },
+  { "id": "ranges", "libelle": "fichiers rangés", "valeur": 11, "quand": { "statut": "range" } },
+  { "id": "part_ranges", "libelle": "part rangée", "valeur": 97, "part": { "de": "ranges", "sur": "total" } }
+ ]
+}

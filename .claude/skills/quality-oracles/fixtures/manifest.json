@@ -1991,6 +1991,27 @@
     "PASS"
    ],
    "provenance": "TF-1234 (12/10/2026) — cas limite 2 du protocole de tests du prompt réécrit du 19/09/2026 (analyse L99, chapitre 8) : un constat rattachable à un contrôle évalué par l'audit (CTL-D06-01) écrit en fiche d'amélioration au lieu d'être cité comme remédiation. Fixtures FICTIVES tenues par le skill plan-d-amelioration (aucune copie ici : le chemin remonte au skill voisin) ; aucune mission réelle n'a encore été jouée."
+  },
+  {
+   "nom": "compteurs-synthese",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-compteurs-synthese.mjs",
+    "{fixture}"
+   ],
+   "red": "compteurs-synthese/rouge.json",
+   "green": "compteurs-synthese/verte.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "compte affiché 11, recalculé 9",
+    "part affichée 97 %, recalculée 75 %"
+   ],
+   "provenance": "TF-1727 — lot Produit-12 - RETOURS - 20261014a (RS-31) et sa pièce « Principe d'analyse critique », §3 (a), 14/10/2026 : six pages de rangement affichaient 97 à 98 % de fichiers rangés, portes vertes, et leurs compteurs d'en-tête étaient faux. Fixture CONSTRUITE sur ce défaut (12 lignes, l'en-tête compte les fichiers à dater parmi les rangés) : la table réelle du produit n'est pas versionnée ici, l'oracle reste partiel."
   }
  ]
 }

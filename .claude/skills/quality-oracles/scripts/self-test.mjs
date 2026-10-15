@@ -3133,6 +3133,48 @@ else {
     : ok('TF-1730 sens vert : aucune requête paramétrée, ni le .format() d\'un message de journal, n\'est accusée');
 }
 
+// TF-1727 (15/10/2026) — LE DOMAINE « SORTIE AUTOMATISÉE DE TRI, DE CLASSEMENT OU DE RÉDACTION » (R-63
+// du pilot, PC-1 à PC-6) ET SON PREMIER ORACLE, PC-6 : oracle-compteurs-synthese recalcule les
+// compteurs d'une synthèse depuis la table qu'ils résument. La paire du manifest prouve K2 et K3 ; ce
+// cas prouve K1 (un compteur qui ne se recalcule pas est un échec, jamais un silence), le dénominateur
+// nul, les SKIP motivés (aucune table, aucun compteur), la table JSON, et l'inscription au registre :
+// le domaine y est, en invocation explicite (ext vide), sa checklist nomme PC-1 à PC-6.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-compteurs-'));
+  const ORACLE = path.join(SKILLDIR, 'scripts', 'oracle-compteurs-synthese.mjs');
+  const juger = (decl, table = null, nomTable = 'table.csv') => {
+    const d = fs.mkdtempSync(path.join(tmp, 'cas-'));
+    if (table !== null) fs.writeFileSync(path.join(d, nomTable), table);
+    fs.writeFileSync(path.join(d, 'decl.json'), JSON.stringify(decl));
+    const r = spawnSync(process.execPath, [ORACLE, path.join(d, 'decl.json')], { encoding: 'utf8', timeout: 60000 });
+    try { return { exit: r.status, ...JSON.parse(r.stdout) }; } catch { return { exit: r.status }; }
+  };
+  const csv = 'fichier;statut\na.pdf;range\nb.pdf;range\nc.pdf;a_dater\n';
+  const regles = j => (j.findings || []).filter(f => f.sev === 'bloquant').map(f => f.regle).join(',');
+  try {
+    const k1 = juger({ table: 'table.csv', compteurs: [{ id: 'n', valeur: 2, quand: { dossier: 'Baux' } }, { id: 'p', valeur: 50, part: { de: 'n', sur: 'absent' } }, { id: 'v', valeur: '2' }] }, csv);
+    k1.verdict !== 'FAIL' || regles(k1) !== 'K1,K1,K1' ? ko(`TF-1727 K1 : colonne absente, part sans compteur, valeur non numérique — attendu FAIL K1×3, obtenu ${k1.verdict} ${regles(k1)}`)
+      : ok('TF-1727 K1 : une colonne absente de la table, une part qui nomme un compteur inconnu et une valeur non numérique échouent, nommés (FAIL K1×3)');
+    const k3 = juger({ table: 'table.csv', compteurs: [{ id: 'vide', valeur: 0, quand: { statut: 'inconnu' } }, { id: 'n', valeur: 2, quand: { statut: 'range' } }, { id: 'p', valeur: 0, part: { de: 'n', sur: 'vide' } }] }, csv);
+    k3.verdict !== 'FAIL' || regles(k3) !== 'K3' || !/dénominateur nul/.test(JSON.stringify(k3.findings)) ? ko(`TF-1727 K3 : une part sur un dénominateur nul doit échouer, obtenu ${k3.verdict} ${regles(k3)}`)
+      : ok('TF-1727 K3 : une part affichée sur un dénominateur nul échoue (FAIL), le compte nul lui-même passe');
+    const json = juger({ table: 'table.json', compteurs: [{ id: 't', valeur: 3 }, { id: 'r', valeur: 2, quand: { statut: 'range' } }, { id: 'p', valeur: 66.67, part: { de: 'r', sur: 't' }, decimales: 2 }] },
+      JSON.stringify([{ statut: 'range' }, { statut: 'range' }, { statut: 'a_dater' }]), 'table.json');
+    json.verdict !== 'PASS' ? ko(`TF-1727 table JSON : 3 compteurs justes, part à 2 décimales — attendu PASS, obtenu ${json.verdict} ${JSON.stringify(json.findings)}`)
+      : ok('TF-1727 table JSON : un tableau d\'objets se lit comme une table, une part à 2 décimales se recalcule (PASS)');
+    const sansTable = juger({ table: 'table.csv', compteurs: [{ id: 't', valeur: 3 }] });
+    const sansCompteur = juger({ table: 'table.csv', compteurs: [] }, csv);
+    sansTable.verdict !== 'SKIP' || sansTable.exit !== 2 || !sansTable.motif || sansCompteur.verdict !== 'SKIP' || !sansCompteur.motif
+      ? ko(`TF-1727 SKIP : table absente → ${sansTable.verdict} (motif ${sansTable.motif}), aucun compteur → ${sansCompteur.verdict} — attendu deux SKIP motivés`)
+      : ok('TF-1727 SKIP : une table illisible et une déclaration sans compteur rendent SKIP motivé (exit 2), jamais PASS');
+    const reg = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8'));
+    const e = reg.oracles.find(o => o.domaine === 'Sortie automatisée de tri, de classement ou de rédaction');
+    !e || (e.ext || []).length || (e.trigger_files || []).length || !['PC-1', 'PC-2', 'PC-3', 'PC-4', 'PC-5', 'PC-6'].every(p => e.checklist.includes(p)) || !e.non_juge.some(x => /PC-1 à PC-5/.test(x))
+      ? ko('TF-1727 registre : le domaine doit y être en invocation explicite (ext vide, aucun déclencheur), sa checklist nommer PC-1 à PC-6 et son non_juge dire PC-1 à PC-5')
+      : ok('TF-1727 registre : le domaine est inscrit en invocation explicite, PC-1 à PC-6 nommés, PC-1 à PC-5 déclarés non jugés');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

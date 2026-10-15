@@ -1,0 +1,13 @@
+{
+ "commentaire": "TF-1727 — fixture VERTE d'oracle-compteurs-synthese (PC-6) : les compteurs d'en-tête d'une page de rangement, tels que la table les donne. 12 fichiers, 9 rangés, 2 à dater, 1 non rangé.",
+ "table": "table.csv",
+ "compteurs": [
+  { "id": "total", "libelle": "fichiers traités", "valeur": 12 },
+  { "id": "ranges", "libelle": "fichiers rangés", "valeur": 9, "quand": { "statut": "range" } },
+  { "id": "a_dater", "libelle": "fichiers à dater", "valeur": 2, "quand": { "statut": "a_dater" } },
+  { "id": "affectes", "libelle": "fichiers rangés ou à dater", "valeur": 11, "quand": { "statut": ["range", "a_dater"] } },
+  { "id": "quittances", "libelle": "rangés en quittances", "valeur": 4, "quand": { "statut": "range", "dossier": "Quittances" } },
+  { "id": "part_ranges", "libelle": "part rangée", "valeur": 75, "part": { "de": "ranges", "sur": "total" } },
+  { "id": "part_affectes", "libelle": "part affectée", "valeur": 91.7, "part": { "de": "affectes", "sur": "total" }, "decimales": 1 }
+ ]
+}
