@@ -302,7 +302,7 @@ Si non (prompt one-shot) : une ligne « prompt one-shot, effets d'échelle non p
 
 Ce chapitre est le livrable principal. Il contient :
 
-1. **Score /100 (avant → après)** : reprendre la rubrique du Ch1. Donner le score du prompt original, puis le score projeté du prompt réécrit, dimension par dimension si l'écart le justifie. C'est la mesure du gain — sans elle, « améliorer » reste invérifiable.
+1. **Score /100 (avant → après)** : reprendre la rubrique du Ch1. Donner le score du prompt original, puis le score du prompt réécrit, dimension par dimension si l'écart le justifie. En mode simple, ce second score s'écrit **« projeté (non mesuré) »** : c'est une estimation de l'auteur, et 5 prompts réécrits relus à l'aveugle le 16/10/2026 valaient de 6 à 12 points de moins (TF-1831). En mode boucle, c'est le score **mesuré** par le relecteur aveugle de la dernière passe retenue (`references/boucle.md`).
 2. **Diagnostic en 3 lignes** : résumé des forces et faiblesses majeures du prompt original.
 3. **Prompt réécrit** : version optimisée, prête à copier-coller. Il doit :
    - Conserver l'intention originale.

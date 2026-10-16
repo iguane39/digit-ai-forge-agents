@@ -1,12 +1,12 @@
 ---
 name: prompt-analyzer-l99
 description: >
-  Analyse approfondie de prompts en 8 couches stratégiques (OODA, Chainlogic, Blindspots, Factcheck, Premortem, Wargame, Deepthink, Synthèse). Utiliser ce skill dès que l'utilisateur demande d'analyser, auditer, améliorer, optimiser, décortiquer ou stress-tester un prompt, que ce soit un prompt personnel ou un prompt client. Aussi déclencher quand l'utilisateur mentionne L99, analyse de prompt, prompt review, audit de prompt, améliore ce prompt, optimise ce prompt, ou colle un prompt en demandant de le passer au crible. Fonctionne sur tout type de prompt, y compris system prompts, user prompts, chaînes de prompts, templates, instructions agent.
+  Analyse approfondie de prompts en 8 couches stratégiques (OODA, Chainlogic, Blindspots, Factcheck, Premortem, Wargame, Deepthink, Synthèse). Utiliser ce skill dès que l'utilisateur demande d'analyser, auditer, améliorer, optimiser, décortiquer ou stress-tester un prompt, que ce soit un prompt personnel ou un prompt client. Aussi déclencher quand l'utilisateur mentionne L99, analyse de prompt, prompt review, audit de prompt, améliore ce prompt, optimise ce prompt, ou colle un prompt en demandant de le passer au crible. Aussi déclencher sur « L99 boucle », « améliore ce prompt en boucle » ou « jusqu'à un score » (mode boucle à relecteur aveugle). Fonctionne sur tout type de prompt, y compris system prompts, user prompts, chaînes de prompts, templates, instructions agent.
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.5.0"
-  updated: "2026-09-28"
+  version: "2.6.0"
+  updated: "2026-10-16"
 ---
 
 # Prompt Analyzer L99
@@ -22,6 +22,12 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
 
 - **L99** (défaut) : analyse complète, 8 couches.
 - **L50** (si « analyse rapide » ou « L50 ») : uniquement couches 1 (OODA, étalon noté), 3 (Blindspots) et 8 (Synthèse). Le score et le contrat de sortie restent produits (portés par Ch1 et Ch8).
+- **L99 boucle** (si « L99 boucle », « en boucle », « jusqu'à un score » ou un seuil donné) : L99, puis
+  des passes de correction jugées chacune par un **relecteur aveugle** (agent neuf, sans l'analyse),
+  défauts recomptés à la source, arrêt à 0 bloquant et 0 majeur ou gain < 3 points, borne 3 passes.
+  Charger `references/boucle.md` ; le journal se juge par `scripts/oracle-boucle-l99.mjs` (TF-1831).
+  Hors de ce mode, le score d'arrivée du Ch8 s'écrit **« projeté (non mesuré) »** : mesurés à
+  l'aveugle le 16/10/2026, 5 prompts réécrits valaient de 6 à 12 points de moins que projeté.
 
 ## Workflow
 
@@ -58,6 +64,11 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    « <Projet> - <Objet> - <Type> - AAAAMMJJa » a coûté un renommage et le rejeu de tous les
    contrôles. Hors factory, le Ch8 reprend la convention du projet, ou n'en prescrit aucune.
    Détail : `references/couches.md`, section « Nom du livrable ».
+10. **Mode boucle : le juge n'est jamais l'auteur** (TF-1831) : en mode L99 boucle, chaque passe
+   est notée par un agent neuf qui ne voit ni l'analyse ni les passes précédentes ; chaque défaut
+   grave qu'il rend est recompté à la source avant d'entrer dans la passe suivante ; le journal
+   `<analyse>.boucle.json` doit rendre PASS à `node {skilldir}/scripts/oracle-boucle-l99.mjs`
+   avant que le Ch8 affiche un score mesuré. Protocole complet : `references/boucle.md`.
 
 ## Les 8 couches (vue d'ensemble)
 

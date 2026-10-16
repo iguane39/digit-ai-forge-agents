@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.42.0, alignée sur le JSON le 15/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.43.0, alignée sur le JSON le 16/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -46,6 +46,7 @@
 | Schémas / diagrammes | skill `digit-ai-schemas` (marque paramétrable — un engagement client ne se forke plus) | skill | ✅ |
 | Prompts | skill `prompt-analyzer-l99` | skill | ✅ |
 | Prémisse d'accès mesurée avant d'être classée (analyse L99) | `scripts/oracle-premisse-acces.mjs <analyse.md>` — A1 « invérifiable » sans mesure ni test manquant déclaré, A2 refus sans contrôle positif à identité égale, A3 mesure sans horodatage ni identité, A4 conclusion d'indisponibilité sans énumération des familles d'accès (*scopes*, points d'entrée parallèles). **Invocation explicite** sur une analyse L99 ou son chapitre 4 — aucun déclenchement automatique sur `.md`. TF-1185 : un refus prouve qu'une porte est fermée, jamais qu'il n'y en a qu'une | cli | ✅ |
+| Mode boucle de prompt-analyzer-l99 : journal de passes jugé | `{skillsroot}/prompt-analyzer-l99/scripts/oracle-boucle-l99.mjs <analyse>.boucle.json` — B1 arbitre figé (arrêt « 0 bloquant et 0 majeur »), B2 relecteur aveugle nommé, B3 défaut grave recompté, B4 garde de longueur, B5 arrêt conforme, B6 au plus 3 passes, B7 score affiché mesuré, jamais projeté. **Invocation explicite** sur le journal du mode L99 boucle. TF-1831 : le juge n'est jamais l'auteur | cli | ✅ |
 | Versions de dépendances | `maj-versions.mjs` (kit RefAudit) | kit | ✅ |
 | Conformité rapport d'audit | `verifier-rapport-audit.mjs` (kit RefAudit) — checks 1-10 | kit | ✅ |
 | Clôture de remédiation | `verifier-remediation.mjs --status` (kit RefAudit) | kit | ✅ |

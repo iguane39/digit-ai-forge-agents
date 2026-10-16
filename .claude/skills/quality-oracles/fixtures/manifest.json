@@ -1633,6 +1633,27 @@
    "provenance": "TF-1185, lot Produit-62 - RETOURS - 20260917e (RF-26) — la fixture rouge est la forme qu avait l analyse du 17/09/2026 AVANT la regle : deux premisses d acces classees inverifiables sans qu aucun des quatre appels REST en lecture seule ait ete emis."
   },
   {
+   "nom": "boucle-l99",
+   "cmd": [
+    "node",
+    "{skillsroot}/prompt-analyzer-l99/scripts/oracle-boucle-l99.mjs",
+    "{fixture}"
+   ],
+   "red": "boucle-l99-red.json",
+   "green": "boucle-l99-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "non aveugle",
+    "jamais projeté"
+   ],
+   "provenance": "TF-1831, etude du pilot 20261016e : la rouge est la forme d avant la regle, l auteur qui se renote et affiche le score projete du prompt Supabase b (93, mesure 84 a l aveugle le 16/10/2026)."
+  },
+  {
    "nom": "promesses-annonces",
    "cmd": [
     "node",

@@ -1,0 +1,24 @@
+{
+ "schema": "l99-boucle@1",
+ "prompt": "Fixture : prompt de run qui converge en 2 passes",
+ "arbitre": { "rubrique": "couches.md Ch1, 6 dimensions /100", "arret": "0 bloquant et 0 majeur", "seuil_score": null, "gain_min": 3, "borne": 3, "garde_longueur": 0.15 },
+ "passes": [
+  { "n": 1, "fichier": "prompt-p1.md", "mots": 1209,
+    "relecteur": { "agent": "relecteur-1", "aveugle": true, "interdits": ["analyse", "passes précédentes"] },
+    "score_mesure": 84,
+    "defauts": [
+     { "severite": "majeur", "citation": "Zéro jeton (`oracle-secrets`)", "recompte": { "commande": "Get-ChildItem -Recurse -Filter oracle-secrets*", "resultat": "seul oracle-secrets-hors-perimetre.mjs existe" }, "statut": "retenu" },
+     { "severite": "majeur", "citation": "compter git grep -il azure", "recompte": { "commande": "git -C forge-development grep -il azure", "resultat": "29 fichiers, sans ligne au contrat" }, "statut": "retenu" },
+     { "severite": "majeur", "citation": "oracle-claims chez forge-agents", "recompte": { "commande": "Get-ChildItem -Recurse -Filter oracle-claims*", "resultat": "présent chez forge-agents et forge-conception : défaut démenti" }, "statut": "ecarte" },
+     { "severite": "mineur", "citation": "l. 117", "statut": "retenu" }
+    ],
+    "majeurs_clos": 0, "rejetee": false, "decision": "continuer" },
+  { "n": 2, "fichier": "prompt-p2.md", "mots": 1290,
+    "relecteur": { "agent": "relecteur-2", "aveugle": true, "interdits": ["analyse", "passes précédentes"] },
+    "score_mesure": 91,
+    "defauts": [ { "severite": "mineur", "citation": "l. 118", "statut": "retenu" } ],
+    "majeurs_clos": 2, "rejetee": false, "decision": "arreter" }
+ ],
+ "arret": { "passe": 2, "raison": "zero_majeur" },
+ "score_affiche": { "valeur": 91, "nature": "mesure" }
+}

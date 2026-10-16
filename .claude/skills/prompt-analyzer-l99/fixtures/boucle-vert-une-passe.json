@@ -1,0 +1,14 @@
+{
+ "schema": "l99-boucle@1",
+ "prompt": "Fixture : prompt déjà sain, arrêt à la passe 1",
+ "arbitre": { "rubrique": "couches.md Ch1, 6 dimensions /100", "arret": "0 bloquant et 0 majeur", "seuil_score": 85, "gain_min": 3, "borne": 3, "garde_longueur": 0.15 },
+ "passes": [
+  { "n": 1, "fichier": "prompt-p1.md", "mots": 640,
+    "relecteur": { "agent": "relecteur-1", "aveugle": true, "interdits": ["analyse"] },
+    "score_mesure": 90,
+    "defauts": [ { "severite": "mineur", "citation": "ton", "statut": "retenu" } ],
+    "majeurs_clos": 0, "rejetee": false, "decision": "arreter" }
+ ],
+ "arret": { "passe": 1, "raison": "zero_majeur" },
+ "score_affiche": { "valeur": 90, "nature": "mesure" }
+}

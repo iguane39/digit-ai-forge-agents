@@ -1,0 +1,14 @@
+{
+ "schema": "l99-boucle@1",
+ "prompt": "Rouge : la forme d'avant TF-1831 — l'auteur se renote et affiche son score projeté (prompt Supabase b du 16/10/2026, projeté 93, mesuré 84 à l'aveugle)",
+ "arbitre": { "rubrique": "couches.md Ch1, 6 dimensions /100", "arret": "0 bloquant et 0 majeur", "seuil_score": null, "gain_min": 3, "borne": 3, "garde_longueur": 0.15 },
+ "passes": [
+  { "n": 1, "fichier": "prompt-b.md", "mots": 1209,
+    "relecteur": { "agent": "auteur de l'analyse", "aveugle": false, "interdits": [] },
+    "score_mesure": 93,
+    "defauts": [],
+    "majeurs_clos": 0, "rejetee": false, "decision": "arreter" }
+ ],
+ "arret": { "passe": 1, "raison": "zero_majeur" },
+ "score_affiche": { "valeur": 93, "nature": "projete" }
+}
