@@ -87,9 +87,35 @@ if (!versionTf) {
 } else {
   const avant = findings.length;
   // T1 — la forme canonique ; -diff localise la première ligne que fmt réécrirait.
-  const fmt = spawnSync('terraform', ['fmt', '-check', '-list=true', '-diff', '-no-color', ...(estDossier ? ['-recursive'] : []), path.resolve(cible)],
+  const lancerFmt = (avecDiff) => spawnSync('terraform', ['fmt', '-check', '-list=true', ...(avecDiff ? ['-diff'] : []), '-no-color', ...(estDossier ? ['-recursive'] : []), path.resolve(cible)],
     { encoding: 'utf8', timeout: 60000, cwd: estDossier ? cible : path.dirname(cible) });
-  if (fmt.status === 3) {
+  let fmt = lancerFmt(true);
+  // TF-1492 (16/10/2026) : -diff délègue à un exécutable `diff`, absent du PATH d'un poste Windows
+  // sans les outils Unix. Mesuré : fmt rendait 2 (« exec: "diff": executable file not found ») et
+  // T1 imputait au fichier un défaut du POSTE. Sans diff, fmt -check se rejoue sans -diff, et la
+  // première ligne réécrite se localise contre la forme canonique que `terraform fmt -` rend.
+  const sansDiff = fmt.status !== 0 && fmt.status !== 3 && /"diff": executable file not found/.test(String(fmt.stderr || ''));
+  if (sansDiff) fmt = lancerFmt(false);
+  if (fmt.status === 3 && sansDiff) {
+    for (const l of (fmt.stdout || '').split(/\r?\n/)) {
+      const f = l.trim();
+      if (!/\.(tf|tfvars)$/.test(f)) continue;
+      const abs = path.resolve(estDossier ? cible : path.dirname(cible), f);
+      let n = 1;
+      try {
+        const brut = fs.readFileSync(abs, 'utf8');
+        const canon = spawnSync('terraform', ['fmt', '-no-color', '-'], { input: brut, encoding: 'utf8', timeout: 60000 });
+        if (canon.status === 0) {
+          const a = brut.split(/\r?\n/), b = String(canon.stdout).split(/\r?\n/);
+          const k = a.findIndex((x, i) => x !== b[i]);
+          n = k < 0 ? 1 : k + 1;
+        }
+      } catch { /* ligne 1 par défaut : le fichier reste signalé */ }
+      findings.push({ sev: 'bloquant', regle: 'T1',
+        msg: `T1 — terraform fmt -check : ${path.basename(f)} n'est pas au format canonique (première ligne réécrite : ${n}) — la chaîne l'arrêterait avant le plan ; terraform fmt le corrige`,
+        where: `${rel(abs)}:${n}` });
+    }
+  } else if (fmt.status === 3) {
     let fichier = null, ligne = 0;
     const premieres = new Map();
     for (const l of (fmt.stdout || '').split(/\r?\n/)) {

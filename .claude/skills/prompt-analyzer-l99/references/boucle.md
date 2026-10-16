@@ -105,6 +105,15 @@ boucle sans journal PASS n'est pas un mode boucle.
  "majeurs": [], "mineurs_nombre": 0, "premisses_verifiees": 0, "premisses_fausses": []}
 ```
 
+## Ce que le mode rapporte, mesuré
+
+`node {skilldir}/scripts/releve-boucles.mjs <racine> [--json]` relève tous les journaux
+`*.boucle.json` sous une racine. Il rend le score de la passe 1 et celui de l'arrêt, les défauts
+graves avant et après, puis le gain médian. Règle de l'étude d'origine : si le gain médian reste
+sous 3 points, le mode redevient optionnel et le seul score mesuré devient le défaut. La revue
+est datée au registre du pilot (TF-1831, `revue_le` 2026-11-16), et le relevé d'ouverture du pilot
+la signale à sa date.
+
 ## Coût mesuré
 
 Une relecture : de 68 à 432 secondes, de 69 000 à 75 000 jetons (5 relectures du 16/10/2026). Une
