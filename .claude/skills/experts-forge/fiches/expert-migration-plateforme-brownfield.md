@@ -42,7 +42,7 @@ données réelles et une exploitation en cours **avant** le premier déploiement
 - **Ne pas router** : migration de schéma ou de données pure, sans utilisateurs concernés
   (→ `data`) ; choix du canal technique d'échange entre deux systèmes (→ `interop-archi`) ;
   exploitation de la plateforme cible — déploiement, healthcheck, rollback technique
-  (→ `ops-aws` / `ops-azure` / `ops-gcp` / `ops-railway`) ; migration de site web à iso-contenu
+  (→ `ops-aws` / `ops-azure` / `ops-gcp` / `ops-railway` / `ops-supabase`) ; migration de site web à iso-contenu
   jugée sur la parité des routes (→ oracle `parite-migration` de quality-oracles).
 
 ## 3. corpus (checklist propre — rédigée pour ce domaine, réutilisable hors du produit d'origine)

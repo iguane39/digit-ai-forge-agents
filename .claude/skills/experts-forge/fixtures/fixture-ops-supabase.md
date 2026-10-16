@@ -39,3 +39,47 @@ Produite par une session neuve sans outil ni documentation : `claude -p --model 
    - Les secrets ne se relisent pas, garde donc leur source. La config Auth (URL de redirection, SMTP) et les extensions vivent hors des migrations.
    - Une restauration PITR écrase tout le projet. Une mauvaise région impose de recréer le projet.
    - Le passage en prod reste soumis au GO humain.
+
+## Contribution (B) — par la rubrique de la fiche, produite le 16/10/2026 (jugement différé, session S′)
+
+Contribution expert-ops-supabase :
+
+1. **[Axe 1 · clés et échéance]** La baseline branche le front sur la clé `anon`. Cette clé
+   héritée (JWT `eyJ…`) est dépréciée d'ici fin 2026 : un staging ouvert en octobre 2026 sur
+   elle impose une seconde MEP dans les semaines qui suivent. Livrer d'emblée la clé publiable
+   `sb_publishable_…` au front, et la clé secrète `sb_secret_…` à la seule fonction `notifier`,
+   jamais sous un préfixe public de bundler (`NEXT_PUBLIC_…`) puisque le front est un Next.js
+   (corpus §2 ; demande : « lues par le front avec la clé publique », « fonction Edge notifier »).
+2. **[Axe 2 · déploiement]** Le jeton CI n'est pas seulement « non Owner » : c'est un jeton
+   personnel **limité aux projets** que le workflow déploie (`SUPABASE_ACCESS_TOKEN`), avec
+   `SUPABASE_DB_PASSWORD` et `SUPABASE_PROJECT_ID`, un jeu par environnement, pour que le
+   staging ne puisse pas pousser en production avant le GO (corpus §3 ; demande : « staging
+   d'abord puis GO humain »).
+3. **[Axe 3 · restauration, le choix de plan qui conditionne tout]** Avant le premier
+   `db push`, établir le plan du projet de production : en Free, **aucune** sauvegarde
+   automatique, le `db dump` est la seule restauration ; en Pro, 7 jours. Si M-1…M-5 exigent
+   un retour à l'instant, le PITR est un add-on qui exige au moins le compute Small, et
+   **l'activer arrête les sauvegardes quotidiennes** : c'est une dépense et un arbitrage à
+   poser au GO, pas un « à vérifier ». La restauration PITR passe par l'API de gestion
+   (`…/database/backups/restore-pitr`), pas par le CLI, et rend le projet inaccessible pendant
+   l'opération : le plan de MEP doit nommer qui la déclenche (corpus §5-§6 ; demande :
+   « pouvoir restaurer — M-1…M-5 », « GO humain »).
+4. **[Axe 4 · ce que protègent réseau, SSL et RLS]** Les restrictions réseau
+   (`network-restrictions update --db-allow-cidr … --experimental`) ne couvrent que Postgres et
+   le pooler, **pas** PostgREST ni Storage : les 2 tables lues par le front et le bucket
+   « justificatifs » ne sont protégés que par la RLS et les politiques de `storage.objects`.
+   Sans politique d'insertion, l'envoi des pièces jointes échoue : « Storage does not allow
+   any uploads to buckets without RLS policies ». Activer le SSL imposé
+   (`ssl-enforcement update --enable-db-ssl-enforcement --experimental`) **redémarre la
+   base** : le placer avant la fenêtre de MEP, jamais pendant (corpus §4, §7, §8 ; demande :
+   « 2 tables métier dans le schéma public », « bucket justificatifs »).
+5. **[Axe 5 · credentials du dépôt]** `supabase link` écrit `supabase/.temp/project-ref` et
+   `pooler-url` ; sur un runner sans stockage natif, `supabase login` écrit le jeton en clair
+   dans `~/.supabase/access-token`. Vérifier que le `.gitignore` de `supabase/` exclut
+   `.temp`, `.branches`, `.env.keys`, `.env.local` avant le premier commit du staging
+   (corpus §9 ; demande : « 6 migrations SQL dans supabase/migrations/ », dossier versionné).
+
+## Critère de différence matérielle
+
+Verdict `MATERIEL` exigé : axes 1, 2 et 4 de la rubrique juge à OUI, et au moins un des
+axes 3 ou 5 — sinon la fiche reste `todo`/`refuse` et n'est jamais routée.

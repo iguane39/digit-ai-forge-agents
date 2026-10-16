@@ -1,4 +1,4 @@
-# Registre des experts — v0.5.0 (02/09/2026)
+# Registre des experts — v0.6.0 (16/10/2026)
 
 Calqué sur `registre-oracles.md` de quality-oracles. Statuts : `ok` (admis après verdict « matériel »), `todo` (fiche rédigée, verdict en attente), `refuse` (verdict « non matériel », fiche conservée pour trace), `dormant` (fiche `ok` jamais routée depuis 6 mois — routage désactivé, conservée pour trace ; M3, 23/07/2026), `broken` (un chemin du corpus ne se résout plus — réparer ou retirer, jamais router ; M3, 23/07/2026).
 
@@ -23,6 +23,7 @@ Champs M3 (23/07/2026) : `Dernier usage` — dérivé des routages journalisés 
 | ops-azure | ok | `fiches/expert-ops-azure.md` | `fixtures/fixture-ops-azure.md` (baseline figée le 11/08/2026 AVANT rédaction — TF-0081) — verdict MATERIEL (5 axes OUI) — oracle-judge armé de la rubrique d'admission (profil run-admission), session S′ (`claude -p`), 11/08/2026 ; verdict JSON : `run-admission/verdict-ops-azure.json` | 11/08/2026 | — | 11/08/2026 |
 | ops-aws | ok | `fiches/expert-ops-aws.md` | `fixtures/fixture-ops-aws.md` (baseline figée le 11/08/2026 AVANT rédaction — TF-0081) — verdict MATERIEL (5 axes OUI) — oracle-judge armé de la rubrique d'admission (profil run-admission), session S′ (`claude -p`), 11/08/2026 ; verdict JSON : `run-admission/verdict-ops-aws.json` | 11/08/2026 | — | 11/08/2026 |
 | migration-plateforme-brownfield | ok | `fiches/expert-migration-plateforme-brownfield.md` | `fixtures/fixture-migration-plateforme-brownfield.md` (cas réel, baseline = les 7 constats de la contre-expertise du 22/08/2026, figée avant rédaction du corpus) — verdict MATERIEL (5 axes OUI) — `oracle-judge` armé de la rubrique d'admission (profil `run-admission`), 02/09/2026 ; verdict JSON : `run-admission/verdict-migration-plateforme-brownfield.json` | 02/09/2026 | — | 02/09/2026 |
+| ops-supabase | ok | `fiches/expert-ops-supabase.md` | `fixtures/fixture-ops-supabase.md` (baseline figée le 16/10/2026 à 10:49 par une session neuve sans outil, AVANT rédaction — commit 85d95d7) — verdict MATERIEL (5 axes OUI) — oracle-judge armé de la rubrique d'admission (profil run-admission), session S′ (`claude -p`), 16/10/2026 ; contre-épreuve rouge (contribution générique) NON_MATERIEL 0/5, exit 1 ; verdict JSON : `run-admission/verdict-ops-supabase.json` | 16/10/2026 | — | 16/10/2026 |
 
 > Entrée `accessibilite` : scaffoldée par `write-an-expert` puis **durcie le 21/07/2026** (périmètre, checklist propre, rubrique 5 axes, frontières) ; fixture A/B rejouée (`fixtures/fixture-accessibilite.md`) — **admise le 23/07/2026** : verdict MATERIEL — Sébastien, 23/07/2026, après SKIP motivé oracle-judge (CLI `claude` absente en claude.ai — jamais de verdict simulé, R6).
 
