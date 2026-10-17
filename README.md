@@ -65,6 +65,11 @@ node .claude/skills/forge-agents/scripts/ledger.mjs append <ledger.jsonl> '<json
 # Vérifier l'intégrité append-only d'un ledger. Exit 0 = PASS, 1 = FAIL.
 node .claude/skills/forge-agents/scripts/ledger.mjs verify <ledger.jsonl>
 
+# Consigner UNE entrée oracles_verdict PAR oracle depuis le rapport d'un lanceur (TF-1319) :
+# tout le lot ou rien ; exit 0 dès que le lot est écrit, quels que soient les verdicts.
+node .claude/skills/forge-agents/scripts/ledger.mjs consigner <ledger.jsonl> --forge <forge> -- node <lanceur> <cible>
+node .claude/skills/forge-agents/scripts/ledger.mjs consigner <ledger.jsonl> --rapport <rapport.json>
+
 # Rejouer les fixtures du compilateur (1 verte, 3 rouges) + le cycle ledger (dont la
 # concurrence). À relancer après toute modification du skill. Exit 0 si tout passe.
 node .claude/skills/forge-agents/scripts/self-test.mjs

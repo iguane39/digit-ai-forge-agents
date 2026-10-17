@@ -1,19 +1,33 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V18 et les règles de lisibilité L1–L38 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21 et les règles de lisibilité L1–L38 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.31.0"
+  version: "1.32.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.32.0 (17/10/2026)** — **une règle de rendu neuve, `V21` : les largeurs de contenu mélangées
+(TF-1307, décision D-9 option (b) du 17/10/2026), en avertissement.** Réécriture comme candidature
+NEUVE de la règle écrite en septembre sur un poste et perdue avant publication (elle s'appelait V19 ;
+ce numéro est pris depuis par « mot coupé », d'où un numéro neuf). Famille `largeurs_melangees` de
+`render_page.py` : des blocs de contenu frères (`section`, `article`, `.chap`, `[role=region]`,
+enfants directs d'un même parent en flux vertical) dont les largeurs RENDUES diffèrent de plus de
+max(8 px, 1,5 %) — un chapitre en pleine largeur suivi d'un chapitre bridé par `.chap.lire` (retour
+humain TF-1038). Exception déclarée : `data-largeur-exception="<raison>"` sur le bloc. Quatre
+fixtures `v21-*` jouées dans les deux sens ; taux d'accusation mesuré sur le parc livrable du pilot
+avant entrée (`references/zero-defaut-visuel.md`, § V21). **V20 reste vide** : le numéro appartenait à
+la règle « doute invisible », déclarée perdue le 17/10/2026 et non réécrite ; le réutiliser ferait
+désigner autre chose à tout « V20 » déjà écrit au registre. **Version MINEURE** : une famille
+d'avertissement s'ajoute, aucun verdict existant ne change.
 
 **1.31.0 (15/10/2026)** — **neuf retours de produits corrigés à la cause ; les deux règles neuves
 entrent en avertissement.** · **L38** : une ligne de listing qui renvoie, par une ancre, vers une
@@ -633,7 +647,7 @@ qui lui est offerte, et une colonne d'étiquettes ne mange pas plus de 20 % d'un
 la mesure de lecture se règle sur le conteneur, pas sur le paragraphe),
 **V1** (débordement horizontal), **V2** (contraste WCAG AA : ≥ 4.5:1,
 ≥ 3:1 en texte large) et **V4** (chevauchements — superposition voulue = `data-overlap-ok="<id de l'élément recouvert>"`, une **paire** et non un interrupteur depuis TF-1146 ; la forme nue exempte encore mais elle est recensée),
-signale **L2-frères** (TF-0491), **V3** et **V7** en avertissements — L2-frères compare la
+signale **L2-frères** (TF-0491), **V21** (largeurs de contenu mélangées, TF-1307), **V3** et **V7** en avertissements — L2-frères compare la
 largeur d'un bloc de texte à celle de son **frère empilé** : trois mesures L2 ne voyaient que
 le rapport d'un bloc à son propre conteneur, et une prose bornée ET CENTRÉE au-dessus de
 cartes pleine largeur les satisfaisait toutes les trois. Le lecteur, lui, voit un bord droit
@@ -784,7 +798,7 @@ contrôles que le producteur lance de toute façon.
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V18 (transversale forge) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Checklist canonique zéro défaut visuel V1–V19 et V21 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
 - Règles de lisibilité L1–L38 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants

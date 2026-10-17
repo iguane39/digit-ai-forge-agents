@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — trois chapitres, une largeur — 20261017a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--sans:"Inter",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);font-size:16px;line-height:1.6;color:var(--ink);background:var(--bg)}
+h1{font-size:1.6rem;margin:0 0 12px}
+.wrap{width:92vw;margin:0 auto;padding:24px}
+.chap{margin:0 0 24px;padding:16px;background:var(--surface);border:1px solid var(--line)}
+.chap.lire{max-width:1080px;margin-left:auto;margin-right:auto}
+
+</style></head>
+<!--
+Fixture VERTE. Les trois chapitres sont brides par .chap.lire : meme largeur rendue, la page est homogene. Meme texte que la rouge : seule la largeur d un chapitre change.
+  Attendu a 1 440 px : 0 constat largeurs_melangees.
+  Fixture de la famille `largeurs_melangees` (V21, TF-1307, 17/10/2026).
+-->
+<body><main class="wrap"><h1>Note de cadrage du lot douze</h1>
+<section class="chap lire"><h2>Recette</h2><p>Le lot douze est entre en recette le deux septembre sur trois environnements : le poste local, la plateforme d integration et la preproduction, avec les memes jeux de donnees.</p></section>
+<section class="chap lire"><h2>Echecs</h2><p>Les deux echecs releves en integration portent sur le meme composant et ont ete corriges le trois septembre, la recette etant rejouee le meme jour sans aucun echec.</p></section>
+<section class="chap lire"><h2>Migration</h2><p>La migration de la base est planifiee le vingt septembre, le decommissionnement suit le vingt-sept, et la bascule reste reversible pendant huit jours pleins.</p></section>
+</main></body></html>

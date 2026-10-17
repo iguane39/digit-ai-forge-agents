@@ -1078,6 +1078,200 @@ check("D-1 : une version déjà fournie par le payload est gardée telle quelle,
   } finally { rmSync(racine, { recursive: true, force: true }); }
 });
 
+// ---- TF-1319, décision humaine D-5 (b) du 17/10/2026 : `consigner` écrit UNE entrée oracles_verdict
+// PAR oracle depuis le rapport d'un lanceur. Sens vert : les trois formes de rapport du parc, la
+// commande lancée sans shell, l'UTF-16 de PowerShell 5.1. Sens rouge : un lot fautif n'écrit RIEN,
+// un ledger absent ne fait rien lancer, une source manquante ou doublée est refusée.
+function ledgerOuvert(nom) {
+  const lf = join(out, nom);
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["conception"] })]);
+  return lf;
+}
+const lignesDe = (lf) => readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+const RAPPORT_LANCEUR = {
+  runner: "run-oracles-conception", cible: "EXIGENCES.json", verdict: "FAIL",
+  oracles: [
+    { oracle: "oracle-exigences", verdict: "PASS", exit: 0, resume: "aucune règle en échec" },
+    { oracle: "oracle-ears", verdict: "FAIL", exit: 1, resume: "E2 en échec" },
+    { oracle: "oracle-tracabilite", verdict: "NON_JUGE", exit: 2, resume: "cascade absente" },
+  ],
+};
+check("consigner (vert) : un rapport de lanceur à 3 oracles → 3 entrées oracles_verdict, une par oracle, même lot, verify PASS", () => {
+  const lf = ledgerOuvert("ledger-consigner-vert.jsonl");
+  const rp = join(out, "rapport-lanceur.json");
+  writeFileSync(rp, JSON.stringify(RAPPORT_LANCEUR), "utf8");
+  const sortie = run(ledger, ["consigner", lf, "--rapport", rp, "--forge", "conception"]);
+  if (!sortie.includes("3 entrée(s) oracles_verdict ajoutée(s)")) throw new Error(`écho inattendu : ${sortie.slice(0, 160)}`);
+  const e = lignesDe(lf).slice(1);
+  if (e.length !== 3) throw new Error(`3 entrées attendues, ${e.length} écrites`);
+  if (e.map((x) => x.oracle).join() !== "oracle-exigences,oracle-ears,oracle-tracabilite") throw new Error("noms d'oracles ou ordre perdus");
+  if (e.map((x) => x.seq).join() !== "2,3,4") throw new Error(`seq ${e.map((x) => x.seq).join()} au lieu de 2,3,4`);
+  if (!e.every((x) => x.type === "oracles_verdict" && x.consigne_par === "ledger.mjs consigner" && x.lanceur === "run-oracles-conception"
+    && x.cible === "EXIGENCES.json" && x.forge === "conception")) throw new Error("champs communs du lot manquants");
+  if (new Set(e.map((x) => x.lot.id)).size !== 1 || e.map((x) => `${x.lot.rang}/${x.lot.total}`).join() !== "1/3,2/3,3/3") throw new Error("lot mal numéroté");
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("verify aurait dû passer");
+});
+check("consigner (vert) : un verdict écrit autrement par un lanceur (NON_JUGE) devient SKIP, l'original GARDÉ en verdict_brut", () => {
+  const e = lignesDe(join(out, "ledger-consigner-vert.jsonl"));
+  const t = e.find((x) => x.oracle === "oracle-tracabilite");
+  if (t.verdict !== "SKIP" || t.verdict_brut !== "NON_JUGE") throw new Error(`verdict ${t.verdict}, brut ${t.verdict_brut}`);
+  const p = e.find((x) => x.oracle === "oracle-exigences");
+  if ("verdict_brut" in p) throw new Error("verdict_brut posé sur un verdict déjà canonique");
+});
+check("consigner (vert) : la forme d'UN oracle ({oracle, verdict}) et une LISTE sont consignées ; un rapport UTF-16 à BOM (`>` de PowerShell 5.1) se lit", () => {
+  const lf = ledgerOuvert("ledger-consigner-formes.jsonl");
+  const r1 = join(out, "rapport-oracle.json");
+  writeFileSync(r1, JSON.stringify({ oracle: "oracle-enclenchement", verdict: "FAIL", findings: [{}, {}] }), "utf8");
+  run(ledger, ["consigner", lf, "--rapport", r1]);
+  const r2 = join(out, "rapport-liste-utf16.json");
+  writeFileSync(r2, Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(JSON.stringify([{ oracle: "oracle-é", verdict: "pass" }, { oracle: "oracle-b", verdict: "SANS OBJET" }]), "utf16le")]));
+  run(ledger, ["consigner", lf, "--rapport", r2, "--cible", "page.html"]);
+  const e = lignesDe(lf).slice(1);
+  if (e.length !== 3) throw new Error(`3 entrées attendues, ${e.length}`);
+  if (e[0].oracle !== "oracle-enclenchement" || e[0].verdict !== "FAIL" || e[0].constats !== 2) throw new Error("forme d'un oracle mal lue");
+  if (e[1].oracle !== "oracle-é" || e[1].verdict !== "PASS" || e[1].cible !== "page.html") throw new Error(`UTF-16 mal lu : ${JSON.stringify(e[1])}`);
+  if (e[2].verdict !== "NA" || e[2].verdict_brut !== "SANS OBJET") throw new Error("SANS OBJET non ramené à NA");
+});
+check("consigner (vert) : `-- <commande>` lance le lanceur SANS shell, consigne sa sortie et rend son code (exit_commande), sortie 0", () => {
+  const lf = ledgerOuvert("ledger-consigner-commande.jsonl");
+  const lanceur = join(out, "faux-lanceur.mjs");
+  writeFileSync(lanceur, `process.stderr.write("progression\\n");\nconsole.log(JSON.stringify(${JSON.stringify(RAPPORT_LANCEUR)}));\nprocess.exit(1);\n`, "utf8");
+  const sortie = run(ledger, ["consigner", lf, "--", "node", lanceur]);
+  if (!sortie.includes("la commande a rendu exit 1")) throw new Error("le code du lanceur n'est pas rendu");
+  const e = lignesDe(lf).slice(1);
+  if (e.length !== 3 || !e.every((x) => x.exit_commande === 1 && x.commande.includes("faux-lanceur.mjs"))) throw new Error("commande ou code non portés par chaque entrée");
+});
+check("consigner (rouge) : un élément sans nom ET un verdict inconnu → lot REFUSÉ, chacun nommé, le ledger inchangé à l'octet", () => {
+  const lf = ledgerOuvert("ledger-consigner-rouge.jsonl");
+  const avant = readFileSync(lf, "utf8");
+  const rp = join(out, "rapport-fautif.json");
+  writeFileSync(rp, JSON.stringify({ oracles: [{ oracle: "oracle-a", verdict: "PASS" }, { verdict: "FAIL" }, { oracle: "oracle-c", verdict: "BOF" }] }), "utf8");
+  try { execFileSync("node", [ledger, "consigner", lf, "--rapport", rp], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) {
+    const err = String(e.stderr || "");
+    if (!err.includes("AUCUNE entrée écrite") || !err.includes("élément 2/3") || !err.includes("« BOF » inconnu")) throw new Error(`refus mal nommé : ${err.slice(0, 200)}`);
+    if (readFileSync(lf, "utf8") !== avant) throw new Error("écriture partielle : oracle-a a été écrit malgré le refus du lot");
+    return;
+  }
+  throw new Error("aurait dû refuser le lot, l'a accepté");
+});
+check("consigner (rouge) : un rapport vide (`oracles: []`) ou non JSON est refusé — rien n'a tourné, rien ne s'écrit", () => {
+  const lf = ledgerOuvert("ledger-consigner-vide.jsonl");
+  const avant = readFileSync(lf, "utf8");
+  const vide = join(out, "rapport-vide.json");
+  writeFileSync(vide, JSON.stringify({ runner: "x", oracles: [] }), "utf8");
+  const texte = join(out, "rapport-texte.txt");
+  writeFileSync(texte, "PASS — tout va bien\n", "utf8");
+  for (const [rp, motif] of [[vide, "AUCUN verdict"], [texte, "rapport non JSON"]]) {
+    let refuse = false;
+    try { execFileSync("node", [ledger, "consigner", lf, "--rapport", rp], { encoding: "utf8", stdio: "pipe" }); }
+    catch (e) { refuse = String(e.stderr || "").includes(motif); }
+    if (!refuse) throw new Error(`refus « ${motif} » attendu`);
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("le ledger a changé");
+});
+check("consigner (rouge) : ledger absent → refus AVANT de lancer la commande (le lanceur ne tourne pas, aucun fichier créé)", () => {
+  const lf = join(out, "ledger-consigner-absent.jsonl");
+  const temoin = join(out, "temoin-lance.txt");
+  const lanceur = join(out, "lanceur-temoin.mjs");
+  writeFileSync(lanceur, `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(temoin)}, "lancé");\nconsole.log(JSON.stringify({ oracle: "x", verdict: "PASS" }));\n`, "utf8");
+  let refuse = false;
+  try { execFileSync("node", [ledger, "consigner", lf, "--", "node", lanceur], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { refuse = String(e.stderr || "").includes("run OUVERT"); }
+  if (!refuse) throw new Error("refus « run OUVERT » attendu");
+  if (existsSync(lf)) throw new Error("un ledger a été créé");
+  if (existsSync(temoin)) throw new Error("le lanceur a tourné alors que son relevé ne pouvait aller nulle part");
+});
+check("consigner (rouge) : aucune source, deux sources, ou un argument inconnu → refusé et NOMMÉ", () => {
+  const lf = ledgerOuvert("ledger-consigner-args.jsonl");
+  const rp = join(out, "rapport-lanceur.json");
+  for (const [args, motif] of [
+    [[], "une source de verdicts, et une seule"],
+    [["--rapport", rp, "--", "node", "-e", "1"], "une source de verdicts, et une seule"],
+    [["--rapport", rp, "--bavard"], "`--bavard`"],
+    [["--rapport"], "`--rapport` sans valeur"],
+  ]) {
+    let err = "";
+    try { execFileSync("node", [ledger, "consigner", lf, ...args], { encoding: "utf8", stdio: "pipe" }); }
+    catch (e) { err = String(e.stderr || ""); }
+    if (!err.includes(motif)) throw new Error(`args ${JSON.stringify(args)} : refus « ${motif} » attendu, reçu « ${err.slice(0, 120)} »`);
+  }
+  if (lignesDe(lf).length !== 1) throw new Error("une entrée a été écrite malgré un refus d'arguments");
+});
+
+check("qualification_enclenchement (vert) : `fonde` ou `a_tort` avec sa cause → écrite", () => {
+  const lf = ledgerOuvert("ledger-qualification-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "qualification_enclenchement", qualification: "a_tort", cause: "forge mobilisée pour son journal, pas pour ses oracles" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "qualification_enclenchement", qualification: "fonde", cause: "oracle-ears n'a pas tourné" })]);
+  if (lignesDe(lf).length !== 3) throw new Error("les deux qualifications auraient dû être écrites");
+});
+check("qualification_enclenchement (rouge) : valeur inconnue, ou cause absente → refusée à l'écriture, quel que soit le schéma", () => {
+  const lf = join(out, "ledger-qualification-rouge.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "sans schéma" })]);
+  for (const [payload, motif] of [
+    [{ type: "qualification_enclenchement", qualification: "peut-être", cause: "x" }, "`fonde` ou `a_tort`"],
+    [{ type: "qualification_enclenchement", qualification: "a_tort" }, "`cause` absent"],
+  ]) {
+    let err = "";
+    try { execFileSync("node", [ledger, "append", lf, JSON.stringify(payload)], { encoding: "utf8", stdio: "pipe" }); }
+    catch (e) { err = String(e.stderr || ""); }
+    if (!err.includes(motif) || !err.includes("TF-1319")) throw new Error(`refus « ${motif} » attendu, reçu « ${err.slice(0, 160)} »`);
+  }
+  if (lignesDe(lf).length !== 1) throw new Error("une qualification invalide a été écrite");
+});
+
+// ============================================================================================
+// TF-1841 du pilot (17/10/2026) — `parties_mobilisees`, facultatif, borne la promesse d'une
+// forge-outil au juge de l'enclenchement. Présent et mal formé : refusé à l'écriture, quel que soit
+// le schéma. Sur le code d'avant, les quatre rouges s'écrivaient (champ libre), et le juge les
+// aurait ignorés en gardant la promesse entière.
+// ============================================================================================
+check("parties_mobilisees (rouge TF-1841) : objet vide, tableau, liste vide, élément vide → refusé à l'écriture, nommé, rien n'est écrit", () => {
+  for (const [schema, extra] of [["1.1", { schema_ledger: "1.1", forges_mobilisees: ["agents"] }], ["absent", {}]]) {
+    for (const [nom, parties] of [["objet vide", {}], ["tableau", ["forge-agents"]], ["liste vide", { agents: [] }], ["élément vide", { agents: ["forge-agents", " "] }]]) {
+      const lf = join(out, `ledger-parties-${schema}-${nom.replace(/\W+/g, "-")}.jsonl`);
+      let err = null;
+      try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "run_open", substrat: "x", ...extra, parties_mobilisees: parties })], { encoding: "utf8", stdio: "pipe" }); }
+      catch (e) { err = String(e.stderr || ""); }
+      if (err === null) throw new Error(`schéma ${schema}, « ${nom} » accepté — il aurait dû être refusé`);
+      if (!err.includes("parties_mobilisees") || !err.includes("TF-1841")) throw new Error(`refus de « ${nom} » sans le champ ni TF-1841 : ${err.slice(0, 200)}`);
+      if (existsSync(lf) && readFileSync(lf, "utf8").trim()) throw new Error(`le refus de « ${nom} » a quand même écrit`);
+    }
+  }
+  // Même garde sur une rectification, qui porte la déclaration ENTIÈRE.
+  const lf = join(out, "ledger-parties-rectif.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents"], substrat: "x" })]);
+  let err = null;
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "rectification_forges_mobilisees", forges_mobilisees: ["agents"], cause: "x", parties_mobilisees: { agents: [] } })], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) { err = String(e.stderr || ""); }
+  if (err === null || !err.includes("TF-1841")) throw new Error("une rectification aux parties mal formées doit être refusée");
+});
+check("parties_mobilisees (vert TF-1841) : bien formé sur run_open et rectification → écrit, journal intègre ; absent → rien n'est exigé", () => {
+  const lf = join(out, "ledger-parties-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents", "design"], parties_mobilisees: { agents: ["forge-agents"] }, substrat: "x" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "rectification_forges_mobilisees", forges_mobilisees: ["agents"], parties_mobilisees: { "digit-ai-forge-agents": ["forge-agents", "quality-oracles"] }, cause: "design déclarée à tort" })]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("des parties bien formées doivent laisser le journal intègre : " + v);
+  const lfSans = join(out, "ledger-parties-absent.jsonl");
+  run(ledger, ["append", lfSans, JSON.stringify({ type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents"], substrat: "x" })]);
+  if (lignesDe(lfSans).length !== 1) throw new Error("un run_open sans parties doit rester accepté (compatibilité)");
+});
+// Accord avec le juge du pilot (lecture seule) : ce que `append` accepte, le juge le lit sans
+// invalide ; ce qu'il refuse, le juge le rend invalide. Pilot absent : non joué, et dit.
+{
+  const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-enclenchement.mjs");
+  if (!existsSync(juge)) console.log(`  [NON JOUÉ] parties_mobilisees TF-1841 : accord avec oracle-enclenchement — juge du pilot introuvable (${juge})`);
+  else await checkAsync("parties_mobilisees TF-1841 : accord avec le juge du pilot — formes refusées à l'écriture = formes que `partiesDeclarees` rend invalides", async () => {
+    const m = await import(new URL(`file:///${juge.split("\\").join("/")}`).href);
+    if (typeof m.partiesDeclarees !== "function") throw new Error("le juge du pilot n'expose pas `partiesDeclarees` (TF-1841 non livré au pilot ?)");
+    for (const p of [["forge-agents"], { agents: [] }, { agents: ["forge-agents", " "] }]) {
+      if (!m.partiesDeclarees(p).invalides.length) throw new Error(`le juge lit comme valide ce que append refuse : ${JSON.stringify(p)}`);
+    }
+    const ok = m.partiesDeclarees({ agents: ["forge-agents"] });
+    if (ok.invalides.length || ok.parties["digit-ai-forge-agents"]?.join() !== "forge-agents") throw new Error(`le juge ne lit pas ce que append accepte : ${JSON.stringify(ok)}`);
+  });
+}
+
 rmSync(out, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 console.log(`\nSelf-test forge-agents : ${pass} PASS, ${failCount} FAIL`);
 process.exit(failCount === 0 ? 0 : 1);

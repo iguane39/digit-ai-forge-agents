@@ -5,8 +5,30 @@
  *   node ledger.mjs append <ledger.jsonl> '<json>'          # payload en argument shell
  *   node ledger.mjs append <ledger.jsonl> --fichier <p.json> # payload lu depuis un fichier
  *   node ledger.mjs verify <ledger.jsonl>                   # vérifie l'intégrité append-only
- * Aucune des deux formes n'accepte d'argument en surnombre : un argument non reconnu est REFUSÉ
+ *   node ledger.mjs consigner <ledger.jsonl> --rapport <rapport.json|-> [--forge f] [--cible c] [--etape e]
+ *   node ledger.mjs consigner <ledger.jsonl> [--forge f] [--cible c] [--etape e] -- <commande> [args…]
+ *                                                           # UNE entrée oracles_verdict PAR oracle
+ * Aucune de ces formes n'accepte d'argument en surnombre : un argument non reconnu est REFUSÉ
  * (sortie 1), NOMMÉ, avec cet usage redonné (TF-1366 a, 21/09/2026).
+ *
+ * CONSIGNER — UN VERDICT PAR ORACLE (TF-1319, décision humaine D-5 (b) du 17/10/2026). Le juge
+ * d'enclenchement du pilot (`oracle-enclenchement.mjs`) confronte les oracles que chaque forge
+ * mobilisée découvre aux entrées `oracles_verdict` du run. Sur les deux seuls runs réels qui
+ * déclaraient schéma et forges, il rendait FAIL parce que ces runs consignaient TOUS les verdicts
+ * d'un lanceur en UNE entrée : un regroupement n'est pas un oubli, mais rien ne permettait d'écrire
+ * autrement sans recopier le rapport à la main. `consigner` lit le rapport d'un lanceur (forme
+ * `{ oracles: [{ oracle, verdict }] }`), d'un oracle (`{ oracle, verdict }`) ou une liste, et écrit
+ * UNE entrée par oracle, sous UN verrou, en UNE écriture — tout le lot ou rien : un élément sans
+ * nom ou au verdict inconnu fait refuser le lot entier, chaque élément fautif NOMMÉ. Les verdicts
+ * écrits autrement par les lanceurs du parc (`NON_JUGE`, `INCONCLUSIF`, `SANS OBJET`) sont ramenés
+ * à la forme canonique par une table ÉCRITE (VERDICTS_EQUIVALENTS), l'original gardé en
+ * `verdict_brut`. Chaque entrée porte `consigne_par: "ledger.mjs consigner"` et `lot {id, rang,
+ * total}` : c'est ce qui permet au pilot de MESURER, run par run, les refus du juge sur des runs
+ * qui ont consigné par cet outil — la condition posée par D-5 (b) avant tout passage en bloquant
+ * (`oracles/mesure-refus-enclenchement.mjs` du pilot). `-- <commande>` lance le lanceur SANS shell
+ * et lit sa sortie en octets (sous PowerShell 5.1, `>` écrit de l'UTF-16 et un tube réencode ;
+ * `--rapport` lit aussi l'UTF-16 à BOM). Sortie 0 dès que le lot est écrit, QUELS QUE SOIENT les
+ * verdicts : consigner n'est pas juger ; le code du lanceur est rendu (`exit_commande`).
  * Vérifications d'INTÉGRITÉ : JSON valide par ligne, seq strictement croissant depuis 1,
  * horodatages non décroissants (comparés comme des INSTANTS, TF-1422), première entrée de type
  * run_open. Exit 0 = PASS, 1 = FAIL.
@@ -128,6 +150,11 @@
  * (TF-1715 du pilot) sans `forges_mobilisees` non vide ou sans `cause` est refusée à l'écriture, quel
  * que soit le schéma : le juge de l'enclenchement l'ignorerait (constante CHAMPS_RECTIFICATION_FORGES).
  *
+ * PARTIES MOBILISÉES (TF-1841 du pilot, 17/10/2026). `parties_mobilisees: { forge: [skills] }`,
+ * facultatif sur `run_open` et `rectification_forges_mobilisees`, borne la promesse d'une forge-outil
+ * au juge de l'enclenchement ; présent et mal formé, il est refusé à l'écriture, quel que soit le
+ * schéma (constante CHAMP_PARTIES).
+ *
  * SCHÉMA 1.1 — FORGES MOBILISÉES (décision humaine D-18 (a), 26/09/2026). Sous 1.1, `run_open`
  * doit porter `forges_mobilisees` (table CHAMPS_DUS_PAR_VERSION ci-dessous) — la forme que lit
  * `oracle-enclenchement.mjs` du pilot. Les champs dus sont désormais PAR VERSION : un journal qui
@@ -155,6 +182,7 @@
 import { readFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSync, readdirSync, statSync, readSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { spawnSync } from "node:child_process";
 
 const rest = process.argv.slice(2);
 const [cmd, file] = rest;
@@ -327,6 +355,45 @@ const CHAMPS_RECTIFICATION_FORGES = [
     (v) => (typeof v === "string" ? null : `doit etre une CHAINE (recu ${typeof v})`)],
 ];
 
+//: TF-1841 du pilot (17/10/2026) — les PARTIES (skills) qu'un run mobilise d'une forge-outil :
+//: `parties_mobilisees: { "agents": ["forge-agents"] }`, champ FACULTATIF de `run_open` et de
+//: `rectification_forges_mobilisees`. Le juge de l'enclenchement du pilot borne la promesse de la
+//: forge aux oracles de ces skills ; une forme qu'il ne sait pas lire, il l'ignore en le disant et
+//: garde la promesse entière. Refusée À L'ÉCRITURE quand elle est présente et mal formée, quel que
+//: soit le schéma (champ né le 17/10/2026, aucun existant à ménager) : une déclaration inopérante
+//: resterait pour toujours dans un journal en ajout seul. Absente : rien n'est exigé.
+const CHAMP_PARTIES = "parties_mobilisees";
+const TYPES_PORTEURS_PARTIES = ["run_open", "rectification_forges_mobilisees"];
+function validerPartiesMobilisees(valeur) {
+  if (valeur === null || typeof valeur !== "object" || Array.isArray(valeur)) {
+    return `doit etre un OBJET { forge: [parties] } (recu ${Array.isArray(valeur) ? "un tableau" : valeur === null ? "null" : typeof valeur})`;
+  }
+  const cles = Object.keys(valeur);
+  if (!cles.length) return "est un objet VIDE — sans partie, omettre le champ (la forge garde sa promesse entiere)";
+  const fautes = [];
+  for (const cle of cles) {
+    const v = valeur[cle];
+    if (!cle.trim()) fautes.push("une cle vide");
+    else if (!Array.isArray(v) || !v.length) fautes.push(`« ${cle} » : doit etre un tableau NON VIDE de noms de skills`);
+    else if (v.some((x) => typeof x !== "string" || !x.trim())) fautes.push(`« ${cle} » : element non-chaine ou vide`);
+  }
+  return fautes.length ? fautes.join(" ; ") : null;
+}
+
+//: TF-1319, D-5 (b) du 17/10/2026 — la QUALIFICATION d'un refus du juge d'enclenchement, consignée
+//: par le run à sa clôture : `fonde` (un contrôle dû n'a pas tourné ou n'a pas été consigné) ou
+//: `a_tort` (le run était complet, bloquer sa clôture aurait été une erreur), avec sa `cause`. C'est
+//: l'entrée que compte `oracles/mesure-refus-enclenchement.mjs` du pilot pour mesurer les refus à
+//: tort avant tout passage en bloquant. Sans valeur reconnue ou sans cause, la mesure l'ignorerait :
+//: refusée À L'ÉCRITURE, quel que soit le schéma, comme une rectification de forges (TF-1722).
+const TYPE_QUALIFICATION_ENCLENCHEMENT = "qualification_enclenchement";
+const CHAMPS_QUALIFICATION_ENCLENCHEMENT = [
+  ["qualification", "`fonde` ou `a_tort` — sans elle, la mesure des refus à tort ne sait pas compter ce refus",
+    (v) => (v === "fonde" || v === "a_tort" ? null : `doit valoir \`fonde\` ou \`a_tort\` (reçu ${JSON.stringify(v)})`)],
+  ["cause", "pourquoi le refus est fondé ou à tort — une qualification sans cause ne se relit pas",
+    (v) => (typeof v === "string" ? null : `doit etre une CHAINE (recu ${typeof v})`)],
+];
+
 //: TF-1422 (28/09/2026) : l'INSTANT que désigne un `ts`, en millisecondes, ou NaN s'il n'en
 //: désigne aucun (absent, vide, illisible). Deux écritures d'une même heure (`…T09:30:00+02:00`
 //: et `…T07:30:00.000Z`) désignent le même instant ; comparées comme chaînes, elles s'ordonnaient
@@ -362,6 +429,193 @@ function acquireLock(lockFile) {
 
 function releaseLock(lockFile) {
   try { unlinkSync(lockFile); } catch { /* déjà absent : rien à faire */ }
+}
+
+/**
+ * Le cœur d'écriture, PARTAGÉ par `append` (une entrée) et `consigner` (un lot) — TF-1319,
+ * 17/10/2026 : une seconde copie des gardes (seq, horodatage, champs dus) aurait divergé au premier
+ * amendement, et `consigner` aurait pu écrire ce que `append` refuse. Sous UN verrou : lecture du
+ * dernier seq, du maximum d'horodatage et du schéma actif, contrôle de CHAQUE entrée, puis UNE seule
+ * écriture pour tout le lot — une entrée refusée n'en laisse écrire aucune (tout le lot ou rien).
+ * Rend les seq attribués. Toute sortie en erreur libère le verrou puis appelle fail().
+ */
+function ecrireSousVerrou(file, objs) {
+  const lockFile = `${file}.lock`;
+  acquireLock(lockFile);
+  // Note : process.exit() (dans fail()) ne déroule pas les blocs finally — toute sortie en
+  // erreur pendant la section verrouillée doit donc libérer le verrou explicitement avant
+  // d'appeler fail(), plutôt que de compter sur un try/finally autour de process.exit().
+  let seq = 1;
+  let schemaActif = null;
+  const seqs = [];
+  try {
+    let tsMax = "", tsMaxMs = -Infinity;
+    const fichierExiste = existsSync(file);
+    if (fichierExiste) {
+      const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
+      if (lines.length > 0) {
+        seq = JSON.parse(lines[lines.length - 1]).seq + 1;
+        // Maximum courant, pas dernier ts : sur un fichier qui porte déjà un recul, se
+        // comparer au dernier autoriserait à consigner sous une heure déjà atteinte.
+        // TF-1422 : le maximum est un INSTANT ; le texte gardé est celui qu'on imprime.
+        for (const l of lines) {
+          const parsed = JSON.parse(l);
+          const t = parsed.ts;
+          const ms = instant(t);
+          if (ms > tsMaxMs) { tsMaxMs = ms; tsMax = t; }
+          // Schéma ACTIF pour juger CETTE entrée (TF-1366 c) : celui du DERNIER run_open qui en
+          // déclare un dans le fichier — même lecture que verify (schemaDeclare), au sens d'un
+          // seul journal (un run de version ne change pas ce choix, pour rester simple).
+          if (parsed.type === "run_open" && typeof parsed.schema_ledger === "string" && parsed.schema_ledger.trim()) {
+            schemaActif = parsed.schema_ledger.trim();
+          }
+        }
+      }
+    } else if (objs[0].type !== "run_open") {
+      throw new Error("première entrée d'un ledger : type run_open exigé");
+    }
+    const maintenant = new Date().toISOString();
+    const lignes = [];
+    for (const obj of objs) {
+      // L'entrée elle-même, si c'est un run_open qui déclare (ou redéclare) un schéma, DEVIENT le
+      // schéma actif — pour SE juger elle-même (cas du tout premier run_open d'un ledger neuf).
+      if (obj.type === "run_open" && typeof obj.schema_ledger === "string" && obj.schema_ledger.trim()) {
+        schemaActif = obj.schema_ledger.trim();
+      }
+      // Un `ts` fourni par le payload écrasait l'horodatage machine SANS AUCUNE GARDE (spread
+      // après ts) : append pouvait créer le recul que verify reproche. Il reste accepté quand il
+      // ne remonte pas — un run peut avoir une raison de fixer l'heure de consignation — mais il
+      // est alors ANNONCÉ, et refusé dès qu'il passe sous le maximum du fichier.
+      const tsFourni = typeof obj.ts === "string" && obj.ts.trim() ? obj.ts.trim() : null;
+      // TF-1422 : `append` n'écrit jamais le défaut que `verify` nomme — un `ts` dont on ne tire
+      // aucun instant ne s'ordonne pas, et resterait pour toujours dans un journal en ajout seul.
+      if (tsFourni && Number.isNaN(instant(tsFourni))) {
+        throw new Error(
+          `\`ts\` fourni par le payload (${tsFourni}) ILLISIBLE : aucun instant ne s'en tire ` +
+          `(forme attendue : ISO 8601 avec fuseau, ex. 2026-09-25T09:30:00+02:00 ou ` +
+          `2026-09-25T07:30:00.000Z) — refusé, aucune écriture. Sans \`ts\` dans le payload, ` +
+          `l'outil pose l'horodatage machine (TF-1422).`);
+      }
+      if (tsFourni && tsMax && instant(tsFourni) < tsMaxMs) {
+        throw new Error(
+          `\`ts\` fourni par le payload (${tsFourni}) ANTÉRIEUR au maximum du ledger (${tsMax}) — ` +
+          `refusé, aucune écriture. Le champ \`ts\` est l'heure de CONSIGNATION de l'entrée : ` +
+          `elle ne remonte jamais, sinon l'append-only ne prouve plus aucun ordre. L'heure de ` +
+          `l'ACTION rapportée (run de déploiement, mesure, décision passée) est une DONNÉE du ` +
+          `payload : la consigner dans un champ dédié — ex. \`ts_action\` — et laisser \`ts\` à ` +
+          `l'horodatage machine. Si l'entrée doit constater un recul DÉJÀ écrit, c'est une ` +
+          `entrée \`${TYPE_RECTIFICATION}\`, jamais une réécriture.`);
+      }
+      // TF-1366 (c) : un type CONTRAINT (table des champs dus) auquel manque un champ dû est
+      // refusé À L'ÉCRITURE, sous le schéma ACTIF — jusqu'ici seul `verify` le voyait, après coup.
+      const champsDus = schemaActif && CHAMPS_DUS_PAR_VERSION[schemaActif];
+      if (champsDus && champsDus[obj.type]) {
+        const manquants = [];
+        for (const [champ, pourquoi, valider] of champsDus[obj.type]) {
+          const valeur = obj[champ];
+          const estVide = valeur === undefined || valeur === null || String(valeur).trim() === "";
+          if (estVide) { manquants.push(`\`${champ}\` ${champ in obj ? "vide" : "absent"} — ${pourquoi}`); continue; }
+          if (valider) { const probleme = valider(valeur); if (probleme) manquants.push(`\`${champ}\` ${probleme} — ${pourquoi}`); }
+        }
+        if (manquants.length) {
+          throw new Error(`entrée refusée (schéma ${schemaActif}, type \`${obj.type}\`) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
+        }
+      }
+      const { ts: _tsPayload, ...corps } = obj;
+      const tsEntree = tsFourni || maintenant;
+      lignes.push(JSON.stringify({ seq, ts: tsEntree, ...corps }));
+      seqs.push(seq);
+      seq++;
+      const ms = instant(tsEntree);
+      if (ms > tsMaxMs) { tsMaxMs = ms; tsMax = tsEntree; }
+    }
+    appendFileSync(file, lignes.join("\n") + "\n");
+  } catch (e) {
+    releaseLock(lockFile);
+    fail(e.message);
+  }
+  releaseLock(lockFile);
+  return seqs;
+}
+
+// ---- CONSIGNER UN VERDICT PAR ORACLE (TF-1319, décision humaine D-5 (b) du 17/10/2026) ---------
+//: Les verdicts que la forme canonique admet (CONTRAT-INTERFACE.md §3 du pilot).
+const VERDICTS_CANONIQUES = ["PASS", "FAIL", "SKIP", "NA", "PARTIEL"];
+//: Les verdicts que les lanceurs du parc écrivent AUTREMENT, et leur forme canonique. Mesuré le
+//: 17/10/2026 : le lanceur de conception écrit `NON_JUGE` (exit 2, « n'a pas pu juger »), le lanceur
+//: général de quality-oracles `INCONCLUSIF`, le lanceur de design déclare des `SANS OBJET`. La
+//: correspondance est ÉCRITE ici et le verdict d'origine est GARDÉ (`verdict_brut`) : jamais une
+//: traduction muette. Un verdict absent des deux tables est REFUSÉ, avec le lot entier.
+const VERDICTS_EQUIVALENTS = {
+  NON_JUGE: "SKIP", "NON JUGE": "SKIP", "NON JUGÉ": "SKIP", NON_JUGÉ: "SKIP", INCONCLUSIF: "SKIP",
+  INDETERMINE: "SKIP", "INDÉTERMINÉ": "SKIP", SANS_OBJET: "NA", "SANS OBJET": "NA", "N/A": "NA",
+};
+const USAGE_CONSIGNER = "usage : consigner <ledger.jsonl> (--rapport <rapport.json|-> | -- <commande> [args…]) " +
+  "[--forge <nom>] [--cible <chemin>] [--etape <nom>]";
+
+/** Le texte d'un rapport lu en octets : UTF-8 (BOM retiré) ou UTF-16 à BOM (`>` de PowerShell 5.1). */
+function texteDuRapport(octets) {
+  if (octets.length >= 2 && octets[0] === 0xff && octets[1] === 0xfe) return octets.subarray(2).toString("utf16le");
+  if (octets.length >= 2 && octets[0] === 0xfe && octets[1] === 0xff) {
+    const inverse = Buffer.from(octets.subarray(2));
+    inverse.swap16();
+    return inverse.toString("utf16le");
+  }
+  return octets.toString("utf8").replace(/^﻿/, "");
+}
+
+const nonVideTexte = (v) => typeof v === "string" && v.trim() !== "";
+
+/**
+ * Les verdicts d'un rapport, un par oracle. Trois formes reconnues, celles du parc au 17/10/2026 :
+ *   · un LANCEUR : `{ oracles: [{ oracle, verdict, … }], runner|orchestrateur|lanceur?, cible|artefact? }`
+ *     (run-oracles-design, run-oracles-conception) ;
+ *   · un ORACLE : `{ oracle, verdict, … }` (contrat d'un oracle direct, `--contrat-runner` du design,
+ *     le juge d'enclenchement du pilot) ;
+ *   · une LISTE : `[{ oracle, verdict, … }]`.
+ * Rend `{ lanceur, cible, elements, refus[] }` — `refus` nomme CHAQUE élément inconsignable.
+ */
+function verdictsDuRapport(rapport) {
+  let elements = null, lanceur = null, cible = null;
+  if (Array.isArray(rapport)) elements = rapport;
+  else if (rapport && typeof rapport === "object") {
+    lanceur = [rapport.runner, rapport.orchestrateur, rapport.lanceur].find(nonVideTexte) || null;
+    cible = [rapport.cible, rapport.artefact].find(nonVideTexte) || null;
+    if (Array.isArray(rapport.oracles)) elements = rapport.oracles;
+    else if (nonVideTexte(rapport.oracle)) elements = [rapport];
+  }
+  if (!elements) {
+    return { refus: ["forme de rapport non reconnue — attendu `{ oracles: [{ oracle, verdict }] }` (un lanceur), " +
+      "`{ oracle, verdict }` (un oracle) ou `[{ oracle, verdict }]` (une liste)"] };
+  }
+  if (!elements.length) {
+    return { refus: ["le rapport ne porte AUCUN verdict (`oracles` vide) — rien n'a tourné, et un lot vide ne se consigne pas comme une preuve"] };
+  }
+  const refus = [];
+  const sortie = elements.map((el, i) => {
+    const ou = `élément ${i + 1}/${elements.length}`;
+    if (!el || typeof el !== "object") { refus.push(`${ou} : n'est pas un objet`); return null; }
+    if (!nonVideTexte(el.oracle)) { refus.push(`${ou} : \`oracle\` absent ou vide — sans le NOM de l'oracle, aucun juge ne sait ce qui a tourné`); return null; }
+    const brut = typeof el.verdict === "string" ? el.verdict.trim() : "";
+    const haut = brut.toUpperCase();
+    const verdict = VERDICTS_CANONIQUES.includes(haut) ? haut : VERDICTS_EQUIVALENTS[haut] || null;
+    if (!verdict) {
+      refus.push(`${ou} (${el.oracle}) : verdict ${brut ? `« ${brut} » inconnu` : "absent"} — attendu ${VERDICTS_CANONIQUES.join(" | ")}` +
+        ` ou un équivalent écrit (${Object.keys(VERDICTS_EQUIVALENTS).join(", ")})`);
+      return null;
+    }
+    const motif = [el.raison, el.motif, el.resume, el.message].find(nonVideTexte);
+    return {
+      oracle: el.oracle.trim(),
+      verdict,
+      ...(brut !== verdict ? { verdict_brut: brut } : {}),
+      ...([el.cible, el.artefact].find(nonVideTexte) ? { cible: [el.cible, el.artefact].find(nonVideTexte) } : {}),
+      ...(motif ? { motif: motif.length > 400 ? `${motif.slice(0, 400)}…` : motif } : {}),
+      ...(Number.isInteger(el.exit) ? { exit_oracle: el.exit } : {}),
+      ...(Array.isArray(el.findings) ? { constats: el.findings.length } : {}),
+    };
+  });
+  return { lanceur, cible, elements: sortie, refus };
 }
 
 if (cmd === "append") {
@@ -409,107 +663,117 @@ if (cmd === "append") {
   }
   // TF-1722 : une rectification de `forges_mobilisees` sans liste non vide ou sans `cause` est
   // refusée avant le verrou, quel que soit le schéma — le juge du pilot l'ignorerait.
-  if (obj.type === TYPE_RECTIFICATION_FORGES) {
+  // TF-1319 (D-5 b) : même garde pour la qualification d'un refus du juge d'enclenchement.
+  const champsTypeLibre = obj.type === TYPE_RECTIFICATION_FORGES ? CHAMPS_RECTIFICATION_FORGES
+    : obj.type === TYPE_QUALIFICATION_ENCLENCHEMENT ? CHAMPS_QUALIFICATION_ENCLENCHEMENT : null;
+  if (champsTypeLibre) {
     const manquants = [];
-    for (const [champ, pourquoi, valider] of CHAMPS_RECTIFICATION_FORGES) {
+    for (const [champ, pourquoi, valider] of champsTypeLibre) {
       const valeur = obj[champ];
       if (valeur === undefined || valeur === null || String(valeur).trim() === "") { manquants.push(`\`${champ}\` ${champ in obj ? "vide" : "absent"} — ${pourquoi}`); continue; }
       const probleme = valider(valeur);
       if (probleme) manquants.push(`\`${champ}\` ${probleme} — ${pourquoi}`);
     }
     if (manquants.length) {
-      fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-1722) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
+      fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, ${obj.type === TYPE_RECTIFICATION_FORGES ? "TF-1722" : "TF-1319"}) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
     }
   }
-  const lockFile = `${file}.lock`;
-  acquireLock(lockFile);
-  // Note : process.exit() (dans fail()) ne déroule pas les blocs finally — toute sortie en
-  // erreur pendant la section verrouillée doit donc libérer le verrou explicitement avant
-  // d'appeler fail(), plutôt que de compter sur un try/finally autour de process.exit().
-  let seq = 1;
-  let schemaActif = null;
-  try {
-    let tsMax = "", tsMaxMs = -Infinity;
-    if (existsSync(file)) {
-      const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
-      if (lines.length > 0) {
-        seq = JSON.parse(lines[lines.length - 1]).seq + 1;
-        // Maximum courant, pas dernier ts : sur un fichier qui porte déjà un recul, se
-        // comparer au dernier autoriserait à consigner sous une heure déjà atteinte.
-        // TF-1422 : le maximum est un INSTANT ; le texte gardé est celui qu'on imprime.
-        for (const l of lines) {
-          const parsed = JSON.parse(l);
-          const t = parsed.ts;
-          const ms = instant(t);
-          if (ms > tsMaxMs) { tsMaxMs = ms; tsMax = t; }
-          // Schéma ACTIF pour juger CETTE entrée (TF-1366 c) : celui du DERNIER run_open qui en
-          // déclare un dans le fichier — même lecture que verify (schemaDeclare), au sens d'un
-          // seul journal (un run de version ne change pas ce choix, pour rester simple).
-          if (parsed.type === "run_open" && typeof parsed.schema_ledger === "string" && parsed.schema_ledger.trim()) {
-            schemaActif = parsed.schema_ledger.trim();
-          }
-        }
-      }
-    } else if (obj.type !== "run_open") {
-      throw new Error("première entrée d'un ledger : type run_open exigé");
-    }
-    // L'entrée elle-même, si c'est un run_open qui déclare (ou redéclare) un schéma, DEVIENT le
-    // schéma actif — pour SE juger elle-même (cas du tout premier run_open d'un ledger neuf).
-    if (obj.type === "run_open" && typeof obj.schema_ledger === "string" && obj.schema_ledger.trim()) {
-      schemaActif = obj.schema_ledger.trim();
-    }
-    // Un `ts` fourni par le payload écrasait l'horodatage machine SANS AUCUNE GARDE (spread
-    // après ts) : append pouvait créer le recul que verify reproche. Il reste accepté quand il
-    // ne remonte pas — un run peut avoir une raison de fixer l'heure de consignation — mais il
-    // est alors ANNONCÉ, et refusé dès qu'il passe sous le maximum du fichier.
-    const tsFourni = typeof obj.ts === "string" && obj.ts.trim() ? obj.ts.trim() : null;
-    // TF-1422 : `append` n'écrit jamais le défaut que `verify` nomme — un `ts` dont on ne tire
-    // aucun instant ne s'ordonne pas, et resterait pour toujours dans un journal en ajout seul.
-    if (tsFourni && Number.isNaN(instant(tsFourni))) {
-      throw new Error(
-        `\`ts\` fourni par le payload (${tsFourni}) ILLISIBLE : aucun instant ne s'en tire ` +
-        `(forme attendue : ISO 8601 avec fuseau, ex. 2026-09-25T09:30:00+02:00 ou ` +
-        `2026-09-25T07:30:00.000Z) — refusé, aucune écriture. Sans \`ts\` dans le payload, ` +
-        `l'outil pose l'horodatage machine (TF-1422).`);
-    }
-    if (tsFourni && tsMax && instant(tsFourni) < tsMaxMs) {
-      throw new Error(
-        `\`ts\` fourni par le payload (${tsFourni}) ANTÉRIEUR au maximum du ledger (${tsMax}) — ` +
-        `refusé, aucune écriture. Le champ \`ts\` est l'heure de CONSIGNATION de l'entrée : ` +
-        `elle ne remonte jamais, sinon l'append-only ne prouve plus aucun ordre. L'heure de ` +
-        `l'ACTION rapportée (run de déploiement, mesure, décision passée) est une DONNÉE du ` +
-        `payload : la consigner dans un champ dédié — ex. \`ts_action\` — et laisser \`ts\` à ` +
-        `l'horodatage machine. Si l'entrée doit constater un recul DÉJÀ écrit, c'est une ` +
-        `entrée \`${TYPE_RECTIFICATION}\`, jamais une réécriture.`);
-    }
-    // TF-1366 (c) : un type CONTRAINT (table des champs dus) auquel manque un champ dû est
-    // refusé À L'ÉCRITURE, sous le schéma ACTIF — jusqu'ici seul `verify` le voyait, après coup.
-    const champsDus = schemaActif && CHAMPS_DUS_PAR_VERSION[schemaActif];
-    if (champsDus && champsDus[obj.type]) {
-      const manquants = [];
-      for (const [champ, pourquoi, valider] of champsDus[obj.type]) {
-        const valeur = obj[champ];
-        const estVide = valeur === undefined || valeur === null || String(valeur).trim() === "";
-        if (estVide) { manquants.push(`\`${champ}\` ${champ in obj ? "vide" : "absent"} — ${pourquoi}`); continue; }
-        if (valider) { const probleme = valider(valeur); if (probleme) manquants.push(`\`${champ}\` ${probleme} — ${pourquoi}`); }
-      }
-      if (manquants.length) {
-        throw new Error(`entrée refusée (schéma ${schemaActif}, type \`${obj.type}\`) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
-      }
-    }
-    const { ts: _tsPayload, ...corps } = obj;
-    const tsEntree = tsFourni || new Date().toISOString();
-    appendFileSync(file, JSON.stringify({ seq, ts: tsEntree, ...corps }) + "\n");
-    if (tsFourni) console.log(`[ATTENTION] \`ts\` imposé par le payload (${tsFourni}) au lieu de l'horodatage machine`);
-  } catch (e) {
-    releaseLock(lockFile);
-    fail(e.message);
+  // TF-1841 du pilot : `parties_mobilisees`, facultatif, est refusé s'il est présent et mal formé.
+  if (TYPES_PORTEURS_PARTIES.includes(obj.type) && Object.prototype.hasOwnProperty.call(obj, CHAMP_PARTIES)) {
+    const probleme = validerPartiesMobilisees(obj[CHAMP_PARTIES]);
+    if (probleme) fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-1841) — \`${CHAMP_PARTIES}\` ${probleme} : le juge de l enclenchement l ignorerait et garderait la promesse entiere`);
   }
-  releaseLock(lockFile);
+  const [seq] = ecrireSousVerrou(file, [obj]);
+  const tsFourni = typeof obj.ts === "string" && obj.ts.trim() ? obj.ts.trim() : null;
+  if (tsFourni) console.log(`[ATTENTION] \`ts\` imposé par le payload (${tsFourni}) au lieu de l'horodatage machine`);
   for (const a of annoncesVersion) console.log(a);
   // TF-1366 (d) : l'écho NOMME le type et les champs écrits — un « [OK] » muet sur le contenu ne
   // permet pas de relire, depuis la seule sortie de la commande, ce qui vient d'être ajouté.
   console.log(`[OK] entrée ${seq} ajoutée (type ${obj.type} ; champs : ${clesUtiles.join(", ")})`);
+} else if (cmd === "consigner") {
+  if (!file) fail(USAGE_CONSIGNER);
+  // Ce qui précède `--` sont les options de consigner ; ce qui suit est la commande du lanceur,
+  // transmise telle quelle — jamais lue comme une option d'ici.
+  const iSep = argsRestants.indexOf("--");
+  const options = iSep >= 0 ? argsRestants.slice(0, iSep) : argsRestants;
+  const commande = iSep >= 0 ? argsRestants.slice(iSep + 1) : [];
+  const AVEC_VALEUR = ["--rapport", "--forge", "--cible", "--etape"];
+  const opts = {};
+  const enTrop = [];
+  for (let i = 0; i < options.length; i++) {
+    const a = options[i];
+    if (!AVEC_VALEUR.includes(a)) { enTrop.push(a); continue; }
+    const val = options[i + 1];
+    if (val === undefined || (val.startsWith("--") && val !== "-")) fail(`\`${a}\` sans valeur — ${USAGE_CONSIGNER}`);
+    if (a in opts) fail(`\`${a}\` donné deux fois — ${USAGE_CONSIGNER}`);
+    opts[a] = val;
+    i++;
+  }
+  if (enTrop.length) fail(`argument(s) non reconnu(s) : ${enTrop.map((a) => `\`${a}\``).join(", ")} — ${USAGE_CONSIGNER}`);
+  if (iSep >= 0 && !commande.length) fail(`\`--\` sans commande — ${USAGE_CONSIGNER}`);
+  if (Boolean(opts["--rapport"]) === commande.length > 0) {
+    fail(`une source de verdicts, et une seule : \`--rapport <fichier|->\` OU \`-- <commande>\` — ${USAGE_CONSIGNER}`);
+  }
+  // Un verdict se consigne dans un run OUVERT : vérifié AVANT de lancer quoi que ce soit, pour ne
+  // pas faire tourner un lanceur dont le relevé ne pourrait aller nulle part.
+  let dejaEcrit = "";
+  try { dejaEcrit = existsSync(file) ? readFileSync(file, "utf8") : ""; } catch (e) { fail(`ledger illisible (${file}) : ${e.message}`); }
+  if (!dejaEcrit.trim()) fail(`ledger introuvable ou vide (${file}) — un verdict se consigne dans un run OUVERT : \`run_open\` d'abord, par \`append\``);
+
+  let octets;
+  let execution = null;
+  if (opts["--rapport"]) {
+    try { octets = readFileSync(opts["--rapport"] === "-" ? 0 : opts["--rapport"]); }
+    catch (e) { fail(`--rapport illisible (${opts["--rapport"]}) : ${e.message}`); }
+  } else {
+    // La commande est lancée SANS shell, sa sortie lue en octets : aucune page de code de console
+    // ne s'interpose (sous PowerShell 5.1, `> rapport.json` écrit de l'UTF-16 et un tube réencode).
+    const [prog, ...pargs] = commande;
+    const exe = /^node(\.exe)?$/i.test(prog) ? process.execPath : prog;
+    const r = spawnSync(exe, pargs, { maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+    if (r.error) fail(`commande non lancée (${commande.join(" ")}) : ${r.error.message}`);
+    if (r.stderr && r.stderr.length) process.stderr.write(r.stderr);
+    octets = r.stdout;
+    execution = { commande: commande.join(" "), exit: r.status };
+  }
+  let rapport;
+  try { rapport = JSON.parse(texteDuRapport(octets)); }
+  catch {
+    fail(`rapport non JSON${execution ? ` (la commande a rendu exit ${execution.exit})` : ""} — un verdict qu'on ne sait pas lire ` +
+      `ne se consigne pas, AUCUNE entrée écrite`);
+  }
+  const { lanceur, cible, elements, refus } = verdictsDuRapport(rapport);
+  if (refus.length) {
+    fail(`lot refusé, AUCUNE entrée écrite (tout le lot ou rien) — ${refus.length} élément(s) inconsignable(s) :` +
+      refus.map((x) => `\n           ${x}`).join(""));
+  }
+  const lot = `${new Date().toISOString()}#${process.pid}`;
+  const entrees = elements.map((el, i) => {
+    const { oracle, verdict, cible: cibleElement, ...detail } = el;
+    const cibleEntree = opts["--cible"] || cibleElement || cible;
+    return {
+      type: "oracles_verdict",
+      oracle,
+      verdict,
+      ...(cibleEntree ? { cible: cibleEntree } : {}),
+      ...(opts["--forge"] ? { forge: opts["--forge"] } : {}),
+      ...(opts["--etape"] ? { etape: opts["--etape"] } : {}),
+      ...detail,
+      ...(lanceur ? { lanceur } : {}),
+      ...(execution ? { commande: execution.commande, exit_commande: execution.exit } : {}),
+      consigne_par: "ledger.mjs consigner",
+      lot: { id: lot, rang: i + 1, total: elements.length },
+    };
+  });
+  const seqs = ecrireSousVerrou(file, entrees);
+  const compte = VERDICTS_CANONIQUES.map((v) => [v, entrees.filter((e) => e.verdict === v).length]).filter(([, n]) => n)
+    .map(([v, n]) => `${v} ${n}`).join(" · ");
+  console.log(`[OK] ${entrees.length} entrée(s) oracles_verdict ajoutée(s), une par oracle, seq ${seqs[0]}` +
+    `${seqs.length > 1 ? ` à ${seqs[seqs.length - 1]}` : ""} (lot ${lot}) — ${compte}`);
+  entrees.forEach((e, i) => console.log(`  seq ${seqs[i]} : ${e.oracle} → ${e.verdict}${e.verdict_brut ? ` (écrit « ${e.verdict_brut} » par le lanceur)` : ""}`));
+  // Consigner n'est pas juger : la sortie dit 0 dès que le lot est écrit, quels que soient les
+  // verdicts. Le code du lanceur est rendu ici et dans chaque entrée (`exit_commande`).
+  if (execution) console.log(`[INFO] la commande a rendu exit ${execution.exit} — consigner n'est pas juger : les verdicts sont au ledger, la sortie de consigner dit seulement qu'ils y sont`);
 } else if (cmd === "verify") {
   if (argsRestants.length) fail(`argument(s) non reconnu(s) : ${argsRestants.map((a) => `\`${a}\``).join(", ")} — ${USAGE_VERIFY}`);
   if (!file || !existsSync(file)) fail("ledger introuvable");
@@ -774,5 +1038,5 @@ if (cmd === "append") {
     : "";
   console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sansContenuDit}`);
 } else {
-  fail("commande inconnue (append | verify)");
+  fail("commande inconnue (append | consigner | verify)");
 }

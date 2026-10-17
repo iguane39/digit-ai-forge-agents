@@ -2,7 +2,7 @@
 name: forge-agents
 description: Skill méta multi-agents — découpe un workflow en étapes, dérive les agents spécialisés justifiés (outils, arbitre ou parallélisme distincts), produit leurs définitions au format agent.def et les compile en subagents Claude Code ; référentiel d'exigences A0 en amont, recette C2 à oracles exécutés en aval, ledger de run persisté. Exécution : run parallèle sous Claude Code, ou run-sequentiel dégradé assumé dans claude.ai (artefacts et oracles réels, isolation comportementale, limites consignées au ledger). Use when / déclencher dès que l'utilisateur veut agentifier un workflow, créer des agents spécialisés pour un chantier, découper une mission en agents, orchestrer plusieurs agents sur des livrables, ou qu'un skill pair escalade une tâche justifiant plusieurs agents. Ne pas déclencher pour une boucle mono-agent auto-arbitrée (→ la-boucle) ni pour le brief de handoff d'un chantier (→ forge-brief).
 metadata:
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # forge-agents — skill méta multi-agents
@@ -36,6 +36,7 @@ agent que si elle le mérite (critère à 3 conditions) ; sinon elle reste dans 
 ```bash
 node scripts/compile-agent-def.mjs defs/*.yaml --out .claude/agents/
 node scripts/ledger.mjs verify <dossier-projet>/ledger.jsonl
+node scripts/ledger.mjs consigner <dossier-projet>/ledger.jsonl -- node <lanceur> <cible>  # une entrée oracles_verdict PAR oracle (TF-1319)
 node scripts/self-test.mjs   # fixtures verte/rouges — à rejouer après toute modification
 node scripts/otlp-project.mjs <dossier-projet>/ledger.jsonl --out spans.json  # TF-0106 (1)
 bash scripts/self-test-gate-budget.sh   # gate G0 budget, TF-0106 (2) — isolé, QUEUE_DIR temporaire

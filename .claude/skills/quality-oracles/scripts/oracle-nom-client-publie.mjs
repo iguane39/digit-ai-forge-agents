@@ -216,6 +216,32 @@ function variantesProduit(nom) {
   return new RegExp(`(?<![A-Za-z0-9])${corps}(?![A-Za-z0-9])`, 'i');
 }
 
+/** TF-1839 (17/10/2026, décision D-16 (a)) — LA FORME COLLÉE d'un nom à séparateurs.
+ *
+ *  LE FAIT : la porte comparait la graphie EXACTE de la clé, plus ses variantes de mots (tirets,
+ *  espaces, soulignés, casse) pour une clé sans point. Restaient aveugles : une clé qui porte un
+ *  POINT (graphie de domaine : pas de variantes) et une clé séparée par une autre ponctuation
+ *  (apostrophe, esperluette, barre oblique…). Leur forme ÉCRITE COLLÉE — tous les séparateurs
+ *  retirés — traversait : mesuré le 17/10, un nom de projet ainsi écrit dans 16 fichiers suivis
+ *  du pilot, porte PASS.
+ *
+ *  LA RÈGLE : accents repliés, tout caractère non alphanumérique retiré ; la forme n'existe que si
+ *  la clé portait au moins un séparateur ET que la forme collée fait au moins SEUIL_COLLEE
+ *  caractères (en dessous, une suite de lettres devient un mot ordinaire : faux positifs).
+ *  Insensible à la casse, bornée à gauche par un non-alphanumérique ; à droite, des CHIFFRES peuvent
+ *  suivre (suffixe de version d'un dossier : « <nom collé>2 », mesuré : les 30 occurrences des 16
+ *  fichiers du 17/10 sont de cette forme, et une borne `(?![A-Za-z0-9])` les rejetait toutes) ; une
+ *  LETTRE après la forme collée l'écarte (mot voisin). Pas de drapeau `g` (cf. `litteral`).
+ *  Même règle, mot pour mot, que `formeCollee()` de `todo/anonymiser-entrant.mjs`. */
+const SEUIL_COLLEE = 8;
+function formeColleeProduit(nom) {
+  if (typeof nom !== 'string') return null;
+  const pliee = nom.normalize('NFD').replace(/\p{M}+/gu, '');
+  const collee = pliee.replace(/[^A-Za-z0-9]+/g, '');
+  if (collee.length < SEUIL_COLLEE || collee.length === pliee.length) return null;
+  return new RegExp(`(?<![A-Za-z0-9])${collee}\\d*(?![A-Za-z0-9])`, 'i');
+}
+
 /** TF-1456 (01/10/2026) — LES ACCENTS SE REPLIENT avant la recherche, des deux côtés : la clé et
  *  le texte. Mesuré : la forme ACCENTUÉE d'un nom de produit, publiée dans 13 fichiers depuis le
  *  21/08, passait la porte, parce que ni la graphie littérale ni les variantes ne repliaient les
@@ -412,7 +438,7 @@ function termesProduits(table) {
     }
     const litt = litteralProduit(cle);
     termes.push({ cle, formes: null, litt, littReplie: replier(cle) === cle ? litt : litteralProduit(replier(cle)),
-                  re: variantesProduit(cle), pseudo: pseudoDe(produits[cle]), depuis: borneDe(depuis, cle) });
+                  re: variantesProduit(cle), collee: formeColleeProduit(cle), pseudo: pseudoDe(produits[cle]), depuis: borneDe(depuis, cle) });
   }
   return { termes, ignorees };
 }
@@ -421,11 +447,11 @@ function termesProduits(table) {
  *  variantes de graphie. Seule la frontière a changé le 07/09 — la forme d'un constat, non. */
 function porteProduit(hay, p) {
   if (p.bornees) return p.bornees.some(re => re.test(hay));
-  if (p.litt.test(hay) || (p.re ? p.re.test(hay) : false)) return true;
+  if (p.litt.test(hay) || (p.re ? p.re.test(hay) : false) || (p.collee ? p.collee.test(hay) : false)) return true;
   // TF-1456 : la même recherche sur le texte aux accents repliés, contre la clé repliée.
   const r = replierTexte(hay);
   return r !== hay || p.littReplie !== p.litt
-    ? p.littReplie.test(r) || (p.re ? p.re.test(r) : false) : false;
+    ? p.littReplie.test(r) || (p.re ? p.re.test(r) : false) || (p.collee ? p.collee.test(r) : false) : false;
 }
 
 // ---------------------------------------------------------------------------

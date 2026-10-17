@@ -250,7 +250,7 @@ MEASURE_JS = r"""
                    contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
-                   decor_sur_ancetre: [], entete_desaligne: [],
+                   decor_sur_ancetre: [], entete_desaligne: [], largeurs_melangees: [],
                    unmeasured: [] };
   const doc = document.documentElement;
 
@@ -1922,6 +1922,60 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- V21 : LARGEURS DE CONTENU MELANGEES (TF-1307, reecriture du 17/10/2026) -------------
+  //
+  // LE FAIT, retour humain du 11/09/2026 (TF-1038) : « homogeneise la largeur des contenus de la
+  // page principale pour ne pas avoir des grandes largeurs mixees avec des petites ». Sur le
+  // document vise, le chapitre 6 (cartes) occupait toute la largeur du conteneur et le chapitre 7
+  // (decisions) etait bride par `.chap.lire` a 1 080 px, centre : le lecteur voit la colonne de
+  // contenu changer de largeur d'un chapitre au suivant, dans un ordre qui suit la NATURE du
+  // contenu et non la lecture. Ni L2-rendu (un bloc de texte contre SON conteneur) ni L2-freres
+  // (un bloc de texte contre son frere empile) ne voient cet ecart : chaque chapitre, pris seul,
+  // est conforme.
+  //
+  // LA MESURE : pour un meme parent en flux vertical, les blocs de contenu (`section`, `article`,
+  // `.chap`, `[role=region]`) qui sont ses enfants DIRECTS, visibles, empiles, et assez fournis
+  // pour etre des chapitres (>= 48 px de haut, >= 80 caracteres) sont comparees a la largeur
+  // RENDUE de leur boite. Plus d'une largeur distincte (ecart > max(8 px, 1,5 %)) = un constat
+  // par parent. Une grille ou une boite flexible n'est pas jugee : la largeur d'un enfant y est
+  // celle de sa piste. Exception declaree : `data-largeur-exception="<raison>"` sur la section.
+  {
+    const BLOCS = 'section, article, .chap, [role="region"]';
+    const parents = new Set();
+    for (const b of document.querySelectorAll(BLOCS)) if (b.parentElement) parents.add(b.parentElement);
+    for (const parent of parents) {
+      const dP = getComputedStyle(parent).display;
+      if (!(dP === 'block' || dP === 'flow-root' || dP === 'list-item')) continue;
+      const freres = [...parent.children].filter((c) => c.matches(BLOCS) && visible(c)
+        && !c.hasAttribute('data-largeur-exception')
+        && !c.closest('table, nav, thead, [data-largeur-exception]')
+        && c.getBoundingClientRect().height >= 48
+        && (c.textContent || '').trim().length >= 80);
+      if (freres.length < 2) continue;
+      const boites = freres.map((c) => ({ c, r: c.getBoundingClientRect() }));
+      // Des blocs qui se partagent une ligne (flottants, en ligne) ne sont pas un empilement.
+      if (boites.some((a, i) => boites.some((b, j) => j > i
+        && Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top) > 8))) continue;
+      const largeurs = boites.map((b) => b.r.width);
+      const max = Math.max(...largeurs), min = Math.min(...largeurs);
+      if (max - min <= Math.max(8, max * 0.015)) continue;
+      const groupes = [];
+      for (const b of [...boites].sort((x, y) => x.r.width - y.r.width)) {
+        const g = groupes[groupes.length - 1];
+        if (g && b.r.width - g.ref <= Math.max(8, b.r.width * 0.015)) g.noms.push(label(b.c));
+        else groupes.push({ ref: b.r.width, noms: [label(b.c)] });
+      }
+      const dits = groupes.map((g) => `${Math.round(g.ref)} px (${g.noms.length} : ` +
+        `${g.noms.slice(0, 2).join(' ; ')}${g.noms.length > 2 ? ' ; …' : ''})`).join(' contre ');
+      issues.largeurs_melangees.push({ what: label(parent), detail:
+        `V21 largeurs de contenu melangees : ${boites.length} blocs de contenu freres, ` +
+        `${groupes.length} largeurs rendues distinctes — ${dits}. La largeur de contenu est une ` +
+        `propriete de la PAGE : egaliser vers le conteneur de lecture (.chap.lire) sur une page de ` +
+        `lecture, vers la pleine largeur sur une page de donnees (data-page="donnees"). Ecart ` +
+        `voulu : data-largeur-exception="<raison>" sur le bloc concerne` });
+    }
+  }
+
   return issues;
 }
 """
@@ -2827,6 +2881,10 @@ FAMILLES = [
     ("decor_sur_ancetre", "Décor peint sur l'ancêtre du texte (contraste aveuglé)", "avertissement"),
     # TF-1623 (RA-4, 13/10/2026) : regle neuve, en avertissement (D-70 (b)).
     ("entete_desaligne", "En-tete de colonne desaligne de ses valeurs", "avertissement"),
+    # TF-1307 (17/10/2026, decision D-9 option (b)) : reecriture NEUVE de la regle perdue avant
+    # publication (ex-V19 de septembre, dont le numero est pris par `mot_coupe`). Avertissement :
+    # regle neuve, bruit mesure (mesurer_bruit.py) dans references/zero-defaut-visuel.md.
+    ("largeurs_melangees", "V21 largeurs de contenu melangees entre blocs freres", "avertissement"),
     ("unmeasured", "Non mesurable — à vérifier à l'œil", "info"),
 ]
 # UNE ÉCHÉANCE DÉPASSÉE DURCIT LA FAMILLE, elle ne l'adoucit jamais : la table déclare la
@@ -3862,7 +3920,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                     print(f"  [{kind}] {title} : {item['what']} — {item['detail']}")
             if iss.get("v1_tronque"):
                 print(f"  [BORNE] V1 : {iss['v1_tronque']['motif']}")
-            if data["blocking"] == 0 and not any(iss[k] for k in ("l2_freres", "v3_align", "v7_spacing", "unmeasured")):
+            if data["blocking"] == 0 and not any(iss[k] for k in ("l2_freres", "v3_align", "v7_spacing", "largeurs_melangees", "unmeasured")):
                 print("  aucun défaut mesuré")
             # TF-0493 — la matrice d'etats, etat par etat. Un etat NON JOUE se lit ici aussi :
             # « aucun défaut » sur un etat qui ne s'est jamais applique serait le pire des verdicts.

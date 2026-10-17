@@ -160,6 +160,18 @@ bride sur le conteneur **centré** (`.chap.lire`, `margin-inline: auto`), fixtur
 largeur (L26), fixture `l2-remede-page-application.html` ; (3) colonne étroite voulue — la bride sur le
 conteneur, déclarée par `data-colonne-ok`, fixture `l2-remede-colonne-declaree.html`.
 
+**Largeur de contenu entre chapitres — V21 (TF-1307, 17/10/2026).** L2 juge un bloc contre son
+conteneur et L2-frères un bloc de texte contre son frère empilé ; aucun des deux ne voit une page
+dont chaque chapitre est conforme seul mais dont les chapitres n'ont pas la même largeur (un
+chapitre en pleine largeur, le suivant bridé par `.chap.lire`). `render_page.py` (famille
+`largeurs_melangees`, avertissement) compare la largeur **rendue** des blocs de contenu frères
+(`section`, `article`, `.chap`, `[role=region]`) d'un même parent en flux vertical ; plus d'une
+largeur distincte (écart > max(8 px, 1,5 %)) donne un constat. Remède : égaliser vers `.chap.lire`
+sur une page de lecture, vers la pleine largeur sur une page de données ; écart voulu déclaré par
+`data-largeur-exception="<raison>"`. Fixtures : `v21-largeurs-melangees.html` (rouge),
+`v21-largeurs-homogenes.html`, `v21-exception-declaree.html`, `v21-sections-en-grille.html`
+(vertes). Mesure, bruit et numérotation : `zero-defaut-visuel.md`, ligne V21.
+
 **Revue de lecture.** Que les blocs qui doivent occuper la pleine largeur (synthèse, verdict,
 blocage principal) l'occupent réellement — et que la mesure de lecture retenue serve le
 propos plutôt que l'habitude.

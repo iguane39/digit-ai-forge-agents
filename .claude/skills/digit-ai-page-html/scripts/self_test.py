@@ -732,6 +732,17 @@ CAS_RENDU = {
     "v19-mot-coupe-sans-trait-union.html": ("mot_coupe", 1),
     "v19-mot-entier-colonne-large.html": ("mot_coupe", 0),
     "v19-coupure-declaree-exemptee.html": ("mot_coupe", 0),
+    # TF-1307 (17/10/2026, decision D-9 option (b)) — V21, LES LARGEURS DE CONTENU MELANGEES :
+    # reecriture NEUVE de la regle perdue avant publication. Le fait du retour humain du 11/09
+    # (TF-1038) : un chapitre en pleine largeur suivi d un chapitre brida par .chap.lire. Quatre
+    # fixtures, deux sens : la rouge (2 chapitres a 1 080 px, 1 pleine largeur : 1 constat) ; la
+    # verte homogene (meme texte, trois .chap.lire : 0) ; la verte par EXEMPTION declaree
+    # (data-largeur-exception : 0) ; la verte par GARDE (sections enfants d une grille, largeur
+    # decidee par la piste : 0).
+    "v21-largeurs-melangees.html": ("largeurs_melangees", 1),
+    "v21-largeurs-homogenes.html": ("largeurs_melangees", 0),
+    "v21-exception-declaree.html": ("largeurs_melangees", 0),
+    "v21-sections-en-grille.html": ("largeurs_melangees", 0),
 }
 
 

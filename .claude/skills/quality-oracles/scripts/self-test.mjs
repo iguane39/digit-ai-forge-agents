@@ -1767,6 +1767,58 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-1839 (17/10/2026, décision D-16 (a)) — LA FORME COLLÉE D'UN NOM À SÉPARATEURS.
+// LE FAIT : un nom de projet inscrit à la table avec des séparateurs (point de domaine, apostrophe,
+// esperluette) et écrit COLLÉ dans 16 fichiers suivis du pilot : la porte rendait PASS, elle
+// comparait la graphie exacte (et des variantes de mots seulement pour une clé sans point).
+// Clés INVENTÉES, dépôts jetables. Rouge avant le correctif (1, 2, 3), vert après ; contre-épreuves :
+//   (1) « AtelierBoreal » pour la clé « Atelier.Boréal » → FAIL C5 ;
+//   (2) « projetdelaube » pour la clé « Projet de l'Aube » → FAIL C5 ;
+//   (3) « SolarWind » pour la clé « Solar&Wind » → FAIL C5 ;
+//   (4) CONTRE-ÉPREUVE — « atelierborealite » (mot voisin) : aucun constat ;
+//   (5) CONTRE-ÉPREUVE — « luneNet » : la forme collée de « Lune.Net » fait 7 caractères, sous le
+//       seuil de 8, elle n'existe pas : aucun constat.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-c5-collee-'));
+  try {
+    const tProduits = path.join(tmp, 'produits.json');
+    const tClients = path.join(tmp, 'clients.json');
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { 'Atelier.Boréal': 'Produit-96', "Projet de l'Aube": 'Produit-95', 'Solar&Wind': 'Produit-94', 'Lune.Net': 'Produit-93' } }), 'utf8');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+    const batir = (nom, contenu) => {
+      const r = path.join(tmp, nom);
+      fs.mkdirSync(r);
+      fs.writeFileSync(path.join(r, 'notes.md'), contenu, 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q'); g('config', 'user.email', 'banc@local'); g('config', 'user.name', 'banc');
+      g('add', '-A'); g('commit', '-q', '-m', 'depot jetable du banc');
+      return r;
+    };
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const c5 = (repo) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits], { encoding: 'utf8', timeout: 180000, env: envNu });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* dit ci-dessous */ }
+      return j ? (j.findings || []).filter((f) => f.regle === 'C5' && f.sev === 'bloquant').length : null;
+    };
+    const cas = [
+      ['point', 'Le module AtelierBoreal est remis demain.\n', true],
+      ['apostrophe', 'Le module projetdelaube est remis demain.\n', true],
+      ['esperluette', 'Le module SolarWind est remis demain.\n', true],
+      ['dossier-version', 'Le dossier c:/dev/AtelierBoreal2/src est remis demain.\n', true],
+      ['voisin', 'Le module atelierborealite est remis demain.\n', false],
+      ['voisin-chiffre-lettre', 'Le module atelierboreal2b est remis demain.\n', false],
+      ['sous-seuil', 'Le module luneNet est remis demain.\n', false],
+    ].map(([nom, texte, attendu]) => [nom, c5(batir(nom, texte)), attendu]);
+    const faux = cas.filter(([, n, attendu]) => n === null || (n > 0) !== attendu);
+    if (faux.length) ko('TF-1839 : ' + faux.map(([nom, n, attendu]) => `${nom} → ${n === null ? 'sortie illisible' : n + ' constat(s) C5'} (attendu ${attendu ? 'au moins 1' : '0'})`).join(' ; '));
+    else ok('TF-1839 : forme collée d’un nom à séparateurs — « AtelierBoreal », « AtelierBoreal2 » (dossier versionné), « projetdelaube », « SolarWind » font FAIL C5 ; « atelierborealite », « atelierboreal2b » et « luneNet » (7 car., sous le seuil de 8) n’en font aucun');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0887 (08/09/2026) — LA PORTE TROUVE LES TABLES DU CANAL TOUTE SEULE, ET DIT LAQUELLE.
 //
 // LE FAIT PAYÉ. Le 07/09, les deux tables ont quitté les fichiers libres `<racine>\_*.json` pour
