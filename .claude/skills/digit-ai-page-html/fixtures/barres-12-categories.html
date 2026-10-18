@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc barres empilees 12 categories verte — 20261018a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="../assets/barres-empilees.css">
+</head>
+<!--
+  Fixture VERTE de TF-1858 : la MEME donnee, dessinee au chargement par le composant ACTUEL
+  (../assets/barres-empilees.js, lu par reference : un retour en arriere du composant fait rougir ce
+  banc). render_page.py ne doit relever aucun chevauchement de texte.
+-->
+<body><main class="wrap">
+<h1>Sessions par mois</h1>
+<p>Douze mois, trois groupes de canaux, empiles ; le total de chaque colonne est ecrit au-dessus.</p>
+<figure class="graphe-empile" id="g-sessions" data-graphe-empile>
+  <figcaption>Sessions par mois et par groupe de canaux</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation":"vertical","mode":"valeurs","unite":"sessions","totaux":true,"titre":"Sessions par mois et par groupe de canaux","titreCategories":"Mois","categories":["oct. 2025","nov. 2025","déc. 2025","janv. 2026","févr. 2026","mars 2026","avr. 2026","mai 2026","juin 2026","juil. 2026","août 2026","sept. 2026"],"series":[{"nom":"Recherche naturelle","valeurs":[4120,4658,5084,3640,2980,3410,4270,4620,4050,3730,4610,4130]},{"nom":"Direct","valeurs":[2600,2900,3100,2300,2000,2200,2700,2800,2500,2400,2700,2600]},{"nom":"Autres canaux","valeurs":[1400,1600,1800,1700,1500,1600,1900,2000,1700,1600,1700,1900]}]}
+  </script>
+  
+</figure>
+<script src="../assets/barres-empilees.js"></script>
+<script>window.DigitAIBarresEmpilees.init(document);</script>
+</main></body></html>

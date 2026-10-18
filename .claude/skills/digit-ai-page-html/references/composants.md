@@ -559,6 +559,13 @@ relief est fourni : étiquettes directes, filets de 2 px (`vector-effect: non-sc
 légende dès 2 séries, vue tableau sous le graphique (en place si elle fait moins de 200 caractères,
 L9 ; en dépliant au-delà). Changer une valeur de la palette exige de rejouer le validateur.
 
+**Totaux (TF-1858).** `totaux: true` écrit le total de chaque colonne (barre) **s'il tient** : dans la bande de
+sa colonne en vertical, dans le viewBox en horizontal (largeur estimée comme celle des étiquettes de
+segment). À douze colonnes ou avec une unité en mot (« 9 158 sessions »), ils ne tiennent pas : ils sont
+masqués et l'infobulle de chaque segment porte alors « Total de la colonne ». L'étiquette « 0 » de l'axe
+vertical se pose au-dessus de sa ligne de base, hors de la rangée des étiquettes de catégorie. Banc :
+`fixtures/barres-12-categories*.html`, jugé par `render_page.py` (`self_test.py`, `run_barres_12_categories`).
+
 **Ce que l'infobulle doit contenir.** Un COMPLÉMENT, jamais le texte visible : la part du total de la
 colonne, le rang parmi les séries, le total de la colonne s'il n'est pas affiché, la valeur exacte si
 l'étiquette l'arrondit ou manque. Le nom de la série et de la catégorie vont dans l'`aria-label` du

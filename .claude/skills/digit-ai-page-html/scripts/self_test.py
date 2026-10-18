@@ -2164,6 +2164,75 @@ def run_l39_graphique_maison():
     return out
 
 
+def run_barres_12_categories():
+    """TF-1858 (RA-13, lot Produit-79 20261017c) : le composant barres empilées à 12 catégories, jugé par
+    render_page.py — ROUGE AVANT, VERT APRÈS.
+
+    Les fixtures du composant n'avaient que 2 à 5 catégories ; avec 12, V4 rendait « 0 » × « oct. 2025 »
+    (étiquette de l'axe contre la première étiquette de catégorie) et des totaux « 9 158 sessions » qui se
+    chevauchent. Sens ROUGE : `barres-12-categories-ancien-rendu.html`, le SVG GELÉ de l'ancien composant,
+    doit rendre les deux constats. Sens VERT : `barres-12-categories.html` fait dessiner la même donnée par
+    le composant ACTUEL (lu par référence, jamais copié : un retour en arrière le fait rougir) et ne rend
+    aucun chevauchement à 1440 et 390 px. Le composant se joue aussi sous node : totaux masqués et repris
+    par l'infobulle quand ils ne tiennent pas (vertical et horizontal), conservés quand ils tiennent."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import json as _json
+    import tempfile
+    out = []
+    captures = tempfile.mkdtemp(prefix="self-test-barres12-")
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1858", "detail": "" if ok else detail[:300]})
+
+    def v4(nom, largeur):
+        r = subprocess.run([sys.executable, "-X", "utf8", str(Path(__file__).resolve().parent / "render_page.py"),
+                            str(FIXTURES / nom), "--widths", str(largeur), "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return [i["what"] for i in _json.loads(r.stdout)["breakpoints"][str(largeur)]["issues"]["v4_overlap"]]
+        except Exception:
+            return None
+
+    rouge = v4("barres-12-categories-ancien-rendu.html", 1440)
+    cas("barres-12-categories-ancien-rendu · rouge : l'étiquette « 0 » chevauche « oct. 2025 »",
+        bool(rouge) and any("« 0 »" in w and "oct. 2025" in w for w in rouge), "V4 « 0 » × « oct. 2025 »",
+        f"{len(rouge or [])} constat(s)", " | ".join(rouge or [])[:200])
+    cas("barres-12-categories-ancien-rendu · rouge : les totaux à unité en mot se chevauchent",
+        bool(rouge) and any("graphe-total" in w for w in rouge), "V4 sur graphe-total",
+        f"{sum('graphe-total' in w for w in (rouge or []))} constat(s)")
+    for largeur in (1440, 390):
+        vert = v4("barres-12-categories.html", largeur)
+        cas(f"barres-12-categories · vert à {largeur} px : aucun chevauchement",
+            vert == [], "V4 ×0", f"{None if vert is None else len(vert)} constat(s)", " | ".join(vert or [])[:200])
+    asset = (FIXTURES.parent / "assets" / "barres-empilees.js").as_posix()
+    script = (
+        "const B=require(%s);const cats=n=>Array.from({length:n},(_,i)=>'c'+i);"
+        "const nb=(d)=>{const r=B.rendre(d,'g');return [(r.svg.match(/graphe-total/g)||[]).length,"
+        "/Total de la (colonne|barre)/.test(r.svg)];};"
+        "const vals=n=>Array.from({length:n},(_,i)=>9000+i*37);"
+        "const dv=(o,u,n)=>({orientation:o,mode:'valeurs',unite:u,totaux:true,categories:cats(n),"
+        "series:[{nom:'x',valeurs:vals(n)}]});"
+        "console.log(JSON.stringify({vMot:nb(dv('vertical','sessions',12)),vEuro:nb(dv('vertical','€',6)),"
+        "hMot:nb(dv('horizontal','sessions',6)),hEuro:nb(dv('horizontal','€',6))}));" % _json.dumps(asset))
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, encoding="utf-8")
+    try:
+        j = _json.loads(r.stdout)
+    except Exception:
+        j = {}
+    for cle, attendu, nom in (("vMot", [0, True], "vertical, 12 colonnes, unité « sessions » : totaux masqués, repris à l'infobulle"),
+                              ("vEuro", [6, False], "vertical, 6 colonnes, unité « € » : totaux conservés"),
+                              ("hMot", [0, True], "horizontal, unité « sessions » : totaux masqués (ils étaient rognés), repris à l'infobulle"),
+                              ("hEuro", [6, False], "horizontal, unité « € » : totaux conservés")):
+        cas(f"composant sous node · {nom}", j.get(cle) == attendu, f"{attendu}", f"{j.get(cle)}", r.stderr)
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_l2_remedes_nommes():
     """TF-1799 (lot Produit-83 20261015b, RA-5) — UNE RÈGLE QUI INTERDIT SON PROPRE REMÈDE.
 
@@ -5154,6 +5223,10 @@ def main():
     remedes_l2 = run_l2_remedes_nommes()
     if remedes_l2:
         res += remedes_l2
+    # TF-1858 — le composant barres empilees a 12 categories, rouge avant, vert apres.
+    barres12 = run_barres_12_categories()
+    if barres12:
+        res += barres12
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

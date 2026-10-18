@@ -7,13 +7,25 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.33.0"
+  version: "1.33.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.33.1 (18/10/2026)** — **le composant « barres empilées » tient à douze catégories (TF-1858, RA-13 du
+lot Produit-79 20261017c).** Avec 12 catégories, `render_page.py` rendait V4 « 0 » × « oct. 2025 » à toutes
+les largeurs et des totaux « 9 158 sessions » × « 9 984 sessions » qui se chevauchent dès que l'unité est un
+mot ; les fixtures du composant n'avaient que 2 à 5 catégories. `assets/barres-empilees.js` : l'étiquette
+« 0 » de l'axe vertical se pose au-dessus de sa ligne, les totaux ne s'écrivent que s'ils tiennent (bande de
+la colonne en vertical, viewBox en horizontal, où ils étaient rognés : « 9 984 sess ») et passent sinon à
+l'infobulle (« Total de la colonne »). Banc : `fixtures/barres-12-categories-ancien-rendu.html` (rendu gelé de
+l'ancien composant : 17 constats V4 à 1440 px) et `fixtures/barres-12-categories.html` (composant actuel, par
+référence : 0 constat à 1440 et 390 px), jugés par `render_page.py` ; `exemple-tuiles-et-barres-empilees.html`
+et sa copie embarquée du composant sont réécrits. **Version CORRECTIVE** : un défaut de composant, aucune règle
+neuve.
 
 **1.33.0 (18/10/2026)** — **une règle de lisibilité neuve, `L39` : une forme que le socle couvre ne se
 réalise pas à la main (TF-1857, RA-12 du lot Produit-79 20261017c), en avertissement.** Classe

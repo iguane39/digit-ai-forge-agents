@@ -33,7 +33,16 @@
    visible. Le nom de la serie et de la categorie vont dans aria-label, pas dans l'infobulle.
 
    PALETTE : jetons --cat-1..--cat-6 de barres-empilees.css, valides en clair et en sombre. Plus de
-   six series : regrouper en « Autres ». Autonome : aucune requete reseau, aucune bibliotheque. */
+   six series : regrouper en « Autres ». Autonome : aucune requete reseau, aucune bibliotheque.
+
+   DOUZE CATEGORIES (TF-1858, RA-13, Produit-79, 18/10/2026). Les fixtures du composant n'avaient que
+   2 a 5 categories ; avec 12, render_page.py rendait V4 « 0 » x « oct. 2025 » a toutes les largeurs
+   (14 constats) et des totaux « 9 158 sessions » x « 9 984 sessions » qui se chevauchent des que
+   l'unite est un mot. Deux corrections : l'etiquette « 0 » de l'axe vertical se pose AU-DESSUS de sa
+   ligne, hors de la rangee des etiquettes de categorie ; les totaux ne s'ecrivent que s'ils TIENNENT
+   dans la bande de leur colonne (vertical) ou dans le viewBox (horizontal, ou « 9 984 sess » etait
+   rogne) — largeur estimee comme celle des etiquettes de segment —, sinon ils
+   passent a l'infobulle de chaque segment, qui porte alors « Total de la colonne ». */
 (function (root) {
   'use strict';
 
@@ -93,9 +102,16 @@
 
     /* --- gabarit : marges et bande par categorie --- */
     var mg, W = LARGEUR, H, bande;
+    /* Un total s'ecrit s'il TIENT (TF-1858) : en vertical, dans la bande de sa colonne, en horizontal, dans le
+       viewBox ; sinon il passe a l'infobulle. L'estimation est celle des etiquettes de segment (FS * 0,6 par caractere). */
+    var afficheTotaux = !!d.totaux && !pct;
+    var largeurTotal = afficheTotaux ? Math.max.apply(null, totaux.map(function (t) {
+      return (num(arrondi(t, dec), dec) + unite).length;
+    })) * FS * 0.6 + 4 : 0;
     if (vert) {
       mg = { g: 44, d: 8, h: d.totaux ? 20 : 8, b: 24 };
       H = 260; bande = (W - mg.g - mg.d) / nc;
+      if (afficheTotaux && largeurTotal > bande) afficheTotaux = false;
     } else {
       var maxCar = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
       mg = { g: Math.min(140, Math.round(maxCar * FS * 0.58) + 12), d: d.totaux ? 64 : 12, h: 8, b: 24 };
@@ -104,6 +120,11 @@
     var pw = W - mg.g - mg.d, ph = H - mg.h - mg.b;
     var ech = function (v) { return (vert ? ph : pw) * v / maxAxe; };
     var ep = Math.min(vert ? 56 : 22, bande * 0.8);
+    /* Horizontal : un total tient s'il finit dans le viewBox (sinon il est rogne : « 9 984 sess »). */
+    if (!vert && afficheTotaux) {
+      afficheTotaux = totaux.every(function (t) { return mg.g + ech(t) + 6 + (largeurTotal - 4) * 0.92 <= W - 2; });
+    }
+    var totauxMasques = !!d.totaux && !pct && !afficheTotaux;   /* demandes, mais qui ne tiennent pas */
 
     var out = [];
     out.push('<svg class="graphe-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + r1(H) +
@@ -116,7 +137,9 @@
       if (vert) {
         var y = r1(mg.h + ph - p);
         out.push('<line class="graphe-grille' + (t === 0 ? ' graphe-base' : '') + '" x1="' + mg.g + '" x2="' + (W - mg.d) + '" y1="' + y + '" y2="' + y + '"/>');
-        out.push('<text class="graphe-axe" x="' + (mg.g - 6) + '" y="' + r1(y + 4) + '" text-anchor="end">' + esc(fmtAxe(t)) + '</text>');
+        /* Le « 0 » se pose AU-DESSUS de la ligne de base : centre dessus, il chevauche la premiere etiquette de
+           categorie, posee juste en dessous (TF-1858, V4 « 0 » x « oct. 2025 » a toutes les largeurs). */
+        out.push('<text class="graphe-axe" x="' + (mg.g - 6) + '" y="' + r1(t === 0 ? y - 2 : y + 4) + '" text-anchor="end">' + esc(fmtAxe(t)) + '</text>');
       } else {
         var x = r1(mg.g + p);
         out.push('<line class="graphe-grille' + (t === 0 ? ' graphe-base' : '') + '" x1="' + x + '" x2="' + x + '" y1="' + mg.h + '" y2="' + (H - mg.b) + '"/>');
@@ -157,7 +180,7 @@
         var lignes = [];
         lignes.push('Part du total de la ' + mot + ' : ' + num(arrondi(part * 100, 1), 1) + ' %');
         lignes.push('Rang : ' + rang + (rang === 1 ? 'er' : 'e') + ' sur ' + nonNuls);
-        if (!d.totaux) lignes.push('Total de la ' + mot + ' : ' + exactNum(tot) + unite);
+        if (!d.totaux || totauxMasques) lignes.push('Total de la ' + mot + ' : ' + exactNum(tot) + unite);
         if (!tient || arrondit || pct) lignes.push('Valeur exacte : ' + exactNum(v) + unite);
         segs.push('<rect class="graphe-seg graphe-s' + (j + 1) + '" id="' + sid + '" data-serie="' + esc(s.nom) +
           '" data-categorie="' + esc(cat) + '" x="' + r1(rect.x) + '" y="' + r1(rect.y) + '" width="' + r1(rect.w) +
@@ -167,7 +190,7 @@
         if (tient) etiq.push('<text class="etiquette-marque graphe-t' + (j + 1) + '" data-etiquette-de="' + sid +
           '" data-overlap-ok="' + sid + '" x="' + r1(rect.x + rect.w / 2) + '" y="' + r1(rect.y + rect.h / 2 + 4) + '" text-anchor="middle">' + esc(texte) + '</text>');
       });
-      if (d.totaux && !pct) {
+      if (afficheTotaux) {
         var tt = num(arrondi(tot, dec), dec) + unite;
         if (vert) etiq.push('<text class="graphe-total" x="' + r1(mg.g + bande * (i + 0.5)) + '" y="' + r1(mg.h + ph - ech(tot) - 6) + '" text-anchor="middle">' + esc(tt) + '</text>');
         else etiq.push('<text class="graphe-total" x="' + r1(mg.g + ech(tot) + 6) + '" y="' + r1(mg.h + bande * (i + 0.5) + 4) + '">' + esc(tt) + '</text>');
