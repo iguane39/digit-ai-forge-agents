@@ -883,6 +883,30 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// D-19 (a) du pilot (18/10/2026) — LA CLI DU JUGE EST LA PLUS RÉCENTE DU POSTE. Sans appel de modèle : des
+// candidats simulés. Rouge : le poste du 18/10 (cli.js npm 2.1.107 et extension 2.1.300) — l'ancienne règle prenait
+// le npm, qui servait claude-opus-4-6 et refuse claude-opus-5-5 ; la nouvelle doit prendre l'extension. Vert :
+// QO_JUGE_CLI prime ; une version illisible passe après une version lue ; aucun candidat rend null.
+{
+  const { candidatsCli, choisirCli } = await import('./lib/cli-claude.mjs');
+  const maison = path.join('X:', 'maison'), appdata = path.join('X:', 'appdata');
+  const npm = path.join(appdata, 'npm', 'node_modules', '@anthropic-ai', 'claude-code');
+  const ext = path.join(maison, '.vscode', 'extensions');
+  const fichiers = new Set([path.join(npm, 'cli.js'), path.join(ext, 'anthropic.claude-code-2.1.300-win32-x64', 'resources', 'native-binary', 'claude.exe'),
+    path.join(ext, 'anthropic.claude-code-2.1.299-win32-x64', 'resources', 'native-binary', 'claude.exe'), path.join('X:', 'outils', 'claude.exe')]);
+  const existe = (p) => fichiers.has(p);
+  const lister = () => ['anthropic.claude-code-2.1.299-win32-x64', 'anthropic.claude-code-2.1.300-win32-x64', 'autre.extension-1.0.0'];
+  // le package.json du npm n'existe pas en simulation : sa version est illisible, comme un paquet abîmé
+  const c = candidatsCli({ env: { APPDATA: appdata }, maison, existe, lister });
+  const choisie = choisirCli(c);
+  const prime = choisirCli(candidatsCli({ env: { APPDATA: appdata, QO_JUGE_CLI: path.join('X:', 'outils', 'claude.exe') }, maison, existe, lister }));
+  if (c.length !== 3) ko(`D-19 (a) : 3 CLI candidates attendues (npm, extensions 2.1.299 et 2.1.300), lues ${c.length}`);
+  else if (!choisie || !/2\.1\.300/.test(choisie.cmd)) ko(`D-19 (a) : la CLI retenue n'est pas la plus récente — ${choisie && choisie.cmd}`);
+  else if (!prime || prime.origine !== 'QO_JUGE_CLI') ko('D-19 (a) : QO_JUGE_CLI ne prime pas sur la version');
+  else if (choisirCli([]) !== null) ko('D-19 (a) : aucun candidat ne rend pas null');
+  else ok('D-19 (a) : oracle-judge prend la CLI la plus récente du poste (extension 2.1.300 contre npm illisible et extension 2.1.299), QO_JUGE_CLI prime, aucun candidat rend null');
+}
+
 // TF-1392 + TF-1394 (13/10/2026, décisions D-2 (a) et D-3 (a)) — LA RUBRIQUE « LECTEUR VISÉ »
 // D'ORACLE-JUDGE, SA PARTIE MÉCANIQUE, SANS AUCUN APPEL DE MODÈLE. Deux relecteurs jouent le
 // lecteur ; le script agrège des lectures ENREGISTRÉES. Chaque règle dans ses deux sens :

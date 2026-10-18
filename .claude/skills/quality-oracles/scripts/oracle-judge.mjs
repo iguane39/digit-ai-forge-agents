@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
+import { candidatsCli, choisirCli } from './lib/cli-claude.mjs';
 // TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
 const contratJSON = ecrivainDeContrat({ dernier: true });
 
@@ -25,8 +26,11 @@ const opts = (n) => args.flatMap((a, i) => a === '--' + n && args[i + 1] ? Strin
 // --model / QO_JUGE_MODELE (02/09/2026) : le modèle par défaut hérité de l'environnement peut
 // être refusé par une CLI `claude` plus ancienne que lui (« does not support this model »), et le
 // juge rendait alors un SKIP permanent — un oracle qui ne mesure JAMAIS n'est pas un repli, c'est
-// une porte morte. Le drapeau est OPTIONNEL : sans lui, le comportement est strictement inchangé.
-const MODELE = args.includes('--model') ? args[args.indexOf('--model') + 1] : (process.env.QO_JUGE_MODELE || null);
+// une porte morte.
+// D-19 (a) du pilot (18/10/2026) : sans drapeau ni variable, le juge demande la FAMILLE `opus`, qui suit la dernière
+// version, au lieu du défaut de la CLI : la CLI npm 2.1.107 du poste servait claude-opus-4-6 par défaut (12 sessions
+// de juge depuis le 13/10). La CLI elle-même est choisie par lib/cli-claude.mjs, la plus récente du poste.
+const MODELE = args.includes('--model') ? args[args.indexOf('--model') + 1] : (process.env.QO_JUGE_MODELE || 'opus');
 const DOM = 'Jugement rédactionnel (LLM-juge externe)';
 const NJ = ['véracité factuelle (oracles déterministes)', 'AVIS OUTILLÉ non déterministe : deux runs peuvent diverger — ne jamais promouvoir en verdict', 'qualité visuelle (render/pptx)'];
 const out = (verdict, findings, nj, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-judge', domaine: DOM, artefact: file || null, verdict, findings, non_juge: nj })); process.exit(code); };
@@ -46,25 +50,14 @@ const cliJuge = () => {
 // Compat win32 (correctif 24/07/2026, aucun changement de logique de jugement) : le shim npm
 // `claude` est un .cmd, non exécutable par spawnSync sans shell (ENOENT) — résoudre le cli.js
 // réel et le lancer via node ; à défaut, comportement POSIX inchangé.
+// D-19 (a) du pilot (18/10/2026) : parmi les CLI du poste (paquet npm, binaire de chaque extension VS Code,
+// QO_JUGE_CLI), la plus récente — la première trouvée était le cli.js npm 2.1.107, qui refuse les modèles 5.x.
 let jugeCmd = 'claude', jugePre = [];
 if (process.platform === 'win32') {
-  const shim = (which.stdout || '').split(/\r?\n/).find(Boolean);
-  // la sortie de `where` peut être mal décodée (codepage console ≠ utf8) : préférer %APPDATA%
-  const candidats = [
-    process.env.APPDATA && path.join(process.env.APPDATA, 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js'),
-    shim && path.join(path.dirname(shim), 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
-  ].filter(Boolean);
-  const cli = candidats.find(c => fs.existsSync(c));
-  if (cli) { jugeCmd = process.execPath; jugePre = [cli]; }
-  else {
-    // Claude Code ≥ 2.x : le paquet npm livre un exécutable natif bin/claude.exe (plus de cli.js).
-    const exes = [
-      process.env.APPDATA && path.join(process.env.APPDATA, 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'),
-      shim && path.join(path.dirname(shim), 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
-    ].filter(Boolean);
-    const exe = exes.find(c => fs.existsSync(c));
-    if (exe) { jugeCmd = exe; jugePre = []; }
-  }
+  // la sortie de `where` peut être mal décodée (codepage console ≠ utf8) : %APPDATA% reste le premier candidat npm
+  const shim = (which.stdout || '').split(/\r?\n/).find(Boolean) || null;
+  const choisie = choisirCli(candidatsCli({ shim }));
+  if (choisie) { jugeCmd = choisie.cmd; jugePre = choisie.pre; }
 }
 return { jugeCmd, jugePre };
 };
