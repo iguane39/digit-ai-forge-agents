@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Digit-AI — canvas aux séries invisibles — 20261018a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px);}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+canvas{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de TF-1859 (RA-14, Produit-79) — un graphique en barres empilées dessiné dans un
+  <canvas>. Les jetons --cat-1 à --cat-3 sont ABSENTS de la feuille, et le dessin prend alors un repli
+  quasi blanc (#f6f6f6) : les barres sont presque blanches sur le fond blanc de la page, l'axe et les
+  mois restent lisibles. C'est le mécanisme du cas fondateur (jetons --cat-1 à --cat-6 absents, barres
+  ECharts presque blanches, légende sans pastille) : tous les contrôles du DOM le déclaraient PASS.
+
+  Attendu : render_page.py rend un constat « V22 marques d'un canvas indiscernables de leur fond »
+  (contraste des aplats : 1,08:1), verdict FAIL.
+-->
+<body><main class="wrap">
+<h1>Sessions par canal</h1>
+<p>Trois canaux sur six mois, dessinés dans un canvas : le DOM ne voit ni les barres ni la légende.</p>
+<canvas id="graphe" width="600" height="300" role="img" aria-label="Sessions par mois et par canal, octobre à mars"></canvas>
+<script>
+(function () {
+  var racine = getComputedStyle(document.documentElement);
+  var jeton = function (n) { return racine.getPropertyValue(n).trim() || '#f6f6f6'; };
+  var cv = document.getElementById('graphe'), g = cv.getContext('2d');
+  var mois = ['oct.', 'nov.', 'déc.', 'janv.', 'févr.', 'mars'];
+  var series = [[40, 52, 61, 38, 30, 41], [26, 29, 31, 23, 20, 22], [14, 16, 18, 17, 15, 16]];
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 600, 300);
+  g.strokeStyle = '#E6EAF2'; g.lineWidth = 1;
+  for (var i = 0; i <= 4; i++) { var y = 250 - i * 50; g.beginPath(); g.moveTo(50, y + 0.5); g.lineTo(590, y + 0.5); g.stroke(); }
+  g.fillStyle = '#0F172A'; g.font = '13px sans-serif'; g.textAlign = 'right';
+  for (var j = 0; j <= 4; j++) g.fillText(String(j * 40), 44, 254 - j * 50);
+  g.textAlign = 'center';
+  mois.forEach(function (m, k) {
+    var x = 70 + k * 88, cumul = 0;
+    series.forEach(function (s, n) {
+      var h = s[k] * 1.5;
+      g.fillStyle = jeton('--cat-' + (n + 1));
+      g.fillRect(x, 250 - cumul - h, 56, h);
+      cumul += h;
+    });
+    g.fillStyle = '#0F172A'; g.fillText(m, x + 28, 272);
+  });
+})();
+</script>
+</main></body></html>

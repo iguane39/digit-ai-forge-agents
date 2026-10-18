@@ -1,19 +1,33 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21 et les règles de lisibilité L1–L39 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19, V21 et V22 et les règles de lisibilité L1–L39 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.33.1"
+  version: "1.34.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.34.0 (18/10/2026)** — **le canvas est déclaré hors mesure, et ses aplats sont mesurés : une règle de rendu neuve,
+`V22` (TF-1859, RA-14 du lot Produit-79 20261017c), bloquante.** Un graphique Apache ECharts aux séries presque
+blanches (jetons `--cat-1` à `--cat-6` absents, légende sans pastille) rendait `render_page.py` PASS en clair et en sombre
+aux 7 largeurs : le contenu d'un `<canvas>` n'est pas dans le DOM, et le périmètre de non-mesure ne le disait pas.
+Deux apports. **(1) Le périmètre de non-mesure** porte à chaque exécution, PASS compris, texte et JSON, une ligne
+« CANVAS » : ce qu'un canvas soustrait aux mesures du DOM, ce que V22 mesure, ce qu'elle ne mesure pas, et combien de canvas
+CETTE exécution a rencontrés, mesurés, jugés indiscernables ou non mesurables. **(2) V22** (famille
+`v22_canvas_indiscernable`) capture chaque `<canvas>` d'au moins 48 px, relève ses aplats de couleur et les compare au fond
+vu par le lecteur, au seuil de V9 (1,2:1) ; sans dépendance nouvelle (Pillow, déjà requis par V9). Un canvas sans aplat
+(courbes) est déclaré non mesurable. Bruit mesuré sur le parc : 0 accusation sur 54 canvas mesurés
+(`references/zero-defaut-visuel.md`). Trois fixtures `canvas-*` et huit cas au self-test (`run_canvas_v22`) : la rouge
+rendait PASS avant, FAIL à 1,08:1 après. **Version MINEURE** : une famille bloquante s'ajoute pour un défaut certain (contenu
+invisible) ; aucun verdict de la recette existante ne change.
 
 **1.33.1 (18/10/2026)** — **le composant « barres empilées » tient à douze catégories (TF-1858, RA-13 du
 lot Produit-79 20261017c).** Avec 12 catégories, `render_page.py` rendait V4 « 0 » × « oct. 2025 » à toutes
@@ -825,7 +839,7 @@ contrôles que le producteur lance de toute façon.
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V19 et V21 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Checklist canonique zéro défaut visuel V1–V19, V21 et V22 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
 - Règles de lisibilité L1–L39 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants

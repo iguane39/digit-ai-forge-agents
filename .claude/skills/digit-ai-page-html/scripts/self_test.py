@@ -2233,6 +2233,83 @@ def run_barres_12_categories():
     return out
 
 
+def run_canvas_v22():
+    """TF-1859 (RA-14, lot Produit-79 20261017c) : un graphique en <canvas> aux séries invisibles, jugé par
+    render_page.py — et le canvas déclaré hors de la mesure du DOM, PASS compris.
+
+    Le fait : jetons `--cat-1` à `--cat-6` absents, barres ECharts presque blanches, légende sans pastille,
+    render_page PASS en clair et en sombre aux 7 largeurs. Trois fixtures portent le MÊME dessin :
+    `canvas-series-invisibles.html` (jetons absents, repli quasi blanc : ROUGE, V22 à 1,08:1),
+    `canvas-series-visibles.html` (jetons posés : VERTE) et `canvas-courbe-sans-aplat.html` (une courbe,
+    aucun aplat : ni accusée ni passée sous silence, déclarée NON MESURABLE). Le périmètre de non-mesure
+    nomme le canvas dans les DEUX sorties (JSON et texte) sur un verdict PASS comme sur un FAIL, et dit
+    « aucun canvas » quand la page n'en porte pas."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+        importlib.import_module("PIL.Image")
+    except ImportError:
+        return None
+    import json as _json
+    import tempfile
+    out = []
+    captures = tempfile.mkdtemp(prefix="self-test-canvas-")
+    outil = str(Path(__file__).resolve().parent / "render_page.py")
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1859", "detail": "" if ok else detail[:300]})
+
+    def jouer(nom, sortie="json"):
+        r = subprocess.run([sys.executable, "-X", "utf8", outil, str(FIXTURES / nom), "--widths", "1440",
+                            "--output", sortie, "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        if sortie == "text":
+            return r.stdout
+        try:
+            return _json.loads(r.stdout)
+        except Exception:
+            return None
+
+    rouge = jouer("canvas-series-invisibles.html")
+    vert = jouer("canvas-series-visibles.html")
+    courbe = jouer("canvas-courbe-sans-aplat.html")
+
+    def v22(d):
+        return None if d is None else d["breakpoints"]["1440"]["issues"].get("v22_canvas_indiscernable", [])
+
+    cas("canvas-series-invisibles · rouge : V22 rend un constat bloquant, verdict FAIL",
+        rouge is not None and len(v22(rouge)) == 1 and rouge["verdict"] == "FAIL",
+        "V22 ×1, FAIL", f"{None if rouge is None else len(v22(rouge))} constat(s), "
+        f"{None if rouge is None else rouge['verdict']}")
+    cas("canvas-series-invisibles · le constat dit le contraste mesuré et nomme les jetons à vérifier",
+        rouge is not None and bool(v22(rouge)) and "1.08:1" in v22(rouge)[0]["detail"]
+        and "--cat-N" in v22(rouge)[0]["detail"], "1.08:1 et --cat-N", "")
+    cas("canvas-series-visibles · verte : aucun V22, verdict PASS",
+        vert is not None and v22(vert) == [] and vert["verdict"] == "PASS", "V22 ×0, PASS",
+        f"{None if vert is None else len(v22(vert))} constat(s), {None if vert is None else vert['verdict']}")
+    cas("canvas-courbe-sans-aplat · ni accusée ni silencieuse : NON MESURABLE, avec sa raison",
+        courbe is not None and v22(courbe) == [] and any(
+            "V22" in i["detail"] and "sans aplat" in i["detail"]
+            for i in courbe["breakpoints"]["1440"]["issues"]["unmeasured"]),
+        "V22 ×0 et un non mesurable V22", "")
+    for nom, d in (("rouge (FAIL)", rouge), ("verte (PASS)", vert)):
+        ligne = [n for n in (d or {}).get("non_juge", []) if n.startswith("CANVAS")]
+        cas(f"canvas · périmètre de non-mesure au JSON, page {nom}",
+            len(ligne) == 1 and "n'est PAS dans le DOM" in ligne[0] and "1 canvas rencontre" in ligne[0],
+            "ligne CANVAS, 1 canvas rencontré", f"{len(ligne)} ligne(s)")
+    texte = jouer("canvas-series-visibles.html", "text")
+    cas("canvas · périmètre de non-mesure à la sortie TEXTE, sur un PASS",
+        "Verdict : PASS" in texte and "non jugé — CANVAS" in texte, "PASS et « non jugé — CANVAS »",
+        "PASS" if "Verdict : PASS" in texte else "pas de PASS")
+    sans = jouer("lisibilite-verte.html")
+    ligne = [n for n in (sans or {}).get("non_juge", []) if n.startswith("CANVAS")]
+    cas("canvas · page sans canvas : la ligne sort quand même et le dit",
+        len(ligne) == 1 and "aucun <canvas>" in ligne[0], "ligne CANVAS, aucun canvas", f"{len(ligne)} ligne(s)")
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_l2_remedes_nommes():
     """TF-1799 (lot Produit-83 20261015b, RA-5) — UNE RÈGLE QUI INTERDIT SON PROPRE REMÈDE.
 
@@ -5227,6 +5304,10 @@ def main():
     barres12 = run_barres_12_categories()
     if barres12:
         res += barres12
+    # TF-1859 — un canvas aux series invisibles n'est plus un PASS, et le canvas est declare hors mesure.
+    canvas_v22 = run_canvas_v22()
+    if canvas_v22:
+        res += canvas_v22
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

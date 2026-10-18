@@ -5,6 +5,8 @@ Oracle mesuré de la checklist canonique references/zero-defaut-visuel.md :
   - V2  contraste texte/fond WCAG AA : >= 4.5:1, ou >= 3:1 pour texte large (bloquant)
   - V9  actif visuel INDISCERNABLE du fond peint derriere lui (bloquant) —
         mesure au pixel sur une capture de l'element, pas sur son fichier
+  - V22 marques d'un <canvas> INDISCERNABLES de leur fond (bloquant) — mesure au pixel
+        sur une capture de l'élément ; le contenu d'un canvas reste hors du DOM (TF-1859)
   - V4  chevauchements significatifs entre éléments frères (bloquant,
         sauf superposition déclarée data-overlap-ok, et sauf formes internes
         d'un même <svg> de petite taille — dessin d'icône, pas mise en page)
@@ -1867,6 +1869,27 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- V22 : les MARQUES d'un <canvas> (TF-1859, RA-14 du lot Produit-79 20261017c) ----------
+  //
+  // LE FAIT. Une page avec Apache ECharts (canvas) : jetons `--cat-1` a `--cat-6` absents, barres
+  // presque blanches, legende sans pastille. render_page PASS en clair et en sombre aux 7 largeurs.
+  // Le contenu d'un canvas n'est pas dans le DOM : V1 a V4 n'ont rien a mesurer, V2 ne lit que des
+  // textes du DOM, V9 ne recense que `img, svg`. Ici, SEUL le recensement ; la mesure des pixels se
+  // fait cote Python sur une capture de l'element (comme V9).
+  issues.canvas_cibles = [];
+  {
+    let n = 0;
+    for (const el of document.querySelectorAll('canvas')) {
+      if (!visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      // Sous 48 px de cote, ce n'est pas un graphique : pastille, signature, pixel de calcul.
+      if (r.width < 48 || r.height < 48) continue;
+      n += 1;
+      el.setAttribute('data-v22', String(n));
+      issues.canvas_cibles.push({ n, what: label(el), largeur: Math.round(r.width), hauteur: Math.round(r.height) });
+    }
+  }
+
   // ---- V19 : un mot COUPE EN DEUX LIGNES SANS TRAIT D'UNION (TF-1350, 24/09/2026) ---------
   //
   // LE FAIT, trouve sur une cellule de tableau a cinq colonnes, 7 % de la largeur : « Remediation »
@@ -2808,6 +2831,11 @@ FAMILLES = [
     # bandeau bleu fonce. Bloquant au meme titre que V2 : c'est le meme defaut — un contenu
     # invisible — sur un objet que V2 ne sait pas voir, faute de `color` a mesurer.
     ("v9_actif_invisible", "V9 actif visuel indiscernable de son fond", "bloquant"),
+    # TF-1859 (RA-14, lot Produit-79 20261017c) : un graphique en canvas aux series presque blanches
+    # (jetons de serie absents) rendait PASS aux 7 largeurs, clair et sombre. Meme defaut que V9 —
+    # un contenu invisible — sur un objet hors du DOM. Bloquant au meme seuil que V9 : a 1,2:1 il n'y
+    # a plus de jugement a rendre. Mesure de bruit : references/zero-defaut-visuel.md, § V22.
+    ("v22_canvas_indiscernable", "V22 marques d'un canvas indiscernables de leur fond", "bloquant"),
     ("contenu_rogne", "Contenu ROGNE par un debordement masque", "bloquant"),
     # Lot Produit-02 du 02/09 — quatre familles nees de retours humains directs sur un livrable
     # servi, chacune sur un angle mort DECLARE des familles existantes :
@@ -3222,6 +3250,118 @@ def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float =
             issues["v9_actif_invisible"].append({"what": c["what"], "detail": detail})
 
 
+# ---- V22 · les MARQUES d'un <canvas>, au pixel (TF-1859, RA-14) ------------------------------
+#
+# CE QUI EST MESURE. Pour chaque <canvas> visible d'au moins 48 px de cote : une capture de
+# l'ELEMENT (ce que le lecteur voit, fond de page compris sous un canvas transparent), repetee
+# jusqu'a deux captures identiques (un graphique anime se pose en une seconde), puis :
+#   · le FOND est la couleur la plus frequente de la capture ;
+#   · une MARQUE EN APLAT est une couleur dont au moins 40 pixels ont leur voisinage de portee 2
+#     (cinq pixels en ligne, cinq en colonne) tout de la meme couleur : une barre, une aire, une
+#     pastille de legende — pas un trait de grille, pas un glyphe, pas un contour ;
+#   · le canvas est INDISCERNABLE si le meilleur contraste d'un aplat contre le fond est sous le
+#     seuil de V9 (1,2:1). Un seul aplat contraste suffit a ecarter le constat : la mesure accuse un
+#     graphique dont AUCUNE marque ne se voit, pas une serie parmi d'autres.
+# CE QUI N'EST PAS MESURE (publie au non_juge a chaque execution) : le texte, les traits fins et les
+# courbes (aucun aplat), la legende dessinee dans le canvas, une serie invisible a cote d'une serie
+# visible, le contraste entre deux series.
+_V22_SEUIL = _V9_SEUIL
+_V22_MAX_PIXELS = 400_000      # au-dela, reechantillonnage au plus proche voisin : les couleurs restent exactes
+_V22_COEUR_MIN = 40            # pixels « au coeur » d'une couleur pour qu'elle compte comme un aplat
+_V22_ESSAIS = 8                # captures successives pour attendre un graphique anime
+_V22_PAUSE_MS = 350
+
+
+def _aplats_d_un_canvas(im):
+    """(fond, aplats, total) d'une capture RGB. `aplats` : [(couleur, pixels_au_coeur)], du plus etendu."""
+    from collections import Counter
+    from PIL import Image
+    w, h = im.size
+    if w * h > _V22_MAX_PIXELS:
+        k = (_V22_MAX_PIXELS / (w * h)) ** 0.5
+        im = im.resize((max(1, int(w * k)), max(1, int(h * k))), getattr(Image, "Resampling", Image).NEAREST)
+        w, h = im.size
+    data = list(im.getdata())
+    fond = Counter(data).most_common(1)[0][0]
+    coeur = Counter()
+    w2 = 2 * w
+    for y in range(2, h - 2):
+        base = y * w
+        for i in range(base + 2, base + w - 2):
+            p = data[i]
+            if p == fond:
+                continue
+            if (data[i - 1] == p and data[i + 1] == p and data[i - 2] == p and data[i + 2] == p
+                    and data[i - w] == p and data[i + w] == p and data[i - w2] == p and data[i + w2] == p):
+                coeur[p] += 1
+    aplats = sorted(((p, n) for p, n in coeur.items() if n >= _V22_COEUR_MIN), key=lambda a: -a[1])
+    return fond, aplats, w * h
+
+
+def mesurer_canvas(page, issues: dict, timeout_ms: int) -> dict:
+    """Juge les aplats de chaque <canvas> contre leur fond. Ne leve jamais : tout ce qui empeche la
+    mesure est DECLARE (issues["unmeasured"]) et compte dans le bilan rendu.
+
+    Bilan : {"vus", "mesures", "indiscernables", "non_mesures": [raison, ...]}."""
+    cibles = issues.pop("canvas_cibles", None) or []
+    issues.setdefault("v22_canvas_indiscernable", [])
+    bilan = {"vus": len(cibles), "mesures": 0, "indiscernables": 0, "non_mesures": []}
+    if not cibles:
+        return bilan
+
+    def non_mesure(c, raison):
+        bilan["non_mesures"].append(raison)
+        issues["unmeasured"].append({"what": c["what"], "detail": f"V22 — {raison}"})
+
+    try:
+        import io as _io
+        from PIL import Image
+    except ImportError:
+        for c in cibles:
+            non_mesure(c, "canvas non mesure : Pillow absent de l'environnement (`pip install pillow`)")
+        return bilan
+    for c in cibles:
+        el = page.query_selector(f'[data-v22="{c["n"]}"]')
+        if el is None:
+            non_mesure(c, "canvas introuvable a la capture")
+            continue
+        try:
+            precedente, stable = None, False
+            for _ in range(_V22_ESSAIS):
+                brut = el.screenshot(timeout=timeout_ms)
+                if brut == precedente:
+                    stable = True
+                    break
+                precedente = brut
+                page.wait_for_timeout(_V22_PAUSE_MS)
+            if not stable:
+                non_mesure(c, f"canvas encore anime apres {_V22_ESSAIS} captures a {_V22_PAUSE_MS} ms : "
+                              "ses marques ne sont pas jugees, ne pas lire ce silence comme un vert")
+                continue
+            fond, aplats, total = _aplats_d_un_canvas(Image.open(_io.BytesIO(brut)).convert("RGB"))
+        except Exception as erreur:      # noqa: BLE001 — toute panne se declare, aucune n'arrete
+            non_mesure(c, f"capture ou analyse impossible ({type(erreur).__name__}) : marques non jugees")
+            continue
+        if not aplats:
+            non_mesure(c, "canvas sans aplat de couleur (courbes, traits, texte ou canvas vide) : "
+                          "aucune marque a comparer a son fond, le canvas n'est pas jugé")
+            continue
+        bilan["mesures"] += 1
+        rangs = sorted(((_v9_ratio(p, fond), p, n) for p, n in aplats), reverse=True)
+        meilleur = rangs[0][0]
+        if meilleur < _V22_SEUIL:
+            bilan["indiscernables"] += 1
+            dits = ", ".join(f"rgb({p[0]}, {p[1]}, {p[2]}) a {r:.2f}:1" for r, p, _n in rangs[:4])
+            issues["v22_canvas_indiscernable"].append({"what": c["what"], "detail": (
+                f"marques INDISCERNABLES de leur fond — {len(aplats)} aplat(s) de couleur, le meilleur "
+                f"contraste mesure est {meilleur:.2f}:1 contre le fond rgb({fond[0]}, {fond[1]}, {fond[2]}), "
+                f"sous le seuil {_V22_SEUIL}:1 ({dits}). Un graphique dont aucune serie ne se voit est "
+                "un graphique absent : verifier que les couleurs de serie existent (jetons --cat-N "
+                "poses dans :root et lus a la creation du graphique, theme sombre compris) avant de "
+                "retoucher le dessin. Le texte et la legende du canvas ne sont pas juges ici")})
+    return bilan
+
+
 def compter_bloquants(issues: dict) -> int:
     """Les CAUSES bloquantes d'un jeu de mesures.
 
@@ -3311,6 +3451,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
     theme_non_rendu: list[str] = []      # TF-1718 : largeurs ou la page a reecrit le theme demande
     theme_tenu: list[str] = []           # TF-1775 : largeurs ou la page a reecrit data-theme, contree
     mires_vues: list[int] = []           # TF-1788 : largeurs ou une mire de connexion est rendue
+    canvas_par_largeur: dict[int, dict] = {}   # TF-1859 : bilan de la mesure des canvas, par largeur
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -3451,6 +3592,8 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             # TF-1143 — V9 doit savoir a quelle echelle elle regarde : sous l echelle 1, ce
             # qu elle lit est la rasterisation et non le livrable.
             mesurer_actifs_visuels(page, issues, capture_timeout, scale)
+            # TF-1859 — les aplats d'un <canvas> : le bilan de CETTE largeur nourrit le non_juge.
+            canvas_par_largeur[width] = mesurer_canvas(page, issues, capture_timeout)
             png = png_dir / f"{cible.stem}-w{width}.png"
             target = page.query_selector(selector) if selector != "body" else None
             # TF-1139 — LA HAUTEUR SE MESURE AVANT D'ESSAYER. Elle est publiée dans tous les cas :
@@ -3862,6 +4005,31 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
         "et aucun lecteur ne le voit ainsi (TF-1192). L'actif POSE DANS un bandeau collant garde "
         "le sien : c'est bien son fond. Ce qu'un element collant masque a l'ECRAN reste, lui, "
         "un jugement humain")
+
+    # TF-1859 (RA-14, lot Produit-79 20261017c) — LE CANVAS EST DECLARE HORS MESURE, a chaque
+    # execution, PASS compris (contrat quality-oracles § 3 : un verdict sans perimetre n'est pas
+    # complet). Le cas fondateur : un graphique ECharts aux series presque blanches, PASS aux 7
+    # largeurs, et aucune ligne de la sortie ne disait qu'un canvas n'est pas dans le DOM.
+    vus = sum(b["vus"] for b in canvas_par_largeur.values())
+    if vus:
+        mesures = sum(b["mesures"] for b in canvas_par_largeur.values())
+        indiscernables = sum(b["indiscernables"] for b in canvas_par_largeur.values())
+        raisons = sorted({r for b in canvas_par_largeur.values() for r in b["non_mesures"]})
+        etat_canvas = (
+            f"CETTE EXECUTION : {vus} canvas rencontre(s) en tout (somme des {len(canvas_par_largeur)} "
+            f"largeur(s)), {mesures} dont les aplats ont ete mesures, {indiscernables} indiscernable(s) "
+            "de leur fond (V22)"
+            + (f", {vus - mesures} NON mesure(s) : {' ; '.join(raisons)}" if vus > mesures else ""))
+    else:
+        etat_canvas = "CETTE EXECUTION : aucun <canvas> d'au moins 48 px rencontre dans la page"
+    report["non_juge"].append(
+        "CANVAS : le contenu d'un <canvas> (Apache ECharts, Chart.js, dessin 2D) n'est PAS dans le DOM — "
+        "V1 a V4, le contraste des textes (V2) et la legende dessinee dedans ne le voient pas, et un PASS "
+        "ne dit rien de ce qui s'y peint. Seule est mesuree, au pixel sur une capture de l'element, la "
+        "distance entre les APLATS de couleur d'un canvas et son fond (V22, seuil 1,2:1, bloquant). Ne "
+        "sont PAS jugees : une serie invisible a cote d'une serie visible, le texte, les traits fins et "
+        "les courbes (aucun aplat), la legende, le contraste entre deux series, l'etat d'un graphique "
+        f"qui change apres le chargement. {etat_canvas} (TF-1859)")
 
     # TF-1173 (lot Produit-64 20260916b, RD-9) — le renvoi aux quatre oracles de
     # `digit-ai-forge-design` sort ici aussi : un producteur qui ne joue QUE le rendu croirait sa

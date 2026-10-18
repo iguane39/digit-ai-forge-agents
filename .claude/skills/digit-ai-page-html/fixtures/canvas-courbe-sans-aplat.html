@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Digit-AI — canvas sans aplat — 20261018a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px);}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+canvas{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r)}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture de TF-1859 — un canvas dont la seule marque est une COURBE (trait de 3 px, aucun aplat).
+  La mesure de V22 porte sur les aplats ; une courbe n'en a pas. Le canvas est alors déclaré NON
+  MESURABLE, avec sa raison, jamais rendu PASS en silence ni accusé à tort.
+
+  Attendu : aucun constat V22, un « non mesurable » qui nomme le canvas.
+-->
+<body><main class="wrap">
+<h1>Sessions par canal</h1>
+<p>Trois canaux sur six mois, dessinés dans un canvas : le DOM ne voit ni les barres ni la légende.</p>
+<canvas id="graphe" width="600" height="300" role="img" aria-label="Sessions par mois et par canal, octobre à mars"></canvas>
+<script>
+(function () {
+  var cv = document.getElementById('graphe'), g = cv.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 600, 300);
+  g.strokeStyle = '#2a78d6'; g.lineWidth = 3; g.beginPath();
+  [40, 52, 61, 38, 30, 41].forEach(function (v, k) { var x = 70 + k * 88, y = 250 - v * 3; if (k) g.lineTo(x, y); else g.moveTo(x, y); });
+  g.stroke();
+})();
+</script>
+</main></body></html>
