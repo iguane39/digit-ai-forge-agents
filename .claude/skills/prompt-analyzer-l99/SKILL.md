@@ -5,8 +5,8 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.6.1"
-  updated: "2026-10-16"
+  version: "2.6.2"
+  updated: "2026-10-18"
 ---
 
 # Prompt Analyzer L99
