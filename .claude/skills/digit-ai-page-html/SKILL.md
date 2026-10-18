@@ -1,19 +1,34 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21 et les règles de lisibilité L1–L38 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21 et les règles de lisibilité L1–L39 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.32.0"
+  version: "1.33.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.33.0 (18/10/2026)** — **une règle de lisibilité neuve, `L39` : une forme que le socle couvre ne se
+réalise pas à la main (TF-1857, RA-12 du lot Produit-79 20261017c), en avertissement.** Classe
+`graphique-maison-hors-composant-du-socle`. Un tableau de bord de six graphiques SVG écrits à la main
+et d'une rangée de sept chiffres clés en `div.kpi` est passé sous tous les contrôles du socle, alors que
+`composants.md` § 14 et § 15 déclaraient les composants obligatoires. `check_html.py` mesure maintenant
+la structure : une rangée d'au moins trois blocs de chiffre clé sans la structure du composant
+(`.tuile-valeur`) ni `data-kpi-filtre`, et un `<svg>` hors composant qui trace au moins quatre barres
+(même épaisseur, pas régulier, même arête, longueurs variables). Écart voulu :
+`data-hors-composant="<raison, 8 caractères au moins>"`. Bruit mesuré sur les 176 pages des `output\` du
+parc : 101 pages accusées (57 %), 98 pour la rangée, 8 pour les barres, zéro fausse accusation relevée
+(`references/lisibilite.md`, § L39) — d'où l'avertissement, non le blocage. Douze cas dans
+`self_test.py` (`run_l39_graphique_maison`), onze fixtures `l39-*`. Ce que L39 ne voit pas (barres en
+`<div>`, canvas, courbes) est publié au périmètre de non-mesure. **Version MINEURE** : une famille
+d'avertissement s'ajoute, aucun verdict existant ne change.
 
 **1.32.0 (17/10/2026)** — **une règle de rendu neuve, `V21` : les largeurs de contenu mélangées
 (TF-1307, décision D-9 option (b) du 17/10/2026), en avertissement.** Réécriture comme candidature
@@ -670,7 +685,7 @@ pour toute la forge**, les autres skills livrables la citent sans la redéfinir.
 Enfin, contrôler la **lisibilité** — ce que le lecteur peut effectivement lire et utiliser :
 
 ```bash
-python scripts/check_html.py page.html --regles L     # L1-L38 seules
+python scripts/check_html.py page.html --regles L     # L1-L39 seules
 python scripts/self_test.py                           # prouve que chaque règle échoue
 ```
 
@@ -799,7 +814,7 @@ contrôles que le producteur lance de toute façon.
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
 - Checklist canonique zéro défaut visuel V1–V19 et V21 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
-- Règles de lisibilité L1–L38 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
+- Règles de lisibilité L1–L39 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants
 

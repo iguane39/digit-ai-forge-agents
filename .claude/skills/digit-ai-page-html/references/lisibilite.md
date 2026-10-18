@@ -1,4 +1,4 @@
-# Lisibilité — règles L1 à L38
+# Lisibilité — règles L1 à L39
 
 Une page peut être **exacte, chartée, accessible et illisible**. La charte règle la forme,
 `zero-defaut-visuel.md` règle le rendu ; ce document règle ce que le lecteur peut
@@ -1651,11 +1651,67 @@ Fixtures : `l38-listing-detail-ailleurs.html` (rouge), `l38-listing-detail-dans-
 (verte, détail dans la ligne et une référence commune), et `l37-ecart-lien-vers-action.html` reste
 verte (le remède de L37 n'est pas accusé).
 
+## L39 — Une forme que le socle couvre ne se réalise pas à la main (TF-1857, RA-12, 18/10/2026)
+
+**Le fait.** Un tableau de bord de six graphiques SVG écrits à la main et d'une rangée de sept chiffres
+clés en `div.kpi` (Produit-79, lot 20261017c) : `composants.md` § 14 (tuiles d'indicateurs) et § 15
+(barres empilées) les déclarent obligatoires (🔴), aucun contrôle ne les exigeait. `check_html.py` PASS
+(47 règles), `oracle-filtres-tableau` PASS, `render_page.py` PASS aux 7 largeurs, `run-oracles-design`
+6 sur 7 ; l'exploitant a refusé la page. La classe `graphique-maison-hors-composant-du-socle` la porte.
+
+**La règle.** Deux formes, deux mesures structurelles, jamais un nom de fichier :
+
+- **Rangée de chiffres clés** : au moins trois frères d'un même parent qui portent une classe de chiffre
+  clé (`kpi`, `kpi-card`, `tuile`, `chiffre`, `indicateur`, `metric`…), dont trois au moins contiennent
+  un chiffre, et qui ne sont NI la structure du composant (un descendant `.tuile-valeur`, § 14) NI un
+  chiffre qui filtre une liste (`data-kpi-filtre`, § 8). Porter le nom de classe `tuile` ne suffit pas :
+  sur 11 pages de l'essai qui employaient cette classe, 8 n'avaient que `span.tv` et `span.tl` écrits à
+  la main.
+- **Graphique en barres** : un `<svg>` hors du composant (ni `.graphe-svg`, ni dans
+  `[data-graphe-empile]`) qui porte au moins quatre `<rect>` de même épaisseur (± 2), à pas régulier
+  (± 15 %), alignés sur une même arête et de trois longueurs distinctes au moins — barres verticales
+  alignées par le bas, horizontales par la gauche. Les `translate()` des groupes sont cumulés. La
+  régularité est ce qui distingue un graphique d'un schéma : sans elle, la mesure accusait 14 pages de
+  schémas de briques alignées.
+
+**Sortie déclarative.** `data-hors-composant="<raison>"`, **8 caractères au moins**, sur la rangée, le
+`<svg>` ou un ancêtre : l'écart voulu se dit. Un `="ok"` est refusé, sinon l'exemption se réduirait à
+l'ajout d'un attribut. Remède : employer le composant (`tuiles-indicateurs.js`, `barres-empilees.js`,
+`kpi-filter.js`).
+
+**Sévérité : avertissement (règle neuve).** Bruit mesuré le 18/10/2026 avec `check_html.py` sur les
+**176 pages HTML des `output\` du parc** (produits et pilot, hors fixtures, `.oracles` et copies de
+travail des worktrees), en lecture seule : **101 pages accusées sur 176 (57 %)**, dont **98 pour une
+rangée de chiffres (56 %, 162 rangées)** et **8 pour des barres (4,5 %, 19 `<svg>`)**, 5 pages cumulant
+les deux. Par âge : 18 pages sur 28 des pages courantes datées d'après le 03/10/2026 (naissance des
+composants), 25 sur 46 des courantes d'avant, 54 sur 78 des pages `old/` ; 4 sur 24 sans date. Les
+**fausses accusations relevées sont nulles** : les onze formes distinctes de rangée ont été lues sur
+leur texte (toutes des chiffres de tête), les huit pages de barres sur leurs légendes (toutes des
+graphiques de série) ; la page corrigée du cas fondateur (tuiles et filtres du socle) n'est pas
+accusée. Un taux de 57 % exclut le blocage : il rougirait la moitié du parc, dont des pages d'avant le
+composant (le § 1 de `composants.md` reste « lisible pour les pages existantes »). La mesure de barres
+a d'abord accusé 14 pages de schémas sans l'exigence de régularité (22 pages accusées, 8 vraies) :
+c'est le seuil qui porte la précision, et la fixture `l39-schema-de-boites.html` le garde.
+
+**Hors mesure, publié au périmètre de non-mesure.** Des barres en `<div>` ou en `<path>`, un
+graphique en `<canvas>` ou par bibliothèque (ECharts, Chart.js : 3 pages du parc, toutes du même
+produit), une courbe ou une aire (aucun composant du socle), un `<svg>` sous `scale` ou `rotate`, une
+rangée dont les blocs portent un autre nom de classe que la liste. 8 des 11 pages à classe `tuile`
+n'ont pas la structure du composant : elles sont accusées, les trois autres non.
+
+Fixtures : rouges `l39-rangee-maison.html`, `l39-tuiles-maison-nom-seul.html` (le nom sans la
+structure), `l39-rangee-exemption-muette.html`, `l39-barres-maison.html`,
+`l39-barres-dans-des-groupes.html` (rectangles sous `translate()`), `l39-barres-exemption-muette.html` ;
+vertes `l39-tuiles-du-socle.html` (le markup du § 14), `l39-rangee-exemption-motivee.html`,
+`l39-barres-composant.html` (la sortie du composant, dont la géométrie est celle d'une série de
+barres), `l39-barres-exemption-motivee.html`, `l39-schema-de-boites.html`, et l'exemple du socle
+`exemple-tuiles-et-barres-empilees.html` (le remède joué : zéro constat).
+
 ## Lancer le contrôle
 
 ```bash
-python scripts/check_html.py page.html                 # charte + a11y + print + L1-L38
-python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L38)
+python scripts/check_html.py page.html                 # charte + a11y + print + L1-L39
+python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L39)
 python scripts/check_html.py page.html --output json
 python scripts/check_html.py page.html --classe=source-machine   # page lue par une machine (TF-1589)
 python scripts/render_page.py page.html                # V1-V14 + L2 mesuré au rendu

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L39 tuiles du socle — 20261018a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:8px;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.tuiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.tuile{border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.tuile-label,.tuile-ecart,.tuile-comparaison{color:var(--muted);font-size:.8rem;margin:0}
+.tuile-valeur{font-family:var(--head);font-weight:800;font-size:1.6rem;margin:0}
+@media (max-width:640px){.wrap{padding:10px}.tuiles{grid-template-columns:repeat(2,1fr)}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de L39 (TF-1857) — la rangée du § 14 de composants.md, telle que le composant
+  « tuiles d'indicateurs » la pose : chaque bloc porte `.tuile-label`, `.tuile-valeur`,
+  `.tuile-ecart` (flèche ET mot) et `.tuile-comparaison`. Quatre blocs `.tuile` frères, comme dans
+  la rouge : seule la structure du composant les sépare.
+
+  Attendu : aucun avertissement L39, aucun échec L.
+-->
+<body><main class="wrap">
+<h1>Réservations du trimestre</h1>
+<p>Les quatre chiffres de tête du trimestre, comparés au trimestre précédent.</p>
+<div class="tuiles">
+  <article class="tuile tuile--bon" aria-labelledby="t1-l" aria-describedby="t1-c">
+    <p class="tuile-label" id="t1-l">Réservations</p>
+    <p class="tuile-valeur">128</p>
+    <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↑</span><span>hausse</span></span> <span>+9 (+7,6 %)</span> <span class="tuile-jugement">favorable</span></p>
+    <p class="tuile-comparaison" id="t1-c">Trimestre précédent : 119</p>
+  </article>
+  <article class="tuile tuile--neutre" aria-labelledby="t2-l" aria-describedby="t2-c">
+    <p class="tuile-label" id="t2-l">Nuitées</p>
+    <p class="tuile-valeur">742</p>
+    <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">→</span><span>stable</span></span> <span>+2 (+0,3 %)</span></p>
+    <p class="tuile-comparaison" id="t2-c">Trimestre précédent : 740</p>
+  </article>
+  <article class="tuile tuile--mauvais" aria-labelledby="t3-l" aria-describedby="t3-c">
+    <p class="tuile-label" id="t3-l">Taux d'occupation</p>
+    <p class="tuile-valeur">61 %</p>
+    <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↓</span><span>baisse</span></span> <span>-3 points</span> <span class="tuile-jugement">défavorable</span></p>
+    <p class="tuile-comparaison" id="t3-c">Trimestre précédent : 64 %</p>
+  </article>
+  <article class="tuile tuile--bon" aria-labelledby="t4-l" aria-describedby="t4-c">
+    <p class="tuile-label" id="t4-l">Panier moyen</p>
+    <p class="tuile-valeur">412 €</p>
+    <p class="tuile-ecart"><span class="tuile-sens"><span class="tuile-fleche" aria-hidden="true">↑</span><span>hausse</span></span> <span>+18 € (+4,6 %)</span> <span class="tuile-jugement">favorable</span></p>
+    <p class="tuile-comparaison" id="t4-c">Trimestre précédent : 394 €</p>
+  </article>
+</div>
+</main></body></html>

@@ -509,6 +509,10 @@ sens n'est pas neutre ; la couleur ne fait que le doubler. La tendance est optio
 (la flèche prend `--green`, `--red`, `--muted`). L'écart se **calcule** à l'écriture, pas à l'œil :
 un écart faux dans une tuile est un chiffre faux de tête.
 
+**Contrôle (TF-1857).** `check_html.py` L39 signale, en avertissement, une rangée de chiffres clés
+écrite à la main (au moins trois blocs `.kpi`, `.chiffre`, `.indicateur`… sans `.tuile-valeur` ni
+`data-kpi-filtre`) ; écart voulu : `data-hors-composant="<raison, 8 caractères au moins>"` sur la rangée.
+
 **Tokens et limites.** Jetons du `:root` du boilerplate seulement, échelle 4 pt, clair et sombre par
 les jetons. L'écart n'est pas calculé par le script (il se lit sans JS, à l'impression et en PDF) ;
 la tendance, elle, n'existe qu'avec JS et ne porte jamais le sens à elle seule.
@@ -560,6 +564,10 @@ colonne, le rang parmi les séries, le total de la colonne s'il n'est pas affich
 l'étiquette l'arrondit ou manque. Le nom de la série et de la catégorie vont dans l'`aria-label` du
 segment, pas dans l'infobulle. Elle se lit depuis le `title` du segment (contrat du § 13) ; chaque
 segment est focalisable (`tabindex="0"`) pour que le clavier l'ouvre aussi.
+
+**Contrôle (TF-1857).** `check_html.py` L39 signale, en avertissement, un `<svg>` hors composant qui
+trace à la main une série de barres (quatre barres de même épaisseur, à pas régulier, sur une même
+arête) ; écart voulu : `data-hors-composant="<raison, 8 caractères au moins>"` sur le `<svg>`.
 
 **Limites.** Pas de valeurs négatives ; l'étiquette se calcule sur une estimation de largeur de
 texte ; viewBox de 420 unités (lisible de 340 à 560 px) ; le graphique ne remplace pas le tableau

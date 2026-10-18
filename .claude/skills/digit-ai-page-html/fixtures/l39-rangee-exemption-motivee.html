@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L39 exemption motivée d'une rangée — 20261018a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:8px;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.kpi-label{color:var(--muted);font-size:.8rem}
+.kpi-hint{display:block;color:var(--muted);font-size:.75rem}
+.kpi-value{display:block;font-family:var(--head);font-weight:800;font-size:1.6rem}
+@media (max-width:640px){.wrap{padding:10px}.kpis{grid-template-columns:repeat(2,1fr)}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de L39 (TF-1857) — la même rangée que la rouge `l39-rangee-maison`, déclarée voulue :
+  `data-hors-composant` porte une raison (8 caractères au moins) sur la rangée. L'écart se dit, il ne
+  se tait pas ; la raison nomme ce que le composant ne ferait pas ici.
+
+  Attendu : aucun avertissement L39, aucun échec L.
+-->
+<body><main class="wrap">
+<h1>Réservations du trimestre</h1>
+<p>Les quatre chiffres de tête du trimestre, sans comparaison : la page est une annexe imprimée.</p>
+<div class="kpis" data-hors-composant="annexe imprimée : quatre chiffres sans écart ni comparaison, que le composant d'écarts n'apporterait pas">
+  <div class="kpi"><span class="kpi-label">Réservations</span><span class="kpi-value" aria-describedby="k1-h">128</span><span class="kpi-hint" id="k1-h">trimestre précédent : 119</span></div>
+  <div class="kpi"><span class="kpi-label">Nuitées</span><span class="kpi-value" aria-describedby="k2-h">742</span><span class="kpi-hint" id="k2-h">trimestre précédent : 740</span></div>
+  <div class="kpi"><span class="kpi-label">Taux d'occupation</span><span class="kpi-value" aria-describedby="k3-h">61 %</span><span class="kpi-hint" id="k3-h">trimestre précédent : 64 %</span></div>
+  <div class="kpi"><span class="kpi-label">Panier moyen</span><span class="kpi-value" aria-describedby="k4-h">412 €</span><span class="kpi-hint" id="k4-h">trimestre précédent : 394 €</span></div>
+</div>
+</main></body></html>

@@ -2126,6 +2126,44 @@ def run_avertissements_15_10():
     return out
 
 
+def run_l39_graphique_maison():
+    """TF-1857 (RA-12, lot Produit-79 20261017c) : L39, une rangée de chiffres clés ou un graphique en
+    barres que le socle couvre par un composant, réalisés à la main — avertissement (règle neuve).
+
+    Les deux formes se jouent dans les deux sens : la rouge accuse, la verte ne dit rien, et chaque
+    verte ne diffère de sa rouge que par l'élément que la règle lit. Rangée : la structure du
+    composant (`.tuile-valeur`) contre un `.tuile` écrit à la main ; barres : le composant contre le
+    même tracé à la main, y compris sous des groupes translatés. Exemption : un motif de 8
+    caractères au moins l'accorde, un « ok » ne l'accorde pas (sinon elle se réduirait à un attribut).
+    Contre-épreuve : un schéma de briques alignées n'est pas un graphique. Le remède que le message
+    prescrit (le composant lui-même) se joue sur l'exemple du socle : zéro constat."""
+    out = []
+    PAIRES = [
+        ("l39-rangee-maison.html", True, "rangée de chiffres clés"),
+        ("l39-tuiles-maison-nom-seul.html", True, "rangée de chiffres clés"),
+        ("l39-tuiles-du-socle.html", False, "rangée de chiffres clés"),
+        ("l39-rangee-exemption-motivee.html", False, "rangée de chiffres clés"),
+        ("l39-rangee-exemption-muette.html", True, "rangée de chiffres clés"),
+        ("l39-barres-maison.html", True, "graphique en barres"),
+        ("l39-barres-dans-des-groupes.html", True, "graphique en barres"),
+        ("l39-barres-composant.html", False, "graphique en barres"),
+        ("l39-barres-exemption-motivee.html", False, "graphique en barres"),
+        ("l39-barres-exemption-muette.html", True, "graphique en barres"),
+        ("l39-schema-de-boites.html", False, "graphique en barres"),
+        ("../assets/exemples-interactions/exemple-tuiles-et-barres-empilees.html", False, "L39"),
+    ]
+    for nom, attendu, forme in PAIRES:
+        fails, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+        vus = [w for w in warns if w.startswith("L39 ") and (forme == "L39" or forme in w)]
+        bloque = [f for f in fails if f.startswith("L39")]
+        ok = bool(vus) == attendu and not bloque
+        out.append({"fixture": nom.split("/")[-1], "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"TF-1857 avertissement {'présent' if attendu else 'absent'}, 0 échec",
+                    "obtenu": f"{len(vus)} avertissement(s), {len(bloque)} échec(s)",
+                    "regle": "L39", "detail": "" if ok else " | ".join(vus + bloque)[:300]})
+    return out
+
+
 def run_l2_remedes_nommes():
     """TF-1799 (lot Produit-83 20261015b, RA-5) — UNE RÈGLE QUI INTERDIT SON PROPRE REMÈDE.
 
@@ -5107,7 +5145,8 @@ def main():
            + run_echeance_forme_ancienne() + run_mesure_prete() + run_badge_defavorable()
            + run_avertissements_13_10() + run_avertissements_14_10()
            + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
-           + run_classe_source_machine() + run_avertissements_15_10())
+           + run_classe_source_machine() + run_avertissements_15_10()
+           + run_l39_graphique_maison())
     rendu = run_rendu()
     if rendu:
         res += rendu

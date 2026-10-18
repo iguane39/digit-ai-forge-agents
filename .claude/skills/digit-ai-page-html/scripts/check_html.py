@@ -1181,6 +1181,102 @@ def check_svg_identifiants(html: str):
     return fails, warns
 
 
+# --- L39 : les mesures de forme (TF-1857) ------------------------------------------------------
+# Une rangée de chiffres clés et un graphique en barres sont des FORMES que le socle couvre par un
+# composant (tuiles-indicateurs, barres-empilees). La mesure lit la structure, pas un nom : une
+# rangée est un groupe d'au moins trois frères portant une classe de chiffre clé, un graphique est
+# un <svg> qui porte au moins quatre rectangles de même épaisseur, régulièrement espacés, alignés
+# sur une même arête et de longueurs variables — la signature d'une série de barres, qu'aucune
+# boîte d'un schéma ne reproduit (essai sur 176 pages : sans la régularité, 14 schémas accusés).
+RE_CHIFFRE_CLE = re.compile(
+    r"^(?:kpi(?:[-_](?:card|carte|item|box|tile|block|cell))?|tuile|chiffre(?:[-_]cle)?|indicateur"
+    r"|metrics?|metric[-_]card|key[-_]?figure|stat[-_](?:card|tile|box|item))$", re.I)
+L39_MOTIF_MIN = 8   # caractères : un motif dit pourquoi, `="1"` ou `="ok"` ne le dit pas
+
+
+def _l39_nombre(v):
+    m = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*(?:px)?\s*", v or "")
+    return float(m.group(1)) if m else None
+
+
+def _l39_decalage(n, svg):
+    """Cumul des `translate()` des groupes entre le rectangle et son <svg> (seule transformation lue)."""
+    dx = dy = 0.0
+    for anc in n.ancetres():
+        if anc is svg:
+            break
+        m = re.search(r"translate\(\s*(-?[\d.]+)(?:[\s,]+(-?[\d.]+))?\s*\)", anc.att("transform") or "")
+        if m:
+            dx += float(m.group(1))
+            dy += float(m.group(2) or 0)
+    return dx, dy
+
+
+def _l39_serie_reguliere(groupe, i_pos, i_ep, i_long):
+    """>= 4 rectangles de même épaisseur (± 2), à pas régulier (± 15 %), de >= 3 longueurs distinctes."""
+    meilleure = []
+    restants = sorted(groupe, key=lambda r: r[i_ep])
+    amas = []
+    for r in restants:
+        if amas and r[i_ep] - amas[-1][0][i_ep] <= 2:
+            amas[-1].append(r)
+        else:
+            amas.append([r])
+    for g in amas:
+        g = sorted(g, key=lambda r: r[i_pos])
+        if len(g) < 4:
+            continue
+        pas = sorted(g[i + 1][i_pos] - g[i][i_pos] for i in range(len(g) - 1))
+        m = pas[len(pas) // 2]
+        if m <= 0:
+            continue
+        chaine = [g[0]]
+        for r in g[1:]:
+            if abs((r[i_pos] - chaine[-1][i_pos]) - m) <= max(2.0, 0.15 * m):
+                chaine.append(r)
+        if len(chaine) >= 4 and len({round(r[i_long]) for r in chaine}) >= 3 and len(chaine) > len(meilleure):
+            meilleure = chaine
+    return meilleure
+
+
+def _l39_barres(svg):
+    """('vertical' | 'horizontal', nombre de barres) si le <svg> trace une série de barres à la main."""
+    rects = []
+    for r in svg.descendants():
+        if r.tag != "rect":
+            continue
+        w, h = _l39_nombre(r.att("width")), _l39_nombre(r.att("height"))
+        x = _l39_nombre(r.att("x")) if r.att("x") is not None else 0.0
+        y = _l39_nombre(r.att("y")) if r.att("y") is not None else 0.0
+        if None in (w, h, x, y) or w < 2 or h < 2:
+            continue
+        dx, dy = _l39_decalage(r, svg)
+        rects.append((x + dx, y + dy, w, h))
+    par_base, par_gauche = {}, {}
+    for r in rects:
+        par_base.setdefault(round(r[1] + r[3]), []).append(r)
+        par_gauche.setdefault(round(r[0]), []).append(r)
+    for g in par_base.values():
+        b = _l39_serie_reguliere(g, 0, 2, 3)
+        if b:
+            return "vertical", len(b)
+    for g in par_gauche.values():
+        b = _l39_serie_reguliere(g, 1, 3, 2)
+        if b:
+            return "horizontal", len(b)
+    return None
+
+
+def _l39_motif(noeuds):
+    """Le motif d'exemption `data-hors-composant` posé sur l'un des noeuds ou leurs ancêtres, ou None."""
+    for n in noeuds:
+        for x in [n, *n.ancetres()]:
+            v = (x.att("data-hors-composant") or "").strip()
+            if v:
+                return v
+    return None
+
+
 def check_lisibilite(html: str, a: Arbre):
     fails, warns = [], []
     ids = index_ids(a)
@@ -3507,6 +3603,82 @@ def check_lisibilite(html: str, a: Arbre):
                 "L9 et L17) et retirer la section qui la double, ou déclarer un listing de renvoi "
                 "voulu par `data-renvoi-ok` sur le tableau.")
 
+    # --- L39 : une forme que le socle couvre ne se réalise pas à la main (TF-1857) ------------
+    # LE FAIT (lot Produit-79 20261017c, RA-12 ; classe graphique-maison-hors-composant-du-socle).
+    # Un tableau de bord de six graphiques SVG écrits à la main et d'une rangée de sept chiffres clés
+    # en `div.kpi` : composants.md § 14 (tuiles d'indicateurs) et § 15 (barres empilées) les déclarent
+    # obligatoires (🔴), aucun contrôle ne les exigeait. check_html PASS (47 règles), render_page
+    # PASS, l'exploitant a refusé la page.
+    # LA MESURE. Deux formes, deux mesures structurelles (voir les helpers `_l39_*`) :
+    #   · une RANGÉE DE CHIFFRES CLÉS : au moins trois frères d'un même parent portant une classe de
+    #     chiffre clé (RE_CHIFFRE_CLE, `tuile` comprise), au moins trois avec un chiffre, qui ne sont
+    #     NI la structure du composant (`.tuile-valeur`, § 14) NI un chiffre qui filtre
+    #     (`data-kpi-filtre`, § 8) : porter le nom de classe `tuile` sans la structure ne suffit pas
+    #     (essai : 8 pages sur 11 nommées `tuile` n'avaient que `span.tv` et `span.tl` écrits à la main) ;
+    #   · un GRAPHIQUE EN BARRES : un <svg> hors du composant (ni `.graphe-svg`, ni dans
+    #     `[data-graphe-empile]`) qui porte au moins quatre rectangles de même épaisseur,
+    #     régulièrement espacés, alignés sur une arête et de longueurs variables.
+    # SORTIE DÉCLARATIVE : `data-hors-composant="<raison>"` (au moins 8 caractères) sur la rangée, le
+    # <svg> ou un ancêtre — l'écart voulu se dit, il ne se tait pas.
+    # AVERTISSEMENT (règle neuve). Mesure de bruit du 18/10/2026 sur les 176 pages HTML des
+    # `output\` du parc (produits et pilot, hors fixtures et copies de travail) : rangée de chiffres
+    # 90 pages (51 %), barres 8 pages (4,5 %), zéro faux positif relevé à la lecture des 98 accusées ;
+    # la rangée accuse en majorité des pages d'avant le composant (naissance : 03/10/2026). Détail et
+    # limites : references/lisibilite.md, § L39.
+    def hors_composant(n):
+        return any(("graphe-svg" in x.classes()) or ("data-graphe-empile" in x.attrs)
+                   for x in [n, *n.ancetres()])
+
+    accusees_kpi, accusees_barres = [], []
+    def du_socle(c):
+        """Un bloc du socle : la structure du composant (`.tuile-valeur`) ou un chiffre qui filtre."""
+        return (c.att("data-kpi-filtre") is not None
+                or any("tuile-valeur" in d.classes() for d in c.descendants()))
+
+    for p in [a.racine, *a.racine.descendants()]:
+        if p.tag in ("svg", "script", "style"):
+            continue
+        freres = [c for c in p.enfants if isinstance(c, Noeud) and not du_socle(c)
+                  and any(RE_CHIFFRE_CLE.match(k) for k in c.classes())]
+        if len(freres) >= 3 and sum(1 for c in freres if re.search(r"\d", c.texte_propre())) >= 3:
+            accusees_kpi.append((p, len(freres), freres))
+    for svg in [n for n in a.racine.descendants() if n.tag == "svg"]:
+        if hors_composant(svg):
+            continue
+        forme = _l39_barres(svg)
+        if forme:
+            accusees_barres.append((svg, forme))
+
+    def _motif_valide(noeuds):
+        m = _l39_motif(noeuds)
+        return m is not None and len(m) >= L39_MOTIF_MIN
+
+    accusees_kpi = [x for x in accusees_kpi if not _motif_valide([x[0], *x[2]])]
+    accusees_barres = [x for x in accusees_barres if not _motif_valide([x[0]])]
+    if accusees_kpi:
+        p, n, freres = accusees_kpi[0]
+        warns.append(
+            f"L39 rangée de chiffres clés réalisée hors composant (avertissement) : "
+            f"{len(accusees_kpi)} rangée(s) de blocs de chiffre clé écrites à la main — la première, "
+            f"{n} blocs « {freres[0].texte_propre()[:36]} »… ({p.chemin()}). Le composant tuiles "
+            "d'indicateurs du socle les couvre (libellé, valeur, écart, sens, comparaison : "
+            "composants.md § 14, assets/tuiles-indicateurs.css et .js ; un chiffre qui filtre une "
+            "liste : § 8, kpi-filter.js). L'employer, ou déclarer l'écart voulu par "
+            'data-hors-composant="<raison, 8 caractères au moins>" sur la rangée (TF-1857, classe '
+            "graphique-maison-hors-composant-du-socle).")
+    if accusees_barres:
+        svg, (sens, nb) = accusees_barres[0]
+        nom = svg.att("aria-label") or svg.att("id") or svg.chemin()
+        warns.append(
+            f"L39 graphique en barres réalisé hors composant (avertissement) : "
+            f"{len(accusees_barres)} <svg> tracent à la main une série de barres — le premier, "
+            f"« {nom[:60]} » : {nb} barres {sens}es régulièrement espacées. Le composant barres "
+            "empilées du socle les couvre (1 à 6 séries, valeurs ou pourcentages, infobulle par "
+            "segment, vue tableau : composants.md § 15, assets/barres-empilees.css et .js). "
+            'L\'employer, ou déclarer l\'écart voulu par data-hors-composant="<raison, 8 '
+            "caractères au moins>\" sur le <svg> (TF-1857, classe "
+            "graphique-maison-hors-composant-du-socle).")
+
     # --- L35 : la typographie française tient aux coupures de ligne (TF-1384) ----------
     # RG-16 (26/09/2026) : sur une présentation, des deux-points ouvraient une ligne, « (point »
     # finissait une ligne et « 4) » ouvrait la suivante, un titre se coupait entre « chapitre » et
@@ -5012,6 +5184,16 @@ def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
         "une ancre, vers une section qui reprend son objet et le complète. Un objet du sujet ABSENT "
         "du listing, et un complément écrit dans un autre chapitre SANS lien depuis la ligne, "
         "passent ici : la revue de lecture compare le listing au reste de la page",
+        # TF-1857 (18/10/2026) — ce que L39 ne voit pas, publié.
+        "LES GRAPHIQUES ET LES CHIFFRES CLÉS HORS COMPOSANT ne sont jugés qu'en partie : L39 voit un "
+        "<svg> dont au moins quatre <rect> forment une série de barres (même épaisseur, pas régulier, "
+        "même arête, longueurs variables ; `translate()` seul est cumulé) et une rangée d'au moins "
+        "trois blocs portant une classe de chiffre clé sans la structure du composant. Passent ici : "
+        "des barres en <div> ou en <path>, un graphique en <canvas> ou par bibliothèque (ECharts, "
+        "Chart.js), une courbe ou une aire (aucun composant du socle ne les couvre), un SVG sous "
+        "`scale` ou `rotate`, et une rangée de chiffres clés dont les blocs portent un autre nom de "
+        "classe que ceux de la liste (kpi, tuile, chiffre, indicateur, metric…). La revue de lecture "
+        "compare la page aux composants du socle",
         "UNE INFOBULLE QUI PARAPHRASE n'est pas jugée. L3 bis voit la redite exacte de la cible et "
         "de son voisinage, la recopie d'une cible de lien ou d'une légende, et, ligne par ligne, "
         "la recopie du texte de SON groupe SVG ou de SA ligne de tableau, préfixe de code retiré "

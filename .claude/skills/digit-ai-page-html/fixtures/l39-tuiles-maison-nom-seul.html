@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L39 tuiles qui n'ont que le nom du composant — 20261018a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:8px;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.tuiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.tuile{border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.tv{display:block;font-family:var(--head);font-weight:800;font-size:1.6rem}
+.tl{color:var(--muted);font-size:.8rem}
+@media (max-width:640px){.wrap{padding:10px}.tuiles{grid-template-columns:repeat(2,1fr)}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de L39 (TF-1857) — le piège de la classe empruntée. Les blocs portent le NOM du
+  composant (`.tuiles`, `.tuile`) mais pas sa structure : `span.tv` et `span.tl` sont écrits à la
+  main, sans `.tuile-valeur`, ni écart, ni sens, ni comparaison. Mesuré le 18/10/2026 sur 11 pages
+  qui employaient la classe `tuile` : 8 n'avaient que cela.
+
+  Attendu : un avertissement L39 « rangée de chiffres clés », aucun échec L.
+-->
+<body><main class="wrap">
+<h1>Fréquentation de la semaine</h1>
+<p>Quatre chiffres de tête pour la semaine écoulée.</p>
+<div class="tuiles">
+  <div class="tuile"><span class="tv">192</span><span class="tl">sessions</span></div>
+  <div class="tuile"><span class="tv">103</span><span class="tl">clics payés</span></div>
+  <div class="tuile"><span class="tv">47</span><span class="tl">visites engagées</span></div>
+  <div class="tuile"><span class="tv">9</span><span class="tl">demandes de devis</span></div>
+</div>
+</main></body></html>
