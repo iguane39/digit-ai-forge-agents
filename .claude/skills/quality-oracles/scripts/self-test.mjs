@@ -390,6 +390,50 @@ if (reg) {
   }
 }
 
+// (3c quater) TF-1877 (19/10/2026) — l'oracle de la famille « tableau de bord de pilotage » du pilot
+// (TF-1855) entre au registre machine, routé par le CONTENU seul (`ext` vide : une extension .html le
+// ferait jouer, et rendre SANS_OBJET, sur toutes les pages). Trois preuves : une page qui se déclare de
+// la famille est routée, une page qui ne s'en déclare pas ne l'est pas, et la COMMANDE du registre,
+// `{pilot}` résolu, rend PASS sur l'instance de la famille et FAIL sur la même instance privée de sa
+// commande de comparaison (TB1). Pilot ou instance absents de ce poste : SKIP motivé, jamais un vert inventé.
+if (reg) {
+  const e = reg.oracles.find((o) => (o.cmd || []).some((s) => /oracle-tableau-de-bord-pilotage\.mjs$/.test(s)));
+  if (!e) ko('TF-1877 : oracle-tableau-de-bord-pilotage ABSENT du registre machine');
+  else {
+    const route = (html) => (e.content_patterns || []).some((p) => new RegExp(p, 'im').test(html));
+    const declaree = '<!doctype html><html lang="fr"><body data-page="donnees" data-tableau-de-bord="pilotage"><h1>t</h1></body></html>';
+    const couple = '<html><body><p>Gabarit : gd-tableau-de-bord-pilotage</p></body></html>';
+    const horsFamille = '<html><body data-page="donnees"><h1>Un tableau de bord de pilotage</h1></body></html>';
+    const instance = PILOT && path.join(PILOT, 'gabarits', 'documents', 'tableau-de-bord-pilotage', 'INSTANCE.html');
+    if ((e.ext || []).length || !route(declaree) || !route(couple) || route(horsFamille)) {
+      ko(`TF-1877 : le routage de oracle-tableau-de-bord-pilotage ne tient pas — ext ${JSON.stringify(e.ext)}, page déclarée ${route(declaree) ? 'routée' : 'NON routée'}, couple de gabarit ${route(couple) ? 'routé' : 'NON routé'}, page hors famille ${route(horsFamille) ? 'ROUTÉE' : 'non routée'}`);
+    } else if (!PILOT || !fs.existsSync(instance)) {
+      ok(`TF-1877 : oracle-tableau-de-bord-pilotage au registre, routé par le contenu seul — commande non rejouée : ${PILOT ? 'instance de la famille absente de ce poste' : motifPilotAbsent(SKILLDIR)}`);
+    } else {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1877-'));
+      try {
+        const verte = fs.readFileSync(instance, 'utf8');
+        const marque = 'data-commande="comparaison"';
+        const rouge = path.join(tmp, 'instance-sans-comparaison.html');
+        fs.writeFileSync(rouge, verte.replace(marque, 'data-commande-retiree="comparaison"'), 'utf8');
+        const jouer = (cible) => {
+          const [bin, ...reste] = e.cmd.map((s) => s.replace(MARQUEUR_PILOT, PILOT).replace('{file}', cible));
+          const r = spawnSync(bin === 'node' ? process.execPath : bin, reste, { encoding: 'utf8', timeout: 180000 });
+          let j = null; try { j = JSON.parse(r.stdout); } catch {}
+          return { v: j ? j.verdict : '?', code: r.status, tb1: j ? (j.findings || []).some((f) => f.regle === 'TB1' && f.statut === 'FAIL') : false };
+        };
+        if (!verte.includes(marque)) ko('TF-1877 : la mutation du banc ne s\'applique plus — l\'instance de la famille ne porte plus ' + marque);
+        else {
+          const r = jouer(rouge), v = jouer(instance);
+          (r.v === 'FAIL' && r.code === 1 && r.tb1 && v.v === 'PASS' && v.code === 0)
+            ? ok('TF-1877 : oracle-tableau-de-bord-pilotage au registre, routé par le contenu seul, et sa commande rend PASS sur l\'instance de la famille, FAIL (TB1) sur la même instance sans sa commande de comparaison')
+            : ko(`TF-1877 : la commande du registre pour oracle-tableau-de-bord-pilotage ne tient pas ses deux sens — mutée ${r.v} (exit ${r.code}, TB1 ${r.tb1 ? 'FAIL' : 'non en échec'}), instance ${v.v} (exit ${v.code})`);
+        }
+      } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+    }
+  }
+}
+
 // (3d) TF-1326 (23/09/2026) — LE LANCEUR RÉSOUT L'INTERPRÉTEUR PYTHON, et un interpréteur
 // introuvable rend un SKIP MOTIVÉ. Le registre écrit `python3` ; sous Windows ce nom peut être
 // l'alias du Microsoft Store, qui répond « Python est introuvable » : le domaine « Régression

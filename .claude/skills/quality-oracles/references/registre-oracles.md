@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.43.0, alignée sur le JSON le 16/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.44.0, alignée sur le JSON le 19/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -65,6 +65,7 @@
 | Corpus design : résolution des sources | `node {forges}/digit-ai-forge-design/oracles/oracle-corpus.mjs <dossier>` — C1 colonnes, C2 cellules, C3 statuts, C4 unicité, C5 polices réflexes, C6 sources résolues, C7 monoculture inter-clients (invocation explicite par dossier) | cli | ✅ |
 | Écran d'application : exploitabilité au volume réel des données | `node {forges}/digit-ai-forge-design/oracles/oracle-exploitabilite.mjs <page.html\|url> [--etat-connexion etat.json] [--theme dark]` — **X0** cible jugeable (une redirection vers une connexion est signalée, l'écran n'est pas jugé) · **X1** l'écran tient en 4 hauteurs de fenêtre, hors tableaux filtrables du socle · **X2** ligne médiane d'un tableau de 5 lignes ou plus à 80 px au plus · **X3** aucune valeur machine visible (snake_case, objet sérialisé) · **X4** colonnes côte à côte dans un rapport de 3 au plus au-delà de 1 500 px · **X5** un en-tête de ligne en 3 lignes au plus. Se joue sur l'écran rendu, de préférence une instance **servie et alimentée** : sur le seul jeu de démonstration il ne prouve rien. **Invocation explicite** (TF-1654, inscrit le 14/10/2026 par TF-1687) | cli | ✅ |
 | Exploitation : révisions actives d'une application Container Apps (O-18) | `node {forges}/digit-ai-forge-ops/oracles/oracle-ops.mjs --revisions-actives <capture.json>` — **O18** sur la sortie capturée de `az containerapp revision list -o json` : chaque application ne garde actives que ses révisions servies (trafic > 0) et une N-1 saine à 0 % ; toute autre révision active est bloquante, nommée avec sa commande de désactivation (réversible). Aucun appel réseau ; capture vide ou introuvable : SKIP. **Invocation explicite** (TF-1639, inscrit le 14/10/2026 par TF-1687) | cli | ✅ |
+| Tableau de bord de pilotage : forme validée de la famille | `node {pilot}/oracles/oracle-tableau-de-bord-pilotage.mjs <page.html>` — **TB0** la page se déclare de la famille (`data-tableau-de-bord="pilotage"`), sinon SANS_OBJET · **TB1** commandes globales (période, de, à, comparaison, objet, réinitialisation) et bandeau qui les dit · **TB2** cascade ISTO, quatre niveaux dans l'ordre · **TB3** chaque tableau dit s'il découpe un total (ligne de total et colonne de part, ou motif écrit) · **TB4** entonnoir d'au moins trois étapes · **TB5** objectifs à échéance et formule · **TB6** comparaison à un an · **TB7** données lisibles et liaisons résolues, mention « données fictives » si et seulement si elles le sont · **TB8** avertissement : bloc de lecture à cinq rubriques par graphique · **TB9** moteur embarqué · **TBI1-TBI7** dans Chromium, chaque chiffre affiché recompté depuis les données de la page (SKIP motivé sans python ou playwright). L'oracle vit chez le **pilot** (famille `gd-tableau-de-bord-pilotage`, TF-1855) ; ce registre l'INDEXE, il ne le réimplémente pas (R3). **Routé par le contenu seul** (`ext` vide) : le marqueur de la famille ou le couple « Gabarit : gd-tableau-de-bord-pilotage ». Inscrit le 19/10/2026 par TF-1877 (1) | cli (délégué) | ✅ |
 | Exigences produit : testabilité de l'énoncé | `node {forges}/digit-ai-forge-conception/oracles/oracle-exigences.mjs <EXIGENCES.json>` — E1 champs obligatoires, E2 identifiant unique et non réaffecté, E3 critère chiffré avec unité ou binaire observable, E4 liste noire de termes subjectifs, E5 palier valide, E6 énoncé atomique | cli | ✅ |
 | Traçabilité besoin ↔ exigence ↔ vue (référentiel de conception) | `node {forges}/digit-ai-forge-conception/oracles/oracle-tracabilite.mjs <EXIGENCES.json> [--vue <fichier>]…` — T1 aucun orphelin des deux côtés, T2 exactement un critère, T3 vue alignée sur l'empreinte sha256 de sa source, T4 statut épistémique porteur de sa source | cli | ✅ |
 | Couverture de la surface fonctionnelle | `node {forges}/digit-ai-forge-conception/oracles/oracle-surface.mjs <EXIGENCES.json> [--seuil 95]` — S1 tout élément non couvert est NOMMÉ, S2 ratio publié avec sa liste, S3 lien de surface valide ou raison `hors_surface` | cli | ✅ |
@@ -792,3 +793,15 @@ méthode n'a encore été exercée par aucune mission réelle, et ses fixtures s
   `exploitabilite-rouge.html` FAIL (X1 à X5), `exploitabilite-verte.html` PASS ;
   `o18-revisions-actives/rouge.json` FAIL (2 constats O18), `verte.json` PASS. Forge absente du
   poste : SKIP motivé.
+
+## Inscription du 19/10/2026 — l'oracle de la famille « tableau de bord de pilotage » (TF-1877, v2.44.0)
+
+- **Le fait** : l'oracle de la famille, construit au pilot le 18/10/2026 (TF-1855), était signalé « domaine neuf »
+  par `oracle-controle-maison` (CM-1) : ni le registre machine ni la vue humaine ne le nommaient, donc aucun lanceur
+  ne le jouait sur une page de pilotage.
+- **Routage** : par le contenu seul (`ext` vide), comme `oracle-restitution` : une extension `.html` le ferait jouer,
+  et rendre SANS_OBJET, sur toutes les pages. Le déclenchent le marqueur `data-tableau-de-bord="pilotage"` sur `<html>`,
+  `<body>` ou `<main>`, ou le couple « Gabarit : gd-tableau-de-bord-pilotage ».
+- **Preuve** : bloc TF-1877 de la recette. Il vérifie le routage (une page de la famille est routée, une page hors
+  famille ne l'est pas), puis joue la commande du registre, `{pilot}` résolu, sur l'instance de la famille (PASS) et sur
+  la même instance sans sa commande de comparaison (FAIL, TB1). Pilot absent du poste : SKIP motivé.
