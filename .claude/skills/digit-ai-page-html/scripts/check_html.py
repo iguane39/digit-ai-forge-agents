@@ -98,6 +98,30 @@ SAMPLE = """<!DOCTYPE html>
 
 VIDES = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link",
          "meta", "param", "source", "track", "wbr"}
+
+# TF-1884 — l'attribut `lang` de <html>. Étiquette BCP 47 BIEN FORMÉE (RFC 5646), jugée en
+# minuscules (la casse n'est pas significative) : langue de 2 à 3 lettres (+ jusqu'à trois extlangs), 4 lettres réservées
+# ou 5 à 8 lettres, puis écriture, région (2 lettres ou 3 chiffres), variantes, extensions, usage
+# privé. La forme est jugée, pas l'existence de la langue dans le registre IANA (publié au non
+# jugé : un sous-étiquette inventée mais bien formée passe).
+RE_BCP47 = re.compile(
+    r"^(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{4}|[a-z]{5,8})"
+    r"(?:-[a-z]{4})?(?:-(?:[a-z]{2}|\d{3}))?(?:-(?:[a-z0-9]{5,8}|\d[a-z0-9]{3}))*"
+    r"(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?$")
+RE_BALISE_HTML = re.compile(r"<html\b([^>]*)>", re.I)
+RE_ATTR_LANG = re.compile(r"""(?<![\w:-])lang\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))""", re.I)
+
+
+def langue_declaree(html: str) -> str:
+    """Valeur de `lang` sur la balise <html>, casse d'origine, « » si absente ou vide.
+    `xml:lang` n'est pas `lang` : HTML ne lit que le second (lecture d'écran, WCAG 3.1.1)."""
+    m_html = RE_BALISE_HTML.search(html)
+    if not m_html:
+        return ""
+    m = RE_ATTR_LANG.search(m_html.group(1))
+    if not m:
+        return ""
+    return next((g for g in m.groups() if g is not None), "").strip()
 # L7 (TF-0423) : lexique FERMÉ du remplissage — la phrase qui paraphrase le titre au lieu de
 # dire ce que le chapitre apprend ; et plafond de mots au-delà duquel c'est un paragraphe.
 RE_CHAPEAU_REMPLISSAGE = re.compile(
@@ -646,12 +670,22 @@ def check_charte(html: str):
     # « lang="fr" ou rien » bloquait les kits bilingues (constaté sur AuditCore en).
     # fr reste le défaut Digit-AI : toute autre langue passe en avertissement, jamais
     # en silence ; l'absence de déclaration reste un échec.
-    m_lang = re.search(r'<html[^>]*\blang\s*=\s*"([a-z]{2}(?:-[a-z0-9]+)*)"', low)
-    if not m_lang:
-        fails.append('A3 attribut lang absent ou vide sur <html> '
-                     '(défaut Digit-AI : lang="fr").')
-    elif m_lang.group(1) != "fr" and not m_lang.group(1).startswith("fr-"):
-        warns.append(f'lang="{m_lang.group(1)}" déclaré — accepté (TF-0241, livrable non '
+    # TF-1884 (19/10/2026) : la langue déclarée se lit sous ses trois écritures HTML (guillemets
+    # doubles, apostrophes, valeur nue) et se juge BIEN FORMÉE (BCP 47) au lieu d'être limitée à
+    # deux lettres entre guillemets doubles : « fil », « es-419 » ou `lang='es'` étaient refusés
+    # comme « absents » sur une page qui déclarait sa langue.
+    lang_declaree = langue_declaree(_sans_commentaires(html))
+    if not lang_declaree:
+        fails.append('A3 attribut lang absent ou vide sur <html> (défaut Digit-AI : lang="fr" ; '
+                     'une page rédigée dans une autre langue déclare la sienne, par exemple '
+                     'lang="es" — jamais "fr" pour la faire passer, la lecture d\'écran '
+                     'prononcerait le texte dans la mauvaise langue, WCAG 3.1.1).')
+    elif not RE_BCP47.match(lang_declaree.lower()):
+        fails.append(f'A3 attribut lang="{lang_declaree}" invalide sur <html> : ce n\'est pas une '
+                     'étiquette de langue BCP 47 bien formée (exemples : "fr", "fr-FR", "es", '
+                     '"pt-BR", "zh-Hans", "es-419").')
+    elif lang_declaree.lower() != "fr" and not lang_declaree.lower().startswith("fr-"):
+        warns.append(f'lang="{lang_declaree}" déclaré — accepté (TF-0241, livrable non '
                      'francophone assumé) ; le défaut Digit-AI reste "fr".')
 
     m_charset = re.search(r'<meta[^>]*charset', low)
@@ -5179,6 +5213,10 @@ def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
         "chose. Un intitulé de navigation juste et incompréhensible passe",
         "L'ADÉQUATION DU CONTENU À SON LECTEUR DÉCLARÉ n'est pas jugée : qu'un chapitre "
         "appartienne au public que la page annonce est un jugement, pas une mesure",
+        # TF-1884 (19/10/2026) — ce que A3 ne regarde pas dans `lang`, publié.
+        "LA LANGUE DÉCLARÉE est jugée BIEN FORMÉE (BCP 47), jamais contre le registre IANA ni "
+        "contre la langue réelle du texte : un `lang=\"es\"` posé sur une page rédigée en français "
+        "passe ici, et une sous-étiquette inventée mais bien formée aussi",
         # TF-1742 / TF-1763 (15/10/2026) — les trous que L38 et L3 bis laissent, publiés.
         "L'EXHAUSTIVITÉ D'UN LISTING n'est jugée qu'en partie : L38 voit une ligne qui renvoie, par "
         "une ancre, vers une section qui reprend son objet et le complète. Un objet du sujet ABSENT "

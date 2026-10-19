@@ -61,6 +61,14 @@ import re
 import sys
 from pathlib import Path
 
+# Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression de
+# caractères hors Latin-1 (TF-1884 : « → » levait UnicodeEncodeError en console Windows).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 SEUIL_DEFAUT = 1.0
 
 # --- HTML : ce qui ne se voit pas à l'écran -------------------------------------------------

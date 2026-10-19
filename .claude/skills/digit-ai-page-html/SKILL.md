@@ -7,13 +7,30 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.34.0"
+  version: "1.34.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.34.1 (19/10/2026)** — **la langue déclarée d'une page se lit et se juge pour ce qu'elle est, et aucun script du
+skill ne plante en console Windows (TF-1884, RT-3 du lot Produit-84 20261016b, décision R-58 option (a)).** Une fiche
+demandée en espagnol était refusée sur le seul motif de `lang`, et le script plantait en `cp1252` en affichant l'échec.
+**(1) A3 lit `lang` sous ses trois écritures HTML** (guillemets doubles, apostrophes, valeur nue) et le juge **bien formé**
+(étiquette BCP 47 : `es`, `es-419`, `fil-PH`, `zh-Hans`). Avant : `lang='es-419'` et `lang=fil-PH` échouaient comme
+« absents », et `lang="es_ES"` échouait pour la mauvaise raison (« absent » alors que la langue est déclarée). Après : les
+deux premiers passent avec l'avertissement TF-0241, le dernier échoue en « invalide » avec les formes qui passent ; l'absence
+reste bloquante et son message dit de déclarer SA langue, jamais « fr » pour passer (WCAG 3.1.1). Ce que le contrôle ne
+juge pas est publié au non jugé : l'existence de la langue au registre IANA et la langue réelle du texte. **(2) UTF-8
+forcé** dans `check_completude.py` et `mesurer_bruit.py`, les deux scripts qui ne le faisaient pas : le premier plantait en
+`UnicodeEncodeError` sur « → » (reproduit avant correction, exit 1) dès qu'on le lançait depuis une console Windows ; le
+banc masquait le défaut parce qu'il joue ses sous-processus en `-X utf8`. Cas du banc : `run_console_cp1252`, qui impose
+`cp1252` sans `-X utf8` (rouge : un script jouet qui ne s'en soucie pas échoue). Fixtures `charte-lang-es`,
+`charte-lang-apostrophes`, `charte-lang-trois-lettres`, `charte-lang-invalide`. **Version CORRECTIVE** : aucune règle neuve,
+aucun verdict de la recette existante ne change. Écart au libellé du registre : la variante `client-a-page-html` citée par
+le retour n'est pas dans ce dépôt, et `lang="es"` entre guillemets doubles passait déjà ici (mesuré, fixture `charte-lang-es`).
 
 **1.34.0 (18/10/2026)** — **le canvas est déclaré hors mesure, et ses aplats sont mesurés : une règle de rendu neuve,
 `V22` (TF-1859, RA-14 du lot Produit-79 20261017c), bloquante.** Un graphique Apache ECharts aux séries presque
@@ -567,7 +584,7 @@ python scripts/check_html.py chemin/vers/page.html
 # JSON pour intégration : python scripts/check_html.py page.html --output json
 ```
 
-Le script signale les **échecs bloquants** (Syne présent, `lang` absent, charset non prioritaire
+Le script signale les **échecs bloquants** (Syne présent, `lang` absent ou mal formé, charset non prioritaire
 ou déclaré au-delà du 1024e octet — A3, squelette `html`/`head`/`body` absent — A1, titre hors
 motif marque + objet + version datée — A4, favicon absent ou non embarqué — A2,
 `<h1>` absent ou multiple, `:root` absent, `<title>` vide, pas de `@media print`, ressource

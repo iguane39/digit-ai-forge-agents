@@ -44,6 +44,14 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+# Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression de
+# caractères hors Latin-1 (TF-1884 : « → » levait UnicodeEncodeError en console Windows).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 ICI = Path(__file__).resolve().parent
 IGNORES = {".git", "node_modules", "__pycache__", ".oracles", "fixtures", "captures"}
 

@@ -17,6 +17,7 @@ Code de sortie : 0 si tous les cas passent, 1 sinon.
 """
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -419,7 +420,15 @@ RE_CODE_A = re.compile(r"^(A\d+(?:-bis)?)\b")
 # fixture verte doit être charte-verte par ailleurs.
 CAS_LANG = {
     "charte-lang-en.html": False,     # aucun échec attendu (warn seulement)
-    "charte-lang-absent.html": True,  # un échec « lang » attendu, et lui seul
+    "charte-lang-absent.html": "absent",  # un échec « lang » attendu, et lui seul
+    # TF-1884 (19/10/2026) — une fiche demandée en espagnol était refusée sur le seul motif lang.
+    # Les trois écritures HTML de l'attribut (guillemets doubles, apostrophes, valeur nue) et
+    # une étiquette de trois lettres passent ; une étiquette mal formée échoue, pour la bonne
+    # raison (« invalide », pas « absent » : la langue y est déclarée).
+    "charte-lang-es.html": False,
+    "charte-lang-apostrophes.html": False,
+    "charte-lang-trois-lettres.html": False,
+    "charte-lang-invalide.html": "invalide",
 }
 
 CAS_G1 = {
@@ -980,7 +989,10 @@ def run():
         fails, _ = check(chemin.read_text(encoding="utf-8"), regles="charte")
         fails_lang = [f for f in fails if "lang" in f.lower()]
         parasites = [f for f in fails if f not in fails_lang]
-        ok = (bool(fails_lang) == echec_lang_attendu) and not parasites
+        # Un attendu texte (« absent », « invalide ») exige AUSSI que le message nomme la bonne cause.
+        bonne_cause = (not isinstance(echec_lang_attendu, str)
+                       or all(echec_lang_attendu in f for f in fails_lang))
+        ok = (bool(fails_lang) == bool(echec_lang_attendu)) and not parasites and bonne_cause
         resultats.append({
             "fixture": nom,
             "verdict": "OK" if ok else "ECHEC",
@@ -2386,6 +2398,47 @@ def run_compte_regles_en_prose():
              "obtenu": f"{vues} annonce(s), {len(perimees)} périmée(s), rouge {len(rouge)}, "
                        f"vert {len(vert)}",
              "regle": "TF-1689 compte en prose", "detail": " | ".join(perimees)[:200]}]
+
+
+def run_console_cp1252():
+    """TF-1884 — aucun script Python du skill ne plante en console Windows (cp1252).
+
+    Le banc joue habituellement ses sous-processus en `-X utf8`, ce qui MASQUE le défaut : un
+    script qui imprime « → » sans forcer sa sortie lève UnicodeEncodeError dès qu'un humain le
+    lance depuis une console Windows. Ici le sous-processus tourne en cp1252 imposé
+    (PYTHONIOENCODING, PYTHONUTF8=0), sans `-X utf8`. Deux preuves : chaque script, IMPORTÉ,
+    laisse sa sortie capable d'écrire « → » ; et `check_completude.py`, qui l'imprime dans son
+    rapport, se joue de bout en bout. Le rouge est un script jouet qui n'y pense pas.
+    """
+    env = {**os.environ, "PYTHONUTF8": "0", "PYTHONIOENCODING": "cp1252"}
+    env.pop("PYTHONLEGACYWINDOWSSTDIO", None)
+    dossier = Path(__file__).resolve().parent
+    res = []
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        res.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1884 console cp1252", "detail": detail[:300]})
+
+    jouet = subprocess.run([sys.executable, "-c", "print('→')"], capture_output=True,
+                           env=env, timeout=60)
+    cas("script jouet sans reconfigure (ROUGE)", jouet.returncode != 0, "exit != 0",
+        f"exit {jouet.returncode}", "le jouet doit lever UnicodeEncodeError")
+    for nom in ("check_html", "check_markdown", "check_completude", "mesurer_bruit", "render_page"):
+        code = (f"import sys; sys.path.insert(0, {str(dossier)!r}); import {nom}; "
+                "print('\u2192 \u2717')")
+        r = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env, timeout=120)
+        sortie = r.stdout.decode("utf-8", "replace")
+        cas(f"{nom}.py importé en cp1252", r.returncode == 0 and "→" in sortie,
+            "exit 0, « → » écrit", f"exit {r.returncode}", r.stderr.decode("utf-8", "replace")[-250:])
+    r = subprocess.run([sys.executable, str(dossier / "check_completude.py"),
+                        str(FIXTURES / "completude-verte.html"),
+                        "--source", str(FIXTURES / "completude-source.md")],
+                       capture_output=True, env=env, timeout=120)
+    sortie = r.stdout.decode("utf-8", "replace")
+    cas("check_completude.py de bout en bout en cp1252", r.returncode == 0 and "→" in sortie,
+        "exit 0, rapport complet (« → » écrit)", f"exit {r.returncode}",
+        r.stderr.decode("utf-8", "replace")[-250:])
+    return res
 
 
 def run_classe_source_machine():
@@ -5308,6 +5361,10 @@ def main():
     canvas_v22 = run_canvas_v22()
     if canvas_v22:
         res += canvas_v22
+    # TF-1884 — aucun script du skill ne plante en console Windows (cp1252), jouée sans `-X utf8`.
+    console = run_console_cp1252()
+    if console:
+        res += console
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

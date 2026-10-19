@@ -6,7 +6,7 @@ Cibles : **Viewer** (navigateur) et **PDF** (WeasyPrint) ; les divergences sont 
 
 ## 1 — Structure & `<head>`
 
-- 🔴 Ouvrir par `<!DOCTYPE html>` puis `<html lang="fr">` (lecteurs d'écran, césure, indexation).
+- 🔴 Ouvrir par `<!DOCTYPE html>` puis `<html lang="fr">` (lecteurs d'écran, césure, indexation). Une page rédigée dans une autre langue déclare la sienne (`lang="es"`, `lang="pt-BR"`), jamais `fr` pour passer le contrôle : la lecture d'écran prononcerait le texte dans la mauvaise langue (WCAG 3.1.1). Étiquette BCP 47 bien formée, guillemets doubles ou apostrophes (TF-1884).
 - 🔴 `<meta charset="UTF-8">` **puis** `<meta name="viewport">` **en tout premier** dans le `<head>` (le charset doit tomber dans les 1024 premiers octets).
 - 🔴 `<title>` descriptif et porteur de marque : `Digit-AI — {Objet} · {Client}`.
 - 🟡 `<meta name="description">` : résumé clair du livrable.
