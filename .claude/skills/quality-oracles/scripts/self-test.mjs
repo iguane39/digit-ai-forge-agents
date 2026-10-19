@@ -28,6 +28,47 @@ const fails = [], oks = [];
 const ok = m => oks.push(m);
 const ko = m => fails.push(m);
 
+// TF-1861 (19/10/2026) — UNE SUPPRESSION SE VÉRIFIE, ELLE NE SE SUPPOSE PAS. Sous Node v25.2.1 Windows,
+// `fs.rmSync` d'un fichier au NOM ACCENTUÉ ne le supprime pas et ne lève aucune erreur
+// (`existsSync` reste vrai) : `git add -A` n'enregistre alors aucun retrait, et les bancs TF-1483 et
+// TF-1448 (B) échouent pour une cause de poste. Les dépôts jetables de ces bancs RETIRENT des fichiers
+// accentués, c'est leur objet : les noms ne s'abrègent donc pas en ASCII. Le retrait passe par une suite
+// de voies et s'arrête dès que le fichier a disparu ; si aucune n'y parvient il LÈVE, et le banc dit
+// pourquoi au lieu de mesurer un dépôt faux. Mesuré le 19/10/2026 sous Node v24.16.0 : `rmSync` seul suffit
+// (voie 1) ; les voies de repli ne sont éprouvées que par injection (voir le banc « TF-1861 » plus bas).
+const VOIES_DE_RETRAIT = [
+  (p) => fs.rmSync(p, { force: true }),
+  (p) => fs.unlinkSync(p),
+  (p) => spawnSync('git', ['-C', path.dirname(p), 'rm', '-f', '-q', '--', path.basename(p)], { encoding: 'utf8' }),
+];
+function retirerVerifie(chemin, voies = VOIES_DE_RETRAIT) {
+  for (const voie of voies) {
+    try { voie(chemin); } catch { /* la voie suivante reprend la main */ }
+    if (!fs.existsSync(chemin)) return;
+  }
+  throw new Error('suppression non effective après ' + voies.length + ' voie(s) : ' + chemin);
+}
+// Banc de `retirerVerifie`, à double sens. Vert : un fichier au nom accentué disparaît par la suite réelle,
+// puis par la voie de repli quand la première ne fait rien (le comportement de Node v25 simulé par une voie
+// muette). Rouge : si AUCUNE voie ne supprime, l'appel lève — c'est ce qui sépare la nouvelle garde de
+// l'ancien `rmSync` muet, qui laissait un dépôt jetable faux et un banc rouge sans cause lisible.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-1861-'));
+  try {
+    const muette = () => { /* simule rmSync de Node v25 : ni suppression, ni erreur */ };
+    const reel = path.join(tmp, 'synthèse-été.md'), repli = path.join(tmp, 'bilan-Frégate.md'), tenace = path.join(tmp, 'rapport-été.md');
+    for (const f of [reel, repli, tenace]) fs.writeFileSync(f, 'x\n', 'utf8');
+    let leve = null;
+    retirerVerifie(reel);
+    retirerVerifie(repli, [muette, (p) => fs.unlinkSync(p)]);
+    try { retirerVerifie(tenace, [muette, muette]); } catch (e) { leve = e; }
+    if (fs.existsSync(reel)) ko('TF-1861 : la suite réelle de retrait laisse un fichier au nom accentué');
+    else if (fs.existsSync(repli)) ko('TF-1861 : la voie de repli ne prend pas la main quand la première ne supprime rien');
+    else if (!leve || !fs.existsSync(tenace)) ko('TF-1861 sens rouge : un retrait que AUCUNE voie n\'effectue doit LEVER (le fichier est resté), sinon le banc mesure un dépôt faux en silence');
+    else ok('TF-1861 : un fichier au nom accentué est retiré et la suppression est vérifiée ; une voie muette cède à la suivante, et un retrait qu\'aucune voie n\'effectue lève au lieu de passer');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // --- le lecteur de frontmatter vit dans lib/frontmatter.mjs depuis TF-1337 : le contrôle rapide des
 // skills de l'index (frontmatter-skills-index.mjs) l'importe aussi — les deux jugent avec le MÊME lecteur.
 
@@ -1146,7 +1187,7 @@ else {
       { date: '2021-02-01T10:00:00+01:00', message: 'retrait du bilan', retirer: ['bilan-' + TERME + '.md'] },
     ]) {
       for (const [f, txt] of Object.entries(c.ecrire || {})) fs.writeFileSync(path.join(repo, f), txt, 'utf8');
-      for (const f of c.retirer || []) fs.rmSync(path.join(repo, f), { force: true });
+      for (const f of c.retirer || []) retirerVerifie(path.join(repo, f));
       g(repo, base, 'add', '-A');
       g(repo, { ...base, GIT_AUTHOR_DATE: c.date }, 'commit', '-q', '-m', c.message);
     }
@@ -2161,7 +2202,7 @@ else {
       g(r, base, 'config', 'user.name', 'banc');
       for (const c of commits) {
         for (const [f, txt] of Object.entries(c.ecrire || {})) fs.writeFileSync(path.join(r, f), txt, 'utf8');
-        for (const f of c.retirer || []) fs.rmSync(path.join(r, f), { force: true });
+        for (const f of c.retirer || []) retirerVerifie(path.join(r, f));
         g(r, base, 'add', '-A');
         // La date de VALIDATION reste celle d'aujourd'hui : c'est l'état d'après une réécriture.
         g(r, { ...base, GIT_AUTHOR_DATE: c.date }, 'commit', '-q', '-m', c.message);
@@ -2363,7 +2404,7 @@ else {
       g(r, base, 'config', 'user.name', 'banc');
       for (const c of commits) {
         for (const [f, txt] of Object.entries(c.ecrire || {})) fs.writeFileSync(path.join(r, f), txt, 'utf8');
-        for (const f of c.retirer || []) fs.rmSync(path.join(r, f), { force: true });
+        for (const f of c.retirer || []) retirerVerifie(path.join(r, f));
         g(r, base, 'add', '-A');
         g(r, { ...base, GIT_AUTHOR_DATE: c.date }, 'commit', '-q', '-m', c.message);
       }
