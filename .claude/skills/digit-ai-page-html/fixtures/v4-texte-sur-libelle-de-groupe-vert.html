@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V4 — texte de premier niveau sur un libelle de groupe — 20261019a</title>
+<!--
+  Fixture de TF-1891 (lot Produit-84 20261019b, RT-10) — UN TEXTE DE PREMIER NIVEAU POSE SUR LE
+  DERNIER LIBELLE D UNE LEGENDE <g transform> SANS <title>.
+
+  Le fait paye : « Sources lues au 19/10/2026 », ancre a droite, mordait sur le dernier libelle de la
+  legende d un schema ; render_page --selector .diagram-wrap rendait PASS, 0 V4 ; le defaut n a ete
+  vu que sur la capture. Le jugement par boite compare le texte au groupe ENTIER : la boite de la
+  legende est large, le dernier libelle court, et le recouvrement ne pesait pas 10 % du texte long.
+
+  JUMELLE VERTE de v4-texte-sur-libelle-de-groupe-rouge.html : le meme fichier, le texte de premier niveau pose SOUS la
+  legende (y 186 au lieu de 150). Attendu : aucun constat v4_overlap.
+-->
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#CBD5E1;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:#fff}
+main{max-width:70ch;margin:0 auto;padding:24px}
+@media print{body{background:#fff}}
+</style></head>
+<body><main>
+<h1>V4 — un texte de premier niveau recouvre le dernier libelle d une legende</h1>
+<div class="diagram-wrap">
+<svg width="520" height="200" viewBox="0 0 520 200" role="img" aria-label="Schema avec sa legende et sa source">
+  <g transform="translate(20 150)">
+    <rect x="0" y="-10" width="12" height="12" fill="#2563EB"></rect><text x="18" y="0" font-size="12" fill="#0F172A">Lecture</text>
+    <rect x="120" y="-10" width="12" height="12" fill="#B45309"></rect><text x="138" y="0" font-size="12" fill="#0F172A">Ecriture</text>
+    <rect x="240" y="-10" width="12" height="12" fill="#15803D"></rect><text x="258" y="0" font-size="12" fill="#0F172A">KO</text>
+  </g>
+  <text x="477" y="186" text-anchor="end" textLength="200" font-size="12" fill="#475569">Sources lues au 19/10/2026 par les trois lots</text>
+</svg>
+</div>
+</main></body></html>

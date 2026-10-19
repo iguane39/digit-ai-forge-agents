@@ -7,13 +7,28 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.34.1"
+  version: "1.35.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.35.0 (19/10/2026)** — **V4 compare un texte de premier niveau aux libellés d'un groupe frère sans titre (TF-1891,
+RT-10 du lot Produit-84 20261019b, décision R-58 option (a)).** Le retour : « Sources lues au 19/10/2026 », texte SVG de
+premier niveau ancré à droite, posé sur le dernier libellé d'une légende `<g transform>` sans `<title>` ; `render_page.py
+--selector .diagram-wrap` rendait PASS, 0 V4, et le défaut ne s'est vu que sur la capture. Le jugement par boîte compare le
+texte au groupe ENTIER, dont la boîte est large : un libellé court recouvert par un texte long ne pèse pas 10 % du plus
+petit des deux et passe. `render_page.py` compare maintenant ce texte à CHAQUE `<text>` descendant d'un groupe frère sans
+titre, boîte contre boîte, au même seuil et avec la même grammaire d'exemption (`data-overlap-ok="<id du libellé>"`, nommée
+dans le message) ; un groupe titré reste un nœud jugé par sa boîte. Trois fixtures `v4-texte-sur-libelle-de-groupe-*` jouées
+dans les deux sens : la rouge rendait PASS (0 constat), elle rend 1 ; la verte (texte sous la légende) et celle à paire
+déclarée en rendent 0. **Bruit mesuré avant de durcir** : 174 pages du parc (15 dépôts, 1 440 px), 0 page nouvellement
+accusée, compte V4 identique page par page avant et après (47 pages déjà accusées, 8 563 constats), 0 échec de rendu
+(`references/zero-defaut-visuel.md`). Écart au retour : la page de Produit-84 n'est pas dans ce dépôt ; la fixture reproduit
+le mécanisme (texte long sur un libellé court), pas la page. **Version MINEURE** : une famille bloquante juge plus juste,
+aucun verdict de la recette existante ne change.
 
 **1.34.1 (19/10/2026)** — **la langue déclarée d'une page se lit et se juge pour ce qu'elle est, et aucun script du
 skill ne plante en console Windows (TF-1884, RT-3 du lot Produit-84 20261016b, décision R-58 option (a)).** Une fiche

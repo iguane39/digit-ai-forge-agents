@@ -765,12 +765,53 @@ MEASURE_JS = r"""
           const toleree = Math.max(marge(a.el, sa), marge(b.el, sb)) + 1;
           if (iy <= toleree) continue;
         }
+        let boiteRelevee = false;
         if (inter > 0) {
           const aire = (bs) => bs.reduce((t, r) => t + r.width * r.height, 0);
           const smaller = Math.min(aire(ba), aire(bb));
           if (smaller > 0 && inter / smaller > __OVERLAP_MIN_RATIO__) {
+            boiteRelevee = true;
             issues.v4_overlap.push({ what: `${label(a.el)} × ${label(b.el)}`, detail:
               `intersection ${Math.round(ix)}×${Math.round(iy)}px (${Math.round(100 * inter / smaller)} % du plus petit)` });
+          }
+        }
+        // TF-1891 (lot Produit-84 20261019b, RT-10) — UN TEXTE DE PREMIER NIVEAU POSE SUR UN LIBELLE
+        // D'UN GROUPE FRERE SANS TITRE. Le jugement par boite compare le texte au groupe ENTIER : un
+        // libelle COURT du groupe, recouvert par un texte long, pese moins de 10 % du plus petit des
+        // deux (ici le texte long) et passait sans constat — « Sources lues au 19/10/2026 », ancre a
+        // droite, posee sur le dernier libelle d'une legende <g transform> sans <title> : PASS, 0 V4,
+        // defaut vu sur la capture seule. Le groupe sans titre n'est pas un noeud de schema (TF-0424) :
+        // ses <text> sont des libelles a part entiere. On compare donc le texte de premier niveau a
+        // CHAQUE <text> descendant du groupe frere, boite contre boite, au meme seuil (10 % du plus
+        // petit des deux textes), avec la meme grammaire d'exemption que la paire (data-overlap-ok="<id>"
+        // ou jeton partage). Un groupe qui a un <title> reste un noeud : il se juge par sa boite.
+        if (!boiteRelevee && inter > 0) {
+          const texteSvg = (el) => el.namespaceURI === SVGNS && el.tagName.toLowerCase() === 'text';
+          const groupeSansTitre = (el) => el.namespaceURI === SVGNS && el.tagName.toLowerCase() === 'g'
+            && ![...el.children].some((c) => c.tagName.toLowerCase() === 'title');
+          let tx = null, gr = null;
+          if (texteSvg(a.el) && groupeSansTitre(b.el)) { tx = a.el; gr = b.el; }
+          else if (texteSvg(b.el) && groupeSansTitre(a.el)) { tx = b.el; gr = a.el; }
+          if (tx) {
+            const rtx = tx.getBoundingClientRect();
+            for (const d of gr.querySelectorAll('text')) {
+              if (!visible(d)) continue;
+              const rd = d.getBoundingClientRect();
+              const dx = Math.min(rtx.right, rd.right) - Math.max(rtx.left, rd.left);
+              const dy = Math.min(rtx.bottom, rd.bottom) - Math.max(rtx.top, rd.top);
+              if (dx <= 1 || dy <= 1) continue;
+              const petit = Math.min(rtx.width * rtx.height, rd.width * rd.height);
+              if (!(petit > 0 && (dx * dy) / petit > __OVERLAP_MIN_RATIO__)) continue;
+              const pt = _paires(tx), pd = _paires(d);
+              if ((pt !== null && pt.length === 0) || (pd !== null && pd.length === 0)) continue;
+              if ((pt || []).includes(d.id) || (pd || []).includes(tx.id)
+                  || (pt !== null && pd !== null && pt.some((x) => pd.includes(x)))) continue;
+              issues.v4_overlap.push({ what: `${label(tx)} × ${label(d)}`, detail:
+                `texte de premier niveau sur un libelle d'un groupe frere sans titre : intersection `
+                + `${Math.round(dx)}×${Math.round(dy)}px (${Math.round(100 * dx * dy / petit)} % du plus petit texte). `
+                + `Deplacer le texte, ou declarer la paire voulue : data-overlap-ok="<id du libelle>" `
+                + `sur le texte de premier niveau (TF-1891)` });
+            }
           }
         }
       }

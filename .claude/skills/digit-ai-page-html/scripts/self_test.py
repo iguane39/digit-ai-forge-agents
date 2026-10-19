@@ -544,6 +544,14 @@ CAS_RENDU = {
     # (v4-libelle-dans-la-boite-voisine.html, role="img" lui aussi) garde son constat.
     "v4-logo-figure-unique.html": ("v4_overlap", 0),
     "v4-logo-sans-nom.html": ("v4_overlap", 1),
+    # TF-1891 (lot Produit-84 20261019b, RT-10) — un texte de premier niveau pose sur le dernier libelle,
+    # court, d'une legende <g transform> sans <title> : 0 constat avant (le recouvrement ne pesait pas
+    # 10 % du plus petit des deux dans la comparaison au groupe entier), 1 apres. Les deux jumelles
+    # vertes : le meme texte pose sous la legende, et le meme recouvrement avec sa paire declaree
+    # (data-overlap-ok="<id du libelle>", le remede que le message prescrit).
+    "v4-texte-sur-libelle-de-groupe-rouge.html": ("v4_overlap", 1),
+    "v4-texte-sur-libelle-de-groupe-vert.html": ("v4_overlap", 0),
+    "v4-texte-sur-libelle-de-groupe-declare.html": ("v4_overlap", 0),
     # TF-0559 (24/08, lot Produit-10) — LA BOITE D'UN INLINE VAUT LA HAUTEUR D'EM, PAS L'INTERLIGNE.
     # Deux surlignages de lignes consecutives se recouvrent donc geometriquement des que line-height
     # est serre, SANS QU'AUCUN PIXEL PEINT NE SE SUPERPOSE. Mesure du 19/08 sur 1 246 surlignages
