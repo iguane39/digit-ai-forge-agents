@@ -1612,6 +1612,29 @@
    "provenance": "TF-1174 (lot Produit-64 20260916b, RD-10, 16/09/2026) — la fixture rouge REPRODUIT le defaut reel : un append sorti de la boucle de regroupement de prose ne laisse que le DERNIER paragraphe de chaque chapitre. Les deux pages rendent le MEME verdict et les MEMES huit constats a check_html.py : la chaine de forme est aveugle a l amputation."
   },
   {
+   "nom": "format-a4-pages",
+   "cmd": [
+    "python3",
+    "{skillsroot}/digit-ai-page-html/scripts/check_format_a4.py",
+    "{fixture}",
+    "--output",
+    "json"
+   ],
+   "red": "../../digit-ai-page-html/fixtures/format-a4-regle-mobile-sans-screen.html",
+   "green": "../../digit-ai-page-html/fixtures/format-a4-une-page.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "page(s) pour 1"
+   ],
+   "dependant_outil": "chromium (playwright) et pymupdf ou pypdf : sans eux le script rend SKIP motive (exit 2), jamais PASS.",
+   "provenance": "TF-1882 (lot Produit-84 20261016a, RT-1, 16/10/2026) — la fixture rouge REPRODUIT le defaut reel : une regle de petit ecran ecrite sans screen (@media (max-width:720px)) empile les colonnes d'une fiche a l'impression, ou la largeur imprimable d'un A4 vaut ~698 px ; la fiche tient a l'ecran et sort sur 2 pages avec les marges de 10 mm, de 0,4 pouce et de 15 mm. La verte est la meme fiche, la regle sous screen : une page dans les quatre conditions."
+  },
+  {
    "nom": "premisse-acces",
    "cmd": [
     "node",

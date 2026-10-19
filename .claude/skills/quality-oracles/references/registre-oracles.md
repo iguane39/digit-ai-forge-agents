@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.44.0, alignée sur le JSON le 19/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.45.0, alignée sur le JSON le 19/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -12,6 +12,7 @@
 | Rendu HTML / visuel | `render_page.py` (digit-ai-page-html) — V1–V18 ; **V18** (TF-1066, 12/09/2026, règle E5 du pilot ; plafond porté à 135 par la décision humaine du 15/09/2026, « 13a », TF-1069) ne se joue qu'aux largeurs ≥ 2560 px : mesure de lecture au-delà de 135 caractères par ligne sur une prose que rien ne tient, tableau principal d'une page de données sous 85 % de la largeur offerte. Grille par défaut : 3840, 2560, 1920, 1280, 768, 390 | cli (délégué) | ✅ |
 | Conformité charte HTML (charte, sémantique, print) | `check_html.py` (digit-ai-page-html) — DOCTYPE, `lang="fr"`, charset prioritaire, viewport, `<h1>` unique, `:root`, `<title>`, `@media print`, police Syne interdite | cli (délégué) | ✅ |
 | Complétude d'un rendu par rapport à sa source (texte perdu à la génération) | `check_completude.py <page.html> --source <source.md>` (digit-ai-page-html) — **invocation explicite** : rendu = mots visibles du corps HTML, source = mots visibles du Markdown dont il sort, `rendu < source` ⇒ ARRÊT. Seuil par défaut 1.0 ; `--seuil` en dessous reste possible mais la dérogation est écrite au `non_juge` de chaque exécution. **TF-1174** : une page ayant perdu les trois quarts de son texte (11 996 → ~3 000 mots) passait les SIX oracles de forme — ils mesurent une grandeur *corrélée*, pas l'invariant. **TF-1436** : titres par niveau et éléments de liste se comptent aussi ; un seau du rendu sous la source est un écart, un surplus jamais | cli (délégué) | ✅ |
+| Format imprimé demandé (nombre de pages dans les conditions du lecteur) | `check_format_a4.py <page.html> [--pages N] [--sans-ecran]` (digit-ai-page-html) — **invocation explicite** : une demande « sur une page A4 » se COMPTE dans les conditions du lecteur — hauteur à l'écran aux largeurs 3 840, 1 920, 1 440 et 1 024 px (297 mm au plus), puis un PDF par condition d'impression (marges de la page, 10 mm avec en-têtes, marges par défaut de Chrome 0,4 pouce, 15 mm) dont les pages se comptent ; Letter en avertissement. **Jamais « marges nulles »** : c'est la mesure qui avait menti. **TF-1882** : une fiche demandée sur une page passait check_html, render_page et run-oracles-design, mesurait 374 mm à l'écran et sortait sur 2 pages | cli (délégué) | ✅ |
 | Filtres de colonne sur tableaux de données | `scripts/oracle-filtres-tableau.mjs <page.html>` — G1 marquage ou exemption motivée, G2 asset référencé, G3 initialisation, G4 id + thead, G5 compteur aria-live, G6 réaffichage à l'impression | cli | ✅ |
 | Rendu PPTX (structure & compatibilité) | `scripts/oracle-pptx.mjs` — zip, [Content_Types].xml 1re entrée, zéro transition/JPEG, smoke-test LibreOffice ; charte sémantique → gate digit-ai-pptx ; polices embarquées NON décodées, et dit au `non_juge` → domaine ci-dessous (TF-1501) | cli | ⚙️ |
 | Polices embarquées d'un PPTX | `scripts/oracle-polices-embarquees.mjs <deck.pptx> [--polices <dossier de référence>]` — **E0** chaque partie `ppt/fonts/` (flux EOT) se décode par le décodeur de Windows (`t2embed.dll`, chargé en privé) · **E1** ses contours sont ceux de la police installée de même famille, graisse, pente et version · **E2** aucun glyphe simple hors de la boîte englobante que la police déclare. **Déclenché par la présence d'une partie `ppt/fonts/`** dans le paquet (`parties_paquet`, critère neuf de `run-oracles`). Prérequis : Python 3 et fontTools (importé, sinon fourni par `uv`), Windows pour le MTX ; absent → SKIP qui le nomme (TF-1501) | cli | ✅ |
@@ -805,3 +806,13 @@ méthode n'a encore été exercée par aucune mission réelle, et ses fixtures s
 - **Preuve** : bloc TF-1877 de la recette. Il vérifie le routage (une page de la famille est routée, une page hors
   famille ne l'est pas), puis joue la commande du registre, `{pilot}` résolu, sur l'instance de la famille (PASS) et sur
   la même instance sans sa commande de comparaison (FAIL, TB1). Pilot absent du poste : SKIP motivé.
+
+## Inscription du 19/10/2026 — le format imprimé demandé (TF-1882, v2.45.0)
+
+- **Le fait** : une fiche demandée « sur une page A4 » passait `check_html.py`, `render_page.py` aux sept largeurs et
+  `run-oracles-design`, mesurait 374 mm à l'écran et sortait sur 2 pages imprimée (marges de 10 mm avec en-têtes, ou marges
+  par défaut de Chrome). Aucun oracle du registre ne comptait de pages : domaine sans oracle, règle §4.
+- **Routage** : par invocation explicite (`ext` vide) : rien dans une extension ne dit qu'une page porte une demande de
+  format ; l'appelant la déclare en invoquant l'oracle.
+- **Preuve** : trois fixtures dans `digit-ai-page-html/fixtures/` (`format-a4-une-page` verte, `format-a4-regle-mobile-sans-screen`
+  et `format-a4-trop-haute` rouges), au manifeste, et le bloc `run_format_a4` de la recette du socle.

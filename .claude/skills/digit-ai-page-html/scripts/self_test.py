@@ -2431,7 +2431,7 @@ def run_console_cp1252():
                            env=env, timeout=60)
     cas("script jouet sans reconfigure (ROUGE)", jouet.returncode != 0, "exit != 0",
         f"exit {jouet.returncode}", "le jouet doit lever UnicodeEncodeError")
-    for nom in ("check_html", "check_markdown", "check_completude", "mesurer_bruit", "render_page"):
+    for nom in ("check_html", "check_markdown", "check_completude", "check_format_a4", "mesurer_bruit", "render_page"):
         code = (f"import sys; sys.path.insert(0, {str(dossier)!r}); import {nom}; "
                 "print('\u2192 \u2717')")
         r = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env, timeout=120)
@@ -2580,6 +2580,107 @@ def run_graphiques_tf1875():
         "même contenu, un rendu", f"{versions[0] == versions[1]}, {versions[0].count('<!--entonnoir-rendu-->')} rendu(s)")
     shutil.rmtree(captures, ignore_errors=True)
     return out
+
+
+def run_format_a4():
+    """TF-1882 (RT-1, lot Produit-84 20261016a) — `check_format_a4.py` compte les pages dans les conditions du lecteur.
+
+    Une fiche demandée « sur une page A4 » passait check_html, render_page et run-oracles-design, mesurait 374 mm à
+    l'écran et sortait sur 2 pages imprimée. Trois fixtures, jouées dans les deux sens :
+      · VERTE `format-a4-une-page.html` : une page dans les quatre conditions d'impression, moins de 297 mm à l'écran ;
+      · ROUGE `format-a4-regle-mobile-sans-screen.html` : la même fiche, la règle de petit écran écrite sans `screen` —
+        elle tient à l'écran et dans la condition « marges de la page », sort sur 2 pages avec les marges de 10 mm, de
+        0,4 pouce et de 15 mm : l'échec est nommé, et c'est le bon (aucun échec d'écran) ;
+      · ROUGE `format-a4-trop-haute.html` : sans feuille bornée, 478 mm à l'écran aux quatre largeurs et 2 pages.
+    Le défaut du premier mesurage de la session est rejoué : à marges NULLES, la fixture rouge sort sur 1 page, c'est
+    pourquoi aucune condition du script n'est « marges nulles ». Le boilerplate écrit ses règles de petit écran sous
+    `screen` ; l'ancienne forme (sans `screen`) est reconnue par le contrôle statique, sens rouge."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+        importlib.import_module("pymupdf")
+    except ImportError:
+        return None
+    import json as _json
+    out = []
+    outil = Path(__file__).resolve().parent / "check_format_a4.py"
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1882", "detail": "" if ok else str(detail)[:300]})
+
+    def jouer(cible, *options):
+        r = subprocess.run([sys.executable, "-X", "utf8", str(outil), str(cible), "--output", "json", *options],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return r.returncode, _json.loads(r.stdout)
+        except Exception:
+            return r.returncode, None
+
+    code, d = jouer(FIXTURES / "format-a4-une-page.html")
+    cas("format-a4-une-page · vert : une page dans les quatre conditions, moins de 297 mm à l'écran",
+        code == 0 and d is not None and d["verdict"] == "PASS" and not d["echecs"], "exit 0, PASS",
+        f"exit {code}, {None if d is None else d['verdict']}", None if d is None else d.get("echecs"))
+    code, d = jouer(FIXTURES / "format-a4-regle-mobile-sans-screen.html")
+    echecs = [] if d is None else d["echecs"]
+    cas("format-a4-regle-mobile-sans-screen · rouge : 2 pages avec les marges de 10 mm, 0,4 pouce et 15 mm",
+        code == 1 and len(echecs) == 3 and all("marges" in e for e in echecs)
+        and any("10 mm" in e for e in echecs) and any("0,4 pouce" in e for e in echecs) and any("15 mm" in e for e in echecs),
+        "exit 1, trois conditions d'impression", f"exit {code}, {echecs}")
+    cas("format-a4-regle-mobile-sans-screen · rouge pour la BONNE raison : rien n'échoue à l'écran",
+        d is not None and not any(e.startswith("écran") for e in echecs)
+        and all(m["ok"] for m in d["mesures"]["ecran"]), "écran PASS aux 4 largeurs", f"{echecs}")
+    code, d = jouer(FIXTURES / "format-a4-trop-haute.html")
+    echecs = [] if d is None else d["echecs"]
+    cas("format-a4-trop-haute · rouge : plus de 297 mm à l'écran aux quatre largeurs, et 2 pages imprimées",
+        code == 1 and sum(e.startswith("écran") for e in echecs) == 4 and any("0,4 pouce" in e for e in echecs),
+        "exit 1, 4 largeurs d'écran + impression", f"exit {code}, {len(echecs)} échec(s)")
+    code, d = jouer(FIXTURES / "format-a4-trop-haute.html", "--sans-ecran")
+    cas("format-a4-trop-haute --sans-ecran · l'écran n'est pas mesuré et le dit au non jugé",
+        code == 1 and d is not None and not d["mesures"]["ecran"]
+        and any("--sans-ecran" in n for n in d["non_juge"]), "exit 1, écran absent, motif écrit",
+        f"exit {code}")
+    code, d = jouer(FIXTURES / "format-a4-introuvable.html")
+    cas("fichier introuvable · SKIP motivé (exit 2), jamais PASS", code == 2 and d is not None and d["verdict"] == "SKIP",
+        "exit 2, SKIP", f"exit {code}, {None if d is None else d['verdict']}")
+    # Le mesurage qui avait menti : à marges nulles, la fixture rouge tient sur une page.
+    from playwright.sync_api import sync_playwright
+    import pymupdf
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="self-test-a4-") as tmp, sync_playwright() as p:
+        nav = p.chromium.launch()
+        pg = nav.new_page(viewport={"width": 1280, "height": 1080})
+        pg.goto((FIXTURES / "format-a4-regle-mobile-sans-screen.html").as_uri())
+        pg.wait_for_timeout(500)
+        pg.emulate_media(media="print")
+        f = Path(tmp) / "marges-nulles.pdf"
+        pg.pdf(path=str(f), format="A4", print_background=True, margin={k: "0" for k in ("top", "bottom", "left", "right")})
+        n = pymupdf.open(str(f)).page_count
+        nav.close()
+    cas("format-a4-regle-mobile-sans-screen · à marges NULLES elle sort sur 1 page (le mesurage qui avait menti)",
+        n == 1, "1 page", f"{n} page(s)")
+    # Le boilerplate, les composants et l'exemple qui en dérive : aucune règle de petit écran sans `screen`.
+    nues = []
+    fichiers = [c for c in sorted((FIXTURES.parent / "assets").rglob("*"))
+                if c.is_file() and c.suffix in (".html", ".css", ".js")]
+    for chemin in fichiers:
+        nues += [f"{chemin.name}:{n}" for n in regles_petit_ecran_sans_screen(chemin.read_text(encoding="utf-8"))]
+    cas(f"assets/ ({len(fichiers)} fichiers, boilerplate compris) · chaque règle de petit écran est écrite sous `screen`",
+        nues == [], "aucune @media (max-width) sans screen", f"{len(nues)} : {nues[:3]}")
+    rouge = regles_petit_ecran_sans_screen("    @media (max-width: 640px) {\n      .x { display: block; }\n    }")
+    vert = regles_petit_ecran_sans_screen("    @media screen and (max-width: 640px) {\n      .x { display: block; }\n    }")
+    cas("contrôle statique · sens rouge reconnu (forme d'avant correctif), sens vert muet",
+        len(rouge) == 1 and vert == [], "rouge 1, vert 0", f"rouge {len(rouge)}, vert {len(vert)}")
+    return out
+
+
+RE_MEDIA_LARGEUR_NUE = re.compile(r"@media\s*\(\s*max-width\b", re.I)
+
+
+def regles_petit_ecran_sans_screen(texte):
+    """TF-1882 — les `@media (max-width: …)` écrites sans `screen` : elles se déclenchent aussi à l'impression, où la
+    largeur imprimable d'un A4 vaut ~698 px. Liste de numéros de ligne."""
+    return [i for i, ligne in enumerate(texte.splitlines(), 1) if RE_MEDIA_LARGEUR_NUE.search(ligne)]
 
 
 def run_classe_source_machine():
@@ -5511,6 +5612,10 @@ def main():
     graphiques = run_graphiques_tf1875()
     if graphiques:
         res += graphiques
+    # TF-1882 — le nombre de pages imprimees, compte dans les conditions du lecteur.
+    format_a4 = run_format_a4()
+    if format_a4:
+        res += format_a4
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

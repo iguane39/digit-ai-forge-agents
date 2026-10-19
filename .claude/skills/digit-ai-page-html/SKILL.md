@@ -7,13 +7,33 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.36.0"
+  version: "1.37.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.37.0 (19/10/2026)** — **un oracle de format A4 compte les pages dans les conditions du lecteur, et le boilerplate écrit
+ses règles de petit écran sous `screen` (TF-1882, RT-1 du lot Produit-84 20261016a, décision R-58 option (a)).** Une fiche
+demandée « sur une page A4 » passait `check_html.py`, `render_page.py` aux sept largeurs et `run-oracles-design`, mesurait
+374 mm de haut à l'écran et sortait sur 2 pages imprimée. Deux causes : aucune feuille bornée à 297 mm à l'écran, et une règle
+`@media (max-width: 720px)` sans `screen`, déclenchée aussi à l'impression (largeur imprimable d'un A4 : ~698 px) ; le
+boilerplate écrivait lui aussi ses quatre règles de petit écran sans `screen`. **(1) `scripts/check_format_a4.py`** (nouveau,
+point de départ : la pièce jointe du lot, relue et réécrite sans ses hypothèses de gabarit — ni `.zone` ni pied de page
+supposés) : hauteur à l'écran aux largeurs 3 840, 1 920, 1 440 et 1 024 px (297 mm au plus), puis une génération de PDF par
+condition d'impression du lecteur, comptée page par page (marges de la page `@page`, 10 mm avec en-têtes du navigateur, marges
+par défaut de Chrome 0,4 pouce, 15 mm ; Letter en avertissement). **Aucune condition n'est « marges nulles »** : c'est la
+mesure qui avait menti, et le banc le rejoue (la fixture rouge sort sur 1 page à marges nulles). Exit 0 PASS, 1 FAIL, 2 SKIP
+motivé ; `--pages N`, `--sans-ecran`, `--output json` ; le non jugé nomme les autres navigateurs, la mise à l'échelle du
+lecteur, les marges plus larges et la lisibilité d'un corps réduit. **(2) `screen` au boilerplate** :
+`@media screen and (max-width: …)` pour ses quatre règles de petit écran (et l'exemple d'interactions qui en dérive) ; les
+extraits de `references/composants.md` suivent. Trois fixtures `format-a4-*` jouées dans les deux sens (neuf cas,
+`run_format_a4`) : la verte tient sur une page dans les quatre conditions ; la rouge « règle mobile sans screen » tient à
+l'écran et sort sur 2 pages dans trois conditions sur quatre, pour la bonne raison (aucun échec d'écran) ; la rouge « trop
+haute » rend 478 mm à l'écran et 2 pages. Un contrôle statique du banc refuse toute `@media (max-width` sans `screen` dans le
+boilerplate (sens rouge : la forme d'avant). **Version MINEURE** : un script s'ajoute, aucun verdict existant ne change.
 
 **1.36.0 (19/10/2026)** — **quatre défauts des composants de graphique corrigés, et un composant d'entonnoir (TF-1875,
 retour du constructeur de TF-1855 du 18/10/2026, décision R-58 option (a)).** Chaque défaut a sa fixture rouge et sa verte.
@@ -759,6 +779,18 @@ jusqu'au PASS. Liste canonique et sévérités :
 [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md) — **référence unique
 pour toute la forge**, les autres skills livrables la citent sans la redéfinir.
 
+**Une demande de format imprimé se COMPTE, dans les conditions du lecteur (TF-1882).** Une page demandée « sur une
+page A4 » (ou N pages) ne se déclare pas tenue sur une mesure faite dans une seule condition de rendu : ni check_html ni
+render_page ne comptent de pages. `check_format_a4.py` mesure la hauteur à l'écran (3 840, 1 920, 1 440 et 1 024 px,
+297 mm au plus), puis imprime en Chromium sous quatre conditions de lecteur (marges de la page, 10 mm avec en-têtes,
+marges par défaut de Chrome, 15 mm) et compte les pages ; Letter est un avertissement. Jamais « marges nulles » : c'est
+la mesure qui avait menti. Toute règle de petit écran s'écrit `@media screen and (max-width: …)`.
+
+```bash
+python scripts/check_format_a4.py page.html                 # une page A4 demandée ; exit 0 PASS · 1 FAIL · 2 SKIP motivé
+python scripts/check_format_a4.py page.html --pages 2 --sans-ecran --output json
+```
+
 Enfin, contrôler la **lisibilité** — ce que le lecteur peut effectivement lire et utiliser :
 
 ```bash
@@ -883,6 +915,9 @@ contrôles que le producteur lance de toute façon.
 - Les quatre oracles de `digit-ai-forge-design` qui jugent cette même page, et leur ligne de
   commande : section ci-dessus (TF-1173) — `oracle-slop`, `oracle-tokens`, `oracle-mobile`,
   `oracle-images`, lancés ensemble par `<racine>/digit-ai-forge-design/oracles/run-oracles-design.mjs`
+- Format imprimé demandé (« une page A4 »), pages comptées dans les conditions du lecteur : `scripts/check_format_a4.py`
+  (TF-1882) — section « Une demande de format imprimé se COMPTE » ci-dessus ; registre :
+  `../quality-oracles/references/registre-oracles.md`
 - Bruit d'une règle du rendu sur un parc, avant/après, en une commande : `scripts/mesurer_bruit.py`
   (TF-1225) — [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md), « Mesurer le
   bruit d'une règle »

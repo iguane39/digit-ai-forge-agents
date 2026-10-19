@@ -183,7 +183,7 @@
     .termes dfn { font-style: normal; font-weight: 600; color: var(--ink); }
     .chap.lire { max-width: 1080px; margin-left: auto; margin-right: auto; }
     .chap.duo { display: grid; grid-template-columns: 7fr 5fr; gap: 32px; align-items: start; }
-    @media (max-width: 1100px) { .chap.duo { grid-template-columns: 1fr; } }
+    @media screen and (max-width: 1100px) { .chap.duo { grid-template-columns: 1fr; } }
 
     /* ── Tableaux, et leur repli en cartes (TF-0442, composants.md §6) ──────────────────
        Le socle ne portait AUCUN style de tableau : chaque page en reinventait, et le repli en
@@ -239,7 +239,7 @@
     th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th { font-family: var(--head); font-weight: 700; }
     td.cellule-code, th.cellule-code { font-family: var(--mono); overflow-wrap: anywhere; }
-    @media (max-width: 900px) {
+    @media screen and (max-width: 900px) {
       /* TF-0900 : c'est ICI que le conteneur defilant sert — le thead est masque par le repli
          en cartes (ligne suivante), donc aucun sticky ne peut etre casse, et un tableau non
          repliable reste consultable au doigt. */
@@ -278,7 +278,7 @@
     header.doc.colle { position: sticky; top: 0; z-index: 20; background: var(--bg); }
     thead.colle th   { position: sticky; top: var(--hh-tab, var(--hh)); z-index: 10; background: var(--surface); }
     nav.toc.colle    { position: sticky; top: var(--hh); z-index: 10; }
-    @media (max-width: 900px) { nav.toc.colle { position: static; } }
+    @media screen and (max-width: 900px) { nav.toc.colle { position: static; } }
     .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
 
     /* S-G1 (3/4, R-30) — bouton de bascule, en-tête, haut à droite */
@@ -305,7 +305,7 @@
     }
 
     /* Responsive */
-    @media (max-width: 640px) {
+    @media screen and (max-width: 640px) {
       .wrap { padding: 24px 16px 48px; }
       h1 { font-size: 1.6rem; }
     }
@@ -392,7 +392,7 @@
 <!-- COMPOSANT-EMBARQUE:DEBUT barres-empilees.css — copie du socle digit-ai-page-html/assets/barres-empilees.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="barres-empilees.css" data-empreinte="sha256:7d0d231a40a7fd513ceae78e7eaa4294239d2e13e194bbd06bd7d9e95db6c229">
+<style data-composant="barres-empilees.css" data-empreinte="sha256:a360b27cdb8908f044f0d68b16e141f86a092e4eccf3c2f09f25debaf20c1b3a">
 /* barres-empilees.css — habillage du graphique en barres empilees (RT-119, D-55 (a) du 03/10/2026).
    Le dessin vit dans barres-empilees.js ; ici, la PALETTE en jetons et le style du SVG.
 
@@ -490,7 +490,7 @@
    de 9 a 19 caracteres). Un conteneur defilant ne suffit pas : V1 compte l'element debordant (composants.md § 6).
    Le repli en cartes du § 6 s'applique donc, declenche par le NOMBRE DE COLONNES lu dans le marquage ; les cellules
    portent `data-label` (le nom de la serie). Le tableau reste un <table> : seuls ses lignes et cellules passent en bloc. */
-@media (max-width: 560px) {
+@media screen and (max-width: 560px) {
   .graphe-table table:has(th:nth-child(5)) thead { display: none; }
   .graphe-table table:has(th:nth-child(5)) tr,
   .graphe-table table:has(th:nth-child(5)) th,

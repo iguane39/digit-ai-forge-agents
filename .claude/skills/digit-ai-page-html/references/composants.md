@@ -31,7 +31,7 @@ nue, jamais le sens porté par la seule couleur.
 .kpi-label { font-family: var(--sans); color: var(--muted); font-size: .8rem; }
 .kpi-value { font-family: var(--head); font-weight: 800; font-size: 1.6rem; color: var(--ink); }
 .kpi-hint { color: var(--muted); font-size: .75rem; }   /* --muted, pas --faint : contraste AA */
-@media (max-width: 1020px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+@media screen and (max-width: 1020px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
 ```
 
 ## 2 — Badge de statut 🔴 (dès qu'un état est affiché)
@@ -146,6 +146,8 @@ jusque vers 1 400 px (bord droit à 1 308 px pour un viewport de 1 280) — **16
 bloquants, invisibles cinq jours**. Le même 900 px était figé en dur dans un gabarit de la factory :
 tout projet qui instanciait la famille le reproduisait.
 
+**`screen` n'est pas décoratif (TF-1882, 19/10/2026).** Chaque règle de petit écran s'écrit `@media screen and (max-width: …)` : sans `screen`, elle se déclenche aussi à l'impression, où la largeur imprimable d'un A4 vaut ~698 px — une fiche demandée « sur une page A4 » est sortie sur deux pages, ses colonnes empilées par une règle faite pour un téléphone. `scripts/check_format_a4.py` compte les pages dans les conditions du lecteur.
+
 *Trois lignes de CSS remplacent la prose*, et aucun émetteur n'a plus rien à calibrer : le nombre
 de colonnes se LIT dans le marquage, et le palier se déclenche seul.
 
@@ -167,21 +169,21 @@ de colonnes se LIT dans le marquage, et le palier se déclenche seul.
    bord droit à 1 300 px pour un viewport de 1 280, soit exactement les 2 × 10 px de padding.
    Le repli s'appliquait, et il débordait quand même : une parade qui reproduit le défaut
    qu'elle corrige. */
-@media (max-width: 1020px) {
+@media screen and (max-width: 1020px) {
   .table-wrap:has(th:nth-child(5)) thead { display: none; }
   .table-wrap:has(th:nth-child(5)) tr,
   .table-wrap:has(th:nth-child(5)) td { display: block; width: 100%; box-sizing: border-box; }
   .table-wrap:has(th:nth-child(5)) tbody td { overflow-wrap: anywhere; }
   .table-wrap:has(th:nth-child(5)) tbody td::before { content: attr(data-label); font-weight: 700; }
 }
-@media (max-width: 1400px) {
+@media screen and (max-width: 1400px) {
   .table-wrap:has(th:nth-child(7)) thead { display: none; }
   .table-wrap:has(th:nth-child(7)) tr,
   .table-wrap:has(th:nth-child(7)) td { display: block; width: 100%; box-sizing: border-box; }
   .table-wrap:has(th:nth-child(7)) tbody td { overflow-wrap: anywhere; }
   .table-wrap:has(th:nth-child(7)) tbody td::before { content: attr(data-label); font-weight: 700; }
 }
-@media (max-width: 1700px) {
+@media screen and (max-width: 1700px) {
   .table-wrap:has(th:nth-child(9)) thead { display: none; }
   .table-wrap:has(th:nth-child(9)) tr,
   .table-wrap:has(th:nth-child(9)) td { display: block; width: 100%; box-sizing: border-box; }
@@ -209,7 +211,7 @@ table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 caption { text-align: left; color: var(--muted); font-size: .85rem; padding: 8px 0; }
 thead th { background: var(--surface); text-align: left; font-family: var(--head); font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--line); padding: 12px; }
 tbody td { padding: 12px; border-bottom: 1px solid var(--line); }
-@media (max-width: 640px) {
+@media screen and (max-width: 640px) {
   /* TF-0499 (22/08/2026) : `table` ne passe JAMAIS en display:block. Une <caption> dont le
      tableau parent est en block recoit une boite de tableau anonyme qui se reduit au contenu :
      mesure a 390 px sur une legende de 108 caracteres, elle rendait 70 x 192 px — une colonne

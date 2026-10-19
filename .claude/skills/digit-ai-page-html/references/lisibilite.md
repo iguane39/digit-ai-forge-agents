@@ -1069,7 +1069,7 @@ nouvellement accusée.
 
 ```css
 .toc { position: sticky; top: var(--hh); }        /* --hh = hauteur de l'en-tête collant */
-@media (max-width: 900px) { .toc { position: static; } }   /* bande repliable sur mobile */
+@media screen and (max-width: 900px) { .toc { position: static; } }   /* bande repliable sur mobile */
 ```
 
 **Sommaire à DEUX NIVEAUX — la forme admise, en `<a>` (TF-0931 et TF-0933, 08/09/2026).** Deux
@@ -1318,7 +1318,7 @@ livrable, cette seule cause.
 
 ```css
 .table-hote { overflow-x: visible; }                     /* au-dessus de 900 px : ne défile pas */
-@media (max-width: 900px) { .table-hote { overflow-x: auto; } }
+@media screen and (max-width: 900px) { .table-hote { overflow-x: auto; } }
 ```
 
 Au-dessus de 900 px il ne servait à rien : la famille `rognage_donnees` de `render_page.py`

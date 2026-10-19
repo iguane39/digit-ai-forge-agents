@@ -95,7 +95,7 @@
    de 9 a 19 caracteres). Un conteneur defilant ne suffit pas : V1 compte l'element debordant (composants.md § 6).
    Le repli en cartes du § 6 s'applique donc, declenche par le NOMBRE DE COLONNES lu dans le marquage ; les cellules
    portent `data-label` (le nom de la serie). Le tableau reste un <table> : seuls ses lignes et cellules passent en bloc. */
-@media (max-width: 560px) {
+@media screen and (max-width: 560px) {
   .graphe-table table:has(th:nth-child(5)) thead { display: none; }
   .graphe-table table:has(th:nth-child(5)) tr,
   .graphe-table table:has(th:nth-child(5)) th,

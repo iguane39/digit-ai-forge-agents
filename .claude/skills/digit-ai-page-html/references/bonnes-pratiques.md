@@ -80,7 +80,7 @@ raison contre une heuristique de mise en forme.
 ## 5 — Responsive & adaptation PDF
 
 - 🔴 **Viewport de conception : Full HD (1920 px) ; responsive vérifié jusqu'au 4K (3840 px)** — règle **E5** du pilot (`references/BEST-PRACTICES-HTML.md` § E, décision humaine du 12/09/2026). Une page de bureau se CONÇOIT à 1920 px, jamais à 1280 ni 1440, et se VÉRIFIE sans bloquant à 2560 et 3840 px : `render_page.py` rend ces six largeurs par défaut (3840, 2560, 1920, 1280, 768, 390) et **V18** y juge les deux défauts propres au 4K — une prose qui s'étire au-delà de 135 caractères par ligne (plafond porté de 100 à 135 par la décision humaine du 15/09/2026, « 13a », TF-1069 ; la mesure de lecture est portée par le CONTENEUR, `.chap.lire`, E4, dont le token à 1 080 px mesure 134 caractères par ligne, sous ce plafond) et un tableau de page de données sous 85 % de la largeur offerte (L26).
-- 🔴 Au moins un `@media (max-width: …)` pour le confort écran.
+- 🔴 Au moins un `@media screen and (max-width: …)` pour le confort écran — toujours sous `screen` : une règle de petit écran écrite sans `screen` se déclenche aussi à l'impression, où la largeur imprimable d'un A4 vaut ~698 px, et une fiche demandée sur une page sort sur deux (TF-1882, `scripts/check_format_a4.py`).
 - 🟡 Lisible jusqu'à ~320px sans scroll horizontal (sauf objets 2D : grands tableaux, schémas).
 - 🟡 **PDF** : unités absolues (`pt`, `cm`, `mm`) pour la mise en page imprimée.
 - 🟡 Flexbox/Grid pour des mises en page fluides ; éviter les hauteurs fixes qui cassent en multi-page.
