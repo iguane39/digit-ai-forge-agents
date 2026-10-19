@@ -3,6 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<!-- S-G1 (1/4, R-30) : le theme se pose AVANT la premiere peinture (zero flash). CLAIR PAR DEFAUT,
+     STRICTEMENT : le sombre est un choix du lecteur, persiste ; jamais l'heritage de l'OS
+     (prefers-color-scheme est refuse par check_html G1). Volontairement sans defer : un script
+     differe peindrait d'abord le clair. -->
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  var theme = stocke === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  var meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) { meta.setAttribute('content', theme); }
+})();
+</script>
 <title>{{TITRE_PAGE}} · Digit-AI</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
 <!-- Aucune police distante (A1/D-10) : un livrable Digit-AI ne téléphone pas au
@@ -122,6 +137,7 @@
   /* Jetons nommes par TF-0856 (04/09/2026) : ces valeurs vivaient en dur dans les canevas. */
   --c-purple-mid: #7c3aed;
   --c-purple-deep: #4c1d95;
+  --c-purple-ink: #2e1065;
   --c-slate-fg: #475569;
   --c-slate-mid: #64748b;
   --c-slate-stroke: #94a3b8;
@@ -132,6 +148,46 @@
   --sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
   --head: 'Montserrat', 'Roboto', system-ui, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Jetons de focus (oracle-tokens T8) : un anneau pose doit etre prescrit ici. */
+  --focus-anneau: 2px solid var(--accent);
+  --focus-decalage: 2px;
+}
+/* S-G1 (2/4, R-30) - UNE SOURCE, DEUX PROJECTIONS (TF-1890). Le sombre redefinit chaque jeton de
+   couleur du :root ci-dessus et rien d'autre : aucune couleur n'apparait dans une regle de nœud, de
+   texte ou de fleche (oracle-bascule B-T4, oracle-tokens T1). Les trois teintes d'une rampe gardent
+   leur role : fond sombre teinte, texte clair, bordure intermediaire. Mesure du 19/10/2026 (WCAG 2.x,
+   rapport de luminance) : en sombre, toute paire texte / fond du gabarit depasse 6:1 (la plus faible,
+   --c-purple-mid sur --c-purple-bg, 6,15) ; les bordures de rampe restent decoratives, comme en clair.
+   Sous @media screen : l'impression reste CLAIRE, quel que soit le theme affiche au moment d'imprimer. */
+@media screen {
+  :root[data-theme="dark"] {
+    --bg: #0b1220;
+    --bg-soft: #121b2e;
+    --bg-softer: #0f1727;
+    --ink: #eef2f8;
+    --ink-soft: #cbd5e1;
+    --ink-muted: #a9b4c4;
+    --line: #263248;
+    --line-soft: #1a2338;
+    --line-strong: #334155;
+    --accent: #7da2f5;
+
+    --c-purple-bg: #1f1740;   --c-purple-fg: #d4c8ff;   --c-purple-stroke: #5b3fb0;
+    --c-blue-bg:   #11224a;   --c-blue-fg:   #a9c4ff;   --c-blue-stroke:   #2f5bc4;
+    --c-teal-bg:   #0e2a27;   --c-teal-fg:   #7be8da;   --c-teal-stroke:   #167a70;
+    --c-coral-bg:  #2c1416;   --c-coral-fg:  #ffb4b4;   --c-coral-stroke:  #8f2f35;
+    --c-amber-bg:  #2b2210;   --c-amber-fg:  #fbc87a;   --c-amber-stroke:  #8a6a1c;
+    --c-gray-bg:   #1a2233;   --c-gray-fg:   #d1d9e6;   --c-gray-stroke:   #3b475c;
+    --c-purple-mid: #a78bfa;
+    --c-purple-deep: #d9ccff;
+    --c-purple-ink: #eadfff;
+    --c-slate-fg: #b6c2d4;
+    --c-slate-mid: #94a3b8;
+    --c-slate-stroke: #64748b;
+    --c-amber-mid: #f0a53a;
+    --ink-strong: #e2e8f0;
+    --bg-soft-2: #0f172a;
+  }
 }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; line-height: 1.55; }
@@ -150,6 +206,15 @@
   .lire { max-width: 820px; }
   .meta { display: flex; flex-wrap: wrap; gap: 28px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-muted); }
   .meta span b { color: var(--ink); font-weight: 700; }
+
+  /* S-G1 (3/4, R-30) - barre d'en-tete : eyebrow a gauche, bouton de bascule a droite. */
+  .header-barre { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  .header-barre .eyebrow { margin-bottom: 0; }
+  .theme-toggle { appearance: none; border: 1px solid var(--line); background: var(--bg-soft); color: var(--ink); border-radius: 999px; width: 36px; height: 36px; flex: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .theme-toggle:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
+  .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
 
   /* SECTIONS */
   section { margin-bottom: 56px; }
@@ -213,7 +278,7 @@
   @media (max-width: 720px) { .page { padding: 24px 16px 40px; } h1 { font-size: 30px; } h2 { font-size: 22px; } .lede { font-size: 16px; } }
 
   /* PRINT */
-  @media print { .page { padding: 0; max-width: 100%; } body { font-size: 11pt; } .diagram-wrap { background: var(--bg); break-inside: avoid; } .footer { break-inside: avoid; } }
+  @media print { .page { padding: 0; max-width: 100%; } .theme-toggle { display: none; } body { font-size: 11pt; } .diagram-wrap { background: var(--bg); break-inside: avoid; } .footer { break-inside: avoid; } }
 
     /* Mouvement reduit (oracle-mobile M6, TF-0856) : bloc du socle digit-ai-page-html. */
     @media (prefers-reduced-motion: reduce) {
@@ -221,12 +286,19 @@
     }
 </style>
 </head>
-<body>
+<body data-page="donnees">
 <div class="page">
 
   <!-- ============ HEADER ============ -->
   <header class="header">
-    <div class="eyebrow">{{EYEBROW}}</div>
+    <div class="header-barre">
+      <div class="eyebrow">{{EYEBROW}}</div>
+      <!-- S-G1 (3/4, R-30) - bouton de bascule du theme sombre, en zone d'en-tete. -->
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Bascule thème sombre" aria-pressed="false">
+        <svg class="icon-moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
     <h1>{{H1_DEBUT}} <span class="accent">{{H1_ACCENT}}</span> {{H1_FIN}}</h1>
     <div class="lire" data-mesure-lecture data-colonne-ok><p class="lede">{{LEDE}}</p></div>
     <div class="meta">
@@ -295,14 +367,20 @@
         </line>
 
         <!-- ===== BANDE 2 · PIPELINES (y: 195 → 560) ===== -->
+        <!-- TF-1890 : la pastille se pose ENTRE deux couloirs, jamais sous une fleche descendante.
+             Le couloir 1 → 2 passe a x = 127 ; une pastille calee a gauche (x = 20, largeur 290)
+             recouvrait la fleche et la cachait sur 22 px. Elle tient donc dans l'intervalle libre
+             140-325, a droite du couloir : largeur 185 px, libelle de 18 caracteres au plus (le detail
+             va dans le <title> du groupe). Deux couloirs voisins sont a 210 px : une pastille plus
+             large se pose dans un intervalle plus large, jamais sur un couloir. -->
         <!-- TF-1660 : le cadre CONTIENT sa pastille et ses pipelines par construction. Il les
              DECLARE par paires (data-overlap-ok, TF-1146) : un pipeline duplique recoit un id et
              s ajoute a cette liste ; tout autre recouvrement du cadre reste juge, et les pipelines
              restent juges entre eux. -->
         <rect id="bande-2-cadre" x="20" y="195" width="1470" height="365" rx="14" class="svg-frame" style="stroke:var(--c-purple-fg)" data-overlap-ok="bande-2-pastille pipeline-m1"/>
         <g id="bande-2-pastille"><title>Bande 2 · {{NOM_BANDE_2}}</title>
-          <rect x="20" y="195" width="290" height="22" rx="6" stroke-width="0.8" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
-          <text x="32" y="211" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · {{NOM_BANDE_2}}</text>
+          <rect x="140" y="195" width="185" height="22" rx="6" stroke-width="0.8" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
+          <text x="152" y="211" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · {{NOM_BANDE_2}}</text>
         </g>
 
         <!-- Exemple de pipeline (svg-agent-mission) à dupliquer pour M1, M2, ... — un id par
@@ -402,6 +480,25 @@
   </footer>
 
 </div>
+
+<!-- S-G1 (4/4, R-30) - cablage de la bascule : persistance et aria-pressed, aucune bascule muette. -->
+<script>
+(function () {
+  var bouton = document.getElementById('theme-toggle');
+  var racine = document.documentElement;
+  function appliquer(theme) {
+    racine.setAttribute('data-theme', theme);
+    try { localStorage.setItem('digitai-theme', theme); } catch (e) {}
+    bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    var meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) { meta.setAttribute('content', theme); }
+  }
+  bouton.setAttribute('aria-pressed', racine.getAttribute('data-theme') === 'dark' ? 'true' : 'false');
+  bouton.addEventListener('click', function () {
+    appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
 
 <!-- ============ SCRIPT TOOLTIPS CUSTOM ============ -->
 <script>

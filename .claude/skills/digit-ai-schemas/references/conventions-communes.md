@@ -4,16 +4,18 @@ Ce document énonce les règles non-négociables. À lire intégralement avant d
 
 ## 1 · Palette sémantique
 
-La couleur encode le **type fonctionnel** du nœud, pas un choix esthétique arbitraire. À chaque ramp correspond un trio (fond pâle, texte foncé, bordure intermédiaire).
+La couleur encode le **type fonctionnel** du nœud, pas un choix esthétique arbitraire. À chaque ramp correspond un trio (fond pâle, texte foncé, bordure intermédiaire), et **ce trio est trois jetons**, jamais trois valeurs.
 
 | Sémantique | Ramp | Fond | Texte | Bordure | Usage typique |
 |---|---|---|---|---|---|
-| Pipelines, automation, Agent IA | purple | `#ede9fe` | `#5b21b6` | `#c4b5fd` | Pipelines Azure DevOps, modules de l'orchestrateur, briques d'outillage |
-| Modules centraux, référentiels, environnements DEV | blue | `#dbeafe` | `#1d4ed8` | `#93c5fd` | Repos source, RG DEV POC / DEV MVP, services PaaS standards |
-| Pilotage, dashboards, observabilité, STAGING | teal | `#ccfbf1` | `#0f766e` | `#5eead4` | Dashboard portfolio, App Insights, Log Analytics, Elastic, RG STAGING |
-| Cartographie, éléments critiques, PROD, sécurité | coral | `#fee2e2` | `#b91c1c` | `#fca5a5` | RG PROD, Sentinel, Defender, alertes critiques |
-| Exports externes, synchronisations, intégrations | amber | `#fef3c7` | `#92400e` | `#fcd34d` | Acteurs humains, EasyVista, CMDB, Cosign, Storage da-dossiers |
-| Acteurs, données partagées, services transverses | gray | `#f1f3f7` | `#374151` | `#cbd5e1` | Sources git, hub Azure, modules TF, RG Sandbox |
+| Pipelines, automation, Agent IA | purple | `--c-purple-bg` | `--c-purple-fg` | `--c-purple-stroke` | Pipelines Azure DevOps, modules de l'orchestrateur, briques d'outillage |
+| Modules centraux, référentiels, environnements DEV | blue | `--c-blue-bg` | `--c-blue-fg` | `--c-blue-stroke` | Repos source, RG DEV POC / DEV MVP, services PaaS standards |
+| Pilotage, dashboards, observabilité, STAGING | teal | `--c-teal-bg` | `--c-teal-fg` | `--c-teal-stroke` | Dashboard portfolio, App Insights, Log Analytics, Elastic, RG STAGING |
+| Cartographie, éléments critiques, PROD, sécurité | coral | `--c-coral-bg` | `--c-coral-fg` | `--c-coral-stroke` | RG PROD, Sentinel, Defender, alertes critiques |
+| Exports externes, synchronisations, intégrations | amber | `--c-amber-bg` | `--c-amber-fg` | `--c-amber-stroke` | Acteurs humains, EasyVista, CMDB, Cosign, Storage da-dossiers |
+| Acteurs, données partagées, services transverses | gray | `--c-gray-bg` | `--c-gray-fg` | `--c-gray-stroke` | Sources git, hub Azure, modules TF, RG Sandbox |
+
+**Les valeurs hexadécimales ne s'écrivent qu'à un seul endroit : le `:root` du §8**, et sa projection sombre. Un nœud, un texte, une flèche, un marqueur s'écrivent `style="fill:var(--c-purple-bg)"` ou par une classe du §3, jamais `fill="#ede9fe"`. Ce tableau donnait les hexadécimaux, et une page construite en les recopiant a rendu 147 écarts durs à `oracle-tokens` (T1, 80 couleurs en dur) et 19 à `oracle-bascule` (une palette sans variante sombre) avant d'être corrigée à la main en six passes (relevé du produit, lot Produit-84 20261019a, TF-1890 ; chiffres rapportés, non rejoués ici). Les valeurs claires et sombres de chaque jeton vivent dans `assets/template-multi-bandes.html`, qui reste la source.
 
 **Règle de cohérence :** ne pas mélanger les ramps pour un même type de nœud. Si un pipeline est purple à un endroit, il est purple partout. Tracer la sémantique avant de commencer à colorier.
 
@@ -134,18 +136,20 @@ Quand plusieurs flèches descendent en parallèle d'une bande supérieure vers u
 
 ## 6 · Titres de bande
 
-**Toujours dans une pastille blanche encadrée**, placée hors du couloir des flèches descendantes. Format type :
+**Toujours dans une pastille blanche encadrée**, placée hors du couloir des flèches descendantes. **La pastille et son texte forment UN groupe titré** (TF-0424, TF-1660) : `render_page.py` V4 juge sinon le texte contre son propre cadre. Format type :
 
 ```svg
-<rect x="20" y="195" width="290" height="22" rx="6" style="fill:var(--bg)" style="stroke:var(--c-purple-fg)" stroke-width="0.8"/>
-<text x="32" y="211" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · Orchestration · pipelines Azure DevOps</text>
+<g id="bande-2-pastille"><title>Bande 2 · Orchestration · pipelines Azure DevOps</title>
+  <rect x="140" y="195" width="185" height="22" rx="6" stroke-width="0.8" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
+  <text x="152" y="211" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · Orchestration</text>
+</g>
 ```
 
 La pastille a :
-- Une **bordure** dans la couleur sémantique de la bande (purple pour pipelines, slate pour bandes neutres).
+- Une **bordure** dans la couleur sémantique de la bande (purple pour pipelines, slate pour bandes neutres), déclarée dans un SEUL `style` (deux attributs `style` sur un même élément ne s'écrivent pas : le second est ignoré).
 - Une **hauteur ~22px** pour englober le texte sans trop charger.
-- Une **largeur ajustée au texte** (laisser ~14px de padding interne).
-- Un **placement à gauche du SVG** ou dans une zone clairement libre, jamais sous une flèche descendante.
+- Une **largeur ajustée au texte** (laisser ~14px de padding interne) : à 9,5 px en capitales espacées, compter 7 px par caractère.
+- Un **placement dans une zone libre de tout couloir**, jamais sous une flèche descendante (TF-1890). Quand des flèches traversent la bande d'en-tête à intervalle régulier (210 px dans le gabarit : x = 127, 337, 547…), la pastille se pose ENTRE deux couloirs : largeur 185 px au plus, libellé de 18 caractères au plus, le libellé long passant dans le `<title>` du groupe. Une pastille calée à gauche sur 290 px recouvrait la flèche et la cachait ; c'était le placement de l'exemple de référence.
 
 Numérotation préfixée (`1 · `, `2 · `, `3 · `) pour les bandes hiérarchisées.
 
@@ -221,8 +225,32 @@ Toujours déclarer ces variables dans `:root` de la page hôte pour permettre le
   --sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
   --head: 'Montserrat', 'Roboto', system-ui, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Jetons de focus (oracle-tokens T8) : un anneau posé doit être prescrit ici. */
+  --focus-anneau: 2px solid var(--accent);
+  --focus-decalage: 2px;
 }
 ```
+
+### Thème sombre, bascule et déclaration de page (TF-1890, 19/10/2026)
+
+Le gabarit portait un `:root` clair et rien d'autre. Un schéma construit dessus échouait à
+`oracle-bascule` dès qu'un bouton de thème s'y ajoutait (la palette `--c-*` n'avait pas de variante
+sombre), et à `check_html` G1 quand l'auteur le contournait par `prefers-color-scheme`. Le gabarit
+`assets/template-multi-bandes.html` porte désormais, **et c'est lui la source, pas ce document** :
+
+- **la projection sombre** `:root[data-theme="dark"]` sous `@media screen` : elle redéfinit chaque jeton de
+  couleur du `:root` et rien d'autre (aucune couleur en dur dans une règle de nœud, de texte ou de flèche).
+  Sous `@media screen`, l'impression reste claire quel que soit le thème affiché ;
+- **le bouton de bascule** `.theme-toggle` dans l'en-tête, son script d'initialisation avant la première
+  peinture et son câblage (clé `digitai-theme` dans `localStorage`, `aria-pressed`). Le clair est le défaut,
+  strictement : le sombre est un choix du lecteur, jamais l'héritage de l'OS (`check_html` G1) ;
+- **`data-page="donnees"` sur `<body>`** : une page de schémas et de tableaux se déclare page de données
+  (prose pleine largeur par défaut, `lisibilite.md`), au lieu d'être jugée comme une note en prose ;
+- **les jetons de focus** `--focus-anneau` et `--focus-decalage`, que le bouton consomme.
+
+Un jeton ajouté au `:root` reçoit sa valeur sombre dans la projection, le même jour : c'est ce que
+`oracle-bascule` B-T4 mesure. La recette du skill (`scripts/self-test.mjs`) joue `check_html`, les oracles
+de forge-design et `render_page.py` aux deux thèmes sur une instance du gabarit, et ses cas rouges le prouvent.
 
 ## 9 · Encapsulation du SVG
 

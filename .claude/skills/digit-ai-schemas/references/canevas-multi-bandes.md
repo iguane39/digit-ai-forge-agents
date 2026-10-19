@@ -31,7 +31,7 @@ Chaque nœud fait 195px de large × ~84px de haut. Espacement horizontal de 15px
 
 ### Couloir 1 → 2 (y: 120 → 195)
 
-Zone libre traversée par les flèches d'action humaine (`svg-arr-manual` orange pointillé). Aucun nœud ici. Le titre de bande 2 est placé dans une pastille blanche en **haut à gauche** de la bande 2, hors couloir.
+Zone libre traversée par les flèches d'action humaine (`svg-arr-manual` orange pointillé). Aucun nœud ici. Le titre de bande 2 est placé dans une pastille blanche en **haut de la bande 2, ENTRE deux couloirs** (intervalle libre x = 140 à 325, 185 px de large, libellé de 18 caractères au plus ; TF-1890 : à gauche sur 290 px, elle recouvrait la flèche du couloir x = 127), hors couloir.
 
 ### Bande 2 · Orchestration / pipelines (y: 195 → 560)
 

@@ -164,6 +164,38 @@ PASS (67 en-têtes glosés). Ce que l'exemple porte désormais, et que tout sch�
 Un gabarit ou un exemple qui ne tient pas ses propres règles enseigne le défaut : la recette du
 skill les rejoue avant toute livraison.
 
+### Le gabarit multi-bandes et l'exemple passent les trois jeux d'oracles, et la recette les joue (TF-1890, 19/10/2026)
+
+Retour du lot Produit-84 20261019a (RT-9) : une page instanciée fidèlement depuis
+`template-multi-bandes.html` échouait à `check_html.py`, aux oracles de forge-design (`oracle-tokens`,
+`oracle-bascule`) et à `render_page.py`, et a demandé six passes. TF-1660 (14/10) n'avait traité que
+`render_page`. Mesuré le 19/10 avant correction, sur ce dépôt : l'instance du gabarit passait déjà
+`check_html` et le lanceur de forge-design (le `<link>` Google Fonts de l'ancien gabarit n'y est plus),
+mais `oracle-bascule` ne la jugeait pas (« rendu figé », aucun bouton), la pastille de la bande 2 cachait la
+flèche du couloir x = 127, et **`exemple-reference.html` échouait aux trois** : `check_html` (L30, « gate »
+non glosée dans six chapitres), forge-design (S6, `↔` ; T8, deux anneaux de focus sans jeton) et
+`render_page` (V4 sur la même pastille, V16 sur des badges d'état indiscernables, V18 aux largeurs 4K).
+
+Ce qui change, et qui s'applique à toute page produite :
+
+- **le gabarit porte la bascule sombre** : bouton en en-tête, script avant la première peinture,
+  projection `:root[data-theme="dark"]` sous `@media screen` de TOUS les jetons de couleur, jetons de
+  focus. `oracle-bascule` JUGE alors la page (B-T1 à B-T4) au lieu de s'en excuser ;
+- **`data-page="donnees"` sur `<body>`** : une page de schémas et de tableaux se déclare page de données.
+  Conséquence à connaître : un libellé SVG de 120 caractères ou plus y est jugé comme un bloc de prose
+  étroit (`render_page` V13) ; le couper en deux `<text>` ;
+- **la pastille de bande se pose entre deux couloirs** (185 px, 18 caractères) ; le libellé long passe au
+  `<title>` du groupe (`conventions-communes.md` §6) ;
+- **la palette s'écrit en jetons** (`conventions-communes.md` §1 : le tableau ne donne plus les
+  hexadécimaux, que le `:root` seul porte).
+
+**La recette** : `node scripts/self-test.mjs` (`--rapide` n'ouvre pas l'exemple dans le navigateur, ~4 min).
+Elle joue `check_html.py`, le lanceur de forge-design et `render_page.py` aux deux thèmes sur une instance du
+gabarit et sur l'exemple, puis quatre cas rouges, un défaut à la fois : un `<link>` Google Fonts (A1), une
+couleur en dur (T1), la projection sombre retirée (B-T4), la pastille remise sur le couloir (mesure de géométrie de la recette : `render_page` ne la voit pas sous un groupe titré). Un outil
+absent du poste rend un SKIP nommé. Elle ne juge pas les quatre fragments (ils se jugent dans leur page
+hôte), ni le canevas du modèle de données, ni la lecture humaine du rendu.
+
 ### Les composants du socle sont EMBARQUÉS, jamais recopiés (TF-0784, 03/09/2026)
 
 `assets/exemple-reference.html` porte trois composants du socle `digit-ai-page-html` —

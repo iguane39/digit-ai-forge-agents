@@ -103,6 +103,8 @@
 /* POLICES-EMBARQUEES:FIN */
 
   :root {
+    --focus-anneau: 2px solid var(--accent);
+    --focus-decalage: 2px;
     --bg: #ffffff;
     --bg-soft: #f7f8fa;
     --bg-softer: #fbfbfc;
@@ -216,7 +218,7 @@
               padding: 8px 0; border-top: 1px solid var(--line-soft); }
   nav.toc a:first-of-type { border-top: 0; }
   nav.toc a:hover .toc-t { color: var(--accent); }
-  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  nav.toc a:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
   .toc-t { display: block; font-family: var(--head); font-weight: 700; font-size: 13.5px; }
   .toc-d { display: block; color: var(--ink-muted); font-size: 12px; line-height: 1.45; }
   /* COLLANT A TOUTES LES LARGEURS, et ce n'est pas un detail de gout : la famille
@@ -418,10 +420,13 @@
   .b-manual  { background: var(--c-amber-bg);  color: var(--c-amber-fg); }
   .b-must    { background: var(--c-coral-bg);  color: var(--c-coral-fg); }
   .b-opt     { background: var(--c-gray-bg);   color: var(--c-gray-fg); }
-  .b-info    { background: var(--c-teal-bg);   color: var(--c-teal-fg); }
-  .b-palier1 { background: var(--c-gray-bg);   color: var(--c-gray-fg); }
-  .b-palier2 { background: var(--c-amber-bg);  color: var(--c-amber-fg); }
-  .b-palier3 { background: var(--c-purple-bg); color: var(--c-purple-fg); }
+  /* V16 (TF-1890) : un badge d'etat porte un fond PLEIN, pas un fond de carte — les fonds pales de
+     deux rampes voisines etaient indiscernables (Delta-E 17 pour 20 requis). Le libelle reste
+     l'indice non colorimetrique (WCAG 1.4.1). */
+  .b-info    { background: var(--c-teal-fg);   color: var(--bg); }
+  .b-palier1 { background: var(--c-gray-fg);   color: var(--bg); }
+  .b-palier2 { background: var(--c-amber-mid); color: var(--bg); }
+  .b-palier3 { background: var(--c-purple-fg); color: var(--bg); }
 
   /* ===== TABLES ===== */
   table {
@@ -613,7 +618,7 @@
     font: inherit; padding: 8px 12px; border: 1px solid var(--line);
     border-radius: 6px; background: var(--bg-soft); color: var(--ink); min-width: 16rem;
   }
-  .toolbar input:focus-visible, .btn-reset:focus-visible { outline: 2px solid var(--accent, var(--accent)); outline-offset: 1px; }
+  .toolbar input:focus-visible, .btn-reset:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
   .btn-reset {
     font: inherit; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px;
     background: var(--bg-soft); color: var(--ink-soft); cursor: pointer; min-height: 44px;
@@ -726,7 +731,7 @@ tr[data-tf-empty] td {
 </style>
 <!-- COMPOSANT-EMBARQUE:FIN table-filters.css -->
 </head>
-<body>
+<body data-page="donnees">
 <div class="page">
 
   <!-- ============ HEADER ============ -->
@@ -807,6 +812,7 @@ tr[data-tf-empty] td {
   <section id="sec-01">
     <h2><span class="num">01</span> Vue d'ensemble de l'architecture cible</h2>
     <p class="section-intro ch-apprend">Schéma d'ensemble de l'architecture cible : les 7 missions de l'Agent IA (brief V2k §03) projetées sur les composants Azure concrets qui les portent. Les bandes horizontales rendent lisibles les <strong>5 plans</strong> de l'architecture : entrées et supervision humaine (haut), orchestration pipelines (centre), composants applicatifs et données (milieu-bas), supervision (bas), intégrations externes (très bas).</p>
+    <p class="glossaire"><dfn>gate</dfn> : point de validation où une personne ou un contrôle autorise la suite.</p>
 
     <div class="diagram-wrap">
       <svg viewBox="0 0 1500 1180" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diag1-title diag1-desc">
@@ -953,9 +959,13 @@ tr[data-tf-empty] td {
         <!-- y: 200 → 540                                            -->
         <!-- ===================================================== -->
         <rect data-overlap-ok="" x="20" y="195" width="1470" height="365" rx="14" class="svg-frame" style="stroke:var(--c-purple-fg)"/>
-        <!-- Titre de bande placé à gauche dans une zone libre (entre Repo poc et avant M1, sans traverser les flèches descendantes) -->
-        <rect data-overlap-ok="" x="20" y="195" width="290" height="22" rx="6" stroke-width="0.8" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
-        <text data-overlap-ok="" x="32" y="211" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · Orchestration · pipelines Azure DevOps</text>
+        <!-- TF-1890 : le titre de bande se pose ENTRE deux couloirs. Sept flèches descendent de la bande 1
+             à x = 127, 337, 547 … ; une pastille calée à gauche (x = 20, largeur 290) en recouvrait deux. Elle
+             tient dans l'intervalle libre 140-325, et le libellé long passe dans le titre du groupe. -->
+        <g id="bande-2-pastille"><title>Bande 2 · Orchestration · pipelines Azure DevOps</title>
+          <rect x="140" y="195" width="185" height="22" rx="6" stroke-width="0.8" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
+          <text x="152" y="211" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · Orchestration</text>
+        </g>
 
         <!-- Pipelines de M1 à M7 -->
         <!-- Format : x=30+i*210 width=195, height=320, y=218 -->
@@ -1822,22 +1832,22 @@ tr[data-tf-empty] td {
 
         <!-- DEV MVP → Hub (couloir gauche) -->
         <path data-overlap-ok="" d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-          <title>Peering VNet bidirectionnel RG DEV MVP ↔ hub | Permet aux Container Apps DEV MVP d'accéder au SI Digit-AI via ExpressRoute (EasyVista, AD on-prem) | Filtrage du trafic sortant Internet par Azure Firewall Premium du hub | Coût : facturé à l'ingress et egress sur le peering</title>
+          <title>Peering VNet bidirectionnel entre RG DEV MVP et hub | Permet aux Container Apps DEV MVP d'accéder au SI Digit-AI via ExpressRoute (EasyVista, AD on-prem) | Filtrage du trafic sortant Internet par Azure Firewall Premium du hub | Coût : facturé à l'ingress et egress sur le peering</title>
         </path>
 
         <!-- STAGING → Hub (couloir centre-gauche) -->
         <path data-overlap-ok="" d="M515,418 L515,378 L660,378 L660,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-          <title>Peering VNet bidirectionnel RG STAGING ↔ hub | Mêmes routes et règles Firewall que la PROD pour reproduire fidèlement l'environnement cible | Le réseau STAGING est strictement iso-prod en termes de connectivité</title>
+          <title>Peering VNet bidirectionnel entre RG STAGING et hub | Mêmes routes et règles Firewall que la PROD pour reproduire fidèlement l'environnement cible | Le réseau STAGING est strictement iso-prod en termes de connectivité</title>
         </path>
 
         <!-- PROD → Hub (couloir centre-droit) -->
         <path data-overlap-ok="" d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-          <title>Peering VNet bidirectionnel RG PROD ↔ hub | Toutes les sorties Internet passent par Azure Firewall Premium (filtrage URL, TLS inspection, IDPS) | Inspection est-ouest entre spokes activée pour le confinement des incidents</title>
+          <title>Peering VNet bidirectionnel entre RG PROD et hub | Toutes les sorties Internet passent par Azure Firewall Premium (filtrage URL, TLS inspection, IDPS) | Inspection est-ouest entre spokes activée pour le confinement des incidents</title>
         </path>
 
         <!-- Platform → Hub (couloir droit) -->
         <path data-overlap-ok="" d="M1161,418 L1161,370 L820,370 L820,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-          <title>Peering VNet bidirectionnel RG Platform ↔ hub | Permet aux Container Apps des autres spokes d'atteindre les ACR et Log Analytics du Platform via les Private Endpoints traversant le hub | Service partagé optimisant les coûts (un seul ACR, un seul Sentinel)</title>
+          <title>Peering VNet bidirectionnel entre RG Platform et hub | Permet aux Container Apps des autres spokes d'atteindre les ACR et Log Analytics du Platform via les Private Endpoints traversant le hub | Service partagé optimisant les coûts (un seul ACR, un seul Sentinel)</title>
         </path>
 
         <!-- ===================================================== -->
@@ -1851,7 +1861,7 @@ tr[data-tf-empty] td {
           <rect data-overlap-ok="" x="240" y="0" width="14" height="14" rx="3" stroke-dasharray="4 4" style="fill:var(--bg);stroke:var(--c-slate-stroke)"/>
           <text data-overlap-ok="" x="262" y="11" class="svg-ts" style="font-size:11px">Spoke isolé (sans peering hub)</text>
 
-          <text data-overlap-ok="" x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage) sont exposés via Private Endpoint dans le subnet PE dédié de chaque spoke</text>
+          <text data-overlap-ok="" x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage) passent par un Private Endpoint du subnet PE du spoke</text>
         </g>
 
       </svg>
@@ -1879,6 +1889,7 @@ tr[data-tf-empty] td {
   <section id="sec-03">
     <h2><span class="num">03</span> Composants détaillés mission par mission</h2>
     <p class="section-intro ch-apprend">Pour chacune des 7 missions du brief V2k §03, nous décrivons d'abord <strong>l'objectif et le fonctionnement de la mission</strong> en termes accessibles à un lecteur non-spécialiste Azure, puis nous détaillons les composants Azure mis en œuvre et leur rôle. Lecture en parallèle avec la Figure 1 ci-dessus.</p>
+    <p class="glossaire"><dfn>gate</dfn> : point de validation où une personne ou un contrôle autorise la suite.</p>
     <p class="legende-badges">Les modules portent le palier de la trajectoire Crawl / Walk / Run du brief V2k §04, qui dit à quel horizon le composant doit exister.<br>
       <span class="badge b-palier1" aria-describedby="leg-palier1">Palier 1</span> <span id="leg-palier1">Crawl, horizon 3 mois : socle minimal livrant de la valeur sans engager toute la chaîne.</span><br>
       <span class="badge b-palier2" aria-describedby="leg-palier2">Palier 2</span> <span id="leg-palier2">Walk, horizon 9 mois : automatisation étendue, capitalisée sur le palier précédent sans rien jeter.</span><br>
@@ -2319,6 +2330,7 @@ stages:
   <section id="sec-04">
     <h2><span class="num">04</span> Identités, droits et secrets</h2>
     <p class="section-intro ch-apprend">L'Agent IA en réalité, ce sont des <strong>identités non-humaines</strong> (Service Principals, Managed Identities, federated identities) auxquelles on accorde des droits minimaux. Aucun PAT, aucun secret long terme dans les pipelines. Workload Identity Federation OIDC pour toutes les authentifications, PIM pour les humains privilégiés.</p>
+    <p class="glossaire"><dfn>gate</dfn> : point de validation où une personne ou un contrôle autorise la suite.</p>
 
     <h3>Personas humaines et leurs droits</h3>
     <table id="tbl-04" data-filterable class="repli-cartes">
@@ -2549,6 +2561,7 @@ stages:
   <section id="sec-05">
     <h2><span class="num">05</span> Orchestration · pipelines Azure DevOps</h2>
     <p class="section-intro ch-apprend">Vue détaillée des pipelines : qui déclenche quoi, qui produit quel artefact, qui dépend de qui. Deux organisations Azure DevOps distinctes (<code>digitai-squad-innov</code> et <code>digitai-dsi-lz</code>) avec une frontière de promotion explicite par manifest copy ACR.</p>
+    <p class="glossaire"><dfn>gate</dfn> : point de validation où une personne ou un contrôle autorise la suite.</p>
 
     <h3>Schéma d'orchestration des pipelines</h3>
 
@@ -2945,6 +2958,7 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
   <section id="sec-07">
     <h2><span class="num">07</span> Sécurité transverse, FinOps et politiques</h2>
     <p class="section-intro ch-apprend">Lecture transverse de l'architecture : modèle de menace synthétique, plans Defender par environnement, politiques de tagging FinOps, mécanismes de chargeback et stratégies d'optimisation des coûts. Conséquences architecturales des arbitrages tranchés au V2k §08.</p>
+    <p class="glossaire"><dfn>gate</dfn> : point de validation où une personne ou un contrôle autorise la suite.</p>
 
     <h3>Modèle de menace · synthèse</h3>
     <table class="repli-cartes">
@@ -3077,6 +3091,7 @@ cosign verify acrdigitaidsi.azurecr.io/{appcode}:vX.Y.Z-rc \
   <section id="sec-08">
     <h2><span class="num">08</span> Plan de mise en œuvre · aligné sur les 3 paliers</h2>
     <p class="section-intro ch-apprend">Quels composants au quel palier. Les paliers Crawl, Walk, Run du brief V2k (§04) déterminent ce qui doit exister à chaque horizon. L'objectif est de livrer de la valeur dès le Palier 1 sans engager toute la chaîne, puis de capitaliser au fur et à mesure.</p>
+    <p class="glossaire"><dfn>gate</dfn> : point de validation où une personne ou un contrôle autorise la suite.</p>
 
     <div class="trajectory">
       <div class="palier palier-1">
