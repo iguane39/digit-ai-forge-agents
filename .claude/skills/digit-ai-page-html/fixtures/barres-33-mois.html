@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc barres 33 mois — 20261019a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="../assets/barres-empilees.css">
+</head>
+<!--
+Fixture de TF-1875 (defaut 3). A 33 mois, une etiquette de categorie sur k s'ecrit et la derniere (« sept. 2026 »)
+  depassait le bord droit du viewBox de 13 px ; la graduation la plus haute (« 300 ») depassait de 2 px en haut.
+  VERTE : composant ACTUEL (la derniere categorie est toujours ecrite, la marge droite suit). ROUGE : -ancien-rendu,
+  le SVG pre-rendu par le composant d'avant correctif.
+-->
+<body><main class="wrap">
+<h1>Sessions sur 33 mois</h1>
+<p>Banc de TF-1875 : le composant barres empilees, juge par render_page.py.</p>
+<figure class="graphe-empile" id="g33" data-graphe-empile>
+  <figcaption>Sessions par mois, sur 33 mois (sans totaux)</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation": "vertical", "mode": "valeurs", "unite": "sessions", "totaux": false, "titre": "Sessions par mois", "titreCategories": "Mois", "categories": ["janv. 2024", "févr. 2024", "mars 2024", "avr. 2024", "mai 2024", "juin 2024", "juil. 2024", "août 2024", "sept. 2024", "oct. 2024", "nov. 2024", "déc. 2024", "janv. 2025", "févr. 2025", "mars 2025", "avr. 2025", "mai 2025", "juin 2025", "juil. 2025", "août 2025", "sept. 2025", "oct. 2025", "nov. 2025", "déc. 2025", "janv. 2026", "févr. 2026", "mars 2026", "avr. 2026", "mai 2026", "juin 2026", "juil. 2026", "août 2026", "sept. 2026"], "series": [{"nom": "Recherche", "valeurs": [100, 103, 106, 109, 112, 115, 118, 121, 124, 127, 130, 133, 136, 139, 142, 145, 148, 151, 154, 157, 160, 163, 166, 169, 172, 175, 178, 181, 184, 187, 190, 193, 196]}, {"nom": "Direct", "valeurs": [50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82]}]}
+  </script>
+</figure>
+<script src="../assets/barres-empilees.js"></script>
+<script>window.DigitAIBarresEmpilees.init(document);</script>
+</main></body></html>

@@ -90,6 +90,22 @@
 .graphe-table th[scope="row"], .graphe-table th[scope="col"]:first-child { text-align: left; }
 .graphe-erreur { color: var(--red, #B91C1C); }
 
+/* TF-1875 — Au-dela de deux series, la vue tableau (cinq colonnes ou plus) deborde du viewport etroit : bord droit
+   a 394 px pour 390 des 5 series, jusqu'a 460 px de viewport pour 6 series (mesure du 19/10/2026, noms de series
+   de 9 a 19 caracteres). Un conteneur defilant ne suffit pas : V1 compte l'element debordant (composants.md § 6).
+   Le repli en cartes du § 6 s'applique donc, declenche par le NOMBRE DE COLONNES lu dans le marquage ; les cellules
+   portent `data-label` (le nom de la serie). Le tableau reste un <table> : seuls ses lignes et cellules passent en bloc. */
+@media (max-width: 560px) {
+  .graphe-table table:has(th:nth-child(5)) thead { display: none; }
+  .graphe-table table:has(th:nth-child(5)) tr,
+  .graphe-table table:has(th:nth-child(5)) th,
+  .graphe-table table:has(th:nth-child(5)) td { display: block; width: 100%; box-sizing: border-box; }
+  .graphe-table table:has(th:nth-child(5)) tbody tr { border: 1px solid var(--line, #E6EAF2); border-radius: var(--r-sm, 6px); padding: 8px 12px; margin: 12px 0; }
+  .graphe-table table:has(th:nth-child(5)) tbody th[scope="row"] { border: none; padding: 4px 0; font-weight: 700; text-align: left; }
+  .graphe-table table:has(th:nth-child(5)) tbody td { display: flex; justify-content: space-between; gap: 12px; border: none; padding: 4px 0; text-align: left; overflow-wrap: anywhere; }
+  .graphe-table table:has(th:nth-child(5)) tbody td::before { content: attr(data-label); font-weight: 600; color: var(--muted, #64748B); }
+}
+
 @media print {
   .graphe-table { display: block; }
   .graphe-table[open] summary, .graphe-table summary { display: none; }

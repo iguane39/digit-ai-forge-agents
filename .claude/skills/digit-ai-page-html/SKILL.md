@@ -7,13 +7,32 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.35.0"
+  version: "1.36.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.36.0 (19/10/2026)** — **quatre défauts des composants de graphique corrigés, et un composant d'entonnoir (TF-1875,
+retour du constructeur de TF-1855 du 18/10/2026, décision R-58 option (a)).** Chaque défaut a sa fixture rouge et sa verte.
+**(1) V4 ne prend plus une ligne de grille pour une liaison** : douze colonnes à 390 px, totaux extrêmes à 3 px d'une
+graduation, la grille « traversait » les dix barres du milieu (9 constats à 390 px, 0 à 1 440) ; une liaison s'éloigne de sa
+boîte de départ et s'arrête contre sa boîte d'arrivée, une grille passe à côté (produit scalaire du tracé avec le vecteur
+extrémité vers centre de boîte) ; l'oracle n'est pas adouci, `v4-fleche-traverse-boite.html` garde ses constats. Bruit mesuré : 174 pages du parc à 1 440 px, compte V4 identique page par page avant et après (8 563 constats, 0 échec de rendu) ; le défaut ne se voit qu'à 390 px.
+**(2) La vue tableau à cinq colonnes ou plus se replie en cartes sous 560 px** (bord droit à 394 px pour 390 avec cinq séries,
+jusqu'à 460 px de viewport avec six ; `data-label` posé par le composant). **(3) À 33 mois, l'étiquette du dernier mois**
+(« sept. 2026 », 13 px hors du viewBox) **et la graduation la plus haute** (2 px) **ne sont plus rognées** : les étiquettes de
+catégorie s'écrivent une sur k en partant de la dernière, la marge droite suit la demi-largeur de cette étiquette, la marge
+haute tient la graduation. **(4) Sans totaux, la dernière graduation horizontale** (« 20 000 », 6 px) **n'est plus rognée** :
+la marge droite suit sa demi-largeur. **(5) Un composant d'entonnoir**, `assets/entonnoir.css` et `assets/entonnoir.js`, au
+modèle des barres empilées (donnée JSON déclarée, dessin dérivé, voie navigateur et `--injecter`, vue tableau, infobulle en
+complément) : chaque étape écrit son effectif UNE fois (la barre horizontale à une série l'écrit deux fois, mesuré), puis sa
+conversion « x % de l'étape précédente · y % du départ » ; une étape plus grande que la précédente est refusée. Composant
+n° 16 de `references/composants.md`. Fixtures `barres-5-series*`, `barres-33-mois*`, `barres-horizontal-sans-totaux*`,
+`barres-grille-liaison`, `entonnoir` et `barres-empilees-ancien.css` (la feuille d'avant, figée) ; 27 cas au self-test
+(`run_graphiques_tf1875`) ; le rognage se mesure (chaque `<text>` d'un graphe tient dans son `<svg>`). **Version MINEURE** : un composant s'ajoute, les trois autres défauts sont correctifs.
 
 **1.35.0 (19/10/2026)** — **V4 compare un texte de premier niveau aux libellés d'un groupe frère sans titre (TF-1891,
 RT-10 du lot Produit-84 20261019b, décision R-58 option (a)).** Le retour : « Sources lues au 19/10/2026 », texte SVG de
@@ -885,6 +904,7 @@ contrôles que le producteur lance de toute façon.
 **Optionnel** —
 
 - Bibliothèque de composants chartés prêts à coller (KPI, badges de statut, barres de progression, légende, barre d'outils + compteur, tableau repliable en cartes, **onglets accessibles** `assets/tabs.js` — L16, **ligne de tableau dépliable** `assets/table-detail.js` — L17, gabarits de chapitre `.chap.lire`/`.chap.duo` — L2), validés par les oracles : [references/composants.md](references/composants.md).
+- **Entonnoir de conversion** (composant 16, TF-1875) : une suite d'étapes décroissantes, l'effectif écrit une fois et la conversion d'une étape à la suivante : [references/composants.md](references/composants.md) § 16 (assets : [assets/entonnoir.css](assets/entonnoir.css), [assets/entonnoir.js](assets/entonnoir.js)).
 - Recherche dans le document + compteur d'occurrences (pour catalogues/référentiels parcourus,
   insensible aux accents, viewer-only) : [references/composant-recherche.md](references/composant-recherche.md)
   (asset : [assets/find-in-page.js](assets/find-in-page.js)).

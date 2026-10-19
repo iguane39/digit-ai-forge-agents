@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc barres grille liaison — 20261019a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="../assets/barres-empilees.css">
+</head>
+<!--
+Fixture de TF-1875 (defaut 1). Douze colonnes a 390 px : les totaux de la premiere et de la derniere barre (48, 49) frolent la
+  graduation 50 a moins de 6 px, et render_page.py prenait cette ligne de grille pour une LIAISON qui traverse les dix barres
+  du milieu (9 constats V4 a 390 px, 0 a 1440). Une liaison s'eloigne de sa boite de depart et s'arrete contre sa boite
+  d'arrivee ; une grille passe a cote. VERTE (V4 x0 a 390 px) ; la rouge est v4-fleche-traverse-boite.html, qui reste accusee.
+-->
+<body><main class="wrap">
+<h1>Totaux voisins d'une graduation</h1>
+<p>Banc de TF-1875 : le composant barres empilees, juge par render_page.py.</p>
+<figure class="graphe-empile" id="gv" data-graphe-empile>
+  <figcaption>Totaux par mois, colonnes</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation": "vertical", "mode": "valeurs", "unite": "€", "totaux": false, "titre": "Totaux par mois (colonnes)", "titreCategories": "Mois", "categories": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."], "series": [{"nom": "A", "valeurs": [38, 50, 62, 75, 85, 82, 78, 70, 60, 50, 45, 39]}, {"nom": "B", "valeurs": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]}]}
+  </script>
+</figure>
+<figure class="graphe-empile" id="gh" data-graphe-empile>
+  <figcaption>Totaux par mois, barres</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation": "horizontal", "mode": "valeurs", "unite": "€", "totaux": false, "titre": "Totaux par mois (barres)", "titreCategories": "Mois", "categories": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."], "series": [{"nom": "A", "valeurs": [38, 50, 62, 75, 85, 82, 78, 70, 60, 50, 45, 39]}, {"nom": "B", "valeurs": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]}]}
+  </script>
+</figure>
+<script src="../assets/barres-empilees.js"></script>
+<script>window.DigitAIBarresEmpilees.init(document);</script>
+</main></body></html>

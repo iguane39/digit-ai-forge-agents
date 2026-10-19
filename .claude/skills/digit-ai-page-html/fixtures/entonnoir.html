@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc entonnoir de conversion — 20261019a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="../assets/entonnoir.css">
+</head>
+<body><main class="wrap">
+<h1>Parcours d'inscription</h1>
+<p>Cinq etapes, de la visite au paiement, chaque etape dit son effectif une fois, puis sa conversion.</p>
+<figure class="entonnoir" id="e-parcours" data-entonnoir>
+  <figcaption>Parcours d'inscription par etape</figcaption>
+  <script type="application/json" class="entonnoir-donnees">
+  {"unite":"visiteurs","titre":"Parcours d'inscription par etape","etapes":[{"nom":"Visites de la page d'accueil","valeur":12480},{"nom":"Creations de compte","valeur":3412},{"nom":"Profils completes","valeur":2210},{"nom":"Essais lances","valeur":905},{"nom":"Paiements","valeur":214}]}
+  </script>
+</figure>
+<script src="../assets/entonnoir.js"></script>
+<script>window.DigitAIEntonnoir.init(document);</script>
+</main></body></html>

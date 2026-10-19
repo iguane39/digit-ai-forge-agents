@@ -392,7 +392,7 @@
 <!-- COMPOSANT-EMBARQUE:DEBUT barres-empilees.css — copie du socle digit-ai-page-html/assets/barres-empilees.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="barres-empilees.css" data-empreinte="sha256:ba289b499974ed60f8be3bd055baff8c95e6ffd1db8025fb998d8db97fb409cb">
+<style data-composant="barres-empilees.css" data-empreinte="sha256:7d0d231a40a7fd513ceae78e7eaa4294239d2e13e194bbd06bd7d9e95db6c229">
 /* barres-empilees.css — habillage du graphique en barres empilees (RT-119, D-55 (a) du 03/10/2026).
    Le dessin vit dans barres-empilees.js ; ici, la PALETTE en jetons et le style du SVG.
 
@@ -484,6 +484,22 @@
 .graphe-table th, .graphe-table td { border-bottom: 1px solid var(--line, #E6EAF2); padding: 4px; font-size: .75rem; text-align: right; }
 .graphe-table th[scope="row"], .graphe-table th[scope="col"]:first-child { text-align: left; }
 .graphe-erreur { color: var(--red, #B91C1C); }
+
+/* TF-1875 — Au-dela de deux series, la vue tableau (cinq colonnes ou plus) deborde du viewport etroit : bord droit
+   a 394 px pour 390 des 5 series, jusqu'a 460 px de viewport pour 6 series (mesure du 19/10/2026, noms de series
+   de 9 a 19 caracteres). Un conteneur defilant ne suffit pas : V1 compte l'element debordant (composants.md § 6).
+   Le repli en cartes du § 6 s'applique donc, declenche par le NOMBRE DE COLONNES lu dans le marquage ; les cellules
+   portent `data-label` (le nom de la serie). Le tableau reste un <table> : seuls ses lignes et cellules passent en bloc. */
+@media (max-width: 560px) {
+  .graphe-table table:has(th:nth-child(5)) thead { display: none; }
+  .graphe-table table:has(th:nth-child(5)) tr,
+  .graphe-table table:has(th:nth-child(5)) th,
+  .graphe-table table:has(th:nth-child(5)) td { display: block; width: 100%; box-sizing: border-box; }
+  .graphe-table table:has(th:nth-child(5)) tbody tr { border: 1px solid var(--line, #E6EAF2); border-radius: var(--r-sm, 6px); padding: 8px 12px; margin: 12px 0; }
+  .graphe-table table:has(th:nth-child(5)) tbody th[scope="row"] { border: none; padding: 4px 0; font-weight: 700; text-align: left; }
+  .graphe-table table:has(th:nth-child(5)) tbody td { display: flex; justify-content: space-between; gap: 12px; border: none; padding: 4px 0; text-align: left; overflow-wrap: anywhere; }
+  .graphe-table table:has(th:nth-child(5)) tbody td::before { content: attr(data-label); font-weight: 600; color: var(--muted, #64748B); }
+}
 
 @media print {
   .graphe-table { display: block; }
@@ -670,7 +686,7 @@ Rang : 2e sur 3
 Total de la colonne : 725 €"/><rect class="graphe-seg graphe-s3" id="g-jour-6-2" data-serie="Espagne" data-categorie="Dim" x="364.7" y="157.7" width="42.1" height="10.3" tabindex="0" role="img" aria-label="Espagne, Dim : 95 €" title="Part du total de la colonne : 13,1 %
 Rang : 3e sur 3
 Total de la colonne : 725 €
-Valeur exacte : 95 €"/><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-0-0" data-overlap-ok="g-jour-0-0" x="70.3" y="195.7" text-anchor="middle">820</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-0-1" data-overlap-ok="g-jour-0-1" x="70.3" y="129.3" text-anchor="middle">410</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-0-2" data-overlap-ok="g-jour-0-2" x="70.3" y="93.7" text-anchor="middle">250</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-1-0" data-overlap-ok="g-jour-1-0" x="122.9" y="199" text-anchor="middle">760</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-1-1" data-overlap-ok="g-jour-1-1" x="122.9" y="133.6" text-anchor="middle">450</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-1-2" data-overlap-ok="g-jour-1-2" x="122.9" y="96.9" text-anchor="middle">230</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-2-0" data-overlap-ok="g-jour-2-0" x="175.4" y="191.1" text-anchor="middle">906</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-2-1" data-overlap-ok="g-jour-2-1" x="175.4" y="121.7" text-anchor="middle">380</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-2-2" data-overlap-ok="g-jour-2-2" x="175.4" y="84.4" text-anchor="middle">310</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-3-0" data-overlap-ok="g-jour-3-0" x="228" y="192.5" text-anchor="middle">880</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-3-1" data-overlap-ok="g-jour-3-1" x="228" y="116.9" text-anchor="middle">520</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-3-2" data-overlap-ok="g-jour-3-2" x="228" y="73.7" text-anchor="middle">280</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-4-0" data-overlap-ok="g-jour-4-0" x="280.6" y="189.2" text-anchor="middle">940</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-4-1" data-overlap-ok="g-jour-4-1" x="280.6" y="113.1" text-anchor="middle">470</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-4-2" data-overlap-ok="g-jour-4-2" x="280.6" y="69.4" text-anchor="middle">340</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-5-0" data-overlap-ok="g-jour-5-0" x="333.1" y="207.1" text-anchor="middle">610</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-5-1" data-overlap-ok="g-jour-5-1" x="333.1" y="157.9" text-anchor="middle">300</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-5-2" data-overlap-ok="g-jour-5-2" x="333.1" y="131.5" text-anchor="middle">190</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-6-0" data-overlap-ok="g-jour-6-0" x="385.7" y="217.3" text-anchor="middle">420</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-6-1" data-overlap-ok="g-jour-6-1" x="385.7" y="183.3" text-anchor="middle">210</text></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>France</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Italie</li><li><span class="graphe-pastille graphe-s3" aria-hidden="true"></span>Espagne</li></ul><div class="graphe-table"><table><caption>Dépense par jour et par pays (€)</caption><thead><tr><th scope="col">Jour</th><th scope="col">France</th><th scope="col">Italie</th><th scope="col">Espagne</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">Lun</th><td>820</td><td>410</td><td>250</td><td>1 480</td></tr><tr><th scope="row">Mar</th><td>760</td><td>450</td><td>230</td><td>1 440</td></tr><tr><th scope="row">Mer</th><td>905,50</td><td>380</td><td>310</td><td>1 595,50</td></tr><tr><th scope="row">Jeu</th><td>880</td><td>520</td><td>280</td><td>1 680</td></tr><tr><th scope="row">Ven</th><td>940</td><td>470</td><td>340</td><td>1 750</td></tr><tr><th scope="row">Sam</th><td>610</td><td>300</td><td>190</td><td>1 100</td></tr><tr><th scope="row">Dim</th><td>420</td><td>210</td><td>95</td><td>725</td></tr></tbody></table></div><!--/graphe-rendu-->
+Valeur exacte : 95 €"/><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-0-0" data-overlap-ok="g-jour-0-0" x="70.3" y="195.7" text-anchor="middle">820</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-0-1" data-overlap-ok="g-jour-0-1" x="70.3" y="129.3" text-anchor="middle">410</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-0-2" data-overlap-ok="g-jour-0-2" x="70.3" y="93.7" text-anchor="middle">250</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-1-0" data-overlap-ok="g-jour-1-0" x="122.9" y="199" text-anchor="middle">760</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-1-1" data-overlap-ok="g-jour-1-1" x="122.9" y="133.6" text-anchor="middle">450</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-1-2" data-overlap-ok="g-jour-1-2" x="122.9" y="96.9" text-anchor="middle">230</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-2-0" data-overlap-ok="g-jour-2-0" x="175.4" y="191.1" text-anchor="middle">906</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-2-1" data-overlap-ok="g-jour-2-1" x="175.4" y="121.7" text-anchor="middle">380</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-2-2" data-overlap-ok="g-jour-2-2" x="175.4" y="84.4" text-anchor="middle">310</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-3-0" data-overlap-ok="g-jour-3-0" x="228" y="192.5" text-anchor="middle">880</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-3-1" data-overlap-ok="g-jour-3-1" x="228" y="116.9" text-anchor="middle">520</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-3-2" data-overlap-ok="g-jour-3-2" x="228" y="73.7" text-anchor="middle">280</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-4-0" data-overlap-ok="g-jour-4-0" x="280.6" y="189.2" text-anchor="middle">940</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-4-1" data-overlap-ok="g-jour-4-1" x="280.6" y="113.1" text-anchor="middle">470</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-4-2" data-overlap-ok="g-jour-4-2" x="280.6" y="69.4" text-anchor="middle">340</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-5-0" data-overlap-ok="g-jour-5-0" x="333.1" y="207.1" text-anchor="middle">610</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-5-1" data-overlap-ok="g-jour-5-1" x="333.1" y="157.9" text-anchor="middle">300</text><text class="etiquette-marque graphe-t3" data-etiquette-de="g-jour-5-2" data-overlap-ok="g-jour-5-2" x="333.1" y="131.5" text-anchor="middle">190</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-jour-6-0" data-overlap-ok="g-jour-6-0" x="385.7" y="217.3" text-anchor="middle">420</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-jour-6-1" data-overlap-ok="g-jour-6-1" x="385.7" y="183.3" text-anchor="middle">210</text></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>France</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Italie</li><li><span class="graphe-pastille graphe-s3" aria-hidden="true"></span>Espagne</li></ul><div class="graphe-table"><table><caption>Dépense par jour et par pays (€)</caption><thead><tr><th scope="col">Jour</th><th scope="col">France</th><th scope="col">Italie</th><th scope="col">Espagne</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">Lun</th><td data-label="France">820</td><td data-label="Italie">410</td><td data-label="Espagne">250</td><td data-label="Total">1 480</td></tr><tr><th scope="row">Mar</th><td data-label="France">760</td><td data-label="Italie">450</td><td data-label="Espagne">230</td><td data-label="Total">1 440</td></tr><tr><th scope="row">Mer</th><td data-label="France">905,50</td><td data-label="Italie">380</td><td data-label="Espagne">310</td><td data-label="Total">1 595,50</td></tr><tr><th scope="row">Jeu</th><td data-label="France">880</td><td data-label="Italie">520</td><td data-label="Espagne">280</td><td data-label="Total">1 680</td></tr><tr><th scope="row">Ven</th><td data-label="France">940</td><td data-label="Italie">470</td><td data-label="Espagne">340</td><td data-label="Total">1 750</td></tr><tr><th scope="row">Sam</th><td data-label="France">610</td><td data-label="Italie">300</td><td data-label="Espagne">190</td><td data-label="Total">1 100</td></tr><tr><th scope="row">Dim</th><td data-label="France">420</td><td data-label="Italie">210</td><td data-label="Espagne">95</td><td data-label="Total">725</td></tr></tbody></table></div><!--/graphe-rendu-->
 </figure>
 
           <figure class="graphe-empile" id="g-pays" data-graphe-empile>
@@ -704,7 +720,7 @@ Valeur exacte : 380 €"/><rect class="graphe-seg graphe-s2" id="g-pays-3-1" dat
 Rang : 2e sur 3
 Valeur exacte : 95 €"/><rect class="graphe-seg graphe-s3" id="g-pays-3-2" data-serie="Tablette" data-categorie="Belgique" x="94.5" y="109" width="0.4" height="22" tabindex="0" role="img" aria-label="Tablette, Belgique : 8 €" title="Part du total de la barre : 1,7 %
 Rang : 3e sur 3
-Valeur exacte : 8 €"/><text class="etiquette-marque graphe-t1" data-etiquette-de="g-pays-0-0" data-overlap-ok="g-pays-0-0" x="146.6" y="28" text-anchor="middle">3 150</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-pays-0-1" data-overlap-ok="g-pays-0-1" x="268" y="28" text-anchor="middle">1 980</text><text class="graphe-total" x="332.4" y="28">5 375 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-pays-1-0" data-overlap-ok="g-pays-1-0" x="108" y="60" text-anchor="middle">1 520</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-pays-1-1" data-overlap-ok="g-pays-1-1" x="165" y="60" text-anchor="middle">890</text><text class="graphe-total" x="199.2" y="60">2 560 €</text><text class="graphe-total" x="153.3" y="92">1 590 €</text><text class="graphe-total" x="100.9" y="124">483 €</text></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>Mobile</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Ordinateur</li><li><span class="graphe-pastille graphe-s3" aria-hidden="true"></span>Tablette</li></ul><div class="graphe-table"><table><caption>Dépense par pays et par appareil (€)</caption><thead><tr><th scope="col">Pays</th><th scope="col">Mobile</th><th scope="col">Ordinateur</th><th scope="col">Tablette</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">France</th><td>3 150</td><td>1 980</td><td>245</td><td>5 375</td></tr><tr><th scope="row">Italie</th><td>1 520</td><td>890</td><td>150</td><td>2 560</td></tr><tr><th scope="row">Espagne</th><td>1 010</td><td>520</td><td>60</td><td>1 590</td></tr><tr><th scope="row">Belgique</th><td>380</td><td>95</td><td>8</td><td>483</td></tr></tbody></table></div><!--/graphe-rendu-->
+Valeur exacte : 8 €"/><text class="etiquette-marque graphe-t1" data-etiquette-de="g-pays-0-0" data-overlap-ok="g-pays-0-0" x="146.6" y="28" text-anchor="middle">3 150</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-pays-0-1" data-overlap-ok="g-pays-0-1" x="268" y="28" text-anchor="middle">1 980</text><text class="graphe-total" x="332.4" y="28">5 375 €</text><text class="etiquette-marque graphe-t1" data-etiquette-de="g-pays-1-0" data-overlap-ok="g-pays-1-0" x="108" y="60" text-anchor="middle">1 520</text><text class="etiquette-marque graphe-t2" data-etiquette-de="g-pays-1-1" data-overlap-ok="g-pays-1-1" x="165" y="60" text-anchor="middle">890</text><text class="graphe-total" x="199.2" y="60">2 560 €</text><text class="graphe-total" x="153.3" y="92">1 590 €</text><text class="graphe-total" x="100.9" y="124">483 €</text></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>Mobile</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Ordinateur</li><li><span class="graphe-pastille graphe-s3" aria-hidden="true"></span>Tablette</li></ul><div class="graphe-table"><table><caption>Dépense par pays et par appareil (€)</caption><thead><tr><th scope="col">Pays</th><th scope="col">Mobile</th><th scope="col">Ordinateur</th><th scope="col">Tablette</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">France</th><td data-label="Mobile">3 150</td><td data-label="Ordinateur">1 980</td><td data-label="Tablette">245</td><td data-label="Total">5 375</td></tr><tr><th scope="row">Italie</th><td data-label="Mobile">1 520</td><td data-label="Ordinateur">890</td><td data-label="Tablette">150</td><td data-label="Total">2 560</td></tr><tr><th scope="row">Espagne</th><td data-label="Mobile">1 010</td><td data-label="Ordinateur">520</td><td data-label="Tablette">60</td><td data-label="Total">1 590</td></tr><tr><th scope="row">Belgique</th><td data-label="Mobile">380</td><td data-label="Ordinateur">95</td><td data-label="Tablette">8</td><td data-label="Total">483</td></tr></tbody></table></div><!--/graphe-rendu-->
 </figure>
         </div>
       </section>
@@ -834,7 +850,7 @@ Valeur exacte : 8 €"/><text class="etiquette-marque graphe-t1" data-etiquette-
 <!-- COMPOSANT-EMBARQUE:DEBUT barres-empilees.js — copie du socle digit-ai-page-html/assets/barres-empilees.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="barres-empilees.js" data-empreinte="sha256:ac4861f99b30a52dad60f9a3227b1bf8e895cf27a5d814ecd6720c01c4de002d">
+<script data-composant="barres-empilees.js" data-empreinte="sha256:ab92878ce8d7d8f51df13a768cfdc47ecdc10d31473ccb078a19f9254df1bf6d">
 /* barres-empilees.js — graphique en barres empilees, SVG, vertical et horizontal
    (D-55 (a) du 03/10/2026, Produit-02 RT-119, lot C de la campagne O2).
 
@@ -945,13 +961,32 @@ Valeur exacte : 8 €"/><text class="etiquette-marque graphe-t1" data-etiquette-
     var largeurTotal = afficheTotaux ? Math.max.apply(null, totaux.map(function (t) {
       return (num(arrondi(t, dec), dec) + unite).length;
     })) * FS * 0.6 + 4 : 0;
+    /* Etiquettes de categorie : une sur k (la bande est trop etroite pour le texte), en partant de la DERNIERE
+       categorie — la plus recente est toujours ecrite (TF-1875). */
+    var plusLong = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
+    var k = 1;
     if (vert) {
-      mg = { g: 44, d: 8, h: d.totaux ? 20 : 8, b: 24 };
-      H = 260; bande = (W - mg.g - mg.d) / nc;
+      /* En haut : la graduation la plus haute (« 300 ») ne se pose pas sur le bord du viewBox sans total au-dessus
+         (rognee de 2 px, TF-1875). A droite : la demi-largeur de la derniere etiquette depasse la demi-bande des
+         qu'une etiquette sur k s'ecrit (k >= 2) ; la marge se calcule avec le pas, qui depend d'elle (3 passes). */
+      mg = { g: 44, d: 8, h: d.totaux ? 20 : 12, b: 24 };
+      H = 260;
+      for (var it = 0; it < 3; it++) {
+        bande = (W - mg.g - mg.d) / nc;
+        k = Math.max(1, Math.ceil((plusLong * FS * 0.6 + 4) / bande));
+        var md = Math.max(8, Math.ceil(String(d.categories[nc - 1]).length * FS * 0.6 / 2 - bande / 2) + 2);
+        if (md === mg.d) break;
+        mg.d = md;
+      }
+      bande = (W - mg.g - mg.d) / nc;
+      k = Math.max(1, Math.ceil((plusLong * FS * 0.6 + 4) / bande));
       if (afficheTotaux && largeurTotal > bande) afficheTotaux = false;
     } else {
       var maxCar = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
-      mg = { g: Math.min(140, Math.round(maxCar * FS * 0.58) + 12), d: d.totaux ? 64 : 12, h: 8, b: 24 };
+      /* A droite, sans totaux : la derniere graduation est centree sur le bord du trace et sa demi-largeur doit
+         tenir dans la marge (« 20 000 » etait rogne de 6 px, TF-1875). Avec les totaux, 64 y pourvoit. */
+      mg = { g: Math.min(140, Math.round(maxCar * FS * 0.58) + 12),
+             d: d.totaux ? 64 : Math.max(12, Math.ceil(fmtAxe(maxAxe).length * FS * 0.6 / 2) + 2), h: 8, b: 24 };
       bande = 32; H = mg.h + mg.b + nc * bande;
     }
     var pw = W - mg.g - mg.d, ph = H - mg.h - mg.b;
@@ -984,11 +1019,9 @@ Valeur exacte : 8 €"/><text class="etiquette-marque graphe-t1" data-etiquette-
       }
     }
 
-    /* --- categories : une sur k si la bande est trop etroite pour le texte --- */
-    var plusLong = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
-    var k = vert ? Math.max(1, Math.ceil((plusLong * FS * 0.6 + 4) / bande)) : 1;
+    /* --- categories : une sur k si la bande est trop etroite pour le texte (k calcule avec le gabarit) --- */
     d.categories.forEach(function (c, i) {
-      if (i % k) return;
+      if ((nc - 1 - i) % k) return;
       if (vert) out.push('<text class="graphe-axe" x="' + r1(mg.g + bande * (i + 0.5)) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(c) + '</text>');
       else out.push('<text class="graphe-axe" x="' + (mg.g - 8) + '" y="' + r1(mg.h + bande * (i + 0.5) + 4) + '" text-anchor="end">' + esc(c) + '</text>');
     });
@@ -1033,8 +1066,8 @@ Valeur exacte : 8 €"/><text class="etiquette-marque graphe-t1" data-etiquette-
         else etiq.push('<text class="graphe-total" x="' + r1(mg.g + ech(tot) + 6) + '" y="' + r1(mg.h + bande * (i + 0.5) + 4) + '">' + esc(tt) + '</text>');
       }
       lignesTable.push('<tr><th scope="row">' + esc(cat) + '</th>' + d.series.map(function (s) {
-        return '<td>' + esc(exactNum(s.valeurs[i])) + '</td>';
-      }).join('') + '<td>' + esc(exactNum(tot)) + '</td></tr>');
+        return '<td data-label="' + esc(s.nom) + '">' + esc(exactNum(s.valeurs[i])) + '</td>';
+      }).join('') + '<td data-label="Total">' + esc(exactNum(tot)) + '</td></tr>');
     });
     out.push(segs.join(''), etiq.join(''), '</svg>');
 

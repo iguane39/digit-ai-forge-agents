@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc barres 5 series ancien style — 20261019a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="barres-empilees-ancien.css">
+</head>
+<!--
+Fixture de TF-1875 (defaut 2). Avec cinq series la vue tableau a sept colonnes et deborde du viewport etroit :
+  bord droit a 394 px pour 390 (V1). VERTE : composant ACTUEL, lu par reference (repli en cartes sous 560 px, V1 x0 a 390 px).
+  Sa jumelle ROUGE, -ancien-style, charge barres-empilees-ancien.css (feuille d'avant correctif, figee) : V1 au moins 1.
+-->
+<body><main class="wrap">
+<h1>Depense par canal</h1>
+<p>Banc de TF-1875 : le composant barres empilees, juge par render_page.py.</p>
+<figure class="graphe-empile" id="g5" data-graphe-empile>
+  <figcaption>Depense par jour et par canal (euros)</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation": "vertical", "mode": "valeurs", "unite": "€", "totaux": true, "titre": "Depense par jour et par canal", "categories": ["Lun", "Mar", "Mer", "Jeu"], "series": [{"nom": "Recherche naturelle", "valeurs": [1200, 900, 800, 1000]}, {"nom": "Direct", "valeurs": [600, 800, 400, 500]}, {"nom": "Reseaux sociaux", "valeurs": [300, 200, 100, 400]}, {"nom": "Courriel", "valeurs": [300, 200, 100, 400]}, {"nom": "Autres canaux", "valeurs": [300, 200, 100, 400]}]}
+  </script>
+</figure>
+<script src="../assets/barres-empilees.js"></script>
+<script>window.DigitAIBarresEmpilees.init(document);</script>
+</main></body></html>

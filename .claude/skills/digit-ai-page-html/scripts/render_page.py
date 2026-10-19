@@ -968,8 +968,24 @@ MEASURE_JS = r"""
       const a1 = accroche(c.pts[0], svg), a2 = accroche(c.pts[c.pts.length - 1], svg);
       // Une liaison QUITTE ses boites ; une ligne de grille dont l'extremite frole une barre la
       // traverse aussitot (mesure a 390 px, ou la tolerance de 6 px atteint les barres voisines).
-      return Boolean(a1 && a2 && a1 !== a2)
-        && !c.pts.some((p) => dans(p, a1.r, 3) || dans(p, a2.r, 3));
+      if (!(a1 && a2 && a1 !== a2)) return false;
+      if (c.pts.some((p) => dans(p, a1.r, 3) || dans(p, a2.r, 3))) return false;
+      // TF-1875 (19/10/2026) — UNE LIAISON S'ELOIGNE DE SA BOITE DE DEPART ET S'ARRETE CONTRE SA BOITE
+      // D'ARRIVEE. Une ligne de grille de barres empilees (douze colonnes, 390 px) a ses deux
+      // extremites aux bords du trace, a moins de 6 px de la premiere et de la derniere barre quand
+      // leurs totaux frolent une graduation : elle etait prise pour une liaison et « traversait » les
+      // neuf barres du milieu (9 constats a 390 px, 0 a 1440 — la tolerance de 6 px est en pixels
+      // ecran, l'ecart entre colonnes ne l'est pas). Une grille PASSE a cote de ces barres : leur
+      // centre est DEVANT son depart et DERRIERE son arrivee, a l'inverse d'une liaison. Le test est
+      // le produit scalaire de la direction du trace avec le vecteur extremite -> centre de la boite.
+      const n = c.pts.length, p0 = c.pts[0], pN = c.pts[n - 1];
+      const dir = (p, q) => { const l = Math.hypot(q.x - p.x, q.y - p.y) || 1; return { x: (q.x - p.x) / l, y: (q.y - p.y) / l }; };
+      const centre = (r) => ({ x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 });
+      const u0 = dir(p0, c.pts[1]), uN = dir(c.pts[n - 2], pN);
+      const c1 = centre(a1.r), c2 = centre(a2.r);
+      const departDe = (u0.x * (c1.x - p0.x) + u0.y * (c1.y - p0.y)) <= 0;
+      const arriveA = (uN.x * (c2.x - pN.x) + uN.y * (c2.y - pN.y)) >= 0;
+      return departDe && arriveA;
     });
     for (const c of liaisons) {
       const svg = c.el.closest('svg');

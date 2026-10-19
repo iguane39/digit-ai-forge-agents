@@ -576,8 +576,60 @@ segment est focalisable (`tabindex="0"`) pour que le clavier l'ouvre aussi.
 trace à la main une série de barres (quatre barres de même épaisseur, à pas régulier, sur une même
 arête) ; écart voulu : `data-hors-composant="<raison, 8 caractères au moins>"` sur le `<svg>`.
 
+**Étroit et long (TF-1875).** Quatre défauts relevés à 390 px et sur les longues séries, corrigés au composant :
+(1) la vue tableau d'un graphique à **cinq colonnes ou plus** (trois séries et plus) se replie en **cartes** sous
+560 px, comme le § 6 (les cellules portent `data-label`, le nom de la série) : elle débordait du viewport
+(bord droit à 394 px pour 390 avec cinq séries, jusqu'à 460 px avec six) ; (2) les étiquettes de catégorie s'écrivent
+**une sur k en partant de la dernière** — la période la plus récente est toujours lue — et la **marge droite suit**
+la demi-largeur de cette étiquette (« sept. 2026 » dépassait le viewBox de 13 px à 33 mois) ; (3) sans total au-dessus,
+la graduation la plus haute de l'axe vertical a sa marge haute (« 300 » dépassait de 2 px) ; (4) en barres horizontales
+sans totaux, la marge droite suit la demi-largeur de la dernière graduation (« 20 000 » dépassait de 6 px). Banc :
+`fixtures/barres-5-series*.html`, `barres-33-mois*.html`, `barres-horizontal-sans-totaux*.html`, la rouge de chacun
+figeant l'ancien rendu ou l'ancienne feuille (`self_test.py`, `run_graphiques_tf1875`). `render_page.py` ne prend
+plus une **ligne de grille** pour une liaison V4 : une liaison s'éloigne de sa boîte de départ et s'arrête contre sa
+boîte d'arrivée ; la grille de `barres-grille-liaison.html` (totaux extrêmes à 3 px d'une graduation, douze colonnes,
+390 px) rendait 9 constats, elle en rend 0.
+
 **Limites.** Pas de valeurs négatives ; l'étiquette se calcule sur une estimation de largeur de
 texte ; viewBox de 420 unités (lisible de 340 à 560 px) ; le graphique ne remplace pas le tableau
 quand le lecteur doit comparer des valeurs précises. Une page dont la donnée porte plusieurs séries
 et dont le graphique n'en peint qu'une est un défaut : `data-series-source` rend la comparaison
 possible.
+
+## 16 — Entonnoir 🔴 (dès qu'une suite d'étapes ne fait que décroître et qu'on veut sa conversion)
+
+**Le fait.** Le socle n'avait aucun composant d'entonnoir : une barre horizontale à une série du composant § 15
+répétait l'effectif (étiquette dans la barre, total au bout, ligne de la vue tableau) et ne disait pas ce qui compte
+dans un entonnoir, la **conversion** d'une étape à la suivante (TF-1875, retour du constructeur de TF-1855).
+
+**Assets** : `assets/entonnoir.css` et `assets/entonnoir.js`, posés avec `infobulle.css` et `infobulle.js`
+(l'infobulle par barre). De 2 à 8 étapes, effectifs positifs ou nuls, première étape strictement positive.
+
+**Donnée déclarée, dessin dérivé** — comme le § 15. La `<figure data-entonnoir id="…">` porte un
+`<script type="application/json" class="entonnoir-donnees">` (`unite`, `titre`, `etapes[{nom, valeur}]`).
+Navigateur : `window.DigitAIEntonnoir.init(document)` ; fichier, de préférence :
+`node assets/entonnoir.js --injecter <page.html>` **pré-rend** le marquage (PDF, courriel, oracle statique),
+idempotent.
+
+```html
+<figure class="entonnoir" id="e-parcours" data-entonnoir>
+  <figcaption>Parcours d'inscription par étape</figcaption>
+  <script type="application/json" class="entonnoir-donnees">
+  {"unite":"visiteurs","titre":"Parcours d'inscription","etapes":[{"nom":"Visites","valeur":12480},{"nom":"Comptes créés","valeur":3412},{"nom":"Paiements","valeur":214}]}
+  </script>
+</figure>
+```
+
+**Ce qui est dit, et une seule fois.** Chaque étape écrit son nom et son effectif sur une ligne, puis sa barre
+(largeur proportionnelle à la première étape, centrée : la forme d'un entonnoir), puis sa **conversion** :
+« 27,3 % de l'étape précédente », et dès la troisième étape « · 7,3 % du départ ». L'effectif n'est jamais répété dans
+la barre (il va à son `aria-label`) ; l'infobulle ne porte que le **complément**, les effectifs perdus depuis l'étape
+précédente. La vue tableau garde les chiffres exacts (en place sous 200 caractères, L9 ; en dépliant au-delà).
+
+**Ce que le composant refuse.** Une étape plus grande que la précédente — ce n'est pas un entonnoir —, un départ
+nul, moins de 2 ou plus de 8 étapes : il écrit l'erreur (`role="alert"`) au lieu de dessiner un mensonge.
+Deux étapes égales sont admises (aucune perte).
+
+**Tokens et limites.** Une seule teinte (`--entonnoir-barre`, sinon `--blue`) : la largeur dit le reste. Échelle 4 pt,
+aucune couleur en dur. Pas de valeurs négatives, pas de sous-entonnoir ni de branches (deux entonnoirs se posent côte
+à côte). Banc : `fixtures/entonnoir.html`, jugé par `render_page.py` à 390 et 1440 px (`run_graphiques_tf1875`).

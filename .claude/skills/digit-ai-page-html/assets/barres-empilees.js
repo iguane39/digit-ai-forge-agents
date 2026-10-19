@@ -108,13 +108,32 @@
     var largeurTotal = afficheTotaux ? Math.max.apply(null, totaux.map(function (t) {
       return (num(arrondi(t, dec), dec) + unite).length;
     })) * FS * 0.6 + 4 : 0;
+    /* Etiquettes de categorie : une sur k (la bande est trop etroite pour le texte), en partant de la DERNIERE
+       categorie — la plus recente est toujours ecrite (TF-1875). */
+    var plusLong = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
+    var k = 1;
     if (vert) {
-      mg = { g: 44, d: 8, h: d.totaux ? 20 : 8, b: 24 };
-      H = 260; bande = (W - mg.g - mg.d) / nc;
+      /* En haut : la graduation la plus haute (« 300 ») ne se pose pas sur le bord du viewBox sans total au-dessus
+         (rognee de 2 px, TF-1875). A droite : la demi-largeur de la derniere etiquette depasse la demi-bande des
+         qu'une etiquette sur k s'ecrit (k >= 2) ; la marge se calcule avec le pas, qui depend d'elle (3 passes). */
+      mg = { g: 44, d: 8, h: d.totaux ? 20 : 12, b: 24 };
+      H = 260;
+      for (var it = 0; it < 3; it++) {
+        bande = (W - mg.g - mg.d) / nc;
+        k = Math.max(1, Math.ceil((plusLong * FS * 0.6 + 4) / bande));
+        var md = Math.max(8, Math.ceil(String(d.categories[nc - 1]).length * FS * 0.6 / 2 - bande / 2) + 2);
+        if (md === mg.d) break;
+        mg.d = md;
+      }
+      bande = (W - mg.g - mg.d) / nc;
+      k = Math.max(1, Math.ceil((plusLong * FS * 0.6 + 4) / bande));
       if (afficheTotaux && largeurTotal > bande) afficheTotaux = false;
     } else {
       var maxCar = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
-      mg = { g: Math.min(140, Math.round(maxCar * FS * 0.58) + 12), d: d.totaux ? 64 : 12, h: 8, b: 24 };
+      /* A droite, sans totaux : la derniere graduation est centree sur le bord du trace et sa demi-largeur doit
+         tenir dans la marge (« 20 000 » etait rogne de 6 px, TF-1875). Avec les totaux, 64 y pourvoit. */
+      mg = { g: Math.min(140, Math.round(maxCar * FS * 0.58) + 12),
+             d: d.totaux ? 64 : Math.max(12, Math.ceil(fmtAxe(maxAxe).length * FS * 0.6 / 2) + 2), h: 8, b: 24 };
       bande = 32; H = mg.h + mg.b + nc * bande;
     }
     var pw = W - mg.g - mg.d, ph = H - mg.h - mg.b;
@@ -147,11 +166,9 @@
       }
     }
 
-    /* --- categories : une sur k si la bande est trop etroite pour le texte --- */
-    var plusLong = d.categories.reduce(function (a, c) { return Math.max(a, String(c).length); }, 0);
-    var k = vert ? Math.max(1, Math.ceil((plusLong * FS * 0.6 + 4) / bande)) : 1;
+    /* --- categories : une sur k si la bande est trop etroite pour le texte (k calcule avec le gabarit) --- */
     d.categories.forEach(function (c, i) {
-      if (i % k) return;
+      if ((nc - 1 - i) % k) return;
       if (vert) out.push('<text class="graphe-axe" x="' + r1(mg.g + bande * (i + 0.5)) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(c) + '</text>');
       else out.push('<text class="graphe-axe" x="' + (mg.g - 8) + '" y="' + r1(mg.h + bande * (i + 0.5) + 4) + '" text-anchor="end">' + esc(c) + '</text>');
     });
@@ -196,8 +213,8 @@
         else etiq.push('<text class="graphe-total" x="' + r1(mg.g + ech(tot) + 6) + '" y="' + r1(mg.h + bande * (i + 0.5) + 4) + '">' + esc(tt) + '</text>');
       }
       lignesTable.push('<tr><th scope="row">' + esc(cat) + '</th>' + d.series.map(function (s) {
-        return '<td>' + esc(exactNum(s.valeurs[i])) + '</td>';
-      }).join('') + '<td>' + esc(exactNum(tot)) + '</td></tr>');
+        return '<td data-label="' + esc(s.nom) + '">' + esc(exactNum(s.valeurs[i])) + '</td>';
+      }).join('') + '<td data-label="Total">' + esc(exactNum(tot)) + '</td></tr>');
     });
     out.push(segs.join(''), etiq.join(''), '</svg>');
 

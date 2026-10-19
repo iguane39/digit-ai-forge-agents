@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc barres 33 mois ancien rendu — 20261019a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="../assets/barres-empilees.css">
+</head>
+<!--
+Fixture de TF-1875 (defaut 3). A 33 mois, une etiquette de categorie sur k s'ecrit et la derniere (« sept. 2026 »)
+  depassait le bord droit du viewBox de 13 px ; la graduation la plus haute (« 300 ») depassait de 2 px en haut.
+  VERTE : composant ACTUEL (la derniere categorie est toujours ecrite, la marge droite suit). ROUGE : -ancien-rendu,
+  le SVG pre-rendu par le composant d'avant correctif.
+-->
+<body><main class="wrap">
+<h1>Sessions sur 33 mois</h1>
+<p>Banc de TF-1875 : le composant barres empilees, juge par render_page.py.</p>
+<figure class="graphe-empile" id="g33" data-graphe-empile>
+  <figcaption>Sessions par mois, sur 33 mois (sans totaux)</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation": "vertical", "mode": "valeurs", "unite": "sessions", "totaux": false, "titre": "Sessions par mois", "titreCategories": "Mois", "categories": ["janv. 2024", "févr. 2024", "mars 2024", "avr. 2024", "mai 2024", "juin 2024", "juil. 2024", "août 2024", "sept. 2024", "oct. 2024", "nov. 2024", "déc. 2024", "janv. 2025", "févr. 2025", "mars 2025", "avr. 2025", "mai 2025", "juin 2025", "juil. 2025", "août 2025", "sept. 2025", "oct. 2025", "nov. 2025", "déc. 2025", "janv. 2026", "févr. 2026", "mars 2026", "avr. 2026", "mai 2026", "juin 2026", "juil. 2026", "août 2026", "sept. 2026"], "series": [{"nom": "Recherche", "valeurs": [100, 103, 106, 109, 112, 115, 118, 121, 124, 127, 130, 133, 136, 139, 142, 145, 148, 151, 154, 157, 160, 163, 166, 169, 172, 175, 178, 181, 184, 187, 190, 193, 196]}, {"nom": "Direct", "valeurs": [50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82]}]}
+  </script>
+  <!--graphe-rendu--><svg class="graphe-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" role="group" aria-label="Sessions par mois" data-series-source="2" data-orientation="vertical"><line class="graphe-grille graphe-base" x1="44" x2="412" y1="236" y2="236"/><text class="graphe-axe" x="38" y="234" text-anchor="end">0</text><line class="graphe-grille" x1="44" x2="412" y1="160" y2="160"/><text class="graphe-axe" x="38" y="164" text-anchor="end">100</text><line class="graphe-grille" x1="44" x2="412" y1="84" y2="84"/><text class="graphe-axe" x="38" y="88" text-anchor="end">200</text><line class="graphe-grille" x1="44" x2="412" y1="8" y2="8"/><text class="graphe-axe" x="38" y="12" text-anchor="end">300</text><text class="graphe-axe" x="49.6" y="252" text-anchor="middle">janv. 2024</text><text class="graphe-axe" x="138.8" y="252" text-anchor="middle">sept. 2024</text><text class="graphe-axe" x="228" y="252" text-anchor="middle">mai 2025</text><text class="graphe-axe" x="317.2" y="252" text-anchor="middle">janv. 2026</text><text class="graphe-axe" x="406.4" y="252" text-anchor="middle">sept. 2026</text><rect class="graphe-seg graphe-s1" id="g33-0-0" data-serie="Recherche" data-categorie="janv. 2024" x="45.1" y="160" width="8.9" height="76" tabindex="0" role="img" aria-label="Recherche, janv. 2024 : 100 sessions" title="Part du total de la colonne : 66,7 %
+Rang : 1er sur 2
+Total de la colonne : 150 sessions
+Valeur exacte : 100 sessions"/><rect class="graphe-seg graphe-s2" id="g33-0-1" data-serie="Direct" data-categorie="janv. 2024" x="45.1" y="122" width="8.9" height="38" tabindex="0" role="img" aria-label="Direct, janv. 2024 : 50 sessions" title="Part du total de la colonne : 33,3 %
+Rang : 2e sur 2
+Total de la colonne : 150 sessions
+Valeur exacte : 50 sessions"/><rect class="graphe-seg graphe-s1" id="g33-1-0" data-serie="Recherche" data-categorie="févr. 2024" x="56.3" y="157.7" width="8.9" height="78.3" tabindex="0" role="img" aria-label="Recherche, févr. 2024 : 103 sessions" title="Part du total de la colonne : 66,9 %
+Rang : 1er sur 2
+Total de la colonne : 154 sessions
+Valeur exacte : 103 sessions"/><rect class="graphe-seg graphe-s2" id="g33-1-1" data-serie="Direct" data-categorie="févr. 2024" x="56.3" y="119" width="8.9" height="38.8" tabindex="0" role="img" aria-label="Direct, févr. 2024 : 51 sessions" title="Part du total de la colonne : 33,1 %
+Rang : 2e sur 2
+Total de la colonne : 154 sessions
+Valeur exacte : 51 sessions"/><rect class="graphe-seg graphe-s1" id="g33-2-0" data-serie="Recherche" data-categorie="mars 2024" x="67.4" y="155.4" width="8.9" height="80.6" tabindex="0" role="img" aria-label="Recherche, mars 2024 : 106 sessions" title="Part du total de la colonne : 67,1 %
+Rang : 1er sur 2
+Total de la colonne : 158 sessions
+Valeur exacte : 106 sessions"/><rect class="graphe-seg graphe-s2" id="g33-2-1" data-serie="Direct" data-categorie="mars 2024" x="67.4" y="115.9" width="8.9" height="39.5" tabindex="0" role="img" aria-label="Direct, mars 2024 : 52 sessions" title="Part du total de la colonne : 32,9 %
+Rang : 2e sur 2
+Total de la colonne : 158 sessions
+Valeur exacte : 52 sessions"/><rect class="graphe-seg graphe-s1" id="g33-3-0" data-serie="Recherche" data-categorie="avr. 2024" x="78.6" y="153.2" width="8.9" height="82.8" tabindex="0" role="img" aria-label="Recherche, avr. 2024 : 109 sessions" title="Part du total de la colonne : 67,3 %
+Rang : 1er sur 2
+Total de la colonne : 162 sessions
+Valeur exacte : 109 sessions"/><rect class="graphe-seg graphe-s2" id="g33-3-1" data-serie="Direct" data-categorie="avr. 2024" x="78.6" y="112.9" width="8.9" height="40.3" tabindex="0" role="img" aria-label="Direct, avr. 2024 : 53 sessions" title="Part du total de la colonne : 32,7 %
+Rang : 2e sur 2
+Total de la colonne : 162 sessions
+Valeur exacte : 53 sessions"/><rect class="graphe-seg graphe-s1" id="g33-4-0" data-serie="Recherche" data-categorie="mai 2024" x="89.7" y="150.9" width="8.9" height="85.1" tabindex="0" role="img" aria-label="Recherche, mai 2024 : 112 sessions" title="Part du total de la colonne : 67,5 %
+Rang : 1er sur 2
+Total de la colonne : 166 sessions
+Valeur exacte : 112 sessions"/><rect class="graphe-seg graphe-s2" id="g33-4-1" data-serie="Direct" data-categorie="mai 2024" x="89.7" y="109.8" width="8.9" height="41" tabindex="0" role="img" aria-label="Direct, mai 2024 : 54 sessions" title="Part du total de la colonne : 32,5 %
+Rang : 2e sur 2
+Total de la colonne : 166 sessions
+Valeur exacte : 54 sessions"/><rect class="graphe-seg graphe-s1" id="g33-5-0" data-serie="Recherche" data-categorie="juin 2024" x="100.9" y="148.6" width="8.9" height="87.4" tabindex="0" role="img" aria-label="Recherche, juin 2024 : 115 sessions" title="Part du total de la colonne : 67,6 %
+Rang : 1er sur 2
+Total de la colonne : 170 sessions
+Valeur exacte : 115 sessions"/><rect class="graphe-seg graphe-s2" id="g33-5-1" data-serie="Direct" data-categorie="juin 2024" x="100.9" y="106.8" width="8.9" height="41.8" tabindex="0" role="img" aria-label="Direct, juin 2024 : 55 sessions" title="Part du total de la colonne : 32,4 %
+Rang : 2e sur 2
+Total de la colonne : 170 sessions
+Valeur exacte : 55 sessions"/><rect class="graphe-seg graphe-s1" id="g33-6-0" data-serie="Recherche" data-categorie="juil. 2024" x="112" y="146.3" width="8.9" height="89.7" tabindex="0" role="img" aria-label="Recherche, juil. 2024 : 118 sessions" title="Part du total de la colonne : 67,8 %
+Rang : 1er sur 2
+Total de la colonne : 174 sessions
+Valeur exacte : 118 sessions"/><rect class="graphe-seg graphe-s2" id="g33-6-1" data-serie="Direct" data-categorie="juil. 2024" x="112" y="103.8" width="8.9" height="42.6" tabindex="0" role="img" aria-label="Direct, juil. 2024 : 56 sessions" title="Part du total de la colonne : 32,2 %
+Rang : 2e sur 2
+Total de la colonne : 174 sessions
+Valeur exacte : 56 sessions"/><rect class="graphe-seg graphe-s1" id="g33-7-0" data-serie="Recherche" data-categorie="août 2024" x="123.2" y="144" width="8.9" height="92" tabindex="0" role="img" aria-label="Recherche, août 2024 : 121 sessions" title="Part du total de la colonne : 68,0 %
+Rang : 1er sur 2
+Total de la colonne : 178 sessions
+Valeur exacte : 121 sessions"/><rect class="graphe-seg graphe-s2" id="g33-7-1" data-serie="Direct" data-categorie="août 2024" x="123.2" y="100.7" width="8.9" height="43.3" tabindex="0" role="img" aria-label="Direct, août 2024 : 57 sessions" title="Part du total de la colonne : 32,0 %
+Rang : 2e sur 2
+Total de la colonne : 178 sessions
+Valeur exacte : 57 sessions"/><rect class="graphe-seg graphe-s1" id="g33-8-0" data-serie="Recherche" data-categorie="sept. 2024" x="134.3" y="141.8" width="8.9" height="94.2" tabindex="0" role="img" aria-label="Recherche, sept. 2024 : 124 sessions" title="Part du total de la colonne : 68,1 %
+Rang : 1er sur 2
+Total de la colonne : 182 sessions
+Valeur exacte : 124 sessions"/><rect class="graphe-seg graphe-s2" id="g33-8-1" data-serie="Direct" data-categorie="sept. 2024" x="134.3" y="97.7" width="8.9" height="44.1" tabindex="0" role="img" aria-label="Direct, sept. 2024 : 58 sessions" title="Part du total de la colonne : 31,9 %
+Rang : 2e sur 2
+Total de la colonne : 182 sessions
+Valeur exacte : 58 sessions"/><rect class="graphe-seg graphe-s1" id="g33-9-0" data-serie="Recherche" data-categorie="oct. 2024" x="145.5" y="139.5" width="8.9" height="96.5" tabindex="0" role="img" aria-label="Recherche, oct. 2024 : 127 sessions" title="Part du total de la colonne : 68,3 %
+Rang : 1er sur 2
+Total de la colonne : 186 sessions
+Valeur exacte : 127 sessions"/><rect class="graphe-seg graphe-s2" id="g33-9-1" data-serie="Direct" data-categorie="oct. 2024" x="145.5" y="94.6" width="8.9" height="44.8" tabindex="0" role="img" aria-label="Direct, oct. 2024 : 59 sessions" title="Part du total de la colonne : 31,7 %
+Rang : 2e sur 2
+Total de la colonne : 186 sessions
+Valeur exacte : 59 sessions"/><rect class="graphe-seg graphe-s1" id="g33-10-0" data-serie="Recherche" data-categorie="nov. 2024" x="156.6" y="137.2" width="8.9" height="98.8" tabindex="0" role="img" aria-label="Recherche, nov. 2024 : 130 sessions" title="Part du total de la colonne : 68,4 %
+Rang : 1er sur 2
+Total de la colonne : 190 sessions
+Valeur exacte : 130 sessions"/><rect class="graphe-seg graphe-s2" id="g33-10-1" data-serie="Direct" data-categorie="nov. 2024" x="156.6" y="91.6" width="8.9" height="45.6" tabindex="0" role="img" aria-label="Direct, nov. 2024 : 60 sessions" title="Part du total de la colonne : 31,6 %
+Rang : 2e sur 2
+Total de la colonne : 190 sessions
+Valeur exacte : 60 sessions"/><rect class="graphe-seg graphe-s1" id="g33-11-0" data-serie="Recherche" data-categorie="déc. 2024" x="167.8" y="134.9" width="8.9" height="101.1" tabindex="0" role="img" aria-label="Recherche, déc. 2024 : 133 sessions" title="Part du total de la colonne : 68,6 %
+Rang : 1er sur 2
+Total de la colonne : 194 sessions
+Valeur exacte : 133 sessions"/><rect class="graphe-seg graphe-s2" id="g33-11-1" data-serie="Direct" data-categorie="déc. 2024" x="167.8" y="88.6" width="8.9" height="46.4" tabindex="0" role="img" aria-label="Direct, déc. 2024 : 61 sessions" title="Part du total de la colonne : 31,4 %
+Rang : 2e sur 2
+Total de la colonne : 194 sessions
+Valeur exacte : 61 sessions"/><rect class="graphe-seg graphe-s1" id="g33-12-0" data-serie="Recherche" data-categorie="janv. 2025" x="178.9" y="132.6" width="8.9" height="103.4" tabindex="0" role="img" aria-label="Recherche, janv. 2025 : 136 sessions" title="Part du total de la colonne : 68,7 %
+Rang : 1er sur 2
+Total de la colonne : 198 sessions
+Valeur exacte : 136 sessions"/><rect class="graphe-seg graphe-s2" id="g33-12-1" data-serie="Direct" data-categorie="janv. 2025" x="178.9" y="85.5" width="8.9" height="47.1" tabindex="0" role="img" aria-label="Direct, janv. 2025 : 62 sessions" title="Part du total de la colonne : 31,3 %
+Rang : 2e sur 2
+Total de la colonne : 198 sessions
+Valeur exacte : 62 sessions"/><rect class="graphe-seg graphe-s1" id="g33-13-0" data-serie="Recherche" data-categorie="févr. 2025" x="190.1" y="130.4" width="8.9" height="105.6" tabindex="0" role="img" aria-label="Recherche, févr. 2025 : 139 sessions" title="Part du total de la colonne : 68,8 %
+Rang : 1er sur 2
+Total de la colonne : 202 sessions
+Valeur exacte : 139 sessions"/><rect class="graphe-seg graphe-s2" id="g33-13-1" data-serie="Direct" data-categorie="févr. 2025" x="190.1" y="82.5" width="8.9" height="47.9" tabindex="0" role="img" aria-label="Direct, févr. 2025 : 63 sessions" title="Part du total de la colonne : 31,2 %
+Rang : 2e sur 2
+Total de la colonne : 202 sessions
+Valeur exacte : 63 sessions"/><rect class="graphe-seg graphe-s1" id="g33-14-0" data-serie="Recherche" data-categorie="mars 2025" x="201.2" y="128.1" width="8.9" height="107.9" tabindex="0" role="img" aria-label="Recherche, mars 2025 : 142 sessions" title="Part du total de la colonne : 68,9 %
+Rang : 1er sur 2
+Total de la colonne : 206 sessions
+Valeur exacte : 142 sessions"/><rect class="graphe-seg graphe-s2" id="g33-14-1" data-serie="Direct" data-categorie="mars 2025" x="201.2" y="79.4" width="8.9" height="48.6" tabindex="0" role="img" aria-label="Direct, mars 2025 : 64 sessions" title="Part du total de la colonne : 31,1 %
+Rang : 2e sur 2
+Total de la colonne : 206 sessions
+Valeur exacte : 64 sessions"/><rect class="graphe-seg graphe-s1" id="g33-15-0" data-serie="Recherche" data-categorie="avr. 2025" x="212.4" y="125.8" width="8.9" height="110.2" tabindex="0" role="img" aria-label="Recherche, avr. 2025 : 145 sessions" title="Part du total de la colonne : 69,0 %
+Rang : 1er sur 2
+Total de la colonne : 210 sessions
+Valeur exacte : 145 sessions"/><rect class="graphe-seg graphe-s2" id="g33-15-1" data-serie="Direct" data-categorie="avr. 2025" x="212.4" y="76.4" width="8.9" height="49.4" tabindex="0" role="img" aria-label="Direct, avr. 2025 : 65 sessions" title="Part du total de la colonne : 31,0 %
+Rang : 2e sur 2
+Total de la colonne : 210 sessions
+Valeur exacte : 65 sessions"/><rect class="graphe-seg graphe-s1" id="g33-16-0" data-serie="Recherche" data-categorie="mai 2025" x="223.5" y="123.5" width="8.9" height="112.5" tabindex="0" role="img" aria-label="Recherche, mai 2025 : 148 sessions" title="Part du total de la colonne : 69,2 %
+Rang : 1er sur 2
+Total de la colonne : 214 sessions
+Valeur exacte : 148 sessions"/><rect class="graphe-seg graphe-s2" id="g33-16-1" data-serie="Direct" data-categorie="mai 2025" x="223.5" y="73.4" width="8.9" height="50.2" tabindex="0" role="img" aria-label="Direct, mai 2025 : 66 sessions" title="Part du total de la colonne : 30,8 %
+Rang : 2e sur 2
+Total de la colonne : 214 sessions
+Valeur exacte : 66 sessions"/><rect class="graphe-seg graphe-s1" id="g33-17-0" data-serie="Recherche" data-categorie="juin 2025" x="234.7" y="121.2" width="8.9" height="114.8" tabindex="0" role="img" aria-label="Recherche, juin 2025 : 151 sessions" title="Part du total de la colonne : 69,3 %
+Rang : 1er sur 2
+Total de la colonne : 218 sessions
+Valeur exacte : 151 sessions"/><rect class="graphe-seg graphe-s2" id="g33-17-1" data-serie="Direct" data-categorie="juin 2025" x="234.7" y="70.3" width="8.9" height="50.9" tabindex="0" role="img" aria-label="Direct, juin 2025 : 67 sessions" title="Part du total de la colonne : 30,7 %
+Rang : 2e sur 2
+Total de la colonne : 218 sessions
+Valeur exacte : 67 sessions"/><rect class="graphe-seg graphe-s1" id="g33-18-0" data-serie="Recherche" data-categorie="juil. 2025" x="245.8" y="119" width="8.9" height="117" tabindex="0" role="img" aria-label="Recherche, juil. 2025 : 154 sessions" title="Part du total de la colonne : 69,4 %
+Rang : 1er sur 2
+Total de la colonne : 222 sessions
+Valeur exacte : 154 sessions"/><rect class="graphe-seg graphe-s2" id="g33-18-1" data-serie="Direct" data-categorie="juil. 2025" x="245.8" y="67.3" width="8.9" height="51.7" tabindex="0" role="img" aria-label="Direct, juil. 2025 : 68 sessions" title="Part du total de la colonne : 30,6 %
+Rang : 2e sur 2
+Total de la colonne : 222 sessions
+Valeur exacte : 68 sessions"/><rect class="graphe-seg graphe-s1" id="g33-19-0" data-serie="Recherche" data-categorie="août 2025" x="257" y="116.7" width="8.9" height="119.3" tabindex="0" role="img" aria-label="Recherche, août 2025 : 157 sessions" title="Part du total de la colonne : 69,5 %
+Rang : 1er sur 2
+Total de la colonne : 226 sessions
+Valeur exacte : 157 sessions"/><rect class="graphe-seg graphe-s2" id="g33-19-1" data-serie="Direct" data-categorie="août 2025" x="257" y="64.2" width="8.9" height="52.4" tabindex="0" role="img" aria-label="Direct, août 2025 : 69 sessions" title="Part du total de la colonne : 30,5 %
+Rang : 2e sur 2
+Total de la colonne : 226 sessions
+Valeur exacte : 69 sessions"/><rect class="graphe-seg graphe-s1" id="g33-20-0" data-serie="Recherche" data-categorie="sept. 2025" x="268.1" y="114.4" width="8.9" height="121.6" tabindex="0" role="img" aria-label="Recherche, sept. 2025 : 160 sessions" title="Part du total de la colonne : 69,6 %
+Rang : 1er sur 2
+Total de la colonne : 230 sessions
+Valeur exacte : 160 sessions"/><rect class="graphe-seg graphe-s2" id="g33-20-1" data-serie="Direct" data-categorie="sept. 2025" x="268.1" y="61.2" width="8.9" height="53.2" tabindex="0" role="img" aria-label="Direct, sept. 2025 : 70 sessions" title="Part du total de la colonne : 30,4 %
+Rang : 2e sur 2
+Total de la colonne : 230 sessions
+Valeur exacte : 70 sessions"/><rect class="graphe-seg graphe-s1" id="g33-21-0" data-serie="Recherche" data-categorie="oct. 2025" x="279.3" y="112.1" width="8.9" height="123.9" tabindex="0" role="img" aria-label="Recherche, oct. 2025 : 163 sessions" title="Part du total de la colonne : 69,7 %
+Rang : 1er sur 2
+Total de la colonne : 234 sessions
+Valeur exacte : 163 sessions"/><rect class="graphe-seg graphe-s2" id="g33-21-1" data-serie="Direct" data-categorie="oct. 2025" x="279.3" y="58.2" width="8.9" height="54" tabindex="0" role="img" aria-label="Direct, oct. 2025 : 71 sessions" title="Part du total de la colonne : 30,3 %
+Rang : 2e sur 2
+Total de la colonne : 234 sessions
+Valeur exacte : 71 sessions"/><rect class="graphe-seg graphe-s1" id="g33-22-0" data-serie="Recherche" data-categorie="nov. 2025" x="290.4" y="109.8" width="8.9" height="126.2" tabindex="0" role="img" aria-label="Recherche, nov. 2025 : 166 sessions" title="Part du total de la colonne : 69,7 %
+Rang : 1er sur 2
+Total de la colonne : 238 sessions
+Valeur exacte : 166 sessions"/><rect class="graphe-seg graphe-s2" id="g33-22-1" data-serie="Direct" data-categorie="nov. 2025" x="290.4" y="55.1" width="8.9" height="54.7" tabindex="0" role="img" aria-label="Direct, nov. 2025 : 72 sessions" title="Part du total de la colonne : 30,3 %
+Rang : 2e sur 2
+Total de la colonne : 238 sessions
+Valeur exacte : 72 sessions"/><rect class="graphe-seg graphe-s1" id="g33-23-0" data-serie="Recherche" data-categorie="déc. 2025" x="301.6" y="107.6" width="8.9" height="128.4" tabindex="0" role="img" aria-label="Recherche, déc. 2025 : 169 sessions" title="Part du total de la colonne : 69,8 %
+Rang : 1er sur 2
+Total de la colonne : 242 sessions
+Valeur exacte : 169 sessions"/><rect class="graphe-seg graphe-s2" id="g33-23-1" data-serie="Direct" data-categorie="déc. 2025" x="301.6" y="52.1" width="8.9" height="55.5" tabindex="0" role="img" aria-label="Direct, déc. 2025 : 73 sessions" title="Part du total de la colonne : 30,2 %
+Rang : 2e sur 2
+Total de la colonne : 242 sessions
+Valeur exacte : 73 sessions"/><rect class="graphe-seg graphe-s1" id="g33-24-0" data-serie="Recherche" data-categorie="janv. 2026" x="312.8" y="105.3" width="8.9" height="130.7" tabindex="0" role="img" aria-label="Recherche, janv. 2026 : 172 sessions" title="Part du total de la colonne : 69,9 %
+Rang : 1er sur 2
+Total de la colonne : 246 sessions
+Valeur exacte : 172 sessions"/><rect class="graphe-seg graphe-s2" id="g33-24-1" data-serie="Direct" data-categorie="janv. 2026" x="312.8" y="49" width="8.9" height="56.2" tabindex="0" role="img" aria-label="Direct, janv. 2026 : 74 sessions" title="Part du total de la colonne : 30,1 %
+Rang : 2e sur 2
+Total de la colonne : 246 sessions
+Valeur exacte : 74 sessions"/><rect class="graphe-seg graphe-s1" id="g33-25-0" data-serie="Recherche" data-categorie="févr. 2026" x="323.9" y="103" width="8.9" height="133" tabindex="0" role="img" aria-label="Recherche, févr. 2026 : 175 sessions" title="Part du total de la colonne : 70,0 %
+Rang : 1er sur 2
+Total de la colonne : 250 sessions
+Valeur exacte : 175 sessions"/><rect class="graphe-seg graphe-s2" id="g33-25-1" data-serie="Direct" data-categorie="févr. 2026" x="323.9" y="46" width="8.9" height="57" tabindex="0" role="img" aria-label="Direct, févr. 2026 : 75 sessions" title="Part du total de la colonne : 30,0 %
+Rang : 2e sur 2
+Total de la colonne : 250 sessions
+Valeur exacte : 75 sessions"/><rect class="graphe-seg graphe-s1" id="g33-26-0" data-serie="Recherche" data-categorie="mars 2026" x="335.1" y="100.7" width="8.9" height="135.3" tabindex="0" role="img" aria-label="Recherche, mars 2026 : 178 sessions" title="Part du total de la colonne : 70,1 %
+Rang : 1er sur 2
+Total de la colonne : 254 sessions
+Valeur exacte : 178 sessions"/><rect class="graphe-seg graphe-s2" id="g33-26-1" data-serie="Direct" data-categorie="mars 2026" x="335.1" y="43" width="8.9" height="57.8" tabindex="0" role="img" aria-label="Direct, mars 2026 : 76 sessions" title="Part du total de la colonne : 29,9 %
+Rang : 2e sur 2
+Total de la colonne : 254 sessions
+Valeur exacte : 76 sessions"/><rect class="graphe-seg graphe-s1" id="g33-27-0" data-serie="Recherche" data-categorie="avr. 2026" x="346.2" y="98.4" width="8.9" height="137.6" tabindex="0" role="img" aria-label="Recherche, avr. 2026 : 181 sessions" title="Part du total de la colonne : 70,2 %
+Rang : 1er sur 2
+Total de la colonne : 258 sessions
+Valeur exacte : 181 sessions"/><rect class="graphe-seg graphe-s2" id="g33-27-1" data-serie="Direct" data-categorie="avr. 2026" x="346.2" y="39.9" width="8.9" height="58.5" tabindex="0" role="img" aria-label="Direct, avr. 2026 : 77 sessions" title="Part du total de la colonne : 29,8 %
+Rang : 2e sur 2
+Total de la colonne : 258 sessions
+Valeur exacte : 77 sessions"/><rect class="graphe-seg graphe-s1" id="g33-28-0" data-serie="Recherche" data-categorie="mai 2026" x="357.4" y="96.2" width="8.9" height="139.8" tabindex="0" role="img" aria-label="Recherche, mai 2026 : 184 sessions" title="Part du total de la colonne : 70,2 %
+Rang : 1er sur 2
+Total de la colonne : 262 sessions
+Valeur exacte : 184 sessions"/><rect class="graphe-seg graphe-s2" id="g33-28-1" data-serie="Direct" data-categorie="mai 2026" x="357.4" y="36.9" width="8.9" height="59.3" tabindex="0" role="img" aria-label="Direct, mai 2026 : 78 sessions" title="Part du total de la colonne : 29,8 %
+Rang : 2e sur 2
+Total de la colonne : 262 sessions
+Valeur exacte : 78 sessions"/><rect class="graphe-seg graphe-s1" id="g33-29-0" data-serie="Recherche" data-categorie="juin 2026" x="368.5" y="93.9" width="8.9" height="142.1" tabindex="0" role="img" aria-label="Recherche, juin 2026 : 187 sessions" title="Part du total de la colonne : 70,3 %
+Rang : 1er sur 2
+Total de la colonne : 266 sessions
+Valeur exacte : 187 sessions"/><rect class="graphe-seg graphe-s2" id="g33-29-1" data-serie="Direct" data-categorie="juin 2026" x="368.5" y="33.8" width="8.9" height="60" tabindex="0" role="img" aria-label="Direct, juin 2026 : 79 sessions" title="Part du total de la colonne : 29,7 %
+Rang : 2e sur 2
+Total de la colonne : 266 sessions
+Valeur exacte : 79 sessions"/><rect class="graphe-seg graphe-s1" id="g33-30-0" data-serie="Recherche" data-categorie="juil. 2026" x="379.7" y="91.6" width="8.9" height="144.4" tabindex="0" role="img" aria-label="Recherche, juil. 2026 : 190 sessions" title="Part du total de la colonne : 70,4 %
+Rang : 1er sur 2
+Total de la colonne : 270 sessions
+Valeur exacte : 190 sessions"/><rect class="graphe-seg graphe-s2" id="g33-30-1" data-serie="Direct" data-categorie="juil. 2026" x="379.7" y="30.8" width="8.9" height="60.8" tabindex="0" role="img" aria-label="Direct, juil. 2026 : 80 sessions" title="Part du total de la colonne : 29,6 %
+Rang : 2e sur 2
+Total de la colonne : 270 sessions
+Valeur exacte : 80 sessions"/><rect class="graphe-seg graphe-s1" id="g33-31-0" data-serie="Recherche" data-categorie="août 2026" x="390.8" y="89.3" width="8.9" height="146.7" tabindex="0" role="img" aria-label="Recherche, août 2026 : 193 sessions" title="Part du total de la colonne : 70,4 %
+Rang : 1er sur 2
+Total de la colonne : 274 sessions
+Valeur exacte : 193 sessions"/><rect class="graphe-seg graphe-s2" id="g33-31-1" data-serie="Direct" data-categorie="août 2026" x="390.8" y="27.8" width="8.9" height="61.6" tabindex="0" role="img" aria-label="Direct, août 2026 : 81 sessions" title="Part du total de la colonne : 29,6 %
+Rang : 2e sur 2
+Total de la colonne : 274 sessions
+Valeur exacte : 81 sessions"/><rect class="graphe-seg graphe-s1" id="g33-32-0" data-serie="Recherche" data-categorie="sept. 2026" x="402" y="87" width="8.9" height="149" tabindex="0" role="img" aria-label="Recherche, sept. 2026 : 196 sessions" title="Part du total de la colonne : 70,5 %
+Rang : 1er sur 2
+Total de la colonne : 278 sessions
+Valeur exacte : 196 sessions"/><rect class="graphe-seg graphe-s2" id="g33-32-1" data-serie="Direct" data-categorie="sept. 2026" x="402" y="24.7" width="8.9" height="62.3" tabindex="0" role="img" aria-label="Direct, sept. 2026 : 82 sessions" title="Part du total de la colonne : 29,5 %
+Rang : 2e sur 2
+Total de la colonne : 278 sessions
+Valeur exacte : 82 sessions"/></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>Recherche</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Direct</li></ul><details class="graphe-table"><summary>Voir les données du graphique</summary><table><caption>Sessions par mois (sessions)</caption><thead><tr><th scope="col">Mois</th><th scope="col">Recherche</th><th scope="col">Direct</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">janv. 2024</th><td>100</td><td>50</td><td>150</td></tr><tr><th scope="row">févr. 2024</th><td>103</td><td>51</td><td>154</td></tr><tr><th scope="row">mars 2024</th><td>106</td><td>52</td><td>158</td></tr><tr><th scope="row">avr. 2024</th><td>109</td><td>53</td><td>162</td></tr><tr><th scope="row">mai 2024</th><td>112</td><td>54</td><td>166</td></tr><tr><th scope="row">juin 2024</th><td>115</td><td>55</td><td>170</td></tr><tr><th scope="row">juil. 2024</th><td>118</td><td>56</td><td>174</td></tr><tr><th scope="row">août 2024</th><td>121</td><td>57</td><td>178</td></tr><tr><th scope="row">sept. 2024</th><td>124</td><td>58</td><td>182</td></tr><tr><th scope="row">oct. 2024</th><td>127</td><td>59</td><td>186</td></tr><tr><th scope="row">nov. 2024</th><td>130</td><td>60</td><td>190</td></tr><tr><th scope="row">déc. 2024</th><td>133</td><td>61</td><td>194</td></tr><tr><th scope="row">janv. 2025</th><td>136</td><td>62</td><td>198</td></tr><tr><th scope="row">févr. 2025</th><td>139</td><td>63</td><td>202</td></tr><tr><th scope="row">mars 2025</th><td>142</td><td>64</td><td>206</td></tr><tr><th scope="row">avr. 2025</th><td>145</td><td>65</td><td>210</td></tr><tr><th scope="row">mai 2025</th><td>148</td><td>66</td><td>214</td></tr><tr><th scope="row">juin 2025</th><td>151</td><td>67</td><td>218</td></tr><tr><th scope="row">juil. 2025</th><td>154</td><td>68</td><td>222</td></tr><tr><th scope="row">août 2025</th><td>157</td><td>69</td><td>226</td></tr><tr><th scope="row">sept. 2025</th><td>160</td><td>70</td><td>230</td></tr><tr><th scope="row">oct. 2025</th><td>163</td><td>71</td><td>234</td></tr><tr><th scope="row">nov. 2025</th><td>166</td><td>72</td><td>238</td></tr><tr><th scope="row">déc. 2025</th><td>169</td><td>73</td><td>242</td></tr><tr><th scope="row">janv. 2026</th><td>172</td><td>74</td><td>246</td></tr><tr><th scope="row">févr. 2026</th><td>175</td><td>75</td><td>250</td></tr><tr><th scope="row">mars 2026</th><td>178</td><td>76</td><td>254</td></tr><tr><th scope="row">avr. 2026</th><td>181</td><td>77</td><td>258</td></tr><tr><th scope="row">mai 2026</th><td>184</td><td>78</td><td>262</td></tr><tr><th scope="row">juin 2026</th><td>187</td><td>79</td><td>266</td></tr><tr><th scope="row">juil. 2026</th><td>190</td><td>80</td><td>270</td></tr><tr><th scope="row">août 2026</th><td>193</td><td>81</td><td>274</td></tr><tr><th scope="row">sept. 2026</th><td>196</td><td>82</td><td>278</td></tr></tbody></table></details><!--/graphe-rendu-->
+</figure>
+<script src="../assets/barres-empilees.js"></script>
+<script>window.DigitAIBarresEmpilees.init(document);</script>
+</main></body></html>

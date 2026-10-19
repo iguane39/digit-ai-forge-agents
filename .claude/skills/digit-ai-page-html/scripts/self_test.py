@@ -2449,6 +2449,139 @@ def run_console_cp1252():
     return res
 
 
+def run_graphiques_tf1875():
+    """TF-1875 (retour du constructeur de TF-1855, 18/10/2026) — quatre défauts de rendu des composants de
+    graphique et un composant d'entonnoir, chacun ROUGE AVANT, VERT APRÈS.
+
+    1. Grille prise pour une liaison (V4, 390 px) : `barres-grille-liaison.html`, douze colonnes dont les totaux
+       extrêmes frôlent une graduation, rendait 9 constats à 390 px et 0 à 1440. VERT : 0 aux deux largeurs ;
+       l'oracle n'est pas adouci, `v4-fleche-traverse-boite.html` garde ses constats à 390 px.
+    2. Tableau de données à cinq séries, débordement V1 à 390 px : VERT `barres-5-series.html`, ROUGE
+       `barres-5-series-ancien-style.html` (la feuille d'avant correctif, `barres-empilees-ancien.css`, figée).
+    3. À 33 mois, étiquette du dernier mois et graduation la plus haute rognées par le viewBox, et 4. sans totaux,
+       dernière graduation horizontale rognée : VERT par le composant actuel, ROUGE par `-ancien-rendu` (le SVG
+       pré-rendu par le composant d'avant correctif). Le rognage se MESURE : chaque `<text>` d'un graphe tient
+       dans le rectangle de son `<svg>`.
+    5. Le composant d'entonnoir : rendu sans défaut à 390 et 1440 px, chaque effectif écrit UNE fois (la barre
+       horizontale à une série du composant barres empilées l'écrit deux fois ou plus), donnée non décroissante
+       REFUSÉE, pré-rendu idempotent."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import json as _json
+    import tempfile
+    from playwright.sync_api import sync_playwright
+    out = []
+    captures = tempfile.mkdtemp(prefix="self-test-tf1875-")
+    outil = str(Path(__file__).resolve().parent / "render_page.py")
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-1875", "detail": "" if ok else str(detail)[:300]})
+
+    def rendu(nom, largeur, famille):
+        r = subprocess.run([sys.executable, "-X", "utf8", outil, str(FIXTURES / nom), "--widths", str(largeur),
+                            "--output", "json", "--out", captures], capture_output=True, text=True, encoding="utf-8")
+        try:
+            return [i["what"] for i in _json.loads(r.stdout)["breakpoints"][str(largeur)]["issues"][famille]]
+        except Exception:
+            return None
+
+    js_rogne = ("() => { const o=[]; for (const svg of document.querySelectorAll('svg.graphe-svg')) {"
+                " const r=svg.getBoundingClientRect(); for (const t of svg.querySelectorAll('text')) {"
+                " const b=t.getBoundingClientRect(); if (b.right>r.right+0.5||b.left<r.left-0.5||b.top<r.top-0.5||"
+                "b.bottom>r.bottom+0.5) o.push(t.textContent); } } return o; }")
+    with sync_playwright() as p:
+        nav = p.chromium.launch()
+
+        def rognes(nom, largeur):
+            pg = nav.new_page(viewport={"width": largeur, "height": 900})
+            pg.goto((FIXTURES / nom).as_uri())
+            pg.wait_for_timeout(300)
+            res = pg.evaluate(js_rogne)
+            pg.close()
+            return [t.replace(" ", " ").replace(" ", " ") for t in res]
+        for largeur in (390, 1440):
+            v = rendu("barres-grille-liaison.html", largeur, "v4_overlap")
+            cas(f"barres-grille-liaison · vert à {largeur} px : aucune grille prise pour une liaison",
+                v == [], "V4 ×0", f"{None if v is None else len(v)} constat(s)", " | ".join(v or []))
+        v = rendu("v4-fleche-traverse-boite.html", 390, "v4_overlap")
+        cas("v4-fleche-traverse-boite · l'oracle n'est pas adouci : la vraie liaison reste accusée à 390 px",
+            bool(v) and len(v) >= 2, "V4 ≥ 2", f"{None if v is None else len(v)} constat(s)")
+        rouge = rendu("barres-5-series-ancien-style.html", 390, "v1_overflow")
+        cas("barres-5-series-ancien-style · rouge : la vue tableau à cinq séries déborde à 390 px",
+            bool(rouge), "V1 ≥ 1", f"{None if rouge is None else len(rouge)} constat(s)")
+        vert = rendu("barres-5-series.html", 390, "v1_overflow")
+        cas("barres-5-series · vert à 390 px : repli en cartes, aucun débordement",
+            vert == [], "V1 ×0", f"{None if vert is None else len(vert)} constat(s)", " | ".join(vert or []))
+        for nom, attendu_rouge in (("barres-33-mois", ["sept. 2026", "300"]),
+                                   ("barres-horizontal-sans-totaux", ["20 000"])):
+            for largeur in (390, 1440):
+                r = rognes(nom + "-ancien-rendu.html", largeur)
+                cas(f"{nom}-ancien-rendu · rouge à {largeur} px : texte rogné par le viewBox",
+                    all(any(a in t for t in r) for a in attendu_rouge),
+                    f"rogné : {attendu_rouge}", f"{r}")
+                v = rognes(nom + ".html", largeur)
+                cas(f"{nom} · vert à {largeur} px : tout texte tient dans le viewBox",
+                    v == [], "aucun texte rogné", f"{v}")
+        for largeur in (390, 1440):
+            for famille in ("v1_overflow", "v2_contrast", "v4_overlap"):
+                v = rendu("entonnoir.html", largeur, famille)
+                cas(f"entonnoir · vert à {largeur} px : {famille} ×0", v == [], f"{famille} ×0",
+                    f"{None if v is None else len(v)}", " | ".join(v or []))
+        nav.close()
+    asset = (FIXTURES.parent / "assets" / "entonnoir.js").as_posix()
+    barres = (FIXTURES.parent / "assets" / "barres-empilees.js").as_posix()
+    script = (
+        "const E=require(@ASSET@),B=require(@BARRES@);"
+        "const fmt=v=>new Intl.NumberFormat('fr-FR').format(v);"
+        "const vis=h=>h.replace(/<[^>]*>/g,' ');"
+        "const cnt=(t,s)=>t.split(s).length-1;"
+        "const d={unite:'visiteurs',titre:'T',etapes:[{nom:'A',valeur:12480},{nom:'B',valeur:3412},{nom:'C',valeur:905}]};"
+        "const r=E.rendre(d,'e');"
+        "const un=cnt(vis(r.liste),fmt(12480));"
+        "const b=B.rendre({orientation:'horizontal',mode:'valeurs',unite:'€',totaux:true,categories:['A','B','C'],"
+        "series:[{nom:'s',valeurs:[12480,6000,3000]}]},'g');"
+        "const deux=cnt(vis(b.svg),fmt(6000));"
+        "const refuse=(x)=>{try{E.rendre(x,'e');return false;}catch(e){return true;}};"
+        "const croissant=refuse({etapes:[{nom:'A',valeur:10},{nom:'B',valeur:20}]});"
+        "const nul=refuse({etapes:[{nom:'A',valeur:0},{nom:'B',valeur:0}]});"
+        "const seule=refuse({etapes:[{nom:'A',valeur:10}]});"
+        "const egal=!refuse({etapes:[{nom:'A',valeur:10},{nom:'B',valeur:10}]});"
+        "const t=vis(r.liste);"
+        "const conv=/27,3 % de l.\\u00e9tape pr\\u00e9c\\u00e9dente/.test(t)&&/26,5 % de l.\\u00e9tape pr\\u00e9c\\u00e9dente +\\u00b7 +7,3 % du d\\u00e9part/.test(t);"
+        "console.log(JSON.stringify({un,deux,croissant,nul,seule,egal,conv}));" ).replace("@ASSET@", _json.dumps(asset)).replace("@BARRES@", _json.dumps(barres))
+    r = subprocess.run(["node", "-e", script], capture_output=True, text=True, encoding="utf-8")
+    try:
+        j = _json.loads(r.stdout)
+    except Exception:
+        j = {}
+    cas("entonnoir sous node · l'effectif d'une étape est écrit UNE fois", j.get("un") == 1, "1", f"{j.get('un')}", r.stderr)
+    cas("barres empilées à une série (sens rouge) · le même effectif est écrit au moins deux fois",
+        (j.get("deux") or 0) >= 2, "≥ 2", f"{j.get('deux')}", r.stderr)
+    cas("entonnoir sous node · la conversion se lit (étape précédente, puis départ dès l'étape 3)",
+        j.get("conv") is True, "True", f"{j.get('conv')}", r.stderr)
+    for cle, nom in (("croissant", "une étape plus grande que la précédente"), ("nul", "un départ nul"),
+                     ("seule", "une seule étape")):
+        cas(f"entonnoir sous node · donnée refusée : {nom}", j.get(cle) is True, "refus", f"{j.get(cle)}", r.stderr)
+    cas("entonnoir sous node · deux étapes égales sont admises (aucune perte)", j.get("egal") is True, "admis",
+        f"{j.get('egal')}", r.stderr)
+    # Pré-rendu : idempotent, et la page rendue par la voie fichier garde un seul rendu.
+    tmp = Path(captures) / "entonnoir-injecte.html"
+    shutil.copyfile(FIXTURES / "entonnoir.html", tmp)
+    versions = []
+    for _ in range(2):
+        subprocess.run(["node", asset, "--injecter", str(tmp)], capture_output=True, text=True, encoding="utf-8")
+        versions.append(tmp.read_text(encoding="utf-8"))
+    cas("entonnoir --injecter · idempotent, un seul rendu dans le fichier",
+        versions[0] == versions[1] and versions[0].count("<!--entonnoir-rendu-->") == 1,
+        "même contenu, un rendu", f"{versions[0] == versions[1]}, {versions[0].count('<!--entonnoir-rendu-->')} rendu(s)")
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_classe_source_machine():
     """TF-1589 (RT-115) — la classe d'artefact `source-machine`, jouée dans ses deux sens.
 
@@ -5373,6 +5506,11 @@ def main():
     console = run_console_cp1252()
     if console:
         res += console
+    # TF-1875 — quatre defauts de rendu des composants de graphique, rouge avant / vert apres, et le composant
+    # d entonnoir.
+    graphiques = run_graphiques_tf1875()
+    if graphiques:
+        res += graphiques
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

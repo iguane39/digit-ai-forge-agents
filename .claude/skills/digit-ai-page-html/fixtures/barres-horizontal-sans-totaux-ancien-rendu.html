@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc barres horizontal sans totaux ancien rendu — 20261019a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="../assets/barres-empilees.css">
+</head>
+<!--
+Fixture de TF-1875 (defaut 4). Sans totaux, la marge droite des barres horizontales etait de 12 unites : la derniere
+  graduation (« 20 000 », centree sur le bord du trace) depassait de 6 px. VERTE : composant ACTUEL. ROUGE : -ancien-rendu,
+  le SVG pre-rendu par le composant d'avant correctif.
+-->
+<body><main class="wrap">
+<h1>Depense par pays, sans totaux</h1>
+<p>Banc de TF-1875 : le composant barres empilees, juge par render_page.py.</p>
+<figure class="graphe-empile" id="gh" data-graphe-empile>
+  <figcaption>Depense par pays (euros), sans totaux</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation": "horizontal", "mode": "valeurs", "unite": "€", "totaux": false, "titre": "Depense par pays", "titreCategories": "Pays", "categories": ["France", "Italie", "Espagne"], "series": [{"nom": "Publicite", "valeurs": [12000, 9000, 8000]}, {"nom": "Reseaux", "valeurs": [6000, 8000, 4000]}]}
+  </script>
+  <!--graphe-rendu--><svg class="graphe-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 128" role="group" aria-label="Depense par pays" data-series-source="2" data-orientation="horizontal"><line class="graphe-grille graphe-base" x1="65" x2="65" y1="8" y2="104"/><text class="graphe-axe" x="65" y="120" text-anchor="middle">0</text><line class="graphe-grille" x1="150.8" x2="150.8" y1="8" y2="104"/><text class="graphe-axe" x="150.8" y="120" text-anchor="middle">5 000</text><line class="graphe-grille" x1="236.5" x2="236.5" y1="8" y2="104"/><text class="graphe-axe" x="236.5" y="120" text-anchor="middle">10 000</text><line class="graphe-grille" x1="322.3" x2="322.3" y1="8" y2="104"/><text class="graphe-axe" x="322.3" y="120" text-anchor="middle">15 000</text><line class="graphe-grille" x1="408" x2="408" y1="8" y2="104"/><text class="graphe-axe" x="408" y="120" text-anchor="middle">20 000</text><text class="graphe-axe" x="57" y="28" text-anchor="end">France</text><text class="graphe-axe" x="57" y="60" text-anchor="end">Italie</text><text class="graphe-axe" x="57" y="92" text-anchor="end">Espagne</text><rect class="graphe-seg graphe-s1" id="gh-0-0" data-serie="Publicite" data-categorie="France" x="65" y="13" width="205.8" height="22" tabindex="0" role="img" aria-label="Publicite, France : 12 000 €" title="Part du total de la barre : 66,7 %
+Rang : 1er sur 2
+Total de la barre : 18 000 €"/><rect class="graphe-seg graphe-s2" id="gh-0-1" data-serie="Reseaux" data-categorie="France" x="270.8" y="13" width="102.9" height="22" tabindex="0" role="img" aria-label="Reseaux, France : 6 000 €" title="Part du total de la barre : 33,3 %
+Rang : 2e sur 2
+Total de la barre : 18 000 €"/><rect class="graphe-seg graphe-s1" id="gh-1-0" data-serie="Publicite" data-categorie="Italie" x="65" y="45" width="154.4" height="22" tabindex="0" role="img" aria-label="Publicite, Italie : 9 000 €" title="Part du total de la barre : 52,9 %
+Rang : 1er sur 2
+Total de la barre : 17 000 €"/><rect class="graphe-seg graphe-s2" id="gh-1-1" data-serie="Reseaux" data-categorie="Italie" x="219.4" y="45" width="137.2" height="22" tabindex="0" role="img" aria-label="Reseaux, Italie : 8 000 €" title="Part du total de la barre : 47,1 %
+Rang : 2e sur 2
+Total de la barre : 17 000 €"/><rect class="graphe-seg graphe-s1" id="gh-2-0" data-serie="Publicite" data-categorie="Espagne" x="65" y="77" width="137.2" height="22" tabindex="0" role="img" aria-label="Publicite, Espagne : 8 000 €" title="Part du total de la barre : 66,7 %
+Rang : 1er sur 2
+Total de la barre : 12 000 €"/><rect class="graphe-seg graphe-s2" id="gh-2-1" data-serie="Reseaux" data-categorie="Espagne" x="202.2" y="77" width="68.6" height="22" tabindex="0" role="img" aria-label="Reseaux, Espagne : 4 000 €" title="Part du total de la barre : 33,3 %
+Rang : 2e sur 2
+Total de la barre : 12 000 €"/><text class="etiquette-marque graphe-t1" data-etiquette-de="gh-0-0" data-overlap-ok="gh-0-0" x="167.9" y="28" text-anchor="middle">12 000</text><text class="etiquette-marque graphe-t2" data-etiquette-de="gh-0-1" data-overlap-ok="gh-0-1" x="322.3" y="28" text-anchor="middle">6 000</text><text class="etiquette-marque graphe-t1" data-etiquette-de="gh-1-0" data-overlap-ok="gh-1-0" x="142.2" y="60" text-anchor="middle">9 000</text><text class="etiquette-marque graphe-t2" data-etiquette-de="gh-1-1" data-overlap-ok="gh-1-1" x="288" y="60" text-anchor="middle">8 000</text><text class="etiquette-marque graphe-t1" data-etiquette-de="gh-2-0" data-overlap-ok="gh-2-0" x="133.6" y="92" text-anchor="middle">8 000</text><text class="etiquette-marque graphe-t2" data-etiquette-de="gh-2-1" data-overlap-ok="gh-2-1" x="236.5" y="92" text-anchor="middle">4 000</text></svg><ul class="graphe-legende"><li><span class="graphe-pastille graphe-s1" aria-hidden="true"></span>Publicite</li><li><span class="graphe-pastille graphe-s2" aria-hidden="true"></span>Reseaux</li></ul><div class="graphe-table"><table><caption>Depense par pays (€)</caption><thead><tr><th scope="col">Pays</th><th scope="col">Publicite</th><th scope="col">Reseaux</th><th scope="col">Total</th></tr></thead><tbody><tr><th scope="row">France</th><td>12 000</td><td>6 000</td><td>18 000</td></tr><tr><th scope="row">Italie</th><td>9 000</td><td>8 000</td><td>17 000</td></tr><tr><th scope="row">Espagne</th><td>8 000</td><td>4 000</td><td>12 000</td></tr></tbody></table></div><!--/graphe-rendu-->
+</figure>
+<script src="../assets/barres-empilees.js"></script>
+<script>window.DigitAIBarresEmpilees.init(document);</script>
+</main></body></html>

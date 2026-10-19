@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Banc barres horizontal sans totaux — 20261019a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#fff;--r:12px;--blue:#2563EB;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style>
+<link rel="stylesheet" href="../assets/barres-empilees.css">
+</head>
+<!--
+Fixture de TF-1875 (defaut 4). Sans totaux, la marge droite des barres horizontales etait de 12 unites : la derniere
+  graduation (« 20 000 », centree sur le bord du trace) depassait de 6 px. VERTE : composant ACTUEL. ROUGE : -ancien-rendu,
+  le SVG pre-rendu par le composant d'avant correctif.
+-->
+<body><main class="wrap">
+<h1>Depense par pays, sans totaux</h1>
+<p>Banc de TF-1875 : le composant barres empilees, juge par render_page.py.</p>
+<figure class="graphe-empile" id="gh" data-graphe-empile>
+  <figcaption>Depense par pays (euros), sans totaux</figcaption>
+  <script type="application/json" class="graphe-donnees">
+  {"orientation": "horizontal", "mode": "valeurs", "unite": "€", "totaux": false, "titre": "Depense par pays", "titreCategories": "Pays", "categories": ["France", "Italie", "Espagne"], "series": [{"nom": "Publicite", "valeurs": [12000, 9000, 8000]}, {"nom": "Reseaux", "valeurs": [6000, 8000, 4000]}]}
+  </script>
+</figure>
+<script src="../assets/barres-empilees.js"></script>
+<script>window.DigitAIBarresEmpilees.init(document);</script>
+</main></body></html>

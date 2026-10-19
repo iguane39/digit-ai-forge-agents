@@ -1,0 +1,71 @@
+/* entonnoir.css — habillage de l'entonnoir de conversion (TF-1875, 19/10/2026).
+   Le dessin vit dans entonnoir.js ; ici, le style de la liste d'etapes et de la vue tableau.
+
+   Aucune couleur n'est ecrite en dur : la barre prend `--entonnoir-barre` si la page le pose, sinon
+   `--blue` du socle, sinon le bleu du boilerplate. Un entonnoir est UNE serie : une seule teinte, la
+   largeur dit le reste. Le sombre suit les jetons de la page (data-theme), jamais l'OS (RV-9).
+   Contrastes mesures : barre #2563EB sur surface blanche 5,2:1 (WCAG 1.4.11 : 3:1 au moins), texte
+   --ink sur surface >= 15:1. L'effectif et le nom sont du TEXTE, hors de la barre : aucune encre a
+   poser sur un fond de serie. */
+
+.entonnoir {
+  margin: 0;
+  min-width: 0;   /* un enfant de grille ne s'impose pas a la largeur intrinseque de son contenu */
+  padding: 16px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid var(--line, #E6EAF2);
+  border-radius: var(--r, 12px);
+}
+
+.entonnoir figcaption {
+  margin: 0 0 8px;
+  font-family: var(--head, system-ui, sans-serif);
+  font-weight: 600;
+  font-size: .95rem;
+  color: var(--ink, #0F172A);
+}
+
+.entonnoir-liste { margin: 0; padding: 0; list-style: none; max-width: 560px; }
+.entonnoir-etape { margin: 0 0 12px; padding: 0; }
+.entonnoir-etape:last-child { margin-bottom: 0; }
+
+.entonnoir-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 12px;
+  margin: 0 0 4px;
+  font-size: .9rem;
+  color: var(--ink, #0F172A);
+}
+.entonnoir-nom { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.entonnoir-valeur { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* La barre est CENTREE et sa largeur est la part du depart : la forme d'un entonnoir. */
+.entonnoir-barre {
+  box-sizing: border-box;
+  width: var(--part, 100%);
+  min-width: 4px;
+  height: 20px;
+  margin: 0 auto;
+  background: var(--entonnoir-barre, var(--blue, #2563EB));
+  border-radius: var(--r-sm, 6px);
+}
+.entonnoir-barre:focus-visible { outline: var(--focus-anneau, 2px solid var(--blue, #2563EB)); outline-offset: var(--focus-decalage, 2px); }
+.entonnoir-remplissage { display: block; height: 100%; }
+
+.entonnoir-conversion { margin: 4px 0 0; font-size: .8rem; color: var(--muted, #64748B); text-align: center; overflow-wrap: anywhere; }
+
+.entonnoir-table { margin-top: 12px; font-size: .85rem; }
+.entonnoir-table summary { cursor: pointer; color: var(--blue, #2563EB); font-weight: 600; }
+.entonnoir-table table { border-collapse: collapse; margin-top: 8px; width: 100%; }
+.entonnoir-table caption { text-align: left; color: var(--muted, #64748B); padding-bottom: 4px; }
+.entonnoir-table th, .entonnoir-table td { border-bottom: 1px solid var(--line, #E6EAF2); padding: 4px; font-size: .75rem; text-align: right; }
+.entonnoir-table th[scope="row"], .entonnoir-table th[scope="col"]:first-child { text-align: left; }
+.entonnoir-erreur { color: var(--red, #B91C1C); }
+
+@media print {
+  .entonnoir-table { display: block; }
+  .entonnoir-table[open] summary, .entonnoir-table summary { display: none; }
+  .entonnoir-barre { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
