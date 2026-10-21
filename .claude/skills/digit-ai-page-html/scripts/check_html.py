@@ -151,6 +151,12 @@ CL_SCORE_AMBIGUE = {"note"}                           # score seulement si un ch
 CL_VALEUR = {"kpi", "badge", "pastille", "pv", "chip-val", "stat"}  # → légende
 
 RE_NM = re.compile(r"^\s*\d+(?:[.,]\d+)?\s*/\s*\d+\s*$")
+# TF-1904 : une date « JJ/MM » en cellule n'est pas une note « N/M » (voir `date_jjmm`, règle L3).
+RE_JJMM = re.compile(r"^\s*(\d{1,2})\s*/\s*(\d{1,2})\s*$")
+RE_ENTETE_DATE = re.compile(
+    r"\b(dates?|semaines?|sem|jours?|periodes?|echeances?|debut|fin|livraison|week|day|period)\b")
+RE_ENTETE_DATE_ENTIER = re.compile(r"^\W*(du|au|from|to)\W*$")
+RE_ENTETE_NOTE = re.compile(r"\b(notes?|scores?|sur|indice|taux|rang|classement|niveau|maturite)\b")
 RE_COUPE = re.compile(r"[\wÀ-ɏ](?:…|\.\.\.)$")
 RE_MOT = re.compile(r"[\wÀ-ɏ]")
 
@@ -1711,6 +1717,62 @@ def check_lisibilite(html: str, a: Arbre):
         """
         return any(decrit_par(anc) for anc in n.ancetres())
 
+    def entete_de_colonne(td):
+        """Les textes des `<th>` d'en-tête qui titrent la colonne de cette cellule (TF-1904)."""
+        if td.parent is None:
+            return []
+        rang = [e for e in td.parent.enfants
+                if isinstance(e, Noeud) and e.tag in ("td", "th")]
+        table = next((x for x in td.ancetres() if x.tag == "table"), None)
+        if td not in rang or table is None:
+            return []
+        idx = rang.index(td)
+        premiere = next((t for t in table.descendants() if t.tag == "tr"), None)
+        out = []
+        for th in (e for e in table.descendants() if e.tag == "th"):
+            if th.parent is None or th.parent is td.parent:
+                continue
+            if not (th.parent is premiere or any(x.tag == "thead" for x in th.ancetres())):
+                continue
+            freres = [x for x in th.parent.enfants
+                      if isinstance(x, Noeud) and x.tag in ("th", "td")]
+            if th in freres and freres.index(th) == idx:
+                out.append(th.texte_propre())
+        return out
+
+    def date_jjmm(n):
+        """TF-1904 (RA-15, lot Produit-79 20261018a) — une DATE « JJ/MM » n'est pas une note « N/M ».
+
+        LE FAIT. Un rapport HTML portait des dates de semaine (`12/10`, `19/10`) en cellule : 16
+        échecs L3 bloquants, lus comme des notes `12 sur 10`. Levés en ajoutant une légende de
+        colonne qui n'apprenait rien au lecteur — qui lisait des dates.
+
+        LA MESURE. Deux preuves, jamais la forme seule (`5/10` est aussi une note) :
+          · `<time datetime="…">` sur la valeur, un de ses ancêtres ou un de ses descendants : la
+            page DIT que c'est une date, quelle que soit la colonne ;
+          · à défaut, la valeur est un JJ/MM plausible (jour 1-31, mois 1-12) ET l'en-tête de sa
+            colonne nomme une date (date, semaine, jour, période, échéance, début, fin…) sans
+            nommer une note (note, score, sur, indice, taux, rang…). « du » et « au » ne valent
+            qu'en en-tête entier (« Note du jury » nomme une note, pas une date).
+        """
+        if any(x.tag == "time" and (x.att("datetime") or "").strip()
+               for x in [n, *n.ancetres(), *n.descendants()]):
+            return True
+        m = RE_JJMM.match(n.texte_propre() or "")
+        if not m or not (1 <= int(m.group(1)) <= 31 and 1 <= int(m.group(2)) <= 12):
+            return False
+        td = n if n.tag == "td" else next((x for x in n.ancetres() if x.tag == "td"), None)
+        if td is None:
+            return False
+        for libelle in entete_de_colonne(td):
+            t = unicodedata.normalize("NFD", libelle or "")
+            t = "".join(c for c in t if unicodedata.category(c) != "Mn").lower()
+            if RE_ENTETE_NOTE.search(t):
+                continue
+            if RE_ENTETE_DATE.search(t) or RE_ENTETE_DATE_ENTIER.match(t):
+                return True
+        return False
+
     vus = set()
     for n in a.racine.descendants():
         cl = n.classes()
@@ -1723,6 +1785,10 @@ def check_lisibilite(html: str, a: Arbre):
         if id(n) in vus:
             continue
         vus.add(id(n))
+        # TF-1904 : une date n'est pas un score — sauf si la page l'a déclarée score par classe.
+        if est_score and not est_valeur and not (cl & (CL_SCORE | CL_SCORE_AMBIGUE)) \
+                and date_jjmm(n):
+            continue
         libelle = (n.texte_propre() or n.tag)[:40]
         if est_score:
             # Un barème n'est pas un tooltip : il doit exister DANS la page, donc
@@ -1735,7 +1801,9 @@ def check_lisibilite(html: str, a: Arbre):
                                  f'(aria-describedby="{n.att("aria-describedby")}").')
                 else:
                     fails.append(f'L3 valeur sans barème lié : « {libelle} » — '
-                                 f'aria-describedby vers la légende attendu ({n.chemin()}).')
+                                 f'aria-describedby vers la légende attendu ({n.chemin()}). '
+                                 'Si c\'est une DATE « JJ/MM » : <time datetime="AAAA-MM-JJ"> '
+                                 "sur la valeur, ou un en-tête de colonne qui nomme la date.")
         else:
             t, al = n.att("title"), n.att("aria-label")
             if (t is not None and not t.strip()) or (al is not None and not al.strip()):

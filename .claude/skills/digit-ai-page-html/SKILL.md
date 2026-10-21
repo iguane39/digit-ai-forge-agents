@@ -7,13 +7,24 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.37.1"
+  version: "1.38.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.38.0 (21/10/2026)** — **L3 ne lit plus une date « JJ/MM » en cellule comme une note « N/M » (TF-1904, retour d'un produit du
+18/10/2026, décision R-58 option (a)).** Un rapport HTML a reçu 16 échecs bloquants L3 sur des dates de semaine (`12/10`,
+`19/10`), levés par une légende de colonne qui n'apprenait rien au lecteur. `check_html.py` exempte deux preuves, jamais la
+forme seule (`5/10` est aussi une note) : un `<time datetime>` sur la valeur, un de ses ancêtres ou un de ses descendants ; ou
+un JJ/MM plausible (jour 1-31, mois 1-12) sous un en-tête de colonne qui nomme une date (date, semaine, jour, période,
+échéance, début, fin, livraison ; « du » et « au » seulement en en-tête entier) et ne nomme pas une note (note, score, sur,
+indice, taux, rang, niveau). Une valeur déclarée score par classe (`sc`, `score`, `note`, `jauge`) reste un score. Le message du
+refus nomme ces deux remèdes, et la fixture verte les joue (TF-1013). Fixtures `l3-date-jjmm-colonne-date.html` (HEAD : 9
+échecs L3 ; après : 0) et `l3-date-jjmm-colonne-resultat.html` (les 6 notes restent refusées). **Version MINEURE** : un verdict de
+`check_html.py` change (moins de refus).
 
 **1.37.1 (21/10/2026)** — **le contrôle statique « règle de largeur sans `screen` » juge aussi le skill `digit-ai-schemas`
 (TF-1895, décision humaine D-41 (a) du 19/10/2026).** Le skill de schémas écrivait neuf règles `@media (max-width` ou

@@ -191,6 +191,16 @@ formalité : un tooltip ne survit pas à l'export WeasyPrint, ne s'atteint pas a
 mobile, et n'a jamais la place d'énoncer cinq crans. Le barème doit **exister dans le
 document**. C'est la mécanisation de « 1/5 sans barème = défaut ».
 
+**Une date « JJ/MM » n'est pas une note** (TF-1904, retour d'un produit du 18/10/2026). Un rapport
+portait des dates de semaine (`12/10`, `19/10`) en cellule : seize échecs bloquants, lus comme des
+notes « 12 sur 10 », levés par une légende de colonne qui n'apprenait rien. Deux preuves
+exemptent, jamais la forme seule (`5/10` est aussi une note) : un **`<time datetime="AAAA-MM-JJ">`**
+sur la valeur (ou autour, ou dedans) — la page dit que c'est une date ; **ou** un JJ/MM plausible
+(jour 1-31, mois 1-12) sous un **en-tête de colonne qui nomme une date** (date, semaine, jour,
+période, échéance, début, fin, livraison ; « du » et « au » seulement en en-tête entier) et qui ne
+nomme pas une note (note, score, sur, indice, taux, rang, niveau). Une valeur déclarée score par
+sa classe (`sc`, `score`, `note`, `jauge`) reste un score.
+
 **(b) Les autres valeurs mises en avant** — `kpi`, `badge`, `pastille`, `pv`, `stat`.
 Exigence : **`aria-describedby` vers une légende visible de la page — le porteur recommandé**,
 parce qu'elle survit au PDF, s'atteint au doigt et ne se recopie pas ; **ou** une légende visible

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L3 — dates JJ/MM en cellule, colonne qui nomme la date (TF-1904)</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{border-collapse:collapse}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+@media screen and (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L3 — des dates, pas des notes</h1>
+<p>Le planning ci-dessous porte des dates de semaine écrites « JJ/MM ». Les deux
+colonnes de dates se déclarent chacune à leur manière : l'en-tête <em>Semaine</em>
+nomme la date ; la colonne <em>Livraison prévue</em> pose un
+<code>&lt;time datetime&gt;</code> sur chaque valeur. Aucune des deux n'est une note.</p>
+<table>
+  <thead><tr><th scope="col">Semaine</th><th scope="col">Du</th><th scope="col">Livraison prévue</th><th scope="col">Chantier</th></tr></thead>
+  <tbody>
+    <tr><td>12/10</td><td>12/10</td><td><time datetime="2026-10-16">16/10</time></td><td>Cadrage des exigences</td></tr>
+    <tr><td>19/10</td><td>19/10</td><td><time datetime="2026-10-23">23/10</time></td><td>Maquette du tableau de bord</td></tr>
+    <tr><td>26/10</td><td>26/10</td><td><time datetime="2026-10-30">30/10</time></td><td>Recette avec l'exploitant</td></tr>
+  </tbody>
+</table>
+</main></body></html>

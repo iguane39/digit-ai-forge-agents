@@ -310,6 +310,11 @@ CAS = {
     "l10-exemple-double.html": {"L10"},
     "l3-note-encadre.html": set(),
     "l3-note-chiffree.html": {"L3"},
+    # TF-1904 (RA-15, lot Produit-79 20261018a) — une date « JJ/MM » en cellule n'est pas une note
+    # « N/M ». La verte porte DEUX voies de sortie (en-tete qui nomme la date ; <time datetime>) ; la
+    # rouge porte les memes valeurs sous des en-tetes qui nomment une note : la regle doit mordre.
+    "l3-date-jjmm-colonne-date.html": set(),
+    "l3-date-jjmm-colonne-resultat.html": {"L3"},
     "l8-identifiant-sans-title.html": {"L8"},
     "l8-identifiant-avec-title.html": set(),
     # TF-1609 (RT-32) — L8 acceptait un title qui recopie le dd de l'entrée visée : il exige un
@@ -5597,6 +5602,30 @@ def run_badge_defavorable():
     return out
 
 
+def run_dates_jjmm():
+    """TF-1904 (RA-15, lot Produit-79 20261018a) — L3 ne lit plus une date « JJ/MM » comme une note.
+
+    LE FAIT PAYE. Seize echecs L3 bloquants sur des dates de semaine en cellule, levees par une
+    legende de colonne qui n'apprenait rien. Les deux fixtures portent les MEMES valeurs ; seuls
+    changent les en-tetes (qui nomment une date, ou une note) et les `<time datetime>`.
+      · sens vert : 0 echec L3 « valeur sans bareme » (en-tetes de date + `<time datetime>`) ;
+      · sens rouge : les 6 notes sous « Resultat », « Note du jury », « Score semaine » restent
+        refusees, et le message du refus nomme les deux remedes (TF-1013 : la verte les joue).
+    """
+    out = []
+    for nom, attendu in (("l3-date-jjmm-colonne-date.html", 0), ("l3-date-jjmm-colonne-resultat.html", 6)):
+        fails, _ = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+        vus = [f for f in fails if f.startswith("L3 valeur sans barème lié")]
+        ok = len(vus) == attendu
+        if attendu:
+            ok = ok and all("<time datetime=" in f and "en-tête de colonne" in f for f in vus)
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"TF-1904 {attendu} échec(s) L3 valeur sans barème",
+                    "obtenu": f"{len(vus)} échec(s)", "regle": "L3 date JJ/MM",
+                    "detail": "" if ok else " | ".join(vus)[:300]})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -5612,7 +5641,7 @@ def main():
            + run_avertissements_13_10() + run_avertissements_14_10()
            + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
            + run_classe_source_machine() + run_avertissements_15_10()
-           + run_l39_graphique_maison())
+           + run_l39_graphique_maison() + run_dates_jjmm())
     rendu = run_rendu()
     if rendu:
         res += rendu
