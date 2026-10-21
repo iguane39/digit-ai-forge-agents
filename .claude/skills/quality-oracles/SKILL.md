@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.18.0"
+  version: "2.19.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -182,6 +182,15 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   passant —, onze « 100% » provenant de documents CITÉS, incorrigibles sans falsifier la source. Les contournements
   subis avant correction disent le coût : réécrire les `$1` en fonctions de remplacement, écrire deux couleurs en
   `rgb()` alors que la charte prescrit l'hexadécimal. Dégrader le livrable pour plaire à l'oracle.
+- **Source de section (2.19.0, TF-1902)** — une source posée SOUS LE TITRE d'une section couvre les chiffres de cette section.
+  `oracle-claims` ne voyait une source que dans la ligne du chiffre et ses deux voisines : une étude sur les réseaux sociaux,
+  dont chaque section ouvrait par « Source : … », a dû la recopier ligne par ligne (texte alourdi de mentions répétées, rien
+  de plus pour le lecteur). Le titre se lit en Markdown (`#` à `######`) et en HTML (`h1` à `h6`, sans décaler un numéro de
+  ligne) ; la première ligne non vide sous le titre doit COMMENCER par un libellé de source (source(s), d'après, selon, réf.,
+  à vérifier, adresse) — un « cf. » en cours de phrase ou une source posée plus bas ne couvre pas la section. La portée va
+  jusqu'au titre suivant de même rang ou supérieur : une sous-section hérite de la source de sa section, la source d'une
+  sous-section ne remonte pas. La source d'un tableau n'a pas à être recopiée : les lignes de tableau sont hors du périmètre
+  de cet oracle (totaux → `oracle-calculs`). Fixtures `claims-section-*` (md et html).
 - **Profils** — `profils/digit-ai.json` · `generique.json` (défaut : digit-ai, env `QO_PROFIL`) : budgets perf,
   politique pptx, convention de nommage, marqueurs de sources et motifs additionnels (claims : `motifs_bloquants` / `motifs_warn`),
   niveaux d'exigence (§6), seuils `visual_diff` (seuil_ratio, breakpoints, tolerance_pixel), rubrique du juge, `ignore_patterns`. Un contexte client = un JSON, zéro code.

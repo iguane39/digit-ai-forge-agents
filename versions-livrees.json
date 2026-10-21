@@ -82,7 +82,7 @@
       "source": "frontmatter SKILL.md"
     },
     "quality-oracles": {
-      "version": "2.18.0",
+      "version": "2.19.0",
       "source": "frontmatter SKILL.md",
       "registre": "2.45.0"
     },

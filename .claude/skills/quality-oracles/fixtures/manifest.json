@@ -452,6 +452,44 @@
    ]
   },
   {
+   "nom": "claims-source-de-section",
+   "commentaire": "TF-1902 (RP-18, lot Produit-79 20261018a) — une source posee SOUS LE TITRE d'une section couvre les chiffres de cette section. La VERTE porte deux sections dont chacune ouvre par « Source : … », avec des chiffres a plus d'une ligne de cette source (montants, pourcentages, grands nombres) et une sous-section qui herite de la source de sa section : PASS, 0 avertissement (la meme page rend FAIL sur la version precedente de l'oracle). La ROUGE a la meme forme, a une difference pres : la section qui porte le montant n'a pas de source sous son titre — celle d'une section voisine ne s'y etend pas, et la source posee dans une sous-section ne remonte pas a sa section : FAIL, seul le montant de cette section est accuse.",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-section-red.md",
+   "green": "claims-section-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ]
+  },
+  {
+   "nom": "claims-source-de-section-html",
+   "commentaire": "TF-1902, meme paire en HTML : le titre est un h2, la source un paragraphe sous le titre. Les reperes de rang des titres ne decalent aucun numero de ligne.",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-section-red.html",
+   "green": "claims-section-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ]
+  },
+  {
    "nom": "coherence",
    "cmd": [
     "node",

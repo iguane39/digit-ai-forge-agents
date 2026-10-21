@@ -71,7 +71,11 @@ const NEUTRALISE = m => m.replace(/[^\n]/g, ' ');
 let text = fs.readFileSync(file, 'utf8');
 text = text.replace(/```[\s\S]*?```/g, NEUTRALISE);                                    // bloc de code exclu
 text = text.replace(/`[^`\n]+`/g, NEUTRALISE);                                         // code en ligne aussi
+// TF-1902 : un titre HTML (h1-h6) se marque d'un repère de rang, SANS ajouter ni retirer de ligne
+// (les numéros de ligne restent justes) ; le repère est retiré des lignes avant toute analyse.
+const REPERE_TITRE = /\u0001H([1-6])\u0001/;
 if (/\.html?$/.test(file)) text = text
+  .replace(/<h([1-6])\b[^>]*>/gi, (m, n) => `\u0001H${n}\u0001 ` + m.replace(/[^\n]/g, ''))
   .replace(/<script\b[\s\S]*?<\/script>/gi, NEUTRALISE)                                // le JS inline n'affirme rien
   .replace(/<style\b[\s\S]*?<\/style>/gi, NEUTRALISE)                                  // la charte non plus
   .replace(/<pre\b[\s\S]*?<\/pre>/gi, NEUTRALISE)
@@ -83,6 +87,41 @@ if (/\.html?$/.test(file)) text = text
 const lines = text.split('\n');
 const base = path.basename(file);
 const isTableLine = l => /^\s*\|/.test(l);
+
+// TF-1902 (RP-18, lot Produit-79 20261018a) — UNE SOURCE POSÉE SOUS LE TITRE D'UNE SECTION COUVRE
+// SA SECTION. Une étude sur les réseaux sociaux posait « Source : … » sous le titre de chaque
+// section ; l'oracle ne voyait une source que dans la ligne du chiffre et ses deux voisines, si bien
+// que l'auteur a recopié la source ligne par ligne — un texte alourdi de mentions répétées, sans
+// qu'un lecteur en sache davantage.
+//   · Le TITRE : `#`…`######` en Markdown, `<h1>`…`<h6>` en HTML (repère posé plus haut).
+//   · La SOURCE : la première ligne non vide SOUS le titre COMMENCE par un libellé de source
+//     (source(s), d'après, selon, réf., à vérifier) ou une adresse. Un « cf. » au milieu d'une
+//     phrase, ou une source posée plus bas dans la section, ne couvre pas la section.
+//   · La PORTÉE : jusqu'au prochain titre de même rang ou supérieur — les sous-sections d'une
+//     section sourcée héritent de sa source, la source d'une sous-section ne remonte pas.
+// Le titre ne porte aucun chiffre affirmé : seules les lignes de la section sont couvertes.
+const rangTitre = lines.map(l => {
+  const h = l.match(REPERE_TITRE);
+  if (h) return Number(h[1]);
+  const md = !/\.html?$/.test(file) && l.match(/^\s{0,3}(#{1,6})\s+\S/);
+  return md ? md[1].length : 0;
+});
+lines.forEach((l, i) => { lines[i] = l.replace(/\u0001H[1-6]\u0001 ?/g, ''); });
+const LIBELLE_SOURCE = /^[\s>*_\-–—•]*(sources?\b|d['’]après\b|selon\b|réf\b|à vérifier|https?:\/\/)/i;
+const parSection = (() => {
+  const couvert = new Array(lines.length).fill(false);
+  for (let i = 0; i < lines.length; i++) {
+    const n = rangTitre[i];
+    if (!n) continue;
+    let j = i + 1;
+    while (j < lines.length && !lines[j].trim() && !rangTitre[j]) j++;
+    if (j >= lines.length || rangTitre[j] || !LIBELLE_SOURCE.test(lines[j])) continue;
+    let fin = i + 1;
+    while (fin < lines.length && !(rangTitre[fin] && rangTitre[fin] <= n)) fin++;
+    for (let k = i + 1; k < fin; k++) couvert[k] = true;
+  }
+  return couvert;
+})();
 
 // paragraphe = la ligne + ses voisines non vides (le marqueur de source peut être adjacent)
 const para = i => [lines[i - 1] || '', lines[i], lines[i + 1] || ''].join(' ');
@@ -100,7 +139,7 @@ let checked = 0;
 lines.forEach((l, i) => {
   if (isTableLine(l) || !l.trim()) return;
   const ctx = para(i);
-  const sourced = SRC.test(ctx);
+  const sourced = SRC.test(ctx) || parSection[i];
   const moneySpans = [...l.matchAll(MONEY)].map(m => [m.index, m.index + m[0].length]);
   const inMoney = m => moneySpans.some(([a, b]) => m.index >= a - 1 && m.index < b);
   for (const m of moneySpans.keys()) checked++;
