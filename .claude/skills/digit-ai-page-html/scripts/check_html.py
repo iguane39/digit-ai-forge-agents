@@ -2482,8 +2482,15 @@ def check_lisibilite(html: str, a: Arbre):
         # Deux façons de le dire, aucune n'étant un blanc-seing : l'attribut explicite avec son
         # motif, ou la légende du composant KPI du socle (`.kpi-d` / `.kpi-hint`) si elle porte
         # vraiment un texte. Une légende vide ne déclare rien et ne vaut pas exemption.
+        #
+        # TF-1905 (RA-16, lot Produit-79 20261018a) — L'EXEMPTION DU CONTENEUR VAUT POUR SES TUILES.
+        # `data-kpi-hors-page` posé sur la RANGÉE était sans effet : seule la tuile était lue, et un
+        # rapport a dû répéter l'attribut sur chacune de ses quatre tuiles. Même logique que
+        # TF-0231 pour L3 (`bareme_de_groupe` : un barème porté par le conteneur d'un groupe vaut
+        # pour les valeurs qu'il contient) : un motif posé une fois, au niveau où il est vrai, vaut
+        # pour tout ce qu'il contient. Le motif reste exigé non vide à tout niveau.
         def _declare_hors_page(n) -> bool:
-            if (n.att("data-kpi-hors-page") or "").strip():
+            if any((x.att("data-kpi-hors-page") or "").strip() for x in [n, *n.ancetres()]):
                 return True
             return any((d.classes() & {"kpi-d", "kpi-hint"}) and d.texte_propre()
                        for d in n.descendants())

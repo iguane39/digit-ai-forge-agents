@@ -642,6 +642,12 @@ n'existait : six indicateurs qui nommaient chacun leur chapitre étaient signal�
 Une règle dont le message décrit une échappatoire inexistante apprend au lecteur que les
 messages du socle ne sont pas fiables — c'est plus coûteux que la règle elle-même.
 
+**L'exemption du conteneur vaut pour ses tuiles** (TF-1905, retour d'un produit du 18/10/2026) :
+`data-kpi-hors-page="<motif>"` posé sur la rangée (ou sur tout ancêtre) exempte les tuiles qu'elle
+contient — un rapport avait dû le répéter sur chacune de ses quatre tuiles. Même logique que le
+barème de groupe de L3 (TF-0231) : un motif posé une fois, au niveau où il est vrai, vaut pour tout
+ce qu'il contient. Le motif reste exigé non vide à tous les niveaux : un attribut vide ne déclare rien.
+
 ## L14 — La plomberie ne s'affiche pas
 
 **Règle.** Une convention de balisage interne n'a **rien à faire dans le texte rendu**. Le

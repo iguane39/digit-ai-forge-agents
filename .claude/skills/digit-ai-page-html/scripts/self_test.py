@@ -5626,6 +5626,31 @@ def run_dates_jjmm():
     return out
 
 
+def run_kpi_hors_page_conteneur():
+    """TF-1905 (RA-16, lot Produit-79 20261018a) — l'exemption `data-kpi-hors-page` du CONTENEUR vaut
+    pour ses tuiles, comme le barème de groupe de TF-0231 pour L3.
+
+    LE FAIT PAYE. L'attribut posé sur la rangée de quatre tuiles était sans effet sur L13 : il a fallu
+    le répéter sur chacune. Les trois fixtures portent la MEME page (une liste de 8 lignes sous une
+    rangée de quatre tuiles) ; seul change l'attribut de la rangée :
+      · motif posé sur la rangée : 0 avertissement L13 (HEAD : 4) ;
+      · aucun attribut : 4 avertissements, la règle mord encore ;
+      · attribut VIDE sur la rangée : 4 avertissements — un motif vide ne déclare rien, à aucun niveau.
+    """
+    out = []
+    for nom, attendu in (("l13-kpi-exemption-du-conteneur.html", 0), ("l13-kpi-sans-exemption.html", 4),
+                         ("l13-kpi-exemption-vide.html", 4)):
+        fails, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="L")
+        vus = [w for w in warns if w.startswith("L13 ")]
+        n = int(vus[0].split()[1]) if vus else 0
+        ok = n == attendu and not [f for f in fails if f.startswith("L13")]
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC",
+                    "attendu": f"TF-1905 {attendu} KPI signalé(s) par L13",
+                    "obtenu": f"{n} KPI signalé(s)", "regle": "L13 kpi hors page",
+                    "detail": "" if ok else " | ".join(vus)[:300]})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -5641,7 +5666,8 @@ def main():
            + run_avertissements_13_10() + run_avertissements_14_10()
            + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
            + run_classe_source_machine() + run_avertissements_15_10()
-           + run_l39_graphique_maison() + run_dates_jjmm())
+           + run_l39_graphique_maison() + run_dates_jjmm()
+           + run_kpi_hors_page_conteneur())
     rendu = run_rendu()
     if rendu:
         res += rendu

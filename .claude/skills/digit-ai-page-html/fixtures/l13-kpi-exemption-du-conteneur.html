@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L13 — l'exemption posée sur la rangée vaut pour ses tuiles (TF-1905)</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+.rangee{display:flex;gap:16px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+@media screen and (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>L13 — l'exemption posée sur la rangée vaut pour ses tuiles (TF-1905)</h1>
+<p class="exemple-lecture">Exemple de lecture — une ligne type&nbsp;: une URL, son état HTTP et son nombre de liens, à parcourir ligne à ligne.</p>
+<p><input type="search" aria-label="Rechercher une URL" placeholder="Rechercher une URL"></p>
+<div class="rangee" data-kpi-hors-page="URL de tout le site, la page n'en montre qu'un extrait">
+  <div class="kpi"><b>312</b> <small>URL relevées sur tout le site, hors de cette page</small></div>
+  <div class="kpi"><b>41</b> <small>URL en erreur sur tout le site, hors de cette page</small></div>
+  <div class="kpi"><b>96</b> <small>URL redirigées sur tout le site, hors de cette page</small></div>
+  <div class="kpi"><b>12</b> <small>URL sans lien entrant sur tout le site, hors de cette page</small></div>
+</div>
+<table data-filterable id="t-x">
+<caption>Extrait de l'inventaire</caption>
+<thead><tr><th scope="col">URL</th><th scope="col">HTTP</th><th scope="col">Liens</th></tr></thead>
+<tbody>
+<tr><td>/a</td><td>200</td><td>3</td></tr><tr><td>/b</td><td>200</td><td>2</td></tr>
+<tr><td>/c</td><td>200</td><td>2</td></tr><tr><td>/d</td><td>200</td><td>1</td></tr>
+<tr><td>/e</td><td>200</td><td>1</td></tr><tr><td>/f</td><td>404</td><td>0</td></tr>
+<tr><td>/g</td><td>200</td><td>0</td></tr><tr><td>/h</td><td>200</td><td>0</td></tr>
+</tbody></table></main></body></html>

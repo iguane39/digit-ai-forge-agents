@@ -7,13 +7,21 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.38.0"
+  version: "1.39.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.39.0 (21/10/2026)** — **L13 : l'exemption `data-kpi-hors-page` posée sur le conteneur vaut pour ses tuiles (TF-1905, retour
+d'un produit du 18/10/2026, décision R-58 option (a)).** L'attribut posé sur une rangée de quatre tuiles était sans effet sur
+l'avertissement L13 (KPI non cliquables au-dessus d'une liste de 8 lignes ou plus) : il a fallu le répéter sur chaque tuile.
+`check_html.py` lit désormais l'attribut sur la tuile ET sur ses ancêtres, comme le barème de groupe de L3 (TF-0231) ; un motif
+vide ne déclare rien, à aucun niveau. Trois fixtures de même page (`l13-kpi-exemption-du-conteneur.html` : HEAD 4 tuiles
+signalées, après 0 ; `l13-kpi-sans-exemption.html` : 4, la règle mord encore ; `l13-kpi-exemption-vide.html` : 4).
+**Version MINEURE** : un verdict de `check_html.py` change (moins d'avertissements).
 
 **1.38.0 (21/10/2026)** — **L3 ne lit plus une date « JJ/MM » en cellule comme une note « N/M » (TF-1904, retour d'un produit du
 18/10/2026, décision R-58 option (a)).** Un rapport HTML a reçu 16 échecs bloquants L3 sur des dates de semaine (`12/10`,
