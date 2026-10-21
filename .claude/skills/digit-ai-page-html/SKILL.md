@@ -1,19 +1,33 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19, V21 et V22 et les règles de lisibilité L1–L39 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21–V23 et les règles de lisibilité L1–L39 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.39.0"
+  version: "1.40.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.40.0 (21/10/2026)** — **V23 : `render_page.py` refuse un contenu qui occupe moins de 75 % de la fenêtre aux largeurs de bureau
+(TF-1909, retour d'un produit du 18/10/2026, décision R-58 option (a) ; récidive de TF-1622).** Un rapport dont tous les chapitres
+portaient `.chap.lire` (1 080 px centrés) passait `check_html.py` (sélecteur exact du jeton) et `render_page.py` aux sept largeurs
+sur deux thèmes, puis a été refusé par l'exploitant : le contenu occupait 28 % d'une fenêtre de 3 840 px, la règle E4 du socle en
+exige 75 à 100. Aucune famille ne comparait le contenu à la fenêtre. Nouvelle famille `contenu_etroit` (bloquante) : l'empan
+horizontal des blocs de contenu (paragraphes, listes, tableaux, figures, images et graphiques), hors bandeau, navigation et pied,
+gouttières de la page créditées, contre la fenêtre, dès 1 100 px, tolérance 4 px ; une barre latérale face au contenu compte dans
+l'empan. Trois sorties passent, chacune jouée au banc : le token du socle (qui vaut exactement 75 % à 2 560 et 3 840 px), un passage
+`.chap.lire` inséré dans une page dont un autre bloc est large, une colonne étroite déclarée `data-colonne-ok`. Fixtures
+`v23-contenu-etroit-centre.html` (HEAD : verdict PASS, 0 bloquant à 1 920 et à 3 840 px ; après : 1 constat à 1 920, 2 560 et
+3 840 px, 0 à 1 280) et trois vertes. Taux mesuré : 0/10 sur les gabarits et exemples du dépôt, 6/54 sur les pages livrables du
+pilot, 42/412 sur les fixtures du socle (`references/zero-defaut-visuel.md`, § mesure de bruit). **Version MINEURE** : une famille
+bloquante entre dans `render_page.py`.
 
 **1.39.0 (21/10/2026)** — **L13 : l'exemption `data-kpi-hors-page` posée sur le conteneur vaut pour ses tuiles (TF-1905, retour
 d'un produit du 18/10/2026, décision R-58 option (a)).** L'attribut posé sur une rangée de quatre tuiles était sans effet sur
@@ -953,7 +967,7 @@ contrôles que le producteur lance de toute façon.
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V19, V21 et V22 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Checklist canonique zéro défaut visuel V1–V19 et V21–V23 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
 - Règles de lisibilité L1–L39 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants

@@ -5651,6 +5651,60 @@ def run_kpi_hors_page_conteneur():
     return out
 
 
+def _rendre_json(nom, largeurs, captures):
+    """Rend la fixture `nom` aux `largeurs` par render_page.py et rend son rapport JSON (ou None)."""
+    import subprocess
+    r = subprocess.run([sys.executable, "-X", "utf8", str(Path(__file__).resolve().parent / "render_page.py"),
+                        str(FIXTURES / nom), "--widths", ",".join(str(w) for w in largeurs),
+                        "--output", "json", "--out", captures],
+                       capture_output=True, text=True, encoding="utf-8")
+    try:
+        return json.loads(r.stdout)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+# TF-1909 (RA-17, lot Produit-79 20261018b) — V23, LE CONTENU CONTRE LA FENETRE. Fixture -> {largeur: constats
+# attendus de la famille `contenu_etroit`}. La rouge est la page dont TOUS les chapitres portent `.chap.lire` :
+# 1 080 px + gouttieres = 1 128 px, soit 88 % de 1 280 (rien), 59 % de 1 920 et 29 % de 3 840 (le « 28 % »
+# du retour). Les trois vertes jouent les trois sorties que le message nomme : le token du socle (qui vaut
+# EXACTEMENT 75 % a 2 560 et 3 840 : la tolerance d'arrondi est prouvee par ce cas), un passage de lecture
+# insere dans une page dont un autre bloc est large, une colonne etroite DECLAREE.
+CAS_CONTENU_FENETRE = {
+    "v23-contenu-etroit-centre.html": {1280: 0, 1920: 1, 2560: 1, 3840: 1},
+    "v23-contenu-pleine-largeur.html": {1280: 0, 1920: 0, 2560: 0, 3840: 0},
+    "v23-passage-de-lecture-dans-page-large.html": {1280: 0, 1920: 0, 2560: 0, 3840: 0},
+    "v23-colonne-declaree.html": {1280: 0, 1920: 0, 2560: 0, 3840: 0},
+}
+
+
+def run_v23_contenu_fenetre():
+    """TF-1909 — le contenu principal occupe 75 % de la fenetre au moins (regle E4), aux largeurs de bureau.
+    Silencieux si playwright est absent (voir run_rendu_large)."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-v23-")
+    out = []
+    for nom, attendus in CAS_CONTENU_FENETRE.items():
+        d = _rendre_json(nom, sorted(attendus), captures)
+        for largeur, attendu in attendus.items():
+            etiquette = f"{nom} · {largeur} px"
+            if d is None:
+                out.append({"fixture": etiquette, "verdict": "ECHEC", "attendu": attendu, "obtenu": 0,
+                            "regle": "contenu_etroit", "detail": "render_page illisible"})
+                continue
+            n = len(d["breakpoints"][str(largeur)]["issues"]["contenu_etroit"])
+            out.append({"fixture": etiquette, "verdict": "OK" if n == attendu else "ECHEC",
+                        "attendu": attendu, "obtenu": n, "regle": "contenu_etroit (V23)",
+                        "detail": "" if n == attendu else f"{n} constat(s) contenu_etroit a {largeur} px"})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -5696,6 +5750,10 @@ def main():
     format_a4 = run_format_a4()
     if format_a4:
         res += format_a4
+    # TF-1909 — le contenu contre la fenetre (E4, 75 %) : la page de colonnes de lecture a 28 % du 4K.
+    contenu_fenetre = run_v23_contenu_fenetre()
+    if contenu_fenetre:
+        res += contenu_fenetre
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

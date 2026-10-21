@@ -204,6 +204,11 @@ ROGNAGE_DONNEES_MIN_VIEWPORT = 1280
 # Seuil à 96 % et non 100 % : la marge absorbe la gouttière de défilement et les arrondis de
 # `vw` ; le défaut constaté mesurait 92 % (1 260 / 1 370), largement sous le plancher.
 DONNEES_CONTENEUR_MIN_RATIO = 0.96
+# TF-1909 (RA-17, 18/10/2026) — règle E4 du socle : le contenu principal occupe 75 à 100 % de la
+# fenêtre. Mesuré sur l'EMPAN du contenu (gouttières de la page créditées), aux largeurs de bureau
+# (L2_MIN_VIEWPORT) ; le token canonique `clamp(75vw, 1680px, 92vw)` y vaut exactement 75 % à 2 560
+# et 3 840 px, d'où une tolérance de 4 px pour l'arrondi.
+CONTENU_MIN_RATIO = 0.75
 # TF-0772 (02/09) — un sommaire ne se juge qu'au-delà de trois chapitres ET de deux écrans :
 # c'est le seuil de la règle écrite (lisibilite.md L25), et il tient les deux mesures ensemble.
 SOMMAIRE_MIN_CHAPITRES = 3
@@ -253,7 +258,7 @@ MEASURE_JS = r"""
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
                    decor_sur_ancetre: [], entete_desaligne: [], largeurs_melangees: [],
-                   unmeasured: [] };
+                   contenu_etroit: [], unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -1627,6 +1632,78 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- TF-1909 (RA-17, lot Produit-79 20261018b) : LE CONTENU CONTRE LA FENETRE (E4, 75 %) ----
+  //
+  // LE FAIT. Un rapport dont tous les chapitres portaient `.chap.lire` (1 080 px, centres) a passe
+  // check_html (selecteur exact du jeton) et render_page (7 largeurs x 2 themes), puis a ete refuse
+  // par l'exploitant : son contenu n'occupait que 28 % d'une fenetre de 3 840 px, la ou la regle E4
+  // du socle exige 75 a 100 %. Recidive de TF-1622. Aucune famille ne comparait le CONTENU a la
+  // FENETRE : L2 compare un bloc a son conteneur (qui le remplit : 100 %), V17 compare le conteneur
+  // a la fenetre mais sur une page de donnees seulement, V21 compare des freres entre eux (trois
+  // chapitres de 1 080 px sont homogenes), V18 ne compte que des caracteres par ligne.
+  //
+  // LA MESURE. L'EMPAN HORIZONTAL des blocs de contenu (paragraphes, listes, tableaux, figures,
+  // images et graphiques de plus de 120 x 40 px) hors bandeaux et navigations, contre la largeur de
+  // la fenetre, des GOUTTIERES DE LA PAGE creditees (le padding des ancetres du plus petit conteneur
+  // commun : le token canonique `clamp(75vw, 1680px, 92vw)` + `padding: 24px` rend 2 832 px de texte
+  // dans 3 840 — 73,75 % — et c'est pourtant 75 % de page). Un ASIDE ou une NAVIGATION laterale
+  // (moins de 45 % de la fenetre, face au contenu) compte dans l'empan : une page a barre laterale
+  // occupe sa fenetre. Un bandeau pleine largeur ne masque PAS un corps etroit, il n'est pas compte.
+  //   Sorties qui PASSENT (chacune jouee au banc) : le contenu prend la largeur (le token du socle) ;
+  //   un passage de lecture (.chap.lire) INSERE dans une page dont un autre bloc est large ; une
+  //   colonne etroite voulue, DECLAREE par data-colonne-ok sur son conteneur.
+  if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
+    const HORS = 'nav, header, footer, aside, [role=navigation], [role=banner], [role=contentinfo], '
+      + '[role=complementary], .tf-panel, dialog, [data-colonne-ok]';
+    const blocs = [...document.body.querySelectorAll(
+      'p, li, dd, dt, blockquote, pre, table, figure, img, svg, canvas')]
+      .filter((el) => !el.closest(HORS) && !el.parentElement.closest('svg') && visible(el))
+      .filter((el) => {
+        if (!/^(img|svg|canvas)$/i.test(el.tagName)) return true;
+        const r = el.getBoundingClientRect();
+        return r.width >= 120 && r.height >= 40;
+      });
+    const chars = blocs.reduce((n, el) => n + (el.textContent || '').trim().length, 0);
+    if (blocs.length >= 2 && chars >= __L2_MIN_CHARS__) {
+      const y0 = window.scrollY;
+      let gauche = Infinity, droite = -Infinity, haut = Infinity, bas = -Infinity;
+      for (const el of blocs) {
+        const r = el.getBoundingClientRect();
+        gauche = Math.min(gauche, r.left); droite = Math.max(droite, r.right);
+        haut = Math.min(haut, r.top + y0); bas = Math.max(bas, r.bottom + y0);
+      }
+      for (const el of document.body.querySelectorAll(
+        'aside, nav, [role=navigation], [role=complementary]')) {
+        if (!visible(el)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0.45 * window.innerWidth) continue;
+        const face = Math.min(bas, r.bottom + y0) - Math.max(haut, r.top + y0);
+        if (face < 100) continue;
+        gauche = Math.min(gauche, r.left); droite = Math.max(droite, r.right);
+      }
+      let lca = blocs[0].parentElement;
+      while (lca && !blocs.every((b) => lca.contains(b))) lca = lca.parentElement;
+      let padG = 0, padD = 0;
+      for (let e = lca; e && e !== doc; e = e.parentElement) {
+        const cs = getComputedStyle(e);
+        padG += parseFloat(cs.paddingLeft) || 0; padD += parseFloat(cs.paddingRight) || 0;
+      }
+      const empan = (droite - gauche) + padG + padD;
+      const ratio = empan / window.innerWidth;
+      if ((empan + 4) / window.innerWidth < __CONTENU_MIN__) {
+        issues.contenu_etroit.push({ what: lca ? label(lca) : 'body', detail:
+          `le contenu occupe ${Math.round(empan)}px d'une fenetre de ${window.innerWidth}px ` +
+          `(${Math.round(ratio * 100)} %, plancher ${Math.round(__CONTENU_MIN__ * 100)} % — regle E4 : ` +
+          `le contenu principal occupe 75 a 100 % de la fenetre). Trois sorties PASSENT (chacune jouee ` +
+          `au banc) : laisser le contenu prendre la largeur du conteneur du socle ` +
+          `(--w: clamp(75vw, 1680px, 92vw)) au lieu d'envelopper chaque chapitre dans .chap.lire ; ` +
+          `n'employer .chap.lire que pour un PASSAGE de lecture insere dans une page dont un autre ` +
+          `bloc est large (tableau, grille, graphique) ; ou declarer la colonne etroite voulue par ` +
+          `data-colonne-ok sur son conteneur` });
+      }
+    }
+  }
+
   // ---- TF-1146 : RECENSEMENT DES EXEMPTIONS V4 EN BLOC ---------------------------------
   //
   // Une exemption qui ne se voit pas est un angle mort qui ne se corrige jamais. L invariant
@@ -2670,6 +2747,7 @@ def mesure_js() -> str:
             .replace("__ROGNAGE_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
             .replace("__DONNEES_CONTENEUR_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
             .replace("__DONNEES_CONTENEUR_MIN__", str(DONNEES_CONTENEUR_MIN_RATIO))
+            .replace("__CONTENU_MIN__", str(CONTENU_MIN_RATIO))
             .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
             .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
 
@@ -2910,6 +2988,11 @@ FAMILLES = [
     # de la boite qu'on lui a donnee. Bloquant : c'est le troisieme angle de la meme regle.
     ("conteneur_bride_donnees", "Conteneur bride sur une page de donnees", "bloquant"),
     ("sommaire_perdu", "Sommaire perdu au defilement", "bloquant"),
+    # TF-1909 (RA-17, lot Produit-79 20261018b) : le CONTENU contre la FENETRE. Un rapport dont tous
+    # les chapitres portaient `.chap.lire` a passe check_html et render_page aux sept largeurs, puis
+    # a ete refuse : 28 % d'une fenetre de 3 840 px, la ou E4 exige 75 a 100 %. Bloquant : c'est la
+    # regle E4 elle-meme, ecrite au socle depuis le 13/08 et qu'aucune mesure ne jouait.
+    ("contenu_etroit", "V23 contenu principal sous 75 % de la fenetre (regle E4)", "bloquant"),
     # TF-1146 (16/09, lot Produit-64 20260916a) : l exemption V4 posee EN BLOC. Avertissement et
     # non bloquant — 1 716 occurrences mesurees dans le parc le 16/09, les rendre bloquantes
     # d un coup rougirait tout ce qui existe. Mais le silence, lui, s arrete : un libelle de
