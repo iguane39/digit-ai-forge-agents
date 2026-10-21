@@ -196,6 +196,13 @@ couleur en dur (T1), la projection sombre retirée (B-T4), la pastille remise su
 absent du poste rend un SKIP nommé. Elle ne juge pas les quatre fragments (ils se jugent dans leur page
 hôte), ni le canevas du modèle de données, ni la lecture humaine du rendu.
 
+### Les règles de largeur s'écrivent sous `screen` (TF-1895, 21/10/2026)
+
+Décision D-41 (a) du 19/10/2026, dans le sillage du socle 1.37.0 (TF-1882) : une `@media (max-width: …)` sans `screen`
+se déclenche aussi à l'impression, où la largeur imprimable d'un A4 vaut ~698 px. Les gabarits, l'exemple et
+`conventions-communes.md` §11 écrivent `@media screen and (max-width: …)` (et `(min-width: …)`) ; le banc du socle
+(`run_format_a4`) refuse la forme d'avant dans ce skill.
+
 ### Les composants du socle sont EMBARQUÉS, jamais recopiés (TF-0784, 03/09/2026)
 
 `assets/exemple-reference.html` porte trois composants du socle `digit-ai-page-html` —

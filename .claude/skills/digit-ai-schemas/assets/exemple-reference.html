@@ -229,11 +229,11 @@
      defile en interne et ne prend jamais plus du tiers de l'ecran). */
   nav.toc.colle { position: sticky; top: var(--hh); z-index: 20;
                   max-height: 32vh; overflow-y: auto; }
-  @media (max-width: 1099px) {
+  @media screen and (max-width: 1099px) {
     nav.toc.colle .toc-d { display: none; }
     nav.toc.colle a { padding: 4px 0; }
   }
-  @media (min-width: 1100px) {
+  @media screen and (min-width: 1100px) {
     .corps { display: grid; grid-template-columns: 250px minmax(0, 1fr); column-gap: 44px; }
     nav.toc.colle { max-height: calc(100vh - 32px); margin-bottom: 0; }
   }
@@ -461,7 +461,7 @@
      devient une carte, chaque cellule affiche l'en-tête de sa colonne depuis `data-label` ; les
      blocs de code se replient (white-space: pre-wrap) au lieu de défiler. `overflow-wrap: anywhere`
      ne vit que sur les cellules repliées et le code (L19). */
-  @media (max-width: 640px) {
+  @media screen and (max-width: 640px) {
     table.repli-cartes thead { display: none; }
     table.repli-cartes tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 12px; break-inside: avoid; }
     table.repli-cartes tr:last-child td { border-bottom: none; }
@@ -582,7 +582,7 @@
   .diagram-wrap { position: relative; }
 
   /* ===== RESPONSIVE ===== */
-  @media (max-width: 720px) {
+  @media screen and (max-width: 720px) {
     .page { padding: 24px 16px 40px; }
     h1 { font-size: 30px; }
     h2 { font-size: 22px; }

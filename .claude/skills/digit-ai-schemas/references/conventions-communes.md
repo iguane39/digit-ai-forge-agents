@@ -288,7 +288,7 @@ Le SVG utilise **toujours `viewBox`**, jamais `width` / `height` fixes en pixels
 ## 11 · Responsive et print
 
 ```css
-@media (max-width: 720px) {
+@media screen and (max-width: 720px) {
   /* Le SVG se RÉDUIT à la largeur (max-width: 100%; height: auto, §9) : jamais de défilement
      horizontal, jamais de min-width sur le SVG. */
 }

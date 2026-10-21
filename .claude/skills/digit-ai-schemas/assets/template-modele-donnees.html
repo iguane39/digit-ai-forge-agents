@@ -230,7 +230,7 @@ table.dd-table { width:100%; border-collapse:collapse; font-size:13px; }
 footer.doc { border-top:1px solid var(--line); padding-top:24px; margin-top:80px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--ink-muted); }
 footer.doc .brand { font-family: var(--head); font-weight:700; letter-spacing:.08em; }
 
-@media (max-width:720px) { .page{padding:32px 20px;} h1{font-size:30px;} h2{font-size:22px;} .subtitle{font-size:16px;} }
+@media screen and (max-width:720px) { .page{padding:32px 20px;} h1{font-size:30px;} h2{font-size:22px;} .subtitle{font-size:16px;} }
 /* LE DICTIONNAIRE SE REPLIE, ET C'EST LE CANEVAS QUI LE FAIT (TF-0941, 08/09/2026).
    Mesure du gabarit LIVRE, aux quatre largeurs : a 390 px, 2 debordements V1 (une table de
    dictionnaire a 516 px pour un viewport de 390) et 4 cartes dont `overflow:hidden` MASQUE le
@@ -239,7 +239,7 @@ footer.doc .brand { font-family: var(--head); font-weight:700; letter-spacing:.0
    Sous 900 px, chaque ligne du dictionnaire devient un bloc etiquete (meme geste que le repli en
    cartes du socle), et les noms techniques coupent OU IL FAUT — `anywhere` reste reserve aux
    noms techniques (L19), jamais a la note en prose. */
-@media (max-width:900px) {
+@media screen and (max-width:900px) {
   /* Le `thead` est MASQUE, pas seulement deporte hors de l'ecran : une entete rendue invisible
      par positionnement reste, pour le socle, une entete posee SUR ses lignes (6 constats V15
      mesures a 768 et 390 px). Le socle replie ses propres tableaux de la meme facon
