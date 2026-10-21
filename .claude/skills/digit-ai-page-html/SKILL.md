@@ -7,13 +7,22 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.37.0"
+  version: "1.37.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.37.1 (21/10/2026)** — **le contrôle statique « règle de largeur sans `screen` » juge aussi le skill `digit-ai-schemas`
+(TF-1895, décision humaine D-41 (a) du 19/10/2026).** Le skill de schémas écrivait neuf règles `@media (max-width` ou
+`(min-width` sans `screen` dans cinq fichiers (`exemple-reference.html`, `template-modele-donnees.html`,
+`template-multi-bandes.html`, `template-schema-differentiel.html`, `references/conventions-communes.md`) : le banc de 1.37.0
+ne jugeait que les `assets/` du socle. Le contrôle de `run_format_a4` couvre désormais `assets/` et `references/*.md` du
+skill de schémas (13 fichiers), reconnaît `min-width` comme `max-width`, et rejoue le sens rouge sur le vrai gabarit
+multi-bandes (forme d'avant rétablie en mémoire : refusée). Aucun verdict de `check_html.py` ni de `render_page.py` ne
+change. **Version PATCH** : le banc s'étend, aucun script livré ne change.
 
 **1.37.0 (19/10/2026)** — **un oracle de format A4 compte les pages dans les conditions du lecteur, et le boilerplate écrit
 ses règles de petit écran sous `screen` (TF-1882, RT-1 du lot Produit-84 20261016a, décision R-58 option (a)).** Une fiche

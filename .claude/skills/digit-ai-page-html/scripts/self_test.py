@@ -2671,15 +2671,40 @@ def run_format_a4():
     vert = regles_petit_ecran_sans_screen("    @media screen and (max-width: 640px) {\n      .x { display: block; }\n    }")
     cas("contrôle statique · sens rouge reconnu (forme d'avant correctif), sens vert muet",
         len(rouge) == 1 and vert == [], "rouge 1, vert 0", f"rouge {len(rouge)}, vert {len(vert)}")
+    rouge_min = regles_petit_ecran_sans_screen("  @media (min-width: 1100px) {\n    .x { display: grid; }\n  }")
+    vert_min = regles_petit_ecran_sans_screen("  @media screen and (min-width: 1100px) {\n    .x { display: grid; }\n  }")
+    cas("contrôle statique · `min-width` aussi : sens rouge reconnu, sens vert muet (TF-1895)",
+        len(rouge_min) == 1 and vert_min == [], "rouge 1, vert 0", f"rouge {len(rouge_min)}, vert {len(vert_min)}")
+    # TF-1895 (D-41 (a), 19/10/2026) — le skill de schémas écrivait neuf règles de largeur sans `screen`, dans cinq
+    # fichiers (trois cités, deux trouvés au recompte). Le même contrôle juge ses assets et ses références.
+    schemas = FIXTURES.parent.parent / "digit-ai-schemas"
+    if not schemas.is_dir():
+        cas("digit-ai-schemas introuvable à côté du socle — cas NON JOUÉ, et dit (TF-1895)",
+            True, "non joué", "non joué")
+        return out
+    cibles = [c for c in sorted((schemas / "assets").rglob("*")) if c.is_file() and c.suffix in (".html", ".css", ".js")]
+    cibles += sorted((schemas / "references").glob("*.md"))
+    nues_s = []
+    for chemin in cibles:
+        nues_s += [f"{chemin.name}:{n}" for n in regles_petit_ecran_sans_screen(chemin.read_text(encoding="utf-8"))]
+    cas(f"digit-ai-schemas ({len(cibles)} fichiers : assets/ et references/*.md) · chaque règle de largeur est écrite sous `screen`",
+        nues_s == [], "aucune @media (max-width|min-width) sans screen", f"{len(nues_s)} : {nues_s[:3]}")
+    # Sens rouge sur le VRAI gabarit : la forme d'avant correctif, rétablie en mémoire, est refusée.
+    gabarit_s = (schemas / "assets" / "template-multi-bandes.html").read_text(encoding="utf-8")
+    ancien = gabarit_s.replace("@media screen and (max-width", "@media (max-width")
+    n_ancien, n_actuel = len(regles_petit_ecran_sans_screen(ancien)), len(regles_petit_ecran_sans_screen(gabarit_s))
+    cas("digit-ai-schemas · template-multi-bandes.html rétabli sans `screen` (sens rouge) : refusé ; la version actuelle passe",
+        ancien != gabarit_s and n_ancien >= 1 and n_actuel == 0, "rouge ≥ 1, vert 0", f"rouge {n_ancien}, vert {n_actuel}")
     return out
 
 
-RE_MEDIA_LARGEUR_NUE = re.compile(r"@media\s*\(\s*max-width\b", re.I)
+RE_MEDIA_LARGEUR_NUE = re.compile(r"@media\s*\(\s*(?:max|min)-width\b", re.I)
 
 
 def regles_petit_ecran_sans_screen(texte):
-    """TF-1882 — les `@media (max-width: …)` écrites sans `screen` : elles se déclenchent aussi à l'impression, où la
-    largeur imprimable d'un A4 vaut ~698 px. Liste de numéros de ligne."""
+    """TF-1882 — les `@media (max-width: …)` et `@media (min-width: …)` écrites sans `screen` : elles se déclenchent aussi
+    à l'impression, où la largeur imprimable d'un A4 vaut ~698 px (TF-1895 : `min-width` rejoint `max-width`, le skill
+    de schémas en écrivait une). Liste de numéros de ligne."""
     return [i for i, ligne in enumerate(texte.splitlines(), 1) if RE_MEDIA_LARGEUR_NUE.search(ligne)]
 
 
