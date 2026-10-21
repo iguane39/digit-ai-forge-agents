@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V24 — quatre colonnes de cartes, une trentaine de caractères par ligne (TF-1917)</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--soft:#F8FAFC;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:clamp(75vw,1680px,92vw)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:32px 24px 64px}
+.grille{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.carte{border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--soft)}
+.carte h3{margin:0 0 8px;font-family:var(--head);font-size:1.05rem}
+.carte p{margin:0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+@media screen and (max-width:900px){.grille{grid-template-columns:1fr}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>Agenda de l'équipe</h1>
+<p>Les quatre rendez-vous du mois, avec ce qu'on y décide et ce qu'on y prépare.</p>
+<div class="grille">
+<article class="carte"><h3>Lundi — cadrage</h3><p>On reprend la liste des demandes reçues pendant la semaine, on écarte ce qui relève d'un autre périmètre, et on fixe pour chaque demande retenue un responsable, une échéance et la preuve attendue à la livraison.</p></article>
+<article class="carte"><h3>Mercredi — revue</h3><p>On relit ensemble les pages livrées depuis le dernier point, sur trois largeurs de fenêtre, avec les contrôles automatiques ouverts à côté ; chaque écart est noté, daté et rattaché à la personne qui le corrige.</p></article>
+<article class="carte"><h3>Jeudi — atelier</h3><p>Un atelier court, ouvert à l'exploitant, pour montrer les maquettes en cours et recueillir les retours avant que le développement ne démarre : on y tranche les choix de mise en page qui reviennent le plus souvent.</p></article>
+<article class="carte"><h3>Vendredi — bilan</h3><p>On clôt la semaine par un bilan écrit : ce qui est livré, ce qui glisse et pourquoi, ce qui a coûté plus que prévu. Le bilan est envoyé le soir même à l'exploitant et classé avec les pièces.</p></article>
+</div>
+</main></body></html>

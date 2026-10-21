@@ -5705,6 +5705,52 @@ def run_v23_contenu_fenetre():
     return out
 
 
+# TF-1917 (RT-134, lot Produit-02 20261018d) — V24, LA BORNE BASSE DE LA MESURE DE LECTURE. Fixture -> {largeur:
+# constats attendus de la famille `prose_verticale`}. La rouge est la grille de quatre cartes de 270 px de texte
+# (conteneur de 1 280 px, 4 a 7 lignes par carte, 28 a 31 caracteres par ligne pleine) : 4 constats a chaque
+# largeur de bureau. Les trois vertes jouent ce que le message nomme (deux colonnes, colonne DECLAREE) et ce que
+# la regle ne juge pas (textes courts, tuiles de chiffre cle, legendes, cellules de tableau) ; la quatrieme est
+# la fixture historique d'une colonne de 34 ch dont la mesure de lecture est declaree (data-mesure-lecture) : le
+# seul cas legitime que la mesure du parc ait accuse, exclu explicitement.
+CAS_PROSE_VERTICALE = {
+    "v24-cartes-de-texte-etroites.html": {1280: 4, 1440: 4, 1920: 4},
+    "v24-cartes-sur-deux-colonnes.html": {1280: 0, 1440: 0, 1920: 0},
+    "v24-colonne-etroite-declaree.html": {1280: 0, 1440: 0, 1920: 0},
+    "v24-textes-courts-et-legendes.html": {1280: 0, 1440: 0, 1920: 0},
+    "v4-inline-freres-interligne.html": {1440: 0},
+    # Le bord de la lettre « plus de 3 lignes » : une colonne de 270 px porte un bloc de 3 lignes (non signale)
+    # et un bloc de 4 lignes (signale) : un seul constat, celui du second.
+    "v24-bord-trois-et-quatre-lignes.html": {1440: 1},
+}
+
+
+def run_v24_prose_verticale():
+    """TF-1917 — un bloc de prose de plus de 3 lignes sous 45 caracteres par ligne est signale (avertissement),
+    aux largeurs de bureau. Silencieux si playwright est absent (voir run_rendu_large)."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-v24-")
+    out = []
+    for nom, attendus in CAS_PROSE_VERTICALE.items():
+        d = _rendre_json(nom, sorted(attendus), captures)
+        for largeur, attendu in attendus.items():
+            etiquette = f"{nom} · {largeur} px"
+            if d is None:
+                out.append({"fixture": etiquette, "verdict": "ECHEC", "attendu": attendu, "obtenu": 0,
+                            "regle": "prose_verticale", "detail": "render_page illisible"})
+                continue
+            n = len(d["breakpoints"][str(largeur)]["issues"]["prose_verticale"])
+            out.append({"fixture": etiquette, "verdict": "OK" if n == attendu else "ECHEC",
+                        "attendu": attendu, "obtenu": n, "regle": "prose_verticale (V24)",
+                        "detail": "" if n == attendu else f"{n} constat(s) prose_verticale a {largeur} px"})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -5754,6 +5800,10 @@ def main():
     contenu_fenetre = run_v23_contenu_fenetre()
     if contenu_fenetre:
         res += contenu_fenetre
+    # TF-1917 — la borne basse de la mesure de lecture : quatre colonnes de cartes a 30 caracteres par ligne.
+    prose_verticale = run_v24_prose_verticale()
+    if prose_verticale:
+        res += prose_verticale
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

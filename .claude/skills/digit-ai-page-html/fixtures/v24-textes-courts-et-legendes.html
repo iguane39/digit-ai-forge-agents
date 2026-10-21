@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V24 — textes courts, tuiles de chiffre clé, légendes et tableau étroits (TF-1917)</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--soft:#F8FAFC;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:clamp(75vw,1680px,92vw)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:32px 24px 64px}
+.grille{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.carte{border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--soft)}
+.carte h3{margin:0 0 8px;font-family:var(--head);font-size:1.05rem}
+.carte p{margin:0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+@media screen and (max-width:900px){.grille{grid-template-columns:1fr}}
+@media print{body{background:#fff}}
+</style></head>
+<body><main class="wrap">
+<h1>Agenda de l'équipe</h1>
+<p>Les quatre rendez-vous du mois, avec ce qu'on y décide et ce qu'on y prépare.</p>
+<div class="grille">
+<article class="carte"><h3>Lundi</h3><p>Cadrage des demandes de la semaine.</p></article>
+<article class="carte"><h3>Mercredi</h3><p>Revue des pages livrées.</p></article>
+<article class="carte"><h3>Jeudi</h3><p>Atelier avec l'exploitant.</p></article>
+<article class="carte"><h3>Vendredi</h3><p>Bilan écrit du soir.</p></article>
+</div>
+<div class="grille" style="margin-top:24px;grid-template-columns:repeat(4,1fr)">
+<div class="kpi"><b>312</b><br><small>URL relevées sur tout le site, y compris celles qui redirigent vers une autre adresse et celles qui sont retirées du plan.</small></div>
+<div class="kpi"><b>41</b><br><small>URL en erreur sur tout le site, regroupées par famille de cause.</small></div>
+<div class="kpi"><b>96</b><br><small>URL redirigées, dont une partie est à corriger à la source.</small></div>
+<div class="kpi"><b>12</b><br><small>URL sans lien entrant, à relier ou à retirer.</small></div>
+</div>
+<table style="margin-top:24px"><thead><tr><th scope="col">Rendez-vous</th><th scope="col">Objet</th><th scope="col">Préparation</th><th scope="col">Sortie</th></tr></thead>
+<tbody><tr><td>Lundi</td><td>Cadrage des demandes de la semaine avec toutes les parties prenantes</td><td>Liste des demandes reçues, triée par origine et par urgence déclarée</td><td>Décisions consignées et responsables désignés</td></tr>
+<tr><td>Vendredi</td><td>Bilan écrit</td><td>Relevé des livraisons</td><td>Bilan envoyé le soir même</td></tr></tbody></table>
+</main></body></html>

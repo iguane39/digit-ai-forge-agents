@@ -1,19 +1,31 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21–V23 et les règles de lisibilité L1–L39 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21–V24 et les règles de lisibilité L1–L39 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.40.0"
+  version: "1.41.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.41.0 (21/10/2026)** — **V24 : `render_page.py` signale un bloc de prose de plus de 3 lignes sous 45 caractères par ligne, aux largeurs de
+bureau (TF-1917, RT-134 du lot Produit-02 20261018d, décision R-58 option (a)).** Une demande « textes trop verticaux » a été servie
+par quatre colonnes de cartes d'environ 30 caractères par ligne, tous contrôles verts : V18 ne borne que le maximum (135). Nouvelle
+famille `prose_verticale`, **en avertissement** : `render_page.py` ne connaît pas de niveau « majeur », la consigne dit « signale »,
+et une colonne étroite est parfois voulue. Mesure : les caractères des lignes pleines (la dernière est partielle) sur les lignes
+réellement peintes, dès 1 100 px, 4 lignes et plus sous 45 ; exclus et nommés : tableaux et cellules, navigations, code, légendes
+et notes, infobulles, tuiles de chiffre clé, boutons, et une colonne déclarée (`data-colonne-ok`, `data-mesure-lecture`). Taux
+mesuré (`mesurer_bruit.py`) : 0/10 gabarits et exemples du dépôt, 0/54 pages du pilot, 0/412 fixtures du socle — une fixture sur 412
+accusée à la première passe, une colonne de 34 ch dont la mesure de lecture est déclarée, exclue explicitement. Fixtures :
+`v24-cartes-de-texte-etroites.html` (HEAD : 0 signalement ; après : 4 à 1 280, 1 440 et 1 920 px), trois vertes, et le bord de la
+lettre (3 lignes passent, 4 sont signalées). **Version MINEURE** : une famille entre dans `render_page.py`.
 
 **1.40.0 (21/10/2026)** — **V23 : `render_page.py` refuse un contenu qui occupe moins de 75 % de la fenêtre aux largeurs de bureau
 (TF-1909, retour d'un produit du 18/10/2026, décision R-58 option (a) ; récidive de TF-1622).** Un rapport dont tous les chapitres
@@ -967,7 +979,7 @@ contrôles que le producteur lance de toute façon.
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V19 et V21–V23 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Checklist canonique zéro défaut visuel V1–V19 et V21–V24 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
 - Règles de lisibilité L1–L39 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants

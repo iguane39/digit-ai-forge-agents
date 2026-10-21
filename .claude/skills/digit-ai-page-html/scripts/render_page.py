@@ -209,6 +209,10 @@ DONNEES_CONTENEUR_MIN_RATIO = 0.96
 # (L2_MIN_VIEWPORT) ; le token canonique `clamp(75vw, 1680px, 92vw)` y vaut exactement 75 % à 2 560
 # et 3 840 px, d'où une tolérance de 4 px pour l'arrondi.
 CONTENU_MIN_RATIO = 0.75
+# TF-1917 (RT-134, 18/10/2026) — la borne BASSE de la mesure de lecture que V18 ne borne que par le
+# haut : un bloc de prose de plus de 3 lignes (donc 4 et plus) sous 45 caracteres par ligne pleine.
+V24_MIN_CPL = 45
+V24_MIN_LIGNES = 4
 # TF-0772 (02/09) — un sommaire ne se juge qu'au-delà de trois chapitres ET de deux écrans :
 # c'est le seuil de la règle écrite (lisibilite.md L25), et il tient les deux mesures ensemble.
 SOMMAIRE_MIN_CHAPITRES = 3
@@ -258,7 +262,7 @@ MEASURE_JS = r"""
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
                    decor_sur_ancetre: [], entete_desaligne: [], largeurs_melangees: [],
-                   contenu_etroit: [], unmeasured: [] };
+                   contenu_etroit: [], prose_verticale: [], unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -1704,6 +1708,91 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- TF-1917 (RT-134, lot Produit-02 20261018d) : LA BORNE BASSE DE LA MESURE DE LECTURE --------
+  //
+  // LE FAIT. Un produit demande « les textes sont trop verticaux » ; la refonte elargit le conteneur
+  // a 1 280 px mais passe a QUATRE colonnes de cartes : les lignes restent a une trentaine de
+  // caracteres. Critique d'implementation, V18 et relecture d'intention passent — V18 ne borne que le
+  // MAXIMUM (135 caracteres par ligne), jamais le minimum. Retour humain : « tu en ajoutes un de plus
+  // en largeur, alors qu'il aurait fallu en supprimer 1 pour arriver a 2 max. »
+  //
+  // LA MESURE. Meme geometrie que V18 : les lignes REELLEMENT peintes (un `Range` par caractere, le
+  // haut de chaque boite), pas une division par la taille de police. Le compte retenu est celui des
+  // lignes PLEINES (toutes sauf la derniere, partielle par nature) : divise par toutes les lignes,
+  // il accuserait un bloc de 55 caracteres par ligne dont la derniere ligne tient en trois mots.
+  // Un bloc de PLUS DE TROIS lignes (au moins quatre) sous 45 caracteres par ligne est signale.
+  // Aux largeurs de bureau seulement : sous L2_MIN_VIEWPORT, une colonne etroite est le telephone,
+  // pas un choix de mise en page.
+  // PERIMETRE : de la prose (p, li, dd, blockquote, .prose, .chapo, .va), pas des libelles — sont
+  // exclus les tableaux et leurs cellules (le repli en cartes a son propre controle), les
+  // navigations, les blocs de code, les legendes et notes (figcaption, small, .legende, .note-bas),
+  // les infobulles et panneaux de filtre, les textes de tuile de chiffre cle (.kpi, .tuile), les
+  // boutons et resumes de details, et une colonne etroite DECLAREE (data-colonne-ok, ou la mesure de
+  // lecture declaree data-mesure-lecture : l'auteur a assume sa largeur, V18 la tient deja pour telle).
+  if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
+    const MIN_CPL = __V24_MIN_CPL__, MIN_LIGNES = __V24_MIN_LIGNES__;
+    const SELECTEUR = 'p, li, dd, blockquote, .prose, .chapo, .va';
+    const EXCLUS = 'table, nav, pre, code, figcaption, small, .legende, .note-bas, .tf-panel, '
+      + '[role=tooltip], .kpi, .tuile, button, summary, [data-colonne-ok], [data-mesure-lecture]';
+    const lignesPleines = (el) => {
+      // Les caracteres peints par ligne : un Range par caractere visible, regroupes par `top`.
+      const marche = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      const tops = [];
+      for (let n = marche.nextNode(); n; n = marche.nextNode()) {
+        if (n.parentElement && n.parentElement.closest('script, style')) continue;
+        const t = n.textContent;
+        for (let i = 0; i < t.length; i++) {
+          if (!t[i].trim()) continue;
+          const r = document.createRange();
+          r.setStart(n, i); r.setEnd(n, i + 1);
+          const b = r.getBoundingClientRect();
+          if (b.width > 0 && b.height > 0) tops.push(b.top);
+        }
+      }
+      const tolerance = Math.max(4, 0.4 * (parseFloat(getComputedStyle(el).fontSize) || 16));
+      const lignes = [];
+      for (const top of tops) {
+        const l = lignes.find((x) => Math.abs(x.top - top) <= tolerance);
+        if (l) l.n += 1; else lignes.push({ top, n: 1 });
+      }
+      lignes.sort((a, b) => a.top - b.top);
+      return lignes.map((l) => l.n);
+    };
+    const verticales = [];
+    for (const el of document.body.querySelectorAll(SELECTEUR)) {
+      if (el.closest(EXCLUS) || el.querySelector(SELECTEUR)) continue;
+      if (!visible(el)) continue;
+      if (getComputedStyle(el).display === 'inline') continue;
+      const longueur = (el.textContent || '').replace(/\s+/g, ' ').trim().length;
+      if (longueur < MIN_LIGNES * MIN_CPL * 0.3) continue;   // sous ~54 caracteres : pas de prose
+      const r = el.getBoundingClientRect();
+      // Pre-filtre peu couteux : un caractere moyen mesure ~0,5 em ; un bloc qui en offre plus du
+      // double du plancher par ligne ne peut pas etre en dessous, il ne se mesure pas.
+      const em = parseFloat(getComputedStyle(el).fontSize) || 16;
+      if (r.width / (0.5 * em) > 2 * MIN_CPL) continue;
+      const par = lignesPleines(el);
+      if (par.length < MIN_LIGNES) continue;
+      const pleines = par.slice(0, -1);
+      const cpl = Math.round(pleines.reduce((a, b) => a + b, 0) / pleines.length);
+      if (cpl >= MIN_CPL) continue;
+      verticales.push({ el, cpl, lignes: par.length, largeur: Math.round(r.width) });
+    }
+    verticales.slice(0, 8).forEach((v) => {
+      issues.prose_verticale.push({ what: label(v.el), detail:
+        `${v.cpl} caracteres par ligne pleine mesures (${v.lignes} lignes peintes, bloc de ${v.largeur}px ` +
+        `dans une fenetre de ${window.innerWidth}px ; plancher ${MIN_CPL} au-dela de ${MIN_LIGNES - 1} ` +
+        `lignes) — un texte aussi etroit se lit « trop vertical » : l'oeil change de ligne tous les ` +
+        `quatre ou cinq mots. Diminuer le nombre de colonnes (passer de 4 a 2 au plus) ou laisser le ` +
+        `bloc prendre la largeur du conteneur ; une colonne etroite voulue se declare par ` +
+        `data-colonne-ok sur son conteneur` });
+    });
+    if (verticales.length > 8) {
+      issues.prose_verticale.push({ what: `${verticales.length - 8} autre(s) bloc(s)`, detail:
+        `${verticales.length} blocs de prose au total sous ${MIN_CPL} caracteres par ligne : ` +
+        `${verticales.length - 8} non detailles (le detail est plafonne a 8)` });
+    }
+  }
+
   // ---- TF-1146 : RECENSEMENT DES EXEMPTIONS V4 EN BLOC ---------------------------------
   //
   // Une exemption qui ne se voit pas est un angle mort qui ne se corrige jamais. L invariant
@@ -2748,6 +2837,8 @@ def mesure_js() -> str:
             .replace("__DONNEES_CONTENEUR_MIN_VIEWPORT__", str(ROGNAGE_DONNEES_MIN_VIEWPORT))
             .replace("__DONNEES_CONTENEUR_MIN__", str(DONNEES_CONTENEUR_MIN_RATIO))
             .replace("__CONTENU_MIN__", str(CONTENU_MIN_RATIO))
+            .replace("__V24_MIN_CPL__", str(V24_MIN_CPL))
+            .replace("__V24_MIN_LIGNES__", str(V24_MIN_LIGNES))
             .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
             .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
 
@@ -2993,6 +3084,12 @@ FAMILLES = [
     # a ete refuse : 28 % d'une fenetre de 3 840 px, la ou E4 exige 75 a 100 %. Bloquant : c'est la
     # regle E4 elle-meme, ecrite au socle depuis le 13/08 et qu'aucune mesure ne jouait.
     ("contenu_etroit", "V23 contenu principal sous 75 % de la fenetre (regle E4)", "bloquant"),
+    # TF-1917 (RT-134, lot Produit-02 20261018d) : la borne BASSE de la mesure de lecture. Une demande
+    # « textes trop verticaux » a ete servie par quatre colonnes de ~30 caracteres par ligne, tous
+    # controles verts : V18 ne borne que le maximum (135). AVERTISSEMENT et non bloquant : regle neuve
+    # dont le bruit sur le parc n'est pas nul par construction (une colonne etroite est parfois voulue),
+    # mesure dans references/zero-defaut-visuel.md, § V24. Une echeance (echeances.json) peut la durcir.
+    ("prose_verticale", "V24 prose de plus de 3 lignes sous 45 caracteres par ligne", "avertissement"),
     # TF-1146 (16/09, lot Produit-64 20260916a) : l exemption V4 posee EN BLOC. Avertissement et
     # non bloquant — 1 716 occurrences mesurees dans le parc le 16/09, les rendre bloquantes
     # d un coup rougirait tout ce qui existe. Mais le silence, lui, s arrete : un libelle de
