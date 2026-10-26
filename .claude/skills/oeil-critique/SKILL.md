@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Cinq missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, enclenchement des process attendus. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -84,13 +84,15 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
      améliorations attendues (l'indicateur visé, sa valeur actuelle et sa valeur cible). Au plus 5
      posées par exécution (décision D-63 (a)) ; les suivantes restent listées en entier, par valeur
      décroissante, et sont posées à l'exécution suivante.
-   - **recommandation scellée** (D-72 (b)) : avant d'afficher une majeure, sceller sa
-     recommandation, `node {skilldir}/scripts/scelle.mjs sceller --decision D-N --option <lettre> --motif "<pourquoi>"`.
-     La décision affiche alors « Recommandation scellée », avec l'heure du scellé et le fichier
-     `todo/oeil-critique-scelles.jsonl`, jamais la lettre ; les options vont de la moins à la plus
+   - **recommandation scellée, puis affichée** (D-72 (b), revue par D-80 (b) du 26/10/2026) : avant
+     d'afficher une majeure, sceller sa recommandation,
+     `node {skilldir}/scripts/scelle.mjs sceller --decision D-N --option <lettre> --motif "<pourquoi>"`.
+     La décision affiche ensuite la recommandation comme toute décision, « Recommandation : (x) —
+     motif », avec la lettre scellée ; le scellé reste en trace. Les options vont de la moins à la plus
      engageante, et « Sans réponse » désigne le statu quo. Quand l'humain répond, la session qui
-     reçoit le choix joue `scelle.mjs devoiler --decision D-N --choix <lettre>` et affiche la
-     recommandation et son motif.
+     reçoit le choix joue `scelle.mjs devoiler --decision D-N --choix <lettre>` : le bilan mesure
+     l'adhésion à une recommandation visible. Le fait : le 26/10, sans recommandation visible,
+     l'humain a dû la redemander pour trancher 5 décisions.
 6. **Avancer le repère** avec la sortie de l'exécution, 10 lignes au plus : analyse faite ou non,
    poste et période, les 3 indicateurs, les automatiques « va être fait », les majeures en attente.
    `node {skilldir}/scripts/repere.mjs avancer --debut <date de départ> --fin <heure de fin> --sortie <fichier>`.
