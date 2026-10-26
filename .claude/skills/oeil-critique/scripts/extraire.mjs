@@ -58,11 +58,16 @@ export function lireSession(fichier, depuisMs) {
     // trace d'une règle que la session a enfreinte. Seule sa tête est gardée, les codes de règle y
     // sont : un refus du hook de fin de tour dépasse 20 000 caractères, dont le gabarit recopié.
     const estHook = (t) => /^\s*(Stop|PreToolUse|PostToolUse|SessionStart|UserPromptSubmit)[^\n]*hook/i.test(t);
-    const estHumain = (t) => t.trim() && !t.trimStart().startsWith("<") && !estHook(t);
+    // Textes injectés par le harnais sans balise : corps de skill, réinvocation, interruption, reprise
+    // de contexte. Mesuré le 26/10/2026 (première exécution réelle) : ils gonflaient le compte des
+    // messages humains et des reprises ; ils sont comptés à part, rôle `injection`.
+    const estInjection = (t) => /^\s*(Base directory for this skill|\(Re-invocation of|\[Request interrupted by user|Your response above was cut off|This session is being continued from a previous conversation)/.test(t);
+    const estHumain = (t) => t.trim() && !t.trimStart().startsWith("<") && !estHook(t) && !estInjection(t);
     if (o.type === "user") {
       const blocs = typeof c === "string" ? [c] : Array.isArray(c) && !c.some((b) => b.type === "tool_result") ? c.filter((b) => b.type === "text").map((b) => b.text) : [];
       const t = blocs.filter(estHumain).join("\n").trim();
       if (t) messages.push({ role: "humain", ts: o.timestamp, texte: t });
+      for (const j of blocs.filter(estInjection)) messages.push({ role: "injection", ts: o.timestamp, texte: j.slice(0, 80) });
       for (const h of blocs.filter(estHook)) {
         const tete = h.slice(0, TETE_REFUS);
         messages.push({ role: "refus_hook", ts: o.timestamp, regles: [...new Set(tete.match(/\bS\d{1,3}\b/g) || [])], texte: tete });
@@ -79,7 +84,7 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
   const depuisMs = Date.parse(depuis);
   if (!Number.isFinite(depuisMs)) throw new Error(`--depuis illisible : ${depuis}`);
   mkdirSync(sortie, { recursive: true });
-  const bilan = { poste: poste(), depuis, sessions: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, caracteres: 0, fichiers: [] };
+  const bilan = { poste: poste(), depuis, sessions: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, injections: 0, caracteres: 0, fichiers: [] };
   for (const racine of profils) {
     for (const f of transcripts(racine, depuisMs)) {
       const id = basename(f, ".jsonl");
@@ -96,6 +101,7 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
         bilan.caracteres += m.texte.length;
         if (m.role === "humain") bilan.messages_humains++;
         else if (m.role === "refus_hook") bilan.refus_hook++;
+        else if (m.role === "injection") bilan.injections++;
         else bilan.reponses++;
       }
     }
@@ -118,6 +124,8 @@ function selfTest() {
       ligne({ type: "user", timestamp: apres, message: { content: [{ type: "tool_result", content: "sortie" }] } }),
       ligne({ type: "user", timestamp: apres, message: { content: [{ type: "text", text: "<ide_selection>code</ide_selection>" }, { type: "text", text: "Seconde demande en blocs" }] } }),
       ligne({ type: "user", timestamp: apres, message: { content: "Stop hook feedback:\n[hook restitution] refus\nS1 — bloc absent · S3 — verdict\n" + "x".repeat(3000) } }),
+      ligne({ type: "user", timestamp: apres, message: { content: [{ type: "text", text: "Base directory for this skill: C:/x\n\n# skill" }] } }),
+      ligne({ type: "user", timestamp: apres, message: { content: "[Request interrupted by user]" } }),
       ligne({ type: "assistant", timestamp: apres, message: { content: [{ type: "text", text: "Réponse" }, { type: "tool_use", name: "Bash" }] } }),
     ].join("\n") + "\n");
     writeFileSync(join(profil, "s-courante.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "lance l'œil critique" } }) + "\n");
@@ -131,10 +139,11 @@ function selfTest() {
     const refus = s.messages.filter((m) => m.role === "refus_hook");
     if (b.refus_hook !== 1 || refus.length !== 1) casse.push(`1 refus de hook gardé à part attendu, ${b.refus_hook}`);
     else if (refus[0].regles.join(",") !== "S1,S3" || refus[0].texte.length > TETE_REFUS) casse.push(`refus de hook : règles S1,S3 et tête de ${TETE_REFUS} caractères au plus attendues, ${refus[0].regles} et ${refus[0].texte.length}`);
+    if (b.injections !== 2) casse.push(`2 injections du harnais (corps de skill, interruption) comptées à part attendues, ${b.injections}`);
     if (JSON.stringify(s).includes("Produit-Reel")) casse.push("un nom réel sort du transcript");
     if (s.messages.some((m) => m.texte.includes("ancien"))) casse.push("un message antérieur au repère est extrait");
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 6, casse }));
+  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 7, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 

@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Cinq missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, enclenchement des process attendus. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -113,8 +113,10 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
 
 - `node {skilldir}/scripts/repere.mjs --self-test` : 5 cas, dont un repère qui recule et une sortie
   de 11 lignes, refusés.
-- `node {skilldir}/scripts/extraire.mjs --self-test` : 6 cas, dont la session courante exclue, les
+- `node {skilldir}/scripts/extraire.mjs --self-test` : 7 cas, dont la session courante exclue, les
   sous-agents ignorés, un retour de hook gardé à part avec ses codes de règle, un message en blocs
-  lu et un nom réel remplacé.
+  lu, un nom réel remplacé, et deux injections du harnais (corps de skill, interruption) comptées à
+  part, rôle `injection` (1.1.1, première exécution réelle du 26/10/2026 : elles gonflaient le compte
+  des messages humains).
 - `node {skilldir}/scripts/scelle.mjs --self-test` : 7 cas, dont une recommandation réécrite, un
   dévoilement sans scellé et un second dévoilement, refusés.
