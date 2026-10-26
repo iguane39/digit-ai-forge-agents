@@ -27,6 +27,9 @@ import { homedir, tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { pilot, poste, valeur } from "./lib.mjs";
 
+/** Caractères gardés d'un retour de hook : la tête porte le verdict et les codes de règle. */
+export const TETE_REFUS = 1500;
+
 function transcripts(racine, depuisMs) {
   const out = [];
   if (!existsSync(racine)) return out;
@@ -51,11 +54,19 @@ export function lireSession(fichier, depuisMs) {
     // N'en sont pas : un retour d'outil, un bloc injecté par le harnais (il commence par une
     // balise), un retour de hook (« Stop hook feedback »). Mesuré le 21/10/2026 : la première
     // version ne lisait que les textes simples, et ceux-ci étaient presque tous des retours de hook.
-    const estHumain = (t) => t.trim() && !t.trimStart().startsWith("<") && !/^\s*(Stop|PreToolUse|PostToolUse|SessionStart|UserPromptSubmit)[^\n]*hook/i.test(t);
+    // Un retour de hook est gardé à part, rôle `refus_hook` (D-72 (b) du 26/10/2026) : c'est la
+    // trace d'une règle que la session a enfreinte. Seule sa tête est gardée, les codes de règle y
+    // sont : un refus du hook de fin de tour dépasse 20 000 caractères, dont le gabarit recopié.
+    const estHook = (t) => /^\s*(Stop|PreToolUse|PostToolUse|SessionStart|UserPromptSubmit)[^\n]*hook/i.test(t);
+    const estHumain = (t) => t.trim() && !t.trimStart().startsWith("<") && !estHook(t);
     if (o.type === "user") {
       const blocs = typeof c === "string" ? [c] : Array.isArray(c) && !c.some((b) => b.type === "tool_result") ? c.filter((b) => b.type === "text").map((b) => b.text) : [];
       const t = blocs.filter(estHumain).join("\n").trim();
       if (t) messages.push({ role: "humain", ts: o.timestamp, texte: t });
+      for (const h of blocs.filter(estHook)) {
+        const tete = h.slice(0, TETE_REFUS);
+        messages.push({ role: "refus_hook", ts: o.timestamp, regles: [...new Set(tete.match(/\bS\d{1,3}\b/g) || [])], texte: tete });
+      }
     } else if (o.type === "assistant" && Array.isArray(c)) {
       const t = c.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
       if (t) messages.push({ role: "reponse", ts: o.timestamp, texte: t });
@@ -68,7 +79,7 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
   const depuisMs = Date.parse(depuis);
   if (!Number.isFinite(depuisMs)) throw new Error(`--depuis illisible : ${depuis}`);
   mkdirSync(sortie, { recursive: true });
-  const bilan = { poste: poste(), depuis, sessions: 0, exclues: [], messages_humains: 0, reponses: 0, caracteres: 0, fichiers: [] };
+  const bilan = { poste: poste(), depuis, sessions: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, caracteres: 0, fichiers: [] };
   for (const racine of profils) {
     for (const f of transcripts(racine, depuisMs)) {
       const id = basename(f, ".jsonl");
@@ -81,7 +92,12 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
       writeFileSync(cible, JSON.stringify({ session: id, projet, messages: pseudo }, null, 1) + "\n");
       bilan.sessions++;
       bilan.fichiers.push(cible);
-      for (const m of pseudo) { bilan.caracteres += m.texte.length; if (m.role === "humain") bilan.messages_humains++; else bilan.reponses++; }
+      for (const m of pseudo) {
+        bilan.caracteres += m.texte.length;
+        if (m.role === "humain") bilan.messages_humains++;
+        else if (m.role === "refus_hook") bilan.refus_hook++;
+        else bilan.reponses++;
+      }
     }
   }
   return bilan;
@@ -101,7 +117,7 @@ function selfTest() {
       ligne({ type: "user", timestamp: apres, message: { content: "<system-reminder>injecté</system-reminder>" } }),
       ligne({ type: "user", timestamp: apres, message: { content: [{ type: "tool_result", content: "sortie" }] } }),
       ligne({ type: "user", timestamp: apres, message: { content: [{ type: "text", text: "<ide_selection>code</ide_selection>" }, { type: "text", text: "Seconde demande en blocs" }] } }),
-      ligne({ type: "user", timestamp: apres, message: { content: "Stop hook feedback:\n[hook restitution] refus" } }),
+      ligne({ type: "user", timestamp: apres, message: { content: "Stop hook feedback:\n[hook restitution] refus\nS1 — bloc absent · S3 — verdict\n" + "x".repeat(3000) } }),
       ligne({ type: "assistant", timestamp: apres, message: { content: [{ type: "text", text: "Réponse" }, { type: "tool_use", name: "Bash" }] } }),
     ].join("\n") + "\n");
     writeFileSync(join(profil, "s-courante.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "lance l'œil critique" } }) + "\n");
@@ -112,10 +128,13 @@ function selfTest() {
     if (b.exclues[0] !== "s-courante") casse.push("la session courante n'est pas exclue");
     if (b.messages_humains !== 2 || b.reponses !== 1) casse.push(`2 messages humains (texte simple et blocs, sans retour de hook) et 1 réponse attendus, ${b.messages_humains} et ${b.reponses}`);
     const s = JSON.parse(readFileSync(b.fichiers[0], "utf8"));
+    const refus = s.messages.filter((m) => m.role === "refus_hook");
+    if (b.refus_hook !== 1 || refus.length !== 1) casse.push(`1 refus de hook gardé à part attendu, ${b.refus_hook}`);
+    else if (refus[0].regles.join(",") !== "S1,S3" || refus[0].texte.length > TETE_REFUS) casse.push(`refus de hook : règles S1,S3 et tête de ${TETE_REFUS} caractères au plus attendues, ${refus[0].regles} et ${refus[0].texte.length}`);
     if (JSON.stringify(s).includes("Produit-Reel")) casse.push("un nom réel sort du transcript");
     if (s.messages.some((m) => m.texte.includes("ancien"))) casse.push("un message antérieur au repère est extrait");
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 5, casse }));
+  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 6, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 
