@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.45.0, alignée sur le JSON le 19/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.46.0, alignée sur le JSON le 28/10/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -25,6 +25,8 @@
 | Code source | `scripts/oracle-code.mjs` — compilation `node --check`/`py_compile`/`tsc` | cli | ✅ |
 | Sécurité / secrets | `scripts/oracle-secrets.mjs` — clés/tokens/PAT (+ gitleaks) ; **TF-1349 (13/10/2026)** : une affectation dans un fichier de TEST de la cible (`tests/`, `fixtures/`, `*.test.*`, `test_*.py`…) ou à un LIBELLÉ (mots séparés par des espaces) est rétrogradée en avertissement, jamais retirée ; les formats de jeton reconnus restent bloquants partout ; **TF-1701 (15/10/2026)** : les constats de gitleaks se lisent un par un (fichier:ligne, règle), et une empreinte hexadécimale (16 ou 64 caractères) dans un journal de run-oracles est rétrogradée en avertissement ; **TF-1702 (15/10/2026)** : `--versionne` (ici ou sur `run-oracles.mjs`, transmis par `QO_PERIMETRE=versionne`) ne juge que le contenu que git suit ou suivrait (`git ls-files -co --exclude-standard`), les fichiers ignorés nommés au non jugé ; par défaut, le disque. `docker compose config` recopie EN CLAIR les variables des `env_file` : sa sortie rangée en preuve porte les secrets, la masquer avant de la ranger | cli | ✅ |
 | Sécurité : dépendances (SCA) | `scripts/oracle-sca.mjs` — pip-audit / npm audit / OSV ; fixtures jouées sur données OSV figées (`--osv-fige`), ressource injoignable = SKIP nommé (TF-1107) ; **TF-1729 (15/10/2026)** : `--versionne` (ou `QO_PERIMETRE=versionne`, posé par `run-oracles.mjs --versionne`) ne lit que les manifestes que git suit ou suivrait, les manifestes ignorés nommés au non jugé ; par défaut, le disque | cli | ✅ |
+| Sécurité : durcissement des workflows GitHub Actions | `node {forges}/digit-ai-forge-websec/oracles/oracle-workflows.mjs <fichier.yml ou dossier .github/workflows>` — **WF-1** permissions de GITHUB_TOKEN · **WF-2** épinglage par SHA · **WF-3** pull_request_target · **WF-4** injection dans run: · **WF-5** secret long là où l’OIDC est documenté ; invocation explicite (TF-2001, 28/10/2026) | CLI | ✅ |
+| Sécurité : en-têtes déclarés dans un fichier _headers | `node {forges}/digit-ai-forge-websec/oracles/oracle-exposition-statique.mjs <_headers>` — EX-1 à EX-11 d’oracle-exposition rejouées par chemin sondé · **HD-1** syntaxe · **HD-2** limites du fichier ; invocation explicite (TF-1996, 28/10/2026) | CLI | ✅ |
 | Sécurité : SAST (injection/exécution) | `scripts/oracle-sast.mjs` — injection SQL/commande, eval/exec, désérialisation (semgrep/bandit + repli) ; **TF-1349 (13/10/2026)** : semgrep se résout par le PATH puis par `uvx semgrep`, une voie injoignable est dite au non_juge ; **TF-1729 (15/10/2026)** : `--versionne` (ou `QO_PERIMETRE=versionne`) ne juge que le code que git suit ou suivrait, constats de semgrep et de bandit compris, le code ignoré nommé au non jugé ; par défaut, le disque | cli | ✅ |
 | Image de conteneur, vulnérabilités de la couche système | `scripts/oracle-image-conteneur.mjs <journal.txt\|rapport-trivy.json [--journal <log>]\|Dockerfile>` — **C1** la construction ne reprend aucune couche du cache du poste (`#N CACHED`, `---> Using cache`, l'image de base `FROM` dite sans être accusée) · **C2** `trivy image --severity HIGH,CRITICAL --exit-code 1` sans constat, sur une image construite avec `docker build --no-cache`, jamais sur une image issue du cache. Sur un Dockerfile, l'oracle construit (`--no-cache --pull`), scanne et retire l'image ; docker ou trivy absents → SKIP motivé. **Invocation explicite** (TF-1499) | cli | ✅ |
 | Configuration d'infrastructure (Terraform) | `scripts/oracle-terraform.mjs <fichier.tf\|.tfvars\|dossier> [--date-application AAAA-MM-JJ]` — étape **standard** : **T1** `terraform fmt -check` (première ligne réécrite), **T2** `terraform validate -json`, sans `terraform init`, rien d'écrit dans la cible ; Terraform absent → l'étape rend SKIP motivé. Étape **maison** : **D1** une valeur datée écrite en dur dont le mois précède le mois d'application est refusée (banc du lot rejoué) ; remède : la date calculée à la création (TF-1492) | cli | ✅ |
@@ -816,3 +818,15 @@ méthode n'a encore été exercée par aucune mission réelle, et ses fixtures s
   format ; l'appelant la déclare en invoquant l'oracle.
 - **Preuve** : trois fixtures dans `digit-ai-page-html/fixtures/` (`format-a4-une-page` verte, `format-a4-regle-mobile-sans-screen`
   et `format-a4-trop-haute` rouges), au manifeste, et le bloc `run_format_a4` de la recette du socle.
+
+## Inscription du 28/10/2026 — deux oracles de forge-websec (TF-2001, TF-1996, v2.46.0)
+
+- **Le fait** : l’étude du 28/10/2026 a mesuré qu’aucun fichier du parc ne jugeait un workflow GitHub Actions ni un
+  fichier `_headers` de Cloudflare. forge-websec livre le même jour `oracle-workflows.mjs` (WF-1 à WF-5, chaque
+  constat cite sa page docs.github.com) et `oracle-exposition-statique.mjs` (les règles EX d’oracle-exposition
+  rejouées sur un `_headers`, plus HD-1 et HD-2).
+- **Routage** : invocation explicite pour les deux (`ext` vide). Une extension `.yml` ferait jouer le premier sur tout
+  YAML ; un fichier `_headers` n’a pas d’extension.
+- **Preuve** : bloc TF-2001 de la recette. Il vérifie qu’aucun déclencheur ne route les deux entrées, puis joue la
+  commande du registre sur la paire de chaque oracle : `rouge-permissions-absentes.yml` FAIL, `vert-complet.yml` PASS ;
+  `rouge-csp-absente/_headers` FAIL, `vert-complet/_headers` PASS. Forge absente du poste : SKIP motivé.

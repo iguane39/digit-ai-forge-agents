@@ -390,6 +390,43 @@ if (reg) {
   }
 }
 
+// (3c ter bis) TF-2001 et TF-1996 (28/10/2026) — deux oracles livrés le 28/10 par forge-websec entrent
+// au registre machine, en INVOCATION EXPLICITE, sur le modèle de TF-1687 : oracle-workflows (WF-1 à
+// WF-5) et oracle-exposition-statique (en-têtes d'un fichier _headers). Mêmes deux preuves : aucun
+// déclencheur ne les route d'office, et la COMMANDE du registre rend FAIL sur la rouge, PASS sur la
+// verte de la forge. Forge ou fixture absente de ce poste : SKIP motivé, jamais un vert inventé.
+if (reg) {
+  const PAIRES_2001 = [
+    { script: /oracle-workflows\.mjs$/, rouge: 'digit-ai-forge-websec/fixtures/workflows/rouge-permissions-absentes.yml',
+      verte: 'digit-ai-forge-websec/fixtures/workflows/vert-complet.yml' },
+    { script: /oracle-exposition-statique\.mjs$/, rouge: 'digit-ai-forge-websec/fixtures/exposition-statique/rouge-csp-absente/_headers',
+      verte: 'digit-ai-forge-websec/fixtures/exposition-statique/vert-complet/_headers' },
+  ];
+  for (const p of PAIRES_2001) {
+    const e = reg.oracles.find((o) => (o.cmd || []).some((s) => p.script.test(s)));
+    const nom = String(p.script).replace(/^\/|\\|\$\/$/g, '');
+    if (!e) { ko(`TF-2001 : ${nom} ABSENT du registre machine`); continue; }
+    const routeur = [...(e.ext || []), ...(e.content_patterns || []), ...(e.trigger_files || [])];
+    if (routeur.length) { ko(`TF-2001 : ${nom} est routé d'office (${JSON.stringify(routeur)}) — l'entrée doit rester en invocation explicite`); continue; }
+    const fRouge = FORGES && path.join(FORGES, p.rouge);
+    const fVerte = FORGES && path.join(FORGES, p.verte);
+    if (!FORGES || !fs.existsSync(fRouge) || !fs.existsSync(fVerte)) {
+      ok(`TF-2001 : ${nom} au registre, en invocation explicite — commande non rejouée : ${FORGES ? 'fixtures absentes de ce poste' : motifForgesAbsentes(SKILLDIR)}`);
+      continue;
+    }
+    const jouer = (cible) => {
+      const [bin, ...reste] = e.cmd.map((s) => s.replace(MARQUEUR_FORGES, FORGES).replace('{file}', cible));
+      const r = spawnSync(bin === 'node' ? process.execPath : bin, reste, { encoding: 'utf8', timeout: 180000 });
+      let v = '?'; try { v = JSON.parse(r.stdout).verdict; } catch {}
+      return { v, code: r.status };
+    };
+    const r = jouer(fRouge), v = jouer(fVerte);
+    (r.v === 'FAIL' && r.code === 1 && v.v === 'PASS' && v.code === 0)
+      ? ok(`TF-2001 : ${nom} au registre, en invocation explicite, et sa commande rend FAIL sur la rouge, PASS sur la verte`)
+      : ko(`TF-2001 : la commande du registre pour ${nom} ne tient pas ses deux sens — rouge ${r.v} (exit ${r.code}), verte ${v.v} (exit ${v.code})`);
+  }
+}
+
 // (3c quater) TF-1877 (19/10/2026) — l'oracle de la famille « tableau de bord de pilotage » du pilot
 // (TF-1855) entre au registre machine, routé par le CONTENU seul (`ext` vide : une extension .html le
 // ferait jouer, et rendre SANS_OBJET, sur toutes les pages). Trois preuves : une page qui se déclare de
