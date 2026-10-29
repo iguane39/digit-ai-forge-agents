@@ -31,8 +31,11 @@ import { pilot, poste, valeur, transcripts } from "./lib.mjs";
 export const TETE_REFUS = 1500;
 
 /** Les messages humains et les textes de réponse d'un transcript, depuis une date. */
-export function lireSession(fichier, depuisMs) {
+/** `tours`, s il est fourni, reçoit la durée de chaque tour en minutes : d un message humain à la dernière
+ *  entrée de l assistant avant le message humain suivant (1.3.0, D-97 (a) du pilot, demande de vitesse du 21/10). */
+export function lireSession(fichier, depuisMs, tours = null) {
   const messages = [];
+  let debut = null, fin = null;
   for (const l of readFileSync(fichier, "utf8").split("\n")) {
     if (!l) continue;
     let o; try { o = JSON.parse(l); } catch { continue; }
@@ -55,30 +58,40 @@ export function lireSession(fichier, depuisMs) {
     if (o.type === "user") {
       const blocs = typeof c === "string" ? [c] : Array.isArray(c) && !c.some((b) => b.type === "tool_result") ? c.filter((b) => b.type === "text").map((b) => b.text) : [];
       const t = blocs.filter(estHumain).join("\n").trim();
-      if (t) messages.push({ role: "humain", ts: o.timestamp, texte: t });
+      if (t) { messages.push({ role: "humain", ts: o.timestamp, texte: t }); if (tours && debut !== null && fin !== null) tours.push((fin - debut) / 60000); debut = ts; fin = null; }
       for (const j of blocs.filter(estInjection)) messages.push({ role: "injection", ts: o.timestamp, texte: j.slice(0, 80) });
       for (const h of blocs.filter(estHook)) {
         const tete = h.slice(0, TETE_REFUS);
         messages.push({ role: "refus_hook", ts: o.timestamp, regles: [...new Set(tete.match(/\bS\d{1,3}\b/g) || [])], texte: tete });
       }
     } else if (o.type === "assistant" && Array.isArray(c)) {
+      if (debut !== null) fin = ts;
       const t = c.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
       if (t) messages.push({ role: "reponse", ts: o.timestamp, texte: t });
     }
   }
+  if (tours && debut !== null && fin !== null) tours.push((fin - debut) / 60000);
   return messages;
+}
+
+/** Médiane et 90e centile d une liste de durées, en minutes arrondies au dixième. */
+export function repartition(durees) {
+  const s = [...durees].sort((a, b) => a - b);
+  const q = (p) => (s.length ? Math.round(s[Math.min(s.length - 1, Math.floor(s.length * p))] * 10) / 10 : null);
+  return { nombre: s.length, mediane_min: q(0.5), p90_min: q(0.9) };
 }
 
 export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }) {
   const depuisMs = Date.parse(depuis);
   if (!Number.isFinite(depuisMs)) throw new Error(`--depuis illisible : ${depuis}`);
   mkdirSync(sortie, { recursive: true });
-  const bilan = { poste: poste(), depuis, sessions: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, injections: 0, caracteres: 0, fichiers: [] };
+  const bilan = { poste: poste(), depuis, sessions: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, injections: 0, caracteres: 0, tours: null, fichiers: [] };
+  const durees = [];
   for (const racine of profils) {
     for (const f of transcripts(racine, depuisMs)) {
       const id = basename(f, ".jsonl");
       if (exclure && id === exclure) { bilan.exclues.push(id); continue; }
-      const messages = lireSession(f, depuisMs);
+      const messages = lireSession(f, depuisMs, durees);
       if (!messages.length) continue;
       const projet = anonymiser(basename(join(f, ".."))).texte;
       const pseudo = messages.map((m) => ({ ...m, texte: anonymiser(m.texte).texte }));
@@ -95,6 +108,7 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
       }
     }
   }
+  bilan.tours = repartition(durees);
   return bilan;
 }
 
@@ -117,22 +131,32 @@ function selfTest() {
       ligne({ type: "user", timestamp: apres, message: { content: "[Request interrupted by user]" } }),
       ligne({ type: "assistant", timestamp: apres, message: { content: [{ type: "text", text: "Réponse" }, { type: "tool_use", name: "Bash" }] } }),
     ].join("\n") + "\n");
+    writeFileSync(join(profil, "s-b.jsonl"), [
+      ligne({ type: "user", timestamp: "2026-10-21T10:00:00Z", message: { content: "Première demande" } }),
+      ligne({ type: "assistant", timestamp: "2026-10-21T10:01:00Z", message: { content: [{ type: "tool_use", name: "Bash" }] } }),
+      ligne({ type: "user", timestamp: "2026-10-21T10:03:00Z", message: { content: "Stop hook feedback:\n[hook restitution] refus" } }),
+      ligne({ type: "assistant", timestamp: "2026-10-21T10:05:00Z", message: { content: [{ type: "text", text: "Fait" }] } }),
+      ligne({ type: "user", timestamp: "2026-10-21T10:10:00Z", message: { content: "Seconde demande" } }),
+      ligne({ type: "assistant", timestamp: "2026-10-21T10:12:00Z", message: { content: [{ type: "text", text: "Fait" }] } }),
+    ].join("\n") + "\n");
     writeFileSync(join(profil, "s-courante.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "lance l'œil critique" } }) + "\n");
     writeFileSync(join(profil, "s-courante", "subagents", "agent-x.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "consigne d'agent" } }) + "\n");
     const anonymiser = (t) => ({ texte: String(t).replaceAll("Produit-Reel", "Produit-99") });
     const b = extraire({ depuis: "2026-10-20T00:00:00+02:00", sortie: join(tmp, "out"), exclure: "s-courante", profils: [join(tmp, "projects")], anonymiser });
-    if (b.sessions !== 1) casse.push(`1 session attendue, ${b.sessions} lue(s) (sous-agents ou session courante comptés ?)`);
+    if (b.sessions !== 2) casse.push(`2 sessions attendues, ${b.sessions} lue(s) (sous-agents ou session courante comptés ?)`);
     if (b.exclues[0] !== "s-courante") casse.push("la session courante n'est pas exclue");
-    if (b.messages_humains !== 2 || b.reponses !== 1) casse.push(`2 messages humains (texte simple et blocs, sans retour de hook) et 1 réponse attendus, ${b.messages_humains} et ${b.reponses}`);
-    const s = JSON.parse(readFileSync(b.fichiers[0], "utf8"));
+    if (b.messages_humains !== 4 || b.reponses !== 3) casse.push(`4 messages humains (texte simple et blocs, sans retour de hook) et 3 réponses attendus, ${b.messages_humains} et ${b.reponses}`);
+    // 1.3.0 : 3 tours, 0, 5 et 2 minutes ; un retour de hook n'ouvre pas de tour, et le tour court jusqu'à la dernière entrée de l'assistant.
+    if (!b.tours || b.tours.nombre !== 3 || b.tours.mediane_min !== 2 || b.tours.p90_min !== 5) casse.push(`tours : 3, médiane 2 min, 90e centile 5 min attendus, ${JSON.stringify(b.tours)}`);
+    const s = JSON.parse(readFileSync(b.fichiers.find((f) => f.endsWith("s-a.json")), "utf8"));
     const refus = s.messages.filter((m) => m.role === "refus_hook");
-    if (b.refus_hook !== 1 || refus.length !== 1) casse.push(`1 refus de hook gardé à part attendu, ${b.refus_hook}`);
+    if (b.refus_hook !== 2 || refus.length !== 1) casse.push(`2 refus de hook gardés à part attendus, dont 1 dans s-a, ${b.refus_hook}`);
     else if (refus[0].regles.join(",") !== "S1,S3" || refus[0].texte.length > TETE_REFUS) casse.push(`refus de hook : règles S1,S3 et tête de ${TETE_REFUS} caractères au plus attendues, ${refus[0].regles} et ${refus[0].texte.length}`);
     if (b.injections !== 2) casse.push(`2 injections du harnais (corps de skill, interruption) comptées à part attendues, ${b.injections}`);
     if (JSON.stringify(s).includes("Produit-Reel")) casse.push("un nom réel sort du transcript");
     if (s.messages.some((m) => m.texte.includes("ancien"))) casse.push("un message antérieur au repère est extrait");
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 7, casse }));
+  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 8, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 

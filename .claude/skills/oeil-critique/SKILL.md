@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Six missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, process attendus, existant et suppressions. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -14,6 +14,10 @@ Version 1.1.0 du 26/10/2026 : décision D-72 (b), 4 idées reprises du skill pub
 Version 1.2.0 du 29/10/2026 : décision D-95 (b), fiche `output/03-etudes/Digit-AI - Fiche - Oeil critique
 actions pour tenir les 8 demandes - 20261029c.md` du pilot. Le skill lit aussi ce que la conversation ne
 montre pas (`scripts/sources.mjs`), propose des suppressions, date ses paliers et compare ses indicateurs.
+Version 1.3.0 du 29/10/2026 : décision D-97 (a), fiche `output/03-etudes/Digit-AI - Fiche - Oeil critique
+code mort et sujets a integrer - 20261029e.md` du pilot. Code non appelé relevé sans les copies de travail
+et dans les 13 forges ; vitesse et coût mesurés ; restes du dépôt, lots des produits, avertissements
+rapprochés de leur item et versions livrées.
 
 **Limite déclarée, à lire avant tout usage.** Une seule exécution réelle complète, le 26/10/2026, sur
 un poste. Les relevés de `sources.mjs` ont été joués le 29/10/2026 sur les données réelles du pilot,
@@ -44,7 +48,8 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
    écrit un fichier par session : messages humains, textes de réponse et refus de hook (rôle
    `refus_hook`, tête de 1 500 caractères et codes de règle), pseudonymisés par
    `todo/anonymiser-entrant.mjs` du pilot. La session courante est exclue. Le script refuse
-   d'extraire si un référentiel de pseudonymisation manque.
+   d'extraire si un référentiel de pseudonymisation manque. Son bilan porte aussi `tours` : le
+   nombre de tours, leur durée médiane et leur 90e centile, en minutes (1.3.0).
 2 bis. **Relever ce que la conversation ne montre pas** (1.2.0, D-95 (b)).
    `node {skilldir}/scripts/sources.mjs <produits | existant | silencieux> --depuis <date de départ>`
    rend 3 relevés chiffrés et pseudonymisés, lus par les missions 3 à 6. Il ne relance aucun hook ni
@@ -59,9 +64,9 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
    | 1. Revue de code des modifications de la période ; pas de dépôt hébergé chez un client sans accord humain | skill `code-review` sur `git log --since <date de départ>` du pilot et des forges |
    | 2. Intentions contre livraisons : pour chaque demande, l'intention, ce qui a été livré, l'écart | méthode de `scripts/relecture-intention.mjs` du pilot, sur toute la période |
    | 3. Répondre en une fois : demandes reprises, consignes répétées, reformulations demandées, refus de hook rattachés à la demande du tour qui les précède, et les indicateurs du §g de la proposition. Process silencieux : hooks les plus coûteux, avertissements d'ouverture qui reviennent, rapprochés des items clos qui devaient les éteindre, domaines d'oracle sans un échec | méthode du §g ; une correction de style passe par `references/ECRITURE.md` et `oracle-ecriture`, une règle retirée pour une ajoutée ; relevé `sources.mjs silencieux` |
-   | 4. Architecture par palier : un palier quand `palier_du` le dit, ou dès qu'un indicateur sort de sa cible. Descente : pour chaque correction de la période, les produits qu'elle n'a pas atteints | `todo/observer-recidives.mjs` du pilot ; relevé `sources.mjs produits` (héritage du dernier relevé d'ouverture) ; dans les produits, lecture et proposition seulement |
+   | 4. Architecture par palier : un palier quand `palier_du` le dit, ou dès qu'un indicateur sort de sa cible. Descente : pour chaque correction de la période, les produits qu'elle n'a pas atteints ; lots restés chez les produits ou jamais parvenus au pilot | `todo/observer-recidives.mjs` du pilot ; relevé `sources.mjs produits` (héritage du dernier relevé d'ouverture, lots par `oracles/lib-retours-produit.mjs`) ; dans les produits, lecture et proposition seulement |
    | 5. Enclenchement des process attendus : pour chaque demande, les process qui devaient s'enclencher et la trace qui le prouve | carte `references/CARTE-FORGES.json` du pilot ; verdicts motivés de `forge/mobilisation.jsonl` des produits, relevé `sources.mjs produits` ; ledgers `forge/ledger.jsonl` |
-   | 6. Existant : contrôles sans appelant ou injoignables, items clos sans gain constaté, lots de retours de la période et le sort de leurs items ; ce qui peut être supprimé | relevé `sources.mjs existant` (`scripts/relever-appelants.mjs`, `oracles/oracle-controles-injoignables.mjs`, registre) |
+   | 6. Existant : contrôles et scripts sans appelant, au pilot et dans chaque forge (une forge à 0 contrôle est dite aveugle) ; contrôles injoignables ; items clos sans gain constaté ; items en cours ou décidés sans mouvement depuis 14 jours ; lots de la période ; écarts de versions livrées ; copies de travail et branches supprimables ; ce qui peut être supprimé | relevé `sources.mjs existant` (`scripts/relever-appelants.mjs` avec et sans `--tous-scripts`, `oracles/oracle-controles-injoignables.mjs`, `scripts/nettoyer-copies.mjs` en essai, `maj-versions-livrees.mjs --constat` des forges, registre) |
 
 4. **Retenir, puis classer chaque modification.** Deux filtres d'abord :
    - **généralité** : le constat vaut-il dans un autre projet, pour une autre tâche du même skill,
@@ -114,8 +119,11 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
    fait », les majeures en attente.
    `node {skilldir}/scripts/repere.mjs avancer --debut <date de départ> --fin <heure de fin> --sortie <fichier> --indicateurs <fichier.json> [--palier]`.
    Le fichier d'indicateurs porte `demandes`, `reprises`, `consignes_repetees`,
-   `messages_hors_demande` et `refus_hook` ; sans eux, le repère n'avance pas. `--palier` date le
-   palier d'architecture joué. La sortie JSON rend l'évolution de chaque indicateur.
+   `messages_hors_demande`, `refus_hook`, et depuis la 1.3.0 `duree_tour_mediane_min` et
+   `duree_tour_p90_min` (bilan `tours` d'`extraire.mjs`), `decisions_reservees` et
+   `jetons_relectures` (`indicateurs` de `sources.mjs silencieux`) ; sans eux, le repère n'avance
+   pas. `--palier` date le palier d'architecture joué. La sortie JSON rend l'évolution de chaque
+   indicateur.
    Le relevé d'ouverture du pilot affiche cette sortie à la place de ses anciennes sections
    « Surveillance des récidives » et « Flotte d'agents ».
 
@@ -133,13 +141,16 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
 
 ## Vérification
 
-- `node {skilldir}/scripts/repere.mjs --self-test` : 11 cas, dont un repère qui recule, une sortie
-  de 11 lignes et des indicateurs incomplets, refusés ; l'évolution des indicateurs, le palier dû
-  après 30 jours et sa date gardée d'une exécution à l'autre.
-- `node {skilldir}/scripts/sources.mjs --self-test` : 13 cas, dont un nom réel de produit qui ne
+- `node {skilldir}/scripts/repere.mjs --self-test` : 12 cas, dont un repère qui recule, une sortie
+  de 11 lignes et des indicateurs incomplets, refusés ; l'évolution des indicateurs, sans NaN pour
+  un indicateur ajouté depuis, le palier dû après 30 jours et sa date gardée d'une exécution à l'autre.
+- `node {skilldir}/scripts/sources.mjs --self-test` : 19 cas, dont un nom réel de produit qui ne
   sort pas, une exécution de hook antérieure au repère ignorée, une famille d'avertissements
-  normalisée, et un domaine d'oracle qui n'a échoué qu'avant la période, compté sans échec.
-- `node {skilldir}/scripts/extraire.mjs --self-test` : 7 cas, dont la session courante exclue, les
+  normalisée qui garde son numéro d'item, un avertissement qui survit à la correction de son item,
+  un item en cours endormi, une forge aveugle, des lots jamais parvenus, et un domaine d'oracle qui
+  n'a échoué qu'avant la période, compté sans échec.
+- `node {skilldir}/scripts/extraire.mjs --self-test` : 8 cas, dont la durée des tours (un retour de
+  hook n'ouvre pas de tour), la session courante exclue, les
   sous-agents ignorés, un retour de hook gardé à part avec ses codes de règle, un message en blocs
   lu, un nom réel remplacé, et deux injections du harnais (corps de skill, interruption) comptées à
   part, rôle `injection` (1.1.1, première exécution réelle du 26/10/2026 : elles gonflaient le compte

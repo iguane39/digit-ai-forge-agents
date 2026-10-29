@@ -18,6 +18,7 @@
  *         indicateurs_precedents } ; depuis = fin de la dernière analyse, ou la borne initiale du
  *         20/10/2026 ; palier_du = plus de 30 jours depuis le dernier palier, ou depuis la borne.
  *   node repere.mjs avancer --debut <iso> --fin <iso> --sortie <fichier.txt> --indicateurs <fichier.json> [--palier] [--pilot <chemin>]
+ *       (indicateurs : les 9 clés d INDICATEURS, dont la durée des tours, les décisions réservées et les jetons)
  *       → écrit le repère et rend l'évolution des indicateurs ; --palier dit que le palier
  *         d'architecture a été joué. Refuse une fin antérieure au repère, une sortie de plus de
  *         10 lignes, ou des indicateurs absents ou non numériques.
@@ -31,8 +32,11 @@ import { BORNE_INITIALE, pilot, poste, valeur } from "./lib.mjs";
 
 export const MAX_LIGNES = 10;
 export const PALIER_JOURS = 30;
-/** Les indicateurs du §g de la proposition 20261021a, comptés par la mission 3. */
-export const INDICATEURS = ["demandes", "reprises", "consignes_repetees", "messages_hors_demande", "refus_hook"];
+/** Les indicateurs du §g de la proposition 20261021a, comptés par la mission 3 ; depuis la 1.3.0
+ *  (D-97 (a) du pilot), la vitesse et le coût : durée des tours rendue par `extraire.mjs` (bilan
+ *  `tours`), décisions réservées et jetons des relectures rendus par `sources.mjs silencieux`. */
+export const INDICATEURS = ["demandes", "reprises", "consignes_repetees", "messages_hors_demande", "refus_hook",
+  "duree_tour_mediane_min", "duree_tour_p90_min", "decisions_reservees", "jetons_relectures"];
 export const fichierRepere = (racine, nom = poste()) => join(racine, "todo", `oeil-critique-${nom}.json`);
 
 const jours = (de, a) => Math.round(((a - Date.parse(de)) / 86400000) * 10) / 10;
@@ -52,7 +56,9 @@ export function lire(racine, nom = poste(), maintenant = Date.now()) {
 
 export function evolution(avant, apres) {
   const e = {};
-  for (const k of INDICATEURS) e[k] = { avant: avant ? avant[k] : null, apres: apres[k], ecart: avant ? apres[k] - avant[k] : null };
+  // Un indicateur ajouté depuis l'exécution précédente n'a pas d'« avant » : son écart est nul, jamais NaN.
+  const av = (k) => (avant && Number.isFinite(avant[k]) ? avant[k] : null);
+  for (const k of INDICATEURS) e[k] = { avant: av(k), apres: apres[k], ecart: av(k) === null ? null : Math.round((apres[k] - av(k)) * 10) / 10 };
   const taux = (i) => (i && i.demandes ? Math.round((i.reprises / i.demandes) * 1000) / 1000 : null);
   e.reprises_par_demande = { avant: taux(avant), apres: taux(apres) };
   return e;
@@ -78,7 +84,7 @@ function selfTest() {
   mkdirSync(join(racine, "todo"));
   writeFileSync(join(racine, "todo", "TODO.jsonl"), "");
   const casse = [];
-  const ind = (d, r) => ({ demandes: d, reprises: r, consignes_repetees: 3, messages_hors_demande: 10, refus_hook: 7 });
+  const ind = (d, r) => ({ demandes: d, reprises: r, consignes_repetees: 3, messages_hors_demande: 10, refus_hook: 7, duree_tour_mediane_min: 2, duree_tour_p90_min: 18, decisions_reservees: 4, jetons_relectures: 1000 });
   try {
     const l0 = lire(racine, "POSTE-TEST");
     if (!l0.premiere || l0.depuis !== BORNE_INITIALE) casse.push("sans repère, la période ne part pas de la borne initiale");
@@ -98,8 +104,12 @@ function selfTest() {
     if (l3.palier_du || l3.dernier_palier !== "2026-11-20T09:00:00+01:00") casse.push("le palier joué n'est pas daté au repère");
     avancer(racine, { debut: "2026-11-20T09:00:00+01:00", fin: "2026-11-26T09:00:00+01:00", sortie: "x", indicateurs: ind(40, 8) }, "POSTE-TEST");
     if (lire(racine, "POSTE-TEST").dernier_palier !== "2026-11-20T09:00:00+01:00") casse.push("une exécution sans palier efface la date du dernier palier");
+    // 1.3.0 : un repère d avant les indicateurs de vitesse se compare sans NaN.
+    const vieux = { demandes: 10, reprises: 4, consignes_repetees: 1, messages_hors_demande: 2, refus_hook: 3 };
+    const ev = evolution(vieux, ind(10, 4));
+    if (ev.duree_tour_mediane_min.ecart !== null || ev.duree_tour_mediane_min.avant !== null || ev.reprises.ecart !== 0) casse.push(`indicateur nouveau sans avant : écart nul attendu, ${JSON.stringify(ev.duree_tour_mediane_min)}`);
   } finally { rmSync(racine, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "repere", self_test: casse.length ? "FAIL" : "PASS", cas: 11, casse }));
+  console.log(JSON.stringify({ outil: "repere", self_test: casse.length ? "FAIL" : "PASS", cas: 12, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 

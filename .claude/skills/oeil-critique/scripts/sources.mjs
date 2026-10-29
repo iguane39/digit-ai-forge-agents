@@ -48,11 +48,28 @@ const corrigesDepuis = (etats, depuis) => [...etats.values()].filter((x) => x.st
 
 function jouer(racine, script, args) {
   const r = spawnSync(process.execPath, [join(racine, script), ...args], { cwd: racine, encoding: "utf8", timeout: 180000, maxBuffer: 64 * 1024 * 1024 });
-  try { return JSON.parse(r.stdout); } catch { return { illisible: true, exit: r.status, tete: String(r.stderr || r.stdout || "").slice(0, 200) }; }
+  try { const s = String(r.stdout); return JSON.parse(s.slice(s.indexOf("{"))); } catch { return { illisible: true, exit: r.status, tete: String(r.stderr || r.stdout || "").slice(0, 200) }; }
+}
+
+/** Les forges du parc : les dossiers `digit-ai-forge-*` voisins du pilot qui portent un dépôt git. */
+const forgesDu = (racine) => {
+  const parc = join(racine, "..");
+  try { return readdirSync(parc, { withFileTypes: true }).filter((d) => d.isDirectory() && d.name.startsWith("digit-ai-forge-") && existsSync(join(parc, d.name, ".git"))).map((d) => join(parc, d.name)); } catch { return []; }
+};
+
+/** Items en cours ou décidés dont le dernier événement a plus de `jours` jours (1.3.0, D-97 (a)). */
+export function itemsDormants(racine, maintenant = Date.now(), jours = 14) {
+  const etats = new Map(), dernier = new Map();
+  for (const ev of lignesJson(join(racine, "todo", "TODO.jsonl"))) if (ev.id) { etats.set(ev.id, { ...(etats.get(ev.id) || {}), ...ev }); dernier.set(ev.id, ev.ts); }
+  return [...etats.values()].filter((x) => x.statut === "en_cours" || x.statut === "decide")
+    .map((x) => ({ id: x.id, statut: x.statut, jours: Math.floor((maintenant - Date.parse(dernier.get(x.id))) / 864e5), titre: String(x.titre || "").slice(0, 120) }))
+    .filter((x) => x.jours > jours).sort((a, b) => b.jours - a.jours);
 }
 
 // ── Action 1 : les produits ─────────────────────────────────────────────────────────────────────
-export function produits(racine, depuis, pseudoProduit) {
+// 1.3.0 : `lotsDe(chemin)` rend les lots restés « a_remettre » chez un produit (lotsARemettre du pilot) ;
+// seuls le pseudonyme du produit et des comptes sortent, jamais le nom d'un lot, qui porte le nom réel.
+export async function produits(racine, depuis, pseudoProduit, lotsDe = null) {
   const her = lignesJson(join(racine, "todo", "HERITAGE-RELEVES.jsonl")).pop() || null;
   const heritage = her ? {
     releve_le: her.ts, contrat: her.contrat,
@@ -69,7 +86,13 @@ export function produits(racine, depuis, pseudoProduit) {
     for (const l of lignes) for (const [forge, v] of Object.entries(l.verdicts || {})) if (v && v.verdict === "ecartee") ecartees[forge] = (ecartees[forge] || 0) + 1;
     return { produit: pseudoProduit(relative(join(racine, ".."), p).replaceAll("\\", "/")), demandes_tracees: lignes.length, ecartees };
   });
-  return { heritage, corrections, mobilisation, produits_sans_trace: mobilisation.filter((m) => !m.demandes_tracees).length };
+  const lotsEnAttente = [];
+  if (lotsDe) for (const p of chemins) {
+    let l = [];
+    try { l = await lotsDe(p); } catch { continue; }
+    if (l.length) lotsEnAttente.push({ produit: pseudoProduit(relative(join(racine, ".."), p).replaceAll("\\", "/")), a_remettre: l.length, jamais_parvenus: l.filter((x) => x.parvenu === false).length, plus_ancien_j: Math.max(...l.map((x) => x.jours)) });
+  }
+  return { heritage, corrections, mobilisation, produits_sans_trace: mobilisation.filter((m) => !m.demandes_tracees).length, lots_a_remettre: lotsEnAttente };
 }
 
 // ── Action 2 : l'existant ───────────────────────────────────────────────────────────────────────
@@ -88,13 +111,38 @@ export function lots(racine, depuis, etats) {
   });
 }
 
+/** Code non appelé d'un dépôt, contrôles et tous scripts ; une forge à 0 contrôle est dite aveugle (1.3.0). */
+export function appelantsDe(depot, jouerAppelants) {
+  const c = jouerAppelants(depot, false), s = jouerAppelants(depot, true);
+  if (c.illisible || s.illisible) return { illisible: true };
+  return { controles: c.controles, controles_sans_appelant: c.nombre_sans_appelant, scripts: s.controles, scripts_sans_appelant: s.nombre_sans_appelant, aveugle: c.controles === 0 };
+}
+
+/** Écarts entre versions livrées et montées, par forge (`maj-versions-livrees.mjs --constat`). */
+export function versionsLivrees(forges) {
+  return forges.filter((f) => existsSync(join(f, "maj-versions-livrees.mjs"))).map((f) => {
+    const r = spawnSync(process.execPath, [join(f, "maj-versions-livrees.mjs"), "--constat"], { cwd: f, encoding: "utf8", timeout: 60000 });
+    return { forge: f.split(/[\\/]/).pop(), ecarts: (r.stdout.match(/^\s+· .*$/gm) || []).map((l) => l.trim().slice(2)) };
+  }).filter((v) => v.ecarts.length);
+}
+
 export function existant(racine, depuis) {
+  // D-97 (a) : le relevé du pilot exclut désormais les copies de travail ; il se joue aussi sur chaque forge.
+  const jouerAppelants = (depot, tous) => jouer(racine, "scripts/relever-appelants.mjs", ["--racine", depot, "--json", ...(tous ? ["--tous-scripts"] : [])]);
   const app = jouer(racine, "scripts/relever-appelants.mjs", ["--json"]);
+  const scripts = jouer(racine, "scripts/relever-appelants.mjs", ["--json", "--tous-scripts"]);
   const inj = jouer(racine, "oracles/oracle-controles-injoignables.mjs", ["--json"]);
   const etats = etatRegistre(racine);
   const clos = corrigesDepuis(etats, depuis);
+  const forges = forgesDu(racine);
+  const copies = existsSync(join(racine, "scripts", "nettoyer-copies.mjs")) ? jouer(racine, "scripts/nettoyer-copies.mjs", ["--json"]) : { illisible: true, tete: "scripts/nettoyer-copies.mjs absent" };
   return {
     sans_appelant: app.illisible ? app : { controles: app.controles, nombre: app.nombre_sans_appelant, liste: (app.sansAppelant || []).slice(0, 40) },
+    scripts_sans_appelant: scripts.illisible ? scripts : { scripts: scripts.controles, nombre: scripts.nombre_sans_appelant, liste: (scripts.sansAppelant || []).slice(0, 40) },
+    forges: forges.map((f) => ({ forge: f.split(/[\\/]/).pop(), ...appelantsDe(f, jouerAppelants) })),
+    versions_livrees: versionsLivrees(forges),
+    items_dormants: itemsDormants(racine),
+    copies_et_branches: copies.illisible ? copies : { copies: copies.copies.length, copies_supprimables: copies.supprimables.copies, branches_sans_copie: copies.branches.length, branches_supprimables: copies.supprimables.branches },
     injoignables: inj.illisible ? inj : { verdict: inj.verdict, en_defaut: (inj.findings || []).filter((f) => f.statut === "FAIL").map((f) => ({ regle: f.regle, message: String(f.message).slice(0, 300) })) },
     items_clos: clos.length,
     clos_sans_gain_constate: clos.filter((x) => !String(x.gains_constates || "").trim()).map((x) => ({ id: x.id, titre: String(x.titre || "").slice(0, 140) })),
@@ -113,7 +161,7 @@ export const famille = (l) => l.replace(/[A-Z]:[\\/][^\s,;)]*|`[^`]*`/g, "…").
 const ALERTE = /\[avert\]|DÉFAUT|DÉRIVE|NON mesur|NON PROTÉG|ILLISIBLE|verdict FAIL|\bFAIL\b|DÉCLENCHEUR|À TRAITER/;
 
 export function lireHooks(fichiers, depuisMs, anonymiser) {
-  const durees = new Map(), familles = new Map();
+  const durees = new Map(), familles = new Map(), items = new Map();
   let sessions = 0;
   for (const f of fichiers) {
     let vue = false;
@@ -132,7 +180,8 @@ export function lireHooks(fichiers, depuisMs, anonymiser) {
       if (a.hookEvent === "SessionStart" && /hook-ouverture/.test(String(a.command))) {
         let texte = String(a.stdout || "");
         try { texte = JSON.parse(texte).hookSpecificOutput.additionalContext || texte; } catch { /* sortie texte brute */ }
-        for (const ligne of texte.split("\n")) if (ALERTE.test(ligne)) vues.add(famille(anonymiser(ligne).texte));
+        // Les numéros d'item se lisent AVANT la normalisation, qui efface les chiffres (1.3.0).
+        for (const ligne of texte.split("\n")) if (ALERTE.test(ligne)) { const f = famille(anonymiser(ligne).texte); vues.add(f); for (const id of ligne.match(/\bTF-\d+\b/g) || []) { if (!items.has(f)) items.set(f, new Set()); items.get(f).add(id); } }
       }
     }
     if (vue) sessions++;
@@ -142,8 +191,17 @@ export function lireHooks(fichiers, depuisMs, anonymiser) {
   return {
     sessions_lues: sessions,
     hooks: [...durees].map(([k, t]) => ({ hook: k, executions: t.length, mediane_ms: med(t), max_ms: Math.max(...t), total_ms: t.reduce((a, b) => a + b, 0) })).sort((a, b) => b.total_ms - a.total_ms).slice(0, 15),
-    avertissements: [...familles].map(([famille, sessions]) => ({ famille, sessions })).sort((a, b) => b.sessions - a.sessions).slice(0, 20),
+    avertissements: [...familles].map(([famille, sessions]) => ({ famille, sessions, items: [...(items.get(famille) || [])] })).sort((a, b) => b.sessions - a.sessions).slice(0, 20),
   };
+}
+
+/** Chaque famille d'avertissements rapprochée de ses items : une famille qui revient après la
+ *  correction de son item survit à sa correction ; une famille sans item n'a pas de porteur (1.3.0). */
+export function rapprocher(avertissements, etats) {
+  return avertissements.map((a) => {
+    const lies = a.items.map((id) => ({ id, statut: (etats.get(id) || {}).statut || "inconnu" }));
+    return { ...a, items: lies, survit_a_sa_correction: lies.some((x) => x.statut === "corrige"), sans_porteur: !lies.length };
+  });
 }
 
 export function domainesMuets(racine, depuis) {
@@ -165,14 +223,27 @@ export function domainesMuets(racine, depuis) {
   return [...passages].map(([domaine, n]) => ({ domaine, passages: n, echecs: echecs.get(domaine) || 0 })).filter((d) => !d.echecs).sort((a, b) => b.passages - a.passages);
 }
 
+/** Décisions réservées au registre du pilot depuis la date (1.3.0 : décisions posées, indicateur). */
+export const decisionsReservees = (racine, depuisMs) => lignesJson(join(racine, "decisions", "REGISTRE.jsonl")).filter((d) => d.type === "decision" && Date.parse(d.ts) >= depuisMs).length;
+
 export function silencieux(racine, depuis, profils, anonymiser) {
   const depuisMs = Date.parse(depuis);
   const fichiers = profils.flatMap((p) => transcripts(p, depuisMs));
-  return { ...lireHooks(fichiers, depuisMs, anonymiser), domaines_sans_echec: domainesMuets(racine, depuis) };
+  const h = lireHooks(fichiers, depuisMs, anonymiser);
+  // Jetons des relectures d'intention sur la période, par le relevé de la flotte du pilot.
+  const jours = Math.max(1, Math.ceil((Date.now() - depuisMs) / 864e5));
+  const flotte = jouer(racine, "scripts/relever-flotte.mjs", ["--jours", String(jours), "--json"]);
+  const essai = flotte.indicateurs && flotte.indicateurs.essai_relecture_intention;
+  return {
+    ...h,
+    avertissements: rapprocher(h.avertissements, etatRegistre(racine)),
+    domaines_sans_echec: domainesMuets(racine, depuis),
+    indicateurs: { decisions_reservees: decisionsReservees(racine, depuisMs), jetons_relectures: essai ? essai.jetons : null, fenetre_jetons_jours: jours },
+  };
 }
 
 // ── Self-test ───────────────────────────────────────────────────────────────────────────────────
-function selfTest() {
+async function selfTest() {
   const tmp = mkdtempSync(join(tmpdir(), "oeil-critique-sources-"));
   const casse = [];
   const ecrire = (f, t) => { mkdirSync(join(f, ".."), { recursive: true }); writeFileSync(f, t); };
@@ -184,7 +255,10 @@ function selfTest() {
       { ev: "maj", id: "TF-1", ts: "2026-10-27T10:00:00Z", statut: "corrige", date_correction: "2026-10-27", gains_constates: "mesuré" },
       { ev: "creation", id: "TF-2", ts: "2026-10-28T10:00:00Z", titre: "sans gain", statut: "corrige", date_correction: "2026-10-28", source: "Produit-02 - RETOURS - 20261028a" },
       { ev: "creation", id: "TF-3", ts: "2026-10-20T10:00:00Z", titre: "clos avant", statut: "corrige", date_correction: "2026-10-21" },
+      { ev: "creation", id: "TF-4", ts: "2026-10-01T10:00:00Z", titre: "en cours endormi", statut: "en_cours" },
+      { ev: "creation", id: "TF-5", ts: "2026-10-27T10:00:00Z", titre: "en cours récent", statut: "en_cours" },
     ].map((o) => JSON.stringify(o)).join("\n") + "\n");
+    ecrire(join(racine, "decisions", "REGISTRE.jsonl"), [{ type: "decision", n: 1, ts: "2026-10-20T10:00:00Z" }, { type: "decision", n: 2, ts: "2026-10-28T10:00:00Z" }].map((o) => JSON.stringify(o)).join("\n") + "\n");
     ecrire(join(racine, "todo", "HERITAGE-RELEVES.jsonl"), JSON.stringify({ ts: "2026-10-29T08:00:00Z", contrat: "1.0.0", produits: [{ produit: "Produit-77", absents: 2, divergents: 1, incomplets: 0, total: 27 }, { produit: "Produit-78", absents: 9, divergents: 0, incomplets: 0, total: 27 }] }) + "\n");
     ecrire(join(racine, ".oracles", "produits-au-demarrage.json"), JSON.stringify({ produits: { [produit]: {}, [join(tmp, "Sans-Trace")]: {} } }));
     ecrire(join(produit, "forge", "mobilisation.jsonl"), [
@@ -195,7 +269,10 @@ function selfTest() {
     const depuis = "2026-10-26T15:15:00+01:00";
 
     const pseudoProduit = (c) => (c.endsWith("Produit-Reel") ? "Produit-99" : "(produit hors table)");
-    const p = produits(racine, depuis, pseudoProduit);
+    const lotsDe = async (c) => (c.endsWith("Produit-Reel") ? [{ nom: "Produit-Reel - RETOURS - 20261013a.md", jours: 16, parvenu: false }, { nom: "Produit-Reel - RETOURS - 20261026a.md", jours: 3, parvenu: true }] : []);
+    const p = await produits(racine, depuis, pseudoProduit, lotsDe);
+    const la = p.lots_a_remettre;
+    if (la.length !== 1 || la[0].produit !== "Produit-99" || la[0].a_remettre !== 2 || la[0].jamais_parvenus !== 1 || la[0].plus_ancien_j !== 16) casse.push(`lots à remettre : Produit-99, 2 lots dont 1 jamais parvenu, 16 jours attendus, ${JSON.stringify(la)}`);
     if (p.heritage.produits[0].produit !== "Produit-78") casse.push("héritage : le produit le plus en retard ne vient pas en tête");
     if (p.corrections.map((c) => c.id).join(",") !== "TF-1,TF-2") casse.push(`corrections de la période : TF-1,TF-2 attendus, ${p.corrections.map((c) => c.id)}`);
     const m = p.mobilisation.find((x) => x.produit === "Produit-99");
@@ -226,17 +303,30 @@ function selfTest() {
     if (h.avertissements.length !== 1 || h.avertissements[0].famille !== "- Visibilité NON mesurée pour N dépôt(s) à …") casse.push(`avertissements : 1 famille normalisée attendue, ${JSON.stringify(h.avertissements)}`);
     if (JSON.stringify(h).includes("Produit-Reel")) casse.push("un nom réel sort des durées de hooks");
 
+    // 1.3.0 (D-97 (a)) : avertissements rapprochés de leur item, items dormants, forge aveugle, décisions.
+    const ra = rapprocher([{ famille: "a", sessions: 5, items: ["TF-1"] }, { famille: "b", sessions: 5, items: [] }], etats);
+    if (!ra[0].survit_a_sa_correction || ra[0].items[0].statut !== "corrige" || !ra[1].sans_porteur) casse.push(`rapprochement : une famille liée à un item corrigé survit à sa correction, une famille sans item n a pas de porteur, ${JSON.stringify(ra)}`);
+    const tr2 = join(tmp, "projects", "C--dev-x", "s-b.jsonl");
+    ecrire(tr2, att("2026-10-27T09:00:00Z", { type: "async_hook_response", hookEvent: "SessionStart", command: "node hook-ouverture.mjs --contexte-json", stdout: JSON.stringify({ hookSpecificOutput: { additionalContext: "- [avert] relevé NON mesuré malgré TF-1676 corrigé" } }) }) + "\n");
+    const h2 = lireHooks([tr2], Date.parse(depuis), anonymiser);
+    if (!h2.avertissements[0] || h2.avertissements[0].items.join(",") !== "TF-1676") casse.push(`le numéro d item d une ligne d avertissement est perdu à la normalisation, ${JSON.stringify(h2.avertissements)}`);
+    const dormants = itemsDormants(racine, Date.parse("2026-10-29T12:00:00Z"));
+    if (dormants.map((x) => x.id).join(",") !== "TF-4") casse.push(`items dormants : TF-4 seul attendu, ${JSON.stringify(dormants)}`);
+    const av = appelantsDe("x", (d, tous) => ({ controles: tous ? 5 : 0, nombre_sans_appelant: tous ? 2 : 0 }));
+    if (!av.aveugle || av.scripts_sans_appelant !== 2) casse.push(`forge à 0 contrôle : aveugle et 2 scripts sans appelant attendus, ${JSON.stringify(av)}`);
+    if (decisionsReservees(racine, Date.parse(depuis)) !== 1) casse.push("décisions réservées : 1 attendue depuis le repère, l ancienne exclue");
+
     ecrire(join(racine, ".oracles", "doc.md.oracles.json"), JSON.stringify({ resultats: [{ domaine: "Sécurité / secrets" }, { domaine: "Lisibilité" }] }));
     ecrire(join(racine, ".oracles", "doc.md.oracles-historique.jsonl"), [{ date_iso: "2026-10-27T10:00:00Z", fails: ["Lisibilité:doc.md"] }, { date_iso: "2026-10-28T10:00:00Z", fails: [] }, { date_iso: "2026-10-01T10:00:00Z", fails: ["Sécurité / secrets:doc.md"] }].map((o) => JSON.stringify(o)).join("\n") + "\n");
     const d = domainesMuets(racine, depuis);
     if (d.length !== 1 || d[0].domaine !== "Sécurité / secrets" || d[0].passages !== 2) casse.push(`domaines sans échec : Sécurité / secrets, 2 passages attendus (l'échec ancien hors période), ${JSON.stringify(d)}`);
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "sources", self_test: casse.length ? "FAIL" : "PASS", cas: 13, casse }));
+  console.log(JSON.stringify({ outil: "sources", self_test: casse.length ? "FAIL" : "PASS", cas: 19, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 
 const args = process.argv.slice(2);
-if (args.includes("--self-test")) selfTest();
+if (args.includes("--self-test")) await selfTest();
 else {
   const quoi = args[0], depuis = valeur(args, "--depuis");
   if (!["produits", "existant", "silencieux"].includes(quoi) || !Number.isFinite(Date.parse(depuis))) {
@@ -250,7 +340,8 @@ else {
     const p = valeur(args, "--profils");
     const profils = p ? p.split(";") : [join(homedir(), ".claude", "projects"), join(homedir(), ".claude-b", "projects")];
     const { pseudonymeProduit } = await import(pathToFileURL(join(racine, "scripts", "lib-pseudonyme-produit.mjs")).href);
-    const r = quoi === "produits" ? produits(racine, depuis, pseudonymeProduit) : quoi === "existant" ? existant(racine, depuis) : silencieux(racine, depuis, profils, anonymiser);
+    const { lotsARemettre } = await import(pathToFileURL(join(racine, "oracles", "lib-retours-produit.mjs")).href);
+    const r = quoi === "produits" ? await produits(racine, depuis, pseudonymeProduit, (c) => lotsARemettre(c, racine)) : quoi === "existant" ? existant(racine, depuis) : silencieux(racine, depuis, profils, anonymiser);
     console.log(JSON.stringify({ outil: "sources", quoi, depuis, ...r }, null, 1));
   } catch (e) { console.log(JSON.stringify({ outil: "sources", refus: e.message })); process.exit(1); }
 }
