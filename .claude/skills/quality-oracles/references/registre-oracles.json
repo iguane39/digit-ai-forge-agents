@@ -1813,7 +1813,7 @@
     "{skillsroot}/prompt-analyzer-l99/scripts/oracle-boucle-l99.mjs",
     "{file}"
    ],
-   "checklist": "B1 arbitre fige (arret « 0 bloquant et 0 majeur », gain minimal, borne, garde de longueur) · B2 relecteur nomme, aveugle, interdits ecrits · B3 defaut grave recompte (commande + resultat) · B4 passe gonflee au-dela de la garde sans majeur clos rejetee · B5 arret conforme a sa raison, aucune passe apres, aucune passe anterieure deja a zero majeur · B6 au plus 3 passes, 5 sur extension motivée (TF-2024) · B7 score affiche mesure a la passe d arret, jamais projete. Invocation EXPLICITE sur le journal <analyse>.boucle.json.",
+   "checklist": "B1 arbitre fige (arret « 0 bloquant et 0 majeur », gain minimal, borne, garde de longueur) · B2 relecteur nomme, aveugle, interdits ecrits · B3 defaut grave recompte (commande + resultat) · B4 passe gonflee au-dela de la garde sans majeur clos rejetee · B5 arret conforme a sa raison, aucune passe apres, aucune passe anterieure deja a zero majeur · B6 au plus 3 passes, 5 sur extension motivée (TF-2024), B8 passe qui régresse rejetée, B9 retenue à l union recomptée, B10 vérification de clôture de chaque correction (essai D-111 (a), TF-2026) · B7 score affiche mesure a la passe d arret, jamais projete. Invocation EXPLICITE sur le journal <analyse>.boucle.json.",
    "statut": "ok",
    "non_juge": [
     "la VERACITE du journal : l oracle ne relance ni le relecteur ni les commandes de recompte",

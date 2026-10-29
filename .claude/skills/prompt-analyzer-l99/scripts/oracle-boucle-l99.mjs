@@ -20,6 +20,14 @@
 //       (`arbitre.extension`) la porte jusqu'à 5, avec son motif, décidée après une passe qui gagne
 //       encore au moins `gain_min` points (TF-2024).
 //   B7  le score affiché est le score MESURÉ de la passe d'arrêt, jamais un score projeté.
+// Règles de l'essai D-111 (a) du 29/10/2026 (TF-2026), jouées seulement si l'arbitre les déclare,
+// pour que les journaux d'avant restent jugés par leurs propres règles :
+//   B8  `rejet_regression` : une passe dont le score mesuré baisse sous la passe gardée précédente
+//       est rejetée ; l'arrêt « regression » se pose alors sur la dernière passe gardée.
+//   B9  `retenue: "union_recomptee"` : un défaut grave vu par un seul relecteur est retenu ; il n'est
+//       écarté que si le recompte le dément (`dementi: true`).
+//   B10 `verification_cloture` : chaque passe à partir de la 2e porte la vérification de clôture
+//       de la correction qui l'a produite, par un agent qui ne note pas.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -38,7 +46,8 @@ const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
 const BORNE_BASE_MAX = 3;
 const BORNE_EXTENSION_MAX = 5;
-const RAISONS = new Set(['zero_majeur', 'gain_insuffisant', 'borne']);
+const RAISONS = new Set(['zero_majeur', 'gain_insuffisant', 'borne', 'regression']);
+const estRejetee = (p) => p.rejetee === true || p.decision === 'rejeter';
 
 const propre = (x) => typeof x === 'string' && x.trim() !== '';
 const nb = (x) => typeof x === 'number' && Number.isFinite(x);
@@ -89,13 +98,20 @@ export function juger(j) {
   // B5 — arrêt
   const ar = j && j.arret;
   const gardees = passes.map((p, i) => ({ p, i })).filter(({ p }) => !(p.rejetee === true || p.decision === 'rejeter'));
-  if (!ar || !nb(ar.passe) || !RAISONS.has(ar.raison)) ko('B5', 'arret', 'arrêt absent, ou raison hors de zero_majeur, gain_insuffisant, borne');
+  if (!ar || !nb(ar.passe) || !RAISONS.has(ar.raison)) ko('B5', 'arret', 'arrêt absent, ou raison hors de zero_majeur, gain_insuffisant, borne, regression');
   else {
     const idx = passes.findIndex((p) => p.n === ar.passe);
     const pa = passes[idx];
     if (!pa) ko('B5', 'arret.passe', `la passe ${ar.passe} n existe pas`);
     else {
-      if (idx !== passes.length - 1) ko('B5', 'arret.passe', 'des passes suivent la passe d arrêt');
+      // Seules des passes rejetées peuvent suivre la passe d'arrêt (une régression rejetée, D-111 (a)).
+      const apres = passes.slice(idx + 1);
+      if (apres.some((p) => !estRejetee(p))) ko('B5', 'arret.passe', 'des passes gardées suivent la passe d arrêt');
+      if (ar.raison === 'regression') {
+        const r = apres[apres.length - 1];
+        if (!r || !estRejetee(r) || !(nb(r.score_mesure) && r.score_mesure < pa.score_mesure))
+          ko('B5', 'arret.raison', 'arrêt « regression » sans passe rejetée dont le score baisse sous la passe d arrêt');
+      }
       if (pa.rejetee === true || pa.decision === 'rejeter') ko('B5', 'arret.passe', 'la passe d arrêt est une passe rejetée');
       const seuil = a && nb(a.seuil_score) ? a.seuil_score : null;
       const pos = gardees.findIndex((g) => g.i === idx);
@@ -149,6 +165,34 @@ export function juger(j) {
   if (!s || s.nature !== 'mesure') ko('B7', 'score_affiche', 'le score affiché doit être de nature « mesure », jamais projeté');
   else if (pa && s.valeur !== pa.score_mesure) ko('B7', 'score_affiche.valeur', `score affiché ${s.valeur}, mesuré ${pa.score_mesure} à la passe d arrêt`);
 
+  // B8 — une passe qui régresse est rejetée (D-111 (a))
+  if (a && a.rejet_regression === true) {
+    let precGardee = null;
+    passes.forEach((p, i) => {
+      if (precGardee && nb(p.score_mesure) && nb(precGardee.score_mesure) && p.score_mesure < precGardee.score_mesure && !estRejetee(p))
+        ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure} : passe à rejeter, on garde la précédente`);
+      if (!estRejetee(p)) precGardee = p;
+    });
+  }
+
+  // B9 — retenue à l'union recomptée (D-111 (a))
+  if (a && a.retenue === 'union_recomptee') {
+    passes.forEach((p, i) => (p.defauts || []).forEach((d, k) => {
+      if (GRAVES.has(d.severite) && d.statut === 'ecarte' && d.dementi !== true)
+        ko('B9', `passes[${i}].defauts[${k}]`, 'défaut grave écarté sans démenti au recompte : en union recomptée, il est retenu');
+    }));
+  }
+
+  // B10 — vérification de clôture de chaque correction (D-111 (a))
+  if (a && a.verification_cloture === true) {
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      const v = p.verification_cloture || {};
+      if (!propre(v.agent) || v.note !== false || !nb(v.clotures) || !nb(v.defauts_crees))
+        ko('B10', `passes[${i}].verification_cloture`, 'vérification de clôture absente, ou faite par un agent qui note : agent, note false, clotures et defauts_crees attendus');
+    });
+  }
+
   return f;
 }
 
@@ -191,6 +235,28 @@ function selfTest() {
     j.arret = { passe: 2, raison: 'gain_insuffisant' };
   });
   rouge('B7 score projeté affiché', 'B7', (j) => { j.score_affiche.nature = 'projete'; });
+  // D-111 (a), TF-2026 : le vert à deux passes sous les règles de l'essai, puis une régression rejetée.
+  const essai = () => {
+    const j = lire('boucle-vert-deux-passes.json');
+    Object.assign(j.arbitre, { retenue: 'union_recomptee', verification_cloture: true, rejet_regression: true });
+    j.passes[0].defauts.forEach((d) => { if (d.statut === 'ecarte') d.dementi = true; });
+    j.passes[1].verification_cloture = { agent: 'verificateur-1', note: false, clotures: 2, defauts_crees: 0 };
+    return j;
+  };
+  cas.push({ nom: 'D-111 essai vert', j: essai(), attendu: [] });
+  const regression = () => {
+    const j = essai();
+    j.passes[1].score_mesure = 80; j.passes[1].rejetee = true; j.passes[1].decision = 'rejeter';
+    j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' };
+    return j;
+  };
+  cas.push({ nom: 'D-111 régression rejetée, arrêt sur la passe gardée', j: regression(), attendu: [] });
+  const rougeEssai = (nom, regle, base, muter) => { const j = base(); muter(j); cas.push({ nom, j, attendu: [regle] }); };
+  rougeEssai('B8 régression gardée', 'B8', essai, (j) => { j.passes[1].score_mesure = 80; j.score_affiche.valeur = 80; });
+  rougeEssai('B9 écarté sans démenti en union', 'B9', essai, (j) => { j.passes[0].defauts.forEach((d) => { if (d.statut === 'ecarte') delete d.dementi; }); });
+  rougeEssai('B10 passe 2 sans vérification de clôture', 'B10', essai, (j) => { delete j.passes[1].verification_cloture; });
+  rougeEssai('B10 vérificateur qui note', 'B10', essai, (j) => { j.passes[1].verification_cloture.note = true; });
+  rougeEssai('B5 arrêt « regression » sans passe qui baisse', 'B5', regression, (j) => { j.passes[1].score_mesure = 86; });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

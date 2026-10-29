@@ -5,7 +5,7 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.8.0"
+  version: "2.9.0"
   updated: "2026-10-29"
 ---
 
@@ -27,6 +27,9 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
   défauts recomptés à la source, arrêt à 0 bloquant et 0 majeur ou gain < 3 points, borne 3 passes,
   étendue jusqu'à 5 si la session l'estime nécessaire, quand la dernière passe gagne encore au moins
   3 points avec des défauts graves ouverts (TF-2024, extension motivée au journal).
+  Essai D-111 (a) du 29/10/2026 au 16/11/2026 (TF-2026) : défauts retenus à l'union recomptée
+  (vus par un seul relecteur, écartés seulement si le recompte les dément), chaque correction
+  vérifiée par un agent avec contexte qui ne note pas, et une passe qui régresse est rejetée.
   Charger `references/boucle.md` ; le journal se juge par `scripts/oracle-boucle-l99.mjs` (TF-1831).
   Hors de ce mode, le score d'arrivée du Ch8 s'écrit **« projeté (non mesuré) »** : mesurés à
   l'aveugle le 16/10/2026, 5 prompts réécrits valaient de 6 à 12 points de moins que projeté.
