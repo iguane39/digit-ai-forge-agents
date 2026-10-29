@@ -528,6 +528,46 @@ try {
     else kos.push('cas 16 (TF-1555) — --revs invalide exit ' + inval.status + ', inconnu exit ' + inconnu.status);
   }
 
+  // --- cas 16 ter : L'ARBRE JUGÉ EST CELUI QUI PART, PAS CELUI DU DISQUE (TF-1953) ----------------
+  // Mesuré le 20/10/2026 au pilot : un envoi de 5 révisions propres refusé par 2 constats C5 sur des
+  // lignes NON enregistrées d'un fichier suivi (HEAD : 44 lignes, disque : 49). C1, C2 et C5 d'arbre
+  // lisaient le disque. Sens vert : un nom dans une modification non enregistrée ne refuse plus un
+  // envoi propre ; sens rouge : un nom enregistré, déjà publié, puis effacé du disque seulement,
+  // reste refusé sur C1 (l'arbre envoyé le porte encore).
+  {
+    const monter = (nom) => {
+      const d = depot(racine, nom, false);
+      const distant = distantJetable(racine, nom + '-distant');
+      git(d, 'remote', 'add', 'origin', distant);
+      sh(racine, 'node', [INSTALLEUR, d, '--seul=pre-push']);
+      return { d, distant };
+    };
+    const auDistant = (distant) => spawnSync('git', ['--git-dir=' + distant, 'rev-parse', '--verify', '-q', 'refs/heads/main'], { encoding: 'utf8' }).status === 0;
+    const valider = (d, nom, txt, msg) => { fs.writeFileSync(path.join(d, nom), txt); git(d, 'add', '-A'); git(d, 'commit', '-q', '-m', msg); };
+
+    // (a) sens vert : révision propre, disque sale
+    const a = monter('arbre-disque-sale');
+    valider(a.d, 'journal.md', 'Ligne enregistree, pseudonymisee pour Client-A.\n', 'Journal propre');
+    fs.appendFileSync(path.join(a.d, 'journal.md'), 'Brouillon local pour Zorglub, non enregistre.\n');
+    const disqueSeul = sh(racine, 'node', [ORACLE_SOURCE, a.d], ENV_JEU_ESSAI);
+    const p16a = sh(a.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    if (disqueSeul.status === 1 && /C1/.test(disqueSeul.stdout || '') && p16a.status === 0 && auDistant(a.distant))
+      oks.push('cas 16 ter (TF-1953, sens vert) — un nom dans une modification NON ENREGISTRÉE ne refuse plus l\'envoi : la porte sans --revs juge le disque (FAIL C1), le pre-push juge l\'arbre envoyé (PASS, branche au distant)');
+    else kos.push('cas 16 ter (TF-1953, sens vert) — porte sans --revs exit ' + disqueSeul.status + ', push exit ' + p16a.status + ', au distant : ' + auDistant(a.distant) + ' : ' + (p16a.stderr || '').trim().slice(0, 300));
+
+    // (b) sens rouge : un porteur déjà publié, effacé du disque seulement, puis un envoi propre
+    const b = monter('arbre-porteur-efface');
+    valider(b.d, 'ancien.md', 'Note ancienne pour Zorglub.\n', 'Note ancienne');
+    sh(b.d, 'git', ['push', '--no-verify', 'origin', 'main'], ENV_JEU_ESSAI);
+    valider(b.d, 'suite.md', 'Suite pseudonymisee pour Client-A.\n', 'Suite propre');       // l'arbre envoyé porte encore ancien.md
+    fs.writeFileSync(path.join(b.d, 'ancien.md'), 'Note ancienne pour Client-A.\n');       // effacé du DISQUE seulement, non enregistré
+    const p16b = sh(b.d, 'git', ['push', 'origin', 'main'], ENV_JEU_ESSAI);
+    const e16b = p16b.stderr || '';
+    if (p16b.status !== 0 && /C1/.test(e16b) && /ancien\.md:1/.test(e16b))
+      oks.push('cas 16 ter (TF-1953, sens rouge) — un nom porté par l\'arbre ENVOYÉ et effacé du disque seulement reste refusé : C1 nomme ancien.md:1 (la lecture du disque le laissait passer)');
+    else kos.push('cas 16 ter (TF-1953, sens rouge) — push exit ' + p16b.status + ' : ' + e16b.trim().slice(0, 400));
+  }
+
   // --- cas 17 : UN PORTEUR DE SECRETS AJOUTÉ PAR L'ENVOI EST REFUSÉ (TF-1221) ------------------
   // Des porteurs de secrets ont été publiés chez deux produits : la règle SP2 ne se jouait que depuis
   // le pilot. Le pre-push la joue sur les fichiers que l'envoi ajoute. Chaque sens se juge sur la

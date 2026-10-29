@@ -63,7 +63,7 @@ const optMessage = (args.find((a) => a.startsWith('--message=')) || '').slice('-
 // l'envoi ajoute. Le pre-push du pilot coûtait 9 min 11 s le 27/09, la porte rejugeant à chaque
 // envoi toute l'histoire, passé publié compris. `--revs=<jeton,…>` : empreintes à juger, `^<empreinte>`
 // et `--not --remotes=<distant>` pour ce qui est déjà publié. Absent : toute l'histoire (`--all`).
-// L'arbre courant (C1, C2) reste jugé entier.
+// L'arbre (C1, C2) reste jugé entier — celui des révisions envoyées sous `--revs` (TF-1953), le disque sinon.
 const optRevs = args.find((a) => a.startsWith('--revs='));
 
 // TF-0991 (08/09) — LE TOTAL EST UN CHAMP, PAS UNE PHRASE. La sortie bornée à 200 constats
@@ -746,6 +746,85 @@ function voieDuContenu(repo, revs) {
   return { unique: true, inv, synth, blobs: blobs.size, chemins: chemins.size };
 }
 
+// ---------------------------------------------------------------------------
+// TF-1953 (20/10/2026) — L'ARBRE JUGÉ PAR C1, C2 ET C5 D'ARBRE : CELUI QUI PART, PAS CELUI DU DISQUE.
+//
+// LE FAIT, ET IL EST MESURÉ. Au pre-push du pilot, le 20/10/2026, l'envoi de 5 révisions a été refusé
+// par 2 constats C5 sur `todo/relectures-intention.jsonl` lignes 45 et 46 : lignes NON enregistrées
+// (HEAD portait 44 lignes, le disque 49). La porte lisait `git ls-files` puis `fs.readFileSync` : ce
+// qui est sur le disque, pas ce que l'envoi publie. Le défaut joue dans les DEUX sens — un envoi
+// propre est refusé par du travail local, et un nom enregistré puis effacé du disque seulement passe.
+//
+// LE REMÈDE. Sous `--revs` (le pre-push), l'arbre jugé est celui des révisions envoyées : les
+// empreintes POSITIVES avant `--not` (`^<empreinte>` et `--remotes=` bornent l'histoire, ils ne sont
+// pas des arbres). Chaque arbre se lit par `git ls-tree -r -z -l`, chaque blob régulier par un
+// `git cat-file --batch`, par lots d'au plus TAMPON_ARBRE octets : l'arbre du pilot dépasse 245 Mo,
+// jamais lu d'un bloc. Plusieurs révisions envoyées : l'union des couples (chemin, blob), chacun jugé
+// une fois. Sans `--revs` (audit d'un répertoire ou d'un bundle), le disque reste jugé, et le verdict
+// le dit. Un objet illisible se COMPTE et se déclare au non_juge : jamais un fichier sauté en silence.
+// ---------------------------------------------------------------------------
+const TAMPON_ARBRE = 48 * 1024 * 1024;
+const arbreInfo = { source: 'disque', fichiers: 0, illisibles: 0, tetes: [] };
+function tetesEnvoyees() {
+  const tetes = [];
+  for (const j of REVS || []) {
+    if (j === '--not') break;
+    if (/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(j)) tetes.push(j);
+  }
+  return [...new Set(tetes)];
+}
+function arbreJuge(repo) {
+  if (REVS === null) {
+    const noms = (git(repo, 'ls-files', '-z').stdout || '').split('\0').filter(Boolean);
+    arbreInfo.fichiers = noms.length;
+    return { noms, *contenus() {
+      for (const rel of noms) {
+        let txt = null;
+        try { txt = fs.readFileSync(path.join(repo, rel), 'utf8'); } catch { arbreInfo.illisibles += 1; }
+        yield [rel, txt];
+      }
+    } };
+  }
+  const tetes = tetesEnvoyees();
+  arbreInfo.source = 'revisions'; arbreInfo.tetes = tetes;
+  const couples = new Map(), noms = new Set();
+  for (const tete of tetes) {
+    const r = git(repo, 'ls-tree', '-r', '-z', '-l', tete);
+    if (r.status !== 0) {
+      nettoyer();
+      out('SKIP', [], ['arbre de la révision envoyée illisible (`git ls-tree` ' + tete.slice(0, 12) + ' : '
+        + String(r.stderr || '').trim().slice(0, 200) + ') — un arbre lu vide par erreur rendrait PASS sans rien juger (TF-1953)'], 2);
+    }
+    for (const entree of (r.stdout || '').split('\0').filter(Boolean)) {
+      const tab = entree.indexOf('\t');
+      const [mode, , oid, taille] = entree.slice(0, tab).split(/\s+/);
+      const rel = entree.slice(tab + 1);
+      noms.add(rel);
+      if (!REGULIER.test(mode) && mode !== '120000') continue;     // sous-module : le nom seul se juge
+      couples.set(oid + '\0' + rel, { oid, rel, taille: Number(taille) || 0 });
+    }
+  }
+  arbreInfo.fichiers = noms.size;
+  const liste = [...couples.values()];
+  return { noms: [...noms], *contenus() {
+    let lot = [], octets = 0;
+    const vider = function* () {
+      const lus = lireObjets(repo, [...new Set(lot.map((c) => c.oid))]);
+      for (const c of lot) {
+        const o = lus ? lus.get(c.oid) : null;
+        if (!o || o.type !== 'blob') arbreInfo.illisibles += 1;
+        yield [c.rel, o && o.type === 'blob' ? o.contenu.toString('utf8') : null];
+      }
+      lot = []; octets = 0;
+    };
+    for (const c of liste) {
+      if (lot.length && octets + c.taille > TAMPON_ARBRE) yield* vider();
+      lot.push(c); octets += c.taille;
+    }
+    if (lot.length) yield* vider();
+  } };
+}
+
 // --- exécution --------------------------------------------------------------
 if (!cible) out('SKIP', [], ['aucun artefact — usage : node oracle-nom-client-publie.mjs <depot|fixture.bundle> [--referentiel=<chemin>] [--produits=<chemin>]'], 2);
 
@@ -841,12 +920,18 @@ const nettoyer = () => {
 };
 
 try {
-  // --- C1 · contenus des fichiers SUIVIS de l'arbre courant -----------------
-  const suivis = (git(repo, 'ls-files', '-z').stdout || '').split('\0').filter(Boolean);
-  for (const rel of suivis) {
-    const abs = path.join(repo, rel);
-    let txt;
-    try { txt = fs.readFileSync(abs, 'utf8'); } catch { continue; }
+  // --- C1 · contenus des fichiers SUIVIS de l'arbre jugé ---------------------
+  // TF-1953 (20/10/2026) — L'ARBRE JUGÉ EST CELUI QUI PART, PAS CELUI DU DISQUE. Sous `--revs` (le
+  // pre-push), C1, C2 et C5 d'arbre lisaient les fichiers suivis SUR LE DISQUE : un envoi propre était
+  // refusé par un fichier modifié non enregistré (2 constats C5 sur todo/relectures-intention.jsonl,
+  // lignes 45 et 46 : HEAD portait 44 lignes, le disque 49), et un nom enregistré puis effacé du
+  // disque seulement passait la porte. Sous `--revs`, l'arbre jugé est donc celui des révisions
+  // envoyées (les empreintes positives avant `--not`), lu dans la base d'objets de git. Sans `--revs`
+  // (audit d'un dépôt ou d'un bundle), le disque reste jugé, comme avant.
+  const arbre = arbreJuge(repo);
+  const suivis = arbre.noms;
+  for (const [rel, txt] of arbre.contenus()) {
+    if (txt === null) continue;                       // illisible : compté et déclaré en non_juge
     if (txt.includes('\0')) continue;                 // binaire : hors de portée, déclaré en non_juge
     const lignes = txt.split('\n');
     for (const t of T) {
@@ -1253,9 +1338,19 @@ const nj = NON_JUGE.concat(['table lue (référentiel des noms interdits) : ' + 
 // TF-1555 — une histoire restreinte se DIT, avec ce qu'elle laisse : le passé déjà publié.
 if (REVS !== null) nj.push('HISTOIRE RESTREINTE (--revs, TF-1555) : ' + revCount + ' révision(s) jugée(s) en C3, C4 et C5 d’histoire — '
   + 'celles que l’envoi ajoute (' + REVS.join(' ').slice(0, 300) + '). Le passé déjà publié n’est PAS rejugé : un terme '
-  + 'inscrit depuis sa publication s’y cherche par un run de la porte sans --revs, jamais par le hameçon. L’arbre courant '
-  + '(C1, C2) reste jugé entier. Les références distantes locales datent du dernier `git fetch` : plus vieilles, elles '
+  + 'inscrit depuis sa publication s’y cherche par un run de la porte sans --revs, jamais par le hameçon. L’arbre des '
+  + 'révisions envoyées (C1, C2) reste jugé entier. Les références distantes locales datent du dernier `git fetch` : plus vieilles, elles '
   + 'font juger PLUS de révisions, jamais moins.');
+// TF-1953 — L'ARBRE JUGÉ SE DIT, avec ce qu'il ne regarde pas : une porte qui juge le disque et une porte
+// qui juge l'envoi ne répondent pas à la même question, et le verdict ne les distinguait pas.
+nj.push(arbreInfo.source === 'revisions'
+  ? 'ARBRE JUGÉ (TF-1953) : celui des ' + arbreInfo.tetes.length + ' révision(s) envoyée(s) (' + arbreInfo.tetes.map((t) => t.slice(0, 12)).join(', ')
+    + '), ' + arbreInfo.fichiers + ' chemin(s), lu dans les objets de git — le DISQUE n’est PAS lu : une modification non enregistrée '
+    + 'n’est pas jugée (elle ne part pas), et un nom enregistré puis effacé du disque seulement l’est encore'
+    + (arbreInfo.illisibles ? ' · ' + arbreInfo.illisibles + ' objet(s) ILLISIBLE(S), non jugé(s)' : '')
+  : 'ARBRE JUGÉ (TF-1953) : le DISQUE (`git ls-files` puis lecture des fichiers), ' + arbreInfo.fichiers + ' chemin(s) — hors `--revs`, une '
+    + 'modification non enregistrée est jugée comme si elle partait ; sous `--revs` (le pre-push) l’arbre jugé est celui des révisions envoyées'
+    + (arbreInfo.illisibles ? ' · ' + arbreInfo.illisibles + ' fichier(s) ILLISIBLE(S), non jugé(s)' : ''));
 // C5 parle TOUJOURS : jouée, elle dit sur quoi ; non jouée, elle dit pourquoi. Un angle muet se lit
 // comme un angle vert, et c'est précisément l'état dans lequel la porte a laissé passer trois
 // mentions d'un nom de produit le 05/09.

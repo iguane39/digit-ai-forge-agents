@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.19.0"
+  version: "2.20.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -191,6 +191,12 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   jusqu'au titre suivant de même rang ou supérieur : une sous-section hérite de la source de sa section, la source d'une
   sous-section ne remonte pas. La source d'un tableau n'a pas à être recopiée : les lignes de tableau sont hors du périmètre
   de cet oracle (totaux → `oracle-calculs`). Fixtures `claims-section-*` (md et html).
+- **Arbre jugé au pre-push (2.20.0, TF-1953)** — la porte des noms (`oracle-nom-client-publie`) juge, sous `--revs`, l'arbre des
+  révisions ENVOYÉES, lu dans les objets de git, et non le disque. Mesuré le 20/10/2026 au pilot : un envoi de 5 révisions refusé
+  par 2 constats C5 sur des lignes non enregistrées (HEAD 44 lignes, disque 49). Sans `--revs` le disque reste jugé et le verdict
+  le dit (`ARBRE JUGÉ`, au non jugé). Les empreintes positives avant `--not` sont les arbres ; `^<empreinte>` et `--remotes=` bornent
+  l'histoire. Un objet illisible se compte et se déclare. Recette `self-test-hamecon-publication.mjs`, cas 16 ter (envoi propre
+  avec disque sale : refusé avant, accepté après ; nom publié effacé du disque seulement : C1 le nomme après).
 - **Profils** — `profils/digit-ai.json` · `generique.json` (défaut : digit-ai, env `QO_PROFIL`) : budgets perf,
   politique pptx, convention de nommage, marqueurs de sources et motifs additionnels (claims : `motifs_bloquants` / `motifs_warn`),
   niveaux d'exigence (§6), seuils `visual_diff` (seuil_ratio, breakpoints, tolerance_pixel), rubrique du juge, `ignore_patterns`. Un contexte client = un JSON, zéro code.
