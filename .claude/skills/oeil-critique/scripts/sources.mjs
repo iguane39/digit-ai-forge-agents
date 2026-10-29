@@ -14,7 +14,8 @@
  * Usage :
  *   node sources.mjs produits   --depuis <iso> [--pilot <chemin>]
  *       → héritage des produits au dernier relevé d'ouverture (`todo/HERITAGE-RELEVES.jsonl`), items
- *         corrigés de la période et leur descente déclarée, traces de mobilisation des forges
+ *         corrigés de la période (sans « descente déclarée » : vraie pour 106 sur 106 le 29/10/2026,
+ *         elle ne disait rien), traces de mobilisation des forges
  *         (`forge/mobilisation.jsonl` des produits relevés à l'ouverture), chaque produit nommé par
  *         `scripts/lib-pseudonyme-produit.mjs` du pilot : un produit hors table n'est jamais nommé.
  *   node sources.mjs existant   --depuis <iso> [--pilot <chemin>]
@@ -76,7 +77,7 @@ export async function produits(racine, depuis, pseudoProduit, lotsDe = null) {
     produits: her.produits.map((p) => ({ produit: p.produit, absents: p.absents, divergents: p.divergents, incomplets: p.incomplets, total: p.total }))
       .sort((a, b) => (b.absents + b.divergents) - (a.absents + a.divergents)),
   } : null;
-  const corrections = corrigesDepuis(etatRegistre(racine), depuis).map((x) => ({ id: x.id, titre: String(x.titre || "").slice(0, 140), date_correction: x.date_correction || null, descente_declaree: Boolean(x.descente || x.produits_beneficiaires) }));
+  const corrections = corrigesDepuis(etatRegistre(racine), depuis).map((x) => ({ id: x.id, titre: String(x.titre || "").slice(0, 140), date_correction: x.date_correction || null }));
   let chemins = [];
   try { chemins = Object.keys(JSON.parse(readFileSync(join(racine, ".oracles", "produits-au-demarrage.json"), "utf8")).produits || {}); } catch { /* aucun relevé des produits : dit par la liste vide */ }
   const depuisMs = Date.parse(depuis);

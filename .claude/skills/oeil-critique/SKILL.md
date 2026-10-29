@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Six missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, process attendus, existant et suppressions. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -18,11 +18,14 @@ Version 1.3.0 du 29/10/2026 : décision D-97 (a), fiche `output/03-etudes/Digit-
 code mort et sujets a integrer - 20261029e.md` du pilot. Code non appelé relevé sans les copies de travail
 et dans les 13 forges ; vitesse et coût mesurés ; restes du dépôt, lots des produits, avertissements
 rapprochés de leur item et versions livrées.
+Version 1.3.1 du 29/10/2026, première exécution sur DESKTOP-ULTRA7 : lots d'agents de taille égale au lieu
+d'un agent par session, et le champ « descente déclarée » retiré du relevé des produits.
 
-**Limite déclarée, à lire avant tout usage.** Une seule exécution réelle complète, le 26/10/2026, sur
-un poste. Les relevés de `sources.mjs` ont été joués le 29/10/2026 sur les données réelles du pilot,
-mais aucune analyse ne les a encore lus : la prochaine exécution corrigera la méthode, et sa sortie
-dit ce qui a manqué (règle R-31 du pilot).
+**Limite déclarée, à lire avant tout usage.** Deux exécutions réelles complètes, une par poste : le
+26/10/2026 sur Dell-XPS-16 et le 29/10/2026 sur DESKTOP-ULTRA7. La seconde est la première à lire les
+relevés de `sources.mjs` : elle en a trouvé un faux positif (un hook appelé par `hook-${nom}` compté
+sans appelant) et des noms de produit non pseudonymisés dans le relevé `silencieux`. La prochaine
+exécution corrigera encore la méthode, et sa sortie dit ce qui a manqué (règle R-31 du pilot).
 
 ## Ce que le skill fait et ne fait pas
 
@@ -55,9 +58,15 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
    rend 3 relevés chiffrés et pseudonymisés, lus par les missions 3 à 6. Il ne relance aucun hook ni
    aucun script qui écrive ; un produit absent de la table de pseudonymes est rendu « (produit hors
    table) », jamais nommé.
-3. **Analyser, mission par mission.** Une session par agent nommé de la flotte (`explorateur` ou
-   `verificateur`), jamais un agent générique ; chaque agent ne reçoit que l'extrait de sa session.
-   Les relevés de l'étape 2 bis vont à un agent de plus, qui ne lit qu'eux.
+3. **Analyser, mission par mission.** Des agents nommés de la flotte (`explorateur` ou
+   `verificateur`), jamais un agent générique ; chaque agent ne reçoit que les extraits de son lot.
+   Les extraits se répartissent en lots de taille égale, 7 au plus ; les relevés de l'étape 2 bis
+   vont à un agent de plus, qui ne lit qu'eux. Le fait (29/10/2026, première exécution sur
+   DESKTOP-ULTRA7) : 99 sessions en 9 jours, dont 45 appels automatisés du juge `oracle-judge` ; un
+   agent par session en aurait lancé 99. Les 8 agents ont coûté 1,08 million de jetons pour 2,5 Mo
+   d'extraits, au-dessus du plafond : une période de plus de 7 jours se découpe. Dans les extraits,
+   le rôle des réponses est `reponse`, et aucun champ ne porte le poste : il est dans la sortie
+   d'`extraire.mjs`.
 
    | Mission | Outil réemployé |
    |---|---|
