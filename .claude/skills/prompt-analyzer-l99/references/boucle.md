@@ -39,6 +39,13 @@ cas et sans signal, L99 garde son mode simple, et le score du Ch8 s'écrit « pr
 - `borne` : 3 passes ;
 - `garde_longueur` : 15 %.
 
+**Extension jusqu'à 5 passes** (TF-2024, autorisation humaine du 29/10/2026 : « Adapte pour
+aller jusqu'à 5 passes si estimé nécessaire. »). À la borne de base, ou plus tôt, la session
+prolonge la boucle quand elle l'estime nécessaire, à deux conditions : la dernière passe a gagné
+au moins `gain_min` points, et des défauts graves restent retenus. Elle écrit alors au journal
+`arbitre.extension` : `borne` (au plus 5), `motif` et `decidee_apres_passe`. L'oracle refuse une
+extension au-delà de 5, sans motif, ou décidée après une passe qui ne gagne plus.
+
 Le seuil de score ne suffit jamais à arrêter : un prompt mesuré 84 avec 3 majeurs ouverts
 n'est pas fini (P5 de l'étude).
 
@@ -65,7 +72,7 @@ n'est pas fini (P5 de l'étude).
    est REJETÉE : on repart de la version précédente. Sinon, on s'arrête au premier cas atteint :
    - 0 bloquant et 0 majeur retenus, et seuil de score tenu s'il y en a un ;
    - gain de score mesuré inférieur à 3 points par rapport à la passe retenue précédente ;
-   - borne de 3 passes.
+   - borne de 3 passes, ou de l'extension déclarée (5 au plus).
 
 ## Ce que le Ch8 affiche dans ce mode
 
