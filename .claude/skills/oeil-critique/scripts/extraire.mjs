@@ -58,7 +58,11 @@ export function lireSession(fichier, depuisMs, tours = null) {
     if (o.type === "user") {
       const blocs = typeof c === "string" ? [c] : Array.isArray(c) && !c.some((b) => b.type === "tool_result") ? c.filter((b) => b.type === "text").map((b) => b.text) : [];
       const t = blocs.filter(estHumain).join("\n").trim();
-      if (t) { messages.push({ role: "humain", ts: o.timestamp, texte: t }); if (tours && debut !== null && fin !== null) tours.push((fin - debut) / 60000); debut = ts; fin = null; }
+      // 1.3.1 : un message que le harnais marque `turnOrigin: "sdk"` vient d'un appel automatique
+      // (`claude -p` d'un juge LLM, essai de réglage), pas du porteur. Mesuré à l'exécution du
+      // 29/10/2026 : 42 sessions sur 74, toutes comptées comme demandes humaines par la version 1.3.0.
+      if (t && o.turnOrigin === "sdk") messages.push({ role: "automatique", ts: o.timestamp, texte: t.slice(0, 80) });
+      else if (t) { messages.push({ role: "humain", ts: o.timestamp, texte: t }); if (tours && debut !== null && fin !== null) tours.push((fin - debut) / 60000); debut = ts; fin = null; }
       for (const j of blocs.filter(estInjection)) messages.push({ role: "injection", ts: o.timestamp, texte: j.slice(0, 80) });
       for (const h of blocs.filter(estHook)) {
         const tete = h.slice(0, TETE_REFUS);
@@ -85,7 +89,7 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
   const depuisMs = Date.parse(depuis);
   if (!Number.isFinite(depuisMs)) throw new Error(`--depuis illisible : ${depuis}`);
   mkdirSync(sortie, { recursive: true });
-  const bilan = { poste: poste(), depuis, sessions: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, injections: 0, caracteres: 0, tours: null, fichiers: [] };
+  const bilan = { poste: poste(), depuis, sessions: 0, sessions_automatiques: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, injections: 0, caracteres: 0, tours: null, fichiers: [] };
   const durees = [];
   for (const racine of profils) {
     for (const f of transcripts(racine, depuisMs)) {
@@ -93,6 +97,8 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
       if (exclure && id === exclure) { bilan.exclues.push(id); continue; }
       const messages = lireSession(f, depuisMs, durees);
       if (!messages.length) continue;
+      // Une session sans aucun message humain, mais avec des appels automatiques, ne s'analyse pas : elle se compte à part.
+      if (!messages.some((m) => m.role === "humain") && messages.some((m) => m.role === "automatique")) { bilan.sessions_automatiques++; continue; }
       const projet = anonymiser(basename(join(f, ".."))).texte;
       const pseudo = messages.map((m) => ({ ...m, texte: anonymiser(m.texte).texte }));
       const cible = join(sortie, `${id}.json`);
@@ -104,6 +110,7 @@ export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }
         if (m.role === "humain") bilan.messages_humains++;
         else if (m.role === "refus_hook") bilan.refus_hook++;
         else if (m.role === "injection") bilan.injections++;
+        else if (m.role === "automatique") bilan.sessions_automatiques += 0; // compté par session plus haut ; jamais une réponse
         else bilan.reponses++;
       }
     }
@@ -139,11 +146,17 @@ function selfTest() {
       ligne({ type: "user", timestamp: "2026-10-21T10:10:00Z", message: { content: "Seconde demande" } }),
       ligne({ type: "assistant", timestamp: "2026-10-21T10:12:00Z", message: { content: [{ type: "text", text: "Fait" }] } }),
     ].join("\n") + "\n");
+    writeFileSync(join(profil, "s-juge.jsonl"), [
+      ligne({ type: "user", timestamp: apres, turnOrigin: "sdk", message: { content: "# Rubrique figée — juge\nRépondre UNIQUEMENT en JSON" } }),
+      ligne({ type: "assistant", timestamp: apres, message: { content: [{ type: "text", text: "{\"verdict\":\"PASS\"}" }] } }),
+    ].join("\n") + "\n");
     writeFileSync(join(profil, "s-courante.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "lance l'œil critique" } }) + "\n");
     writeFileSync(join(profil, "s-courante", "subagents", "agent-x.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "consigne d'agent" } }) + "\n");
     const anonymiser = (t) => ({ texte: String(t).replaceAll("Produit-Reel", "Produit-99") });
     const b = extraire({ depuis: "2026-10-20T00:00:00+02:00", sortie: join(tmp, "out"), exclure: "s-courante", profils: [join(tmp, "projects")], anonymiser });
-    if (b.sessions !== 2) casse.push(`2 sessions attendues, ${b.sessions} lue(s) (sous-agents ou session courante comptés ?)`);
+    if (b.sessions !== 2) casse.push(`2 sessions attendues, ${b.sessions} lue(s) (sous-agents, session courante ou appel automatique comptés ?)`);
+    // 1.3.1 : une session d'appel automatique (turnOrigin « sdk ») se compte à part et ne s'analyse pas.
+    if (b.sessions_automatiques !== 1 || b.fichiers.some((f) => f.endsWith("s-juge.json"))) casse.push(`1 session automatique comptée à part, sans extrait, attendue : ${b.sessions_automatiques}`);
     if (b.exclues[0] !== "s-courante") casse.push("la session courante n'est pas exclue");
     if (b.messages_humains !== 4 || b.reponses !== 3) casse.push(`4 messages humains (texte simple et blocs, sans retour de hook) et 3 réponses attendus, ${b.messages_humains} et ${b.reponses}`);
     // 1.3.0 : 3 tours, 0, 5 et 2 minutes ; un retour de hook n'ouvre pas de tour, et le tour court jusqu'à la dernière entrée de l'assistant.
@@ -156,7 +169,7 @@ function selfTest() {
     if (JSON.stringify(s).includes("Produit-Reel")) casse.push("un nom réel sort du transcript");
     if (s.messages.some((m) => m.texte.includes("ancien"))) casse.push("un message antérieur au repère est extrait");
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 8, casse }));
+  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 9, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 
