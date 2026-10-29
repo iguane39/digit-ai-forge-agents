@@ -5,7 +5,7 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.6.3"
+  version: "2.7.0"
   updated: "2026-10-29"
 ---
 
@@ -28,6 +28,13 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
   Charger `references/boucle.md` ; le journal se juge par `scripts/oracle-boucle-l99.mjs` (TF-1831).
   Hors de ce mode, le score d'arrivée du Ch8 s'écrit **« projeté (non mesuré) »** : mesurés à
   l'aveugle le 16/10/2026, 5 prompts réécrits valaient de 6 à 12 points de moins que projeté.
+- **Ouverture d'office du mode boucle** (TF-2022, autorisation humaine du 29/10/2026) : sans
+  mot-clé, la session ouvre elle-même le mode boucle quand elle l'estime nécessaire ou préférable,
+  et d'office dès qu'un de ces cas est vrai : le prompt réécrit lancera un run, un mandat ou une
+  campagne d'agents qui écrit ; il sera réutilisé (template, system prompt, consigne d'agent) ;
+  l'analyse a relevé un défaut bloquant. Le Ch8 dit en une ligne pourquoi le mode a été ouvert,
+  ou pourquoi il ne l'a pas été. Le fait : au 29/10/2026, 1 analyse sur 5 rangées au pilot portait
+  un journal de boucle, et chaque restitution répétait « score projeté, non mesuré ».
 
 ## Workflow
 

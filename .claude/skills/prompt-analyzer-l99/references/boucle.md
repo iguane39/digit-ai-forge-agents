@@ -14,8 +14,19 @@ gagner. Ce mode boucle seulement si le juge n'est pas l'auteur.
 ## Déclenchement
 
 Le mode s'ouvre quand la demande contient « L99 boucle », « en boucle » ou « jusqu'à un score ».
-Il s'ouvre aussi quand l'utilisateur fixe un seuil (« jusqu'à 90 »). Sans l'un de ces signaux, L99 garde
-son mode simple. Dans le mode simple, le score du Ch8 s'écrit « projeté (non mesuré) ».
+Il s'ouvre aussi quand l'utilisateur fixe un seuil (« jusqu'à 90 »).
+
+**Ouverture d'office** (TF-2022, autorisation humaine du 29/10/2026 : « Est-ce que tu peux le
+lancer si tu estimes que cela est nécessaire et/ou préférable ? »). Sans signal, la session ouvre
+le mode quand elle l'estime nécessaire ou préférable, et d'office dans trois cas :
+
+- le prompt réécrit lancera un run, un mandat ou une campagne d'agents qui écrit (prompt de run :
+  2 relecteurs, voir « Une passe ») ;
+- il sera réutilisé : template, system prompt, consigne d'agent ;
+- l'analyse a relevé un défaut bloquant.
+
+Le Ch8 dit en une ligne pourquoi le mode a été ouvert, ou pourquoi il ne l'a pas été. Hors de ces
+cas et sans signal, L99 garde son mode simple, et le score du Ch8 s'écrit « projeté (non mesuré) ».
 
 ## L'arbitre, figé avant la passe 1
 
