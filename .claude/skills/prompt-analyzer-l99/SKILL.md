@@ -5,8 +5,8 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.6.2"
-  updated: "2026-10-18"
+  version: "2.6.3"
+  updated: "2026-10-29"
 ---
 
 # Prompt Analyzer L99
@@ -63,6 +63,9 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    au registre des types (R-25). Jamais un gabarit de nom composé par l'analyse : le 28/09,
    « <Projet> - <Objet> - <Type> - AAAAMMJJa » a coûté un renommage et le rejeu de tous les
    contrôles. Hors factory, le Ch8 reprend la convention du projet, ou n'en prescrit aucune.
+   **L'analyse elle-même**, écrite dans un tel projet, prend le type « Revue » du registre :
+   `<Projet> - Revue - Prompt <objet> passé au crible L99 - AAAAMMJJ<indice>.md`. « Analyse »
+   n'est pas au registre des types (TF-1975 : trois analyses ainsi typées chez un produit).
    Détail : `references/couches.md`, section « Nom du livrable ».
 10. **Mode boucle : le juge n'est jamais l'auteur** (TF-1831) : en mode L99 boucle, chaque passe
    est notée par un agent neuf qui ne voit ni l'analyse ni les passes précédentes ; chaque défaut

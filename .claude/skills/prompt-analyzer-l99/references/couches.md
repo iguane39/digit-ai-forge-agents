@@ -126,6 +126,12 @@ citent les deux règles qui le fixent :
 R-25 : `<Projet> - Étude - <Objet> - 20260928a.md` » est une instruction qu'on tient du premier
 coup. Un nom composé par l'analyse n'a aucune autorité, et c'est lui qu'un exécutant suivra.
 
+**L'analyse elle-même porte le type « Revue »** (TF-1975, 29/10/2026). Le fait : chez un produit,
+trois analyses L99 des 16 et 19/10/2026 ont pris le type « Analyse » dans leur nom. « Analyse »
+n'est pas au registre des types (36 types, forge-organization 1.6.0), et rien ne l'a signalé.
+L'analyse est une revue d'un existant contre une grille : dans un projet de la factory, son nom
+est `<Projet> - Revue - Prompt <objet> passé au crible L99 - AAAAMMJJ<indice>.md`.
+
 **Borne** : hors factory, le Ch8 reprend la convention que le projet déclare, ou n'en prescrit
 aucune. L99 **cite** R-4 et R-25, il ne les vérifie pas : le contrôle appartient au producteur,
 par la conformité du pilot.
