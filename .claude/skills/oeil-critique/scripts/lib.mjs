@@ -1,5 +1,5 @@
 // lib.mjs — résolution du pilot et du poste, communes aux scripts du skill oeil-critique.
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { hostname } from "node:os";
 
@@ -27,3 +27,16 @@ export function pilot(args = []) {
 }
 
 export const valeur = (args, nom) => { const i = args.indexOf(nom); return i >= 0 ? args[i + 1] : null; };
+
+/** Les transcripts d'un profil modifiés depuis une date, sous-agents exclus : leur travail se voit
+ *  dans la session qui les a lancés. Partagé par extraire.mjs et sources.mjs (1.2.0). */
+export function transcripts(racine, depuisMs) {
+  const out = [];
+  if (!existsSync(racine)) return out;
+  for (const n of readdirSync(racine, { withFileTypes: true })) {
+    const p = join(racine, n.name);
+    if (n.isDirectory()) { if (n.name !== "subagents") out.push(...transcripts(p, depuisMs)); }
+    else if (n.name.endsWith(".jsonl") && statSync(p).mtimeMs >= depuisMs) out.push(p);
+  }
+  return out;
+}

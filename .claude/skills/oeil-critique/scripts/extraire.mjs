@@ -21,25 +21,14 @@
  *   node extraire.mjs --self-test
  * Exit 0 / 1 (refus : référentiel de pseudonymisation absent) / 2 (usage).
  */
-import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
-import { pilot, poste, valeur } from "./lib.mjs";
+import { pilot, poste, valeur, transcripts } from "./lib.mjs";
 
 /** Caractères gardés d'un retour de hook : la tête porte le verdict et les codes de règle. */
 export const TETE_REFUS = 1500;
-
-function transcripts(racine, depuisMs) {
-  const out = [];
-  if (!existsSync(racine)) return out;
-  for (const n of readdirSync(racine, { withFileTypes: true })) {
-    const p = join(racine, n.name);
-    if (n.isDirectory()) { if (n.name !== "subagents") out.push(...transcripts(p, depuisMs)); }
-    else if (n.name.endsWith(".jsonl") && statSync(p).mtimeMs >= depuisMs) out.push(p);
-  }
-  return out;
-}
 
 /** Les messages humains et les textes de réponse d'un transcript, depuis une date. */
 export function lireSession(fichier, depuisMs) {
