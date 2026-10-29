@@ -24,7 +24,9 @@
  *         constaté, lots de retours de la période et le sort de leurs items.
  *   node sources.mjs silencieux --depuis <iso> [--profils <d1;d2>] [--pilot <chemin>]
  *       → durée des hooks lue aux transcripts (jamais relancés), familles d'avertissements du relevé
- *         d'ouverture par nombre de sessions, domaines d'oracle sans un échec sur la période.
+ *         d'ouverture par nombre de sessions, domaines d'oracle sans un échec sur la période. Un nom de
+ *         répertoire du parc cité par un avertissement passe par `pseudonymeProduit` comme celui d'un
+ *         produit (1.3.3, D-106 (b)) ; les dépôts de l'écosystème (`estDepotEcosysteme`) restent nommés.
  *   node sources.mjs --self-test
  * Sortie JSON, exit 0 / 1 (refus) / 2 (usage).
  */
@@ -227,10 +229,41 @@ export function domainesMuets(racine, depuis) {
 /** Décisions réservées au registre du pilot depuis la date (1.3.0 : décisions posées, indicateur). */
 export const decisionsReservees = (racine, depuisMs) => lignesJson(join(racine, "decisions", "REGISTRE.jsonl")).filter((d) => d.type === "decision" && Date.parse(d.ts) >= depuisMs).length;
 
-export function silencieux(racine, depuis, profils, anonymiser) {
+/**
+ * Les noms de répertoire du parc qu'un avertissement d'ouverture peut citer (1.3.3, D-106 (b)) : les
+ * répertoires voisins du pilot, et le dernier segment de chaque produit relevé au démarrage (un produit
+ * peut vivre sous un dossier de client). Les dépôts de l'écosystème, `estPublic(nom)`, restent nommés.
+ * Un fichier du parc n'est pas un nom de produit : seuls les répertoires comptent.
+ */
+export function nomsDuParc(racine, estPublic) {
+  const noms = new Set();
+  try { for (const d of readdirSync(join(racine, ".."), { withFileTypes: true })) if (d.isDirectory()) noms.add(d.name); } catch { /* parc illisible : dit par l'absence de noms */ }
+  try { for (const c of Object.keys(JSON.parse(readFileSync(join(racine, ".oracles", "produits-au-demarrage.json"), "utf8")).produits || {})) noms.add(c.split(/[\\/]/).pop()); } catch { /* aucun relevé des produits */ }
+  return [...noms].filter((n) => n && !estPublic(n));
+}
+
+/**
+ * Remplace, dans un texte, chaque nom de répertoire du parc par son nom publiable (`pseudoProduit` :
+ * `Produit-NN`, ou « (produit hors table) »). UNE SEULE PASSE sur une alternance, noms longs d'abord :
+ * des passes successives réécriraient le marqueur lui-même si un répertoire porte un mot du marqueur.
+ * Le nom se cherche en entier (ni lettre, chiffre, souligné ni tiret de part et d'autre), sans casse.
+ * Prix déclaré : un répertoire au nom d'un mot courant masque aussi ce mot dans une ligne d'alerte.
+ */
+export function pseudonymiserParc(texte, noms, pseudoProduit) {
+  if (!noms.length) return String(texte);
+  const parNom = new Map(noms.map((n) => [n.toLowerCase(), n]));
+  const alternance = [...parNom.values()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  return String(texte).replace(new RegExp(`(?<![\\p{L}\\p{N}_-])(?:${alternance})(?![\\p{L}\\p{N}_-])`, "giu"), (m) => pseudoProduit(parNom.get(m.toLowerCase())));
+}
+
+export function silencieux(racine, depuis, profils, anonymiser, pseudoProduit, estPublic) {
+  // Refuser plutôt que relever en clair : sans pseudonymeur de produit, aucun nom de répertoire ne se masque.
+  if (typeof pseudoProduit !== "function" || typeof estPublic !== "function") throw new Error("silencieux : pseudonymeur de produit manquant, relevé refusé");
   const depuisMs = Date.parse(depuis);
   const fichiers = profils.flatMap((p) => transcripts(p, depuisMs));
-  const h = lireHooks(fichiers, depuisMs, anonymiser);
+  const noms = nomsDuParc(racine, estPublic);
+  // Les noms du parc d'abord : l'anonymiseur peut déformer un nom de répertoire sans l'effacer.
+  const h = lireHooks(fichiers, depuisMs, (t) => anonymiser(pseudonymiserParc(t, noms, pseudoProduit)));
   // Jetons des relectures d'intention sur la période, par le relevé de la flotte du pilot.
   const jours = Math.max(1, Math.ceil((Date.now() - depuisMs) / 864e5));
   const flotte = jouer(racine, "scripts/relever-flotte.mjs", ["--jours", String(jours), "--json"]);
@@ -321,8 +354,29 @@ async function selfTest() {
     ecrire(join(racine, ".oracles", "doc.md.oracles-historique.jsonl"), [{ date_iso: "2026-10-27T10:00:00Z", fails: ["Lisibilité:doc.md"] }, { date_iso: "2026-10-28T10:00:00Z", fails: [] }, { date_iso: "2026-10-01T10:00:00Z", fails: ["Sécurité / secrets:doc.md"] }].map((o) => JSON.stringify(o)).join("\n") + "\n");
     const d = domainesMuets(racine, depuis);
     if (d.length !== 1 || d[0].domaine !== "Sécurité / secrets" || d[0].passages !== 2) casse.push(`domaines sans échec : Sécurité / secrets, 2 passages attendus (l'échec ancien hors période), ${JSON.stringify(d)}`);
+
+    // 1.3.3 (D-106 (b)) : un nom de répertoire du parc dans un avertissement d'ouverture ne sort pas.
+    // Noms inventés ; le parc de l'essai est le dossier temporaire, voisin de `pilot`.
+    for (const n of ["Repertoire-Fictif", "Table-Fictive", "digit-ai-forge-fictive"]) ecrire(join(tmp, n, ".garde"), "");
+    ecrire(join(tmp, "Fichier-Fictif.zip"), "pas un répertoire");
+    const avert = ["- [avert] Repertoire-Fictif — répertoire NON versionné portant un nom de l'écosystème",
+      "- [avert] Table-Fictive — répertoire NON versionné portant un nom de l'écosystème",
+      "- [avert] digit-ai-forge-fictive — 3 modification(s) locale(s) non enregistrée(s)",
+      "- REPERTOIRE-FICTIF : 2 absent(s), 1 divergent(s) — DÉFAUT : SANS lanceur de hooks"].join("\n");
+    const tr3 = join(tmp, "profil-parc", "s-c.jsonl");
+    ecrire(tr3, att("2026-10-27T09:00:00Z", { type: "async_hook_response", hookEvent: "SessionStart", command: "node hook-ouverture.mjs --contexte-json", stdout: JSON.stringify({ hookSpecificOutput: { additionalContext: avert } }) }) + "\n");
+    const estPublic = (n) => /^digit-ai/.test(n);
+    const pseudoParc = (n) => (n === "Table-Fictive" ? "Produit-98" : "(produit hors table)");
+    // Le témoin rouge : sans la correction, l'anonymiseur seul laisse sortir le nom (la fixture prouve le défaut).
+    if (!JSON.stringify(lireHooks([tr3], Date.parse(depuis), anonymiser)).includes("Repertoire-Fictif")) casse.push("témoin : sans pseudonymisation du parc, le nom de répertoire devrait sortir (fixture sans défaut)");
+    const sil = silencieux(racine, depuis, [join(tmp, "profil-parc")], anonymiser, pseudoParc, estPublic);
+    if (/repertoire-fictif/i.test(JSON.stringify(sil))) casse.push(`un nom de répertoire du parc sort du relevé silencieux, ${JSON.stringify(sil.avertissements)}`);
+    const fams = sil.avertissements.map((a) => a.famille);
+    if (!fams.some((f) => f.startsWith("- [avert] (produit hors table) — répertoire NON versionné")) || !fams.some((f) => f.startsWith("- [avert] Produit-N — répertoire NON versionné")) || !fams.some((f) => f.startsWith("- (produit hors table) : N absent(s)"))) casse.push(`répertoire hors table : « (produit hors table) », répertoire de la table : son pseudonyme, y compris en majuscules, ${JSON.stringify(fams)}`);
+    const noms = nomsDuParc(racine, estPublic);
+    if (!noms.includes("Repertoire-Fictif") || !noms.includes("Table-Fictive") || noms.includes("digit-ai-forge-fictive") || noms.includes("Fichier-Fictif.zip") || !fams.some((f) => f.includes("digit-ai-forge-fictive"))) casse.push(`noms du parc : répertoires du parc masqués, dépôt de l'écosystème et fichier laissés, ${JSON.stringify(noms)}`);
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "sources", self_test: casse.length ? "FAIL" : "PASS", cas: 19, casse }));
+  console.log(JSON.stringify({ outil: "sources", self_test: casse.length ? "FAIL" : "PASS", cas: 23, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 
@@ -342,7 +396,8 @@ else {
     const profils = p ? p.split(";") : [join(homedir(), ".claude", "projects"), join(homedir(), ".claude-b", "projects")];
     const { pseudonymeProduit } = await import(pathToFileURL(join(racine, "scripts", "lib-pseudonyme-produit.mjs")).href);
     const { lotsARemettre } = await import(pathToFileURL(join(racine, "oracles", "lib-retours-produit.mjs")).href);
-    const r = quoi === "produits" ? await produits(racine, depuis, pseudonymeProduit, (c) => lotsARemettre(c, racine)) : quoi === "existant" ? existant(racine, depuis) : silencieux(racine, depuis, profils, anonymiser);
+    const { estDepotEcosysteme } = await import(pathToFileURL(join(racine, "scripts", "lib-parc.mjs")).href);
+    const r = quoi === "produits" ? await produits(racine, depuis, pseudonymeProduit, (c) => lotsARemettre(c, racine)) : quoi === "existant" ? existant(racine, depuis) : silencieux(racine, depuis, profils, anonymiser, pseudonymeProduit, estDepotEcosysteme);
     console.log(JSON.stringify({ outil: "sources", quoi, depuis, ...r }, null, 1));
   } catch (e) { console.log(JSON.stringify({ outil: "sources", refus: e.message })); process.exit(1); }
 }

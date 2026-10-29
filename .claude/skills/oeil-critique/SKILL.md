@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Six missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, process attendus, existant et suppressions. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.3.2"
+  version: "1.3.3"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -23,6 +23,9 @@ d'un agent par session, et le champ « descente déclarée » retiré du relevé
 Version 1.3.2 du 29/10/2026, exécution sur Dell-XPS-16 : les sessions d'appel automatique (juge LLM,
 essais lancés par `claude -p`, marquées `turnOrigin: "sdk"`) sont comptées à part et ne s'analysent
 plus ; elles faisaient 42 des 74 sessions de la période et faussaient la durée des tours.
+Version 1.3.3 du 29/10/2026, décision D-106 (b) : le relevé `silencieux` pseudonymise les noms de répertoire du
+parc cités par les avertissements d'ouverture, comme les autres relevés (`pseudonymeProduit` du pilot : un
+répertoire hors table devient « (produit hors table) ») ; les dépôts de l'écosystème restent nommés.
 
 **Limite déclarée, à lire avant tout usage.** Deux exécutions réelles complètes, une par poste : le
 26/10/2026 sur Dell-XPS-16 et le 29/10/2026 sur DESKTOP-ULTRA7. La seconde est la première à lire les
@@ -157,8 +160,9 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
 - `node {skilldir}/scripts/repere.mjs --self-test` : 12 cas, dont un repère qui recule, une sortie
   de 11 lignes et des indicateurs incomplets, refusés ; l'évolution des indicateurs, sans NaN pour
   un indicateur ajouté depuis, le palier dû après 30 jours et sa date gardée d'une exécution à l'autre.
-- `node {skilldir}/scripts/sources.mjs --self-test` : 19 cas, dont un nom réel de produit qui ne
-  sort pas, une exécution de hook antérieure au repère ignorée, une famille d'avertissements
+- `node {skilldir}/scripts/sources.mjs --self-test` : 23 cas, dont un nom réel de produit qui ne
+  sort pas, un nom de répertoire du parc cité par un avertissement qui ne sort pas (avec son témoin sans
+  correction, qui le laisse sortir), une exécution de hook antérieure au repère ignorée, une famille d'avertissements
   normalisée qui garde son numéro d'item, un avertissement qui survit à la correction de son item,
   un item en cours endormi, une forge aveugle, des lots jamais parvenus, et un domaine d'oracle qui
   n'a échoué qu'avant la période, compté sans échec.
