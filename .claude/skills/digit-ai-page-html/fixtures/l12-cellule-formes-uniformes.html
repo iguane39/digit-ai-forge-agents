@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Droits par profil — 20261029a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+ul{margin:0;padding-left:16px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1967 (RT-16, lot Produit-84 20261019e), sens VERT (les memes droits, chaque cellule de la colonne en liste). Deux defauts de forme dans un meme tableau :
+  (a) la colonne « Droits » enumere par des virgules dans la cellule « Auditeur » (cinq elements) ;
+  (b) la meme colonne melange une cellule en liste (« Administrateur »), une cellule qui enumere par
+  des virgules (« Auditeur ») et une cellule de trois points en paragraphe (« Invite »).
+  check_html rendait PASS : L12 ne lisait ni les virgules d une cellule ni la forme des cellules soeurs.
+  Attendu : aucun des deux avertissements L12.
+-->
+<body><main class="wrap">
+<h1>Droits par profil</h1>
+<table>
+<thead><tr><th>Profil</th><th>Droits</th><th>Perimetre</th></tr></thead>
+<tbody>
+<tr><td>Administrateur</td><td><ul><li>Creer des comptes</li><li>Retirer des comptes</li><li>Lire le journal</li></ul></td><td>Toute l'organisation</td></tr>
+<tr><td>Auditeur</td><td><ul><li>Lecture</li><li>Export</li><li>Filtrage</li><li>Impression</li><li>Consultation du journal</li></ul></td><td>Un projet</td></tr>
+<tr><td>Invite</td><td><ul><li>Lecture seule</li><li>Export sur demande</li><li>Aucune suppression possible</li></ul></td><td>Un dossier</td></tr>
+</tbody></table>
+</main></body></html>

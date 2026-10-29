@@ -5751,6 +5751,216 @@ def run_v24_prose_verticale():
     return out
 
 
+def run_lot_a_check_html():
+    """Quatre règles de `check_html.py` du lot du 29/10/2026 — chacune jouée dans les deux sens.
+
+    TF-1962 (RT-11) : L3 « valeur sans légende » NOMME la classe réservée qui le déclenche et publie la
+    liste des classes réservées (la rouge : 3 échecs dont le message dit « pv » ; la verte, même page,
+    classe hors liste : 0 échec). Un score par classe (`sc`) nomme la sienne.
+    TF-1969 (RT-18) : L18 reconnaît un code de règle en lettres PUIS chiffres (ADR0501, OSP0901,
+    GDE0202-R05) ; ISO27001, SHA256 et HTTP404 ne sont pas accusés ; glosés (abbr title, lien, aria-label),
+    les mêmes codes passent.
+    TF-1970 (RT-19) : L27 juge aussi les en-têtes de LIGNE d'une page qui n'est pas déclarée de données
+    (avertissement) ; définis (data-definition, title, abbr title), ils passent.
+    TF-1967 (RT-16) : L12 lit l'énumération par virgules d'une cellule et la colonne dont les cellules
+    sœurs mêlent liste et prose (avertissements) ; en listes partout, rien.
+    """
+    out = []
+
+    def lire(nom):
+        return (FIXTURES / nom).read_text(encoding="utf-8")
+
+    def cas(nom, ok, attendu, obtenu, regle, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": regle, "detail": "" if ok else detail[:300]})
+
+    # --- TF-1962 : L3 nomme la classe réservée ---
+    fails, _ = check(lire("l3-classe-reservee-pv.html"), regles="L")
+    l3 = [f for f in fails if f.startswith("L3 valeur sans légende")]
+    nomme = [f for f in l3 if "classe réservée « pv »" in f and "classes de valeur réservées : badge, chip-val, kpi, pastille, pv, stat" in f]
+    cas("l3-classe-reservee-pv.html", len(l3) == 3 and len(nomme) == 3, "3 échecs L3 nommant « pv » et la liste",
+        f"{len(l3)} échec(s), {len(nomme)} nommant la classe", "TF-1962 L3 nomme la classe", " | ".join(fails))
+    fails, _ = check(lire("l3-classe-non-reservee.html"), regles="L")
+    cas("l3-classe-non-reservee.html", not [f for f in fails if f.startswith("L3")], "0 échec L3",
+        f"{len([f for f in fails if f.startswith('L3')])} échec(s) L3", "TF-1962 classe hors liste", " | ".join(fails))
+    score = ('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Digit-AI — essai — 20261029a</title></head>'
+             '<body><main><p>Maturité : <span class="sc">3</span></p></main></body></html>')
+    fails, _ = check(score, regles="L")
+    l3s = [f for f in fails if f.startswith("L3 valeur sans barème lié")]
+    cas("score par classe (en mémoire)", len(l3s) == 1 and "classe réservée « sc »" in l3s[0],
+        "L3 barème nommant « sc »", f"{len(l3s)} échec(s)", "TF-1962 score par classe", " | ".join(fails))
+
+    # --- TF-1969 : L18 lit les codes de règle sans espace ---
+    # AVERTISSEMENT et non échec (mesure du 29/10/2026 : GR223, WRD0000, ATT00759 sur le parc) ; les formes
+    # historiques (`ADR 0009`) restent des échecs, joués par l18-identifiant-muet.
+    fails, warns = check(lire("l18-code-regle-nu.html"), regles="L")
+    w18 = [x for x in warns if x.startswith("L18 code de règle sans glose")]
+    cas("l18-code-regle-nu.html",
+        len(w18) == 1 and "3 code(s)" in w18[0] and all(c in w18[0] for c in ("ADR0501", "OSP0901", "GDE0202-R05"))
+        and not [f for f in fails if f.startswith("L18")] and "ISO27001" not in w18[0] and "SHA256" not in w18[0],
+        "1 avertissement L18 nommant ADR0501, OSP0901, GDE0202-R05, 0 échec", f"{len(w18)} avertissement(s)",
+        "TF-1969 code de règle nu", " | ".join(warns + fails))
+    fails, warns = check(lire("l18-code-regle-glose.html"), regles="L")
+    cas("l18-code-regle-glose.html", not [x for x in warns + fails if x.startswith("L18")], "0 L18",
+        str([x[:40] for x in warns + fails if x.startswith("L18")]), "TF-1969 codes glosés", " | ".join(warns))
+
+    # --- TF-1970 : L27 juge les en-têtes de ligne hors page de données ---
+    fails, warns = check(lire("l27-entetes-de-ligne-muets.html"), regles="L")
+    w = [x for x in warns if x.startswith("L27 en-têtes de ligne sans définition")]
+    cas("l27-entetes-de-ligne-muets.html", len(w) == 1 and "4 sur 4" in w[0] and not [f for f in fails if f.startswith("L27")],
+        "1 avertissement L27 (4 sur 4), 0 échec", f"{len(w)} avertissement(s)", "TF-1970 en-têtes de ligne", " | ".join(warns))
+    fails, warns = check(lire("l27-entetes-de-ligne-definis.html"), regles="L")
+    cas("l27-entetes-de-ligne-definis.html", not [x for x in warns + fails if x.startswith("L27")], "0 L27",
+        str([x[:40] for x in warns + fails if x.startswith("L27")]), "TF-1970 en-têtes définis", " | ".join(warns))
+
+    # --- TF-1967 : L12 voit les virgules d'une cellule et la colonne de formes mêlées ---
+    fails, warns = check(lire("l12-cellule-formes-melees.html"), regles="L")
+    v = [x for x in warns if x.startswith("L12 énumération en cellule (virgules")]
+    m = [x for x in warns if x.startswith("L12 colonne de formes mêlées")]
+    cas("l12-cellule-formes-melees.html", len(v) == 1 and len(m) == 1 and not [f for f in fails if f.startswith("L12")],
+        "1 avertissement virgules + 1 colonne de formes mêlées, 0 échec", f"{len(v)} + {len(m)}",
+        "TF-1967 cellules", " | ".join(warns))
+    fails, warns = check(lire("l12-cellule-formes-uniformes.html"), regles="L")
+    cas("l12-cellule-formes-uniformes.html", not [x for x in warns + fails if x.startswith("L12")], "0 L12",
+        str([x[:40] for x in warns + fails if x.startswith("L12")]), "TF-1967 cellules en listes", " | ".join(warns))
+    return out
+
+
+# Cas de RENDU du lot du 29/10/2026 : (fixture, largeur, famille, attendu, arguments en plus).
+# `attendu` : un entier (compte exact) ou ("min", n).
+CAS_LOT_A_RENDU = [
+    # TF-1992 (RA-2) : V1 ne compte plus la bande de sommaire défilante que L25 prescrit ; hors sommaire, elle reste accusée.
+    ("v1-bande-sommaire-defilante.html", 390, "v1_overflow", 0, []),
+    ("v1-bande-sommaire-defilante.html", 390, "unmeasured", ("min", 1), []),
+    ("v1-bande-defilante-hors-sommaire.html", 390, "v1_overflow", ("min", 1), []),
+    # TF-1966 (RT-15) : V25, colonne large et vide face à une colonne étranglée (avertissement).
+    ("v25-colonne-large-et-vide.html", 1440, "colonnes_desequilibrees", 1, []),
+    ("v25-colonnes-equilibrees.html", 1440, "colonnes_desequilibrees", 0, []),
+    # TF-1963 (RT-12) : V26, un panneau déplié se mesure (fond transparent, recouvrement).
+    ("v26-panneau-transparent.html", 1440, "panneau_deplie", 1, []),
+    ("v26-panneau-recouvert.html", 1440, "panneau_deplie", 1, []),
+    ("v26-panneau-opaque.html", 1440, "panneau_deplie", 0, []),
+    # TF-1964 (RT-13) : le composant embarqué sur une page SANS jetons garde un panneau opaque, état ouvert.
+    ("v26-composant-sans-jetons.html", 1440, "panneau_deplie", 0, ["--etats-ouverts"]),
+    # TF-1965 (RT-14) : V27, les filtres de colonne ont une place dans le repli en cartes (ou une déclaration).
+    ("v27-filtres-masques-par-le-repli.html", 390, "filtres_masques_repli", 1, []),
+    ("v27-filtres-masques-par-le-repli.html", 1440, "filtres_masques_repli", 0, []),
+    ("v27-filtres-en-barre-dans-le-repli.html", 390, "filtres_masques_repli", 0, []),
+    ("v27-filtres-en-barre-dans-le-repli.html", 390, "v1_overflow", 0, ["--etats-ouverts"]),
+    ("v27-recherche-remplace-les-filtres.html", 390, "filtres_masques_repli", 0, []),
+]
+
+
+def run_lot_a_rendu():
+    """Les cas de rendu du lot du 29/10/2026 (V1 bande de sommaire, V25, V26, V27). Silencieux sans playwright."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import subprocess
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-lot-a-")
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    cache = {}
+    out = []
+    for nom, largeur, famille, attendu, extra in CAS_LOT_A_RENDU:
+        etiquette = f"{nom} · {largeur} px · {famille}" + (" · états ouverts" if extra else "")
+        cle = (nom, largeur, tuple(extra))
+        if cle not in cache:
+            r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(FIXTURES / nom), "--widths", str(largeur),
+                                "--output", "json", "--out", captures, *extra],
+                               capture_output=True, text=True, encoding="utf-8")
+            try:
+                cache[cle] = json.loads(r.stdout)["breakpoints"][str(largeur)]["issues"]
+            except Exception:  # noqa: BLE001
+                cache[cle] = None
+        issues = cache[cle]
+        if issues is None:
+            out.append({"fixture": etiquette, "verdict": "ECHEC", "attendu": attendu, "obtenu": 0,
+                        "regle": famille, "detail": "render_page illisible"})
+            continue
+        # Une famille ABSENTE du rapport (outil d'avant la règle) vaut -1 : jamais un « 0 constat » vert.
+        n = len(issues[famille]) if famille in issues else -1
+        ok = (n >= attendu[1]) if isinstance(attendu, tuple) else (n == attendu)
+        out.append({"fixture": etiquette, "verdict": "OK" if ok else "ECHEC", "attendu": attendu, "obtenu": n,
+                    "regle": famille, "detail": "" if ok else f"{n} constat(s) {famille} à {largeur} px"})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
+def run_lot_a_composants():
+    """TF-1964 (RT-13) — un composant consomme des jetons que l'hôte ne déclare pas : repli ET alerte.
+
+    LE FAIT PAYÉ. `table-filters.css` lisait --surface, --muted, --r-sm et --sans sans repli ; une page
+    qui ne les déclarait pas rendait cinq panneaux de filtre au fond rgba(0,0,0,0), `--constat` et
+    check_html PASS. Deux barrières, jouées ici :
+      · la feuille du composant n'a plus AUCUN `var(--x)` sans valeur de repli (sens rouge : l'état
+        d'avant, `var(--surface)` nu, est reconnu) ;
+      · `embarquer-composants.mjs --constat` refuse un bloc CSS embarqué qui consomme sans repli un jeton
+        absent de la page, et `--poser` le dit à la pose ; la même page, jetons déclarés, passe.
+    Silencieux si node est absent.
+    """
+    if not shutil.which("node"):
+        return None
+    import subprocess
+    import tempfile
+    poseur = str(Path(__file__).resolve().parent / "embarquer-composants.mjs")
+    out = []
+
+    def cas(nom, attendu, obtenu, regle, detail=""):
+        ok = attendu == obtenu
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": str(attendu)[:96],
+                    "obtenu": str(obtenu)[:96], "regle": regle,
+                    "detail": "" if ok else (detail or f"attendu {attendu!r}, obtenu {obtenu!r}")[:300]})
+
+    def sans_repli(css):
+        sans_commentaires = re.sub(r"/\*[\s\S]*?\*/", "", css)
+        return sorted({m.group(1) for m in re.finditer(r"var\(\s*(--[\w-]+)\s*\)", sans_commentaires)})
+
+    css = (FIXTURES.parent / "assets" / "table-filters.css").read_text(encoding="utf-8")
+    cas("assets/table-filters.css · aucun var() sans repli", [], sans_repli(css), "TF-1964 repli")
+    cas("l'état d'avant (var(--surface) nu) est reconnu (sens rouge)", ["--surface"],
+        sans_repli("background: var(--surface); color: var(--ink, CanvasText);"), "TF-1964 contre-épreuve")
+
+    atelier = tempfile.mkdtemp(prefix="self-test-jetons-")
+    try:
+        def page(nom, jetons):
+            chemin = Path(atelier) / nom
+            chemin.write_text('<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="UTF-8">\n'
+                              "<title>Digit-AI — jetons · essai — 20261029a</title>\n"
+                              f"<style>:root{{{jetons}}}</style>\n</head>\n<body>\n<h1>Essai</h1>\n</body>\n</html>\n",
+                              encoding="utf-8", newline="\n")
+            return chemin
+
+        def lancer(*args):
+            return subprocess.run(["node", poseur, *args], capture_output=True, text=True, encoding="utf-8")
+
+        nu = page("hote-sans-jetons.html", "--x:1")
+        p = lancer("--poser", str(nu), "--composants", "tuiles-indicateurs.css")
+        cas("poseur · --poser nomme les jetons que la page doit déclarer", (0, True),
+            (p.returncode, "ATTENTION : tuiles-indicateurs.css consomme sans repli" in p.stdout and "--surface" in p.stdout),
+            "TF-1964 --poser", p.stdout[-300:])
+        c = lancer("--constat", str(nu))
+        cas("poseur · --constat refuse un jeton consommé sans repli et absent (sens rouge)", (1, True),
+            (c.returncode, "SANS repli et absent(s) de la page" in c.stdout and "--surface" in c.stdout),
+            "TF-1964 --constat", c.stdout[-300:])
+        declares = ("--blue:#2563EB;--green:#15803D;--head:Montserrat;--ink:#0F172A;--line:#E6EAF2;"
+                    "--muted:#64748B;--r:12px;--red:#B91C1C;--surface:#FFFFFF")
+        garni = page("hote-avec-jetons.html", declares)
+        lancer("--poser", str(garni), "--composants", "tuiles-indicateurs.css")
+        c = lancer("--constat", str(garni))
+        cas("poseur · la même page, jetons déclarés, passe (sens vert)", 0, c.returncode, "TF-1964 --constat", c.stdout[-300:])
+        repli = page("hote-repli.html", "--x:1")
+        lancer("--poser", str(repli), "--composants", "table-filters.css")
+        c = lancer("--constat", str(repli))
+        cas("poseur · table-filters.css sur une page SANS jetons passe : chaque jeton porte son repli", 0,
+            c.returncode, "TF-1964 repli", c.stdout[-300:])
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -5767,7 +5977,15 @@ def main():
            + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
            + run_classe_source_machine() + run_avertissements_15_10()
            + run_l39_graphique_maison() + run_dates_jjmm()
-           + run_kpi_hors_page_conteneur())
+           + run_kpi_hors_page_conteneur() + run_lot_a_check_html())
+    # TF-1964 — le composant embarque lit des jetons que l'hote ne declare pas : repli et alerte.
+    composants_jetons = run_lot_a_composants()
+    if composants_jetons:
+        res += composants_jetons
+    # TF-1992, TF-1966, TF-1963, TF-1965 — V1 bande de sommaire, V25, V26, V27 (rendu).
+    lot_a_rendu = run_lot_a_rendu()
+    if lot_a_rendu:
+        res += lot_a_rendu
     rendu = run_rendu()
     if rendu:
         res += rendu

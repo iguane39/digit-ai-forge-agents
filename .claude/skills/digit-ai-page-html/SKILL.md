@@ -1,19 +1,48 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21–V24 et les règles de lisibilité L1–L39 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21–V27 et les règles de lisibilité L1–L39 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.41.0"
+  version: "1.42.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.42.0 (29/10/2026)** — **neuf retours de produits corrigés à la cause (TF-1962 à TF-1967, TF-1969, TF-1970, TF-1992 ; lots Produit-84 des
+19/10 et Produit-85 du 24/10, décisions R-58 : exécutées).** Chaque règle a sa fixture rouge et sa verte, jouées avant et après ; 29 cas
+neufs au self-test (`run_lot_a_check_html`, `run_lot_a_composants`, `run_lot_a_rendu`), 20 rouges sur la version d'avant, 29 verts après.
+**(1) L3 nomme la classe réservée qui le déclenche (TF-1962).** Une classe de mise en page `pv` a produit 95 échecs « valeur sans légende »
+sans que l'auteur sache que la CLASSE les déclenchait ; le message dit désormais « classe réservée « pv » » et publie la liste
+(`badge, chip-val, kpi, pastille, pv, stat` ; scores `jauge, sc, score`, et « note » suivie d'un chiffre), `lisibilite.md` § L3 la publie aussi.
+**(2) Les composants lisent des jetons AVEC repli, et l'hôte qui n'en déclare pas le sait (TF-1964).** `table-filters.css` lisait
+`--surface`, `--muted`, `--r-sm` et `--sans` nus : une page écrite à la main rendait cinq panneaux de filtre au fond `rgba(0,0,0,0)`. Chaque
+`var()` de la feuille porte un repli, MOT-CLÉ DE COULEUR SYSTÈME (`Canvas`, `CanvasText`, `GrayText`, `LinkText`), jamais une couleur en dur ;
+`embarquer-composants.mjs --constat` refuse un bloc CSS embarqué qui lit sans repli un jeton absent de la page, et `--poser` le dit à la
+pose. **(3) Les filtres de colonne ont une place dans le repli en cartes (TF-1965).** Le repli masquait le `thead` et ses cinq déclencheurs
+(0 x 0 à 390 px) : sous 900 px, `table-filters.css` les pose en barre de puces au-dessus des cartes ; la famille `filtres_masques_repli`
+(V27, bloquante) refuse un tableau replié dont un déclencheur est en `display:none`, écart voulu `data-filtres-remplaces="<raison>"` ;
+bruit mesuré : 10 pages sur 49 livrables du pilot l'accusent à 390 px, toutes de vrais défauts (0 à 1 440 px).
+**(4) Un panneau déplié se mesure (TF-1963).** `panneau_deplie` (V26, bloquante) : neuf points d'échantillon par panneau visible (fond opaque
+dans la pile, texte dessous), et le centre de trois contrôles. Cas fondateur rejoué de bout en bout : outil d'avant et feuille d'avant,
+PASS ; outil neuf et feuille d'avant, FAIL (fond `rgba(0,0,0,0)`, 6 points sur 9) ; feuille neuve, PASS. **(5) Colonnes déséquilibrées
+(TF-1966).** `colonnes_desequilibrees` (V25, avertissement) : une colonne à 25 % du tableau ou plus, remplie à 30 % ou moins, face à une
+colonne plus étroite, pleine et sur 3 lignes ou plus ; écart voulu `data-colonnes-ok`. **(6) Trois règles de forme, toutes en avertissement
+(TF-1967, TF-1970, TF-1969).** L12 lit les virgules d'une cellule (4 éléments) et la colonne qui mêle listes et prose ; L27 juge aussi les
+`<th scope="row">` d'une page qui n'est pas déclarée de données (écart voulu `data-entetes-ok`) ; L18 signale un code de règle en lettres puis
+chiffres (`ADR0501`, `OSP0901`, `GDE0202-R05`) cité nu, hors préfixes de normes (ISO, SHA, HTTP…) : avertissement, parce que la
+mesure du parc y trouve des noms de sentier et de fichier (`GR223`, `WRD0000`), pas des codes de règle. **(7) V1 ne compte plus la bande de sommaire
+défilante que L25 prescrit (TF-1992).** Un élément au-delà de la fenêtre, dans un conteneur `overflow-x` qui tient dans la fenêtre ET dans un
+sommaire déclaré (`nav.toc`, `aria-label` Sommaire, `[role=tablist]`), n'est plus un débordement : il est compté au non-mesure ; la même bande
+hors sommaire reste accusée (4 constats avant et après). Un correctif voisin : `entete_desaligne` ne compare plus un en-tête à une carte.
+Bruit mesuré et décisions de sévérité : `references/lisibilite.md` et `references/zero-defaut-visuel.md`. **Version MINEURE** : trois familles
+de rendu et trois règles de forme entrent, un composant change de feuille.
 
 **1.41.0 (21/10/2026)** — **V24 : `render_page.py` signale un bloc de prose de plus de 3 lignes sous 45 caractères par ligne, aux largeurs de
 bureau (TF-1917, RT-134 du lot Produit-02 20261018d, décision R-58 option (a)).** Une demande « textes trop verticaux » a été servie
@@ -979,7 +1008,7 @@ contrôles que le producteur lance de toute façon.
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V19 et V21–V24 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Checklist canonique zéro défaut visuel V1–V19 et V21–V27 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
 - Règles de lisibilité L1–L39 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants

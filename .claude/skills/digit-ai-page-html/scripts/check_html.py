@@ -200,7 +200,31 @@ RE_LITTERAL = re.compile(
 # `ADR nnnn`. Les familles AMBIGUËS se DÉCLARENT, par `data-codes="E,C,H"` sur n'importe quel
 # ancêtre — la page qui emploie un vocabulaire de renvois sait lequel, et le déclarer coûte un
 # attribut. C'est la loi n° 4 : un référentiel qui dépend du document est une donnée du document.
+#
+# TF-1969 (RT-18, lot Produit-84 20261019e, 19/10/2026) — LE CODE DE RÈGLE ÉCRIT EN LETTRES PUIS
+# CHIFFRES, SANS ESPACE (`ADR0501`, `OSP0901`, `GDE0202-R05`). Une page citait 22 codes de cette forme
+# dans sa prose et ses cellules, sans une infobulle : `check_html` rendait PASS, parce que ni L18 (qui
+# ne connaissait que `ADR nnnn` AVEC espace) ni L3 (d) (qui ne lit que des feuilles de texte en
+# minuscules, jamais une phrase) ne reconnaissaient la forme — alors que l'humain avait répété la
+# consigne quatre fois chez un autre produit. La forme est deux à cinq majuscules, trois à cinq
+# chiffres, et un suffixe `-R05` facultatif. Les préfixes de NORMES et de FORMATS que le monde nomme
+# ainsi (ISO27001, SHA256, HTTP404…) en sont exclus : ce ne sont pas des codes de règle du livrable.
+# Un autre préfixe de ce genre se déclare par `data-code-glose` sur l'élément ou un ancêtre, comme
+# pour toute occurrence que la page glose à sa façon.
+#
+# AVERTISSEMENT ET NON ÉCHEC, parce que la forme n'a pas d'homonyme exclu par construction : mesuré le
+# 29/10/2026 sur 2 405 pages HTML de C:\dev (hors fixtures), 397 pages nouvellement accusées dont 310 de
+# vrais codes de règle (ADR…, GDE…, OSP…) et 87 qui n'en citent aucun — un sentier de randonnée
+# (`GR223`), des noms de fichier joints (`WRD0000`, `ATT00759`), une référence de courriel (`DEV20418`),
+# des valeurs d'exemple (`AB1234`). Un échec bloquant sur ces pages obligerait à glosser un nom de
+# sentier. Les trois formes historiques restent bloquantes.
+PREFIXES_NORMES = ("ISO", "IEC", "RFC", "SHA", "TLS", "SSL", "SQL", "AES", "RSA", "HTTP", "UTF", "USB",
+                   "WCAG", "IEEE", "DIN", "CVE", "CWE", "PCI", "HTML", "ECMA", "COVID", "ARIA", "NIST",
+                   "HTTPS", "IPV", "DDR", "SATA", "PDF", "PNG", "JPEG", "JSON", "YAML", "EAN", "SIRET")
 RE_RENVOI = re.compile(r"\b(?:Q-[A-Z]{1,3}\d{0,3}|R[AD]-\d{1,3}|ADR\s\d{4})\b")
+RE_CODE_REGLE = re.compile(
+    r"\b(?!(?:" + "|".join(PREFIXES_NORMES) + r")\d)(?!(?:HS|RS|ES|PS)(?:256|384|512)\b)"
+    r"[A-Z]{2,5}\d{3,5}(?:-[A-Z]{1,2}\d{1,3})?\b")
 
 # L14 — la PLOMBERIE affichée : une convention de balisage interne qui traverse le rendu.
 #
@@ -1317,6 +1341,23 @@ def _l39_motif(noeuds):
     return None
 
 
+def _glose_de_renvoi(porteur, ids_page) -> bool:
+    """L18 — le renvoi RÉSOUT-il ? title, aria-label, aria-describedby vers une cible présente, lien interne
+    vers une ancre présente, ou `data-code-glose`, sur l'élément porteur ou un de ses ancêtres."""
+    for n in [porteur, *porteur.ancetres()]:
+        if (n.att("title") or "").strip() or (n.att("aria-label") or "").strip():
+            return True
+        cible = (n.att("aria-describedby") or "").strip()
+        if cible and any(c in ids_page for c in cible.split()):
+            return True
+        href = (n.att("href") or "").strip()
+        if href.startswith("#") and href[1:] in ids_page:
+            return True
+        if (n.att("data-code-glose") or "").strip():
+            return True
+    return False
+
+
 def check_lisibilite(html: str, a: Arbre):
     fails, warns = [], []
     ids = index_ids(a)
@@ -1773,6 +1814,33 @@ def check_lisibilite(html: str, a: Arbre):
                 return True
         return False
 
+    def declencheur_valeur(cl):
+        """TF-1962 (RT-11, lot Produit-84 20261019c) — NOMMER la classe réservée qui déclenche L3.
+
+        LE FAIT PAYÉ. Une page de données portait des cellules `class="pv"` (une classe de mise en
+        page) : 95 échecs « valeur sans légende », aucun ne disait que c'était la CLASSE qui
+        déclenchait le contrôle. `pv` figure dans CL_VALEUR (ligne 151 de ce script) ; l'auteur a dû
+        lire le code de l'oracle pour le savoir. Un contrôle qui échoue sur un marqueur réservé le
+        nomme, avec la liste des marqueurs réservés (références/lisibilite.md, § L3).
+        """
+        trouvees = sorted(cl & CL_VALEUR)
+        return (f" Déclenché par la classe réservée « {trouvees[0] if trouvees else ''} » (classes de valeur "
+                f"réservées : {', '.join(sorted(CL_VALEUR))}). Si elle ne désigne ici que de la mise en "
+                "page, la renommer : une classe hors de cette liste n'est pas jugée ; sinon légender "
+                "la valeur.")
+
+    def declencheur_score(n, cl):
+        """TF-1962 — ce qui a fait lire cet élément comme un SCORE (classe réservée, ou forme « N/M »)."""
+        if cl & CL_SCORE:
+            return (f" Déclenché par la classe réservée « {sorted(cl & CL_SCORE)[0]} » (classes de score "
+                    f"réservées : {', '.join(sorted(CL_SCORE))}, et « note » suivie d'un chiffre n/m). "
+                    "Si elle ne désigne ici que de la mise en page, la renommer.")
+        if cl & CL_SCORE_AMBIGUE:
+            return (" Déclenché par la classe « note » portée par un texte de la forme « n/m » "
+                    "(un encadré de remarque s'écrit .card.note ou .card.encadre).")
+        return (f" Déclenché par la FORME « n/m » du texte (balise {n.tag}), qui se lit comme une note "
+                "sur un barème.")
+
     vus = set()
     for n in a.racine.descendants():
         cl = n.classes()
@@ -1798,17 +1866,20 @@ def check_lisibilite(html: str, a: Arbre):
             if not decrit_par(n) and not bareme_de_colonne(n) and not bareme_de_groupe(n):
                 if n.att("aria-describedby"):
                     fails.append(f'L3 barème introuvable ou trop court pour « {libelle} » '
-                                 f'(aria-describedby="{n.att("aria-describedby")}").')
+                                 f'(aria-describedby="{n.att("aria-describedby")}").'
+                                 + declencheur_score(n, cl))
                 else:
                     fails.append(f'L3 valeur sans barème lié : « {libelle} » — '
                                  f'aria-describedby vers la légende attendu ({n.chemin()}). '
                                  'Si c\'est une DATE « JJ/MM » : <time datetime="AAAA-MM-JJ"> '
-                                 "sur la valeur, ou un en-tête de colonne qui nomme la date.")
+                                 "sur la valeur, ou un en-tête de colonne qui nomme la date."
+                                 + declencheur_score(n, cl))
         else:
             t, al = n.att("title"), n.att("aria-label")
             if (t is not None and not t.strip()) or (al is not None and not al.strip()):
                 fails.append(f'L3 légende VIDE sur « {libelle} » — un title="" annonce une '
-                             f"explication et n'en donne aucune ({n.chemin()}).")
+                             f"explication et n'en donne aucune ({n.chemin()})."
+                             + declencheur_valeur(cl))
             # TF-0231 : la légende de groupe vaut pour les valeurs du groupe, comme le
             # barème de groupe ci-dessus. Sans ce parallèle, l'ergonomie annoncée ne
             # marcherait pour AUCUN indicateur — un KPI est toujours une « valeur », et il
@@ -1823,7 +1894,7 @@ def check_lisibilite(html: str, a: Arbre):
                              "aria-describedby vers une légende VISIBLE de la page (elle survit "
                              "au PDF et s'atteint au doigt) ; à défaut légende visible, aria-label "
                              "ou title — et une infobulle porte un complément, jamais une redite "
-                             f"de la page (L3 bis) ({n.chemin()}).")
+                             f"de la page (L3 bis) ({n.chemin()})." + declencheur_valeur(cl))
 
     # --- L3 (suite) : une colonne CALCULÉE publie sa formule ---------------
     # Un score classe tout le reste. Sans sa formule, le lecteur doit croire sur
@@ -2572,6 +2643,7 @@ def check_lisibilite(html: str, a: Arbre):
         RE_RENVOI.pattern[:-3] + "|(?:" + "|".join(sorted(familles)) + r")\d{1,3})\b")
     vus = set()
     muets = []
+    muets_code = []
     # DEUX BORNES, trouvées en jouant la règle sur les fixtures existantes — trois faux positifs
     # d'un coup, tous légitimes :
     #   · le `<head>` n'est PAS de la prose lue. Un `<title>` qui cite un identifiant décrit la
@@ -2596,24 +2668,16 @@ def check_lisibilite(html: str, a: Arbre):
             if jeton in vus:
                 continue
             vus.add(jeton)
-            resout = False
-            for n in [porteur, *porteur.ancetres()]:
-                if (n.att("title") or "").strip() or (n.att("aria-label") or "").strip():
-                    resout = True
-                    break
-                cible = (n.att("aria-describedby") or "").strip()
-                if cible and any(c in ids_page for c in cible.split()):
-                    resout = True
-                    break
-                href = (n.att("href") or "").strip()
-                if href.startswith("#") and href[1:] in ids_page:
-                    resout = True
-                    break
-                if (n.att("data-code-glose") or "").strip():
-                    resout = True
-                    break
-            if not resout:
+            if not _glose_de_renvoi(porteur, ids_page):
                 muets.append((jeton, porteur.chemin()))
+        # TF-1969 : la forme lettres + chiffres sans espace, en AVERTISSEMENT (voir RE_CODE_REGLE).
+        for m in RE_CODE_REGLE.finditer(t):
+            jeton = m.group(0)
+            if jeton in vus:
+                continue
+            vus.add(jeton)
+            if not _glose_de_renvoi(porteur, ids_page):
+                muets_code.append((jeton, porteur.chemin()))
     for jeton, ou in muets[:6]:
         fails.append(
             f"L18 identifiant muet : « {jeton} » employé sans son sens ({ou}) — première "
@@ -2622,6 +2686,14 @@ def check_lisibilite(html: str, a: Arbre):
             "interne vers son ancre. Retour client du 22/08 : « je ne sais pas ce qu'est E2 ».")
     if len(muets) > 6:
         fails.append(f"L18 identifiant muet : {len(muets) - 6} autre(s) jeton(s) sans glose.")
+    if muets_code:
+        exemples = " · ".join(f"« {j} » ({ou})" for j, ou in muets_code[:3])
+        warns.append(
+            f"L18 code de règle sans glose (avertissement) : {len(muets_code)} code(s) en lettres et chiffres "
+            f"cité(s) nu(s) — {exemples}{' …' if len(muets_code) > 3 else ''}. Un code de règle sert la "
+            "traçabilité, il ne se lit pas : joindre un `title` qui dit ce qu'il impose, un `aria-describedby` "
+            "vers sa définition, un lien interne vers son ancre, ou `data-code-glose=\"<raison>\"` (un nom de "
+            "sentier, de fichier ou de norme n'est pas un code de règle : le déclarer ainsi).")
 
     # --- L18 bis : un SYSTEME d'identifiants s'explique UNE FOIS, avant son premier tableau
     #     (TF-0954bis — item TF-0944, 08/09/2026)
@@ -3576,6 +3648,78 @@ def check_lisibilite(html: str, a: Arbre):
                          "par fait dans la cellule (`<ul>`) : le lecteur compte les faits et "
                          "lit chacun seul (E-11).")
 
+    # --- L12 (cellules, suite) : l'énumération PAR VIRGULES dans une cellule, et la colonne dont les
+    #     cellules sœurs n'ont pas la même forme (TF-1967, RT-16, lot Produit-84 20261019e) ----------
+    #
+    # LE FAIT. Une cellule énumérait ses éléments par des virgules à côté de cellules en listes, et
+    # une colonne de trois ou quatre points s'écrivait en paragraphe : deux remarques de
+    # l'utilisateur, `check_html` PASS. La branche L12 des cellules ne lit que les points-virgules, la
+    # branche des virgules ne lit que `p`, `li` et `dd`.
+    #
+    # DEUX LECTURES, en AVERTISSEMENT (règle neuve, D-70 (b)) :
+    #   (a) une cellule de texte seul qui énumère QUATRE éléments ou plus par des virgules (même
+    #       seuil et même grammaire que L12 des phrases) ;
+    #   (b) une colonne dont une cellule au moins est une LISTE (`<ul>`/`<ol>` de deux éléments ou
+    #       plus) et une autre énumère en prose — trois éléments par virgules, ou trois phrases
+    #       courtes, ou trois paragraphes : deux formes dans une même colonne.
+    # Une cellule citée (`data-cite`), de code ou déjà structurée n'est pas jugée en (a). Écart voulu :
+    # `data-forme-ok="<raison, 8 caractères au moins>"` sur la cellule, le tableau ou un ancêtre.
+    def _liste_de_cellule(td):
+        return any(x.tag in ("ul", "ol") and sum(1 for li in x.descendants() if li.tag == "li") >= 2
+                   for x in td.descendants())
+
+    def _enumere_en_prose(td, seuil_virgules):
+        """La cellule énumère-t-elle en prose ? (virgules, phrases courtes ou paragraphes)"""
+        if _contenu_cite(td) or _liste_de_cellule(td) \
+                or any(x.tag in ("code", "pre", "table") for x in td.descendants()):
+            return False
+        paragraphes = [x for x in td.descendants() if x.tag == "p"]
+        if seuil_virgules <= 3 and len(paragraphes) >= 3:
+            return True
+        texte = " ".join(td.texte_propre().split())
+        if any(_enumeration_virgules(ph) >= seuil_virgules for ph in RE_FIN_PHRASE_L12.split(texte)):
+            return True
+        if seuil_virgules <= 3:
+            phrases = [s for s in re.split(r"(?<=[.;])\s+", texte) if len(s.split()) >= 2]
+            return len(phrases) >= 3
+        return False
+
+    for t in [n for n in a.racine.descendants() if n.tag == "table"]:
+        if any(len((x.att("data-forme-ok") or "").strip()) >= 8 for x in [t, *t.ancetres()]):
+            continue
+        lignes_l = [[c for c in tr.enfants if isinstance(c, Noeud) and c.tag == "td"]
+                    for tr in t.descendants()
+                    if tr.tag == "tr" and not any(x.tag == "thead" for x in tr.ancetres())]
+        cellules_virgules = [td for ligne in lignes_l for td in ligne
+                             if not any(len((x.att("data-forme-ok") or "").strip()) >= 8
+                                        for x in [td, *td.ancetres()])
+                             and not any(x.tag in ("ul", "ol", "p", "div", "details", "dl", "blockquote")
+                                         for x in td.descendants())
+                             and _enumere_en_prose(td, SEUIL_ENUM_VIRGULES)]
+        if cellules_virgules:
+            warns.append(
+                f"L12 énumération en cellule (virgules, avertissement) : {len(cellules_virgules)} "
+                f"cellule(s) énumèrent {SEUIL_ENUM_VIRGULES} éléments ou plus par des virgules "
+                f"(« {cellules_virgules[0].texte_propre()[:70]}… », {cellules_virgules[0].chemin()}) — "
+                "une liste à puces dans la cellule (`<ul>`) : le lecteur compte les éléments et lit "
+                "chacun seul (E-11). Écart voulu : `data-forme-ok=\"<raison>\"`.")
+        largeur = max((len(ligne) for ligne in lignes_l), default=0)
+        for idx in range(largeur):
+            col = [ligne[idx] for ligne in lignes_l if len(ligne) > idx
+                   and not any(len((x.att("data-forme-ok") or "").strip()) >= 8
+                               for x in [ligne[idx], *ligne[idx].ancetres()])]
+            listes = [td for td in col if _liste_de_cellule(td)]
+            proses = [td for td in col if not _liste_de_cellule(td) and _enumere_en_prose(td, 3)]
+            if listes and proses:
+                warns.append(
+                    f"L12 colonne de formes mêlées (avertissement) : dans la colonne {idx + 1}, "
+                    f"{len(listes)} cellule(s) en liste et {len(proses)} qui énumèrent en prose "
+                    f"(« {proses[0].texte_propre()[:60]}… », {proses[0].chemin()}) — des cellules sœurs "
+                    "d'une même colonne prennent la même forme : mettre en liste celles qui "
+                    "énumèrent, pour que le lecteur compare d'une ligne à l'autre. Écart voulu : "
+                    "`data-forme-ok=\"<raison>\"`.")
+                break
+
     # --- L37 : un écart dit son remède, ligne à ligne (TF-1664) ------------------------------
     # RT-58 du lot Produit-64 20261012b : un comparatif portait deux colonnes de statut, 21 lignes
     # sur 26 en « Écart » ou « Partiel », et AUCUNE ne disait quoi faire — les remèdes vivaient
@@ -4080,6 +4224,51 @@ def check_lisibilite(html: str, a: Arbre):
                         "une balise <time datetime>. Sans elle, tri et facette rangent les mois "
                         "par ordre alphabétique, et une vue de fenêtres ne peut pas devenir une "
                         "frise (lisibilite.md L28).")
+
+    # --- L27 bis : un EN-TÊTE DE LIGNE se définit aussi (TF-1970, RT-19, lot Produit-84 20261019e) ---
+    #
+    # LE FAIT. Un tableau comparatif nommait dix-neuf composants dans sa première colonne (`<th
+    # scope="row">`), sans une infobulle : l'utilisateur a demandé qu'ils soient définis, et
+    # `check_html` rendait PASS. Deux raisons : L27 ne juge que les pages DÉCLARÉES de données
+    # (`data-page="donnees"`), et un comparatif est le plus souvent une page de lecture ; la règle
+    # d'une page de données couvre déjà les `<th>` de ligne, celle d'une page de lecture n'existait pas.
+    # Ce qu'un en-tête de ligne nomme (un composant, un objet, un critère) est AUSSI ce que le
+    # lecteur ne peut pas deviner.
+    #
+    # LA RÈGLE. Dans un tableau d'au moins trois lignes de corps, au moins trois `<th>` de ligne
+    # (`scope="row"`, ou `<th>` placé dans le corps) : chacun porte sa définition — `data-definition`,
+    # `title`, un `<abbr title>`, ou un lien vers son entrée de glossaire (mêmes porteurs que L27) ;
+    # sur une page de données, L27 le juge déjà, bloquant. AVERTISSEMENT (règle neuve, D-70 (b)) :
+    # son bruit se mesure sur le parc avant toute bascule. Écart voulu : `data-entetes-ok="<raison,
+    # 8 caractères au moins>"` sur le tableau ou un ancêtre.
+    if not _page_de_donnees(a):
+        for t in [n for n in a.racine.descendants() if n.tag == "table"]:
+            if _lignes_tbody(t) < 3:
+                continue
+            if any(len((x.att("data-entetes-ok") or "").strip()) >= 8 for x in [t, *t.ancetres()]):
+                continue
+            th_ligne = [th for th in t.descendants() if th.tag == "th"
+                        and not any(x.tag == "thead" for x in th.ancetres())
+                        and ((th.att("scope") or "").strip().lower() in ("row", "rowgroup")
+                             or any(x.tag == "tbody" for x in th.ancetres()))
+                        and th.texte_propre()]
+            if len(th_ligne) < 3:
+                continue
+            muets_l = [th for th in th_ligne
+                       if not (th.att("data-definition") or th.att("title")
+                               or any(x.tag == "abbr" and x.att("title") for x in th.descendants())
+                               or any(x.tag == "a" and (x.att("href") or "").startswith("#")
+                                      for x in th.descendants()))]
+            if muets_l:
+                noms_l = [th.texte_propre()[:24] for th in muets_l[:4]]
+                warns.append(
+                    f"L27 en-têtes de ligne sans définition (avertissement) : {len(muets_l)} sur "
+                    f"{len(th_ligne)} — « {' » · « '.join(noms_l)} »"
+                    f"{' …' if len(muets_l) > 4 else ''} ({t.chemin()}). Ce qu'un en-tête de ligne "
+                    "nomme (un composant, un objet, un critère), le lecteur ne le devine pas : un "
+                    "`<th scope=\"row\">` porte `data-definition` (ou `title`, un `<abbr title>`, un "
+                    "lien vers son entrée de glossaire) — ce que c'est, et à quoi il sert ici. "
+                    "Écart voulu : `data-entetes-ok=\"<raison>\"` sur le tableau.")
 
     # --- L29 : en-tête collant CONTRE thead collant — le socle tranche (TF-0754) --------
     #

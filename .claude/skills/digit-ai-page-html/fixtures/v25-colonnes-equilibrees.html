@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Constats par domaine — 20261029a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:16px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1966 (RT-15, lot Produit-84 20261019e), sens VERT (le meme contenu, un colgroup derive du contenu). La colonne « Statut » recoit 41 % de la
+  largeur du tableau et n affiche qu un mot court ; la colonne « Constat » ne recoit que 12 % et
+  enroule un paragraphe sur une quinzaine de lignes. Chaque rangee mesure plus de 300 px pour un
+  contenu qui tiendrait sur 90 px. V1, V4, V18 et L2 ne regardent pas la repartition des colonnes :
+  render_page rendait PASS. Attendu : aucun avertissement V25 a 1 440 px.
+-->
+<body><main class="wrap">
+<h1>Constats par domaine</h1>
+<table>
+<colgroup><col style="width:12%"><col style="width:68%"><col style="width:20%"></colgroup>
+<thead><tr><th>Statut</th><th>Constat</th><th>Domaine</th></tr></thead>
+<tbody>
+<tr><td>Ecart</td><td>Le journal des deploiements n existe qu en production, il manque sur les deux autres environnements, et aucun controle ne le dit au moment de la mise en service.</td><td>Deploiement</td></tr>
+<tr><td>Conforme</td><td>Les deux relecteurs exiges sont configures sur la branche principale et sur la branche de recette, avec une exception documentee pour les correctifs urgents.</td><td>Revue de code</td></tr>
+<tr><td>Partiel</td><td>La sauvegarde quotidienne est active, la restauration n a ete rejouee qu une fois, le mois dernier, sans compte rendu ecrit ni resultat chiffre.</td><td>Reprise</td></tr>
+<tr><td>Ecart</td><td>Les secrets sont lus depuis l environnement, mais trois d entre eux restent dans un fichier de configuration suivi par le depot, sans rotation depuis un an.</td><td>Secrets</td></tr>
+</tbody></table>
+</main></body></html>

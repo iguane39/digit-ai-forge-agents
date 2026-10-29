@@ -46,6 +46,27 @@ le `<th>` ou sur le `<th>`, ne se voit pas et n'est pas mesuré (TF-1800, lot Pr
 une colonne d'actions sans libellé visible rendait « décalé de 176px ») ; fixture verte
 `entete-masque-accessibilite.html`.
 
+## La feuille lit des jetons AVEC repli, et le repli en cartes garde les filtres (TF-1964, TF-1965, 29/10/2026)
+
+**Jetons (TF-1964, RT-13 du lot Produit-84 20261019d).** Une page hôte écrite à la main embarquait la feuille à la
+parité d'octets de sa source, mais ne déclarait ni `--surface`, ni `--muted`, ni `--r-sm`, ni `--sans` : les cinq
+panneaux de filtre avaient un fond `rgba(0,0,0,0)`, le texte du tableau passait à travers la liste de valeurs, et
+`--constat` comme `check_html` rendaient PASS. Chaque `var()` de `table-filters.css` porte désormais un repli, un
+**mot-clé de couleur système** (`Canvas`, `CanvasText`, `GrayText`, `LinkText`) ou une valeur de l'échelle (`8px`),
+jamais une couleur en dur : le repli suit le thème du navigateur, reste opaque et ne sert que si l'hôte ne déclare
+pas le jeton. Deux barrières complètent la feuille : `embarquer-composants.mjs --constat` (et `--poser`, qui le dit à
+la pose) signale tout bloc CSS embarqué qui lit SANS repli un jeton que la page ne déclare pas ; `render_page.py
+--etats-ouverts` mesure le fond du panneau ouvert (V26, `panneau_deplie`).
+
+**Repli en cartes (TF-1965, RT-14 du lot Produit-84 20261019d).** Le socle masque le `thead` sous 900 px
+(`table.repli-cartes thead { display: none }`) ; les déclencheurs de filtre y vivent : cinq boutons en 0 x 0 à 390 px,
+`render_page.py` PASS. Sous 900 px, la feuille sort les déclencheurs du `thead` masqué et les pose en **barre de
+puces** (libellé + déclencheur, une puce par colonne filtrable) au-dessus des cartes ; le panneau s'ouvre sous sa puce.
+Les autres en-têtes restent masqués (la carte les porte par `data-label`). V27 (`filtres_masques_repli`, bloquant)
+refuse un tableau replié dont un déclencheur reste en `display:none` — une page qui n'embarque pas la feuille, par
+exemple. Écart voulu : `data-filtres-remplaces="<raison, 8 caractères au moins>"` sur le tableau, quand la recherche de
+la page remplace les filtres et le dit. Fixtures `v27-*.html`, `v26-composant-sans-jetons.html`.
+
 ## L'ancrage du panneau ne DÉFAIT PAS le collage du socle (TF-0899, 07/09)
 
 `.tf-panel` est un `position: absolute` : il lui faut un **ancêtre positionné**, et le `<th>`

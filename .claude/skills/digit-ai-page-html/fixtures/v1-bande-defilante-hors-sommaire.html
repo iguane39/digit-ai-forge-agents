@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Sommaire en bande defilante — 20261029a</title>
+<style>
+:root{--ink:#0F172A;--muted:#64748B;--line:#E6EAF2;--surface:#FFFFFF;--blue:#2563EB;--hh:64px;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:16px}
+/* L25 : la bande de sommaire sous 900 px — une rangee d ancres qui defile horizontalement. */
+.bande-chips{position:static;border-bottom:1px solid var(--line);margin:0 0 16px}
+.bande-chips ul{display:flex;gap:8px;margin:0;padding:0 0 8px;list-style:none;overflow-x:auto}
+.bande-chips li{flex:none}
+.bande-chips a{display:block;white-space:nowrap;padding:8px 12px;border:1px solid var(--line);border-radius:8px;color:var(--blue);text-decoration:none}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1992 (RA-2, lot Produit-85 20261024a), sens ROUGE qui reste rouge. La MEME bande d ancres defilante, mais portee par un
+  div ordinaire : ce n est pas un sommaire declare (ni nav.toc, ni aria-label Sommaire, ni tablist).
+  L exception de V1 est etroite : ici V1 compte toujours les ancres qui depassent la fenetre.
+-->
+<body><main class="wrap">
+<div class="bande-chips"><ul>
+<li><a href="#c1">Contexte et perimetre</a></li>
+<li><a href="#c2">Decisions prises</a></li>
+<li><a href="#c3">Risques identifies</a></li>
+<li><a href="#c4">Plan de deploiement</a></li>
+<li><a href="#c5">Indicateurs de suivi</a></li>
+<li><a href="#c6">Annexes et sources</a></li>
+</ul></div>
+<h1>Revue de cadrage</h1>
+<section id="c1"><h2>Contexte et perimetre</h2><p>Le cadrage porte sur le deploiement.</p></section>
+<section id="c2"><h2>Decisions prises</h2><p>Trois decisions sont actees.</p></section>
+<section id="c3"><h2>Risques identifies</h2><p>Deux risques restent ouverts.</p></section>
+<section id="c4"><h2>Plan de deploiement</h2><p>Le plan tient en quatre etapes.</p></section>
+<section id="c5"><h2>Indicateurs de suivi</h2><p>Quatre indicateurs sont suivis.</p></section>
+<section id="c6"><h2>Annexes et sources</h2><p>Les sources sont listees.</p></section>
+</main></body></html>

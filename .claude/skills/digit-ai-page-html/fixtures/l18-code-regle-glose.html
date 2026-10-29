@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Decisions d'architecture — 20261029a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1969 (RT-18, lot Produit-84 20261019e), sens VERT (les memes codes, chacun avec son sens). Des codes de regle ecrits en lettres puis
+  chiffres, sans espace, cites NUS dans la prose et dans une cellule : ADR0501, OSP0901 et GDE0202-R05.
+  Aucun ne dit ce qu il impose. L18 ne connaissait que « ADR nnnn » avec espace : la page rendait PASS.
+  Les trois mentions de normes (ISO27001, SHA256, HTTP404) ne sont PAS des codes de regle du livrable
+  et ne doivent pas etre accusees.
+  Attendu : aucun echec L18. Trois remedes, tous joues : title qui developpe le code (abbr), lien vers sa definition, aria-label.
+-->
+<body><main class="wrap">
+<h1>Decisions d'architecture</h1>
+<p>Le cadrage applique <abbr title="ADR0501 : le deploiement se fait par environnement, jamais depuis un poste">ADR0501</abbr> pour le deploiement et <a href="#osp0901">OSP0901</a> pour l'ouverture des flux.</p>
+<p>Le chiffrement suit ISO27001, l'empreinte SHA256, et une page absente repond HTTP404.</p>
+<table>
+<thead><tr><th>Regle</th><th>Effet</th></tr></thead>
+<tbody>
+<tr><td aria-label="GDE0202-R05 : revue obligatoire des changements">GDE0202-R05</td><td>Revue obligatoire avant toute mise en production.</td></tr>
+<tr><td>Revue</td><td>Deux relecteurs.</td></tr>
+</tbody></table>
+<h2 id="osp0901">OSP0901 : ouverture des flux</h2>
+<p>Tout flux entrant est declare avant son ouverture.</p>
+</main></body></html>

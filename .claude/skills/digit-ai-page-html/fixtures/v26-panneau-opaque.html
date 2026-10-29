@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Panneau de filtre deplie — 20261029a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+.wrap{max-width:var(--w);margin:0 auto;padding:16px;position:relative}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+/* Le panneau de filtre, deplie, AVEC son fond : le jeton --surface est lu (copie temoin du composant
+   privee de ses jetons, Produit-84, 19/10/2026). */
+.tf-panel{position:absolute;z-index:30;top:84px;left:16px;width:260px;padding:12px;
+ background-color:var(--surface);border:1px solid var(--line);font-size:.85rem}
+.tf-panel label{display:flex;gap:8px;padding:4px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1963 (RT-12, lot Produit-84 20261019d), sens VERT (le meme panneau, fond opaque). Un panneau de filtre DEPLIE (.tf-panel
+  visible) pose au-dessus des lignes d un tableau, avec un fond transparent : le texte des cellules se
+  lit a travers la liste de valeurs. render_page rendait PASS (V4 ne compare que des boites de texte,
+  un fond transparent n en est pas une). Attendu : aucun constat V26.
+-->
+<body><main class="wrap">
+<h1>Volumes par marche</h1>
+<table>
+<thead><tr><th>Marche</th><th>Statut</th><th>Volume annuel</th></tr></thead>
+<tbody>
+<tr><td>Nord</td><td>Ouvert depuis le premier trimestre</td><td>1 000</td></tr>
+<tr><td>Centre</td><td>Ouvert depuis le deuxieme trimestre</td><td>12 500</td></tr>
+<tr><td>Sud</td><td>Suspendu en attente de decision</td><td>250</td></tr>
+<tr><td>Est</td><td>Ouvert depuis le troisieme trimestre</td><td>4 800</td></tr>
+<tr><td>Ouest</td><td>Clos apres la derniere revue</td><td>2 100</td></tr>
+</tbody></table>
+<div class="tf-panel" role="listbox" aria-label="Valeurs de la colonne Statut">
+<label><input type="checkbox" checked> Ouvert</label>
+<label><input type="checkbox" checked> Suspendu</label>
+<label><input type="checkbox" checked> Clos</label>
+</div>
+</main></body></html>

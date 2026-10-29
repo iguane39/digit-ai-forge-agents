@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Comparatif des composants — 20261029a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1970 (RT-19, lot Produit-84 20261019e), sens VERT (les memes en-tetes, chacun avec sa definition). Un comparatif de composants : la premiere
+  colonne nomme chaque composant dans un en-tete de ligne (th scope=row), sans le moindre title ni
+  data-definition. La page n est pas une page de donnees (pas de data-page) : L27 ne la jugeait pas.
+  Attendu : aucun avertissement L27. Trois porteurs joues : data-definition, title, abbr title.
+-->
+<body><main class="wrap">
+<h1>Comparatif des composants</h1>
+<table>
+<thead><tr><th scope="col">Composant</th><th scope="col">Role</th><th scope="col">Statut</th></tr></thead>
+<tbody>
+<tr><th scope="row" data-definition="Point d'entree unique : recoit les appels des produits et les route vers l'orchestrateur">Passerelle</th><td>Recoit les appels</td><td>En service</td></tr>
+<tr><th scope="row" title="Ordonne les taches d'un run et suit leur etat jusqu'a la cloture">Orchestrateur</th><td>Ordonne les taches</td><td>En service</td></tr>
+<tr><th scope="row"><abbr title="Declenche les passes planifiees (nuit, semaine) sans intervention">Planificateur</abbr></th><td>Declenche les passes</td><td>En essai</td></tr>
+<tr><th scope="row" data-definition="Fichier unique des decisions et de leur date, lu par tous les composants">Registre</th><td>Garde les decisions</td><td>En service</td></tr>
+</tbody></table>
+</main></body></html>

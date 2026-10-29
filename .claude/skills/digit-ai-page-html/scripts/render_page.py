@@ -15,6 +15,10 @@ Oracle mesuré de la checklist canonique references/zero-defaut-visuel.md :
   - tableau rogné dans un conteneur défilant à >= 1280 px (bloquant, TF-0771)
   - bloc de texte < 70 % de son conteneur sur une page de données (bloquant, TF-0778)
   - sommaire encore visible après défilement (bloquant, TF-0772)
+  - V25 colonne large et vide face à une colonne étranglée (avertissement, TF-1966)
+  - V26 panneau déplié au fond transparent ou recouvert (bloquant, TF-1963)
+  - V27 filtres de colonne masqués par le repli en cartes (bloquant, TF-1965)
+  - V1 : la bande de sommaire défilante de L25 n'est pas un débordement (TF-1992)
 
 V5 (croisements de flèches) et V6 (images déformées) restent à l'inspection
 visuelle des PNG produits — ce script ne les juge pas.
@@ -262,7 +266,8 @@ MEASURE_JS = r"""
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
                    decor_sur_ancetre: [], entete_desaligne: [], largeurs_melangees: [],
-                   contenu_etroit: [], prose_verticale: [], unmeasured: [] };
+                   contenu_etroit: [], prose_verticale: [], colonnes_desequilibrees: [],
+                   panneau_deplie: [], filtres_masques_repli: [], unmeasured: [] };
   const doc = document.documentElement;
 
   const visible = (el) => {
@@ -303,13 +308,47 @@ MEASURE_JS = r"""
   //      cause, ses descendants débordent parce qu'il déborde. Le plafond est alors atteint pour
   //      de vraies raisons ;
   //   3. le détail seul est plafonné, et la troncature est DÉCLARÉE avec son plafond et le total.
+  // TF-1992 (RA-2, lot Produit-85 20261024a, 22/10/2026) — LA BANDE DE SOMMAIRE DEFILANTE QUE L25
+  // PRESCRIT N'EST PAS UN DEBORDEMENT. L25 demande un sommaire visible en permanence, « bande
+  // repliable sur mobile » ; une bande d'ancres `overflow-x: auto` sous 900 px en est la forme, et V1
+  // la comptait comme un debordement bloquant : un produit l'a contournee par `flex-wrap`, c'est-a-dire
+  // en degradant le geste que la regle voisine prescrit. Une regle qui interdit le remede d'une autre
+  // regle se corrige du cote de celle qui se trompe (classe regle-qui-interdit-son-propre-remede).
+  // CE QUI EST EXCLU, et rien d'autre : un element dont le bord depasse la fenetre MAIS qui vit dans
+  // un conteneur defilant (overflow-x auto|scroll) lui-meme contenu dans la fenetre ET lui-meme dans un
+  // sommaire declare — `nav.toc`, `nav[aria-label^="Sommaire"]` ou une barre `[role=tablist]`, les
+  // memes selecteurs que `sommaire_perdu` et L25. Le conteneur defilant qui deborde, lui, reste
+  // accuse ; un tableau, une grille ou une bande hors sommaire aussi. Ce qui est exclu se COMPTE et se
+  // dit (`unmeasured`) : une exemption qui ne se voit pas est un angle mort.
+  const SOMMAIRE_DECLARE = 'nav.toc, nav[aria-label^="Sommaire"], nav[aria-label^="sommaire"], [role="tablist"]';
+  const bandeDeSommaire = (el) => {
+    const nav = el.closest(SOMMAIRE_DECLARE);
+    if (!nav) return null;
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (cs.overflowX === 'auto' || cs.overflowX === 'scroll') {
+        return p.getBoundingClientRect().right <= doc.clientWidth + 1 ? p : null;
+      }
+      if (p === nav) break;
+    }
+    return null;
+  };
   const debordants = [];
+  const bandesExclues = new Map();
   for (const el of document.body.querySelectorAll('*')) {
     if (!visible(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.right > doc.clientWidth + 1 && getComputedStyle(el).position !== 'fixed') {
+      const bande = bandeDeSommaire(el);
+      if (bande) { bandesExclues.set(bande, (bandesExclues.get(bande) || 0) + 1); continue; }
       debordants.push({ el, right: r.right });
     }
+  }
+  for (const [bande, n] of bandesExclues) {
+    issues.unmeasured.push({ what: label(bande), detail:
+      `bande de sommaire a defilement horizontal (L25) : ${n} element(s) au-dela de la fenetre de ` +
+      `${doc.clientWidth}px, contenus par le conteneur defilant — non comptes en V1 (TF-1992), mais ` +
+      `comptes ici : la bande elle-meme tient dans la fenetre` });
   }
   const ensemble = new Set(debordants.map(d => d.el));
   // La CAUSE est l'ancêtre débordant le plus extérieur : si le parent déborde, l'enfant déborde
@@ -1793,6 +1832,201 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- TF-1966 (RT-15, lot Produit-84 20261019e) : L'EQUILIBRE DES COLONNES D'UN TABLEAU --------------
+  //
+  // LE FAIT. Un tableau donnait 41 % de sa largeur a une colonne remplie a 10 %, pendant qu'une colonne
+  // etroite enroulait son texte sur des lignes hautes : la rangee mesurait 607 px ; apres un `colgroup`
+  // derive du contenu, 347 px. render_page rendait PASS : V1 regarde le bord droit, V4 les recouvrements,
+  // V18 la mesure de lecture d'une prose, L2 un bloc de texte — aucune famille ne comparait la LARGEUR
+  // d'une colonne a la place que son contenu y occupe.
+  //
+  // LA MESURE. Par colonne du corps : sa part de la largeur du tableau, l'EMPRISE de son contenu (la
+  // boite des lignes REELLEMENT peintes, un Range sur le contenu de chaque cellule — pas la largeur du
+  // bloc, qui vaut toujours celle de la cellule) rapportee a sa largeur utile, et le nombre de lignes de
+  // sa cellule mediane. Une colonne « large et vide » : au moins 25 % du tableau, emprise maximale sous
+  // 30 % de sa largeur utile. Une colonne « etranglee » : plus etroite que la precedente, emprise au
+  // moins 85 % de sa largeur utile, cellule mediane sur 3 lignes ou plus. Les deux ensemble disent que
+  // la place existe et qu'elle est mal repartie. AVERTISSEMENT (regle neuve, D-70 (b)) : une largeur de
+  // colonne imposee est parfois voulue. Ecart voulu : `data-colonnes-ok` sur le tableau ou un ancetre.
+  // Aux largeurs de bureau seulement, sur un tableau d'au moins 3 lignes de corps qui est encore un
+  // tableau (le repli en cartes a son propre controle).
+  if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
+    for (const t of document.body.querySelectorAll('table')) {
+      if (!visible(t) || t.closest('[data-colonnes-ok]')) continue;
+      const rangees = [...t.tBodies].flatMap((b) => [...b.rows])
+        .filter((r) => getComputedStyle(r).display === 'table-row');
+      if (rangees.length < 3) continue;
+      const tw = t.getBoundingClientRect().width;
+      const nb = Math.max(...rangees.map((r) => r.cells.length));
+      if (tw < 480 || nb < 2) continue;
+      const cols = [];
+      for (let c = 0; c < nb; c++) {
+        const cellules = rangees.map((r) => r.cells[c]).filter((x) => x && x.colSpan === 1 && visible(x));
+        if (cellules.length < 3) { cols.push(null); continue; }
+        const mesures = cellules.map((td) => {
+          const cs = getComputedStyle(td);
+          const utile = td.getBoundingClientRect().width
+            - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+          const rg = document.createRange(); rg.selectNodeContents(td);
+          const b = rg.getBoundingClientRect();
+          const vide = !(td.textContent || '').trim() && !td.querySelector('img, svg, canvas, input, button');
+          const lh = parseFloat(cs.lineHeight) || 1.4 * (parseFloat(cs.fontSize) || 16);
+          return { utile, emprise: vide ? 0 : b.width, lignes: vide ? 0 : Math.max(1, Math.round(b.height / lh)) };
+        });
+        const utile = mesures[0].utile;
+        if (!(utile > 0)) { cols.push(null); continue; }
+        const lignes = mesures.map((m) => m.lignes).sort((a, b) => a - b);
+        cols.push({
+          c, part: cellules[0].getBoundingClientRect().width / tw, utile,
+          remplissage: Math.max(...mesures.map((m) => m.emprise)) / utile,
+          mediane: lignes[Math.floor(lignes.length / 2)],
+          titre: ((t.tHead && t.tHead.rows[0] && t.tHead.rows[0].cells[c]) || cellules[0]).textContent
+            .trim().replace(/\s+/g, ' ').slice(0, 24),
+        });
+      }
+      const vastes = cols.filter((k) => k && k.part >= 0.25 && k.remplissage <= 0.30);
+      for (const v of vastes) {
+        const etrangle = cols.find((k) => k && k.c !== v.c && k.utile < v.utile
+          && k.remplissage >= 0.85 && k.mediane >= 3);
+        if (!etrangle) continue;
+        issues.colonnes_desequilibrees.push({ what: label(t), detail:
+          `la colonne « ${v.titre} » prend ${Math.round(v.part * 100)} % de la largeur du tableau et son ` +
+          `contenu n'en occupe que ${Math.round(v.remplissage * 100)} %, pendant que la colonne ` +
+          `« ${etrangle.titre} » (${Math.round(etrangle.part * 100)} % de la largeur) remplit sa place et ` +
+          `passe sur ${etrangle.mediane} lignes en mediane — la place existe, elle est mal repartie, et la ` +
+          `rangee s'allonge pour rien. Poser un <colgroup> dont les largeurs derivent du contenu (part de ` +
+          `chaque colonne proportionnelle a son emprise), ou assumer la repartition par data-colonnes-ok ` +
+          `sur le tableau` });
+        break;
+      }
+    }
+  }
+
+  // ---- TF-1963 (RT-12, lot Produit-84 20261019d) : UN PANNEAU DEPLIE SE MESURE ---------------------
+  //
+  // LE FAIT. Une copie temoin du composant de filtres, privee de ses jetons de couleur, a rendu
+  // `render_page --etats-ouverts` PASS alors que ses cinq panneaux avaient `background-color:
+  // rgba(0,0,0,0)` : le texte du tableau passait a travers la liste de valeurs. L'utilisateur l'a vu ;
+  // aucune famille ne mesurait le FOND d'un panneau, et V4 ne compare que des boites de TEXTE entre
+  // elles — un panneau transparent n'en est pas une. L'etat deplie etait rendu, pas mesure.
+  //
+  // LA MESURE, sur chaque panneau visible (`.tf-panel`, dialogue, listbox, menu, `[data-panneau]`, ou
+  // tout bloc positionne au-dessus du flux — absolute/fixed, z-index > 0 — qui porte au moins deux
+  // controles ; ni bandeau, ni navigation, ni scrim plein ecran) : (1) NEUF points d'echantillon dans
+  // la partie de sa boite qui est dans la fenetre ; en chacun, la pile d'elements du navigateur : si
+  // AUCUN element de la pile, du plus haut jusqu'au panneau compris, n'a un fond opaque (alpha 0,9 au
+  // moins, ou une image de fond), et qu'un element de texte vit DESSOUS, le point laisse voir la page ;
+  // trois points sur neuf suffisent. (2) trois controles du panneau (premier, median, dernier) : l'element
+  // peint au centre de chacun doit lui appartenir — sinon il est RECOUVERT. Un panneau dont aucune partie
+  // n'est dans la fenetre n'est pas mesurable : il est compte au non-mesure, jamais passe sous silence.
+  {
+    const SEL = '.tf-panel, [role="dialog"], [role="listbox"], [role="menu"], [aria-modal="true"], '
+      + 'dialog[open], [data-panneau]';
+    const CONTROLES = 'input, button, label, select, textarea, a[href], [role="option"], [role="menuitem"]';
+    const HORS_PANNEAU = 'header, nav, footer, [role=banner], [role=navigation], [role=contentinfo]';
+    const aire = window.innerWidth * window.innerHeight;
+    const candidats = new Set(document.body.querySelectorAll(SEL));
+    for (const el of document.body.querySelectorAll('*')) {
+      if (candidats.has(el)) continue;
+      const cs = getComputedStyle(el);
+      if (!(cs.position === 'absolute' || cs.position === 'fixed')) continue;
+      const z = parseInt(cs.zIndex, 10);
+      if (!(z > 0) || !visible(el) || el.closest(HORS_PANNEAU)) continue;
+      if (el.querySelectorAll(CONTROLES).length >= 2) candidats.add(el);
+    }
+    const opaque = (e) => {
+      const cs = getComputedStyle(e);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') return true;
+      if (cs.backdropFilter && cs.backdropFilter !== 'none') return true;
+      const c = parseColor(cs.backgroundColor);
+      return !!c && c.a >= 0.9;
+    };
+    const texteDessous = (e, panneau) => {
+      if (e === document.documentElement || e === document.body || panneau.contains(e) || e.contains(panneau)) return false;
+      if (/^(img|svg|canvas|video)$/i.test(e.tagName)) return true;
+      return [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
+    };
+    let nbJuges = 0;
+    for (const el of candidats) {
+      if (!visible(el) || el.closest(HORS_PANNEAU)) continue;
+      if ([...candidats].some((autre) => autre !== el && el.contains(autre))) continue;   // le plus interieur
+      const r = el.getBoundingClientRect();
+      if (r.width * r.height >= 0.8 * aire) continue;                                      // scrim, pas un panneau
+      const x0 = Math.max(r.left, 0), x1 = Math.min(r.right, window.innerWidth);
+      const y0 = Math.max(r.top, 0), y1 = Math.min(r.bottom, window.innerHeight);
+      if (x1 - x0 < 8 || y1 - y0 < 8) {
+        issues.unmeasured.push({ what: label(el), detail:
+          `panneau deplie hors de la fenetre (aucune partie visible) : fond et recouvrement NON mesures (TF-1963)` });
+        continue;
+      }
+      nbJuges += 1;
+      let traversants = 0;
+      for (const fx of [0.2, 0.5, 0.8]) for (const fy of [0.2, 0.5, 0.8]) {
+        const pile = document.elementsFromPoint(x0 + fx * (x1 - x0), y0 + fy * (y1 - y0));
+        const iPanneau = pile.findIndex((e) => e === el);
+        if (iPanneau < 0) continue;                       // point recouvert par autre chose : voir (2)
+        if (pile.slice(0, iPanneau + 1).some(opaque)) continue;
+        if (pile.slice(iPanneau + 1).some((e) => texteDessous(e, el))) traversants += 1;
+      }
+      const fond = getComputedStyle(el).backgroundColor;
+      if (traversants >= 3) {
+        issues.panneau_deplie.push({ what: label(el), detail:
+          `panneau deplie TRANSPARENT : fond ${fond}, et le texte de la page se lit a travers sur ` +
+          `${traversants} des 9 points mesures. Cause la plus frequente : un jeton de couleur (--surface, ` +
+          `--card, --bg) que la page n'a pas declare et que le composant consomme sans repli (TF-1964). ` +
+          `Donner au panneau un fond opaque, ou declarer le jeton` });
+      }
+      const controles = [...el.querySelectorAll(CONTROLES)].filter(visible);
+      const choisis = controles.length ? [controles[0], controles[Math.floor(controles.length / 2)],
+        controles[controles.length - 1]] : [];
+      const recouverts = [];
+      for (const c of new Set(choisis)) {
+        const cr = c.getBoundingClientRect();
+        const cx = cr.left + cr.width / 2, cy = cr.top + cr.height / 2;
+        if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) continue;
+        const haut = document.elementFromPoint(cx, cy);
+        if (haut && !el.contains(haut) && !haut.contains(c)) recouverts.push([c, haut]);
+      }
+      if (recouverts.length) {
+        issues.panneau_deplie.push({ what: label(el), detail:
+          `panneau deplie RECOUVERT : ${recouverts.length} controle(s) sur ${new Set(choisis).size} mesures ` +
+          `(par exemple ${label(recouverts[0][0])}) ont au centre ${label(recouverts[0][1])}, qui n'appartient ` +
+          `pas au panneau — le lecteur ne les voit pas, ou ne les atteint pas. Revoir le z-index ou la ` +
+          `position du panneau` });
+      }
+    }
+  }
+
+  // ---- TF-1965 (RT-14, lot Produit-84 20261019d) : LES FILTRES DE COLONNE ONT UNE PLACE EN CARTES ---
+  //
+  // LE FAIT. Le repli en cartes du socle masque le `thead` (`display:none`) sous 900 px ; les
+  // declencheurs de filtre de colonne vivent dans ses `<th>`. Mesure : cinq boutons en 0 x 0 a 390 px,
+  // seule la recherche restait, render_page PASS. Une affordance qui n'existe pas sur le petit ecran est
+  // une affordance qui n'existe pas (loi n 1) — et rien ne le disait.
+  //
+  // LA MESURE. Dans un tableau visible, un declencheur `.tf-btn` dont un ancetre (le thead, au
+  // plus) est `display:none`. Le composant (table-filters.css) sort les filtres du thead masque et les
+  // pose en barre au-dessus des cartes ; une page qui n'embarque pas cette feuille, ou qui replie sans
+  // elle, est accusee. Ecart voulu : `data-filtres-remplaces="<raison, 8 caracteres au moins>"` sur le
+  // tableau ou un ancetre — la recherche de la page remplace alors les filtres, et le dit.
+  for (const t of document.body.querySelectorAll('table')) {
+    if (!visible(t)) continue;
+    const remplace = t.closest('[data-filtres-remplaces]');
+    if (remplace && (remplace.getAttribute('data-filtres-remplaces') || '').trim().length >= 8) continue;
+    const masques = [...t.querySelectorAll('.tf-btn')].filter((b) => {
+      for (let p = b; p && p !== t.parentElement; p = p.parentElement) {
+        if (getComputedStyle(p).display === 'none') return true;
+      }
+      return false;
+    });
+    if (!masques.length) continue;
+    issues.filtres_masques_repli.push({ what: label(t), detail:
+      `${masques.length} declencheur(s) de filtre de colonne masque(s) a ${window.innerWidth}px : leur ` +
+      `en-tete est en display:none (repli en cartes). Embarquer table-filters.css, qui pose les filtres ` +
+      `en barre au-dessus des cartes, ou declarer que la recherche les remplace : ` +
+      `data-filtres-remplaces="<raison>" sur le tableau` });
+  }
+
   // ---- TF-1146 : RECENSEMENT DES EXEMPTIONS V4 EN BLOC ---------------------------------
   //
   // Une exemption qui ne se voit pas est un angle mort qui ne se corrige jamais. L invariant
@@ -1915,6 +2149,9 @@ MEASURE_JS = r"""
       const ligne = [...t.tBodies].flatMap((b) => [...b.rows])
         .find((tr) => visible(tr) && !tr.hasAttribute('data-tf-empty') && !tr.hasAttribute('data-detail'));
       if (!tete || !ligne || tete.cells.length !== ligne.cells.length) continue;
+      // TF-1965 : en repli en cartes les lignes du corps sont des CARTES (display:block) et le thead,
+      // quand il reste, est une BARRE de filtres : aucune colonne a laquelle comparer un libelle.
+      if (getComputedStyle(ligne).display !== 'table-row') continue;
       [...tete.cells].forEach((th, i) => {
         if (vusA >= 6) return;
         const td = ligne.cells[i];
@@ -3090,6 +3327,19 @@ FAMILLES = [
     # dont le bruit sur le parc n'est pas nul par construction (une colonne etroite est parfois voulue),
     # mesure dans references/zero-defaut-visuel.md, § V24. Une echeance (echeances.json) peut la durcir.
     ("prose_verticale", "V24 prose de plus de 3 lignes sous 45 caracteres par ligne", "avertissement"),
+    # TF-1966 (RT-15, lot Produit-84 20261019e) : l'EQUILIBRE des colonnes. Une colonne a 41 % de la
+    # largeur du tableau, remplie a 10 %, pendant qu'une colonne etroite enroule son texte : rangee de
+    # 607 px au lieu de 347, tous controles verts. AVERTISSEMENT (regle neuve, D-70 (b)) : une repartition
+    # de colonnes imposee est parfois voulue (data-colonnes-ok). Mesure : references/zero-defaut-visuel.md.
+    ("colonnes_desequilibrees", "V25 colonne large et vide face a une colonne etranglee", "avertissement"),
+    # TF-1963 (RT-12, lot Produit-84 20261019d) : un panneau DEPLIE (filtre, menu, dialogue) au fond
+    # transparent, ou recouvert, rendait `--etats-ouverts` PASS : le texte de la page passait a travers le
+    # panneau. Bloquant : c'est un contenu illisible au moment ou le lecteur l'ouvre (meme famille que V2).
+    ("panneau_deplie", "V26 panneau deplie au fond transparent ou recouvert", "bloquant"),
+    # TF-1965 (RT-14, lot Produit-84 20261019d) : le repli en cartes masquait le thead et, avec lui, les
+    # declencheurs de filtre de colonne (5 boutons en 0 x 0 a 390 px) : une affordance qui n'existe plus
+    # sans que rien ne le dise (loi n 1). Bloquant ; ecart voulu : data-filtres-remplaces="<raison>".
+    ("filtres_masques_repli", "V27 filtres de colonne masques par le repli en cartes", "bloquant"),
     # TF-1146 (16/09, lot Produit-64 20260916a) : l exemption V4 posee EN BLOC. Avertissement et
     # non bloquant — 1 716 occurrences mesurees dans le parc le 16/09, les rendre bloquantes
     # d un coup rougirait tout ce qui existe. Mais le silence, lui, s arrete : un libelle de

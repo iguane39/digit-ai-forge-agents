@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Lots par statut — 20261029a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--head:"Montserrat",system-ui,sans-serif;
+ --sans:"Inter",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);color:var(--ink)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+/* « pv » est ici une classe de MISE EN PAGE (petite valeur, alignee a droite) : le nom a ete choisi
+   sans savoir que le controle L3 le reserve aux valeurs mises en avant. */
+td.pv{text-align:right;font-variant-numeric:tabular-nums}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-1962 (RT-11, lot Produit-84 20261019c), sens ROUGE. Les cellules de la colonne « Lots » portent
+  la classe de mise en page `pv`. Le controle L3 « valeur sans legende » la lit comme une valeur mise
+  en avant (CL_VALEUR) et echoue sur chacune, sans dire que c est la CLASSE qui declenche.
+  Attendu : echecs L3 dont le message NOMME la classe reservee « pv » et publie la liste des classes
+  reservees ; la fixture verte (meme page, classe `chiffre`) ne declenche rien.
+-->
+<body><main class="wrap">
+<h1>Lots par statut</h1>
+<table>
+<thead><tr><th>Statut</th><th>Lots</th></tr></thead>
+<tbody>
+<tr><td>Ouvert</td><td class="pv">12</td></tr>
+<tr><td>Clos</td><td class="pv">48</td></tr>
+<tr><td>Suspendu</td><td class="pv">3</td></tr>
+</tbody></table>
+</main></body></html>

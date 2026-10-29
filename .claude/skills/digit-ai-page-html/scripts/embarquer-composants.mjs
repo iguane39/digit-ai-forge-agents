@@ -194,6 +194,36 @@ export function confronterBlocs(html, repere = '(html)') {
 }
 
 /**
+ * TF-1964 (RT-13, lot Produit-84 20261019d, 19/10/2026) — LES JETONS QU'UN COMPOSANT CONSOMME ET QUE
+ * LA PAGE NE DÉCLARE PAS.
+ *
+ * LE FAIT. Une page hôte écrite à la main embarquait `table-filters.css` à la parité exacte de sa
+ * source, check_html PASS, et ses cinq panneaux de filtre avaient un fond `rgba(0,0,0,0)` : la feuille
+ * lisait --surface, --muted, --r-sm et --sans, que la page ne déclarait pas, sans valeur de repli. La
+ * parité d'octets prouve que la COPIE est juste ; elle ne dit rien de ce que l'HÔTE fournit.
+ *
+ * LA MESURE. Pour chaque bloc CSS embarqué : les jetons lus par `var(--x)` SANS valeur de repli, moins
+ * ceux que la page déclare (`--x:` hors du bloc, d'autres blocs embarqués compris) et ceux que le bloc
+ * déclare lui-même. Les commentaires CSS sont retirés avant la lecture. Un jeton posé seulement par un
+ * script (`style.setProperty`) n'est pas vu : il se déclare aussi dans `:root`, ou le composant lui
+ * donne un repli. Fonction PURE, comme `confronterBlocs`.
+ */
+export function jetonsAbsents(html) {
+  const res = [];
+  for (const b of blocsMarques(html)) {
+    if (b.fin < 0 || !b.nom.endsWith('.css')) continue;
+    const corps = html.slice(b.debut, b.fin).replace(/\/\*[\s\S]*?\*\//g, '');
+    const hote = html.slice(0, b.debut) + html.slice(b.fin);
+    const declares = new Set([...hote.matchAll(/(--[\w-]+)\s*:/g), ...corps.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+    const sansRepli = new Set([...corps.matchAll(/var\(\s*(--[\w-]+)\s*([,)])/g)]
+      .filter((m) => m[2] === ')').map((m) => m[1]));
+    const absents = [...sansRepli].filter((j) => !declares.has(j)).sort();
+    if (absents.length) res.push({ nom: b.nom, absents });
+  }
+  return res;
+}
+
+/**
  * POSE des composants dans une page QUELCONQUE — c'est la porte qui manquait (TF-0890).
  *
  * Un bloc DÉJÀ marqué pour ce composant est remplacé par sa forme canonique ; sinon le bloc est
@@ -271,6 +301,11 @@ export function main(argv) {
     fs.writeFileSync(cible, r.html, 'utf8');
     console.log(`composants embarqués : ${r.poses.length} bloc(s) posé(s) dans ${cible} —`);
     for (const p of r.poses) console.log(`  · ${p}`);
+    // TF-1964 : la pose dit tout de suite ce que la page hôte doit encore déclarer.
+    for (const j of jetonsAbsents(r.html)) {
+      console.log(`\nATTENTION : ${j.nom} consomme sans repli ${j.absents.length} jeton(s) que la page ne déclare pas : `
+        + `${j.absents.join(', ')} — les déclarer dans :root (l'alias d'un jeton du socle suffit).`);
+    }
     console.log('\n`--constat <page.html>` rejoue la parité sur ce fichier.');
     return 0;
   }
@@ -286,10 +321,16 @@ export function main(argv) {
   for (const fichier of fichiers) {
     if (!fs.existsSync(fichier)) { ecarts.push(`${fichier} : fichier introuvable`); continue; }
     const rel = path.relative(racine, fichier).replace(/\\/g, '/') || fichier;
-    const r = confronterBlocs(fs.readFileSync(fichier, 'utf8'), rel);
+    const brut = fs.readFileSync(fichier, 'utf8');
+    const r = confronterBlocs(brut, rel);
     ecarts.push(...r.ecarts);
     ajour.push(...r.ajour);
     if (r.modifie) aEcrire.set(fichier, r.html);
+    // TF-1964 : un jeton consommé sans repli et absent de la page est un écart, au même titre qu'une copie périmée.
+    for (const j of jetonsAbsents(r.html)) {
+      ecarts.push(`${rel} · ${j.nom} : ${j.absents.length} jeton(s) consommé(s) SANS repli et absent(s) de la page : `
+        + `${j.absents.join(', ')} (déclarer le jeton dans :root, ou donner un repli au composant)`);
+    }
   }
 
   if (constat) {

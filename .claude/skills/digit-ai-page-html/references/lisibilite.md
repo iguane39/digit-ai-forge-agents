@@ -201,7 +201,7 @@ période, échéance, début, fin, livraison ; « du » et « au » seulement en
 nomme pas une note (note, score, sur, indice, taux, rang, niveau). Une valeur déclarée score par
 sa classe (`sc`, `score`, `note`, `jauge`) reste un score.
 
-**(b) Les autres valeurs mises en avant** — `kpi`, `badge`, `pastille`, `pv`, `stat`.
+**(b) Les autres valeurs mises en avant** — `kpi`, `badge`, `pastille`, `pv`, `chip-val`, `stat`.
 Exigence : **`aria-describedby` vers une légende visible de la page — le porteur recommandé**,
 parce qu'elle survit au PDF, s'atteint au doigt et ne se recopie pas ; **ou** une légende visible
 (`<small>`, `.legende`, `.kpi-d`) d'au moins 12 caractères ; **ou**, à défaut, `aria-label` ou
@@ -211,6 +211,22 @@ pastilles pour passer L3. Une infobulle porte un **complément**, jamais une red
 
 Un `title=""` vide est **pire** que pas de tooltip : il annonce une explication et n'en
 donne aucune. C'est un échec, pas un avertissement.
+
+**Les classes RÉSERVÉES, et le message qui les nomme** (TF-1962, RT-11 du lot Produit-84 20261019c). L3 se
+déclenche sur un NOM DE CLASSE : une page de données dont les cellules portaient `class="pv"` — une classe
+de MISE EN PAGE (petite valeur, alignée à droite) — a produit 95 échecs « valeur sans légende », et l'auteur
+a dû lire le code de l'oracle pour apprendre que `pv` y est réservé. Un contrôle qui échoue sur un
+marqueur réservé le nomme. Les classes réservées, lues dans `check_html.py` :
+
+| Déclenche | Classes réservées | Exigence |
+|---|---|---|
+| une **valeur** mise en avant (b) | `badge`, `chip-val`, `kpi`, `pastille`, `pv`, `stat` | légende (aria-describedby, légende visible, aria-label ou title) |
+| un **score** (a) | `jauge`, `sc`, `score` ; `note` seulement avec un texte « n/m » ; et la FORME « n/m » d'un `td`, `span`, `b`, `strong`, `em` | barème lié (aria-describedby) |
+
+Chaque message d'échec de L3 dit « Déclenché par la classe réservée « … » » avec cette liste, et la sortie :
+une classe de mise en page se RENOMME (une classe hors de la liste n'est pas jugée), une vraie valeur se
+légende. Fixtures `l3-classe-reservee-pv.html` (rouge : 3 échecs nommant « pv ») et
+`l3-classe-non-reservee.html` (verte : la même page, classe `chiffre`).
 
 **(c) Les colonnes calculées.** Un en-tête de tableau nommé `Score`, `Note`, `Indice`,
 `Priorité`, `Pondération`, `Classement`, `Criticité` ou `Sévérité` annonce une valeur
@@ -776,6 +792,24 @@ un identifiant de notre registre relevant de L14 et pas d'ici. Le `<head>` n'est
 `<title>` qui cite un code décrit la page, il ne renvoie à rien. Et **un titre portant un `id`
 EST la définition** du jeton : elle ne se renvoie pas à elle-même.
 
+**Un code de règle en lettres PUIS chiffres, sans espace** (TF-1969, RT-18 du lot Produit-84 20261019e). Une
+page citait 22 codes `ADR0501`, `OSP0901`, `GDE0202-R05` dans sa prose et ses cellules sans une infobulle :
+le motif ne connaissait que `ADR 0009` AVEC espace, et L3 (d) ne lit que des feuilles de texte en minuscules.
+La consigne humaine avait été répétée quatre fois chez un autre produit. La forme reconnue : deux à cinq
+majuscules, trois à cinq chiffres, un suffixe `-R05` facultatif. Les préfixes de NORMES et de FORMATS (ISO, IEC,
+RFC, SHA, TLS, SQL, AES, HTTP, UTF, WCAG, CVE, NIST…) en sont exclus : `ISO27001` ou `SHA256` ne sont pas des
+codes du livrable. Le remède est celui de L18 : `title`, `aria-label`, `aria-describedby` vers une définition,
+lien interne vers son ancre, ou `data-code-glose="<raison>"`. Fixtures `l18-code-regle-nu.html` (rouge : un
+avertissement nommant les trois codes, les trois normes citées dans la même page ne sont pas accusées) et
+`l18-code-regle-glose.html` (verte). **Avertissement et non échec.** Bruit mesuré le 29/10/2026, ancienne et nouvelle
+version jouées sur 2 405 pages HTML de `C:\dev` (hors fixtures ; 94 pages de plus de 1,5 Mo ignorées) : 397 pages
+nouvellement accusées (16,5 %), dont **310 de vrais codes de règle cités nus** (279 `ADR…`, 21 `GDE…`, 10 `OSP…` : la
+plainte du produit tient sur le parc) et 87 qui n'en citent aucun — des valeurs d'exemple (`AB1234`, `ABC123`,
+`OWN0012`), un sentier de randonnée (`GR223`, 7 pages d'un même site en 7 langues), des noms de fichier joints
+(`WRD0000`, `ATT00759`), une référence de courriel (`DEV20418`), un algorithme (`HS256`, 4 pages : exclu depuis).
+Un échec bloquant sur 87 faux positifs obligerait à glosser un nom de sentier ; `data-code-glose` les déclare. Les
+formes historiques (`ADR 0009`, `RA-12`, `Q-M8`) restent des échecs.
+
 **Hors HTML, la glose doit être EN LIGNE** — point de revue de lecture, pas contrôle mécanique.
 C'est précisément ce que le retour jumeau (aucun contrôle de lisibilité sur un Markdown) rend
 impossible à attraper aujourd'hui.
@@ -1088,6 +1122,13 @@ nouvellement accusée.
 @media screen and (max-width: 900px) { .toc { position: static; } }   /* bande repliable sur mobile */
 ```
 
+**Une bande de sommaire qui défile n'est pas un débordement** (TF-1992, RA-2 du lot Produit-85 20261024a). Une bande
+d'ancres `overflow-x: auto` sous 900 px est la forme que cette règle prescrit ; V1 la comptait comme un débordement
+bloquant, et un produit l'a contournée par `flex-wrap`, c'est-à-dire en défaisant le geste. V1 exclut désormais un
+élément contenu par un conteneur défilant qui tient dans la fenêtre ET vit dans un sommaire déclaré (`nav.toc`,
+`aria-label` « Sommaire », `[role="tablist"]`) ; ce qui est exclu est **compté au non-mesure**, et la même bande hors
+sommaire reste accusée (fixtures `v1-bande-sommaire-defilante.html` et `v1-bande-defilante-hors-sommaire.html`).
+
 **Sommaire à DEUX NIVEAUX — la forme admise, en `<a>` (TF-0931 et TF-0933, 08/09/2026).** Deux
 retours humains sur le même menu en une journée : « certains sous-chapitres ne sont pas dans le
 menu de gauche », puis « mets les chapitres et sous-chapitres ensemble ». Aucune forme ne passait
@@ -1218,6 +1259,20 @@ et glossaire en **dérivent**, au lieu d'être réécrits trois fois.
 **Contrôle mécanique.** `L27` — un `<th>` muet sur une page de données. La règle ne juge que les
 pages déclarées : exiger une définition sur le tableau à deux colonnes d'une note de synthèse
 ferait crier le contrôle là où il n'apprend rien.
+
+### L27 bis — un EN-TÊTE DE LIGNE se définit aussi (TF-1970, RT-19 du lot Produit-84 20261019e)
+
+Un comparatif nommait dix-neuf composants dans sa première colonne (`<th scope="row">`) sans une infobulle ;
+l'utilisateur a demandé qu'ils soient définis, et `check_html` rendait PASS : L27 ne juge que les pages
+DÉCLARÉES de données, et un comparatif est le plus souvent une page de lecture. **Règle** : dans un tableau
+d'au moins trois lignes de corps et trois `<th>` de ligne (`scope="row"`, ou placé dans le corps), chacun porte
+`data-definition` (ou `title`, un `<abbr title>`, un lien vers son entrée de glossaire). **Avertissement**
+(règle neuve) ; sur une page de données, L27 le juge déjà, bloquant. Écart voulu :
+`data-entetes-ok="<raison, 8 caractères au moins>"` sur le tableau. Fixtures `l27-entetes-de-ligne-muets.html`
+(rouge) et `l27-entetes-de-ligne-definis.html` (verte : trois porteurs). Bruit mesuré le 29/10/2026 sur 2 405 pages
+HTML de `C:\dev` hors fixtures : 34 pages nouvellement accusées (1,4 %), 91 avertissements — des comparatifs réels
+(`Déclenchement`, `Conformité du socle`) et des calendriers dont les lignes sont des jours de la semaine, où une
+définition n'apprend rien : d'où l'avertissement, et `data-entetes-ok` pour ces derniers.
 
 ## L28 — Le temps s'affiche comme du temps (TF-0783, 02/09/2026)
 
@@ -1534,6 +1589,23 @@ Bruit mesuré : 47 pages averties sur 192 pages HTML du parc (14/10/2026) — de
 de sources et de motifs écrites en phrases à points-virgules, d'où l'avertissement.
 
 Fixtures : `l12-cellule-points-virgules.html` (rouge), `l12-cellule-en-puces.html` (verte).
+
+### L12 (cellules, suite) — les virgules d'une cellule, et la colonne aux formes mêlées (TF-1967, RT-16, 19/10/2026)
+
+**Le fait.** Une cellule énumérait ses éléments par des virgules à côté de cellules en listes, et une colonne
+de trois ou quatre points s'écrivait en paragraphe : deux remarques de l'utilisateur, `check_html` PASS. La
+branche des cellules ne lisait que les points-virgules, celle des virgules que `p`, `li` et `dd`.
+
+**La règle.** Deux avertissements. **(a)** une cellule de texte seul qui énumère **quatre éléments ou plus** par
+des virgules (même grammaire que L12 des phrases) ; **(b)** une colonne dont une cellule au moins est une
+**liste** (`<ul>`/`<ol>` de deux éléments ou plus) et une autre énumère en prose — trois éléments par virgules,
+trois phrases courtes ou trois paragraphes : deux formes dans une même colonne. Une cellule citée
+(`data-cite`), de code ou déjà structurée n'est pas jugée en (a). Écart voulu : `data-forme-ok="<raison, 8
+caractères au moins>"` sur la cellule, le tableau ou un ancêtre. Fixtures `l12-cellule-formes-melees.html` (rouge :
+les deux avertissements) et `l12-cellule-formes-uniformes.html` (verte : les mêmes droits, chaque cellule en liste).
+Bruit mesuré le 29/10/2026 sur 2 405 pages HTML de `C:\dev` hors fixtures : 29 pages nouvellement accusées (1,2 %),
+1 274 pages averties par L12 avant et 1 303 après ; le gros des avertissements de L12 existait déjà (E-11 est appliquée
+nulle part), d'où l'avertissement.
 
 ## L37 — Un écart dit son remède, ligne à ligne (TF-1664, RT-58, 14/10/2026)
 
