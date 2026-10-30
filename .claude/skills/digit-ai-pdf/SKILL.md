@@ -119,6 +119,8 @@ le contrôle dit que la page reste illisible, il ne la compte pas comme lue.
 - Le bon placement d'une boîte d'un formulaire plat : l'oracle borne le texte à la boîte déclarée, l'œil juge la boîte.
 - Le dessin réel des caractères : `--rendu` et l'œil, ou `oracle-polices-embarquees` pour une police embarquée.
 - Les pages tournées d'un formulaire : remplissage plat refusé, F4 et F5 déclarées non jouées.
+- La voie `--moteur tesseract` : aucun binaire sur le poste de recette, elle n'a jamais tourné. Le banc a mesuré Tesseract par `tesserocr`, et le self-test dit ce moteur absent sans le compter comme lu.
+- La précision du tri « formulaire plat » : le détecteur a vu les formulaires essayés, mais il n'a pas de vérité terrain, et un tarif à points de conduite l'a trompé. L'œil confirme.
 - Le type métier d'un document, et la modification d'un texte existant : `pypdf` ne le supprime pas proprement en place, cela reste une affaire de session.
 
 ## Frontière
