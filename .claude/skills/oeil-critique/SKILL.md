@@ -69,7 +69,7 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
    `verificateur`), jamais un agent générique ; chaque agent ne reçoit que les extraits de son lot.
    Les extraits se répartissent en lots de taille égale, 7 au plus ; les relevés de l'étape 2 bis
    vont à un agent de plus, qui ne lit qu'eux. Le fait (29/10/2026, première exécution sur
-   DESKTOP-ULTRA7) : 99 sessions en 9 jours, dont 45 appels automatisés du juge `oracle-judge` ; un
+   DESKTOP-ULTRA7) : 99 sessions en 9 jours, dont 49 appels automatisés (47 du juge `oracle-judge`) ; un
    agent par session en aurait lancé 99. Les 8 agents ont coûté 1,08 million de jetons pour 2,5 Mo
    d'extraits, au-dessus du plafond : une période de plus de 7 jours se découpe. Dans les extraits,
    le rôle des réponses est `reponse`, et aucun champ ne porte le poste : il est dans la sortie
