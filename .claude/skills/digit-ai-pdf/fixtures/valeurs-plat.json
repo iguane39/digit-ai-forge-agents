@@ -1,0 +1,44 @@
+{
+  "plat": [
+    {
+      "page": 1,
+      "boite": [
+        110,
+        88,
+        400,
+        106
+      ],
+      "texte": "Hélène Dupré"
+    },
+    {
+      "page": 1,
+      "boite": [
+        110,
+        118,
+        400,
+        136
+      ],
+      "texte": "Saint-Étienne, le 30/10/2026"
+    },
+    {
+      "page": 1,
+      "boite": [
+        50,
+        150,
+        62,
+        162
+      ],
+      "coche": true
+    },
+    {
+      "page": 1,
+      "boite": [
+        50,
+        174,
+        62,
+        186
+      ],
+      "coche": false
+    }
+  ]
+}

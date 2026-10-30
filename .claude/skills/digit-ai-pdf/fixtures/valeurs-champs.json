@@ -1,0 +1,11 @@
+{
+  "champs": {
+    "nom": "Hélène Dupré-Œuvrard",
+    "adresse": "12 rue de l'Église, 39000 Lons-le-Saunier, bâtiment C, 3e étage, porte de gauche",
+    "iban": "FR7630006000011234567890189",
+    "accepte": true,
+    "refuse": false,
+    "formule": "/B",
+    "ville": "Saint-Étienne"
+  }
+}
