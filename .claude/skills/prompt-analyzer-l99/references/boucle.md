@@ -40,7 +40,10 @@ cas et sans signal, L99 garde son mode simple, et le score du Ch8 s'écrit « pr
 - `garde_longueur` : 15 % ;
 - `retenue` : `union_recomptee` ;
 - `verification_cloture` : `true` ;
-- `rejet_regression` : `true`.
+- `rejet_regression` : `true` ;
+- `bruit_tolere` : entier optionnel, borné à [0,2] (défaut 0). Le bruit des relecteurs rotatifs qu'une
+  baisse de score doit dépasser pour valoir régression (B8) ; à 0, toute baisse est une régression
+  (règle d'origine), donc un journal qui ne le déclare pas est jugé à l'identique (TF-2063, 02/11/2026).
 
 **Les trois dernières clés sont la règle de l'essai D-111 (a)** (décision humaine du 29/10/2026,
 réponse « 111a », sujet TF-2026, revue le 16/11/2026). Elles viennent de l'étude

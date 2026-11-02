@@ -22,8 +22,9 @@
 //   B7  le score affiché est le score MESURÉ de la passe d'arrêt, jamais un score projeté.
 // Règles de l'essai D-111 (a) du 29/10/2026 (TF-2026), jouées seulement si l'arbitre les déclare,
 // pour que les journaux d'avant restent jugés par leurs propres règles :
-//   B8  `rejet_regression` : une passe dont le score mesuré baisse sous la passe gardée précédente
-//       est rejetée ; l'arrêt « regression » se pose alors sur la dernière passe gardée.
+//   B8  `rejet_regression` : une passe dont le score mesuré baisse sous la passe gardée précédente,
+//       au-delà du bruit de relecteur `bruit_tolere` (entier 0-2, défaut 0 = baisse stricte), est
+//       rejetée ; l'arrêt « regression » se pose alors sur la dernière passe gardée (TF-2063).
 //   B9  `retenue: "union_recomptee"` : un défaut grave vu par un seul relecteur est retenu ; il n'est
 //       écarté que si le recompte le dément (`dementi: true`).
 //   B10 `verification_cloture` : chaque passe à partir de la 2e porte la vérification de clôture
@@ -165,12 +166,16 @@ export function juger(j) {
   if (!s || s.nature !== 'mesure') ko('B7', 'score_affiche', 'le score affiché doit être de nature « mesure », jamais projeté');
   else if (pa && s.valeur !== pa.score_mesure) ko('B7', 'score_affiche.valeur', `score affiché ${s.valeur}, mesuré ${pa.score_mesure} à la passe d arrêt`);
 
-  // B8 — une passe qui régresse est rejetée (D-111 (a))
+  // B8 — une passe qui régresse est rejetée (D-111 (a)), au-delà du bruit de relecteur (TF-2063, 02/11/2026).
+  // Deux relecteurs rotatifs par passe font varier le score conservateur de ±1 à ±2 ; une baisse DANS ce
+  // bruit n'est pas une régression de fond. `bruit_tolere` (entier, borné à [0,2], défaut 0) l'absorbe :
+  // à 0, la règle est la baisse stricte d'origine, et tout journal qui ne déclare rien est jugé à l'identique.
   if (a && a.rejet_regression === true) {
+    const bruit = nb(a.bruit_tolere) ? Math.min(Math.max(a.bruit_tolere, 0), 2) : 0;
     let precGardee = null;
     passes.forEach((p, i) => {
-      if (precGardee && nb(p.score_mesure) && nb(precGardee.score_mesure) && p.score_mesure < precGardee.score_mesure && !estRejetee(p))
-        ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure} : passe à rejeter, on garde la précédente`);
+      if (precGardee && nb(p.score_mesure) && nb(precGardee.score_mesure) && (precGardee.score_mesure - p.score_mesure) > bruit && !estRejetee(p))
+        ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure}${bruit ? ` (au-delà du bruit toléré de ${bruit})` : ''} : passe à rejeter, on garde la précédente`);
       if (!estRejetee(p)) precGardee = p;
     });
   }
