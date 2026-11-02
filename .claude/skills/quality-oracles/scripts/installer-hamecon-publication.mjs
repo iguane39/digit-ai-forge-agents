@@ -192,11 +192,23 @@ fi
 # <ref distante> <empreinte distante>. La porte rejugeait toute l'histoire a chaque envoi (9 min 11 s
 # au pilot le 27/09/2026) ; elle ne juge plus que les revisions absentes du distant, et l'arbre
 # courant entier. Sans aucune ligne lue, elle juge toute l'histoire, comme avant.
+# TF-2027 (02/11/2026) : LA VUE LOCALE DU DISTANT N'EST PAS LE DISTANT. Le 29/10, 4 enregistrements deja
+# publies refusaient tout envoi du pilot (4 constats C5). Rejoue le 02/11 sur un clone jetable : un suivi
+# local en retard et une empreinte distante nulle (branche neuve) redonnent exactement ces 4 constats. Le
+# hameçon demande donc au distant ce qu'il porte (git ls-remote --heads) et exclut chaque tete connue
+# localement ; distant injoignable, la plage reste celle d'avant (suivis locaux seuls).
 REVS=""
 while read -r REF_LOCALE SHA_LOCAL REF_DISTANTE SHA_DISTANT; do
   case "$SHA_LOCAL" in *[!0]*) REVS="$REVS,$SHA_LOCAL" ;; esac
   case "$SHA_DISTANT" in *[!0]*) git cat-file -e "$SHA_DISTANT^{commit}" 2>/dev/null && REVS="$REVS,^$SHA_DISTANT" ;; esac
 done
+if [ -n "$REVS" ]; then
+  DELAI_DISTANT=""
+  command -v timeout >/dev/null 2>&1 && DELAI_DISTANT="timeout 30"
+  for TETE_DISTANTE in $(GIT_TERMINAL_PROMPT=0 $DELAI_DISTANT git ls-remote --heads "$1" 2>/dev/null | cut -f1); do
+    git cat-file -e "$TETE_DISTANTE^{commit}" 2>/dev/null && REVS="$REVS,^$TETE_DISTANTE"
+  done
+fi
 ARG_REVS=""
 if [ -n "$REVS" ]; then
   ARG_REVS="--revs=\${REVS#,}"

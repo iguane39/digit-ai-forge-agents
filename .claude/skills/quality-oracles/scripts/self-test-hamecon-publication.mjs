@@ -568,6 +568,39 @@ try {
     else kos.push('cas 16 ter (TF-1953, sens rouge) — push exit ' + p16b.status + ' : ' + e16b.trim().slice(0, 400));
   }
 
+  // --- cas 16 quater : LA VUE LOCALE DU DISTANT N'EST PAS LE DISTANT (TF-2027) -------------------
+  // Mesuré le 29/10/2026 au pilot : 4 enregistrements déjà publiés (ancêtres d'origin/main) refusaient tout
+  // envoi par 4 constats C5. Rejoué le 02/11/2026 sur un clone jetable : une vue locale du distant en retard
+  // (suivi supprimé ou périmé) et une empreinte distante nulle (branche neuve) redonnent EXACTEMENT ces 4
+  // constats bloquants, la plage jugée contenant du publié. Le pre-push demande donc au distant ce qu'il porte
+  // (`git ls-remote --heads`) et exclut ces têtes avant de juger. Sens vert : un porteur publié, suivi effacé,
+  // envoi propre vers une branche NEUVE → PASSE ; sens rouge : un ajout porteur dans le même envoi → REFUSÉ.
+  {
+    const d = depot(racine, 'vue-perimee', false);
+    const distant = distantJetable(racine, 'vue-perimee-distant');
+    git(d, 'remote', 'add', 'origin', distant);
+    sh(racine, 'node', [INSTALLEUR, d, '--seul=pre-push']);
+    const valider = (nom, txt, msg) => { fs.writeFileSync(path.join(d, nom), txt); git(d, 'add', '-A'); git(d, 'commit', '-q', '-m', msg); };
+    const brancheAuDistant = (b) => spawnSync('git', ['--git-dir=' + distant, 'rev-parse', '--verify', '-q', 'refs/heads/' + b], { encoding: 'utf8' }).status === 0;
+    valider('ancien.md', 'Note ancienne pour Zorglub.\n', 'Note ancienne');
+    git(d, 'rm', '-q', 'ancien.md'); git(d, 'commit', '-q', '-m', 'Retrait de la note');
+    sh(d, 'git', ['push', '--no-verify', 'origin', 'main'], ENV_JEU_ESSAI);          // le porteur est PUBLIÉ
+    git(d, 'update-ref', '-d', 'refs/remotes/origin/main');                           // la vue locale du distant est perdue
+    valider('suite.md', 'Suite pseudonymisee pour Client-A.\n', 'Suite propre');
+    const vue = sh(d, 'git', ['for-each-ref', 'refs/remotes'], ENV_JEU_ESSAI);
+    const p16q = sh(d, 'git', ['push', 'origin', 'main:neuve'], ENV_JEU_ESSAI);
+    if ((vue.stdout || '').trim() === '' && p16q.status === 0 && brancheAuDistant('neuve'))
+      oks.push('cas 16 quater (TF-2027, sens vert) — passé publié porteur, aucun suivi local du distant, branche neuve : l\'envoi propre PASSE (le distant dit ce qu\'il porte) et la branche est au distant');
+    else kos.push('cas 16 quater (TF-2027, sens vert) — suivis locaux : « ' + (vue.stdout || '').trim().slice(0, 80) + ' », push exit ' + p16q.status + ', branche au distant : ' + brancheAuDistant('neuve') + ' : ' + (p16q.stderr || '').trim().slice(0, 300));
+    valider('fuite.md', 'Livraison Zorglub.\n', 'Ajout neutre');
+    git(d, 'rm', '-q', 'fuite.md'); git(d, 'commit', '-q', '-m', 'Retrait');
+    git(d, 'update-ref', '-d', 'refs/remotes/origin/neuve');
+    const p16r2 = sh(d, 'git', ['push', 'origin', 'main:neuve2'], ENV_JEU_ESSAI);
+    if (p16r2.status !== 0 && /C4/.test(p16r2.stderr || '') && !brancheAuDistant('neuve2'))
+      oks.push('cas 16 quater (TF-2027, sens rouge) — le même envoi vers une branche neuve, avec un ajout porteur retiré de l\'arbre, est REFUSÉ sur C4 et la branche n\'arrive pas au distant');
+    else kos.push('cas 16 quater (TF-2027, sens rouge) — push exit ' + p16r2.status + ', branche au distant : ' + brancheAuDistant('neuve2') + ' : ' + (p16r2.stderr || '').trim().slice(0, 400));
+  }
+
   // --- cas 17 : UN PORTEUR DE SECRETS AJOUTÉ PAR L'ENVOI EST REFUSÉ (TF-1221) ------------------
   // Des porteurs de secrets ont été publiés chez deux produits : la règle SP2 ne se jouait que depuis
   // le pilot. Le pre-push la joue sur les fichiers que l'envoi ajoute. Chaque sens se juge sur la

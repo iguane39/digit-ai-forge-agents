@@ -197,6 +197,12 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   le dit (`ARBRE JUGÉ`, au non jugé). Les empreintes positives avant `--not` sont les arbres ; `^<empreinte>` et `--remotes=` bornent
   l'histoire. Un objet illisible se compte et se déclare. Recette `self-test-hamecon-publication.mjs`, cas 16 ter (envoi propre
   avec disque sale : refusé avant, accepté après ; nom publié effacé du disque seulement : C1 le nomme après).
+- **Le distant dit ce qu'il porte (TF-2027)** — le pre-push exclut aussi les têtes que `git ls-remote --heads` annonce et que le
+  dépôt connaît, en plus de l'empreinte distante de git et des suivis locaux. Mesuré le 29/10/2026 au pilot : 4 enregistrements déjà
+  publiés refusaient tout envoi (4 constats C5) ; rejoué le 02/11 sur un clone jetable, un suivi local en retard et une empreinte
+  distante nulle (branche neuve) redonnent exactement ces 4 constats. Distant injoignable : plage d'avant. Le passé publié est exclu,
+  non compté (HISTOIRE RESTREINTE, au non jugé). Recette `self-test-hamecon-publication.mjs`, cas 16 quater (refusé avant, accepté
+  après ; un ajout porteur dans le même envoi reste refusé). Les hooks posés se mettent à jour par une repose de l'installeur.
 - **Profils** — `profils/digit-ai.json` · `generique.json` (défaut : digit-ai, env `QO_PROFIL`) : budgets perf,
   politique pptx, convention de nommage, marqueurs de sources et motifs additionnels (claims : `motifs_bloquants` / `motifs_warn`),
   niveaux d'exigence (§6), seuils `visual_diff` (seuil_ratio, breakpoints, tolerance_pixel), rubrique du juge, `ignore_patterns`. Un contexte client = un JSON, zéro code.
