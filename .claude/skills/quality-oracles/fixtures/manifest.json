@@ -2144,6 +2144,22 @@
     "part affichée 97 %, recalculée 75 %"
    ],
    "provenance": "TF-1727 — lot Produit-12 - RETOURS - 20261014a (RS-31) et sa pièce « Principe d'analyse critique », §3 (a), 14/10/2026 : six pages de rangement affichaient 97 à 98 % de fichiers rangés, portes vertes, et leurs compteurs d'en-tête étaient faux. Fixture CONSTRUITE sur ce défaut (12 lignes, l'en-tête compte les fichiers à dater parmi les rangés) : la table réelle du produit n'est pas versionnée ici, l'oracle reste partiel."
+  },
+  {
+   "nom": "tri-de-sujets",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-tri-de-sujets.mjs",
+    "{fixture}"
+   ],
+   "red": "tri-de-sujets-red.md",
+   "green": "tri-de-sujets-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ]
   }
  ]
 }

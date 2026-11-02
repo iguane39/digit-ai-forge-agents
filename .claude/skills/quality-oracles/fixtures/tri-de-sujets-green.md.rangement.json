@@ -1,0 +1,21 @@
+{
+ "schema": "tri-de-sujets/rangement@1",
+ "perimetre": 3,
+ "entrees": [
+  { "id": "s1", "etat": "retenu", "motif": "nomme un outil d'agents", "voie": "légende" },
+  { "id": "s2", "etat": "hors filtre", "motif": "sujet sans rapport", "voie": "légende" },
+  { "id": "s3", "etat": "non qualifié", "motif": "aucune voie ne dit le sujet", "voie": "légende" }
+ ],
+ "lignes": [
+  {
+   "element": "Un outil d'agents",
+   "ids": ["s1"],
+   "notes": "G4 N4 P4 C3 = 19",
+   "seuil": "objet-durable",
+   "question": "Quels rôles manquent à la flotte ?",
+   "source": "https://exemple.org/outil, consultée le 2026-11-02",
+   "motif": "Crée un skill pour la forge d'agents, aucun existant trouvé (termes : outil, agent).",
+   "verdict": "Étude poussée"
+  }
+ ]
+}

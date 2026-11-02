@@ -1,0 +1,34 @@
+{
+ "schema": "tri-de-sujets/rangement@1",
+ "perimetre": 4,
+ "entrees": [
+  { "id": "s1", "etat": "retenu", "motif": "nomme un outil d'agents", "voie": "légende" },
+  { "id": "s1", "etat": "retenu", "motif": "doublon", "voie": "légende" },
+  { "id": "s2", "etat": "hors filtre", "motif": "sujet sans rapport", "voie": "légende" }
+ ],
+ "lignes": [
+  {
+   "element": "Un outil d'agents",
+   "ids": ["s1"],
+   "notes": "G4 N4 P4 C3 = 21",
+   "seuil": "non",
+   "motif": "Prometteur.",
+   "verdict": "Étude à lancer"
+  },
+  {
+   "element": "Un fait d'actualité",
+   "ids": ["s2"],
+   "notes": "G1 N1 P1 C1 = 5",
+   "seuil": "non",
+   "motif": "Sujet intéressant.",
+   "verdict": "Étude poussée"
+  },
+  {
+   "element": "Un sujet absent du tableau",
+   "ids": ["s1"],
+   "deja_couvert": true,
+   "motif": "Déjà couvert par `references/x.md`.",
+   "verdict": "Sans suite"
+  }
+ ]
+}
