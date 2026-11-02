@@ -28,7 +28,16 @@ Une ligne de PDF remplacée garde sa police si celle-ci est réutilisable et por
 
 ## Comparer
 
-L'onglet montre côte à côte la version choisie et la précédente gardée, mots retirés barrés à gauche, mots ajoutés soulignés à droite, sur le texte extrait de chaque format. Il n'existe pas en mode aveugle.
+L'onglet met 2 versions face à face, choisies par 2 sélecteurs. À droite, la version choisie dans le menu ; à gauche, la précédente gardée tant que le porteur n'en choisit pas une autre. Toute version qui a un fichier se choisit, rejetée comprise, dans les 2 sens. Il n'existe pas en mode aveugle.
+
+| Forme | Word, PowerPoint, PDF | Markdown, HTML |
+|---|---|---|
+| Dans son format, par défaut | les pages rendues, rang par rang sur une même ligne, comme dans l'aperçu | les 2 aperçus côte à côte, chacun dans son cadre |
+| En texte marqué | mots retirés barrés à gauche, ajoutés soulignés à droite | la même chose |
+
+`formats.py pages-ecart` compare les 2 images de chaque rang et rend ce qui diffère : chaque page se dit modifiée ou identique, et chaque bande de lignes voisines qui diffère s'encadre en rouge, des 2 côtés, à la même place. Un écart de gris sous `SEUIL_PIXEL` n'est que du lissage. Au-delà de `ZONES_MAX` bandes, un seul cadre couvre le tout, car le texte a reflué. « Pages modifiées seulement » retire les autres de l'écran, et « Masquer le menu » rend sa largeur aux 2 colonnes, jusqu'au retour à l'aperçu. Une page sans vis-à-vis se dit. Un export qui échoue ramène aux 2 aperçus en texte extrait, avec son motif.
+
+Limites. L'écart compare les pixels à la même place : un Word dont un paragraphe a grandi encadre tout ce qui a glissé dessous, et une page ajoutée décale les suivantes. Markdown et HTML n'ont pas d'encadré, et leurs 2 cadres défilent séparément : ce qui a changé s'y lit par « En texte marqué ».
 
 ## La revue à l'aveugle
 

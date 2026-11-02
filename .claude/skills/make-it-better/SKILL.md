@@ -10,7 +10,7 @@ description: >
   une maquette ou une critique graphique (→ ameliore-le-design, critique-le-design), ni pour juger un
   livrable fini (→ quality-oracles).
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # make-it-better — le test de l'itération longue

@@ -9,7 +9,7 @@ Tout se joue depuis `scripts/`, hors de tout dépôt pour ce qui écrit. `<racin
 | `CLAUDE.md` piégé, lecture et écriture hors du dossier | `node recette-reelle.mjs isolation --racine <racine>` | oui, 2 tours | non |
 | Export réel, processus laissés, Word figé à 120 secondes, Word du porteur | `node recette-word.mjs --racine <racine>` | non | Word |
 | Export réel, repli, PowerPoint du porteur intact | `node recette-powerpoint.mjs --racine <racine>` | non | PowerPoint |
-| Parcours du porteur dans Chromium, sans deck | `python recette-navigateur.py --racine <racine>` | non | Word |
+| Parcours du porteur dans Chromium, comparaison d'un deck si la racine porte un espace `note-pptx` | `python recette-navigateur.py --racine <racine>` | non | Word, PowerPoint |
 
 `recette-powerpoint.mjs` ne ferme jamais un PowerPoint qu'elle n'a pas ouvert. Si un PowerPoint tourne déjà, elle n'y ouvre rien, relit son numéro, sa date et son titre après chaque export, et ne joue pas le cas de l'instance lancée puis quittée, qu'elle annonce alors. Un deck réel s'éprouve sans modèle sur une copie hors de tout dépôt : `node lancer.mjs --document <copie> --espace <espace> --simuler normal`.
 

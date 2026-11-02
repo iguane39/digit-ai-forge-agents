@@ -91,16 +91,25 @@ def parcours(page, base, captures):
     verifier("choisir une version : l'adresse du cadre suit", "/apercu/" in page.get_attribute("#cadre", "src"), page.get_attribute("#cadre", "src"))
     page.click("#onglet-comparer")
     page.wait_for_timeout(500)
-    if page.locator("#cote-a-cote").is_visible():
+    if page.locator("#cadres-comparer").is_visible():
+        verifier("comparer Markdown : 2 aperçus côte à côte d'emblée", "/apercu/" in page.get_attribute("#cadre-gauche", "src") and "/apercu/" in page.get_attribute("#cadre-droite", "src"))
+        verifier("comparer : la gauche suit la précédente, la droite la version choisie", page.input_value("#comparer-gauche") == "0" and page.input_value("#comparer-droite") == "1", f'{page.input_value("#comparer-gauche")} {page.input_value("#comparer-droite")}')
+        page.click("#forme-texte")
+        page.wait_for_timeout(500)
         ajoutes, retires = page.locator("#texte-droite ins").count(), page.locator("#texte-gauche del").count()
-        verifier("comparer : 2 colonnes, l'écart surligné", ajoutes + retires > 0, f"{ajoutes} ajouts, {retires} retraits")
-        verifier("comparer : le compte de mots est dit", "mots ajoutés" in page.locator("#ecart-comparer").inner_text(), page.locator("#ecart-comparer").inner_text())
+        verifier("comparer en texte : 2 colonnes, l'écart surligné", page.locator("#cote-a-cote").is_visible() and ajoutes + retires > 0, f"{ajoutes} ajouts, {retires} retraits")
+        verifier("comparer en texte : le compte de mots est dit", "mots ajoutés" in page.locator("#ecart-comparer").inner_text(), page.locator("#ecart-comparer").inner_text())
+        page.click("#forme-rendu")
+        page.wait_for_timeout(300)
     else:
         verifier("comparer : l'état vide dit quoi faire", page.locator("#vide-comparer").is_visible(), page.locator("#vide-comparer").inner_text())
     page.screenshot(path=str(captures / "02-comparer.png"))
     page.locator(".version").first.click()
     page.wait_for_timeout(400)
     verifier("comparer sur l'origine : l'état vide dit quoi faire", "choisis un tour" in page.locator("#vide-comparer").inner_text(), page.locator("#vide-comparer").inner_text())
+    page.select_option("#comparer-gauche", "1")
+    page.wait_for_timeout(400)
+    verifier("comparer : l'origine se compare à une version choisie à gauche", page.locator("#cadres-comparer").is_visible() and page.input_value("#comparer-gauche") == "1" and page.input_value("#comparer-droite") == "0", page.locator("#vide-comparer").inner_text())
     page.click("#onglet-apercu")
 
     # Marquer, recharger, retrouver
@@ -148,6 +157,42 @@ def parcours(page, base, captures):
     page.screenshot(path=str(captures / "04-word.png"))
     page.wait_for_timeout(2000)
     verifier("Word : aucun processus lancé ne reste", winword() <= avant, f"avant {avant}, après {winword()}")
+
+    # Comparer un deck : 2 versions au choix, rendues par le vrai PowerPoint, face à face
+    if any(re.search(r"note-pptx", page.locator("#choix-essai option").nth(i).get_attribute("value")) for i in range(page.locator("#choix-essai option").count())):
+        choisir_doc(page, r"note-pptx")
+        page.click("#onglet-comparer")
+        page.locator("#pages-comparer .page-comparee").first.wait_for(timeout=400000)
+        titres = page.locator("#pages-comparer h3").all_inner_texts()
+        verifier("deck : une ligne par diapositive, nommée", len(titres) == 3 and titres[0].startswith("Diapositive 1"), titres)
+        verifier("deck : 2 images face à face par diapositive", page.locator("#pages-comparer .page-comparee").first.locator("img").count() == 2)
+        page.wait_for_timeout(1500)
+        ligne = page.locator("#pages-comparer .page-comparee").nth(1)
+        boites = [ligne.locator("img").nth(i).bounding_box() for i in range(2)]
+        verifier("deck : les 2 images sur la même ligne", abs(boites[0]["y"] - boites[1]["y"]) < 2 and boites[1]["x"] > boites[0]["x"] + boites[0]["width"] - 1, boites)
+        verifier("deck : les images sont chargées", ligne.locator("img").first.evaluate("i => i.naturalWidth") > 100)
+        verifier("deck : seule la diapositive modifiée porte un encadré", "modifiée" in titres[1] and "identique" in titres[0] and ligne.locator(".zone").count() >= 2 and page.locator("#pages-comparer .page-comparee").first.locator(".zone").count() == 0, titres)
+        verifier("deck : le compte est dit", "Diapositives modifiées : 1 sur 3" in page.locator("#ecart-comparer").inner_text(), page.locator("#ecart-comparer").inner_text())
+        page.screenshot(path=str(captures / "04b-comparer-deck.png"), full_page=True)
+        largeur = boites[0]["width"]
+        page.click("#pleine-largeur")
+        verifier("deck : masquer le menu agrandit les images", not page.locator("#menu").is_visible() and ligne.locator("img").first.bounding_box()["width"] > largeur * 1.25, ligne.locator("img").first.bounding_box()["width"])
+        page.screenshot(path=str(captures / "04c-comparer-deck-large.png"))
+        page.click("#seulement-modifiees")
+        verifier("deck : le filtre ne garde que la diapositive modifiée", page.locator("#pages-comparer .page-comparee").count() == 1)
+        page.click("#seulement-modifiees")
+        page.select_option("#comparer-gauche", "3")
+        page.select_option("#comparer-droite", "2")
+        verifier("deck : l'ancienne paire quitte l'écran dès le changement", not page.locator("#pages-comparer").is_visible())
+        page.locator("#pages-comparer .page-comparee").first.wait_for(timeout=400000)
+        legendes = page.locator("#pages-comparer .page-comparee").first.locator("figcaption").all_inner_texts()
+        verifier("deck : 2 versions au choix, dans le sens choisi", legendes == ["Tour 003", "Tour 002"], legendes)
+        page.click("#forme-texte")
+        page.wait_for_selector("#cote-a-cote:visible", timeout=30000)
+        verifier("deck : le texte marqué reste disponible", page.locator("#texte-droite").inner_text() != "")
+        page.click("#forme-rendu")
+        page.click("#onglet-apercu")
+        verifier("deck : le menu revient avec l'aperçu", page.locator("#menu").is_visible())
 
     # HTML : le tour 1 de la copie porte une image externe, un fetch et une lecture du parent
     choisir_doc(page, r"note-html")
@@ -262,6 +307,14 @@ def petit_ecran(navigateur, base, captures):
     p.wait_for_timeout(500)
     verifier("390 px : comparer sans défilement horizontal", p.evaluate("document.documentElement.scrollWidth - window.innerWidth") <= 0)
     p.screenshot(path=str(captures / "07-390-comparer.png"), full_page=True)
+    # Sur un deck, les pages empilées restent sans défilement horizontal
+    valeurs = [p.locator("#choix-essai option").nth(i).get_attribute("value") for i in range(p.locator("#choix-essai option").count())]
+    deck = next((v for v in valeurs if re.search(r"note-pptx", v)), None)
+    if deck:
+        p.select_option("#choix-essai", deck)
+        p.locator("#pages-comparer .page-comparee").first.wait_for(timeout=400000)
+        verifier("390 px : comparer un deck sans défilement horizontal", p.evaluate("document.documentElement.scrollWidth - window.innerWidth") <= 0)
+        p.screenshot(path=str(captures / "08-390-comparer-deck.png"), full_page=True)
     p.close()
 
 

@@ -35,6 +35,7 @@
       --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
       --green-solid: #166534; --amber-solid: #92400E; --red-solid: #B91C1C; --slate-solid: #4B5563;
       --papier: #FFFFFF; --sur-plein: #FFFFFF;
+      --repere: #B91C1C; --repere-fond: rgba(185, 28, 28, .10);
       --r: 12px; --r-sm: 8px;
       --w: clamp(75vw, 1680px, 92vw);
       --head: "Montserrat", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -104,6 +105,16 @@
     iframe { display: block; width: 100%; height: calc(100vh - 260px); min-height: 460px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--papier); }
     .cote-a-cote { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .colonne { min-width: 0; }
+    .plan.sans-menu { grid-template-columns: minmax(0, 1fr); }
+    .plan.sans-menu .menu { display: none; }
+    .choix-comparer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+    .choix-comparer .formes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .page-comparee { margin: 0 0 20px; }
+    .page-comparee figure { margin: 0; min-width: 0; }
+    .page-comparee figcaption { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+    .vue-page { position: relative; line-height: 0; border: 1px solid var(--line); background: var(--papier); }
+    .vue-page img { display: block; width: 100%; height: auto; }
+    .zone { position: absolute; outline: 2px solid var(--repere); background: var(--repere-fond); pointer-events: none; }
     .texte-comparer { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px; white-space: pre-wrap; overflow-wrap: break-word; font-size: .95rem; max-height: calc(100vh - 300px); overflow-y: auto; }
     del { background: var(--red-fill); color: var(--ink); text-decoration: line-through; text-decoration-color: var(--red); border-bottom: 1px solid var(--red-line); }
     ins { background: var(--green-fill); color: var(--ink); text-decoration: underline; text-decoration-color: var(--green); border-bottom: 1px solid var(--green-line); }
@@ -212,18 +223,43 @@
             <iframe id="cadre" sandbox="allow-scripts" title="Aperçu de la version choisie" src="about:blank"></iframe>
           </div>
           <div id="vue-comparer" role="tabpanel" aria-labelledby="onglet-comparer" hidden>
-            <p class="vide" id="vide-comparer" hidden></p>
-            <div class="cote-a-cote" id="cote-a-cote" hidden>
-              <div class="colonne">
-                <h3 id="titre-gauche">Précédente gardée</h3>
-                <div class="texte-comparer" id="texte-gauche" tabindex="0" aria-labelledby="titre-gauche"></div>
-              </div>
-              <div class="colonne">
-                <h3 id="titre-droite">Version choisie</h3>
-                <div class="texte-comparer" id="texte-droite" tabindex="0" aria-labelledby="titre-droite"></div>
+            <div class="choix-comparer">
+              <label class="champ">À gauche
+                <select id="comparer-gauche"></select>
+              </label>
+              <label class="champ">À droite
+                <select id="comparer-droite"></select>
+              </label>
+              <div class="formes" role="group" aria-label="Forme de la comparaison">
+                <button type="button" id="forme-rendu" aria-pressed="true">Dans son format</button>
+                <button type="button" id="forme-texte" aria-pressed="false">En texte marqué</button>
+                <button type="button" id="seulement-modifiees" aria-pressed="false" hidden>Pages modifiées seulement</button>
+                <button type="button" id="pleine-largeur" aria-pressed="false">Masquer le menu</button>
               </div>
             </div>
             <p class="statut" id="ecart-comparer"></p>
+            <p class="vide" id="vide-comparer" hidden></p>
+            <div id="pages-comparer" hidden></div>
+            <div class="cote-a-cote" id="cadres-comparer" hidden>
+              <div class="colonne">
+                <h3 id="titre-cadre-gauche">À gauche</h3>
+                <iframe id="cadre-gauche" sandbox="allow-scripts" title="Version de gauche" src="about:blank"></iframe>
+              </div>
+              <div class="colonne">
+                <h3 id="titre-cadre-droite">À droite</h3>
+                <iframe id="cadre-droite" sandbox="allow-scripts" title="Version de droite" src="about:blank"></iframe>
+              </div>
+            </div>
+            <div class="cote-a-cote" id="cote-a-cote" hidden>
+              <div class="colonne">
+                <h3 id="titre-gauche">À gauche</h3>
+                <div class="texte-comparer" id="texte-gauche" tabindex="0" aria-labelledby="titre-gauche"></div>
+              </div>
+              <div class="colonne">
+                <h3 id="titre-droite">À droite</h3>
+                <div class="texte-comparer" id="texte-droite" tabindex="0" aria-labelledby="titre-droite"></div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -251,7 +287,7 @@
   (function () {
     var $ = function (id) { return document.getElementById(id); };
     var TITRE_NORMAL = document.title;
-    var etat = { documents: [], doc: null, essai: null, donnees: null, choix: null, filtre: 'toutes', vue: 'apercu', aveugle: null, ordre: [], marquees: {}, lettre: null };
+    var etat = { documents: [], doc: null, essai: null, donnees: null, choix: null, filtre: 'toutes', vue: 'apercu', aveugle: null, ordre: [], marquees: {}, lettre: null, gauche: null, gaucheLibre: false, forme: 'rendu', seulesModifiees: false, rendu: null, comparaison: 0 };
 
     function appel(url, corps) {
       var options = corps === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) };
@@ -356,30 +392,169 @@
         else { hote.appendChild(document.createTextNode(s.t)); }
       });
     }
+    function versionDeNumero(n) {
+      return etat.donnees.versions.filter(function (v) { return v.numero === n; })[0] || null;
+    }
+    function libelleCourt(n) {
+      var v = versionDeNumero(n);
+      return v ? (v.numero === 0 ? 'Origine' : 'Tour ' + v.numero_texte) : 'Version ' + n;
+    }
+    /* Tant que le porteur n'a rien choisi à gauche, la gauche suit : la précédente version gardée. */
+    function gaucheEffective(v) {
+      if (etat.gaucheLibre) { return etat.gauche; }
+      var trouvee = null;
+      etat.donnees.versions.forEach(function (x) {
+        if (x.numero < v.numero && x.statut === 'gardee' && x.type !== 'rien' && x.fichier) { trouvee = x.numero; }
+      });
+      return trouvee;
+    }
+    function remplirChoixComparer(v, gauche) {
+      [['comparer-gauche', gauche], ['comparer-droite', v ? v.numero : null]].forEach(function (c) {
+        var s = $(c[0]);
+        vider(s);
+        if (c[1] === null) {
+          var attente = creer('option', '', 'Choisir une version');
+          attente.value = '';
+          s.appendChild(attente);
+        }
+        etat.donnees.versions.forEach(function (x) {
+          if (!x.fichier && x.numero !== c[1]) { return; }
+          var o = creer('option', '', libelleNumero(x) + (x.statut === 'rejetee' ? ' (rejetée)' : ''));
+          o.value = String(x.numero);
+          s.appendChild(o);
+        });
+        s.value = c[1] === null ? '' : String(c[1]);
+      });
+    }
+    function montrerComparaison(bloc) {
+      $('vide-comparer').hidden = bloc !== 'vide';
+      $('pages-comparer').hidden = bloc !== 'pages';
+      $('cadres-comparer').hidden = bloc !== 'cadres';
+      $('cote-a-cote').hidden = bloc !== 'texte';
+      $('seulement-modifiees').hidden = bloc !== 'pages';
+    }
+    function direVide(texte) {
+      $('vide-comparer').textContent = texte;
+      montrerComparaison('vide');
+    }
+    function regler(cadre, adresse) {
+      if (cadre.getAttribute('src') !== adresse) { cadre.setAttribute('src', adresse); }
+    }
+    function rendrePages() {
+      var c = etat.rendu;
+      var hote = $('pages-comparer');
+      var nom = etat.donnees.ext === 'pptx' ? 'Diapositive' : 'Page';
+      var modifiees = c.pages.filter(function (p) { return p.differente; });
+      vider(hote);
+      $('seulement-modifiees').setAttribute('aria-pressed', etat.seulesModifiees ? 'true' : 'false');
+      c.pages.forEach(function (p) {
+        if (etat.seulesModifiees && !p.differente) { return; }
+        var bloc = creer('section', 'page-comparee');
+        bloc.appendChild(creer('h3', '', nom + ' ' + p.page + (p.differente ? ', modifiée' : ', identique')));
+        var paire = creer('div', 'cote-a-cote');
+        [[c.gauche, p.image_gauche], [c.droite, p.image_droite]].forEach(function (cote) {
+          var figure = creer('figure');
+          figure.appendChild(creer('figcaption', '', libelleCourt(cote[0])));
+          if (cote[1]) {
+            var vue = creer('div', 'vue-page');
+            var img = creer('img');
+            img.src = cote[1];
+            img.alt = nom + ' ' + p.page + ', ' + libelleCourt(cote[0]);
+            img.loading = 'lazy';
+            vue.appendChild(img);
+            p.zones.forEach(function (z) {
+              var r = creer('span', 'zone');
+              r.style.left = (z.x * 100) + '%';
+              r.style.top = (z.y * 100) + '%';
+              r.style.width = (z.l * 100) + '%';
+              r.style.height = (z.h * 100) + '%';
+              vue.appendChild(r);
+            });
+            figure.appendChild(vue);
+          } else {
+            figure.appendChild(creer('p', 'vide', 'Cette version n\'a pas cette page.'));
+          }
+          paire.appendChild(figure);
+        });
+        bloc.appendChild(paire);
+        hote.appendChild(bloc);
+      });
+      if (etat.seulesModifiees && !modifiees.length) {
+        hote.appendChild(creer('p', 'vide', 'Aucune page ne diffère : retire le filtre pour voir les 2 versions.'));
+      }
+      var mesure = modifiees.length
+        ? nom + 's modifiées : ' + modifiees.length + ' sur ' + c.pages.length + ', ce qui diffère est encadré en rouge.'
+        : 'Aucune différence visible entre ces 2 versions.';
+      $('ecart-comparer').textContent = mesure + (c.ajoutes === null ? '' : ' ' + c.ajoutes + ' mots ajoutés, ' + c.retires + ' mots retirés.');
+      montrerComparaison('pages');
+    }
     function rendreComparaison() {
       var v = versionChoisie();
-      var vide = $('vide-comparer');
-      var blocs = $('cote-a-cote');
       $('ecart-comparer').textContent = '';
+      $('forme-rendu').setAttribute('aria-pressed', etat.forme === 'rendu' ? 'true' : 'false');
+      $('forme-texte').setAttribute('aria-pressed', etat.forme === 'texte' ? 'true' : 'false');
       if (!v) {
-        vide.hidden = false; blocs.hidden = true;
-        vide.textContent = 'Choisis une version dans le menu.';
+        direVide('Choisis une version dans le menu.');
         return;
       }
-      appel('/api/comparer?doc=' + encodeURIComponent(etat.doc) + '&essai=' + encodeURIComponent(etat.essai) + '&numero=' + v.numero).then(function (c) {
-        if (c.vide) {
-          vide.hidden = false; blocs.hidden = true;
-          vide.textContent = c.vide;
+      var gauche = gaucheEffective(v);
+      remplirChoixComparer(v, gauche);
+      var jeton = ++etat.comparaison;
+      var requete = '?doc=' + encodeURIComponent(etat.doc) + '&essai=' + encodeURIComponent(etat.essai) + '&numero=' + v.numero + (gauche === null ? '' : '&gauche=' + gauche);
+      if (etat.forme === 'texte') {
+        appel('/api/comparer' + requete).then(function (c) {
+          if (jeton !== etat.comparaison) { return; }
+          if (c.vide) { direVide(c.vide); return; }
+          $('titre-gauche').textContent = libelleCourt(c.gauche) + ', mots retirés barrés';
+          $('titre-droite').textContent = libelleCourt(c.droite) + ', mots ajoutés soulignés';
+          pousserSegments($('texte-gauche'), c.segments_gauche, 'del');
+          pousserSegments($('texte-droite'), c.segments_droite, 'ins');
+          $('ecart-comparer').textContent = c.ajoutes + ' mots ajoutés, ' + c.retires + ' mots retirés.';
+          montrerComparaison('texte');
+        }).catch(echec);
+        return;
+      }
+      /* L'ancienne paire quitte l'écran tout de suite : un export peut durer, et elle ne répondrait plus aux sélecteurs. */
+      direVide(etat.donnees.ext === 'docx' || etat.donnees.ext === 'pptx'
+        ? 'Comparaison en préparation : chaque version non encore vue passe par son export.'
+        : 'Comparaison en préparation.');
+      appel('/api/comparer-rendu' + requete).then(function (c) {
+        if (jeton !== etat.comparaison) { return; }
+        if (c.vide) { direVide(c.vide); return; }
+        if (c.mode === 'images') {
+          etat.rendu = c;
+          rendrePages();
           return;
         }
-        vide.hidden = true; blocs.hidden = false;
-        $('titre-gauche').textContent = (c.precedente === 0 ? 'Origine' : 'Précédente gardée, tour ' + c.precedente_texte) + ', mots retirés barrés';
-        $('titre-droite').textContent = 'Tour ' + c.numero_texte + ', mots ajoutés soulignés';
-        pousserSegments($('texte-gauche'), c.gauche, 'del');
-        pousserSegments($('texte-droite'), c.droite, 'ins');
-        $('ecart-comparer').textContent = c.ajoutes + ' mots ajoutés, ' + c.retires + ' mots retirés.';
+        $('titre-cadre-gauche').textContent = libelleCourt(c.gauche);
+        $('titre-cadre-droite').textContent = libelleCourt(c.droite);
+        regler($('cadre-gauche'), c.adresse_gauche);
+        regler($('cadre-droite'), c.adresse_droite);
+        $('ecart-comparer').textContent = c.avis ? 'Images de pages indisponibles : ' + c.avis + '.' : '';
+        montrerComparaison('cadres');
       }).catch(echec);
     }
+    $('comparer-gauche').addEventListener('change', function (e) {
+      etat.gaucheLibre = e.target.value !== '';
+      etat.gauche = e.target.value === '' ? null : Number(e.target.value);
+      rendreComparaison();
+    });
+    $('comparer-droite').addEventListener('change', function (e) {
+      if (e.target.value !== '') { choisir(Number(e.target.value)); }
+    });
+    $('forme-rendu').addEventListener('click', function () { etat.forme = 'rendu'; rendreComparaison(); });
+    $('forme-texte').addEventListener('click', function () { etat.forme = 'texte'; rendreComparaison(); });
+    function pleineLargeur(oui) {
+      $('plan').classList.toggle('sans-menu', oui);
+      $('pleine-largeur').setAttribute('aria-pressed', oui ? 'true' : 'false');
+    }
+    $('pleine-largeur').addEventListener('click', function () {
+      pleineLargeur(!$('plan').classList.contains('sans-menu'));
+    });
+    $('seulement-modifiees').addEventListener('click', function () {
+      etat.seulesModifiees = !etat.seulesModifiees;
+      if (etat.rendu) { rendrePages(); }
+    });
     function montrerVue(vue) {
       etat.vue = vue;
       var comparer = vue === 'comparer';
@@ -389,7 +564,8 @@
       $('onglet-comparer').tabIndex = comparer ? 0 : -1;
       $('vue-apercu').hidden = comparer;
       $('vue-comparer').hidden = !comparer;
-      if (comparer) { rendreComparaison(); }
+      /* Le menu masqué ne vaut que pour comparer : l'aperçu en a besoin pour choisir une version. */
+      if (comparer) { rendreComparaison(); } else { pleineLargeur(false); }
     }
     $('onglet-apercu').addEventListener('click', function () { montrerVue('apercu'); });
     $('onglet-comparer').addEventListener('click', function () { montrerVue('comparer'); });
@@ -424,6 +600,9 @@
     function chargerEssai() {
       return appel('/api/versions?doc=' + encodeURIComponent(etat.doc) + '&essai=' + encodeURIComponent(etat.essai)).then(function (d) {
         etat.donnees = d;
+        etat.gauche = null;
+        etat.gaucheLibre = false;
+        etat.rendu = null;
         var parties = [d.format + ', ' + (d.versions.length - 1) + ' tours joués'];
         if (d.etat.arret) { parties.push('arrêt : ' + d.etat.arret); }
         if (d.etat.pause) { parties.push('en pause : ' + d.etat.pause); }

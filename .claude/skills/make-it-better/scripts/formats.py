@@ -13,6 +13,7 @@ Le rendu et la lecture du texte passent par `pypdfium2`, de licence permissive.
     python formats.py pptx-formes <document.pptx>
     python formats.py pdf-appliquer <base.pdf> <modifs.json> <sortie.pdf>
     python formats.py pdf-images <document.pdf> <dossier> [--dpi 110]
+    python formats.py pages-ecart <dossier gauche> <dossier droite>
 
 Exit : 0 fait · 1 refusé, motif dans le JSON · 2 usage · 3 dépendance absente, nommée dans le JSON.
 MAKE_IT_BETTER_SANS=pymupdf,pypdfium2 joue l'absence d'un module par le vrai chemin d'ImportError.
@@ -276,6 +277,69 @@ def cmd_pdf_images(pdf, dossier, dpi):
     return rendre({"ok": True, "pages": n})
 
 
+# ── Comparer 2 versions à l'œil : ce qui diffère entre leurs images de pages ─────────────────────
+
+SEUIL_PIXEL = 24  # sous ce seuil, un écart de gris n'est que du lissage
+BLANC_ENTRE_ZONES = 0.012  # 2 écarts plus éloignés que ce blanc, en part de la hauteur, font 2 zones
+ZONES_MAX = 12  # au-delà, le texte a reflué : un seul cadre dit mieux ce qui a bougé
+MARGE_ZONE = 0.004
+
+
+def zones_ecart(a, b):
+    """Les rectangles qui diffèrent, en parts de la page : une zone par bande de lignes voisines."""
+    from PIL import ImageChops
+
+    largeur, hauteur = a.size
+    masque = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > SEUIL_PIXEL else 0)
+    cadre = masque.getbbox()
+    if not cadre:
+        return []
+    bandes = []
+    blanc = max(1, int(BLANC_ENTRE_ZONES * hauteur))
+    for y in range(cadre[1], cadre[3]):
+        ligne = masque.crop((0, y, largeur, y + 1)).getbbox()
+        if not ligne:
+            continue
+        if bandes and y - bandes[-1][3] <= blanc:
+            b0 = bandes[-1]
+            bandes[-1] = [min(b0[0], ligne[0]), b0[1], max(b0[2], ligne[2]), y + 1]
+        else:
+            bandes.append([ligne[0], y, ligne[2], y + 1])
+    if len(bandes) > ZONES_MAX:
+        bandes = [list(cadre)]
+
+    def en_parts(z):
+        x0, y0 = max(0, z[0] / largeur - MARGE_ZONE), max(0, z[1] / hauteur - MARGE_ZONE)
+        x1, y1 = min(1, z[2] / largeur + MARGE_ZONE), min(1, z[3] / hauteur + MARGE_ZONE)
+        return {"x": round(x0, 4), "y": round(y0, 4), "l": round(x1 - x0, 4), "h": round(y1 - y0, 4)}
+
+    return [en_parts(z) for z in bandes]
+
+
+def cmd_pages_ecart(dossier_a, dossier_b):
+    """Compare les page-NNN.png de 2 dossiers : pour chaque rang, sa présence de chaque côté et ses zones."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return absent("PIL")
+    da, db = Path(dossier_a), Path(dossier_b)
+    noms = sorted({p.name for d in (da, db) for p in d.glob("page-*.png")})
+    pages = []
+    for rang, nom in enumerate(noms, 1):
+        fa, fb = da / nom, db / nom
+        if not (fa.is_file() and fb.is_file()):
+            pages.append({"page": rang, "gauche": fa.is_file(), "droite": fb.is_file(), "differente": True, "zones": []})
+            continue
+        with Image.open(fa) as ia, Image.open(fb) as ib:
+            a, b = ia.convert("RGB"), ib.convert("RGB")
+        if a.size != b.size:
+            pages.append({"page": rang, "gauche": True, "droite": True, "differente": True, "zones": []})
+            continue
+        zones = zones_ecart(a, b)
+        pages.append({"page": rang, "gauche": True, "droite": True, "differente": bool(zones), "zones": zones})
+    return rendre({"ok": True, "pages": pages})
+
+
 # ── PDF : remplacement et retrait de lignes, par pymupdf ─────────────────────────────────────────
 
 
@@ -506,7 +570,7 @@ def cmd_texte(chemin, complet):
 
 
 def principal(a):
-    usage = "usage : formats.py dependances | texte <f> [--complet] | depaqueter <docx|pptx> <d> | rempaqueter <d> <base> <sortie> | pptx-formes <pptx> | pdf-appliquer <base> <modifs> <sortie> | pdf-images <pdf> <d> [--dpi n]"
+    usage = "usage : formats.py dependances | texte <f> [--complet] | depaqueter <docx|pptx> <d> | rempaqueter <d> <base> <sortie> | pptx-formes <pptx> | pdf-appliquer <base> <modifs> <sortie> | pdf-images <pdf> <d> [--dpi n] | pages-ecart <d> <d>"
     if not a:
         sys.stderr.write(usage + "\n")
         return 2
@@ -523,6 +587,8 @@ def principal(a):
         return cmd_pptx_formes(reste[0])
     if verbe == "pdf-appliquer" and len(reste) == 3:
         return cmd_pdf_appliquer(*reste)
+    if verbe == "pages-ecart" and len(reste) == 2:
+        return cmd_pages_ecart(*reste)
     if verbe == "pdf-images" and len(reste) >= 2:
         dpi = int(reste[reste.index("--dpi") + 1]) if "--dpi" in reste else 110
         return cmd_pdf_images(reste[0], reste[1], dpi)

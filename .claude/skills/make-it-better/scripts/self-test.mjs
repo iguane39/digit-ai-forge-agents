@@ -24,7 +24,7 @@ process.env.PYTHONUTF8 = '1';
 delete process.env.MIB_SIM_WORD;
 delete process.env.MIB_SIM_POWERPOINT;
 
-const { CAS } = await import('./lib/cas-simules.mjs');
+const { CAS, LIGNES_FIXTURE: CAS_LIGNES } = await import('./lib/cas-simules.mjs');
 const { argumentsDeTour, CONSIGNE_FIXE, consigneDeTour, ecartsDeFormes, envDeTour, GAIN_MAX_FORME_PCT, ligneDeFormat, lirePlafond, lireModifs, lireNote, manquesDuCadre, VOIE_PDF_D124, espaceParDefaut, resoudreCli } = await import('./lancer.mjs');
 const { analyserSortie, ecartIdentite, lireQuota, pauseQuota } = await import('./lib/sortie.mjs');
 const { jugerFaits, extraireNoms, NON_JUGE } = await import('./oracle-faits-sources.mjs');
@@ -757,9 +757,25 @@ if (partie('serveur')) {
     verifier('origine étrangère refusée', (await requete(port, '/api/jugement', { methode: 'POST', corps: { doc: nomMd, essai: 'opus-1', numero: 2, pertinente: false }, entetes: { origin: 'https://attaquant.exemple' } })).code === 403);
     // Comparer
     const cmp = (await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=2`)).j;
-    verifier('comparer : précédente gardée', cmp.precedente === 1 && Array.isArray(cmp.gauche) && Array.isArray(cmp.droite));
+    verifier('comparer : sans choix, la précédente gardée à gauche', cmp.gauche === 1 && cmp.droite === 2 && Array.isArray(cmp.segments_gauche) && Array.isArray(cmp.segments_droite), JSON.stringify(cmp).slice(0, 200));
     verifier('comparer : origine sans précédente, dit', /origine n'a pas de version précédente/.test((await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=0`)).j.vide));
     verifier('comparer : rejet sans fichier, dit', /pas rendu de fichier/.test((await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=3`)).j.vide));
+    // 2 versions au choix, dans les 2 sens, sur les 2 formes
+    const choisies = (await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=1&gauche=5`)).j;
+    verifier('comparer : 2 versions au choix, une récente à gauche', choisies.gauche === 5 && choisies.droite === 1, JSON.stringify(choisies).slice(0, 200));
+    verifier('comparer : l\'origine se choisit à droite', (await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=0&gauche=2`)).j.gauche === 2);
+    verifier('comparer : la même version des 2 côtés, dit', /même version/.test((await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=2&gauche=2`)).j.vide));
+    verifier('comparer : une gauche sans fichier, dit', /tour 003 n'a pas rendu de fichier/.test((await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=2&gauche=3`)).j.vide));
+    verifier('comparer : une gauche inconnue, dit', /n'existe pas/.test((await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=2&gauche=77`)).j.vide));
+    verifier('comparer : une gauche illisible, refusée', (await requete(port, `/api/comparer?${q(nomMd, 'opus-1')}&numero=2&gauche=x`)).code === 400);
+    const rMd = (await requete(port, `/api/comparer-rendu?${q(nomMd, 'opus-1')}&numero=5&gauche=1`)).j;
+    verifier('comparer dans son format : Markdown en 2 aperçus', rMd.mode === 'cadres' && rMd.gauche === 1 && rMd.droite === 5 && rMd.adresse_gauche.endsWith('/opus-1/001') && rMd.adresse_droite.endsWith('/opus-1/005') && !rMd.avis, JSON.stringify(rMd));
+    const rHtml = (await requete(port, `/api/comparer-rendu?${q(nomHtml, 'opus-1')}&numero=1`)).j;
+    verifier('comparer dans son format : HTML en 2 aperçus', rHtml.mode === 'cadres' && rHtml.gauche === 0, JSON.stringify(rHtml));
+    verifier('comparer dans son format : la même version, dit', /même version/.test((await requete(port, `/api/comparer-rendu?${q(nomMd, 'opus-1')}&numero=2&gauche=2`)).j.vide));
+    const pageC = await requete(port, '/');
+    verifier('page : 2 sélecteurs de version', /id="comparer-gauche"/.test(pageC.texte) && /id="comparer-droite"/.test(pageC.texte));
+    verifier('page : les 2 cadres de comparaison sont sandbox', (pageC.texte.match(/<iframe [^>]*sandbox="allow-scripts"/g) || []).length === 3 && !pageC.texte.includes('allow-same-origin'));
     // Aveugle
     verifier('aveugle : refusé sur un essai en pause', (await requete(port, '/api/aveugle/ouvrir', { methode: 'POST', corps: { doc: nomMd, essai: 'opus-2' } })).code === 409);
     const ouv = await requete(port, '/api/aveugle/ouvrir', { methode: 'POST', corps: { doc: nomMd, essai: 'opus-1' } });
@@ -830,6 +846,59 @@ if (partie('serveur')) {
     delete process.env.MIB_SIM_WORD;
   }
   } else nonJoues.push('aperçus Word et PDF du serveur');
+  // Ce qui diffère entre 2 pages : calculé sur leurs images, et prouvé sur un vrai PDF modifié
+  if (formatsJouables.has('pdf')) {
+    const T = mkdtempSync(join(BAC, 'ecart-'));
+    const py = (...a) => spawnSync('python', [join(ICI, 'formats.py'), ...a], { encoding: 'utf8', windowsHide: true });
+    const fabriquer = (dossier, rects, nb = 1) => {
+      mkdirSync(join(T, dossier), { recursive: true });
+      spawnSync('python', ['-c', 'import json,sys\nfrom PIL import Image,ImageDraw\nd,r,n=sys.argv[1],json.loads(sys.argv[2]),int(sys.argv[3])\nfor k in range(1,n+1):\n  i=Image.new("RGB",(1000,500),"white");g=ImageDraw.Draw(i)\n  for x in r: g.rectangle(x,fill="black")\n  i.save(f"{d}/page-{k:03d}.png")', join(T, dossier), JSON.stringify(rects), String(nb)], { windowsHide: true });
+    };
+    fabriquer('base', [[100, 100, 300, 120]]);
+    fabriquer('pareil', [[100, 100, 300, 120]]);
+    fabriquer('un', [[100, 100, 300, 120], [600, 300, 800, 320]]);
+    fabriquer('deux', [[100, 100, 300, 120], [600, 200, 800, 220], [100, 400, 500, 420]]);
+    fabriquer('leger', [[100, 100, 300, 120]]);
+    spawnSync('python', ['-c', 'import sys\nfrom PIL import Image\ni=Image.open(sys.argv[1]);i.putpixel((900,450),(250,250,250));i.save(sys.argv[1])', join(T, 'leger', 'page-001.png')], { windowsHide: true });
+    fabriquer('longue', [[100, 100, 300, 120]], 3);
+    const ecart = (a, b) => JSON.parse(py('pages-ecart', join(T, a), join(T, b)).stdout).pages;
+    verifier('écart de pages : 2 images égales, aucune zone', ecart('base', 'pareil')[0].differente === false && ecart('base', 'pareil')[0].zones.length === 0);
+    const unZ = ecart('base', 'un')[0];
+    verifier('écart de pages : la zone encadre ce qui a changé', unZ.differente && unZ.zones.length === 1 && unZ.zones[0].x < 0.6 && unZ.zones[0].x + unZ.zones[0].l > 0.8 && unZ.zones[0].y < 0.6 && unZ.zones[0].y + unZ.zones[0].h > 0.64, JSON.stringify(unZ));
+    verifier('écart de pages : ce qui n\'a pas changé reste hors de la zone', unZ.zones[0].x > 0.3 && unZ.zones[0].y > 0.25, JSON.stringify(unZ.zones[0]));
+    verifier('écart de pages : 2 endroits, 2 zones', ecart('base', 'deux')[0].zones.length === 2, JSON.stringify(ecart('base', 'deux')[0].zones));
+    verifier('écart de pages : un écart de lissage ne compte pas', ecart('base', 'leger')[0].differente === false);
+    const lg = ecart('base', 'longue');
+    verifier('écart de pages : une page sans vis-à-vis se dit', lg.length === 3 && lg[1].gauche === false && lg[1].droite === true && lg[1].differente === true, JSON.stringify(lg));
+    verifier('écart de pages : absence de PIL, nommée', py('dependances').status === 0 && spawnSync('python', [join(ICI, 'formats.py'), 'pages-ecart', join(T, 'base'), join(T, 'un')], { encoding: 'utf8', windowsHide: true, env: { ...process.env, MAKE_IT_BETTER_SANS: 'PIL' } }).status === 3);
+    // Un PDF réellement modifié : l'écart se voit, à la bonne hauteur de la page
+    const racinePdf = join(BAC, 'serveur-pdf-ecart');
+    const docE = join(racinePdf, 'd-pdf');
+    mkdirSync(join(docE, 'document', 'sources'), { recursive: true });
+    copyFileSync(noteFixture('pdf'), join(docE, 'document', 'origine.pdf'));
+    const eE = join(docE, 'essais', 'opus-1');
+    for (const n of [0, 1]) {
+      mkdirSync(join(eE, 'tours', pad(n)), { recursive: true });
+      ecrireJson(join(eE, 'tours', pad(n), 'controle.json'), fait(n, 'gardee', n ? 'reformulation' : 'origine'));
+    }
+    copyFileSync(noteFixture('pdf'), join(eE, 'tours', '000', 'document.pdf'));
+    const modifs = join(T, 'modifs.json');
+    writeFileSync(modifs, JSON.stringify([{ ancien: CAS_LIGNES[4], nouveau: 'Une autre ligne, plus courte.' }]));
+    verifier('écart de pages : le PDF de test se modifie', py('pdf-appliquer', noteFixture('pdf'), modifs, join(eE, 'tours', '001', 'document.pdf')).status === 0);
+    ecrireJson(join(eE, 'etat.json'), { statut: 'arrete', arret: { type: 'borne' }, tours_max: 1, debut: 'x' });
+    const s5 = creerServeur({ espace: racinePdf, port: 0 });
+    const p5 = await s5.ecouter();
+    try {
+      const rP = (await requete(p5, '/api/comparer-rendu?doc=d-pdf&essai=opus-1&numero=1&gauche=0')).j;
+      verifier('comparer un PDF : la page modifiée est dite, avec sa zone', rP.mode === 'images' && rP.pages[0].differente === true && rP.pages[0].zones.length === 1, JSON.stringify(rP));
+      verifier('comparer un PDF : la zone tient à la ligne modifiée', rP.pages[0].zones[0].h < 0.05 && rP.pages[0].zones[0].y > 0.15 && rP.pages[0].zones[0].y < 0.35, JSON.stringify(rP.pages[0].zones[0]));
+      verifier('comparer un PDF : les mots sont comptés', rP.ajoutes > 0 && rP.retires > 0, `${rP.ajoutes} ${rP.retires}`);
+      const inverse = (await requete(p5, '/api/comparer-rendu?doc=d-pdf&essai=opus-1&numero=0&gauche=1')).j;
+      verifier('comparer un PDF : le sens se choisit', inverse.gauche === 1 && inverse.droite === 0 && inverse.pages[0].image_gauche.endsWith('/001/page/1'), JSON.stringify(inverse).slice(0, 200));
+    } finally {
+      s5.serveur.close();
+    }
+  } else nonJoues.push('écart de pages');
   // PowerPoint : jamais le vrai ici, MIB_SIM_POWERPOINT prend la place d'exporter-pptx
   if (formatsJouables.has('pptx') && formatsJouables.has('pdf')) {
     const racineDeck = join(BAC, 'serveur-deck');
@@ -867,6 +936,16 @@ if (partie('serveur')) {
       verifier('aveugle PowerPoint : images si tous les exports réussissent', ouvO.j.repli_texte === false, ouvO.texte);
       verifier('aveugle PowerPoint : image à adresse neutre', new RegExp(`src="/aveugle/${ouvO.j.lettres[0]}/page/1"`).test((await requete(p4, `/aveugle/${ouvO.j.lettres[0]}`)).texte));
       await requete(p4, '/api/aveugle/fermer', { methode: 'POST', corps: {} });
+      // Comparer 2 versions du deck : les images face à face, sans écart ici puisque le PDF simulé est le même
+      const rDeck = (await requete(p4, '/api/comparer-rendu?doc=d-export&essai=opus-1&numero=1&gauche=0')).j;
+      verifier('comparer un deck : les pages face à face', rDeck.mode === 'images' && rDeck.pages.length === 1 && rDeck.pages[0].image_gauche.endsWith('/opus-1/000/page/1') && rDeck.pages[0].image_droite.endsWith('/opus-1/001/page/1'), JSON.stringify(rDeck));
+      verifier('comparer un deck : même image, aucune zone', rDeck.pages[0].differente === false && rDeck.pages[0].zones.length === 0);
+      verifier('comparer un deck : l\'adresse de chaque image répond', (await requete(p4, rDeck.pages[0].image_gauche)).entetes['content-type'] === 'image/png');
+      // Le rendu suit le texte des diapositives, et l'écart de mots s'y dit
+      verifier('comparer un deck : l\'écart de mots est compté', rDeck.ajoutes === 0 && rDeck.retires === 0);
+      process.env.MIB_SIM_POWERPOINT = 'absent';
+      const rAbs = (await requete(p4, '/api/comparer-rendu?doc=d-moitie&essai=opus-1&numero=1&gauche=0')).j;
+      verifier('comparer un deck sans export : 2 aperçus en texte, et le motif dit', rAbs.mode === 'cadres' && /PowerPoint absent|absent/.test(rAbs.avis || ''), JSON.stringify(rAbs));
       // Un seul export raté fait passer toutes les versions au texte, même celle qui a réussi
       process.env.MIB_SIM_POWERPOINT = `pdf-puis-absent:${noteFixture('pdf')}`;
       const ouvM = await requete(p4, '/api/aveugle/ouvrir', { methode: 'POST', corps: { doc: 'd-moitie', essai: 'opus-1' } });

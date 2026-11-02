@@ -177,19 +177,55 @@ export function creerServeur({ espace, port = 4750 }) {
     };
   }
 
-  function comparaison(d, e, numero) {
+  /** Les 2 versions à mettre face à face : { fichiers } ou { vide }. Sans `gauche`, la précédente gardée. */
+  function paireAComparer(d, e, numero, gauche) {
     const tours = lireTours(e.dossier);
     const t = tours.find((x) => x.numero === numero);
     if (!t) return { vide: 'Choisis une version dans le menu.' };
-    if (numero === 0) return { vide: 'L\'origine n\'a pas de version précédente : choisis un tour dans le menu pour comparer.' };
+    if (gauche === null && numero === 0) return { vide: 'L\'origine n\'a pas de version précédente : choisis un tour dans le menu, ou une autre version à gauche.' };
+    if (gauche === numero) return { vide: 'Les 2 côtés montrent la même version : choisis-en une autre à gauche.' };
     const fichier = cheminVersion(e.dossier, numero, d.ext);
     if (!fichier) return { vide: `Ce tour n'a pas rendu de fichier${t.motif ? ` (${t.motif})` : ''} : choisis une autre version.` };
-    const p = precedenteGardee(tours, numero);
-    const fp = cheminVersion(e.dossier, p.numero, d.ext);
-    const a = texteDeFichier(fp);
-    const b = texteDeFichier(fichier);
+    const g = gauche === null ? precedenteGardee(tours, numero).numero : gauche;
+    const tg = tours.find((x) => x.numero === g);
+    if (!tg) return { vide: `La version ${g} n'existe pas dans cet essai : choisis-en une autre à gauche.` };
+    const fg = cheminVersion(e.dossier, g, d.ext);
+    if (!fg) return { vide: `Le tour ${pad(g)} n'a pas rendu de fichier${tg.motif ? ` (${tg.motif})` : ''} : choisis une autre version à gauche.` };
+    return { gauche: g, droite: numero, fichierGauche: fg, fichierDroite: fichier };
+  }
+
+  function comparaison(d, e, numero, gauche = null) {
+    const p = paireAComparer(d, e, numero, gauche);
+    if (p.vide) return p;
+    const a = texteDeFichier(p.fichierGauche);
+    const b = texteDeFichier(p.fichierDroite);
     if (a.erreur || b.erreur) return { vide: `Texte illisible (${a.erreur || b.erreur}) : l'écart ne se calcule pas pour cette version.` };
-    return { precedente: p.numero, precedente_texte: pad(p.numero), numero_texte: pad(numero), ...comparer(a.texte, b.texte) };
+    const c = comparer(a.texte, b.texte);
+    return { gauche: p.gauche, droite: p.droite, segments_gauche: c.gauche, segments_droite: c.droite, ajoutes: c.ajoutes, retires: c.retires };
+  }
+
+  /**
+   * La comparaison dans le format du document. Word, PowerPoint et PDF : les images de pages, rang par rang,
+   * avec ce qui diffère. Markdown, HTML, ou un export qui échoue : les 2 aperçus côte à côte.
+   */
+  async function comparaisonRendue(d, e, numero, gauche = null) {
+    const p = paireAComparer(d, e, numero, gauche);
+    if (p.vide) return p;
+    const base = (n) => `/apercu/${encodeURIComponent(d.nom)}/${encodeURIComponent(e.id)}/${pad(n)}`;
+    const cadres = (avis = null) => ({ mode: 'cadres', avis, gauche: p.gauche, droite: p.droite, adresse_gauche: base(p.gauche), adresse_droite: base(p.droite) });
+    if (!FORMATS_A_IMAGES.includes(d.ext)) return cadres();
+    // L'une après l'autre : l'export ne prend qu'une version à la fois.
+    const ia = await preparerImages(d, e, p.gauche);
+    const ib = await preparerImages(d, e, p.droite);
+    if (ia.mode !== 'images' || ib.mode !== 'images') return cadres((ia.mode !== 'images' ? ia : ib).raison || 'rendu des pages impossible');
+    const r = appelerFormats(['pages-ecart', dossierApercu(d, e, p.gauche), dossierApercu(d, e, p.droite)]);
+    if (r.code !== 0 || !r.json?.pages) return cadres(r.json?.motif || 'écart des pages impossible à calculer');
+    const adresse = (n, rang, present) => (present ? `${base(n)}/page/${rang}` : null);
+    const textes = comparaison(d, e, numero, p.gauche);
+    return {
+      mode: 'images', gauche: p.gauche, droite: p.droite, ajoutes: textes.ajoutes ?? null, retires: textes.retires ?? null,
+      pages: r.json.pages.map((x) => ({ page: x.page, differente: x.differente, zones: x.zones, image_gauche: adresse(p.gauche, x.page, x.gauche), image_droite: adresse(p.droite, x.page, x.droite) })),
+    };
   }
 
   /** L'état de la revue à l'aveugle : ce que le menu a le droit de savoir, des lettres et rien d'autre. */
@@ -258,11 +294,14 @@ export function creerServeur({ espace, port = 4750 }) {
       if (chemin === '/api/etat') return json(res, 200, etatPublic());
       if (chemin === '/api/aveugle') return json(res, 200, etatAveugle());
       const q = adresse.searchParams;
-      if (chemin === '/api/versions' || chemin === '/api/comparer') {
+      if (chemin === '/api/versions' || chemin === '/api/comparer' || chemin === '/api/comparer-rendu') {
         const t = trouver(q.get('doc'), q.get('essai'));
         if (!t) return json(res, 404, { erreur: 'essai introuvable' });
         if (chemin === '/api/versions') return json(res, 200, versionsPubliques(t.d, t.e));
-        return json(res, 200, comparaison(t.d, t.e, Number(q.get('numero'))));
+        const gauche = q.has('gauche') && q.get('gauche') !== '' ? Number(q.get('gauche')) : null;
+        if (gauche !== null && !Number.isInteger(gauche)) return json(res, 400, { erreur: 'version de gauche illisible' });
+        if (chemin === '/api/comparer') return json(res, 200, comparaison(t.d, t.e, Number(q.get('numero')), gauche));
+        return json(res, 200, await comparaisonRendue(t.d, t.e, Number(q.get('numero')), gauche));
       }
       const av = /^\/aveugle\/([A-Z])(?:\/page\/(\d+))?$/.exec(chemin);
       if (av) {
