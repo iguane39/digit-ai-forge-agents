@@ -17,11 +17,26 @@
 //        test rouge sur le code précédent, règle appliquée à l'existant, tirage des changements
 //        avec graine, rejet tracé (numéro et raison), arrêt borné (deux versions sous un point, ou
 //        borne fixée d'avance) — et la mesure de départ hors du système qui les précède.
+//   B4 — (D-133 (a), TF-2051, 02/11/2026) la section « Passes successives » écrit le critère
+//        comparatif : lecture de l'écart dès la 2e passe, mesure, apport à un critère nommé, un ajout
+//        sans progrès n'en est pas un, un retrait sans casse en est un, figeage de l'arbitre intact.
+//   B5 — la même section écrit la sortie « rien à changer » : sortie valide, preuve, arrêt sans passe
+//        de plus, attestation de l'arbitre, et jamais une sortie d'échappement.
+//   B6 — elle écrit l'articulation avec la loi n° 3 du pilot : ce qui manque se propose toujours une
+//        fois, et n'est pas re-proposé à chaque passe.
+//   B7 — la COHÉRENCE des trois : profils-arbitre.md porte la section « Comparer deux passes » avec une
+//        ligne par type de livrable de sa propre table des profils ; la section ne contient aucune
+//        phrase qui autorise « rien à changer » avec un critère en échec ; le figeage de l'arbitre et la
+//        règle de la borne (Garde-fous) sont restés entiers ; la mesure citée de make-it-better existe
+//        quand le skill voisin est présent (sinon : dit, jamais inventé).
 // DOUBLE SENS : la fixture verte est le skill réel ; chaque rouge en est une copie amputée d'UN
-// élément (une ligne de critère, un lien rendu mort), qui doit échouer sur SA règle.
+// élément (une ligne de critère, une phrase, un lien rendu mort, une ligne de profil), ou altérée
+// d'UNE phrase d'échappement, qui doit échouer sur SA règle.
 //
 // NON JUGÉ : que Claude APPLIQUE la méthode en session (comportement, pas texte) ; la justesse
-// d'une mesure ; la taille d'un échantillon ou un seuil, choix du métier (R-63, point 3).
+// d'une mesure ; la taille d'un échantillon ou un seuil, choix du métier (R-63, point 3) ; qu'un
+// « rien à changer » soit VRAI sur un livrable donné (c'est l'attestation de l'arbitre, en session) ;
+// la justesse de l'écart mesuré par un livrable réel.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -40,6 +55,27 @@ const CRITERES_R63 = [
   ['rejet tracé', /rejetée ; son numéro et sa raison restent au journal/i],
   ['arrêt borné', /deux versions consécutives gagnent moins d'un point, ou à la borne fixée/i],
 ];
+
+// D-133 (a), TF-2051 : [règle, nom, énoncé reconnu dans la section « Passes successives »].
+const CRITERES_PASSES = [
+  ['B4', 'lecture de l\'écart dès la 2e passe', /À partir de la 2e passe, l'arbitre lit l'écart entre la passe précédente et le candidat/],
+  ['B4', 'écart mesuré (lignes, poids ou volume)', /mesuré \(lignes, poids ou volume du livrable\)/],
+  ['B4', 'apport à un critère nommé', /Il note ce que l'ajout apporte à un critère de l'arbitre, nommé/],
+  ['B4', 'ajout sans progrès', /Un ajout qui ne fait progresser aucun critère ne compte pas comme un progrès/],
+  ['B4', 'retrait sans casse', /Un retrait qui ne casse aucun critère en est un/],
+  ['B4', 'figeage intact', /sans modifier la règle du figeage de l'arbitre au cadrage/],
+  ['B5', 'sortie valide', /« rien à changer » est une sortie valide/],
+  ['B5', 'preuve de la sortie', /critères relus un à un, oracles lancés, constats lus/],
+  ['B5', 'arrêt sans passe de plus', /La boucle s'arrête alors sans passe de plus/],
+  ['B5', 'attestation de l\'arbitre', /n'est valide que si l'arbitre l'atteste/],
+  ['B5', 'pas une sortie d\'échappement', /Ce n'est pas une sortie d'échappement quand un critère reste en échec/],
+  ['B6', 'loi n° 3 : proposé une fois', /Ce qui manque se propose toujours une fois/],
+  ['B6', 'loi n° 3 : pas re-proposé à chaque passe', /n'est pas re-proposé à chaque passe/],
+];
+const SECTION_PASSES = /^Passes successives/;
+const ESCAPATOIRE = /(?:même|y compris) (?:si|quand|avec) (?:un|des|le|les) critères? (?:reste|restent|est|sont) (?:en échec|rouges?|non tenus?)/i;
+/** Les lignes d'un tableau Markdown d'une section : première cellule de chaque ligne de données. */
+const premieresCellules = (section) => section.split('\n').filter((l) => /^\| /.test(l) && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split('|')[1].trim());
 
 /** Les constats d'un dossier de skill : [{ regle, msg }]. */
 function juger(dir) {
@@ -66,23 +102,53 @@ function juger(dir) {
   const section = (texte.split(/\n## /).find((s) => /^Améliorer une version/.test(s)) || '');
   if (!section) constats.push({ regle: 'B3', msg: 'section « Améliorer une version… » (R-63, point 2) absente' });
   for (const [nom, re] of CRITERES_R63) if (section && !re.test(section.replace(/\s*\n\s*/g, ' '))) constats.push({ regle: 'B3', msg: `critère R-63 absent de la section : ${nom}` });
+  // B4-B6 : la section « Passes successives » (D-133 (a), TF-2051), un énoncé reconnu par phrase.
+  const passes = (texte.split(/\n## /).find((s) => SECTION_PASSES.test(s)) || '');
+  if (!passes) constats.push({ regle: 'B4', msg: 'section « Passes successives » (D-133 (a), TF-2051) absente' });
+  else for (const [regle, nom, re] of CRITERES_PASSES) if (!re.test(passes.replace(/\s*\n\s*/g, ' '))) constats.push({ regle, msg: `énoncé ${regle} absent de la section Passes successives : ${nom}` });
+  // B7 : la cohérence. (a) aucune phrase n'autorise « rien à changer » avec un critère en échec.
+  if (passes && ESCAPATOIRE.test(passes.replace(/\s*\n\s*/g, ' '))) constats.push({ regle: 'B7', msg: 'échappatoire : la section autorise « rien à changer » avec un critère en échec' });
+  // (b) le figeage de l'arbitre et la règle de la borne restent entiers.
+  const plat = texte.replace(/\s*\n\s*/g, ' ');
+  if (!/figé et validé avant le premier candidat/.test(plat)) constats.push({ regle: 'B7', msg: "figeage de l'arbitre modifié : « figé et validé avant le premier candidat » a disparu" });
+  if (!/À la borne, arbitre toujours en échec/.test(plat)) constats.push({ regle: 'B7', msg: 'règle de la borne modifiée : « À la borne, arbitre toujours en échec » a disparu des Garde-fous' });
+  // (c) profils-arbitre.md : la section « Comparer deux passes » a une ligne par type de SA table des profils.
+  let profils = null;
+  try { profils = fs.readFileSync(path.join(dir, 'references', 'profils-arbitre.md'), 'utf8').replace(/\r\n/g, '\n'); } catch { constats.push({ regle: 'B7', msg: 'references/profils-arbitre.md illisible' }); }
+  if (profils !== null) {
+    const parties = profils.split(/\n## /);
+    const table = parties.find((s) => /^Table des profils/.test(s)) || '';
+    const comparer = parties.find((s) => /^Comparer deux passes/.test(s)) || '';
+    const types = premieresCellules(table).filter((c) => c !== 'Type de livrable');
+    if (!types.length) constats.push({ regle: 'B7', msg: 'table des profils vide ou absente de profils-arbitre.md' });
+    if (!comparer) constats.push({ regle: 'B7', msg: 'section « Comparer deux passes » absente de profils-arbitre.md' });
+    else { const lignes = premieresCellules(comparer); for (const t of types) if (!lignes.includes(t)) constats.push({ regle: 'B7', msg: `ligne de profil absente de « Comparer deux passes » : ${t}` }); }
+  }
   constats.longueurDescription = description.length;
   return constats;
 }
 
 // ── La verte : le skill réel ──
 const vert = juger(SKILL);
-vert.length === 0 ? bon('verte : le skill réel passe B1 (description ' + vert.longueurDescription + '/1024), B2 et B3 (' + CRITERES_R63.length + ' énoncés R-63 reconnus)')
+vert.length === 0 ? bon('verte : le skill réel passe B1 (description ' + vert.longueurDescription + '/1024), B2, B3 (' + CRITERES_R63.length + ' énoncés R-63 reconnus), B4 à B6 (' + CRITERES_PASSES.length + ' énoncés des passes successives reconnus) et B7 (cohérence)')
   : mal('verte : ' + vert.map((c) => c.regle + ' ' + c.msg).join(' · '));
+
+// La mesure que la section cite en exemple existe chez le skill voisin, quand il est présent.
+{
+  const voisin = path.join(SKILL, '..', 'make-it-better', 'scripts', 'lib', 'diff.mjs');
+  if (!fs.existsSync(voisin)) bon('verte : make-it-better absent de cette racine, la mesure citée (ecartMots) n\'est pas vérifiée ici');
+  else /export function ecartMots\b/.test(fs.readFileSync(voisin, 'utf8')) ? bon('verte : la mesure citée en exemple existe (ecartMots, make-it-better/scripts/lib/diff.mjs)')
+    : mal('verte : la section cite ecartMots de make-it-better, absent de scripts/lib/diff.mjs');
+}
 
 // ── Les rouges : une copie amputée d'un seul élément, qui doit échouer sur SA règle ──
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'la-boucle-'));
 try {
   const original = fs.readFileSync(path.join(SKILL, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
-  const rouge = (nom, texte, regle, motif) => {
+  const rouge = (nom, texte, regle, motif, fichier = 'SKILL.md') => {
     const d = path.join(tmp, nom);
     fs.cpSync(SKILL, d, { recursive: true });
-    fs.writeFileSync(path.join(d, 'SKILL.md'), texte);
+    fs.writeFileSync(path.join(d, fichier), texte);
     const c = juger(d);
     c.some((x) => x.regle === regle && x.msg.includes(motif)) ? bon(`rouge ${nom} : échoue sur ${regle} (${motif})`)
       : mal(`rouge ${nom} : attendu un échec ${regle} « ${motif} », obtenu ${JSON.stringify(c)}`);
@@ -95,6 +161,27 @@ try {
   }
   rouge('lien-mort', original.replace('references/profils-arbitre.md)', 'references/profils-absents.md)'), 'B2', 'profils-absents.md');
   rouge('sans-section', original.replace(/\n## Améliorer une version/, '\n## Autre titre'), 'B3', 'absente');
+
+  // D-133 (a), TF-2051 — chaque énoncé des passes successives est retiré seul : sa règle échoue, nommément.
+  const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-');
+  for (const [regle, nom, re] of CRITERES_PASSES) {
+    const coupe = original.replace(re, '');
+    if (coupe === original) { mal(`rouge « sans ${nom} » non construit : l'énoncé manque à la verte`); continue; }
+    rouge(`${regle}-sans-${slug(nom)}`, coupe, regle, nom);
+  }
+  rouge('passes-sans-section', original.replace(/\n## Passes successives/, '\n## Autre passage'), 'B4', 'absente');
+  // Cohérence : une phrase d'échappatoire AJOUTÉE (les énoncés B5 restent), le figeage et la borne altérés.
+  const echappe = original.replace("La boucle s'arrête alors sans passe de plus", "La boucle s'arrête alors sans passe de plus, même si un critère reste en échec");
+  if (echappe === original) mal("rouge « échappatoire » non construit : la phrase d'arrêt manque à la verte");
+  else rouge('echappatoire', echappe, 'B7', 'échappatoire');
+  rouge('figeage-modifie', original.replace('figé et validé avant le premier', 'ajusté après le premier'), 'B7', 'figeage de l\'arbitre modifié');
+  rouge('borne-modifiee', original.replace('À la borne, arbitre toujours en échec', 'À la borne, arbitre toujours satisfait'), 'B7', 'règle de la borne modifiée');
+  // Cohérence côté profils : la section ôtée, puis une ligne de type ôtée.
+  const profils = fs.readFileSync(path.join(SKILL, 'references', 'profils-arbitre.md'), 'utf8').replace(/\r\n/g, '\n');
+  rouge('profils-sans-section', profils.replace('## Comparer deux passes', '## Autre mesure'), 'B7', 'section « Comparer deux passes » absente', 'references/profils-arbitre.md');
+  const sansDeck = profils.split('\n').filter((l) => !(l.startsWith('| Deck / PPTX |') && l.includes('Nombre de slides'))).join('\n');
+  sansDeck === profils ? mal('rouge « profils sans ligne Deck » non construit : la ligne manque à la verte')
+    : rouge('profils-sans-deck', sansDeck, 'B7', 'ligne de profil absente de « Comparer deux passes » : Deck / PPTX', 'references/profils-arbitre.md');
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 
 console.log(ko.length ? `\n❌ la-boucle : ${ko.length} échec(s), ${ok.length} vert(s)` : `\n✅ la-boucle : PASS (${ok.length} contrôles)`);

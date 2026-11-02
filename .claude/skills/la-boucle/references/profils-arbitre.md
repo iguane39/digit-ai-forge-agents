@@ -24,6 +24,27 @@ tâche qui ne le justifie pas.
 | Données / tableau | Contrôles de cohérence exécutés sur échantillon : totaux, types, bornes, doublons | Valeurs de contrôle citées (ex. « somme colonne C = 100 % ») | Inspection visuelle d'un échantillon, taille annoncée |
 | Fidélité à une référence visuelle | Comparaison **mesurée** contre l'artefact de vérité terrain (fichier source, MHTML, export, capture) | Écarts chiffrés par niveau : structure/géométrie (ordre et coordonnées des sections), tokens (fontes, couleurs), composants/effets, comportement | **Pas de mode dégradé** : sans artefact de référence accessible, le critère est invérifiable ⇒ escalade au cadrage (demander l'artefact), jamais de substitution par interprétation |
 
+## Comparer deux passes, et prouver « rien à changer »
+
+Complète la section « Passes successives » du SKILL.md (D-133 (a), TF-2051). Le critère comparatif
+lit l'écart entre la passe précédente et le candidat ; la sortie « rien à changer » exige la preuve
+du profil, relue par l'arbitre. Un ✓ sur l'écart est adossé à la mesure exécutée ou à la citation
+des lignes qui diffèrent, jamais à une impression.
+
+| Type de livrable | Écart mesuré entre deux passes | Preuve de « rien à changer » |
+|---|---|---|
+| Code / script | Lignes ajoutées et retirées (`git diff --numstat` ou diff ligne à ligne) ; cas d'exécution qui changent de verdict | Exécution rejouée verte, cas nominal et ≥ 1 cas limite, aucun critère en échec |
+| Page / fiche HTML | Poids du fichier en octets, nombre de lignes, constats du script de conformité avant et après | Script de conformité et rendu aux breakpoints sans constat nouveau |
+| Deck / PPTX | Nombre de slides, mots par slide, constats de la checklist avant et après | Checklist cochée point par point, rendu produit |
+| Document texte / propale | Mots ajoutés et retirés (mesure `ecartMots` de make-it-better pour un texte), longueur contre le plafond | Comptages et repérages cités (section, ligne) identiques à la passe précédente |
+| Données / tableau | Lignes et colonnes ajoutées ou retirées, valeurs de contrôle avant et après | Contrôles de cohérence rejoués, mêmes valeurs |
+| Fidélité à une référence visuelle | Écarts chiffrés par niveau (structure, tokens, composants, comportement) avant et après | Écarts à zéro ou sous le seuil du cadrage, par niveau |
+| Tâche légère (message, planning) | Phrases ou mots ajoutés et retirés, cités | Critères relus avec citation, aucun ✗ |
+
+Un livrable qui ne se mesure pas (message court, arbitrage) cite les lignes qui diffèrent : la
+proportionnalité du SKILL.md vaut aussi ici. Un retrait qui ne casse aucun critère est un
+progrès ; un ajout qui n'en fait progresser aucun n'en est pas un.
+
 ## Décomposer un critère de fidélité (cas d'école)
 
 « Le site suit le format et la présentation de la référence » n'est pas un critère : c'est

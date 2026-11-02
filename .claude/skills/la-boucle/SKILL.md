@@ -13,6 +13,8 @@ description: >
   message (« non, plutôt… », « refais avec… »). Ne pas déclencher pour une réponse factuelle
   simple, une boucle logicielle de code (« boucle for/while », debug), ni une décision à fort
   enjeu ou irréversible (→ handoff direct).
+metadata:
+  version: "1.1.0"
 ---
 
 # La Boucle
@@ -38,7 +40,8 @@ Retirer le mot-clé, traiter le reste comme la demande, entrer au **Cadrage**. `
    critère, corrigé, recommencé. Espace **divergent** (comparaison, design, message à angles
    multiples) → démarrer en **largeur** : 2-3 candidats *distincts par construction* (pas des
    variantes timides), l'arbitre les classe, on approfondit le meilleur. **Essais non
-   affichés**, parole non rendue entre deux. Bornés (~3-5).
+   affichés**, parole non rendue entre deux. Bornés (~3-5). Dès la 2e passe, le critère
+   comparatif s'applique, et « rien à changer » peut clore la boucle (cf. *Passes successives*).
 3. **Restitution** — Livrer le résultat convergé + un mini-rapport honnête des critères ✓/✗
    (chaque ✓ avec sa preuve **et sa provenance** — oracle exécuté ou revue manuelle —, chaque ✗ restant signalé, jamais masqué) + les éventuelles escalades.
 4. **Réutilisation** — Proposer de mémoriser destination + arbitre, pour re-déclencher sans
@@ -56,6 +59,26 @@ contenu : il change à chaque situation.
 boucle auto-arbitrée n'est pas l'arbitre complaisant *au cadrage*, c'est le **✓ trop généreux
 en cours de boucle**. Donc : pour chaque critère, Claude cherche d'abord à le faire échouer,
 et n'accorde un **✓ qu'avec sa preuve** (citation, ligne, valeur). Pas de preuve citable ⇒ ✗. Pour un **livrable outillable** (code, page HTML, PPTX, document structuré, données), la preuve d'un ✓ est la **sortie d'un oracle réellement exécuté** — rendu, script de conformité, exécution, mesure — jamais l'auto-citation du candidat ni une relecture « de tête » ; profils par type de livrable : [references/profils-arbitre.md](references/profils-arbitre.md). Oracle outillé indisponible dans la session ⇒ mode dégradé : checklist manuelle, signalée comme telle à la restitution. Les tâches légères (message, planning, arbitrage simple) gardent l'arbitre simple actuel — la proportionnalité prime.
+
+## Passes successives : comparer, puis conclure s'il ne reste rien à changer
+
+Décision humaine D-133 (a), TF-2051, du 02/11/2026. La boucle borne ses essais et fige son arbitre ; elle compare aussi deux passes entre elles, et elle peut conclure qu'il n'y a rien à changer.
+
+Comparer deux passes :
+
+- **Critère comparatif.** À partir de la 2e passe, l'arbitre lit l'écart entre la passe précédente et le candidat, mesuré (lignes, poids ou volume du livrable) quand le livrable s'y prête, cité ligne à ligne sinon. Il note ce que l'ajout apporte à un critère de l'arbitre, nommé (preuve : l'écart chiffré ou cité, et le critère qui progresse).
+- **Ajout sans progrès, retrait sans casse.** Un ajout qui ne fait progresser aucun critère ne compte pas comme un progrès : la passe se note « sans progrès ». Un retrait qui ne casse aucun critère en est un.
+- **Figeage intact.** Le critère comparatif s'inscrit au cadrage avec les autres, avant le 1er candidat, sans modifier la règle du figeage de l'arbitre au cadrage : il n'est jamais retouché en cours de boucle.
+- **Exemple de mesure.** `make-it-better` (`scripts/lib/diff.mjs`, fonction `ecartMots`) compte les mots ajoutés et retirés entre deux versions d'un texte, et sa consigne de tour demande à tout ajout de dire ce qu'il retire. On cite cette mesure, on ne la recopie pas. Mesure par type de livrable : [references/profils-arbitre.md](references/profils-arbitre.md).
+
+Conclure qu'il n'y a rien à changer :
+
+- **Sortie valide.** « rien à changer » est une sortie valide, comme le type de tour `rien` de make-it-better à côté de l'ajout, du retrait et de la reformulation. Elle porte sa preuve : critères relus un à un, oracles lancés, constats lus, et une recherche d'échec qui n'a rien trouvé. La boucle s'arrête alors sans passe de plus et restitue le candidat courant.
+- **Attestation de l'arbitre.** La sortie n'est valide que si l'arbitre l'atteste, critère par critère, preuve citée. Ce n'est pas une sortie d'échappement quand un critère reste en échec : le tour continue, ou la borne s'applique (cf. *Garde-fous*).
+
+Avec la loi n° 3 du pilot :
+
+- **Ce qui manque se propose toujours une fois.** La loi n° 3 (l'oubli n'existe pas : la surface implicite absente est proposée et s'écarte explicitement, jamais par omission) ne bouge pas. « rien à changer » ne vaut qu'après cette proposition. Ce qui a été proposé n'est pas re-proposé à chaque passe : la restitution le cite (proposé, retenu, écarté).
 
 ## Améliorer une version d'une sortie automatisée (R-63, point 2)
 
