@@ -113,7 +113,7 @@ const CITE = /(`[^`]+`|https?:\/\/\S+|\bTF-\d+\b|\bD-\d+\b|[\w.\\/-]+\.(?:md|jso
 const decider = (l, n) => {
   if (l.ecarte) return 'À écarter';
   if (l.deja_couvert) return 'Sans suite';
-  if (n.somme < 15) return 'Sans suite';
+  if (n.somme < 14) return 'Sans suite'; // score minimal : D-125 (a) du 02/11/2026
   if (l.seuil && l.seuil !== 'non' && l.question) return 'Étude poussée';
   if (n.C >= 4 && l.mesure) return 'Essai court';
   return 'Décision directe';

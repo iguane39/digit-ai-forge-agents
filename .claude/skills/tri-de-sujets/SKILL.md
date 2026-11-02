@@ -10,7 +10,7 @@ description: >
   elle-même (→ `gabarits/ETUDE-OPPORTUNITE.md`), qualifier un entrant de produit (→ qualifie-l-entrant)
   ni analyser un prompt (→ prompt-analyzer-l99).
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Tri de sujets — décider où une étude changera une décision
@@ -44,12 +44,12 @@ La première condition vraie l'emporte.
 | Verdict | Condition |
 |---|---|
 | À écarter | `ecarte` : viole les conditions d'un tiers ou une règle |
-| Sans suite | `deja_couvert`, ou score sous 15 |
+| Sans suite | `deja_couvert`, ou score sous 14 |
 | Étude poussée | Seuil tenu et `question` nommée |
 | Essai court | Coût inverse de 4 ou 5 et `mesure` nommée |
 | Décision directe | Tous les autres cas |
 
-Score : `2G + N + P + C`, chaque note de 1 à 5 (gain, nouveauté, preuve, coût inverse). Le seuil est celui de `gabarits/ETUDE-OPPORTUNITE.md` : `objet-durable`, `forges=a,b,c` (au moins 3, ou `noyau`), `gain-preuve` (gain d'au moins 3, preuve d'au plus 2), ou `non`.
+Score : `2G + N + P + C`, chaque note de 1 à 5 (gain, nouveauté, preuve, coût inverse). Le minimum de 14 vient d'un back-test sur 14 études, 7 accords sur 14 : c'est un réglage provisoire, à remesurer. Un « Sans suite » veut dire « rien ne presse ». Le seuil est celui de `gabarits/ETUDE-OPPORTUNITE.md` : `objet-durable`, `forges=a,b,c` (au moins 3, ou `noyau`), `gain-preuve` (gain d'au moins 3, preuve d'au plus 2), ou `non`.
 
 ## Le fichier de rangement
 

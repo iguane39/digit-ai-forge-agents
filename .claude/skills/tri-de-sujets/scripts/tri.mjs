@@ -6,6 +6,10 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+// Décision humaine D-125 (a) du 02/11/2026, après le back-test sur 14 études : 15 lançait 2 études
+// et en manquait 9 ; 14 en lance 6, dont 5 utiles. Réglage calculé sur ces mêmes 14 sujets.
+export const SCORE_MINIMAL = 14;
+
 const decoder = (s) => s.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
 
@@ -135,7 +139,7 @@ export function decider(l) {
   }
   const somme = 2 * G + N + P + C;
   const notes = `G${G} N${N} P${P} C${C} = ${somme}`;
-  if (somme < 15) return { verdict: 'Sans suite', notes };
+  if (somme < SCORE_MINIMAL) return { verdict: 'Sans suite', notes };
   if (l.seuil && l.seuil !== 'non' && l.question) return { verdict: 'Étude poussée', notes };
   if (C >= 4 && l.mesure) return { verdict: 'Essai court', notes };
   return { verdict: 'Décision directe', notes };

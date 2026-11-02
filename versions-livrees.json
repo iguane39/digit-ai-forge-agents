@@ -91,7 +91,7 @@
       "registre": "2.47.0"
     },
     "tri-de-sujets": {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "frontmatter SKILL.md"
     },
     "write-an-expert": {

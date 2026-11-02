@@ -51,6 +51,8 @@ const base = { element: 'x', notes_chiffres: { G: 4, N: 4, P: 4, C: 3 } };
 verifier('verdict : à écarter avant tout', decider({ ...base, ecarte: true, seuil: 'objet-durable', question: 'q' }).verdict === 'À écarter');
 verifier('verdict : déjà couvert', decider({ ...base, deja_couvert: true }).verdict === 'Sans suite');
 verifier('verdict : score sous 15', decider({ element: 'x', notes_chiffres: { G: 1, N: 3, P: 3, C: 3 }, seuil: 'objet-durable', question: 'q' }).verdict === 'Sans suite');
+verifier('verdict : 13 reste sans suite, score minimal 14', decider({ element: 'x', notes_chiffres: { G: 2, N: 3, P: 3, C: 3 }, seuil: 'non' }).verdict === 'Sans suite');
+verifier('verdict : 14 passe, score minimal 14', decider({ element: 'x', notes_chiffres: { G: 3, N: 3, P: 3, C: 2 }, seuil: 'non' }).verdict === 'Décision directe');
 verifier('verdict : étude poussée', decider({ ...base, seuil: 'objet-durable', question: 'q' }).verdict === 'Étude poussée');
 verifier('verdict : seuil sans question ne fait pas une étude', decider({ ...base, seuil: 'objet-durable' }).verdict === 'Décision directe');
 verifier('verdict : essai court', decider({ element: 'x', notes_chiffres: { G: 3, N: 3, P: 3, C: 4 }, seuil: 'non', mesure: 'm' }).verdict === 'Essai court');
