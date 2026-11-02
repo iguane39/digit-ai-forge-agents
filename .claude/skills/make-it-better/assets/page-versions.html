@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  var theme = stocke === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  var meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) { meta.setAttribute('content', theme); }
+})();
+</script>
+  <title>Digit-AI — Versions du document · make-it-better — 20261102a</title>
+  <meta name="description" content="Toutes les versions d'un document amélioré tour après tour : aperçu, comparaison, marquage et revue à l'aveugle.">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --blue: #2563EB;
+      --bg: #FAFBFF;
+      --surface: #FFFFFF;
+      --card: #FFFFFF;
+      --focus-anneau: 2px solid var(--blue);
+      --focus-decalage: 2px;
+      --ink: #0F172A;
+      --muted: #64748B;
+      --faint: #94A3B8;
+      --line: #E6EAF2;
+      --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;
+      --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
+      --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
+      --green-solid: #166534; --amber-solid: #92400E; --red-solid: #B91C1C; --slate-solid: #4B5563;
+      --papier: #FFFFFF; --sur-plein: #FFFFFF;
+      --r: 12px; --r-sm: 8px;
+      --w: clamp(75vw, 1680px, 92vw);
+      --head: "Montserrat", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --sans: "Inter", "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+    }
+    :root[data-theme="dark"] {
+      --bg: #0B1220; --surface: #121B2E; --card: #121B2E;
+      --ink: #EEF2F8; --muted: #A9B4C4; --faint: #7C8AA0; --line: #263248;
+      --blue: #7DA2F5;
+      --amber: #FBBF6D; --amber-fill: #2B2210; --amber-line: #4A3A18;
+      --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
+      --red:   #F5A3A3; --red-fill:   #2C1416; --red-line:   #4C1F22;
+      --green-solid: #166534; --amber-solid: #92400E; --red-solid: #B91C1C; --slate-solid: #4B5563;
+      --papier: #FFFFFF; --sur-plein: #FFFFFF;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55; font-size: 16px; }
+    [hidden] { display: none !important; }
+    .wrap { max-width: none; margin: 0; padding: 20px 28px 48px; }
+    h1, h2, h3 { font-family: var(--head); color: var(--ink); line-height: 1.2; }
+    h1 { font-size: 1.6rem; font-weight: 800; margin: 0; }
+    h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 8px; }
+    h3 { font-size: 1rem; font-weight: 700; margin: 0 0 8px; }
+    p { margin: 0 0 12px; }
+    code { font-family: var(--mono); font-size: .92em; overflow-wrap: anywhere; }
+    a { color: var(--blue); }
+    .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 4px; }
+    header.doc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; border-bottom: 2px solid var(--blue); padding-bottom: 12px; margin-bottom: 16px; }
+    .commandes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+    .champ { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: .92rem; color: var(--muted); }
+    select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: var(--r-sm); padding: 8px 12px; min-height: 40px; max-width: 100%; }
+    button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: var(--r-sm); padding: 8px 12px; min-height: 40px; cursor: pointer; }
+    button:hover, button:active { background: var(--line); }
+    button:focus-visible, select:focus-visible, input:focus-visible, iframe:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
+    button[disabled] { color: var(--muted); cursor: not-allowed; background: var(--bg); }
+    button.principal { background: var(--blue); border-color: var(--blue); color: var(--surface); }
+    button.principal:hover { background: var(--blue); }
+    button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+    .theme-toggle { width: 40px; padding: 0; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+    .plan { display: grid; grid-template-columns: minmax(280px, 26%) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .menu, .panneau { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+    .menu { max-height: calc(100vh - 140px); overflow-y: auto; }
+    .filtres { border: 0; padding: 0; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .filtres legend { font-size: .92rem; color: var(--muted); padding: 0; margin-bottom: 4px; }
+    .liste, .rangs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .version { display: block; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--line); background: var(--surface); }
+    .version[aria-current="true"] { border-color: var(--blue); box-shadow: inset 3px 0 0 var(--blue); }
+    .version .ligne1 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; font-weight: 700; }
+    .version .commentaire { display: block; font-size: .92rem; margin-top: 4px; overflow-wrap: break-word; }
+    .version .mesure { display: block; font-size: .85rem; color: var(--muted); margin-top: 4px; }
+    .version .motif { display: block; font-size: .85rem; color: var(--red); margin-top: 4px; overflow-wrap: break-word; }
+    .etat { display: inline-block; font-size: .78rem; font-weight: 700; padding: 0 8px; border-radius: 999px; color: var(--sur-plein); background: var(--slate-solid); }
+    .etat.gardee { background: var(--green-solid); }
+    .etat.rejetee { background: var(--red-solid); }
+    .etat.pertinente { background: var(--amber-solid); }
+    .onglets { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+    .onglet { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; font-weight: 700; color: var(--muted); }
+    .onglet:hover { background: transparent; color: var(--ink); }
+    .onglet[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--blue); }
+    .entete-version { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+    .marquage { display: flex; flex-wrap: wrap; gap: 8px; }
+    iframe { display: block; width: 100%; height: calc(100vh - 260px); min-height: 460px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--papier); }
+    .cote-a-cote { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .colonne { min-width: 0; }
+    .texte-comparer { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px; white-space: pre-wrap; overflow-wrap: break-word; font-size: .95rem; max-height: calc(100vh - 300px); overflow-y: auto; }
+    del { background: var(--red-fill); color: var(--ink); text-decoration: line-through; text-decoration-color: var(--red); border-bottom: 1px solid var(--red-line); }
+    ins { background: var(--green-fill); color: var(--ink); text-decoration: underline; text-decoration-color: var(--green); border-bottom: 1px solid var(--green-line); }
+    .vide { border: 1px dashed var(--muted); border-radius: var(--r-sm); padding: 16px; color: var(--ink); background: var(--bg); }
+    .statut { min-height: 1.5em; font-size: .92rem; color: var(--muted); margin: 0 0 8px; }
+    .rang { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+    .rang[aria-current="true"] { border-color: var(--blue); box-shadow: inset 3px 0 0 var(--blue); }
+    .rangs { counter-reset: rang; }
+    .rang { counter-increment: rang; }
+    .rang::before { content: counter(rang) "."; font-weight: 700; min-width: 1.6em; }
+    .rang label { display: inline-flex; align-items: center; gap: 4px; font-size: .92rem; }
+    .rang input { width: 20px; height: 20px; }
+    .actions-revue { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    footer.doc { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+    @media screen and (max-width: 900px) {
+      .wrap { padding: 16px 12px 32px; }
+      .plan { grid-template-columns: minmax(0, 1fr); }
+      .menu { max-height: none; }
+      .cote-a-cote { grid-template-columns: minmax(0, 1fr); }
+      iframe { height: 70vh; }
+      .texte-comparer { max-height: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+    @page { size: A4; margin: 18mm 16mm; }
+    @media print {
+      :root, :root[data-theme="dark"] {
+        --bg:#FFFFFF; --surface:#FFFFFF; --card:#FFFFFF; --ink:#0F172A;
+        --muted:#64748B; --faint:#94A3B8; --line:#E6EAF2; --blue:#2563EB;
+        --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
+        --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
+        --red:#B91C1C; --red-fill:#FEF2F2; --red-line:#F6CFCF;
+      }
+      .theme-toggle, .commandes { display: none; }
+      .plan { display: block; }
+      .menu { max-height: none; }
+    }
+  </style>
+</head>
+<body data-page="donnees" data-mode="normal">
+  <div class="wrap">
+    <header class="doc">
+      <div>
+        <p class="eyebrow">Digit-AI · make-it-better</p>
+        <h1 id="titre">Versions du document</h1>
+      </div>
+      <div class="commandes">
+        <label class="champ" id="champ-essai">Document et modèle
+          <select id="choix-essai"></select>
+        </label>
+        <button type="button" id="ouvrir-aveugle">Revue à l'aveugle</button>
+        <button type="button" id="quitter-aveugle" hidden>Quitter la revue</button>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Bascule thème sombre" aria-pressed="false">
+          <svg class="icon-moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+          <svg class="icon-sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <p class="statut" id="statut" role="status"></p>
+      <div class="vide" id="vide-espace" hidden>
+        <p><strong>Aucun document dans cet espace.</strong></p>
+        <p>Écris le cadre du document, puis lance un premier essai : <code>node scripts/lancer.mjs --document &lt;fichier&gt; --espace &lt;dossier&gt;</code>. Recharge ensuite cette page.</p>
+      </div>
+
+      <div class="plan" id="plan" hidden>
+        <nav class="menu" id="menu" aria-label="Versions du document">
+          <div id="menu-normal">
+            <h2>Versions</h2>
+            <fieldset class="filtres">
+              <legend>Filtre du menu</legend>
+              <button type="button" class="filtre" data-filtre="toutes" aria-pressed="true">Toutes</button>
+              <button type="button" class="filtre" data-filtre="pertinentes" aria-pressed="false">Pertinentes</button>
+              <button type="button" class="filtre" data-filtre="non-jugees" aria-pressed="false">Non jugées</button>
+            </fieldset>
+            <ol class="liste" id="liste"></ol>
+            <p class="vide" id="vide-filtre" hidden></p>
+          </div>
+          <div id="menu-aveugle" hidden>
+            <h2>Lettres à classer</h2>
+            <p id="consigne-aveugle">Regarde chaque lettre, puis range-les de la meilleure à la moins bonne.</p>
+            <ol class="rangs" id="rangs"></ol>
+            <div class="actions-revue">
+              <button type="button" class="principal" id="enregistrer-classement">Enregistrer le classement</button>
+              <button type="button" id="lever-aveugle" hidden>Lever l'aveugle</button>
+            </div>
+          </div>
+        </nav>
+
+        <section class="panneau" aria-labelledby="titre-panneau">
+          <div class="entete-version">
+            <h2 id="titre-panneau">Aperçu</h2>
+            <div class="marquage" id="marquage" role="group" aria-label="Jugement de cette version">
+              <button type="button" id="marque-oui" aria-pressed="false">Pertinente</button>
+              <button type="button" id="marque-non" aria-pressed="false">Non pertinente</button>
+              <button type="button" id="marque-effacer">Effacer le jugement</button>
+            </div>
+          </div>
+          <div class="onglets" id="onglets" role="tablist" aria-label="Vue de la version">
+            <button type="button" class="onglet" role="tab" id="onglet-apercu" aria-controls="vue-apercu" aria-selected="true">Aperçu</button>
+            <button type="button" class="onglet" role="tab" id="onglet-comparer" aria-controls="vue-comparer" aria-selected="false" tabindex="-1">Comparer</button>
+          </div>
+          <div id="vue-apercu" role="tabpanel" aria-labelledby="onglet-apercu">
+            <iframe id="cadre" sandbox="allow-scripts" title="Aperçu de la version choisie" src="about:blank"></iframe>
+          </div>
+          <div id="vue-comparer" role="tabpanel" aria-labelledby="onglet-comparer" hidden>
+            <p class="vide" id="vide-comparer" hidden></p>
+            <div class="cote-a-cote" id="cote-a-cote" hidden>
+              <div class="colonne">
+                <h3 id="titre-gauche">Précédente gardée</h3>
+                <div class="texte-comparer" id="texte-gauche" tabindex="0" aria-labelledby="titre-gauche"></div>
+              </div>
+              <div class="colonne">
+                <h3 id="titre-droite">Version choisie</h3>
+                <div class="texte-comparer" id="texte-droite" tabindex="0" aria-labelledby="titre-droite"></div>
+              </div>
+            </div>
+            <p class="statut" id="ecart-comparer"></p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="doc">Digit-AI · page servie sur 127.0.0.1 seulement. Le modèle n'écrit jamais les jugements ni le classement.</footer>
+  </div>
+
+  <script>
+  (function () {
+    var bouton = document.getElementById('theme-toggle');
+    var racine = document.documentElement;
+    function appliquer(theme) {
+      racine.setAttribute('data-theme', theme);
+      try { localStorage.setItem('digitai-theme', theme); } catch (e) {}
+      bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+    bouton.setAttribute('aria-pressed', racine.getAttribute('data-theme') === 'dark' ? 'true' : 'false');
+    bouton.addEventListener('click', function () {
+      appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  })();
+  </script>
+  <script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var TITRE_NORMAL = document.title;
+    var etat = { documents: [], doc: null, essai: null, donnees: null, choix: null, filtre: 'toutes', vue: 'apercu', aveugle: null, ordre: [], marquees: {}, lettre: null };
+
+    function appel(url, corps) {
+      var options = corps === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) };
+      return fetch(url, options).then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok) { throw new Error(j.erreur || 'Le serveur a refusé.'); }
+          return j;
+        });
+      });
+    }
+    function dire(texte) { $('statut').textContent = texte; }
+    function echec(e) { dire(e.message); }
+    function vider(n) { while (n.firstChild) { n.removeChild(n.firstChild); } }
+    function creer(balise, classe, texte) {
+      var n = document.createElement(balise);
+      if (classe) { n.className = classe; }
+      if (texte !== undefined) { n.textContent = texte; }
+      return n;
+    }
+
+    function versionChoisie() {
+      if (!etat.donnees) { return null; }
+      return etat.donnees.versions.filter(function (v) { return v.numero === etat.choix; })[0] || null;
+    }
+    function versionsFiltrees() {
+      return etat.donnees.versions.filter(function (v) {
+        if (etat.filtre === 'pertinentes') { return v.pertinente === true; }
+        if (etat.filtre === 'non-jugees') { return v.pertinente === null; }
+        return true;
+      });
+    }
+    function libelleNumero(v) { return v.numero === 0 ? 'Origine' : 'Tour ' + v.numero_texte + ' · ' + v.type; }
+
+    function rendreListe() {
+      var liste = $('liste');
+      var focus = document.activeElement ? document.activeElement.getAttribute('data-numero') : null;
+      vider(liste);
+      var visibles = versionsFiltrees();
+      visibles.forEach(function (v) {
+        var li = creer('li');
+        var b = creer('button', 'version');
+        b.type = 'button';
+        b.setAttribute('data-numero', v.numero);
+        b.setAttribute('aria-current', v.numero === etat.choix ? 'true' : 'false');
+        var l1 = creer('span', 'ligne1');
+        l1.appendChild(creer('span', '', libelleNumero(v)));
+        l1.appendChild(creer('span', 'etat ' + v.statut, v.statut === 'gardee' ? 'gardée' : 'rejetée'));
+        if (v.pertinente === true) { l1.appendChild(creer('span', 'etat pertinente', 'pertinente')); }
+        if (v.pertinente === false) { l1.appendChild(creer('span', 'etat', 'non pertinente')); }
+        b.appendChild(l1);
+        if (v.commentaire) { b.appendChild(creer('span', 'commentaire', v.commentaire)); }
+        b.appendChild(creer('span', 'mesure', v.numero === 0 ? v.total + ' mots' : '+' + v.ajoutes + ' / −' + v.retires + ' mots, ' + v.total + ' au total'));
+        if (v.motif) { b.appendChild(creer('span', 'motif', 'Motif du rejet : ' + v.motif)); }
+        b.addEventListener('click', function () { choisir(v.numero); });
+        li.appendChild(b);
+        liste.appendChild(li);
+      });
+      /* Le menu se réécrit : le clavier garde sa place. */
+      var retour = focus === null ? null : liste.querySelector('[data-numero="' + focus + '"]');
+      if (retour) { retour.focus(); }
+      var vide = $('vide-filtre');
+      vide.hidden = visibles.length > 0;
+      if (!visibles.length) {
+        vide.textContent = etat.filtre === 'pertinentes'
+          ? 'Aucune version marquée pertinente : choisis une version sous « Toutes », puis marque-la.'
+          : 'Toutes les versions sont jugées : repasse sur « Toutes » pour les revoir.';
+      }
+      document.querySelectorAll('.filtre').forEach(function (f) {
+        f.setAttribute('aria-pressed', f.getAttribute('data-filtre') === etat.filtre ? 'true' : 'false');
+      });
+    }
+
+    function adresseApercu(v) {
+      return '/apercu/' + encodeURIComponent(etat.doc) + '/' + encodeURIComponent(etat.essai) + '/' + v.numero_texte;
+    }
+    function rendreMarquage() {
+      var v = versionChoisie();
+      $('marque-oui').setAttribute('aria-pressed', v && v.pertinente === true ? 'true' : 'false');
+      $('marque-non').setAttribute('aria-pressed', v && v.pertinente === false ? 'true' : 'false');
+    }
+    function choisir(numero) {
+      etat.choix = numero;
+      var v = versionChoisie();
+      rendreListe();
+      rendreMarquage();
+      $('titre-panneau').textContent = v ? libelleNumero(v) : 'Aperçu';
+      if (v) {
+        if (etat.donnees.ext === 'docx' && v.fichier) { dire('Aperçu Word en préparation : il peut durer jusqu\'à 2 minutes.'); }
+        $('cadre').src = adresseApercu(v);
+      }
+      if (etat.vue === 'comparer') { rendreComparaison(); }
+    }
+    $('cadre').addEventListener('load', function () {
+      if (/en préparation/.test($('statut').textContent)) { dire(''); }
+    });
+
+    function pousserSegments(hote, segments, Balise) {
+      vider(hote);
+      segments.forEach(function (s) {
+        if (s.s) { hote.appendChild(creer(Balise, '', s.t)); }
+        else { hote.appendChild(document.createTextNode(s.t)); }
+      });
+    }
+    function rendreComparaison() {
+      var v = versionChoisie();
+      var vide = $('vide-comparer');
+      var blocs = $('cote-a-cote');
+      $('ecart-comparer').textContent = '';
+      if (!v) {
+        vide.hidden = false; blocs.hidden = true;
+        vide.textContent = 'Choisis une version dans le menu.';
+        return;
+      }
+      appel('/api/comparer?doc=' + encodeURIComponent(etat.doc) + '&essai=' + encodeURIComponent(etat.essai) + '&numero=' + v.numero).then(function (c) {
+        if (c.vide) {
+          vide.hidden = false; blocs.hidden = true;
+          vide.textContent = c.vide;
+          return;
+        }
+        vide.hidden = true; blocs.hidden = false;
+        $('titre-gauche').textContent = (c.precedente === 0 ? 'Origine' : 'Précédente gardée, tour ' + c.precedente_texte) + ', mots retirés barrés';
+        $('titre-droite').textContent = 'Tour ' + c.numero_texte + ', mots ajoutés soulignés';
+        pousserSegments($('texte-gauche'), c.gauche, 'del');
+        pousserSegments($('texte-droite'), c.droite, 'ins');
+        $('ecart-comparer').textContent = c.ajoutes + ' mots ajoutés, ' + c.retires + ' mots retirés.';
+      }).catch(echec);
+    }
+    function montrerVue(vue) {
+      etat.vue = vue;
+      var comparer = vue === 'comparer';
+      $('onglet-apercu').setAttribute('aria-selected', comparer ? 'false' : 'true');
+      $('onglet-comparer').setAttribute('aria-selected', comparer ? 'true' : 'false');
+      $('onglet-apercu').tabIndex = comparer ? -1 : 0;
+      $('onglet-comparer').tabIndex = comparer ? 0 : -1;
+      $('vue-apercu').hidden = comparer;
+      $('vue-comparer').hidden = !comparer;
+      if (comparer) { rendreComparaison(); }
+    }
+    $('onglet-apercu').addEventListener('click', function () { montrerVue('apercu'); });
+    $('onglet-comparer').addEventListener('click', function () { montrerVue('comparer'); });
+    $('onglets').addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
+      var vers = etat.vue === 'apercu' ? 'comparer' : 'apercu';
+      montrerVue(vers);
+      $(vers === 'comparer' ? 'onglet-comparer' : 'onglet-apercu').focus();
+      e.preventDefault();
+    });
+
+    function marquer(valeur) {
+      var v = versionChoisie();
+      if (!v) { return; }
+      appel('/api/jugement', { doc: etat.doc, essai: etat.essai, numero: v.numero, pertinente: valeur }).then(function () {
+        v.pertinente = valeur;
+        rendreListe();
+        rendreMarquage();
+        dire(valeur === null ? 'Jugement effacé.' : 'Jugement enregistré.');
+      }).catch(echec);
+    }
+    $('marque-oui').addEventListener('click', function () { marquer(true); });
+    $('marque-non').addEventListener('click', function () { marquer(false); });
+    $('marque-effacer').addEventListener('click', function () { marquer(null); });
+    document.querySelectorAll('.filtre').forEach(function (f) {
+      f.addEventListener('click', function () {
+        etat.filtre = f.getAttribute('data-filtre');
+        rendreListe();
+      });
+    });
+
+    function chargerEssai() {
+      return appel('/api/versions?doc=' + encodeURIComponent(etat.doc) + '&essai=' + encodeURIComponent(etat.essai)).then(function (d) {
+        etat.donnees = d;
+        var parties = [d.format + ', ' + (d.versions.length - 1) + ' tours joués'];
+        if (d.etat.arret) { parties.push('arrêt : ' + d.etat.arret); }
+        if (d.etat.pause) { parties.push('en pause : ' + d.etat.pause); }
+        if (d.aveugle.raison) { parties.push(d.aveugle.raison); }
+        dire(parties.join(' · '));
+        $('ouvrir-aveugle').disabled = !d.aveugle.disponible;
+        var derniere = d.versions.length ? d.versions[d.versions.length - 1].numero : null;
+        choisir(derniere);
+      });
+    }
+    function remplirChoix() {
+      var s = $('choix-essai');
+      vider(s);
+      etat.documents.forEach(function (d) {
+        var g = creer('optgroup');
+        g.label = d.nom + (d.format ? ' (' + d.format + ')' : '');
+        d.essais.forEach(function (e) {
+          var o = creer('option', '', d.nom + ' · ' + e.id);
+          o.value = d.nom + '|' + e.id;
+          g.appendChild(o);
+        });
+        s.appendChild(g);
+      });
+    }
+    $('choix-essai').addEventListener('change', function (e) {
+      var morceaux = e.target.value.split('|');
+      etat.doc = morceaux[0];
+      etat.essai = morceaux[1];
+      chargerEssai().catch(echec);
+    });
+
+    /* ── Revue à l'aveugle : des lettres, et rien d'autre ─────────────────────────────── */
+    function basculerMode(aveugle) {
+      document.body.setAttribute('data-mode', aveugle ? 'aveugle' : 'normal');
+      $('menu-normal').hidden = aveugle;
+      $('menu-aveugle').hidden = !aveugle;
+      $('onglets').hidden = aveugle;
+      $('marquage').hidden = aveugle;
+      $('champ-essai').hidden = aveugle;
+      $('ouvrir-aveugle').hidden = aveugle;
+      $('quitter-aveugle').hidden = !aveugle;
+      $('menu').setAttribute('aria-label', aveugle ? 'Lettres à classer' : 'Versions du document');
+      $('titre').textContent = aveugle ? 'Revue à l\'aveugle' : 'Versions du document';
+      document.title = aveugle ? 'Digit-AI — Revue à l\'aveugle · make-it-better' : TITRE_NORMAL;
+      if (aveugle) {
+        montrerVue('apercu');
+        $('vue-comparer').hidden = true;
+      }
+    }
+    function choisirLettre(lettre) {
+      etat.lettre = lettre;
+      $('titre-panneau').textContent = 'Lettre ' + lettre;
+      $('cadre').src = '/aveugle/' + lettre;
+      rendreRangs();
+    }
+    function deplacer(lettre, sens) {
+      var i = etat.ordre.indexOf(lettre);
+      var j = i + sens;
+      if (j < 0 || j >= etat.ordre.length) { return; }
+      etat.ordre.splice(i, 1);
+      etat.ordre.splice(j, 0, lettre);
+      rendreRangs();
+      dire('Lettre ' + lettre + ' au rang ' + (j + 1) + '.');
+    }
+    function rendreRangs() {
+      var a = etat.aveugle;
+      var hote = $('rangs');
+      var focus = document.activeElement ? document.activeElement.id : '';
+      vider(hote);
+      var fige = Boolean(a.classement);
+      etat.ordre.forEach(function (lettre, i) {
+        var li = creer('li', 'rang');
+        li.setAttribute('aria-current', lettre === etat.lettre ? 'true' : 'false');
+        var voir = creer('button', '', 'Lettre ' + lettre);
+        voir.type = 'button';
+        voir.id = 'voir-' + lettre;
+        voir.addEventListener('click', function () { choisirLettre(lettre); });
+        li.appendChild(voir);
+        if (!fige) {
+          var haut = creer('button', '', 'Monter');
+          haut.type = 'button';
+          haut.id = 'monter-' + lettre;
+          haut.disabled = i === 0;
+          haut.setAttribute('aria-label', 'Monter la lettre ' + lettre);
+          haut.addEventListener('click', function () { deplacer(lettre, -1); });
+          li.appendChild(haut);
+          var bas = creer('button', '', 'Descendre');
+          bas.type = 'button';
+          bas.id = 'descendre-' + lettre;
+          bas.disabled = i === etat.ordre.length - 1;
+          bas.setAttribute('aria-label', 'Descendre la lettre ' + lettre);
+          bas.addEventListener('click', function () { deplacer(lettre, 1); });
+          li.appendChild(bas);
+        }
+        var label = creer('label');
+        var coche = creer('input');
+        coche.type = 'checkbox';
+        coche.checked = Boolean(etat.marquees[lettre]);
+        coche.disabled = fige;
+        coche.addEventListener('change', function () { etat.marquees[lettre] = coche.checked; });
+        label.appendChild(coche);
+        label.appendChild(document.createTextNode('pertinente'));
+        li.appendChild(label);
+        if (a.revele) {
+          var r = a.revele.filter(function (x) { return x.lettre === lettre; })[0];
+          li.appendChild(creer('span', '', r.origine ? 'Origine' : 'Tour ' + r.numero_texte));
+        }
+        hote.appendChild(li);
+      });
+      /* Le clavier garde sa place : un bouton devenu inactif passe la main à son contraire. */
+      var retour = focus ? document.getElementById(focus) : null;
+      if (retour && retour.disabled) {
+        retour = document.getElementById(focus.replace(/^(monter|descendre)/, function (m) { return m === 'monter' ? 'descendre' : 'monter'; }));
+      }
+      if (retour) { retour.focus(); }
+      $('enregistrer-classement').hidden = fige;
+      $('lever-aveugle').hidden = !fige || a.leve;
+      $('consigne-aveugle').textContent = a.leve
+        ? 'Aveugle levé : chaque lettre dit sa version, et les marques ont rejoint les jugements.'
+        : fige ? 'Classement enregistré. Lève l\'aveugle pour voir chaque version.' : 'Regarde chaque lettre, puis range-les de la meilleure à la moins bonne.';
+    }
+    function entrerRevue(a) {
+      etat.aveugle = a;
+      etat.ordre = a.classement ? a.classement.ordre.slice() : a.lettres.slice();
+      etat.marquees = {};
+      (a.classement ? a.classement.pertinentes : []).forEach(function (l) { etat.marquees[l] = true; });
+      basculerMode(true);
+      dire(a.repli_texte ? 'L\'export Word n\'a pas abouti : toutes les versions de cette revue s\'affichent en texte extrait.' : a.lettres.length + ' lettres à classer pour ' + a.document + '.');
+      choisirLettre(etat.ordre[0]);
+    }
+    $('ouvrir-aveugle').addEventListener('click', function () {
+      dire('Préparation des aperçus de la revue…');
+      appel('/api/aveugle/ouvrir', { doc: etat.doc, essai: etat.essai }).then(entrerRevue).catch(echec);
+    });
+    $('enregistrer-classement').addEventListener('click', function () {
+      var marquees = etat.ordre.filter(function (l) { return etat.marquees[l]; });
+      appel('/api/aveugle/classer', { ordre: etat.ordre, pertinentes: marquees }).then(function (a) {
+        etat.aveugle = a;
+        rendreRangs();
+        dire('Classement enregistré.');
+      }).catch(echec);
+    });
+    $('lever-aveugle').addEventListener('click', function () {
+      appel('/api/aveugle/lever', {}).then(function (a) {
+        etat.aveugle = a;
+        rendreRangs();
+        dire('Aveugle levé.');
+      }).catch(echec);
+    });
+    $('quitter-aveugle').addEventListener('click', function () {
+      appel('/api/aveugle/fermer', {}).then(function () {
+        etat.aveugle = null;
+        basculerMode(false);
+        return chargerEssai();
+      }).catch(echec);
+    });
+
+    /* ── Démarrage ─────────────────────────────────────────────────────────────────────── */
+    appel('/api/etat').then(function (d) {
+      etat.documents = d.documents.filter(function (x) { return x.essais.length; });
+      if (!etat.documents.length) {
+        $('vide-espace').hidden = false;
+        $('ouvrir-aveugle').hidden = true;
+        $('champ-essai').hidden = true;
+        return null;
+      }
+      $('plan').hidden = false;
+      remplirChoix();
+      etat.doc = etat.documents[0].nom;
+      etat.essai = etat.documents[0].essais[0].id;
+      $('choix-essai').value = etat.doc + '|' + etat.essai;
+      return appel('/api/aveugle').then(function (a) {
+        if (a.actif) {
+          entrerRevue(a);
+          return null;
+        }
+        return chargerEssai();
+      });
+    }).catch(echec);
+  })();
+  </script>
+</body>
+</html>

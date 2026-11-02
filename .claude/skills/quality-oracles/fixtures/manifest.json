@@ -2156,6 +2156,26 @@
    "attendu_green": [
     "PASS"
    ]
+  },
+  {
+   "nom": "faits-sources",
+   "cmd": [
+    "node",
+    "{skillsroot}/make-it-better/scripts/oracle-faits-sources.mjs",
+    "{fixture}"
+   ],
+   "red": "../../make-it-better/fixtures/faits-sources/version-rouge.md",
+   "green": "../../make-it-better/fixtures/faits-sources/version-verte.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "absent de l'origine et de sources/"
+   ],
+   "provenance": "TF-2050, prompt du skill make-it-better, pilot 20261102g, 02/11/2026 — note fictive. La rouge change un nombre, invente une personne, un cabinet et une citation ; la verte reformule et ne cite que l'origine et sources/."
   }
  ]
 }
