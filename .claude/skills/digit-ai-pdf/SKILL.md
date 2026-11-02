@@ -12,7 +12,7 @@ description: >
   HTML (→ `fiche-en-pdf.mjs` de forge-audit), juger ses polices (→ oracle-polices-embarquees), ni
   rendre un Word (→ digit-ai-docx).
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # PDF de la Factory — formulaires, tri, lecture

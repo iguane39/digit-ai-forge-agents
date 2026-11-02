@@ -33,7 +33,7 @@
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-pdf": {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-pptx": {
@@ -90,9 +90,9 @@
       "source": "frontmatter SKILL.md"
     },
     "quality-oracles": {
-      "version": "2.20.0",
+      "version": "2.21.0",
       "source": "frontmatter SKILL.md",
-      "registre": "2.49.0"
+      "registre": "2.50.0"
     },
     "tri-de-sujets": {
       "version": "1.1.0",
