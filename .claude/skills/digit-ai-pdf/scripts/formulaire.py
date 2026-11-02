@@ -12,7 +12,10 @@
 # valeurs.json (le même fichier sert de --attendu à l'oracle) :
 #   { "champs": { "nom": "Hélène Dupré", "accepte": true, "formule": "/B" },
 #     "plat":   [ { "page": 1, "boite": [120, 200, 400, 218], "texte": "Hélène Dupré" },
-#                 { "page": 1, "boite": [50, 300, 62, 312], "coche": true } ] }
+#                 { "page": 1, "boite": [50, 300, 62, 312], "coche": true },
+#                 { "page": 1, "boite": [110, 330, 488, 346], "texte": "FR76…", "cases": 27 } ] }
+# `cases` (plat) : une rangée de cases, un caractère par case ; un entier pour des cases égales sur la
+# boîte, ou des paires [gauche, droite] dans le sens de lecture. Un espace du texte n'occupe pas de case.
 #
 # `relever` montre AVANT d'écrire : champs, mots, lignes de saisie et petites cases, plus une image
 # quadrillée tous les 50 points pour poser les boîtes d'un formulaire plat.
@@ -24,7 +27,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib_pdf import (BIT_LECTURE_SEULE, BIT_MULTILIGNE, BIT_PEIGNE, ecrire_json, est_xfa, etats_case,
+from lib_pdf import (BIT_LECTURE_SEULE, BIT_MULTILIGNE, BIT_PEIGNE, cellules, ecrire_json, est_xfa, etats_case,
                      exiger, herite, inventaire_champs, lignes_coupees, lire_json, nom_complet,
                      repere_page, rotation_page, type_champ, widgets)
 
@@ -343,6 +346,22 @@ def remplir_plat(writer, entrees, police):
                 except UnicodeEncodeError:
                     refuser(f"« {texte} » sort de l'encodage de Helvetica : passer --police <fichier.ttf>")
             taille = float(e.get("taille", min(TAILLE_DEFAUT, max(TAILLE_MIN, (bas - haut) * 0.75))))
+            if "cases" in e:
+                # Une rangée de cases (IBAN, SIRET) : le caractère de rang k, centré dans la case k.
+                cel = cellules(x0, x1, e["cases"])
+                signes = [ch for ch in texte if not ch.isspace()]
+                if cel is None:
+                    refuser(f"page {n} : `cases` illisible, attendu un entier ou une liste de paires [gauche, droite]")
+                if len(signes) > len(cel):
+                    refuser(f"page {n} : {len(signes)} caractères pour {len(cel)} cases")
+                etroite = min(cd - cg for cg, cd in cel)
+                while taille > TAILLE_MIN and signes and max(stringWidth(ch, nom_police, taille) for ch in signes) > etroite:
+                    taille -= 0.25
+                c.setFont(nom_police, taille)
+                y_cases = Y_bas + ((bas - haut) - taille) / 2 + taille * 0.18
+                for (cg, cd), ch in zip(cel, signes):
+                    c.drawString(g + (cg + cd) / 2 - stringWidth(ch, nom_police, taille) / 2, y_cases, ch)
+                continue
             while taille > TAILLE_MIN and stringWidth(texte, nom_police, taille) > (x1 - x0):
                 taille -= 0.25
             if stringWidth(texte, nom_police, taille) > (x1 - x0):

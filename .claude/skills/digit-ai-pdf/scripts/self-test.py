@@ -4,6 +4,7 @@
 #   python self-test.py          exit 0 tout vert · 1 au moins un échec
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -143,6 +144,52 @@ def lot1(d):
     surimpression(vert, p("f8.pdf"), lambda c: c.drawString(300, 100, "ajout discret"))
     attendre_regle("F8 écriture hors zone", oracle(p("f8.pdf"), v_champs, vierge), "F8")
 
+    # Peigne (RT-142 point 3, TF-2042) : chaque caractère d'IBAN dans la case de son rang.
+    code, s = oracle(vert, v_champs, vierge)
+    controle("F9 vert : l'IBAN du peigne a chaque caractère dans sa case", code == 0 and s["verdict"] == "PASS", f"exit {code}, règles {sorted(regles(s))}")
+
+    def sur_apparence(nom_champ, geste):
+        def f(w):
+            ap = annot(w, nom_champ)["/AP"]["/N"].get_object()
+            ap.set_data(geste(ap.get_data().decode("latin-1")).encode("latin-1"))
+        return f
+
+    def tasser(data):
+        signes = re.findall(r"\((.)\) Tj", data)
+        return data.split("1 0 0 1")[0] + "2 4 Td (" + "".join(signes) + ") Tj\nET Q EMC"
+
+    def permuter(data):
+        lignes = data.split("\n")
+        idx = [i for i, l in enumerate(lignes) if re.search(r"Tm \(.\) Tj", l)]
+        a = next(i for i in range(10, len(idx) - 1) if lignes[idx[i]].split("Tm ")[1] != lignes[idx[i + 1]].split("Tm ")[1])
+        la, lb = lignes[idx[a]], lignes[idx[a + 1]]
+        pa, ca = la.split(" Tm ")
+        pb, cb = lb.split(" Tm ")
+        lignes[idx[a]], lignes[idx[a + 1]] = pa + " Tm " + cb, pb + " Tm " + ca
+        return "\n".join(lignes)
+
+    def decaler(data):
+        return re.sub(r"1 0 0 1 ([\d.]+) ([\d.]+) Tm", lambda m: f"1 0 0 1 {float(m.group(1)) + 340 / 27:.2f} {m.group(2)} Tm", data)
+
+    modifier(vert, p("f9a.pdf"), sur_apparence("iban", tasser))
+    attendre_regle("F9 peigne : IBAN tassé à gauche, hors de ses cases", oracle(p("f9a.pdf"), v_champs, vierge), "F9")
+    modifier(vert, p("f9b.pdf"), sur_apparence("iban", permuter))
+    code_b, s_b = oracle(p("f9b.pdf"), v_champs, vierge)
+    attendre_regle("F4 peigne : deux chiffres permutés à l'affichage, refusés par ce que le lecteur affiche", (code_b, s_b), "F4")
+    court = json.loads(json.dumps(fx.VALEURS_CHAMPS))
+    court["champs"]["iban"] = fx.IBAN_FICTIF[:20]
+    v_court = valeurs(d, "v-f9c.json", court)
+    r = jouer("formulaire.py", "remplir", vierge, "--valeurs", v_court, "--out", p("f9c-vert.pdf"))
+    controle("F9 vert : IBAN de 20 signes, cases 1 à 20", r.returncode == 0 and '"PASS"' in r.stdout, r.stdout[-300:] + r.stderr[-300:])
+    modifier(p("f9c-vert.pdf"), p("f9c.pdf"), sur_apparence("iban", decaler))
+    attendre_regle("F9 peigne : tout l'IBAN décalé d'une case", oracle(p("f9c.pdf"), v_court, vierge), "F9")
+    modifier(vert, p("f9d.pdf"), lambda w: annot(w, "iban").__setitem__(NameObject("/Q"), NumberObject(1)))
+    code, s = oracle(p("f9d.pdf"), v_champs, vierge)
+    controle("F9 peigne centré : non jugé et dit, jamais un PASS muet", code == 0 and any(n.startswith("F9 NON JOUÉE") for n in s["non_juge"]), str(s.get("non_juge"))[-300:])
+    altere = json.loads(json.dumps(fx.VALEURS_CHAMPS))
+    altere["champs"]["iban"] = fx.IBAN_FICTIF[:12] + "9" + fx.IBAN_FICTIF[13:]
+    attendre_regle("F3 IBAN altéré d'un chiffre", oracle(vert, valeurs(d, "v-f3iban.json", altere), vierge), "F3")
+
     # Défauts plats.
     attendre_regle("P3 collision (fixture rouge du manifest)", (lambda: (jouer("formulaire.py", "remplir", plat, "--valeurs", valeurs(d, "v-p3.json", {"plat": [dict(fx.VALEURS_PLAT["plat"][0], boite=[50, 88, 340, 106])] + fx.VALEURS_PLAT["plat"][1:]}), "--out", p("p3.pdf"), "--sans-controle"), oracle(p("p3.pdf"), p("v-p3.json"), plat))[1])(), "P3")
     def guides(c):
@@ -187,6 +234,66 @@ def lot1(d):
     petit = [dict(fx.VALEURS_PLAT["plat"][0], taille=4)] + fx.VALEURS_PLAT["plat"][1:]
     r = jouer("formulaire.py", "remplir", plat, "--valeurs", valeurs(d, "v-p5.json", {"plat": petit}), "--out", p("p5.pdf"))
     controle("P5 corps trop petit : averti, non bloquant", r.returncode == 0 and '"P5' in r.stdout.replace("P5 —", '"P5'), r.stdout[-400:])
+
+    # Rangée de cases d'un formulaire plat (RT-142 point 3, TF-2042) : un caractère par case.
+    iban_vierge = p("iban-vierge.pdf")
+    fx.formulaire_plat_iban(iban_vierge)
+    v_iban = valeurs(d, "v-iban.json", fx.VALEURS_IBAN)
+    r = jouer("formulaire.py", "remplir", iban_vierge, "--valeurs", v_iban, "--out", p("iban-vert.pdf"))
+    controle("remplir plat à cases : contrôle enchaîné et PASS", r.returncode == 0 and '"PASS"' in r.stdout, r.stdout[-300:] + r.stderr[-300:])
+
+    def iban_tasse(c):
+        c.setFont("Helvetica", 11)
+        c.drawString(111, fx.HAUT - 101, fx.IBAN_FICTIF)
+
+    surimpression(iban_vierge, p("p6a.pdf"), iban_tasse)
+    code, s = oracle(p("p6a.pdf"), v_iban, iban_vierge)
+    controle("P6 IBAN tassé : le texte est lu juste et la boîte le tient, seules les cases le refusent", code == 1 and regles(s) == {"P6"}, f"exit {code}, règles {sorted(regles(s))}")
+
+    def iban_decale(c):
+        c.setFont("Helvetica", 11)
+        for k, ch in enumerate(fx.IBAN_FICTIF[:26]):
+            c.drawString(110 + 14 * (k + 1) + 7 - c.stringWidth(ch, "Helvetica", 11) / 2, fx.HAUT - 101, ch)
+
+    surimpression(iban_vierge, p("p6b.pdf"), iban_decale)
+    v_26 = valeurs(d, "v-iban26.json", {"plat": [dict(fx.VALEURS_IBAN["plat"][0], texte=fx.IBAN_FICTIF[:26])]})
+    attendre_regle("P6 IBAN décalé d'une case", oracle(p("p6b.pdf"), v_26, iban_vierge), "P6")
+    v_trop = valeurs(d, "v-iban20.json", {"plat": [dict(fx.VALEURS_IBAN["plat"][0], cases=20)]})
+    attendre_regle("P6 plus de caractères que de cases", oracle(p("iban-vert.pdf"), v_trop, iban_vierge), "P6")
+    v_pas_lisible = valeurs(d, "v-iban-nl.json", {"plat": [dict(fx.VALEURS_IBAN["plat"][0], cases="vingt")]})
+    attendre_regle("P6 déclaration de cases illisible", oracle(p("iban-vert.pdf"), v_pas_lisible, iban_vierge), "P6")
+    v_paires = valeurs(d, "v-iban-paires.json", {"plat": [dict(fx.VALEURS_IBAN["plat"][0], cases=[[110 + 14 * k, 124 + 14 * k] for k in range(27)])]})
+    code, s = oracle(p("iban-vert.pdf"), v_paires, iban_vierge)
+    controle("P6 vert : cases données par paires [gauche, droite]", code == 0 and s["verdict"] == "PASS", f"exit {code}, règles {sorted(regles(s))}")
+    altere_plat = valeurs(d, "v-iban-alt.json", {"plat": [dict(fx.VALEURS_IBAN["plat"][0], texte=fx.IBAN_FICTIF[:12] + "9" + fx.IBAN_FICTIF[13:])]})
+    attendre_regle("P1 IBAN altéré d'un chiffre", oracle(p("iban-vert.pdf"), altere_plat, iban_vierge), "P1")
+
+    # RT-142 point 4 : les ajouts se distinguent de l'original sans le nom de police ni la couleur.
+    import pdfplumber
+    with pdfplumber.open(plat) as pdf_v, pdfplumber.open(plat_vert) as pdf_r:
+        source_c, rempli_c = pdf_v.pages[0].chars, pdf_r.pages[0].chars
+    cles = {}
+    for c_ in source_c:
+        k_ = (c_["text"], round(c_["x0"], 1), round(c_["top"], 1))
+        cles[k_] = cles.get(k_, 0) + 1
+    ajouts = []
+    for c_ in rempli_c:
+        k_ = (c_["text"], round(c_["x0"], 1), round(c_["top"], 1))
+        if cles.get(k_, 0) > 0:
+            cles[k_] -= 1
+        else:
+            ajouts.append(c_)
+    memes = {c_["fontname"] for c_ in ajouts} <= {c_["fontname"] for c_ in source_c} and {str(c_.get("non_stroking_color")) for c_ in ajouts} <= {str(c_.get("non_stroking_color")) for c_ in source_c}
+    code, s = oracle(plat_vert, v_plat, plat)
+    controle("P1 vert : ajouts dans la police et l'encre de l'original, lus quand même", bool(ajouts) and memes and code == 0 and s["verdict"] == "PASS", f"{len(ajouts)} ajout(s), mêmes polices et encre : {memes}, exit {code}")
+    mauvais = [dict(fx.VALEURS_PLAT["plat"][0], texte="Hélène Dupres")] + fx.VALEURS_PLAT["plat"][1:]
+    attendre_regle("P1 même police et même encre, texte faux : refusé", oracle(plat_vert, valeurs(d, "v-p1c.json", {"plat": mauvais}), plat), "P1")
+
+    # RT-142 point 2 : l'original, calque retiré, reste ce qu'il était (F8 vaut aussi pour un retrait).
+    sans_titre = p("plat-sans-titre.pdf")
+    fx.formulaire_plat(sans_titre, titre=False)
+    r = jouer("formulaire.py", "remplir", sans_titre, "--valeurs", v_plat, "--out", p("plat-sans-titre-r.pdf"), "--sans-controle")
+    attendre_regle("F8 original abîmé : le titre de la source a disparu", oracle(p("plat-sans-titre-r.pdf"), v_plat, plat), "F8")
 
     # Ce que l'oracle refuse de juger n'est jamais un PASS.
     code, s = oracle(plat_vert, v_plat)

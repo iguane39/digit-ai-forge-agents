@@ -29,6 +29,14 @@ seule), ce que voit le lecteur par PDFium (qui aplatit les apparences), le plat 
      couche de texte, de l'encre sous le texte ajouté se signale en avertissement.
   P4 plat : une case demandée cochée porte de l'encre, une case demandée vide n'en reçoit pas.
   P5 plat, avertissement : corps du texte ajouté sous --taille-min.
+  F9 champ à peigne (IBAN, SIRET) : chaque caractère affiché est dans la case de son rang. Les cases
+     sont les MaxLen parts égales du champ ; un espace de la valeur occupe sa case. Justification au centre ou à droite : non jugée, et dite.
+  P6 plat, zone qui déclare `cases` (un entier, ou des paires [gauche, droite]) : le caractère de
+     rang k est dans la case k. Un espace du texte n'occupe pas de case.
+
+Les ajouts d'un formulaire plat se distinguent de l'original par le caractère et sa position : le nom
+de la police n'entre jamais dans la décision, et une police ou une encre identique à celle de
+l'original ne les cache pas (RT-142, TF-2042 : un contrôle fondé sur le nom de police accusait à tort).
 
 Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],mesure}.
 Exit 0=PASS, 1=FAIL, 2=SKIP (dépendance absente, usage, fichier chiffré, --source manquante).
@@ -38,7 +46,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib_pdf import (BIT_PEIGNE, boite_lecteur, compact, est_xfa, etats_case, exiger, herite,
+from lib_pdf import (BIT_PEIGNE, boite_lecteur, cellules, compact, est_xfa, etats_case, exiger, herite,
                      inventaire_champs, lignes_coupees, lire_json, nom_complet, norm_texte,
                      repere_page, rotation_page, valeur_lue, widgets)
 
@@ -140,6 +148,27 @@ class VueImprimee:
         fond = compact(self.nu[n - 1].get_textpage().get_text_bounded(**borne))
         return vu.replace(fond, "", 1) if fond else vu
 
+    def caracteres(self, n, rect):
+        """(caractère, abscisse du centre) de ce que le champ ajoute dans son rectangle, rangés de
+        gauche à droite. L'ordre d'extraction suit le flux du fichier, pas la page : seule la position
+        dit dans quelle case un caractère s'affiche."""
+        x0, y0, x1, y1 = rect
+
+        def lire(textpage):
+            sortie = []
+            for i in range(textpage.count_chars()):
+                g, b, d, h = textpage.get_charbox(i)
+                cx, cy = (g + d) / 2, (b + h) / 2
+                if x0 <= cx <= x1 and y0 <= cy <= y1:
+                    sortie.append((textpage.get_text_range(i, 1), round(cx, 1)))
+            return sortie
+
+        vus = lire(self.page(n)[2])
+        for f in lire(self.nu[n - 1].get_textpage()):
+            if f in vus:
+                vus.remove(f)
+        return sorted((c for c in vus if c[0].strip()), key=lambda c: c[1])
+
     def fermer(self):
         self.images.clear()
         self.doc.close()
@@ -153,6 +182,28 @@ def attendu_bouton(voulu, etats):
         return "/Off"
     v = str(voulu)
     return v if v.startswith("/") else "/" + v
+
+
+def verifier_peigne(vue, n_page, rect, voulu, n_cases):
+    """F9 : messages des caractères affichés hors de la case de leur rang. Vide si tout est en place,
+    ou si l'affichage ne compte pas autant de signes que la valeur (F4 le dit déjà, comme il refuse
+    deux caractères permutés : l'extraction de PDFium range les signes par leur position)."""
+    x0, y0, x1, y1 = [float(v) for v in rect]
+    x0, x1 = sorted((x0, x1))
+    y0, y1 = sorted((y0, y1))
+    largeur = (x1 - x0) / n_cases
+    attendus = [(k, ch) for k, ch in enumerate(voulu[:n_cases]) if not ch.isspace()]
+    vus = vue.caracteres(n_page, (x0, y0, x1, y1))
+    if len(vus) != len(attendus):
+        return []
+    msgs = []
+    for (k, voulu_ch), (_, cx) in zip(attendus, vus):
+        case = int((cx - x0) // largeur)
+        if case != k:
+            msgs.append(f"le caractère « {voulu_ch} » de rang {k + 1} s'affiche dans la case {case + 1} sur {n_cases}")
+    if len(msgs) > 3:
+        msgs = msgs[:3] + [f"… {len(msgs) - 3} autre(s) caractère(s) hors de leur case"]
+    return msgs
 
 
 def juger_champs(etat, chemin, reader, attendu, source_champs):
@@ -174,6 +225,7 @@ def juger_champs(etat, chemin, reader, attendu, source_champs):
     for n_page, page, annot in widgets(reader):
         wid.setdefault(nom_complet(annot), []).append((n_page, page, annot))
     pages_tournees = set()
+    peignes_justifies = []
 
     for nom, voulu in attendu.items():
         if nom not in inv:
@@ -266,6 +318,13 @@ def juger_champs(etat, chemin, reader, attendu, source_champs):
                     if mesure > l - 1:
                         etat.faute("F5", nom, f"le texte mesure {mesure:.0f} points à {calc:.0f} points de corps pour un champ de {l:.0f} : il sera coupé")
                         ok = False
+                if peigne and info.get("max_len") and ok:
+                    if int(herite(annot, "/Q") or 0):
+                        peignes_justifies.append(nom)
+                    else:
+                        for m in verifier_peigne(vue, n_page, annot["/Rect"], texte_voulu, info["max_len"]):
+                            etat.faute("F9", nom, m)
+                            ok = False
         elif typ == "signature":
             etat.faute("F3", nom, "un champ de signature ne se déclare pas dans valeurs.json")
             ok = False
@@ -292,6 +351,8 @@ def juger_champs(etat, chemin, reader, attendu, source_champs):
         etat.non_juge.append("F7 et F8 NON JOUÉES : --source absente")
     if pages_tournees:
         etat.non_juge.append(f"F4 et F5 NON JOUÉES sur les pages tournées : {sorted(pages_tournees)}")
+    if peignes_justifies:
+        etat.non_juge.append(f"F9 NON JOUÉE sur les peignes justifiés au centre ou à droite : {', '.join(peignes_justifies)}")
     vue.fermer()
 
 
@@ -325,6 +386,33 @@ def recouvre(a, b):
         return 0.0
     aire = max((a["x1"] - a["x0"]) * (a["b"] - a["h"]), 0.01)
     return l * h / aire
+
+
+def placer_dans_cases(etat, ou, boite, cases, voulu, lus):
+    """P6 : le caractère de rang k du texte est dans la case k de la rangée déclarée. Rend False si une
+    faute a été posée. Un texte lu autrement que voulu est déjà une faute P1 : pas de second constat."""
+    cel = cellules(boite[0], boite[2], cases)
+    if cel is None:
+        etat.faute("P6", ou, "`cases` illisible : attendu un entier, ou une liste de paires [gauche, droite]")
+        return False
+    attendus = [ch for ch in voulu if not ch.isspace()]
+    if len(attendus) > len(cel):
+        etat.faute("P6", ou, f"{len(attendus)} caractères pour {len(cel)} cases")
+        return False
+    vus = [c for c in lus if not c["t"].isspace()]
+    if len(vus) != len(attendus):
+        return True
+    ecarts = []
+    for k, c in enumerate(vus):
+        cx = (c["x0"] + c["x1"]) / 2
+        g, d = cel[k]
+        if not g <= cx <= d:
+            ecarts.append(f"le caractère de rang {k + 1} « {c['t']} » est à x={cx:.1f}, hors de sa case [{g:.1f}, {d:.1f}]")
+    for m in ecarts[:3]:
+        etat.faute("P6", ou, m)
+    if len(ecarts) > 3:
+        etat.faute("P6", ou, f"… {len(ecarts) - 3} autre(s) caractère(s) hors de leur case")
+    return not ecarts
 
 
 def juger_plat(etat, chemin, source, plat, taille_min):
@@ -380,6 +468,9 @@ def juger_plat(etat, chemin, source, plat, taille_min):
             if voulu.strip() and ch == 0:
                 etat.faute("P1", ou, f"« {voulu[:40]} » est dans le fichier et ne se voit pas au rendu")
                 ok = False
+            if "cases" in e:
+                if not placer_dans_cases(etat, ou, boite, e["cases"], voulu, lus):
+                    ok = False
             if ok:
                 etat.mesure["zones_ok"] += 1
             # Formulaire scanné : aucun caractère source à comparer, mais de l'encre sous le texte.

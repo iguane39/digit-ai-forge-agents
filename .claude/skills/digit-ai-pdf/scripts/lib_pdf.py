@@ -49,6 +49,27 @@ def ecrire_json(chemin, obj):
         f.write("\n")
 
 
+# --- Cases d'une rangée (IBAN, SIRET) --------------------------------------------------------
+
+def cellules(x0, x1, cases):
+    """Étendues (gauche, droite) des cases d'une rangée. `cases` : un entier, des cases égales sur
+    [x0, x1], ou une liste de paires [gauche, droite] dans le sens de lecture. None si illisible."""
+    if isinstance(cases, bool):
+        return None
+    if isinstance(cases, int):
+        if cases < 1:
+            return None
+        pas = (x1 - x0) / cases
+        return [(x0 + k * pas, x0 + (k + 1) * pas) for k in range(cases)]
+    if isinstance(cases, list) and cases:
+        try:
+            paires = [(float(a), float(b)) for a, b in cases]
+        except (TypeError, ValueError):
+            return None
+        return None if any(b <= a for a, b in paires) else paires
+    return None
+
+
 # --- Champs d'un AcroForm -------------------------------------------------------------------
 
 BIT_LECTURE_SEULE = 1 << 0

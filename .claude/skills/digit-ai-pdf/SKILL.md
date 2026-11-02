@@ -59,8 +59,12 @@ bail ou CV ne sont pas reconnus, ce lot n'ouvrira que sur 3 demandes relevées �
    ```json
    { "champs": { "nom": "Hélène Dupré", "accepte": true, "formule": "/B" },
      "plat":   [ { "page": 1, "boite": [110, 88, 400, 106], "texte": "Hélène Dupré" },
-                 { "page": 1, "boite": [50, 150, 62, 162], "coche": true } ] }
+                 { "page": 1, "boite": [50, 150, 62, 162], "coche": true },
+                 { "page": 1, "boite": [110, 330, 488, 346], "texte": "FR76…", "cases": 27 } ] }
    ```
+
+   `cases` (plat) déclare une rangée de cases, un caractère par case : un entier pour des cases égales
+   sur la boîte, ou des paires `[gauche, droite]` dans le sens de lecture. Un espace du texte n'occupe pas de case.
 
    Les valeurs viennent de l'humain ou d'un document qu'il a fourni. Une valeur manquante se demande,
    elle ne s'invente pas. La signature reste au signataire : `remplir` refuse d'écrire un champ de signature.
@@ -84,6 +88,8 @@ d'autres bibliothèques que celles qui l'ont écrit : PDFium aplatit les apparen
 - **F5** le texte tient : largeur, hauteur en multiligne, `MaxLen`. **F6** aucun champ requis ne reste vide.
 - **F7** aucun champ non déclaré n'a changé. **F8** le contenu de la page n'a changé qu'aux zones déclarées.
 - **P1** plat : le texte est dans sa boîte et se voit. **P2** rien ne sort de sa boîte. **P3** rien n'écrit sur le texte du formulaire ; sur un scan sans couche de texte, de l'encre sous le texte ajouté avertit. **P4** les cases sont comme demandé. **P5** corps sous 6 points, avertissement.
+- **F9** champ à peigne (IBAN, SIRET) : chaque caractère affiché est dans la case de son rang ; un peigne justifié au centre ou à droite est déclaré non jugé. **P6** plat, zone qui déclare `cases` : le caractère de rang k est dans la case k.
+- Les ajouts d'un formulaire plat se distinguent de l'original par le caractère et sa position, jamais par le nom de la police : une police ou une encre identique à celle de l'original ne les cache pas.
 
 `--source` est exigée pour un formulaire plat, sinon SKIP : sans le vierge, ni collision ni écriture hors zone ne se jugent.
 
@@ -119,6 +125,7 @@ le contrôle dit que la page reste illisible, il ne la compte pas comme lue.
 - Le bon placement d'une boîte d'un formulaire plat : l'oracle borne le texte à la boîte déclarée, l'œil juge la boîte.
 - Le dessin réel des caractères : `--rendu` et l'œil, ou `oracle-polices-embarquees` pour une police embarquée.
 - Les pages tournées d'un formulaire : remplissage plat refusé, F4 et F5 déclarées non jouées.
+- L'original intact (F7, F8) ne se juge qu'avec `--source` : sans elle, l'oracle déclare F7 et F8 non jouées.
 - La voie `--moteur tesseract` : aucun binaire sur le poste de recette, elle n'a jamais tourné. Le banc a mesuré Tesseract par `tesserocr`, et le self-test dit ce moteur absent sans le compter comme lu.
 - La précision du tri « formulaire plat » : le détecteur a vu les formulaires essayés, mais il n'a pas de vérité terrain, et un tarif à points de conduite l'a trompé. L'œil confirme.
 - Le type métier d'un document, et la modification d'un texte existant : `pypdf` ne le supprime pas proprement en place, cela reste une affaire de session.

@@ -1855,17 +1855,18 @@
     "{skillsroot}/digit-ai-pdf/scripts/oracle-formulaire-pdf.py",
     "{file}"
    ],
-   "checklist": "F1 fichier lisible, même nombre de pages que la source, pas de XFA · F2 chaque champ attendu existe · F3 valeur relue égale à la valeur attendue, /V et /AS d'une case concordants · F4 ce qui s'imprime : apparence présente, encre, texte affiché égal à la valeur, lu après aplatissement par PDFium · F5 le texte tient (largeur, hauteur en multiligne, MaxLen) · F6 aucun champ requis vide · F7 aucun champ non déclaré modifié · F8 contenu de page inchangé hors des zones déclarées · P1 formulaire plat : texte dans sa boîte et visible au rendu · P2 aucun caractère ajouté hors de sa boîte · P3 aucun caractère écrit sur le texte du formulaire · P4 cases conformes · P5 corps sous le plancher, avertissement.",
+   "checklist": "F1 fichier lisible, même nombre de pages que la source, pas de XFA · F2 chaque champ attendu existe · F3 valeur relue égale à la valeur attendue, /V et /AS d'une case concordants · F4 ce qui s'imprime : apparence présente, encre, texte affiché égal à la valeur, lu après aplatissement par PDFium · F5 le texte tient (largeur, hauteur en multiligne, MaxLen) · F6 aucun champ requis vide · F7 aucun champ non déclaré modifié · F8 contenu de page inchangé hors des zones déclarées · P1 formulaire plat : texte dans sa boîte et visible au rendu · P2 aucun caractère ajouté hors de sa boîte · P3 aucun caractère écrit sur le texte du formulaire · P4 cases conformes · P5 corps sous le plancher, avertissement · F9 champ à peigne (IBAN, SIRET) : chaque caractère affiché dans la case de son rang · P6 formulaire plat dont la zone déclare `cases` : le caractère de rang k dans la case k.",
    "statut": "ok",
    "commande": "digit-ai-pdf/scripts/oracle-formulaire-pdf.py <rempli.pdf> --attendu valeurs.json [--source vierge.pdf] [--rendu <dossier>]",
-   "provenance": "TF-2031 (étude 20261030a, décision humaine D-112 (a) du 30/10/2026) — un contrat et un mandat de prélèvement remplis le 30/10 sont sortis sans contrôle sur le fichier rendu, et aucun oracle du registre ne jugeait un champ rempli. Le premier essai sur un vrai formulaire de 35 champs a corrigé un faux positif : le texte imprimé sous un champ se mêlait à sa lecture.",
+   "provenance": "TF-2031 (étude 20261030a, décision humaine D-112 (a) du 30/10/2026) — un contrat et un mandat de prélèvement remplis le 30/10 sont sortis sans contrôle sur le fichier rendu, et aucun oracle du registre ne jugeait un champ rempli. Le premier essai sur un vrai formulaire de 35 champs a corrigé un faux positif : le texte imprimé sous un champ se mêlait à sa lecture. TF-2042 (RT-142 de Produit-02, 30/10/2026) : F9 et P6 ajoutées, un IBAN tassé à gauche ou décalé d'une case gardait la bonne valeur et passait ; le nom de police n'entre dans aucune règle.",
    "non_juge": [
     "L'EXACTITUDE MÉTIER des valeurs : l'oracle compare à valeurs.json, il ne dit pas si valeurs.json est juste",
     "LA SIGNATURE : un champ de signature se compte, sa validité cryptographique n'est pas vérifiée",
     "LE DESSIN RÉEL DES CARACTÈRES : l'extraction lit le code du caractère ; --rendu dépose l'image pour l'œil, oracle-polices-embarquees juge une police embarquée",
     "XFA, refusé par F1",
     "LE BON PLACEMENT d'une boîte d'un formulaire plat : le texte est borné à la boîte déclarée",
-    "LES PAGES TOURNÉES : F4 et F5 déclarées non jouées, zone plate refusée"
+    "LES PAGES TOURNÉES : F4 et F5 déclarées non jouées, zone plate refusée",
+    "LE PEIGNE JUSTIFIÉ au centre ou à droite : F9 déclarée non jouée"
    ],
    "note": "ext VIDE À DESSEIN : rien dans une extension ne dit qu'un PDF est un formulaire rempli, et le contrôle exige les valeurs attendues. L'appelant l'invoque ; `formulaire.py remplir` l'enchaîne de lui-même."
   },

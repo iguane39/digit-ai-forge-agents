@@ -79,13 +79,15 @@ def formulaire_champs(chemin):
     os.remove(brut)
 
 
-def formulaire_plat(chemin):
-    """PDF plat : des libellés, des lignes et des carrés dessinés, aucun champ."""
+def formulaire_plat(chemin, titre=True):
+    """PDF plat : des libellés, des lignes et des carrés dessinés, aucun champ. `titre=False` retire
+    le titre : l'original « abîmé » d'un contrôle de la règle F8."""
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
     c = canvas.Canvas(chemin, pagesize=A4, invariant=1)
     c.setFont("Helvetica-Bold", 13)
-    c.drawString(50, HAUT - 50, "Mandat de démonstration")
+    if titre:
+        c.drawString(50, HAUT - 50, "Mandat de démonstration")
     c.setFont("Helvetica", 11)
     c.drawString(50, HAUT - 102, "Nom :")
     c.line(110, HAUT - 106, 400, HAUT - 106)
@@ -97,6 +99,23 @@ def formulaire_plat(chemin):
     c.drawString(70, HAUT - 184, "Je refuse")
     c.drawString(50, HAUT - 230, "Signature, précédée de « Lu et approuvé » :")
     c.line(50, HAUT - 290, 300, HAUT - 290)
+    c.save()
+
+
+IBAN_FICTIF = "FR7630006000011234567890189"
+# Rangée de 27 cases de 14 points : de x=110 à x=488, en repère lecteur.
+VALEURS_IBAN = {"plat": [{"page": 1, "boite": [110, 88, 488, 104], "texte": IBAN_FICTIF, "cases": 27}]}
+
+
+def formulaire_plat_iban(chemin):
+    """PDF plat : « IBAN : » suivi d'une rangée de 27 cases, une par caractère."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    c = canvas.Canvas(chemin, pagesize=A4, invariant=1)
+    c.setFont("Helvetica", 11)
+    c.drawString(50, HAUT - 100, "IBAN :")
+    for k in range(27):
+        c.rect(110 + 14 * k, HAUT - 104, 14, 16)
     c.save()
 
 
