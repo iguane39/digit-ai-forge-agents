@@ -24,7 +24,7 @@ L'espace par défaut est `C:\dev\_essais-make-it-better\<AAAAMMJJ>-<nom court>\`
 - Référence : reference/modele.md, ce qu'elle montre.
 ```
 
-Lecteur, Objectif et Référence sont exigés. Sans plafond chiffré, le plafond vaut 1,5 fois les mots de l'origine. `reference/` porte une forme à imiter et n'est pas une source : un fait qui ne vit que là est refusé. Une source doit se lire en texte : `.md`, `.txt`, `.html`, `.csv`, `.json`, `.docx`, ou `.pdf` à couche de texte. Une autre refuse le lancement, car ses faits seraient refusés à tort.
+Lecteur, Objectif et Référence sont exigés. Sans plafond chiffré, le plafond vaut 1,5 fois les mots de l'origine. `reference/` porte une forme à imiter et n'est pas une source : un fait qui ne vit que là est refusé. Une source doit se lire en texte : `.md`, `.txt`, `.html`, `.csv`, `.json`, `.docx`, `.pptx`, ou `.pdf` à couche de texte. Une autre refuse le lancement, car ses faits seraient refusés à tort. Le modèle reçoit le texte d'un `.docx` ou d'un `.pptx` à côté de lui, en `<nom>.txt`, car `Read` ne les lit pas.
 
 ## Un tour
 
@@ -37,11 +37,24 @@ Lecteur, Objectif et Référence sont exigés. Sans plafond chiffré, le plafond
 |---|---|---|---|
 | Markdown, HTML | Modifie `document.<ext>` | fichier identique octet par octet | fichier supprimé |
 | Word | Modifie le texte de `paquet/word/document.xml` | ce fichier identique octet par octet | `oracle-docx` différent de exit 0, autre partie du paquet touchée |
+| PowerPoint | Modifie le texte de `paquet/ppt/slides/slide<N>.xml` | tous ces fichiers identiques octet par octet | partie touchée hors de ces fichiers, diapositive ajoutée ou retirée, XML mal formé, `oracle-pptx` différent de exit 0, forme ajoutée, retirée ou déplacée, forme qui gagne plus de 10 % de caractères |
 | PDF | Écris `modifs.json` | liste vide ou absente, `ancien` égal à `nouveau` | liste invalide, `ancien` introuvable ou ambigu, texte hors de la page ou sur une autre ligne, `document.pdf` touché |
 
-Le paquet d'un Word se dépaquette avec `word/document.xml` à une ligne par paragraphe, car l'outil `Read` se borne par lignes et Word écrit tout sur une seule. Ces sauts de ligne restent dans les versions : ils ne changent ni le texte ni le rendu.
+Le paquet d'un Word se dépaquette avec `word/document.xml` à une ligne par paragraphe, car l'outil `Read` se borne par lignes et Word écrit tout sur une seule. Ces sauts de ligne restent dans les versions : ils ne changent ni le texte ni le rendu. Chaque `ppt/slides/slide<N>.xml` se dépaquette de même, une ligne par `<a:p>`.
 
 Mots et faits se comptent sur le texte extrait. Le plafond d'un Word se compte sur le corps du document et ses notes ; ses en-têtes et pieds comptent seulement comme faits connus. Un Word dont les balises changent sans casser le paquet n'est pas rejeté : la consigne le demande, l'oracle juge la validité.
+
+## PowerPoint
+
+Un deck se rempaquette contre l'origine, avec `[Content_Types].xml` en première entrée : PowerPoint ne l'y met pas toujours, et `oracle-pptx` le refuse ailleurs. Toute partie autre que `slide<N>.xml` reste identique octet par octet à l'origine : masques, dispositions, médias, polices embarquées, notes, relations.
+
+`oracle-pptx.mjs` s'appelle avec `--profil` sur `profils/generique.json` de `quality-oracles`, qui lève ses règles JPEG et transitions : le deck d'un client n'est pas à la charte Digit-AI. Cet oracle ne parse pas le XML. Le lanceur juge donc lui-même qu'une diapositive est bien formée, car sans LibreOffice une balise cassée lui rendrait un exit 0. L'absence de LibreOffice s'écrit dans `oracle_pptx_non_juge` de `controle.json` et `non_juge_format` de `etat.json`, et se dit au lancement.
+
+Une forme se suit par sa place dans la liste des `p:cNvPr` de sa diapositive. Une liste qui change rejette le tour, car `GAIN_MAX_FORME_PCT` n'aurait plus rien à comparer. Le gain se compte par `<p:sp>`, entre cette version et la précédente gardée : 10 % tout rond passe, et une forme vide qui gagne un caractère est rejetée. Les cellules d'un tableau ne sont pas des `<p:sp>` : leur texte compte aux mots et aux faits, jamais à ce seuil.
+
+Mots et faits se comptent sur les diapositives, dans l'ordre de leurs numéros : `slide10` vient après `slide2`, quel que soit l'ordre de présentation. Le plafond se compte sur ce corps ; masques, dispositions et notes comptent seulement comme faits connus. Une branche `mc:Fallback` ne compte pas, car elle répète ce que `mc:Choice` porte.
+
+Python est exigé au lancement, car `formats.py` dépaquette. `oracle-pptx.mjs` et son profil le sont aussi, car une version ne se garderait pas sans eux.
 
 ## Les arrêts
 

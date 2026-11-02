@@ -190,7 +190,10 @@ export function jugerFaits({ version, origine, sources = [] }) {
     if (![...interpretations(n)].some((i) => nombresConnus.has(i))) noter('FS1', 'nombre', n);
   }
   const noms = extraireNoms(version, connus);
-  for (const n of noms) if (!dansCorpus(n)) noter('FS2', 'nom', n);
+  // L'extraction retire l'élision : « CAS D'USAGE » donne « CAS USAGE », qu'aucune recherche à plat ne retrouve.
+  // Un groupe que la même extraction tire de l'origine ou des sources est connu, tel quel.
+  const nomsConnus = new Set(extraireNoms(corpusBrut, connus).map(pli));
+  for (const n of noms) if (!dansCorpus(n) && !nomsConnus.has(pli(n))) noter('FS2', 'nom', n);
   const citations = extraireCitations(version);
   for (const c of citations) if (!dansCorpus(c)) noter('FS3', 'citation', c);
   return { neufs, mesure: { nombres: nombres.length, noms: noms.length, citations: citations.length, neufs: neufs.length } };

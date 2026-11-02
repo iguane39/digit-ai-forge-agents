@@ -14,6 +14,11 @@ L'aperçu vit dans un `iframe sandbox="allow-scripts"`, sans `allow-same-origin`
 | HTML | la version telle quelle ; un lien suivi par la page reste possible, la CSP ne couvre que le chargement |
 | PDF | images de pages, par `pypdfium2` |
 | Word | export en PDF par Word, puis images de pages. Sinon, le texte extrait, en le disant |
+| PowerPoint | export en PDF par PowerPoint, puis images de pages. Sinon, le texte des diapositives, en le disant |
+
+## PowerPoint
+
+Le serveur n'exporte rien lui-même : il appelle `scripts/exporter-pptx.mjs` du skill `digit-ai-pptx`. Cet export pose un verrou entre sessions, travaille sur une copie et ne quitte jamais une instance qu'il n'a pas lancée. PowerPoint n'a qu'une instance par session Windows : si le porteur a le sien ouvert, l'export s'y attache sans fenêtre, ferme sa seule copie et laisse tout le reste. Il attend le verrou 5 minutes au plus et PowerPoint 10 minutes au plus ; le serveur ne le coupe pas plus tôt, car couper l'export ne fermerait pas PowerPoint. Un refus de l'export, dont des polices jugées fausses dans le PDF, fait passer l'aperçu au texte extrait, avec son motif. Une réussite se garde dans `apercus/`, un repli se réessaie au prochain aperçu.
 
 ## Word
 
@@ -32,7 +37,7 @@ Elle s'ouvre quand l'essai a atteint son arrêt, et ses versions se figent à l'
 - **Les versions.** L'origine et, pour chaque tour cible 1, 5, 10, 20, 35 et 50, la dernière version gardée de numéro inférieur ou égal ; une version retenue pour 2 cibles ne paraît qu'une fois.
 - **Les lettres.** Tirées au hasard, la graine dans `aveugle.json`. L'adresse de l'aperçu est neutre : `/aveugle/A`.
 - **Ce qui est masqué.** Numéro, commentaire, mots, statut, date, sélecteur, onglet « Comparer ».
-- **Word et PDF.** En images, jamais en fichier. Si l'export d'une seule version Word échoue, toutes les versions de ce document passent au texte extrait, pour que le repli ne trahisse aucune version.
+- **Word, PowerPoint et PDF.** En images, jamais en fichier. Si l'export d'une seule version échoue, toutes les versions de ce document passent au texte extrait, même celles déjà exportées, pour que le repli ne trahisse aucune version.
 - **Le classement.** Toutes les lettres, de la meilleure à la moins bonne, une seule fois : il ne se récrit pas. Les lettres peuvent se marquer pertinentes.
 - **La levée.** Après le classement seulement. Chaque lettre dit sa version, et le marquage rejoint `jugements.json` par version.
 

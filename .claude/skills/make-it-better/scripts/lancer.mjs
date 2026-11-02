@@ -13,7 +13,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync,
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appelerFormats, cheminSkillVoisin, dateIso, DOSSIER_SCRIPTS, ecrireJson, estDansDepot, extensionDe, formatDe, lireJson, LIBELLE_FORMAT, listerFichiers, pad, trouverPython } from './lib/commun.mjs';
+import { appelerFormats, cheminSkillVoisin, dateIso, DOSSIER_SCRIPTS, ecrireJson, estDansDepot, estPaquet, extensionDe, formatDe, lireJson, LIBELLE_FORMAT, listerFichiers, pad, trouverPython } from './lib/commun.mjs';
 import { ecartMots } from './lib/diff.mjs';
 import { ARRETS_TERMINAUX, dossierTour, estVersionGardee, lireTours, LIBELLE_ARRET, trouverOrigine } from './lib/espace.mjs';
 import { analyserSortie, ecartIdentite, pauseQuota } from './lib/sortie.mjs';
@@ -24,8 +24,15 @@ import { jugerFaits } from './oracle-faits-sources.mjs';
 // processus séparé. Un démenti du porteur se joue ici : à 'b', le lanceur refuse le PDF.
 export const VOIE_PDF_D124 = 'a';
 
+// Une forme qui gagne plus que ce pourcentage de caractères est refusée. Le seuil approche un débordement
+// sans le mesurer : aucune géométrie n'est lue, et SKILL.md le déclare dans ses limites.
+export const GAIN_MAX_FORME_PCT = 10;
+
 export const DELAI_TOUR_MS = 15 * 60 * 1000;
 const DELAI_CAPTURE_MS = 2 * 60 * 1000;
+const DELAI_ORACLE_PPTX_MS = 5 * 60 * 1000;
+// Le deck d'un client n'est pas à la charte Digit-AI : ce profil lève les règles JPEG et transitions de l'oracle.
+const PROFIL_ORACLE_PPTX = 'profils/generique.json';
 export const MODELES = ['opus', 'sonnet'];
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
@@ -35,6 +42,7 @@ export function ligneDeFormat(ext, avecCapture = false) {
   if (ext === 'md') return 'Modifie `document.md`.';
   if (ext === 'html') return `Modifie \`document.html\`.${avecCapture ? ' Regarde d\'abord son rendu, `capture.png`, par Read.' : ''}`;
   if (ext === 'docx') return 'Lis et modifie seulement le texte de `paquet/word/document.xml`, sans toucher aux balises.';
+  if (ext === 'pptx') return 'Lis et modifie seulement le texte des fichiers `paquet/ppt/slides/slide<N>.xml`, sans toucher aux balises, sans ajouter ni retirer de forme.';
   return 'Lis `document.pdf` sans le modifier, et écris `modifs.json`, liste de `{"ancien": "ligne exacte", "nouveau": "texte"}` ; `nouveau` tient sur la largeur de la ligne, ou vaut une chaîne vide pour un retrait.';
 }
 
@@ -182,7 +190,7 @@ function jouerCapture(html, tourDir, { pythonForce } = {}) {
 function preparerTour(ctx, numero, tours, base) {
   const dir = mkdtempSync(join(tmpdir(), 'mib-tour-'));
   const { espace, ext } = ctx;
-  if (ext === 'docx') {
+  if (estPaquet(ext)) {
     const r = appelerFormats(['depaqueter', base, join(dir, 'paquet')]);
     if (r.code !== 0) throw new Error(`dépaquetage impossible : ${r.json?.motif || r.stderr}`);
   } else {
@@ -192,8 +200,8 @@ function preparerTour(ctx, numero, tours, base) {
   copyFileSync(join(d, 'brief.md'), join(dir, 'brief.md'));
   for (const nom of ['sources', 'reference']) {
     cpSync(join(d, nom), join(dir, nom), { recursive: true });
-    // `Read` ne lit pas un .docx : son texte l'accompagne, pour que la source reste lisible.
-    for (const f of listerFichiers(join(dir, nom)).filter((x) => x.toLowerCase().endsWith('.docx'))) {
+    // `Read` ne lit ni un .docx ni un .pptx : son texte l'accompagne, pour que la source reste lisible.
+    for (const f of listerFichiers(join(dir, nom)).filter((x) => /\.(docx|pptx)$/i.test(x))) {
       const t = texteDeFichier(join(dir, nom, f), { complet: true });
       if (t.texte) writeFileSync(join(dir, nom, `${f}.txt`), t.texte, 'utf8');
     }
@@ -276,6 +284,83 @@ function jugerWord(ctx, dir, base, sortieDocx) {
   return { motifs, change, candidat: existsSync(sortieDocx) ? sortieDocx : null, details: f };
 }
 
+const PARTIE_DIAPO = /^ppt\/slides\/slide\d+\.xml$/;
+const diaposDe = (paquet) => listerFichiers(join(paquet, 'ppt', 'slides')).map((n) => `ppt/slides/${n}`).filter((n) => PARTIE_DIAPO.test(n));
+
+/**
+ * Compare les formes de 2 versions : ce qu'une forme a gagné, et une forme ajoutée, retirée ou déplacée.
+ * Le gain se compte en entiers : 10 % tout rond passe, et la règle ne dépend d'aucun arrondi.
+ */
+export function ecartsDeFormes(avant, apres, gainMaxPct = GAIN_MAX_FORME_PCT) {
+  const ecarts = [];
+  for (const [nom, a] of Object.entries(avant)) {
+    const b = apres[nom];
+    if (!b) continue; // une diapositive absente est déjà une partie touchée
+    if (a.ids.join() !== b.ids.join() || a.sp.map((x) => x.id).join() !== b.sp.map((x) => x.id).join()) {
+      ecarts.push(`forme ajoutée, retirée ou déplacée dans ${nom} : ${a.ids.length} formes avant, ${b.ids.length} après`);
+      continue;
+    }
+    a.sp.forEach((sp, i) => {
+      const gain = b.sp[i].car - sp.car;
+      if (gain * 100 > sp.car * gainMaxPct) ecarts.push(`la forme « ${sp.nom || sp.id} » de ${nom} gagne ${gain} caractères pour ${sp.car} : plus de ${gainMaxPct} %`);
+    });
+  }
+  return ecarts;
+}
+
+/** Le paquet rendu par le tour : rempaqueté contre l'origine, jugé sans modèle, inchangé si aucune diapositive ne bouge. */
+function jugerPowerpoint(ctx, dir, base, sortiePptx) {
+  const f = {};
+  const paquet = join(dir, 'paquet');
+  const tour = diaposDe(paquet);
+  if (!tour.length) return { motifs: ['paquet/ppt/slides/slide<N>.xml absent'], change: true, candidat: null, details: f };
+  const avant = mkdtempSync(join(tmpdir(), 'mib-base-'));
+  let change;
+  try {
+    const r = appelerFormats(['depaqueter', base, avant]);
+    if (r.code !== 0) throw new Error(r.json?.motif || r.stderr);
+    const dAvant = diaposDe(avant);
+    change = dAvant.length !== tour.length || dAvant.some((n) => !tour.includes(n) || !readFileSync(join(paquet, n)).equals(readFileSync(join(avant, n))));
+  } finally {
+    rmSync(avant, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+  }
+  const r = appelerFormats(['rempaqueter', paquet, ctx.origine, sortiePptx]);
+  if (r.code !== 0) return { motifs: [r.json?.motif || 'rempaquetage impossible'], change, candidat: null, details: f };
+  const motifs = [];
+  const autres = [...r.json.modifiees.filter((p) => !PARTIE_DIAPO.test(p)), ...r.json.absentes, ...r.json.nouvelles];
+  if (autres.length) motifs.push(`le tour a touché autre chose que le texte des diapositives : ${autres.slice(0, 5).join(', ')}`);
+  f.parties_touchees = autres;
+
+  // oracle-pptx ne parse pas le XML : sans LibreOffice, une balise cassée lui rendrait un exit 0.
+  const formes = appelerFormats(['pptx-formes', sortiePptx]);
+  if (formes.code !== 0) motifs.push(`diapositives illisibles : ${formes.json?.motif || formes.stderr}`);
+  else if (formes.json.malformes.length) motifs.push(`XML mal formé : ${formes.json.malformes.slice(0, 3).join(' ; ')}`);
+  else {
+    const reference = appelerFormats(['pptx-formes', base]);
+    if (reference.code !== 0) motifs.push(`version précédente illisible : ${reference.json?.motif || reference.stderr}`);
+    else motifs.push(...ecartsDeFormes(reference.json.diapos, formes.json.diapos));
+  }
+
+  const oracle = cheminSkillVoisin('quality-oracles', 'scripts/oracle-pptx.mjs');
+  const profil = cheminSkillVoisin('quality-oracles', PROFIL_ORACLE_PPTX);
+  if (!oracle || !profil) motifs.push('oracle-pptx ou son profil introuvable');
+  else {
+    const o = spawnSync(process.execPath, [oracle, sortiePptx, '--profil', profil], { encoding: 'utf8', windowsHide: true, timeout: DELAI_ORACLE_PPTX_MS, env: { ...process.env, PYTHONUTF8: '1' } });
+    f.oracle_pptx = o.status;
+    let rapport = null;
+    try {
+      rapport = JSON.parse(o.stdout);
+    } catch { /* dit ci-dessous */ }
+    if (o.status !== 0 || rapport?.verdict !== 'PASS') {
+      const detail = (rapport?.findings || []).filter((x) => x.sev === 'bloquant').map((x) => x.msg).slice(0, 3).join(' ; ');
+      motifs.push(`oracle-pptx refuse le paquet (exit ${o.status}, verdict ${rapport?.verdict ?? 'illisible'}) : ${detail}`);
+    }
+    // Sans LibreOffice, l'oracle rend exit 0 sans avoir joué sa conversion : ce trou se garde au contrôle du tour.
+    f.oracle_pptx_non_juge = (rapport?.non_juge || []).filter((x) => /LibreOffice/.test(x));
+  }
+  return { motifs, change, candidat: existsSync(sortiePptx) ? sortiePptx : null, details: f };
+}
+
 function jugerPdf(dir, base, sortiePdf) {
   const motifs = [];
   const f = {};
@@ -337,7 +422,7 @@ function controlerTour(ctx, numero, tours, base, preparation, jeu, analyse) {
       candidat = change ? f : null;
     }
   } else {
-    const j = ext === 'docx' ? jugerWord(ctx, dir, base, provisoire) : jugerPdf(dir, base, provisoire);
+    const j = ext === 'docx' ? jugerWord(ctx, dir, base, provisoire) : ext === 'pptx' ? jugerPowerpoint(ctx, dir, base, provisoire) : jugerPdf(dir, base, provisoire);
     c.motifs.push(...j.motifs);
     Object.assign(c, j.details);
     change = j.change;
@@ -349,8 +434,8 @@ function controlerTour(ctx, numero, tours, base, preparation, jeu, analyse) {
     if (c.type === 'rien' && change) c.motifs.push('incohérent : type « rien » et document modifié');
     if (c.type !== 'rien' && !change) c.motifs.push(`incohérent : type « ${c.type} » et document inchangé`);
   }
-  // Un Word inchangé se rempaquette pour voir si une autre partie a bougé : il n'est gardé que s'il porte un motif.
-  if (!change && ext === 'docx' && existsSync(provisoire)) candidat = c.motifs.length ? provisoire : null;
+  // Un paquet inchangé se rempaquette pour voir si une autre partie a bougé : il n'est gardé que s'il porte un motif.
+  if (!change && estPaquet(ext) && existsSync(provisoire)) candidat = c.motifs.length ? provisoire : null;
 
   // Mots et faits : sur le texte, pour tous les formats.
   const versionTexte = candidat ? texteDeFichier(candidat, { complet: true }) : null;
@@ -460,7 +545,7 @@ async function principal(argv) {
     return 2;
   }
   const ext = formatDe(o.document);
-  if (!ext) return refuser(`format ${extensionDe(o.document) || 'sans extension'} non pris en charge (${basename(o.document)}) : seuls Markdown, HTML, Word (.docx) et PDF se modifient ici`);
+  if (!ext) return refuser(`format ${extensionDe(o.document) || 'sans extension'} non pris en charge (${basename(o.document)}) : seuls Markdown, HTML, Word (.docx), PowerPoint (.pptx) et PDF se modifient ici`);
   if (!existsSync(o.document)) return refuser(`document introuvable : ${o.document}`);
   if (!MODELES.includes(o.modele)) return refuser(`--modele ${o.modele} : opus par défaut, sonnet à la demande du porteur, rien d'autre`);
   if (!EFFORTS.includes(o.effort)) return refuser(`--effort ${o.effort} : ${EFFORTS.join(', ')}`);
@@ -492,6 +577,11 @@ async function principal(argv) {
     if (!trouverPython()) return refuser('Word refusé : Python introuvable, formats.py dépaquette et rempaquette le fichier');
     if (!cheminSkillVoisin('digit-ai-docx', 'scripts/oracle-docx.mjs')) return refuser('Word refusé : oracle-docx introuvable, une version ne se garderait pas sans lui');
   }
+  if (ext === 'pptx') {
+    if (!trouverPython()) return refuser('PowerPoint refusé : Python introuvable, formats.py dépaquette et rempaquette le fichier');
+    if (!cheminSkillVoisin('quality-oracles', 'scripts/oracle-pptx.mjs')) return refuser('PowerPoint refusé : oracle-pptx introuvable, une version ne se garderait pas sans lui');
+    if (!cheminSkillVoisin('quality-oracles', PROFIL_ORACLE_PPTX)) return refuser(`PowerPoint refusé : ${PROFIL_ORACLE_PPTX} introuvable, oracle-pptx refuserait tout JPEG et toute transition du deck`);
+  }
 
   // L'origine.
   const dossierDocument = join(espace, 'document');
@@ -501,7 +591,7 @@ async function principal(argv) {
   if (!existante) copyFileSync(o.document, origine);
 
   const textesSources = lireSources(join(dossierDocument, 'sources'));
-  if (textesSources.illisibles.length) return refuser(`source illisible, un fait qu'elle porte serait refusé à tort : ${textesSources.illisibles.map((x) => `${x.nom} (${x.motif})`).join(' · ')}. Range-la en texte, Markdown, Word ou PDF à couche de texte.`);
+  if (textesSources.illisibles.length) return refuser(`source illisible, un fait qu'elle porte serait refusé à tort : ${textesSources.illisibles.map((x) => `${x.nom} (${x.motif})`).join(' · ')}. Range-la en texte, Markdown, Word, PowerPoint ou PDF à couche de texte.`);
   const origineLue = texteDeFichier(origine, { complet: true });
   if (origineLue.erreur) return refuser(`origine illisible : ${origineLue.erreur}`);
 
@@ -523,8 +613,8 @@ async function principal(argv) {
 
   const brief = readFileSync(join(dossierDocument, 'brief.md'), 'utf8');
   const corpsDe = (chemin, texteComplet) => {
-    // Le plafond se compte sur le corps : en-têtes et pieds d'un Word restent hors du compte.
-    if (formatDe(chemin) !== 'docx') return texteComplet;
+    // Le plafond se compte sur le corps : en-têtes et pieds d'un Word, masques, dispositions et notes d'un deck restent hors du compte.
+    if (!estPaquet(formatDe(chemin))) return texteComplet;
     const r = texteDeFichier(chemin);
     return r.texte ?? texteComplet;
   };
@@ -533,7 +623,7 @@ async function principal(argv) {
   const plafond = limiteBrief ? { limite: limiteBrief, source: 'brief' } : { limite: Math.floor(motsOrigine * 1.5), source: '1,5 fois l\'origine' };
   const memoire = new Map();
   const ctx = {
-    espace, ext, dossierEssai, cas, plafond, texteOrigine: origineLue.texte, textesSources: textesSources.textes,
+    espace, ext, dossierEssai, cas, plafond, origine, texteOrigine: origineLue.texte, textesSources: textesSources.textes,
     corpsDeTexte: corpsDe,
     texteDe(chemin) {
       if (!memoire.has(chemin)) {
@@ -678,6 +768,10 @@ async function principal(argv) {
       }
       etat.tour_en_cours = null;
       etat.quota = analyse.quota || etat.quota;
+      if (c.oracle_pptx_non_juge?.length && !etat.non_juge_format) {
+        etat.non_juge_format = c.oracle_pptx_non_juge;
+        console.log(`oracle-pptx, non jugé sur ce poste : ${c.oracle_pptx_non_juge.join(' ; ')}.`);
+      }
       ecrireJson(fichierEtat, etat);
       console.log(`Tour ${pad(numero)} : ${c.statut === 'gardee' ? 'gardée' : `rejetée, ${c.motif}`}, ${c.type || 'sans type'}, +${c.mots.ajoutes}/-${c.mots.retires} mots, ${Math.round(c.duree_ms / 1000)} s, utilization ${c.quota?.utilization ?? 'non lue'}.`);
 

@@ -13,6 +13,7 @@ import { appelerFormats, dateIso, ecrireJson, LIBELLE_FORMAT, lireJson, pad, RAC
 import { comparer } from './lib/diff.mjs';
 import { ARRETS_TERMINAUX, cheminVersion, LIBELLE_ARRET, listerDocuments, lireTours, precedenteGardee } from './lib/espace.mjs';
 import { echapper, markdownEnHtml, pageApercu } from './lib/markdown.mjs';
+import { exporterPowerpointEnPdf } from './lib/powerpoint.mjs';
 import { texteDeFichier } from './lib/texte.mjs';
 import { exporterWordEnPdf } from './lib/word.mjs';
 
@@ -21,6 +22,12 @@ const PAGE = join(RACINE_SKILL, 'assets', 'page-versions.html');
 // L'aperçu ne joint rien hors de ce serveur : ni fetch, ni image, ni police, ni formulaire externes.
 const CSP_APERCU = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'; sandbox allow-scripts";
 const CSP_PAGE = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'";
+
+const FORMATS_A_IMAGES = ['docx', 'pptx', 'pdf'];
+const EXPORTS = {
+  docx: { fichier: 'document.docx', dossier: 'mib-word-', cle: 'word', exporter: exporterWordEnPdf },
+  pptx: { fichier: 'document.pptx', dossier: 'mib-powerpoint-', cle: 'powerpoint', exporter: exporterPowerpointEnPdf },
+};
 
 /** Un Word arrêté tient parfois son fichier un instant : un dossier temporaire resté n'arrête pas le serveur. */
 function retirer(dossier) {
@@ -33,7 +40,7 @@ function retirer(dossier) {
 
 export function creerServeur({ espace, port = 4750 }) {
   const memoire = new Map();
-  let fileWord = Promise.resolve();
+  let fileExport = Promise.resolve();
   let aveugleActif = null; // { doc, essai } : l'adresse /aveugle/A n'en dit rien
 
   const documents = () => listerDocuments(espace);
@@ -54,7 +61,7 @@ export function creerServeur({ espace, port = 4750 }) {
 
   const dossierApercu = (d, e, numero) => join(d.dossier, 'apercus', e.id, pad(numero));
 
-  /** Les images de pages d'une version Word ou PDF, à la demande ; une version à la fois pour Word. */
+  /** Les images de pages d'une version Word, PowerPoint ou PDF, à la demande ; un export à la fois. */
   function preparerImages(d, e, numero) {
     const memo = `${d.nom}/${e.id}/${numero}`;
     if (memoire.has(memo)) return memoire.get(memo);
@@ -66,14 +73,15 @@ export function creerServeur({ espace, port = 4750 }) {
       if (!fichier) return { mode: 'absent' };
       mkdirSync(dossier, { recursive: true });
       let pdf = fichier;
-      let word = null;
-      if (d.ext === 'docx') {
-        const travail = mkdtempSync(join(tmpdir(), 'mib-word-'));
-        const copie = join(travail, 'document.docx');
+      let trace = null;
+      const voie = EXPORTS[d.ext];
+      if (voie) {
+        const travail = mkdtempSync(join(tmpdir(), voie.dossier));
+        const copie = join(travail, voie.fichier);
         const sortie = join(travail, 'document.pdf');
         copyFileSync(fichier, copie);
         const r = await new Promise((rendre) => {
-          fileWord = fileWord.then(() => exporterWordEnPdf(copie, sortie)).then(rendre, (x) => rendre({ ok: false, raison: x.message }));
+          fileExport = fileExport.then(() => voie.exporter(copie, sortie)).then(rendre, (x) => rendre({ ok: false, raison: x.message }));
         });
         if (!r.ok) {
           retirer(travail);
@@ -83,14 +91,16 @@ export function creerServeur({ espace, port = 4750 }) {
         pdf = join(dossier, 'document.pdf');
         copyFileSync(sortie, pdf);
         retirer(travail);
-        word = { numero: r.numero ?? null, arrete: r.arrete ?? false, reste_ouvert: r.reste_ouvert ?? false };
+        trace = d.ext === 'docx'
+          ? { numero: r.numero ?? null, arrete: r.arrete ?? false, reste_ouvert: r.reste_ouvert ?? false }
+          : { pids_avant: r.rapport?.powerpoint?.pids_avant ?? null, quittee: r.rapport?.powerpoint?.quittee ?? null, decision: r.rapport?.powerpoint?.decision ?? null, polices_pdf: r.rapport?.pdf?.verdict ?? null };
       }
       const images = appelerFormats(['pdf-images', pdf, dossier]);
       if (images.code !== 0) {
         const lu = texteDeFichier(fichier);
         return { mode: 'texte', raison: images.json?.motif || 'rendu des pages impossible', texte: lu.texte ?? '' };
       }
-      const a = { mode: 'images', pages: images.json.pages, ...(word ? { word } : {}) };
+      const a = { mode: 'images', pages: images.json.pages, ...(trace ? { [voie.cle]: trace } : {}) };
       ecrireJson(join(dossier, 'apercu.json'), a);
       return a;
     })().catch((x) => {
@@ -98,14 +108,14 @@ export function creerServeur({ espace, port = 4750 }) {
       return { mode: 'texte', raison: `aperçu impossible : ${x.message}`, texte: f ? texteDeFichier(f).texte ?? '' : '' };
     });
     memoire.set(memo, promesse);
-    // Un repli n'est pas définitif : Word peut revenir, le prochain aperçu réessaie.
+    // Un repli n'est pas définitif : l'application peut revenir, le prochain aperçu réessaie.
     promesse.then((a) => { if (a.mode !== 'images') memoire.delete(memo); });
     return promesse;
   }
 
-  function corpsTexte(texte, raison, general = false) {
+  function corpsTexte(texte, raison, general = false, ext = 'docx') {
     const avis = general
-      ? 'Aperçu en texte extrait, pour toutes les versions de cette revue : l\'export Word n\'a pas abouti.'
+      ? `Aperçu en texte extrait, pour toutes les versions de cette revue : l'export ${LIBELLE_FORMAT[ext]} n'a pas abouti.`
       : `Aperçu en texte extrait : ${raison}.`;
     return `<p class="avis">${echapper(avis)}</p><pre>${echapper(texte || '(aucun texte lisible)')}</pre>`;
   }
@@ -119,7 +129,7 @@ export function creerServeur({ espace, port = 4750 }) {
     }
     if (d.ext === 'html') return readFileSync(fichier, 'utf8');
     if (d.ext === 'md') return pageApercu(markdownEnHtml(readFileSync(fichier, 'utf8')), titre);
-    if (repliTexte) return pageApercu(corpsTexte(texteDeFichier(fichier).texte, '', true), titre);
+    if (repliTexte) return pageApercu(corpsTexte(texteDeFichier(fichier).texte, '', true, d.ext), titre);
     const a = await preparerImages(d, e, numero);
     if (a.mode === 'images') {
       return pageApercu(Array.from({ length: a.pages }, (_, i) => `<img src="${baseImages}/page/${i + 1}" alt="Page ${i + 1} du document">`).join(''), titre);
@@ -201,8 +211,8 @@ export function creerServeur({ espace, port = 4750 }) {
     if (!ARRETS_TERMINAUX.includes(t.e.etat.arret?.type)) return { erreur: 'L\'essai n\'a pas atteint son arrêt : reprends-le par --reprendre, la revue s\'ouvre ensuite.', code: 409 };
     const a = ouvrirAveugle(t.e.dossier, lireTours(t.e.dossier));
     let repliTexte = false;
-    // Si l'export d'une seule version Word échoue, toutes passent en texte : le repli ne trahit personne.
-    if (t.d.ext === 'docx' || t.d.ext === 'pdf') {
+    // Si l'export d'une seule version échoue, toutes passent en texte : le repli ne trahit personne.
+    if (FORMATS_A_IMAGES.includes(t.d.ext)) {
       for (const numero of a.versions) {
         const p = await preparerImages(t.d, t.e, numero);
         if (p.mode !== 'images') {

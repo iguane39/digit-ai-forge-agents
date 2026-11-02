@@ -340,6 +340,7 @@
       $('titre-panneau').textContent = v ? libelleNumero(v) : 'Aperçu';
       if (v) {
         if (etat.donnees.ext === 'docx' && v.fichier) { dire('Aperçu Word en préparation : il peut durer jusqu\'à 2 minutes.'); }
+        if (etat.donnees.ext === 'pptx' && v.fichier) { dire('Aperçu PowerPoint en préparation : il attend son tour si une autre session exporte un deck.'); }
         $('cadre').src = adresseApercu(v);
       }
       if (etat.vue === 'comparer') { rendreComparaison(); }
@@ -550,7 +551,7 @@
       etat.marquees = {};
       (a.classement ? a.classement.pertinentes : []).forEach(function (l) { etat.marquees[l] = true; });
       basculerMode(true);
-      dire(a.repli_texte ? 'L\'export Word n\'a pas abouti : toutes les versions de cette revue s\'affichent en texte extrait.' : a.lettres.length + ' lettres à classer pour ' + a.document + '.');
+      dire(a.repli_texte ? 'Un export n\'a pas abouti : toutes les versions de cette revue s\'affichent en texte extrait.' : a.lettres.length + ' lettres à classer pour ' + a.document + '.');
       choisirLettre(etat.ordre[0]);
     }
     $('ouvrir-aveugle').addEventListener('click', function () {

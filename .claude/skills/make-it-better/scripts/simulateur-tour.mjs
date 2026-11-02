@@ -2,7 +2,7 @@
 // simulateur-tour.mjs — joue un tour à la place du modèle, pour `lancer.mjs --simuler <cas>` : il écrit
 // dans le dossier du tour ce qu'un modèle y écrirait et rend un flux stream-json. Il n'appelle rien.
 //   node simulateur-tour.mjs <cas> <numero>   (lancé par lancer.mjs, dossier du tour pour répertoire)
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CAS, LIGNES_FIXTURE } from './lib/cas-simules.mjs';
 
@@ -48,10 +48,35 @@ function evenementsFin() {
 
 const note = (type, apporte = 'Une phrase reprend le tri des pièces.', retire = 'Rien, la phrase ne remplace aucune autre.') => writeFileSync('note.json', JSON.stringify({ type, apporte, retire }));
 
+const DIAPOS = join('paquet', 'ppt', 'slides');
+const diapo = (nom) => join(DIAPOS, nom);
+
+/** Les formes d'un paquet, tirées du XML tel qu'un tour le voit : fixture comme deck réel. */
+function formesDuPaquet() {
+  const out = [];
+  for (const fichier of readdirSync(DIAPOS).filter((n) => /^slide\d+\.xml$/.test(n))) {
+    const xml = readFileSync(diapo(fichier), 'utf8');
+    for (const m of xml.matchAll(/<p:sp(?:\s[^>]*)?>[\s\S]*?<\/p:sp>/g)) {
+      const car = [...m[0].matchAll(/<a:t>([^<]*)<\/a:t>/g)].reduce((s, t) => s + t[1].length, 0);
+      out.push({ fichier, debut: m.index, texte: m[0], car });
+    }
+  }
+  return out.sort((a, b) => b.car - a.car);
+}
+
+function ajouterDansForme(f, ajout) {
+  const xml = readFileSync(diapo(f.fichier), 'utf8');
+  const fin = f.debut + f.texte.lastIndexOf('</a:t>');
+  writeFileSync(diapo(f.fichier), `${xml.slice(0, fin)}${ajout}${xml.slice(fin)}`);
+}
+
+const formeNommee = (nom) => formesDuPaquet().find((f) => f.texte.includes(`name="${nom}"`));
+
 function ajouterPhrase(phrase) {
   if (ext === 'md') writeFileSync('document.md', `${readFileSync('document.md', 'utf8')}\n${phrase}\n`);
   else if (ext === 'html') writeFileSync('document.html', readFileSync('document.html', 'utf8').replace('</main>', `<p>${phrase}</p></main>`));
   else if (ext === 'docx') writeFileSync(XML, readFileSync(XML, 'utf8').replace(ANCRE_XML, ` ${phrase}${ANCRE_XML}`));
+  else if (ext === 'pptx') ajouterDansForme(formesDuPaquet()[0], ` ${phrase}`);
   else {
     const ancien = LIGNES_FIXTURE[(numero - 1) % LIGNES_FIXTURE.length];
     writeFileSync('modifs.json', JSON.stringify([{ ancien, nouveau: phrase }]));
@@ -60,8 +85,28 @@ function ajouterPhrase(phrase) {
 
 const NEUTRE = 'Le tri sépare les pièces.';
 
+const toucher = (chemin, avant, apres) => { const f = join('paquet', ...chemin.split('/')); writeFileSync(f, readFileSync(f, 'utf8').replace(avant, apres)); };
+
 const ACTIONS = {
   change() { ajouterPhrase(NEUTRE); note('reformulation'); },
+  court() { ajouterPhrase('Le tri.'); note('reformulation'); },
+  'pptx-masque'() { ajouterPhrase(NEUTRE); toucher('ppt/slideMasters/slideMaster1.xml', 'Archives', 'Fonds'); note('reformulation'); },
+  'pptx-disposition'() { ajouterPhrase(NEUTRE); toucher('ppt/slideLayouts/slideLayout1.xml', 'bureau', 'siège'); note('reformulation'); },
+  'pptx-notes'() { ajouterPhrase(NEUTRE); toucher('ppt/notesSlides/notesSlide2.xml', 'rappelle', 'redit'); note('reformulation'); },
+  'pptx-media'() { ajouterPhrase(NEUTRE); const f = join('paquet', 'ppt', 'media', 'image1.jpg'); writeFileSync(f, Buffer.concat([readFileSync(f), Buffer.from([0])])); note('reformulation'); },
+  'pptx-relations'() { ajouterPhrase(NEUTRE); toucher('ppt/slides/_rels/slide2.xml.rels', 'slideLayout1.xml', 'slideLayout1.xml" TargetMode="Internal'); note('reformulation'); },
+  'pptx-diapo-neuve'() { ajouterPhrase(NEUTRE); writeFileSync(diapo('slide11.xml'), readFileSync(diapo('slide10.xml'))); note('reformulation'); },
+  'pptx-diapo-supprimee'() { rmSync(diapo('slide10.xml')); note('retrait', 'La dernière diapositive sort.', 'La dernière diapositive.'); },
+  'pptx-aucune-diapo'() { rmSync(DIAPOS, { recursive: true }); note('reformulation'); },
+  'pptx-balise'() { toucher('ppt/slides/slide2.xml', '</a:t>', '</a:x>'); note('reformulation'); },
+  'pptx-un-octet'() { const f = diapo('slide1.xml'); writeFileSync(f, `${readFileSync(f, 'utf8')}\n`); note('reformulation'); },
+  'pptx-gain-trop'() { const f = formeNommee('Titre'); ajouterDansForme(f, 'x'.repeat(Math.floor(f.car / 10) + 1)); note('ajout'); },
+  'pptx-gain-juste'() { const f = formeNommee('Corps'); ajouterDansForme(f, 'x'.repeat(Math.floor(f.car / 10))); note('ajout'); },
+  'pptx-forme-neuve'() { const f = formeNommee('Corps'); toucher('ppt/slides/slide2.xml', '</p:spTree>', `${f.texte.replace('id="3"', 'id="30"').replace(/<a:t>[^<]*<\/a:t>/g, '<a:t></a:t>')}</p:spTree>`); note('ajout'); },
+  'pptx-forme-supprimee'() { toucher('ppt/slides/slide2.xml', formeNommee('Corps').texte, ''); note('retrait', 'Le corps sort.', 'Le corps de la diapositive.'); },
+  'pptx-fait-masque'() { ajouterPhrase('Fonds de 1987, salle Mimosas.'); note('ajout'); },
+  'pptx-fait-disposition'() { ajouterPhrase('Le bureau Glycines signe.'); note('ajout'); },
+  'pptx-fait-notes'() { ajouterPhrase('Ariane Glossaire ouvre.'); note('ajout'); },
   rien() { note('rien', '', 'Rien à changer.'); },
   'sans-rien'() { /* la limite tombe avant toute écriture : ni note, ni document */ },
   'rien-incoherent'() { ajouterPhrase(NEUTRE); note('rien', '', 'Rien à changer.'); },

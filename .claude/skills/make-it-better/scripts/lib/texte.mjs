@@ -1,5 +1,5 @@
-// lib/texte.mjs — le texte d'une version, seule mesure commune aux 4 formats : mots, faits, écarts.
-// Markdown et HTML se lisent ici ; Word et PDF passent par formats.py.
+// lib/texte.mjs — le texte d'une version, seule mesure commune aux 5 formats : mots, faits, écarts.
+// Markdown et HTML se lisent ici ; Word, PowerPoint et PDF passent par formats.py.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { appelerFormats, extensionDe, formatDe } from './commun.mjs';
@@ -70,7 +70,7 @@ export function texteDeFichier(chemin, { complet = false } = {}) {
   } catch (e) {
     return { erreur: `lecture impossible : ${e.message}` };
   }
-  if (f === 'docx' || f === 'pdf') {
+  if (f === 'docx' || f === 'pptx' || f === 'pdf') {
     const r = appelerFormats(['texte', chemin, ...(complet ? ['--complet'] : [])]);
     if (r.code === null) return { erreur: 'Python introuvable, formats.py ne peut pas lire ce fichier', dependance: true };
     if (r.code === 3) return { erreur: r.json?.motif || 'dépendance absente', dependance: true };

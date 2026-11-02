@@ -2,7 +2,7 @@
 // recette-reelle.mjs — les cas de recette qui demandent le vrai modèle, par l'abonnement. Chaque tour coûte
 // du quota : rien ici n'est dans self-test.mjs. Le script refuse de lancer si la dernière mesure lue atteint 0,80.
 //
-//   node recette-reelle.mjs formats   --racine <dossier> [--format md|html|docx|pdf] [--tours 3]
+//   node recette-reelle.mjs formats   --racine <dossier> [--format md|html|docx|pptx|pdf] [--tours 3]
 //   node recette-reelle.mjs isolation --racine <dossier>
 //   node recette-reelle.mjs isolation-essai --racine <dossier>
 //
@@ -72,7 +72,7 @@ function lireTours(espace, essai = 'opus-1') {
 }
 
 function formats(racine, argv) {
-  const liste = opt(argv, '--format') ? [opt(argv, '--format')] : ['md', 'html', 'docx', 'pdf'];
+  const liste = opt(argv, '--format') ? [opt(argv, '--format')] : ['md', 'html', 'docx', 'pptx', 'pdf'];
   const maxTours = Number(opt(argv, '--tours') || 3);
   if (maxTours > 3) {
     console.error('au plus 3 tours réels par fixture');
@@ -175,7 +175,7 @@ async function principal(argv) {
   const verbe = argv[0];
   const racine = opt(argv, '--racine');
   if (!['formats', 'isolation', 'isolation-essai'].includes(verbe) || !racine) {
-    console.error('usage : recette-reelle.mjs formats|isolation|isolation-essai --racine <dossier> [--format md|html|docx|pdf] [--tours 3]');
+    console.error('usage : recette-reelle.mjs formats|isolation|isolation-essai --racine <dossier> [--format md|html|docx|pptx|pdf] [--tours 3]');
     return 2;
   }
   const d = resolve(racine);

@@ -9,7 +9,7 @@ export const DOSSIER_SCRIPTS = resolve(dirname(fileURLToPath(import.meta.url)), 
 export const RACINE_SKILL = resolve(DOSSIER_SCRIPTS, '..');
 
 // Un seul nom de fichier par format : `document.<ext>` dans l'espace comme dans le dossier du tour.
-const FORMATS = { '.md': 'md', '.markdown': 'md', '.html': 'html', '.htm': 'html', '.docx': 'docx', '.pdf': 'pdf' };
+const FORMATS = { '.md': 'md', '.markdown': 'md', '.html': 'html', '.htm': 'html', '.docx': 'docx', '.pptx': 'pptx', '.pdf': 'pdf' };
 
 export function extensionDe(chemin) {
   const m = /\.[^./\\]+$/.exec(String(chemin));
@@ -18,7 +18,9 @@ export function extensionDe(chemin) {
 export function formatDe(chemin) {
   return FORMATS[extensionDe(chemin)] || null;
 }
-export const LIBELLE_FORMAT = { md: 'Markdown', html: 'HTML', docx: 'Word', pdf: 'PDF' };
+export const LIBELLE_FORMAT = { md: 'Markdown', html: 'HTML', docx: 'Word', pptx: 'PowerPoint', pdf: 'PDF' };
+/** Un paquet Office : il se dépaquette pour le tour, et son plafond se compte sur le corps. */
+export const estPaquet = (ext) => ext === 'docx' || ext === 'pptx';
 
 export const pad = (n) => String(n).padStart(3, '0');
 

@@ -56,11 +56,13 @@ const CAS_DE_BASE = {
   // Capture : elle échoue, et le tour se joue sans elle ; elle réussit, et le modèle la lit
   'capture-echoue': { ext: 'html', tours: 1, capture: 'echec', deroule: ['change'], attendu: { statuts: ['gardee'], capture: false, arret: 'borne' } },
   'capture-reussit': { ext: 'html', tours: 1, capture: 'reelle', deroule: ['change'], attendu: { statuts: ['gardee'], capture: true, fichierDeTour: { 1: 'capture.png' }, arret: 'borne' } },
+  // Un tour ordinaire et court, pour éprouver un document réel sans modèle : il ajoute 2 mots à sa plus longue forme
+  normal: { tours: 1, deroule: ['court'], attendu: { statuts: ['gardee'], arret: 'borne', exit: 0 } },
 };
 
 // Par format : « rien » cohérent, « rien » incohérent, changement sans modification, changement réel.
 const PAR_FORMAT = {};
-for (const ext of ['md', 'html', 'docx', 'pdf']) {
+for (const ext of ['md', 'html', 'docx', 'pptx', 'pdf']) {
   PAR_FORMAT[`rien-coherent-${ext}`] = { ext, tours: 1, deroule: ['rien'], attendu: { statuts: ['gardee'], types: ['rien'], arret: 'borne' } };
   PAR_FORMAT[`rien-incoherent-${ext}`] = { ext, tours: 1, deroule: ['rien-incoherent'], attendu: { statuts: ['rejetee'], motif: /incohérent : type « rien »/, arret: 'borne' } };
   PAR_FORMAT[`change-sans-modif-${ext}`] = { ext, tours: 1, deroule: ['change-sans-modif'], attendu: { statuts: ['rejetee'], motif: /incohérent : type « reformulation »/, arret: 'borne' } };
@@ -74,6 +76,35 @@ const WORD = {
   'paquet-accepte': { ext: 'docx', tours: 1, deroule: ['change'], attendu: { statuts: ['gardee'], oracleDocx: 0, arret: 'borne' } },
   'paquet-sans-document': { ext: 'docx', tours: 1, deroule: ['xml-supprime'], attendu: { statuts: ['rejetee'], motif: /document\.xml absent/, arret: 'borne' } },
   'paquet-autre-partie': { ext: 'docx', tours: 1, deroule: ['autre-partie'], attendu: { statuts: ['rejetee'], motif: /autre chose que word\/document\.xml/, arret: 'borne' } },
+};
+
+const POWERPOINT = {
+  // La version gardée : oracle-pptx en exit 0 malgré le JPEG et la transition de la fixture
+  'pptx-gardee': { ext: 'pptx', tours: 1, deroule: ['change'], attendu: { statuts: ['gardee'], oraclePptx: 0, premiereEntree: true, seulesDiapos: true, arret: 'borne' } },
+  // Une partie étrangère touchée, une par famille que la consigne laisse identique
+  'pptx-masque-touche': { ext: 'pptx', tours: 1, deroule: ['pptx-masque'], attendu: { statuts: ['rejetee'], motif: /autre chose que le texte des diapositives : ppt\/slideMasters/, arret: 'borne' } },
+  'pptx-disposition-touchee': { ext: 'pptx', tours: 1, deroule: ['pptx-disposition'], attendu: { statuts: ['rejetee'], motif: /ppt\/slideLayouts/, arret: 'borne' } },
+  'pptx-notes-touchees': { ext: 'pptx', tours: 1, deroule: ['pptx-notes'], attendu: { statuts: ['rejetee'], motif: /ppt\/notesSlides/, arret: 'borne' } },
+  'pptx-media-touche': { ext: 'pptx', tours: 1, deroule: ['pptx-media'], attendu: { statuts: ['rejetee'], motif: /ppt\/media/, arret: 'borne' } },
+  'pptx-relations-touchees': { ext: 'pptx', tours: 1, deroule: ['pptx-relations'], attendu: { statuts: ['rejetee'], motif: /ppt\/slides\/_rels/, arret: 'borne' } },
+  'pptx-diapo-ajoutee': { ext: 'pptx', tours: 1, deroule: ['pptx-diapo-neuve'], attendu: { statuts: ['rejetee'], motif: /slide11\.xml/, arret: 'borne' } },
+  'pptx-diapo-retiree': { ext: 'pptx', tours: 1, deroule: ['pptx-diapo-supprimee'], attendu: { statuts: ['rejetee'], motif: /slide10\.xml/, arret: 'borne' } },
+  'pptx-sans-diapo': { ext: 'pptx', tours: 1, deroule: ['pptx-aucune-diapo'], attendu: { statuts: ['rejetee'], motif: /slide<N>\.xml absent/, arret: 'borne' } },
+  // Une balise cassée : oracle-pptx ne la voit pas sans LibreOffice, le lanceur si
+  'pptx-balise-cassee': { ext: 'pptx', tours: 1, deroule: ['pptx-balise'], attendu: { statuts: ['rejetee'], motif: /XML mal formé : ppt\/slides\/slide2\.xml/, arret: 'borne' } },
+  // Inchangée si et seulement si toutes les diapositives sont identiques octet par octet
+  'pptx-inchangee': { ext: 'pptx', tours: 1, deroule: ['rien'], attendu: { statuts: ['gardee'], types: ['rien'], arret: 'borne' } },
+  'pptx-un-octet': { ext: 'pptx', tours: 1, deroule: ['pptx-un-octet'], attendu: { statuts: ['gardee'], types: ['reformulation'], arret: 'borne' } },
+  // Le seuil de la forme : un caractère au-delà de 10 % est rejeté, le plus grand gain entier en deçà passe
+  'pptx-forme-gonflee': { ext: 'pptx', tours: 1, deroule: ['pptx-gain-trop'], attendu: { statuts: ['rejetee'], motif: /gagne \d+ caractères pour \d+ : plus de 10 %/, arret: 'borne' } },
+  'pptx-forme-dix-pour-cent': { ext: 'pptx', tours: 1, deroule: ['pptx-gain-juste'], attendu: { statuts: ['gardee'], arret: 'borne' } },
+  'pptx-forme-ajoutee': { ext: 'pptx', tours: 1, deroule: ['pptx-forme-neuve'], attendu: { statuts: ['rejetee'], motif: /forme ajoutée, retirée ou déplacée dans ppt\/slides\/slide2\.xml/, arret: 'borne' } },
+  'pptx-forme-retiree': { ext: 'pptx', tours: 1, deroule: ['pptx-forme-supprimee'], attendu: { statuts: ['rejetee'], motif: /forme ajoutée, retirée ou déplacée/, arret: 'borne' } },
+  // Masques, dispositions et notes : faits connus, jamais comptés au plafond
+  'pptx-fait-du-masque': { ext: 'pptx', tours: 1, deroule: ['pptx-fait-masque'], attendu: { statuts: ['gardee'], arret: 'borne' } },
+  'pptx-fait-de-la-disposition': { ext: 'pptx', tours: 1, deroule: ['pptx-fait-disposition'], attendu: { statuts: ['gardee'], arret: 'borne' } },
+  'pptx-fait-des-notes': { ext: 'pptx', tours: 1, deroule: ['pptx-fait-notes'], attendu: { statuts: ['gardee'], arret: 'borne' } },
+  'pptx-plafond-sur-le-corps': { ext: 'pptx', tours: 1, plafondBrief: 160, deroule: ['change'], attendu: { statuts: ['gardee'], arret: 'borne' } },
 };
 
 const PDF = {
@@ -90,7 +121,7 @@ const PDF = {
   'pdf-voie-b': { ext: 'pdf', tours: 1, voieD124: 'b', attendu: { refus: /D-124/ } },
 };
 
-export const CAS = { ...CAS_DE_BASE, ...PAR_FORMAT, ...WORD, ...PDF };
+export const CAS = { ...CAS_DE_BASE, ...PAR_FORMAT, ...WORD, ...POWERPOINT, ...PDF };
 
 // Les lignes de la fixture, pour écrire un modifs.json qui s'applique.
 export const LIGNES_FIXTURE = [

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""formats.py — ce que Node ne sait pas faire sans dépendance : Word, PDF, texte extrait, images de pages.
+"""formats.py — ce que Node ne sait pas faire sans dépendance : Word, PowerPoint, PDF, texte extrait, images de pages.
 
 Appelé en processus séparé par lancer.mjs, serveur-versions.mjs, bilan.mjs et oracle-faits-sources.mjs.
 Une seule commande charge `pymupdf` : `pdf-appliquer`, décision D-124 (a) du 02/11/2026. Ce module, en
@@ -7,9 +7,10 @@ AGPL, reste une dépendance du poste : il n'est ni copié dans le dépôt, ni im
 Le rendu et la lecture du texte passent par `pypdfium2`, de licence permissive.
 
     python formats.py dependances
-    python formats.py texte <fichier.docx|.pdf> [--complet]
-    python formats.py depaqueter <document.docx> <dossier>
-    python formats.py rempaqueter <dossier> <base.docx> <sortie.docx>
+    python formats.py texte <fichier.docx|.pptx|.pdf> [--complet]
+    python formats.py depaqueter <document.docx|.pptx> <dossier>
+    python formats.py rempaqueter <dossier> <base.docx|.pptx> <sortie>
+    python formats.py pptx-formes <document.pptx>
     python formats.py pdf-appliquer <base.pdf> <modifs.json> <sortie.pdf>
     python formats.py pdf-images <document.pdf> <dossier> [--dpi 110]
 
@@ -30,6 +31,12 @@ for _nom in filter(None, os.environ.get("MAKE_IT_BETTER_SANS", "").split(",")):
     sys.modules[_nom.strip()] = None  # type: ignore[assignment]
 
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
+MC_FALLBACK = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback"
+DIAPO = re.compile(r"ppt/slides/slide(\d+)\.xml")
+# Ce qui compte comme fait connu sans entrer dans le plafond : masques, dispositions, notes.
+HORS_CORPS_PPTX = re.compile(r"ppt/(slideMasters/slideMaster|slideLayouts/slideLayout|notesMasters/notesMaster|notesSlides/notesSlide)\d+\.xml")
 
 
 def rendre(obj, code=0):
@@ -96,6 +103,76 @@ def une_ligne_par_paragraphe(xml_octets):
     return re.sub(rb"(<w:body>|</w:(?:p|tr|tbl|sectPr)>)(?=<)", rb"\1\n", xml_octets)
 
 
+def une_ligne_par_paragraphe_diapo(xml_octets):
+    """La même chose pour une diapositive : chaque <a:p> sur sa ligne, et les balises de forme entre 2 lignes."""
+    avant = re.sub(rb"(?<=>)(<a:p[ >/])", rb"\n\1", xml_octets)
+    return re.sub(rb"(</a:p>|<a:p/>|</p:sp>|</p:pic>|</p:graphicFrame>|</p:cxnSp>|</p:grpSp>)(?=<)", rb"\1\n", avant)
+
+
+def presenter(nom, octets):
+    if nom == "word/document.xml":
+        return une_ligne_par_paragraphe(octets)
+    return une_ligne_par_paragraphe_diapo(octets) if DIAPO.fullmatch(nom) else octets
+
+
+# ── PowerPoint ────────────────────────────────────────────────────────────────────────────────────
+
+
+def visibles(el):
+    """Les descendants d'une partie, sans la branche de repli : mc:Fallback répète ce que mc:Choice porte."""
+    for c in el:
+        if c.tag == MC_FALLBACK:
+            continue
+        yield c
+        yield from visibles(c)
+
+
+def textes_a(el):
+    return [c.text or "" for c in visibles(el) if c.tag == A + "t"]
+
+
+def texte_paragraphe(p):
+    """Un saut de ligne dans un paragraphe sépare 2 mots : sans lui, ils n'en feraient qu'un au compte."""
+    return "".join((c.text or "") if c.tag == A + "t" else "\n" for c in visibles(p) if c.tag in (A + "t", A + "br"))
+
+
+def texte_diapo(xml_octets):
+    """Le texte d'une partie PresentationML, un paragraphe par ligne, cellules de tableau comprises."""
+    return "\n".join(texte_paragraphe(p) for p in visibles(ET.fromstring(xml_octets)) if p.tag == A + "p")
+
+
+def diapos_en_ordre(noms):
+    """Par numéro : slide10 vient après slide2, ce que l'ordre des noms ne donne pas."""
+    return sorted((n for n in noms if DIAPO.fullmatch(n)), key=lambda n: int(DIAPO.fullmatch(n).group(1)))
+
+
+def texte_pptx(chemin, complet):
+    with zipfile.ZipFile(chemin) as z:
+        noms = z.namelist()
+        parties = diapos_en_ordre(noms)
+        if complet:
+            parties += sorted(n for n in noms if HORS_CORPS_PPTX.fullmatch(n))
+        return "\n".join(texte_diapo(z.read(n)) for n in parties)
+
+
+def cmd_pptx_formes(chemin):
+    """Pour chaque diapositive : les identifiants de toutes ses formes, et le compte de caractères de chaque <p:sp>."""
+    diapos, malformes = {}, []
+    with zipfile.ZipFile(chemin) as z:
+        for nom in diapos_en_ordre(z.namelist()):
+            try:
+                racine = ET.fromstring(z.read(nom))
+            except ET.ParseError as e:
+                malformes.append(f"{nom} ({e})")
+                continue
+            formes = []
+            for sp in (c for c in visibles(racine) if c.tag == P + "sp"):
+                nv = sp.find(f"{P}nvSpPr/{P}cNvPr")
+                formes.append({"id": nv.get("id") if nv is not None else "", "nom": nv.get("name", "") if nv is not None else "", "car": sum(len(t) for t in textes_a(sp))})
+            diapos[nom] = {"ids": [c.get("id", "") for c in visibles(racine) if c.tag == P + "cNvPr"], "sp": formes}
+    return rendre({"ok": True, "diapos": diapos, "malformes": malformes})
+
+
 def cmd_depaqueter(docx, dossier):
     dest = Path(dossier).resolve()
     dest.mkdir(parents=True, exist_ok=True)
@@ -109,18 +186,19 @@ def cmd_depaqueter(docx, dossier):
                 continue
             cible.parent.mkdir(parents=True, exist_ok=True)
             octets = z.read(info)
-            cible.write_bytes(une_ligne_par_paragraphe(octets) if info.filename == "word/document.xml" else octets)
+            cible.write_bytes(presenter(info.filename, octets))
     return rendre({"ok": True, "dossier": str(dest)})
 
 
 def cmd_rempaqueter(dossier, base, sortie):
     racine = Path(dossier)
-    if not (racine / "word" / "document.xml").is_file():
+    if Path(base).suffix.lower() == ".docx" and not (racine / "word" / "document.xml").is_file():
         return rendre({"ok": False, "motif": "paquet/word/document.xml absent"}, 1)
     modifiees, absentes = [], []
     with zipfile.ZipFile(base) as zb, zipfile.ZipFile(sortie, "w", zipfile.ZIP_DEFLATED) as zs:
         connus = set()
-        for info in zb.infolist():
+        # [Content_Types].xml d'abord : certains lecteurs le veulent en tête, et PowerPoint ne l'y met pas toujours.
+        for info in sorted(zb.infolist(), key=lambda i: i.filename != "[Content_Types].xml"):
             connus.add(info.filename)
             if info.is_dir():
                 continue
@@ -412,6 +490,8 @@ def cmd_texte(chemin, complet):
     try:
         if ext == ".docx":
             sys.stdout.write(texte_docx(chemin, complet))
+        elif ext == ".pptx":
+            sys.stdout.write(texte_pptx(chemin, complet))
         elif ext == ".pdf":
             sys.stdout.write(texte_pdf(chemin))
         else:
@@ -426,7 +506,7 @@ def cmd_texte(chemin, complet):
 
 
 def principal(a):
-    usage = "usage : formats.py dependances | texte <f> [--complet] | depaqueter <docx> <d> | rempaqueter <d> <base> <sortie> | pdf-appliquer <base> <modifs> <sortie> | pdf-images <pdf> <d> [--dpi n]"
+    usage = "usage : formats.py dependances | texte <f> [--complet] | depaqueter <docx|pptx> <d> | rempaqueter <d> <base> <sortie> | pptx-formes <pptx> | pdf-appliquer <base> <modifs> <sortie> | pdf-images <pdf> <d> [--dpi n]"
     if not a:
         sys.stderr.write(usage + "\n")
         return 2
@@ -439,6 +519,8 @@ def principal(a):
         return cmd_depaqueter(*reste)
     if verbe == "rempaqueter" and len(reste) == 3:
         return cmd_rempaqueter(*reste)
+    if verbe == "pptx-formes" and len(reste) == 1:
+        return cmd_pptx_formes(reste[0])
     if verbe == "pdf-appliquer" and len(reste) == 3:
         return cmd_pdf_appliquer(*reste)
     if verbe == "pdf-images" and len(reste) >= 2:

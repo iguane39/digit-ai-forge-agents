@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // self-test.mjs — le banc de make-it-better, sans aucun appel au modèle. Chaque garde-fou y a un cas qui
 // le déclenche et un cas qui ne le déclenche pas ; les tours réels et le navigateur ont leurs propres
-// scripts (recette-reelle.mjs, recette-word.mjs, recette-navigateur.py). Exit 1 au premier écart compté.
+// scripts (recette-reelle.mjs, recette-word.mjs, recette-powerpoint.mjs, recette-navigateur.py). Exit 1 au premier écart compté.
 import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
@@ -22,9 +22,10 @@ process.env.TMP = TEMP_BANC;
 process.env.TMPDIR = TEMP_BANC;
 process.env.PYTHONUTF8 = '1';
 delete process.env.MIB_SIM_WORD;
+delete process.env.MIB_SIM_POWERPOINT;
 
 const { CAS } = await import('./lib/cas-simules.mjs');
-const { argumentsDeTour, CONSIGNE_FIXE, consigneDeTour, envDeTour, ligneDeFormat, lirePlafond, lireModifs, lireNote, manquesDuCadre, VOIE_PDF_D124, espaceParDefaut, resoudreCli } = await import('./lancer.mjs');
+const { argumentsDeTour, CONSIGNE_FIXE, consigneDeTour, ecartsDeFormes, envDeTour, GAIN_MAX_FORME_PCT, ligneDeFormat, lirePlafond, lireModifs, lireNote, manquesDuCadre, VOIE_PDF_D124, espaceParDefaut, resoudreCli } = await import('./lancer.mjs');
 const { analyserSortie, ecartIdentite, lireQuota, pauseQuota } = await import('./lib/sortie.mjs');
 const { jugerFaits, extraireNoms, NON_JUGE } = await import('./oracle-faits-sources.mjs');
 const { markdownEnHtml } = await import('./lib/markdown.mjs');
@@ -32,7 +33,7 @@ const { comparer, ecartMots } = await import('./lib/diff.mjs');
 const { htmlEnTexte, markdownEnTexte, compterMots } = await import('./lib/texte.mjs');
 const { derniereGardee, lettresDepuisGraine, TOURS_CIBLES, versionCible, versionsRetenues } = await import('./lib/aveugle.mjs');
 const { calculerBilan, conclure, ecrireBilanMd, planDeQuota, RISQUE_5_SUR_5, RISQUE_5_SUR_6 } = await import('./bilan.mjs');
-const { estDansDepot, ecrireJson, pad } = await import('./lib/commun.mjs');
+const { cheminSkillVoisin, estDansDepot, ecrireJson, pad } = await import('./lib/commun.mjs');
 const { creerServeur } = await import('./serveur-versions.mjs');
 
 let ok = 0;
@@ -57,8 +58,9 @@ const deps = (() => {
 })();
 const formatsJouables = new Set(['md', 'html']);
 if (deps) formatsJouables.add('docx');
+if (deps && cheminSkillVoisin('quality-oracles', 'scripts/oracle-pptx.mjs') && cheminSkillVoisin('quality-oracles', 'profils/generique.json')) formatsJouables.add('pptx');
 if (deps?.pymupdf && deps?.pypdfium2 && deps?.PIL) formatsJouables.add('pdf');
-for (const f of ['docx', 'pdf']) if (!formatsJouables.has(f)) console.log(`NON JOUÉ : les cas ${f} (dépendance absente de ce poste : ${deps ? JSON.stringify(deps) : 'Python'})`);
+for (const f of ['docx', 'pptx', 'pdf']) if (!formatsJouables.has(f)) console.log(`NON JOUÉ : les cas ${f} (dépendance absente de ce poste : ${deps ? JSON.stringify(deps) : 'Python'})`);
 const nonJoues = [];
 
 // ── L'oracle ─────────────────────────────────────────────────────────────────────────────────────
@@ -95,6 +97,8 @@ if (partie('oracle')) {
   verifier('oracle : nom seul en tête de phrase', faits('Zorglub signe la note.', 'Le bureau signe la note.').includes('Zorglub'));
   verifier('oracle : L\'Oréal et l\'oreal se rejoignent', faits('Le groupe L\'Oréal achète.', 'le groupe l\'oreal achete.').length === 0);
   verifier('oracle : d\'Amazon refusé par élision', faits('Le colis d\'Amazon arrive.', 'Le colis arrive.').includes('Amazon'));
+  verifier('oracle : un titre en capitales à élision reste connu de l\'origine', faits('LE CAS D\'USAGE PAR L\'ÉQUIPE SEULE', 'LE CAS D\'USAGE PAR L\'ÉQUIPE SEULE').length === 0, JSON.stringify(faits('LE CAS D\'USAGE PAR L\'ÉQUIPE SEULE', 'LE CAS D\'USAGE PAR L\'ÉQUIPE SEULE')));
+  verifier('oracle : un groupe neuf fait de mots connus reste refusé', faits('Le CAS USAGE part.', 'Le CAS part, USAGE reste.').includes('CAS USAGE'));
   verifier('oracle : sigle neuf refusé', faits('Le RGPD s\'applique.', 'La règle s\'applique.').includes('RGPD'));
   verifier('oracle : prénom neuf sur nom connu refusé', faits('Marie Dupont signe.', 'Madame Dupont signe.').includes('Marie Dupont'));
   verifier('oracle : titre + nom connu passent', faits('Monsieur Dupont signe.', 'Dupont signe.').length === 0);
@@ -114,7 +118,19 @@ if (partie('lanceur')) {
   verifier('ligne Markdown', ligneDeFormat('md') === 'Modifie `document.md`.');
   verifier('ligne HTML', ligneDeFormat('html').startsWith('Modifie `document.html`.') && !ligneDeFormat('html').includes('capture') && ligneDeFormat('html', true).includes('capture.png'));
   verifier('ligne Word', ligneDeFormat('docx').includes('paquet/word/document.xml') && ligneDeFormat('docx').includes('sans toucher aux balises'));
+  verifier('ligne PowerPoint', ligneDeFormat('pptx') === 'Lis et modifie seulement le texte des fichiers `paquet/ppt/slides/slide<N>.xml`, sans toucher aux balises, sans ajouter ni retirer de forme.', ligneDeFormat('pptx'));
   verifier('ligne PDF', ligneDeFormat('pdf').includes('modifs.json') && ligneDeFormat('pdf').includes('sans le modifier'));
+  // Le seuil d'une forme, en entiers
+  verifier('forme : le seuil vaut 10 %', GAIN_MAX_FORME_PCT === 10);
+  const uneForme = (car) => ({ d: { ids: ['1', '2'], sp: [{ id: '2', nom: 'F', car }] } });
+  verifier('forme : 10 % tout rond passe', ecartsDeFormes(uneForme(100), uneForme(110)).length === 0);
+  verifier('forme : un caractère de plus est rejeté', /gagne 11 caractères pour 100/.test(ecartsDeFormes(uneForme(100), uneForme(111)).join()));
+  verifier('forme : 10 % de 30 ne dépend d\'aucun arrondi', ecartsDeFormes(uneForme(30), uneForme(33)).length === 0);
+  verifier('forme : une forme vide qui gagne un caractère est rejetée', ecartsDeFormes(uneForme(0), uneForme(1)).length === 1);
+  verifier('forme : perdre du texte passe', ecartsDeFormes(uneForme(100), uneForme(1)).length === 0);
+  verifier('forme : une forme de plus est rejetée', /ajoutée, retirée ou déplacée/.test(ecartsDeFormes(uneForme(5), { d: { ids: ['1', '2', '3'], sp: [] } }).join()));
+  verifier('forme : 2 formes échangées sont rejetées', /déplacée/.test(ecartsDeFormes({ d: { ids: ['2', '3'], sp: [] } }, { d: { ids: ['3', '2'], sp: [] } }).join()));
+  verifier('forme : une forme de texte devenue image, au même numéro, est rejetée sans erreur', /déplacée/.test(ecartsDeFormes(uneForme(5), { d: { ids: ['1', '2'], sp: [] } }).join()));
   verifier('consigne : la ligne de format suit la consigne', consigneDeTour('md').startsWith(CONSIGNE_FIXE) && consigneDeTour('md').endsWith(ligneDeFormat('md')));
   const a = argumentsDeTour({ consigne: 'C', modele: 'opus', effort: 'medium' });
   verifier('commande du tour : les arguments du prompt, dans l\'ordre', a.join(' ') === '-p C --model opus --effort medium --setting-sources  --strict-mcp-config --disable-slash-commands --restricted --tools Read,Edit,Write,Glob,Grep --permission-mode acceptEdits --no-session-persistence --output-format stream-json --verbose', a.join(' '));
@@ -186,6 +202,56 @@ if (partie('lanceur') && formatsJouables.has('docx')) {
   verifier('Word : le rempaquetage ne dit modifié que document.xml', r1.status === 0 && JSON.parse(r1.stdout).modifiees.join() === 'word/document.xml', r1.stdout);
   verifier('Word : même texte après découpage', py('texte', join(T, 'b.docx')).stdout === py('texte', fx).stdout);
   verifier('Word : le découpage est stable d\'un tour à l\'autre', py('depaqueter', join(T, 'b.docx'), join(T, 'c')).status === 0 && readFileSync(join(T, 'c', 'word', 'document.xml'), 'utf8') === xml);
+}
+
+// ── PowerPoint : le paquet, le texte, l'ordre ────────────────────────────────────────────────────
+// Le premier nom d'une archive, et les parties qui diffèrent de l'autre archive octet par octet.
+const COMPARER_ZIP = 'import json,sys,zipfile\na,b=zipfile.ZipFile(sys.argv[1]),zipfile.ZipFile(sys.argv[2])\nna,nb=a.namelist(),b.namelist()\nprint(json.dumps({"premier":na[0],"diff":[n for n in na if n not in nb or a.read(n)!=b.read(n)],"manquent":[n for n in nb if n not in na]}))';
+const comparerZip = (a, b) => JSON.parse(spawnSync('python', ['-c', COMPARER_ZIP, a, b], { encoding: 'utf8', windowsHide: true }).stdout);
+
+if (partie('lanceur') && formatsJouables.has('pptx')) {
+  const T = mkdtempSync(join(BAC, 'pptx-'));
+  const py = (...a) => spawnSync('python', [join(ICI, 'formats.py'), ...a], { encoding: 'utf8', windowsHide: true });
+  const fx = join(RACINE, 'fixtures', 'documents', 'note.pptx');
+  verifier('PowerPoint : le paquet se dépaquette', py('depaqueter', fx, join(T, 'a')).status === 0);
+  const xml = readFileSync(join(T, 'a', 'ppt', 'slides', 'slide2.xml'), 'utf8');
+  const lignesP = xml.split('\n').filter((l) => /<a:p[ >]/.test(l));
+  verifier('PowerPoint : une ligne par paragraphe', lignesP.length === 5 && lignesP.every((l) => (l.match(/<a:p[ >]/g) || []).length === 1 && l.includes('</a:p>')), `${lignesP.length} lignes de paragraphe`);
+  verifier('PowerPoint : aucun saut dans un texte', !/<a:t>[^<]*\n/.test(xml));
+  const texteA = py('texte', fx).stdout;
+  const r1 = py('rempaqueter', join(T, 'a'), fx, join(T, 'b.pptx'));
+  verifier('PowerPoint : le rempaquetage ne dit modifiées que les diapositives', r1.status === 0 && JSON.parse(r1.stdout).modifiees.every((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p)) && JSON.parse(r1.stdout).modifiees.length === 3, r1.stdout);
+  const cmp = comparerZip(join(T, 'b.pptx'), fx);
+  verifier('PowerPoint : toute autre partie reste identique octet par octet', cmp.diff.length === 3 && cmp.diff.every((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p)) && !cmp.manquent.length, JSON.stringify(cmp));
+  verifier('PowerPoint : même texte après découpage', py('texte', join(T, 'b.pptx')).stdout === texteA);
+  verifier('PowerPoint : le découpage est stable d\'un tour à l\'autre', py('depaqueter', join(T, 'b.pptx'), join(T, 'c')).status === 0 && readFileSync(join(T, 'c', 'ppt', 'slides', 'slide2.xml'), 'utf8') === xml);
+  // [Content_Types].xml en tête, même si la base ne l'y met pas : un deck réel peut l'avoir ailleurs
+  const melange = join(T, 'melange.pptx');
+  spawnSync('python', ['-c', 'import sys,zipfile\na=zipfile.ZipFile(sys.argv[1]);z=zipfile.ZipFile(sys.argv[2],"w")\nfor n in reversed(a.namelist()): z.writestr(n,a.read(n))\nz.close()', fx, melange], { windowsHide: true });
+  verifier('PowerPoint : la base de test n\'a pas [Content_Types].xml en tête', comparerZip(melange, fx).premier !== '[Content_Types].xml');
+  py('rempaqueter', join(T, 'a'), melange, join(T, 'tete.pptx'));
+  verifier('PowerPoint : [Content_Types].xml revient en première entrée', comparerZip(join(T, 'tete.pptx'), fx).premier === '[Content_Types].xml');
+  // Ce qui se compte
+  const idx = (m) => texteA.indexOf(m);
+  verifier('PowerPoint : texte dans l\'ordre des numéros, slide10 après slide2', idx('Ce que fait chaque bénévole') > 0 && idx('La fin de l\'atelier') > idx('Ce que fait chaque bénévole'), texteA.slice(0, 200));
+  verifier('PowerPoint : une cellule de tableau compte', texteA.includes('inventaire de 240 cartons'));
+  for (const m of ['Mimosas', 'Glycines', 'Ariane Glossaire']) {
+    verifier(`PowerPoint : ${m} hors du corps`, !texteA.includes(m));
+    verifier(`PowerPoint : ${m} connu au texte complet`, py('texte', fx, '--complet').stdout.includes(m));
+  }
+  const fb = join(T, 'repli.pptx');
+  spawnSync('python', ['-c', 'import sys,zipfile\nns=\'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"\'\nsp=lambda t:f\'<p:sp><p:nvSpPr><p:cNvPr id="2" name="F"/></p:nvSpPr><p:txBody><a:p><a:r><a:t>{t}</a:t></a:r></a:p></p:txBody></p:sp>\'\nz=zipfile.ZipFile(sys.argv[1],"w")\nz.writestr("ppt/slides/slide1.xml",f\'<p:sld {ns}><mc:AlternateContent><mc:Choice Requires="x">{sp("Choix")}</mc:Choice><mc:Fallback>{sp("Repli")}</mc:Fallback></mc:AlternateContent></p:sld>\')\nz.close()', fb], { windowsHide: true });
+  verifier('PowerPoint : mc:Fallback ne compte pas deux fois', py('texte', fb).stdout === 'Choix', py('texte', fb).stdout);
+  verifier('PowerPoint : mc:Fallback ne compte pas dans les formes', JSON.parse(py('pptx-formes', fb).stdout).diapos['ppt/slides/slide1.xml'].sp.length === 1);
+  const br = join(T, 'saut.pptx');
+  spawnSync('python', ['-c', 'import sys,zipfile\nz=zipfile.ZipFile(sys.argv[1],"w")\nz.writestr("ppt/slides/slide1.xml",\'<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><a:p><a:r><a:t>Un</a:t></a:r><a:br/><a:r><a:t>Deux</a:t></a:r></a:p></p:sld>\')\nz.close()', br], { windowsHide: true });
+  verifier('PowerPoint : un saut de ligne dans un paragraphe sépare 2 mots', compterMots(py('texte', br).stdout) === 2, py('texte', br).stdout);
+  // La fixture éprouve le profil : sans lui, l'oracle refuse le JPEG et la transition
+  const oracle = cheminSkillVoisin('quality-oracles', 'scripts/oracle-pptx.mjs');
+  const sansProfil = spawnSync(process.execPath, [oracle, fx], { encoding: 'utf8', windowsHide: true });
+  verifier('oracle-pptx sans profil : la fixture est rouge, JPEG et transition', sansProfil.status === 1 && /JPEG/.test(sansProfil.stdout) && /transition/.test(sansProfil.stdout), sansProfil.stdout.slice(0, 300));
+  const avecProfil = spawnSync(process.execPath, [oracle, fx, '--profil', cheminSkillVoisin('quality-oracles', 'profils/generique.json')], { encoding: 'utf8', windowsHide: true });
+  verifier('oracle-pptx avec le profil : la fixture est verte', avecProfil.status === 0, avecProfil.stdout.slice(0, 300));
 }
 
 // ── Les refus de lancement ───────────────────────────────────────────────────────────────────────
@@ -314,6 +380,54 @@ if (partie('refus')) {
   const copies = JSON.parse(readFileSync(join(espSrc, 'essais', 'opus-1', 'tours', '001', 'controle.json'), 'utf8')).fichiers_copies;
   verifier('source Word : son texte l\'accompagne', r11.status === 0 && copies.includes('sources/pieces.docx.txt'), JSON.stringify(copies));
   verifier('dossier du tour : ni classement ni jugements', !copies.some((f) => /classement|jugements|aveugle/.test(f)));
+  if (formatsJouables.has('pptx')) {
+    // Un deck comme source reste lisible, et ses faits sont connus
+    const espDeck = fabriquerEspace('source-deck');
+    copyFileSync(noteFixture('pptx'), join(espDeck, 'document', 'sources', 'pieces.pptx'));
+    copyFileSync(noteFixture('pptx'), join(espDeck, 'document', 'reference', 'forme.pptx'));
+    const rDeck = lancerSync(['--document', noteFixture('md'), '--espace', espDeck, '--simuler', 'rien-coherent-md']);
+    const copiesDeck = JSON.parse(readFileSync(join(espDeck, 'essais', 'opus-1', 'tours', '001', 'controle.json'), 'utf8')).fichiers_copies;
+    verifier('source PowerPoint : son texte l\'accompagne', rDeck.status === 0 && copiesDeck.includes('sources/pieces.pptx.txt') && copiesDeck.includes('reference/forme.pptx.txt'), JSON.stringify(copiesDeck));
+    // Les refus au lancement : Python, l'oracle, son profil
+    const dossierNode = dirname(process.execPath);
+    const espSansPy = fabriquerEspace('refus-deck-python');
+    const rPy = lancerSync(['--document', noteFixture('pptx'), '--espace', espSansPy, '--simuler', 'pptx-gardee'], { PATH: dossierNode, Path: dossierNode, MAKE_IT_BETTER_PYTHON: '' });
+    verifier('PowerPoint sans Python : refus nommé, rien de lancé', rPy.status === 2 && /PowerPoint refusé : Python introuvable/.test(rPy.stderr) && !existsSync(join(espSansPy, 'essais')), rPy.stderr);
+    // Une copie du skill sans voisin, sous un profil de poste vide : aucun quality-oracles ne se trouve.
+    const copie = join(BAC, 'copie', 'make-it-better');
+    cpSync(ICI, join(copie, 'scripts'), { recursive: true });
+    const horsPoste = (dossier) => ({ USERPROFILE: dossier, HOME: dossier, FORGE_ROOT: '' });
+    const homeVide = join(BAC, 'home-vide');
+    mkdirSync(homeVide, { recursive: true });
+    const lancerCopie = (espace, cas, env) => spawnSync(process.execPath, [join(copie, 'scripts', 'lancer.mjs'), '--document', noteFixture('pptx'), '--espace', espace, '--simuler', cas], { encoding: 'utf8', env: { ...process.env, ...env } });
+    const espSansOracle = fabriquerEspace('refus-deck-oracle');
+    const rO = lancerCopie(espSansOracle, 'pptx-gardee', horsPoste(homeVide));
+    verifier('PowerPoint sans oracle-pptx : refus nommé, rien de lancé', rO.status === 2 && /PowerPoint refusé : oracle-pptx introuvable/.test(rO.stderr) && !existsSync(join(espSansOracle, 'essais')), rO.stderr);
+    // Un faux quality-oracles, dont la réponse se règle : chaque réponse de l'oracle a son effet sur la version.
+    const homeFaux = join(BAC, 'home-faux');
+    const fauxScripts = join(homeFaux, '.claude', 'skills', 'quality-oracles', 'scripts');
+    mkdirSync(fauxScripts, { recursive: true });
+    writeFileSync(join(fauxScripts, 'oracle-pptx.mjs'), 'import { writeFileSync } from "node:fs";\nwriteFileSync(process.env.FAUX_ARGS, JSON.stringify(process.argv.slice(2)));\nconst r = process.env.FAUX_REPONSE;\nif (r === "illisible") { console.log("pas du JSON"); process.exit(0); }\nconst base = { verdict: "PASS", findings: [], non_juge: [] };\nconst t = { fail: { verdict: "FAIL", findings: [{ sev: "bloquant", msg: "paquet refusé pour le banc" }] }, skip: { verdict: "SKIP" }, "sans-soffice": { non_juge: ["smoke-test de conversion non exécuté (LibreOffice absent)", "charte"] }, "avec-soffice": { non_juge: ["charte"] } }[r];\nconsole.log(JSON.stringify({ ...base, ...t }));\nprocess.exit({ fail: 1, skip: 2 }[r] ?? 0);\n');
+    const espSansProfil = fabriquerEspace('refus-deck-profil');
+    const rP = lancerCopie(espSansProfil, 'pptx-gardee', horsPoste(homeFaux));
+    verifier('PowerPoint sans le profil de l\'oracle : refus nommé', rP.status === 2 && /profils\/generique\.json introuvable/.test(rP.stderr), rP.stderr);
+    mkdirSync(join(homeFaux, '.claude', 'skills', 'quality-oracles', 'profils'), { recursive: true });
+    writeFileSync(join(homeFaux, '.claude', 'skills', 'quality-oracles', 'profils', 'generique.json'), '{}');
+    for (const [reponse, statut, motif] of [['fail', 'rejetee', /oracle-pptx refuse le paquet \(exit 1, verdict FAIL\) : paquet refusé pour le banc/], ['skip', 'rejetee', /oracle-pptx refuse le paquet \(exit 2, verdict SKIP\)/], ['illisible', 'rejetee', /verdict illisible/], ['sans-soffice', 'gardee', null], ['avec-soffice', 'gardee', null]]) {
+      const esp = fabriquerEspace(`oracle-${reponse}`);
+      const args = join(esp, 'args.json');
+      const r = lancerCopie(esp, 'pptx-gardee', { ...horsPoste(homeFaux), FAUX_REPONSE: reponse, FAUX_ARGS: args });
+      const c = JSON.parse(readFileSync(join(esp, 'essais', 'opus-1', 'tours', '001', 'controle.json'), 'utf8'));
+      verifier(`oracle-pptx ${reponse} : version ${statut}`, c.statut === statut && (!motif || motif.test(c.motif)), `${c.statut} : ${c.motif} — ${r.stderr}`);
+      verifier(`oracle-pptx ${reponse} : appelé avec le profil générique`, /generique\.json$/.test(JSON.parse(readFileSync(args, 'utf8'))[2]) && JSON.parse(readFileSync(args, 'utf8'))[1] === '--profil');
+      if (reponse === 'sans-soffice') {
+        const etat = JSON.parse(readFileSync(join(esp, 'essais', 'opus-1', 'etat.json'), 'utf8'));
+        verifier('LibreOffice absent : exit 0 de l\'oracle, et le trou écrit au contrôle', c.oracle_pptx === 0 && /LibreOffice/.test(c.oracle_pptx_non_juge.join()), JSON.stringify(c.oracle_pptx_non_juge));
+        verifier('LibreOffice absent : le trou écrit dans etat.json et dit au lancement', /LibreOffice/.test((etat.non_juge_format || []).join()) && /non jugé sur ce poste/.test(r.stdout), r.stdout);
+      }
+      if (reponse === 'avec-soffice') verifier('LibreOffice présent : rien à déclarer', c.oracle_pptx === 0 && c.oracle_pptx_non_juge.length === 0 && !/non jugé sur ce poste/.test(r.stdout));
+    }
+  }
 }
 
 // ── Les cas simulés ──────────────────────────────────────────────────────────────────────────────
@@ -374,6 +488,12 @@ async function jouerCas(nom) {
   if (a.capture !== undefined) verifier(`${nom} : capture ${a.capture}`, tours.find((t) => t.numero === 1)?.capture?.jouee === a.capture, JSON.stringify(tours.find((t) => t.numero === 1)?.capture));
   if (a.fichierDeTour) for (const [n, f] of Object.entries(a.fichierDeTour)) verifier(`${nom} : ${f} rapatrié au tour ${n}`, existsSync(join(racineTours, pad(Number(n)), f)));
   if (a.oracleDocx !== undefined) verifier(`${nom} : oracle-docx exit ${a.oracleDocx}`, joues[0]?.oracle_docx === a.oracleDocx);
+  if (a.oraclePptx !== undefined) verifier(`${nom} : oracle-pptx exit ${a.oraclePptx}`, joues[0]?.oracle_pptx === a.oraclePptx, JSON.stringify(joues[0]));
+  if (a.premiereEntree || a.seulesDiapos) {
+    const c = comparerZip(join(racineTours, '001', `document.${ext}`), noteFixture(ext));
+    if (a.premiereEntree) verifier(`${nom} : [Content_Types].xml en première entrée`, c.premier === '[Content_Types].xml', c.premier);
+    if (a.seulesDiapos) verifier(`${nom} : seules les diapositives diffèrent de l'origine`, c.diff.every((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p)) && !c.manquent.length, JSON.stringify(c));
+  }
   if (a.motsAjoutes) verifier(`${nom} : mots ajoutés mesurés`, joues[0]?.mots?.ajoutes > 0, JSON.stringify(joues[0]?.mots));
   if (a.motsRetires) verifier(`${nom} : mots retirés mesurés`, joues[0]?.mots?.retires > 0, JSON.stringify(joues[0]?.mots));
   if (a.plafondSource) verifier(`${nom} : plafond ${a.plafondSource}`, etat.plafond?.source === a.plafondSource);
@@ -710,6 +830,58 @@ if (partie('serveur')) {
     delete process.env.MIB_SIM_WORD;
   }
   } else nonJoues.push('aperçus Word et PDF du serveur');
+  // PowerPoint : jamais le vrai ici, MIB_SIM_POWERPOINT prend la place d'exporter-pptx
+  if (formatsJouables.has('pptx') && formatsJouables.has('pdf')) {
+    const racineDeck = join(BAC, 'serveur-deck');
+    for (const nom of ['d-absent', 'd-export', 'd-moitie']) {
+      const d = join(racineDeck, nom);
+      mkdirSync(join(d, 'document', 'sources'), { recursive: true });
+      copyFileSync(noteFixture('pptx'), join(d, 'document', 'origine.pptx'));
+      const e = join(d, 'essais', 'opus-1');
+      for (const n of [0, 1]) {
+        mkdirSync(join(e, 'tours', pad(n)), { recursive: true });
+        copyFileSync(noteFixture('pptx'), join(e, 'tours', pad(n), 'document.pptx'));
+        ecrireJson(join(e, 'tours', pad(n), 'controle.json'), fait(n, 'gardee', n ? 'reformulation' : 'origine'));
+      }
+      ecrireJson(join(e, 'etat.json'), { statut: 'arrete', arret: { type: 'borne' }, tours_max: 1, debut: 'x' });
+    }
+    const s4 = creerServeur({ espace: racineDeck, port: 0 });
+    const p4 = await s4.ecouter();
+    try {
+      verifier('liste : format PowerPoint nommé', (await requete(p4, '/api/etat')).j.documents.find((d) => d.nom === 'd-absent').format === 'PowerPoint');
+      process.env.MIB_SIM_POWERPOINT = 'absent';
+      const absentA = await requete(p4, '/apercu/d-absent/opus-1/001');
+      verifier('PowerPoint manque : repli sur le texte, dit', /Aperçu en texte extrait/.test(absentA.texte) && /PowerPoint absent/.test(absentA.texte) && /Camille Exemple/.test(absentA.texte), absentA.texte.slice(0, 400));
+      verifier('PowerPoint manque : le repli montre le corps, sans les notes', !/Ariane Glossaire/.test(absentA.texte));
+      const ouvA = await requete(p4, '/api/aveugle/ouvrir', { methode: 'POST', corps: { doc: 'd-absent', essai: 'opus-1' } });
+      verifier('aveugle PowerPoint : repli général', ouvA.j.repli_texte === true, ouvA.texte);
+      verifier('aveugle PowerPoint : texte pour toutes, l\'export nommé', /pour toutes les versions/.test((await requete(p4, `/aveugle/${ouvA.j.lettres[0]}`)).texte) && /export PowerPoint/.test((await requete(p4, `/aveugle/${ouvA.j.lettres[0]}`)).texte));
+      await requete(p4, '/api/aveugle/fermer', { methode: 'POST', corps: {} });
+      // L'export réussit : images de pages, cache, le PDF jamais servi
+      process.env.MIB_SIM_POWERPOINT = `pdf:${noteFixture('pdf')}`;
+      const okA = await requete(p4, '/apercu/d-export/opus-1/001');
+      verifier('aperçu PowerPoint : images de pages', /<img src="\/apercu\/d-export\/opus-1\/001\/page\/1"/.test(okA.texte), okA.texte.slice(0, 300));
+      verifier('aperçu PowerPoint : une vraie image', (await requete(p4, '/apercu/d-export/opus-1/001/page/1')).entetes['content-type'] === 'image/png');
+      verifier('aperçu PowerPoint : la réussite se garde', JSON.parse(readFileSync(join(racineDeck, 'd-export', 'apercus', 'opus-1', '001', 'apercu.json'), 'utf8')).mode === 'images');
+      const ouvO = await requete(p4, '/api/aveugle/ouvrir', { methode: 'POST', corps: { doc: 'd-export', essai: 'opus-1' } });
+      verifier('aveugle PowerPoint : images si tous les exports réussissent', ouvO.j.repli_texte === false, ouvO.texte);
+      verifier('aveugle PowerPoint : image à adresse neutre', new RegExp(`src="/aveugle/${ouvO.j.lettres[0]}/page/1"`).test((await requete(p4, `/aveugle/${ouvO.j.lettres[0]}`)).texte));
+      await requete(p4, '/api/aveugle/fermer', { methode: 'POST', corps: {} });
+      // Un seul export raté fait passer toutes les versions au texte, même celle qui a réussi
+      process.env.MIB_SIM_POWERPOINT = `pdf-puis-absent:${noteFixture('pdf')}`;
+      const ouvM = await requete(p4, '/api/aveugle/ouvrir', { methode: 'POST', corps: { doc: 'd-moitie', essai: 'opus-1' } });
+      const faites = readdirSync(join(racineDeck, 'd-moitie', 'apercus', 'opus-1')).filter((n) => existsSync(join(racineDeck, 'd-moitie', 'apercus', 'opus-1', n, 'apercu.json')));
+      verifier('aveugle PowerPoint : un export a réussi, l\'autre non', faites.length === 1, faites.join());
+      verifier('aveugle PowerPoint : un seul export raté, repli général', ouvM.j.repli_texte === true, ouvM.texte);
+      for (const l of ouvM.j.lettres) {
+        const av = await requete(p4, `/aveugle/${l}`);
+        verifier(`aveugle PowerPoint : lettre ${l} en texte, sans image`, /pour toutes les versions/.test(av.texte) && !/<img/.test(av.texte));
+      }
+    } finally {
+      s4.serveur.close();
+      delete process.env.MIB_SIM_POWERPOINT;
+    }
+  } else nonJoues.push('aperçus PowerPoint du serveur');
   // Espace vide
   const vide = join(BAC, 'serveur-vide');
   mkdirSync(vide, { recursive: true });
