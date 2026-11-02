@@ -287,6 +287,8 @@ if (partie('refus')) {
   lancerSync(['--document', noteFixture('md'), '--espace', espVivant, '--simuler', 'coupure']);
   const feVivant = join(espVivant, 'essais', 'opus-1', 'etat.json');
   const etatVivant = JSON.parse(readFileSync(feVivant, 'utf8'));
+  const dossierCoupe = etatVivant.tour_en_cours.dossier;
+  verifier('coupure : le dossier du tour reste, avec son document', existsSync(join(dossierCoupe, 'document.md')), dossierCoupe);
   const dormeur = () => spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore', windowsHide: true });
   const avantMarqueur = dormeur();
   await new Promise((r) => { setTimeout(r, 1200); });
@@ -303,6 +305,7 @@ if (partie('refus')) {
   writeFileSync(feVivant, JSON.stringify(etatVivant));
   const rRepris = lancerSync(['--document', noteFixture('md'), '--espace', espVivant, '--reprendre', '--simuler', 'coupure']);
   verifier('reprise : un numéro repris par un autre processus ne la bloque pas', rRepris.status === 0 && /coupure du poste constatée/.test(rRepris.stdout), rRepris.stdout + rRepris.stderr);
+  verifier('reprise : le dossier du tour coupé est retiré', !existsSync(dossierCoupe), dossierCoupe);
   apresMarqueur.kill();
   // Un document Word comme source reste lisible par le modèle
   const espSrc = fabriquerEspace('source-word');

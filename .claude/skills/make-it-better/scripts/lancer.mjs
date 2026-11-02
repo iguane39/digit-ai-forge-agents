@@ -560,6 +560,7 @@ async function principal(argv) {
     }
     if (etat.tour_en_cours) {
       const numero = etat.tour_en_cours.numero;
+      retirerDossierCoupe(etat.tour_en_cours.dossier);
       if (existsSync(join(dossierTour(dossierEssai, numero), 'controle.json'))) {
         console.log(`Tour ${pad(numero)} : déjà contrôlé avant la coupure, il n'est pas rejoué.`);
       } else {
@@ -618,6 +619,8 @@ async function principal(argv) {
     etat.tour_en_cours = { numero, debut: dateIso() };
     ecrireJson(fichierEtat, etat);
     const prep = preparerTour(ctx, numero, tours, base);
+    etat.tour_en_cours.dossier = prep.dir;
+    ecrireJson(fichierEtat, etat);
     let jeu;
     try {
       const consigne = consigneCapture(prep.capture);
@@ -708,6 +711,16 @@ function arreter(etat, type, fin) {
   etat.arret = { type, motif: LIBELLE_ARRET[type], date: dateIso() };
   fin(etat);
   return 0;
+}
+
+/** Une coupure laisse dans le dossier temporaire une copie du document et de ses sources : la reprise la retire. */
+function retirerDossierCoupe(dossier) {
+  if (!dossier || !basename(dossier).startsWith('mib-tour-')) return;
+  try {
+    rmSync(dossier, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+  } catch (e) {
+    console.error(`dossier du tour coupé non retiré : ${dossier} (${e.code})`);
+  }
 }
 
 /**

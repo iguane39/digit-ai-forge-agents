@@ -67,4 +67,4 @@ Relevés sur la CLI 2.1.314 : `apiKeySource` et `model` dans l'événement `syst
 
 ## La reprise
 
-Un marqueur sans `controle.json` vaut coupure du poste : le tour se rejoue sans compter de rejet, et la coupure se note dans `etat.coupures`. Un marqueur avec `controle.json` vaut tour fini : il ne se rejoue pas. Les compteurs d'arrêt se recalculent toujours depuis les `controle.json`. Un lanceur encore vivant bloque la reprise, sauf si son numéro de processus a démarré après le marqueur : Windows redonne vite un numéro, c'est alors un autre processus.
+Un marqueur sans `controle.json` vaut coupure du poste : le tour se rejoue sans compter de rejet, et la coupure se note dans `etat.coupures`. La reprise retire aussi le dossier temporaire du tour coupé, qui porte une copie du document et de ses sources. Un marqueur avec `controle.json` vaut tour fini : il ne se rejoue pas. Les compteurs d'arrêt se recalculent toujours depuis les `controle.json`. Un lanceur encore vivant bloque la reprise, sauf si son numéro de processus a démarré après le marqueur : Windows redonne vite un numéro, c'est alors un autre processus.
