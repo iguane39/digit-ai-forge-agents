@@ -56,3 +56,6 @@ générer 14 slides sur du vide sans signaler les hypothèses.
    signature » — uniquement si l'utilisateur le valide.
 5. Ce qui est **hors périmètre est nommé et chiffré « séparément » ou « ultérieurement »**
    (TMA, API tierces, alertes, lot N+1) — jamais passé sous silence.
+6. **Deux montants comparés disent ce que chacun comprend** : rubrique « Compris : … · Non compris : … ·
+   Conséquence : … » (D-114 (a) du 02/11/2026). Le 19/10/2026, 224 € contre 320 € comptaient le pare-feu d'un seul côté,
+   et 6 relectures ne l'ont pas relevé.

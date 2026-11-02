@@ -14,7 +14,7 @@ description: >
   RDV en proposition, ou de produire le lot suivant d'une mission existante. Rendu délégué
   par paramètre : PPTX à digit-ai-pptx, DOCX à digit-ai-docx.
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
 ---
 
 # Digit-AI Propale
