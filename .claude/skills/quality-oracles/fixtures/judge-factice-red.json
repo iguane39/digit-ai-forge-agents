@@ -1,0 +1,1 @@
+{"verdict":"FAIL","scores":{"clarte":0,"structure":1,"completude":1,"ton":2,"risques":1},"findings":[{"sev":"bloquant","msg":"Réponse factice de la recette : un axe noté 0 doit refuser le livrable.","where":"judge-green.md"}]}

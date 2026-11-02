@@ -505,7 +505,8 @@
    "non_juge": [
     "véracité factuelle",
     "non-déterminisme assumé : jamais promu en verdict",
-    "CLI absent → SKIP motivé"
+    "CLI absent → SKIP motivé",
+    "le verdict d'un juge RÉEL n'est pas prouvé par la recette (TF-2033) : la paire du manifest rejoue le câblage avec une CLI factice, et la rouge à chiffres contradictoires a rendu PASS 10 fois sur 10 au juge réel"
    ]
   },
   {

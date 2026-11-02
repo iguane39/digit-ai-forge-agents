@@ -52,8 +52,10 @@ const cliJuge = () => {
 // réel et le lancer via node ; à défaut, comportement POSIX inchangé.
 // D-19 (a) du pilot (18/10/2026) : parmi les CLI du poste (paquet npm, binaire de chaque extension VS Code,
 // QO_JUGE_CLI), la plus récente — la première trouvée était le cli.js npm 2.1.107, qui refuse les modèles 5.x.
+// TF-2033 (02/11/2026) : QO_JUGE_CLI posé (décision de l'opérateur, ou CLI factice de la recette) est honoré sur
+// tout système, et dispense du `claude` du PATH : la recette prouve ainsi le verdict sans aucun appel de modèle.
 let jugeCmd = 'claude', jugePre = [];
-if (process.platform === 'win32') {
+if (process.platform === 'win32' || process.env.QO_JUGE_CLI) {
   // la sortie de `where` peut être mal décodée (codepage console ≠ utf8) : %APPDATA% reste le premier candidat npm
   const shim = (which.stdout || '').split(/\r?\n/).find(Boolean) || null;
   const choisie = choisirCli(candidatsCli({ shim }));
@@ -90,7 +92,7 @@ if (LECTEUR_VISE) {
   }
   const ecrire = opt('ecrire');
   if (!brutes.length && opt('juge')) {
-    if (which.status !== 0) out('SKIP', [], [...NJ_LV, 'CLI claude absent — relecteurs non exécutables (jamais simulés)'], 2);
+    if (which.status !== 0 && !process.env.QO_JUGE_CLI) out('SKIP', [], [...NJ_LV, 'CLI claude absent — relecteurs non exécutables (jamais simulés)'], 2);
     const { jugeCmd, jugePre } = cliJuge();
     for (const nom of ['A', 'B']) {
       const rr = spawnSync(jugeCmd, [...jugePre, '-p', consigne, '--output-format', 'text', ...(MODELE ? ['--model', MODELE] : [])], { encoding: 'utf8', timeout: 600000 });
@@ -136,7 +138,7 @@ if (LECTEUR_VISE) {
   out('PASS', findings, NJ_LV, 0);
 }
 
-if (which.status !== 0) out('SKIP', [], [...NJ, 'CLI claude absent — juge externe non exécutable (jamais simulé)'], 2);
+if (which.status !== 0 && !process.env.QO_JUGE_CLI) out('SKIP', [], [...NJ, 'CLI claude absent — juge externe non exécutable (jamais simulé)'], 2);
 const { jugeCmd, jugePre } = cliJuge();
 const prompt = fs.readFileSync(rub, 'utf8') + '\n\n--- LIVRABLE À ÉVALUER ---\n' + fs.readFileSync(file, 'utf8').slice(0, 60000);
 const r = spawnSync(jugeCmd, [...jugePre, '-p', prompt, '--output-format', 'text', ...(MODELE ? ['--model', MODELE] : [])], { encoding: 'utf8', timeout: 180000 });

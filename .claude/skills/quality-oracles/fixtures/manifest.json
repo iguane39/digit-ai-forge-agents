@@ -334,22 +334,18 @@
    "nom": "judge",
    "cmd": [
     "node",
-    "{skilldir}/scripts/oracle-judge.mjs",
-    "{fixture}",
-    "--profil",
-    "{skilldir}/profils/digit-ai.json"
+    "{skilldir}/fixtures/judge-lancer-factice.mjs",
+    "{fixture}"
    ],
-   "red": "claims-red.md",
-   "green": "judge-green.md",
+   "red": "judge-factice-red.json",
+   "green": "judge-factice-green.json",
    "attendu_red": [
-    "FAIL",
-    "SKIP"
+    "FAIL"
    ],
    "attendu_green": [
-    "PASS",
-    "SKIP"
+    "PASS"
    ],
-   "dependant_outil": "CLI claude (juge externe)"
+   "provenance": "TF-2033, 02/11/2026 — la paire vive (claims-red.md contre judge-green.md, juge LLM réel) a rendu PASS sur la rouge 10 fois sur 10 en passes isolées le 02/11/2026 (notes 1,1,1,2,1 : total 6, seuil de refus à moins de 6), puis FAIL dans la recette complète du même jour, et PASS sur 1 passe de recette sur 2 le 30/10 (TF-2033) : un défaut de chiffres relève des oracles déterministes que la rubrique exclut, et le juge reste à la limite. La paire rejoue donc le CÂBLAGE de l'oracle (verdict relayé, exit 1 ou 0) avec une CLI factice, sans appel de modèle ; le verdict d'un juge réel n'est PAS prouvé par la recette."
   },
   {
    "nom": "judge-lecteur-vise",

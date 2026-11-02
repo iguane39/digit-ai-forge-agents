@@ -1029,6 +1029,36 @@ else {
   else ok('D-19 (a) : oracle-judge prend la CLI la plus récente du poste (extension 2.1.300 contre npm illisible et extension 2.1.299), QO_JUGE_CLI prime, aucun candidat rend null');
 }
 
+// TF-2033 (02/11/2026) — LE VERDICT DU JUGE SE PROUVE SANS JUGE. La paire du manifest rejoue le câblage avec une
+// CLI factice (fixtures/judge-cli-factice.mjs) : FAIL relayé en exit 1, PASS en exit 0. Ici les deux sorties
+// qui ne doivent JAMAIS devenir un PASS : une réponse hors contrat, et une CLI qui échoue. Avec le juge réel,
+// la rouge `claims-red.md` a rendu PASS 10 fois sur 10 (notes 1,1,1,2,1) : un défaut de chiffres sort de sa rubrique.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2033-'));
+  try {
+    const doc = path.join(SKILLDIR, 'fixtures', 'judge-green.md');
+    const stub = path.join(SKILLDIR, 'fixtures', 'judge-cli-factice.mjs');
+    const jouer = (reponse) => {
+      const env = { ...process.env, QO_JUGE_CLI: stub };
+      delete env.QO_JUGE_REPONSE;
+      if (reponse !== null) env.QO_JUGE_REPONSE = reponse;
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-judge.mjs'), doc, '--profil', path.join(SKILLDIR, 'profils', 'digit-ai.json')], { encoding: 'utf8', timeout: 60000, env });
+      let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch {}
+      return { j, code: r.status };
+    };
+    const horsContrat = path.join(tmp, 'hors-contrat.txt'); fs.writeFileSync(horsContrat, 'Le livrable est correct, bravo.\n');
+    const verdictInconnu = path.join(tmp, 'verdict-inconnu.json'); fs.writeFileSync(verdictInconnu, '{"verdict":"PEUT-ETRE","scores":{},"findings":[]}');
+    const a = jouer(horsContrat), b = jouer(verdictInconnu), c = jouer(null);
+    const echecs = [];
+    for (const [nom, x] of [['réponse sans JSON', a], ['verdict hors PASS|FAIL', b], ['CLI en échec', c]]) {
+      if (!x.j) echecs.push(nom + ' : sortie illisible');
+      else if (x.j.verdict !== 'SKIP' || x.code !== 2) echecs.push(nom + ' : ' + x.j.verdict + ' exit ' + x.code + ' au lieu de SKIP exit 2');
+    }
+    if (echecs.length) ko('TF-2033 : ' + echecs.join(' · '));
+    else ok('TF-2033 : oracle-judge sur CLI factice — une réponse hors contrat, un verdict inconnu et une CLI en échec rendent SKIP exit 2, jamais PASS');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1392 + TF-1394 (13/10/2026, décisions D-2 (a) et D-3 (a)) — LA RUBRIQUE « LECTEUR VISÉ »
 // D'ORACLE-JUDGE, SA PARTIE MÉCANIQUE, SANS AUCUN APPEL DE MODÈLE. Deux relecteurs jouent le
 // lecteur ; le script agrège des lectures ENREGISTRÉES. Chaque règle dans ses deux sens :
