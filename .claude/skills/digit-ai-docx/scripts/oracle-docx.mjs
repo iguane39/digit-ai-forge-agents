@@ -31,8 +31,33 @@ import { lireZip } from './lib-zip.mjs';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 const DOM = "Validité d'un paquet DOCX avant remise";
+
+/**
+ * Word est-il installé sur CE poste ? (TF-2062) Le non_juge disait « aucun Word sur le poste de recette » en dur,
+ * faux sur un poste où Word est installé (constat du 02/11/2026). La détection est réelle : la clé « App Paths »
+ * de WINWORD.EXE, puis la classe COM Word.Application ; hors Windows, Word est absent par construction.
+ * `reg` est un exécutable Windows : aucun shell, aucun argument venu de l'extérieur.
+ */
+export function wordInstalle() {
+  if (process.platform !== 'win32') return false;
+  const cles = [
+    ['HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WINWORD.EXE', '/ve'],
+    ['HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WINWORD.EXE', '/ve'],
+    ['HKCR\\Word.Application\\CLSID', '/ve'],
+  ];
+  return cles.some((c) => spawnSync('reg', ['query', ...c], { windowsHide: true, timeout: 10000 }).status === 0);
+}
+
+/** La première limite du non_juge, dite selon ce que le poste a : jamais d'affirmation sur Word sans l'avoir détecté. */
+export function limiteOuvertureWord(installe) {
+  const reste = "l'oracle contrôle les causes connues de réparation (D1-D6), pas l'exhaustivité du schéma OOXML";
+  return installe
+    ? `l'OUVERTURE réelle dans Word : Word est installé sur ce poste, mais cet oracle ne l'ouvre pas — ${reste}`
+    : `l'OUVERTURE réelle dans Word : Word non détecté sur ce poste (ni WINWORD.EXE ni la classe Word.Application au registre) — ${reste}`;
+}
+
 export const NON_JUGE_BASE = [
-  "l'OUVERTURE réelle dans Word : aucun Word sur le poste de recette — l'oracle contrôle les causes connues de réparation (D1-D6), pas l'exhaustivité du schéma OOXML",
+  limiteOuvertureWord(wordInstalle()),
   'la validité complète contre les schémas XSD de WordprocessingML (ce serait refaire un validateur) : D5 attrape les ordres dont le défaut est connu',
   'la CHARTE du document (polices, couleurs, grille) : le relevé se fait avant d\'écrire (`rendre-docx.mjs --relever`), sa fidélité se juge à l\'œil ou par un rendu',
 ];

@@ -1865,7 +1865,7 @@
    "checklist": "D1 archive lisible · D2 [Content_Types].xml declare le document principal et type chaque partie · D3 chaque relation interne designe une partie presente · D4 chaque partie XML bien formee · D5 ordre des enfants exige par Word (w:sectPr dernier de w:body ; w:pPr, w:rPr, w:tcPr premiers ; w:tblPr puis w:tblGrid avant tout w:tr) · D6 ordre DrawingML delegue a scripts/verifier-ooxml.py du pilot",
    "statut": "ok",
    "non_juge": [
-    "l'OUVERTURE réelle dans Word : aucun Word sur le poste de recette — l'oracle contrôle les causes connues de réparation (D1-D6), pas l'exhaustivité du schéma OOXML",
+    "l'OUVERTURE réelle dans Word : jamais ouverte par l'oracle, qui dit au non_juge si Word est installé sur le poste (détection réelle, TF-2062) — l'oracle contrôle les causes connues de réparation (D1-D6), pas l'exhaustivité du schéma OOXML",
     "la validité complète contre les schémas XSD de WordprocessingML : D5 attrape les ordres dont le défaut est connu",
     "la CHARTE du document (polices, couleurs, grille) : relevée avant d'écrire (`rendre-docx.mjs --relever`), jugée à l'œil ou par un rendu",
     "D6 quand le pilot ou Python est introuvable : NON JUGÉE et dite par l oracle, jamais un PASS silencieux"

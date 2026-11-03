@@ -17,7 +17,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ecrireZip, lireZip } from './lib-zip.mjs';
-import { juger } from './oracle-docx.mjs';
+import { juger, wordInstalle, limiteOuvertureWord } from './oracle-docx.mjs';
 import { rendreSurMarque, rendreSurTrame, lireMarque, relever } from './rendre-docx.mjs';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +34,22 @@ verif('VERT — le mémoire rendu sur la marque passe D1-D6', jv.findings.length
 const d6 = jv.non_juge.find((n) => n.startsWith('D6 NON JUGÉE'));
 if (d6) non_juge.push(d6); else verif('VERT — D6 jouée par le verifier-ooxml.py du pilot', jv.mesure.drawingml_controles !== undefined, JSON.stringify(jv.mesure));
 verif('VERT — deux rendus du même plan donnent les mêmes octets', rendreSurMarque(plan, lireMarque(path.join(F, 'marque'))).buffer.equals(vert.buffer));
+
+// TF-2062 — la limite « ouverture réelle dans Word » dit ce que le POSTE a, jamais un « aucun Word » en dur.
+// Le 02/11/2026, l'oracle affirmait « aucun Word sur le poste de recette » sur un poste où Word est installé.
+const ligneWord = (r) => r.non_juge.find((n) => n.startsWith("l'OUVERTURE réelle dans Word")) || '';
+verif("NON JUGÉ — Word installé : la limite le dit et n'affirme pas « aucun Word »", /est installé/.test(limiteOuvertureWord(true)) && !/aucun Word/.test(limiteOuvertureWord(true)), limiteOuvertureWord(true));
+verif("NON JUGÉ — Word absent : la limite dit « non détecté » et ne prétend pas qu'il est installé", /non détecté/.test(limiteOuvertureWord(false)) && !/est installé/.test(limiteOuvertureWord(false)), limiteOuvertureWord(false));
+// Seconde voie, indépendante du code jugé : PowerShell lit les mêmes clés du registre par un autre chemin.
+let sonde = null;
+if (process.platform === 'win32') {
+  const cles = ['HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WINWORD.EXE', 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WINWORD.EXE', 'Registry::HKEY_CLASSES_ROOT\\Word.Application\\CLSID'];
+  const ps = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', `[bool](${cles.map((c) => `(Test-Path '${c}')`).join(' -or ')})`],
+    { encoding: 'utf8', windowsHide: true, timeout: 30000 });
+  if (/^(True|False)$/m.test(ps.stdout || '')) sonde = /^True$/m.test(ps.stdout);
+} else sonde = false;
+if (sonde === null) non_juge.push('détection de Word NON recoupée : PowerShell indisponible pour la seconde voie');
+else verif(`NON JUGÉ — la limite de l'oracle suit le poste réel (Word ${sonde ? 'installé' : 'absent'} d'après une seconde voie)`, wordInstalle() === sonde && ligneWord(jv) === limiteOuvertureWord(sonde), `${wordInstalle()} / ${sonde} / ${ligneWord(jv)}`);
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'digit-ai-docx-'));
 const fVert = path.join(tmp, 'vert.docx');

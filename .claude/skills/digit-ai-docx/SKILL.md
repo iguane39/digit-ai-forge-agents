@@ -83,8 +83,9 @@ reprend la partie styles.xml octet pour octet. Fixtures : `fixtures/plan-memoire
 
 ## Ce que ce skill ne juge pas
 
-- L'ouverture réelle dans Word : aucun Word sur le poste de recette ; D1-D6 contrôlent les causes
-  connues de réparation, pas le schéma complet.
+- L'ouverture réelle dans Word : l'oracle ne l'ouvre pas, que Word soit installé ou non, et il dit au
+  non_juge ce que le poste a (détection au registre, TF-2062) ; D1-D6 contrôlent les causes connues de
+  réparation, pas le schéma complet.
 - La fidélité visuelle à la trame (espacements fins, images de couverture) : le relevé la montre,
   un rendu ou un œil la juge.
 - Le PDF : exporter depuis Word ou un convertisseur, puis juger le PDF avec son propre contrôle.
