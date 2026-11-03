@@ -6,13 +6,18 @@
 //   3. aucun <p:transition> dans les slides (interdit charte/compatibilité) ;
 //   4. aucun média JPEG (interdit charte — PNG pré-composité attendu) ;
 //   5. smoke-test de conversion `soffice --headless --convert-to pdf` (proxy déterministe
-//      des bugs « viewer compatibility ») — absent → contrôle déclaré non_juge, pas PASS.
+//      des bugs « viewer compatibility ») — absent → contrôle déclaré non_juge, pas PASS ;
+//   6. (TF-2064) bonne formation XML de CHAQUE partie du paquet (.xml et .rels), sans LibreOffice :
+//      une balise cassée (`</a:x>` pour `</a:t>`) rendait exit 0 sous le profil générique, et le seul
+//      non_juge disait « smoke-test non exécuté ». Un XML mal formé = FAIL, avec la partie et la position.
+// `--profil` illisible, introuvable ou sans objet JSON = erreur d'usage (exit 2), jamais les règles par défaut tues.
 // non_juge : charte sémantique (kicker, logos, bijection sommaire↔intercalaires) et rendu
 // visuel slide par slide → gate digit-ai-pptx. Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { resolvePython } from './lib/python.mjs';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
 // TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
@@ -20,9 +25,30 @@ const contratJSON = ecrivainDeContrat({ premier: true });
 
 const file = process.argv[2];
 // C1 — politique par profil : jpeg_interdit / transitions_interdites (défaut : les deux, rétrocompat digit-ai)
-const pArg = process.argv.includes('--profil') ? process.argv[process.argv.indexOf('--profil') + 1] : null;
+// TF-2064 : un `--profil` sans valeur, introuvable ou illisible était avalé (`catch {}`) et l'oracle jugeait
+// sous les règles par défaut sans le dire. C'est désormais une erreur d'usage (exit 2, message nommé, ci-dessous).
+// Comme run-oracles, la valeur est un chemin, ou un nom résolu en profils/<nom>.json.
+const SKILLDIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const iProfil = process.argv.indexOf('--profil');
+const pArg = iProfil >= 0 ? process.argv[iProfil + 1] : null;
 let POL = { jpeg_interdit: true, transitions_interdites: true };
-if (pArg) { try { POL = { ...POL, ...(JSON.parse(fs.readFileSync(pArg, 'utf8')).pptx || {}) }; } catch {} }
+let profilErreur = null, profilSansPptx = null;
+if (iProfil >= 0) {
+  if (!pArg || pArg.startsWith('--')) profilErreur = '--profil attend un chemin ou un nom de profil (profils/<nom>.json) ; aucune valeur reçue';
+  else {
+    const chemin = [pArg, path.join(SKILLDIR, 'profils', pArg + '.json')].find((c) => fs.existsSync(c) && fs.statSync(c).isFile());
+    if (!chemin) profilErreur = `profil « ${pArg} » introuvable (ni un fichier existant, ni profils/${pArg}.json)`;
+    else {
+      try {
+        const j = JSON.parse(fs.readFileSync(chemin, 'utf8'));
+        if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('la racine n\'est pas un objet JSON');
+        if (j.pptx !== undefined && (!j.pptx || typeof j.pptx !== 'object' || Array.isArray(j.pptx))) throw new Error('la clé « pptx » n\'est pas un objet');
+        POL = { ...POL, ...(j.pptx || {}) };
+        if (j.pptx === undefined) profilSansPptx = pArg;
+      } catch (e) { profilErreur = `profil « ${pArg} » illisible : ${e.message}`; }
+    }
+  }
+}
 const findings = [], non_juge = [
   'charte sémantique (pas de kicker, logo couverture/interlocuteurs seulement, bijection sommaire↔intercalaires) → gate digit-ai-pptx',
   'rendu visuel slide par slide (débordements, contraste, chevauchements) → pipeline d\'inspection digit-ai-pptx',
@@ -33,6 +59,8 @@ const findings = [], non_juge = [
 ];
 const out = (verdict, code) => { process.stdout.write(contratJSON({ oracle: 'oracle-pptx', domaine: 'Rendu PPTX (structure & compatibilité)', artefact: file || null, verdict, findings, non_juge })); process.exit(code); };
 const skip = msg => { non_juge.unshift(msg); out('SKIP', 2); };
+if (profilErreur) { console.error('oracle-pptx : erreur d\'usage — ' + profilErreur); skip('erreur d\'usage : ' + profilErreur + ' — rien n\'a été jugé'); }
+if (profilSansPptx) non_juge.push(`profil « ${profilSansPptx} » sans clé pptx : règles par défaut appliquées (JPEG et transitions interdits)`);
 if (!file || !fs.existsSync(file)) skip('fichier absent');
 if (!/\.(pptx|potx)$/i.test(file)) skip('extension non gérée');
 
@@ -42,8 +70,9 @@ if (!py) skip('python indisponible (lecture zip impossible)');
 // 1-4 : inspection de l'archive via zipfile (ordre réel des entrées + contenu des slides)
 const script = `
 import sys, zipfile, json, re
+import xml.parsers.expat as ex
 p = sys.argv[1]
-r = {"ok": True, "first": None, "bad": None, "transitions": [], "jpegs": [], "sldsz": None, "polices": {}, "couleurs": {}}
+r = {"ok": True, "first": None, "bad": None, "transitions": [], "jpegs": [], "sldsz": None, "polices": {}, "couleurs": {}, "xml": []}
 try:
     z = zipfile.ZipFile(p)
     r["bad"] = z.testzip()
@@ -54,6 +83,17 @@ try:
         if low.startswith("ppt/slides/") and low.endswith(".xml"):
             if b"<p:transition" in z.read(n): r["transitions"].append(n)
         if low.startswith("ppt/media/") and (low.endswith(".jpg") or low.endswith(".jpeg")): r["jpegs"].append(n)
+        # TF-2064 : bonne formation de chaque partie XML, par expat (bibliothèque standard, aucun LibreOffice)
+        if low.endswith(".xml") or low.endswith(".rels"):
+            try:
+                brut = z.read(n)
+            except Exception:
+                brut = None  # entrée illisible : testzip la signale déjà
+            if brut is not None:
+                try:
+                    ex.ParserCreate().Parse(brut, True)
+                except ex.ExpatError as e:
+                    r["xml"].append({"part": n, "ligne": e.lineno, "col": e.offset, "msg": ex.ErrorString(e.code)})
         # TF-1130 : de quoi juger le FORMAT d'un support (taille, polices, couleurs de texte)
         if low == "ppt/presentation.xml":
             m = re.search(rb'<p:sldSz\\b[^>]*?cx="(\\d+)"[^>]*?cy="(\\d+)"', z.read(n))
@@ -81,6 +121,9 @@ else {
   if (z.first !== '[Content_Types].xml') findings.push({ sev: 'bloquant', msg: '[Content_Types].xml n\'est pas la première entrée (trouvé : ' + z.first + ') — casse certains viewers', where: base });
   for (const t of z.transitions) findings.push({ sev: POL.transitions_interdites ? 'bloquant' : 'warn', msg: '<p:transition> présent' + (POL.transitions_interdites ? ' (interdit par le profil)' : ' (toléré par le profil — avertissement)'), where: base + ':' + t });
   for (const j of z.jpegs) findings.push({ sev: POL.jpeg_interdit ? 'bloquant' : 'warn', msg: 'média JPEG présent' + (POL.jpeg_interdit ? ' (interdit par le profil — PNG attendu)' : ' (toléré par le profil)'), where: base + ':' + j });
+  // TF-2064 : bloquant sous TOUT profil — un XML mal formé n'est pas une affaire de charte, PowerPoint propose la réparation ou refuse d'ouvrir.
+  for (const x of z.xml) findings.push({ sev: 'bloquant', regle: 'X1', msg: `XML mal formé : ${x.msg} (ligne ${x.ligne}, colonne ${x.col})`, where: `${base}:${x.part}:${x.ligne}:${x.col}` });
+  non_juge.push('validité des parties XML contre les schémas OOXML (XSD) : non jugée — seule la BONNE FORMATION de chaque partie .xml/.rels est contrôlée (balises équilibrées, une racine), par un analyseur XML de la bibliothèque standard');
 }
 
 // TF-1130 (15/09/2026) — LE FORMAT D'UN SUPPORT DE DIAPOSITIVES, PILOTÉ PAR LE PROFIL. Faute de

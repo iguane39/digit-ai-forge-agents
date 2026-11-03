@@ -131,7 +131,7 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "intégrité zip, [Content_Types].xml en 1re entrée, zéro <p:transition>, zéro média JPEG, smoke-test conversion LibreOffice",
+   "checklist": "intégrité zip, [Content_Types].xml en 1re entrée, zéro <p:transition>, zéro média JPEG, X1 XML bien formé de chaque partie du paquet (TF-2064, sans LibreOffice), smoke-test conversion LibreOffice",
    "statut": "partiel",
    "non_juge": [
     "charte sémantique (kicker, logos, bijection sommaire↔intercalaires) → gate digit-ai-pptx",

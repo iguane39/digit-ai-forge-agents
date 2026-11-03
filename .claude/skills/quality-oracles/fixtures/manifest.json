@@ -199,6 +199,30 @@
    "provenance": "TF-1130 (lot Produit-64 20260913a) : un oracle de format de support de diapositives dupliqué par un produit, faute de domaine au registre ; les règles de format pilotées par profil entrent dans oracle-pptx"
   },
   {
+   "nom": "pptx-xml",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/generique.json"
+   ],
+   "red": "pptx-xml-red.pptx",
+   "green": "pptx-xml-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "X1",
+    "XML mal formé",
+    "ppt/slides/slide2.xml"
+   ],
+   "provenance": "TF-2064 (mesuré le 02/11/2026) : une diapositive dont </a:t> devient </a:x> rendait exit 0 et PASS sous le profil générique quand LibreOffice est absent ; l'oracle parse désormais chaque partie XML du paquet (règle X1)"
+  },
+  {
    "nom": "llm",
    "cmd": [
     "node",

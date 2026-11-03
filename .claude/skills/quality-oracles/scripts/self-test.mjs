@@ -2702,6 +2702,52 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-2064 (03/11/2026) — UN `--profil` QUI NE SE LIT PAS EST UNE ERREUR D'USAGE, PAS UN JUGEMENT PAR DÉFAUT.
+// LE FAIT (mesuré le 02/11/2026). Un `--profil` illisible était avalé par un `catch {}` : l'oracle jugeait
+// sous ses règles par défaut (JPEG et transitions interdits) et ne le disait pas. Ce bloc joue :
+//   (A) les trois refus — valeur absente, fichier introuvable, JSON illisible — chacun en exit 2, verdict SKIP
+//       motivé par le profil, et un message d'usage sur stderr ;
+//   (B) le REMÈDE que ces messages proposent, joué : le même deck avec un profil lisible, par chemin puis par
+//       nom (profils/<nom>.json), rend PASS exit 0 — un refus dont le remède ne passe pas ne vaut rien (TF-1013) ;
+//   (C) un profil lisible sans clé `pptx` juge sous les règles par défaut ET le dit dans son non_juge.
+// La paire rouge/verte du XML mal formé (règle X1) vit au manifest, entrée « pptx-xml ».
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2064-'));
+  try {
+    const deck = path.join(SKILLDIR, 'fixtures', 'pptx-xml-green.pptx');
+    const jouer = (...profilArgs) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-pptx.mjs'), deck, ...profilArgs], { encoding: 'utf8', timeout: 120000 });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* sortie illisible */ }
+      return { j, code: r.status, err: r.stderr || '' };
+    };
+    const casse = path.join(tmp, 'casse.json');
+    fs.writeFileSync(casse, '{ "pptx": { "jpeg_interdit": ', 'utf8');
+    const sansPptx = path.join(tmp, 'sans-pptx.json');
+    fs.writeFileSync(sansPptx, JSON.stringify({ nom: 'sans-pptx' }), 'utf8');
+    const refus = [
+      ['valeur absente', ['--profil'], /aucune valeur/],
+      ['fichier introuvable', ['--profil', path.join(tmp, 'absent.json')], /introuvable/],
+      ['nom inconnu', ['--profil', 'profil-qui-n-existe-pas'], /introuvable/],
+      ['JSON illisible', ['--profil', casse], /illisible/],
+    ];
+    for (const [nom, args, motif] of refus) {
+      const r = jouer(...args);
+      r.code !== 2 || !r.j || r.j.verdict !== 'SKIP' || !motif.test(r.j.motif || '') || !/erreur d'usage/.test(r.err)
+        ? ko(`TF-2064 (A) : --profil ${nom} — attendu exit 2, SKIP motivé et message d'usage sur stderr, obtenu exit ${r.code}, ${r.j && r.j.verdict}, motif « ${r.j && r.j.motif} », stderr « ${r.err.trim().slice(0, 100)} »`)
+        : ok(`TF-2064 (A) : --profil ${nom} → exit 2, SKIP motivé (« ${r.j.motif.slice(0, 70)}… »), message d'usage sur stderr`);
+    }
+    const parChemin = jouer('--profil', path.join(SKILLDIR, 'profils', 'generique.json'));
+    const parNom = jouer('--profil', 'generique');
+    parChemin.code !== 0 || !parChemin.j || parChemin.j.verdict !== 'PASS' || parNom.code !== 0 || !parNom.j || parNom.j.verdict !== 'PASS'
+      ? ko(`TF-2064 (B) : le remède (profil lisible par chemin ou par nom) doit PASSER — chemin exit ${parChemin.code}, nom exit ${parNom.code}`)
+      : ok('TF-2064 (B) : le remède proposé, un profil lisible par chemin ou par nom, rend PASS exit 0 sur le même deck');
+    const sp = jouer('--profil', sansPptx);
+    sp.code !== 0 || !sp.j || !(sp.j.non_juge || []).some((x) => /sans clé pptx/.test(x))
+      ? ko(`TF-2064 (C) : un profil lisible sans clé pptx doit juger ET le dire au non_juge — exit ${sp.code}`)
+      : ok('TF-2064 (C) : un profil lisible sans clé pptx juge sous les règles par défaut et le dit au non_juge');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1504 (01/10/2026) — LE MÊME JUGE POUR CHAQUE DOCUMENT GÉNÉRÉ QUI EMBARQUE DES POLICES.
 //
 // LA DÉCISION HUMAINE du 30/09/2026 (RP-04) : l'erreur des polices embarquées ne doit se reproduire
