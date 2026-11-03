@@ -138,7 +138,8 @@ export function extraireNoms(texte, connus = () => false) {
       const j = jetons[i];
       let mot = j[0].replace(/['’-]+$/, '');
       const avant = ligne.slice(i ? jetons[i - 1].index + jetons[i - 1][0].length : 0, j.index);
-      const coupure = i === 0 || /[.!?…:;|•—–()«»"“”[\]]/.test(avant);
+      // Une ponctuation ou un séparateur de liste — virgule, barre oblique — coupe le groupe : « DPO, RSSI, ADR0604 » fait trois noms, non un seul (TF-2075).
+      const coupure = i === 0 || /[.,!?…:;|\/•—–()«»"“”[\]]/.test(avant);
       if (coupure) { clore(); enTete = true; }
       // « L'Oréal », « d'Amazon » : l'élision est le mot-outil, ce qui suit peut être le nom.
       const elision = ELISIONS.exec(mot);

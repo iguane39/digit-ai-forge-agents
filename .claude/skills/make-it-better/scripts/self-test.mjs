@@ -107,6 +107,11 @@ if (partie('oracle')) {
   verifier('oracle : paraphrase fausse sans chiffre ni nom : non jugée, donc PASS', faits('Les retards ont fortement diminué.', 'Les retards ont augmenté.').length === 0);
   verifier('oracle : numéro de liste ignoré', jugerFaits({ version: markdownEnTexte('1. Trier\n7. Ranger\n'), origine: markdownEnTexte('1. Trier\n2. Ranger\n') }).neufs.length === 0);
   verifier('oracle : noms extraits en groupe', extraireNoms('La Banque de France et Camille Exemple signent.').includes('Banque de France'));
+  // TF-2075 : la virgule et la barre oblique coupent un groupe de sigles ; chacun se cherche seul, un sigle réellement absent reste refusé.
+  verifier('oracle : sigles séparés par des virgules, tous connus, aucun neuf', faits('Le classement (DPO, RSSI, ADR0604) est tenu.', 'Classé par le DPO et le RSSI (ADR0604).').length === 0, JSON.stringify(faits('Le classement (DPO, RSSI, ADR0604) est tenu.', 'Classé par le DPO et le RSSI (ADR0604).')));
+  verifier('oracle : un sigle absent d\'un groupe à virgules reste refusé seul', faits('Le classement (DPO, RSSI, ADR9999) est tenu.', 'Classé par le DPO et le RSSI (ADR0604).').join('|') === 'ADR9999', JSON.stringify(faits('Le classement (DPO, RSSI, ADR9999) est tenu.', 'Classé par le DPO et le RSSI (ADR0604).')));
+  verifier('oracle : sigles séparés par une barre oblique, tous connus, aucun neuf', faits('Validé en DPO/RSSI hier.', 'Validé par le DPO et le RSSI.').length === 0, JSON.stringify(faits('Validé en DPO/RSSI hier.', 'Validé par le DPO et le RSSI.')));
+  verifier('oracle : un sigle absent d\'un groupe à barre oblique reste refusé seul', faits('Validé en DPO/ZRT hier.', 'Validé par le DPO.').join('|') === 'ZRT', JSON.stringify(faits('Validé en DPO/ZRT hier.', 'Validé par le DPO.')));
   verifier('oracle : NON_JUGE exporté', NON_JUGE.length >= 3);
 }
 
