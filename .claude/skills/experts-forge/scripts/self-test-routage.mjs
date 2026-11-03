@@ -17,8 +17,15 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 for (const c of cas.filter(c => !c.registre_modifie)) {
   const r = run(c.demande);
-  const ok = eq(r.routees, c.routees_attendues);
-  console.log(`${ok ? 'PASS' : 'FAIL'} ${c.id} — routees=${JSON.stringify(r.routees)} attendu=${JSON.stringify(c.routees_attendues)}`);
+  const matchees = r.fiches_matchees.map(f => f.domaine);
+  // matchees_attendues / matchees_exclues : fiches qui DOIVENT / NE DOIVENT PAS matcher, statut quel qu'il soit (TF-2065 :
+  // une fiche refusée ne route pas, mais elle doit rester trouvable ; un mot générique ne doit pas la matcher).
+  const manquantes = (c.matchees_attendues ?? []).filter(d => !matchees.includes(d));
+  const intruses = (c.matchees_exclues ?? []).filter(d => matchees.includes(d));
+  const ok = eq(r.routees, c.routees_attendues) && !manquantes.length && !intruses.length;
+  console.log(`${ok ? 'PASS' : 'FAIL'} ${c.id} — routees=${JSON.stringify(r.routees)} attendu=${JSON.stringify(c.routees_attendues)}`
+    + (c.matchees_attendues ? ` matchees=${JSON.stringify(matchees)} manquantes=${JSON.stringify(manquantes)}` : '')
+    + (c.matchees_exclues ? ` intruses=${JSON.stringify(intruses)}` : ''));
   if (!ok) fails++;
 }
 

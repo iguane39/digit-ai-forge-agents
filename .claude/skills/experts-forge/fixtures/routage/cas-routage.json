@@ -7,5 +7,7 @@
   {"id":"R6","demande":"Revoir le lotissement du programme de bascule v1 vers v2 : machine d'états, plan de cohabitation sur six mois et décommissionnement du système source","routees_attendues":["migration-plateforme-brownfield"]},
   {"id":"R7","demande":"Contrôler la qualité de la migration des données du référentiel produits : doublons, valeurs manquantes et cohérence des unités","routees_attendues":["data"]},
   {"id":"R8","demande":"Plan de MEP de la préproduction d'un front sur Cloudflare Workers : wrangler deploy par environnement, Access devant la préproduction et retour arrière de version","routees_attendues":["ops-cloudflare"]},
-  {"id":"R9","demande":"Refondre les pages d'accueil et la page d'accès du portail, puis reporter la décision D1 et la revue R2 du comité au registre","routees_attendues":[]}
+  {"id":"R9","demande":"Refondre les pages d'accueil et la page d'accès du portail, puis reporter la décision D1 et la revue R2 du comité au registre","routees_attendues":[]},
+  {"id":"R10","demande":"Audit de pentest d'une application web : périmètre, règles d'engagement, niveau ASVS visé et qualification CVSS des vulnérabilités","routees_attendues":[],"matchees_attendues":["securite-offensive"]},
+  {"id":"R11","demande":"Revoir la sécurité du circuit de validation des factures : l'attaque possible par un fournisseur, la vulnérabilité de la procédure et l'audit interne du service comptable","routees_attendues":[],"matchees_exclues":["securite-offensive"]}
 ]
