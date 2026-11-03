@@ -3,14 +3,14 @@ name: make-it-better
 description: >
   Fait améliorer un document (Markdown, HTML, Word, PowerPoint, PDF) par Claude Code, tour après tour, chaque tour en
   session neuve dans l'abonnement, sans API. Juge chaque version sans modèle (note, plafond de mots, faits
-  absents de l'origine et des sources), les garde dans leur format, les montre sur une page locale avec
+  absents de l'origine et des sources), les garde dans leur format, les montre sur une page locale, exportable en page HTML autonome, avec
   comparaison et revue à l'aveugle, et conclut par un verdict fixé d'avance. Use when / déclencher sur
   « make it better », « itère ce document N fois », ou pour vérifier si l'itération longue rapporte quelque
   chose face à une seule passe. Ne pas déclencher pour une convergence courte vers un arbitre (→ la-boucle),
   une maquette ou une critique graphique (→ ameliore-le-design, critique-le-design), ni pour juger un
   livrable fini (→ quality-oracles).
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # make-it-better — le test de l'itération longue
@@ -42,15 +42,16 @@ Le modèle ne juge jamais ses versions : la pertinence est un jugement du porteu
 
 ## Commandes
 
-Trois commandes suffisent : jouer les tours, regarder les versions, conclure.
+Quatre commandes : jouer les tours, regarder les versions, exporter une page autonome, conclure.
 
 | Commande | Options | Rôle |
 |---|---|---|
 | `lancer.mjs` | `--document`, `--espace`, `--tours 50`, `--modele opus`, `--effort medium`, `--essai <n>`, `--reprendre`, `--simuler <cas>` | Joue les tours et juge chaque version |
 | `serveur-versions.mjs` | `--espace`, `--port 4750` | La page, sur 127.0.0.1 seulement |
+| `exporter-page.mjs` | `--espace`, `--essai`, `--sortie`, `--jour`, `--document` | Fige la page en un seul fichier HTML autonome, sous `output/` |
 | `bilan.mjs` | `--espace`, `--restants <n>` | `bilan.md`, ou le besoin de quota du test |
 
-Un espace porte un document ; `serveur-versions.mjs` et `bilan.mjs` acceptent aussi le dossier parent de plusieurs espaces. `--essai` vaut par défaut le numéro suivant pour ce modèle ; `--reprendre` porte sur l'essai nommé, à défaut le dernier. Exit de `lancer.mjs` : 0 arrêt normal, 2 refus, 3 pause de quota, 4 arrêt d'identité ou de modèle.
+Un espace porte un document ; `serveur-versions.mjs` et `bilan.mjs` acceptent aussi le dossier parent de plusieurs espaces. `--essai` vaut par défaut le numéro suivant pour ce modèle ; `--reprendre` porte sur l'essai nommé, à défaut le dernier. Exit de `lancer.mjs` : 0 arrêt normal, 2 refus, 3 pause de quota, 4 arrêt d'identité ou de modèle. `exporter-page.mjs` fige l'essai en un fichier HTML autoportant (images en `data:`, écart de pages et de texte recalculés dans la page, revue à l'aveugle sans enregistrement) sous `output/06-comparaisons` chez le produit : il se rouvre et se transmet sans serveur.
 
 ## Ce que le lanceur garantit
 

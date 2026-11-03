@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Page autonome : rien ne part sur le réseau, pas même depuis un aperçu HTML (le srcdoc hérite de cette politique). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; frame-src 'self'; base-uri 'none'; form-action 'none'">
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  var theme = stocke === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  var meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) { meta.setAttribute('content', theme); }
+})();
+</script>
+  <title>Digit-AI — Versions du document · make-it-better (page autonome)</title>
+  <meta name="description" content="Toutes les versions d'un document amélioré tour après tour, dans une seule page autonome : aperçu, comparaison, marquage et revue à l'aveugle, sans serveur.">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --blue: #2563EB;
+      --bg: #FAFBFF;
+      --surface: #FFFFFF;
+      --card: #FFFFFF;
+      --focus-anneau: 2px solid var(--blue);
+      --focus-decalage: 2px;
+      --ink: #0F172A;
+      --muted: #64748B;
+      --faint: #94A3B8;
+      --line: #E6EAF2;
+      --amber: #D97706; --amber-fill: #FFFBEB; --amber-line: #FDE9C8;
+      --green: #15803D; --green-fill: #F2FCF5; --green-line: #CFEEDD;
+      --red:   #B91C1C; --red-fill:   #FEF2F2; --red-line:   #F6CFCF;
+      --green-solid: #166534; --amber-solid: #92400E; --red-solid: #B91C1C; --slate-solid: #4B5563;
+      --papier: #FFFFFF; --sur-plein: #FFFFFF;
+      --repere: #B91C1C; --repere-fond: rgba(185, 28, 28, .10);
+      --r: 12px; --r-sm: 8px;
+      --w: clamp(75vw, 1680px, 92vw);
+      --lire: 90ch;
+      --head: "Montserrat", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --sans: "Inter", "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+    }
+    :root[data-theme="dark"] {
+      --bg: #0B1220; --surface: #121B2E; --card: #121B2E;
+      --ink: #EEF2F8; --muted: #A9B4C4; --faint: #7C8AA0; --line: #263248;
+      --blue: #7DA2F5;
+      --amber: #FBBF6D; --amber-fill: #2B2210; --amber-line: #4A3A18;
+      --green: #7BE0A0; --green-fill: #0F2A1B; --green-line: #1C4A30;
+      --red:   #F5A3A3; --red-fill:   #2C1416; --red-line:   #4C1F22;
+      --green-solid: #166534; --amber-solid: #92400E; --red-solid: #B91C1C; --slate-solid: #4B5563;
+      --papier: #FFFFFF; --sur-plein: #FFFFFF;
+      --repere: #B91C1C; --repere-fond: rgba(185, 28, 28, .10);
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55; font-size: 16px; }
+    [hidden] { display: none !important; }
+    .wrap { max-width: none; margin: 0; padding: 20px 28px 48px; }
+    h1, h2, h3 { font-family: var(--head); color: var(--ink); line-height: 1.2; }
+    h1 { font-size: 1.6rem; font-weight: 800; margin: 0; }
+    h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 8px; }
+    h3 { font-size: 1rem; font-weight: 700; margin: 0 0 8px; }
+    p { margin: 0 0 12px; }
+    code { font-family: var(--mono); font-size: .92em; overflow-wrap: anywhere; }
+    a { color: var(--blue); }
+    .eyebrow { color: var(--muted); font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 4px; }
+    header.doc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; border-bottom: 2px solid var(--blue); padding-bottom: 12px; margin-bottom: 16px; }
+    .commandes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+    select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: var(--r-sm); padding: 8px 12px; min-height: 40px; max-width: 100%; }
+    button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: var(--r-sm); padding: 8px 12px; min-height: 40px; cursor: pointer; }
+    button:hover, button:active { background: var(--line); }
+    button:focus-visible, select:focus-visible, input:focus-visible, iframe:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
+    button[disabled] { color: var(--muted); cursor: not-allowed; background: var(--bg); }
+    button.principal { background: var(--blue); border-color: var(--blue); color: var(--surface); }
+    button.principal:hover { background: var(--blue); }
+    button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+    .theme-toggle { width: 40px; padding: 0; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .theme-toggle .icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+    :root[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+    .avis { background: var(--amber-fill); border: 1px solid var(--amber-line); color: var(--ink); border-radius: var(--r-sm); padding: 12px 16px; margin: 0 0 16px; font-size: .92rem; }
+    .meta { color: var(--muted); font-size: .92rem; margin: 0 0 12px; }
+    .intro { max-width: var(--lire); }
+    .plan { display: grid; grid-template-columns: minmax(280px, 26%) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .menu, .panneau { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+    .menu { max-height: calc(100vh - 140px); overflow-y: auto; }
+    .filtres { border: 0; padding: 0; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .filtres legend { font-size: .92rem; color: var(--muted); padding: 0; margin-bottom: 4px; }
+    .liste, .rangs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .version { display: block; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--line); background: var(--surface); }
+    .version[aria-current="true"] { border-color: var(--blue); box-shadow: inset 3px 0 0 var(--blue); }
+    .version .ligne1 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; font-weight: 700; }
+    .version .commentaire { display: block; font-size: .92rem; margin-top: 4px; overflow-wrap: break-word; }
+    .version .mesure { display: block; font-size: .85rem; color: var(--muted); margin-top: 4px; }
+    .version .motif { display: block; font-size: .85rem; color: var(--red); margin-top: 4px; overflow-wrap: break-word; }
+    .etat { display: inline-block; font-size: .78rem; font-weight: 700; padding: 0 8px; border-radius: 999px; color: var(--sur-plein); background: var(--slate-solid); }
+    .etat.gardee { background: var(--green-solid); }
+    .etat.rejetee { background: var(--red-solid); }
+    .onglets { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+    .onglet { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; font-weight: 700; color: var(--muted); }
+    .onglet:hover { background: transparent; color: var(--ink); }
+    .onglet[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--blue); }
+    .entete-version { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+    iframe { display: block; width: 100%; height: calc(100vh - 260px); min-height: 460px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--papier); }
+    .cote-a-cote { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .colonne { min-width: 0; }
+    .apercu-images { display: grid; gap: 12px; }
+    .plan.sans-menu { grid-template-columns: minmax(0, 1fr); }
+    .plan.sans-menu .menu { display: none; }
+    .choix-comparer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+    .choix-comparer .formes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .page-comparee { margin: 0 0 20px; }
+    .page-comparee figure { margin: 0; min-width: 0; }
+    .page-comparee figcaption { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+    .vue-page { position: relative; line-height: 0; border: 1px solid var(--line); background: var(--papier); }
+    .vue-page img { display: block; width: 100%; height: auto; }
+    .zone { position: absolute; outline: 2px solid var(--repere); background: var(--repere-fond); pointer-events: none; }
+    .texte-comparer { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px; white-space: pre-wrap; overflow-wrap: break-word; font-size: .95rem; max-height: calc(100vh - 300px); overflow-y: auto; }
+    del { background: var(--red-fill); color: var(--ink); text-decoration: line-through; text-decoration-color: var(--red); border-bottom: 1px solid var(--red-line); }
+    ins { background: var(--green-fill); color: var(--ink); text-decoration: underline; text-decoration-color: var(--green); border-bottom: 1px solid var(--green-line); }
+    .vide { border: 1px dashed var(--muted); border-radius: var(--r-sm); padding: 16px; color: var(--ink); background: var(--bg); }
+    pre.extrait { white-space: pre-wrap; overflow-wrap: break-word; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px; font-family: var(--mono); font-size: .9rem; max-height: calc(100vh - 320px); overflow-y: auto; }
+    .statut { min-height: 1.5em; font-size: .92rem; color: var(--muted); margin: 0 0 8px; }
+    .rang { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+    .rang[aria-current="true"] { border-color: var(--blue); box-shadow: inset 3px 0 0 var(--blue); }
+    .rangs { counter-reset: rang; }
+    .rang { counter-increment: rang; }
+    .rang::before { content: counter(rang) "."; font-weight: 700; min-width: 1.6em; }
+    .rang label { display: inline-flex; align-items: center; gap: 4px; font-size: .92rem; }
+    .rang input { width: 20px; height: 20px; }
+    .rang .revele { font-weight: 700; color: var(--green-solid); }
+    .actions-revue { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    footer.doc { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+    @media screen and (max-width: 900px) {
+      .wrap { padding: 16px 12px 32px; }
+      .plan { grid-template-columns: minmax(0, 1fr); }
+      .menu { max-height: none; }
+      .cote-a-cote { grid-template-columns: minmax(0, 1fr); }
+      iframe { height: 70vh; }
+      .texte-comparer { max-height: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+    @page { size: A4; margin: 18mm 16mm; }
+    @media print {
+      :root, :root[data-theme="dark"] {
+        --bg:#FFFFFF; --surface:#FFFFFF; --card:#FFFFFF; --ink:#0F172A;
+        --muted:#64748B; --faint:#94A3B8; --line:#E6EAF2; --blue:#2563EB;
+        --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
+        --green:#15803D; --green-fill:#F2FCF5; --green-line:#CFEEDD;
+        --red:#B91C1C; --red-fill:#FEF2F2; --red-line:#F6CFCF;
+      }
+      .theme-toggle, .commandes { display: none; }
+      .plan { display: block; }
+      .menu { max-height: none; }
+    }
+  </style>
+</head>
+<body data-mode="normal">
+  <div class="wrap">
+    <header class="doc">
+      <div>
+        <p class="eyebrow">Digit-AI · make-it-better</p>
+        <h1 id="titre">Versions du document</h1>
+      </div>
+      <div class="commandes">
+        <button type="button" id="ouvrir-aveugle">Revue à l'aveugle</button>
+        <button type="button" id="quitter-aveugle" hidden>Quitter la revue</button>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Bascule thème sombre" aria-pressed="false">
+          <svg class="icon-moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+          <svg class="icon-sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <div class="intro" data-colonne-ok>
+        <p class="meta" id="meta"></p>
+        <p class="avis">Page autonome : aucun serveur, aucune ressource extérieure. La revue à l'aveugle vit tant que cette page reste ouverte et se perd au rechargement ; rien n'est enregistré.</p>
+        <p class="statut" id="statut" role="status"></p>
+      </div>
+
+      <div class="plan" id="plan">
+        <nav class="menu" id="menu" aria-label="Versions du document">
+          <div id="menu-normal">
+            <h2>Versions</h2>
+            <fieldset class="filtres">
+              <legend>Filtre du menu</legend>
+              <button type="button" class="filtre" data-filtre="toutes" aria-pressed="true">Toutes</button>
+              <button type="button" class="filtre" data-filtre="gardees" aria-pressed="false">Gardées</button>
+              <button type="button" class="filtre" data-filtre="rejetees" aria-pressed="false">Rejetées</button>
+            </fieldset>
+            <ol class="liste" id="liste"></ol>
+            <p class="vide" id="vide-filtre" hidden></p>
+          </div>
+          <div id="menu-aveugle" hidden>
+            <h2>Lettres à classer</h2>
+            <p id="consigne-aveugle">Regarde chaque lettre, puis range-les de la meilleure à la moins bonne.</p>
+            <ol class="rangs" id="rangs"></ol>
+            <div class="actions-revue">
+              <button type="button" class="principal" id="enregistrer-classement">Valider le classement</button>
+              <button type="button" id="lever-aveugle" hidden>Lever l'aveugle</button>
+              <button type="button" id="recommencer-aveugle" hidden>Recommencer (nouveau tirage)</button>
+            </div>
+          </div>
+        </nav>
+
+        <section class="panneau" aria-labelledby="titre-panneau">
+          <div class="entete-version">
+            <h2 id="titre-panneau">Aperçu</h2>
+          </div>
+          <div class="onglets" id="onglets" role="tablist" aria-label="Vue de la version">
+            <button type="button" class="onglet" role="tab" id="onglet-apercu" aria-controls="vue-apercu" aria-selected="true">Aperçu</button>
+            <button type="button" class="onglet" role="tab" id="onglet-comparer" aria-controls="vue-comparer" aria-selected="false" tabindex="-1">Comparer</button>
+          </div>
+          <div id="vue-apercu" role="tabpanel" aria-labelledby="onglet-apercu">
+            <div id="apercu-hote"></div>
+          </div>
+          <div id="vue-comparer" role="tabpanel" aria-labelledby="onglet-comparer" hidden>
+            <div class="choix-comparer">
+              <label class="champ">À gauche
+                <select id="comparer-gauche"></select>
+              </label>
+              <label class="champ">À droite
+                <select id="comparer-droite"></select>
+              </label>
+              <div class="formes" role="group" aria-label="Forme de la comparaison">
+                <button type="button" id="forme-rendu" aria-pressed="true">Dans son format</button>
+                <button type="button" id="forme-texte" aria-pressed="false">En texte marqué</button>
+                <button type="button" id="seulement-modifiees" aria-pressed="false" hidden>Pages modifiées seulement</button>
+                <button type="button" id="pleine-largeur" aria-pressed="false">Masquer le menu</button>
+              </div>
+            </div>
+            <p class="statut" id="ecart-comparer" aria-live="polite"></p>
+            <p class="vide" id="vide-comparer" hidden></p>
+            <div id="pages-comparer" hidden></div>
+            <div class="cote-a-cote" id="cadres-comparer" hidden>
+              <div class="colonne">
+                <h3 id="titre-cadre-gauche">À gauche</h3>
+                <div id="cadre-gauche-hote"></div>
+              </div>
+              <div class="colonne">
+                <h3 id="titre-cadre-droite">À droite</h3>
+                <div id="cadre-droite-hote"></div>
+              </div>
+            </div>
+            <div class="cote-a-cote" id="cote-a-cote" hidden>
+              <div class="colonne">
+                <h3 id="titre-gauche">À gauche</h3>
+                <div class="texte-comparer" id="texte-gauche" tabindex="0" aria-labelledby="titre-gauche"></div>
+              </div>
+              <div class="colonne">
+                <h3 id="titre-droite">À droite</h3>
+                <div class="texte-comparer" id="texte-droite" tabindex="0" aria-labelledby="titre-droite"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="doc">Digit-AI · page autonome exportée par make-it-better. Les écarts de pages sont calculés dans la page, pixel par pixel ; l'écart de texte par le même compte que le skill.</footer>
+  </div>
+
+  <script>
+  (function () {
+    var bouton = document.getElementById('theme-toggle');
+    var racine = document.documentElement;
+    function appliquer(theme) {
+      racine.setAttribute('data-theme', theme);
+      try { localStorage.setItem('digitai-theme', theme); } catch (e) {}
+      bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+    bouton.setAttribute('aria-pressed', racine.getAttribute('data-theme') === 'dark' ? 'true' : 'false');
+    bouton.addEventListener('click', function () {
+      appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  })();
+  </script>
+
+  <script>
+  (function () {
+    'use strict';
+    var D = /*__DONNEES__*/null;
+    var IMG = /*__IMAGES__*/null;
+    // Les seuils de l'écart de pages, repris de scripts/formats.py (commande pages-ecart).
+    var SEUIL_PIXEL = 24;        // écart de gris sous lequel la différence n'est que du lissage
+    var BLANC_ENTRE_ZONES = 0.012; // 2 bandes plus éloignées que ce blanc (part de hauteur) restent distinctes
+    var ZONES_MAX = 12;          // au-delà, un seul cadre couvre le tout, car le texte a reflué
+    var MARGE_ZONE = 0.004;
+
+    // ── L'écart de texte : le code du skill (scripts/lib/diff.mjs), inséré tel quel ──────────────
+    /*__DIFF__*/
+
+    var $ = function (id) { return document.getElementById(id); };
+    var TITRE_NORMAL = document.title;
+    var parNumero = {};
+    D.versions.forEach(function (v) { parNumero[v.numero] = v; });
+    var FORMATS_IMAGES = { docx: 1, pptx: 1, pdf: 1 };
+    var aImages = Boolean(FORMATS_IMAGES[D.ext]);
+    var etat = { choix: null, vue: 'apercu', filtre: 'toutes', gauche: null, gaucheLibre: false, forme: 'rendu', seulesModifiees: false, comparaison: 0, aveugle: null, ordre: [], marquees: {}, lettre: null };
+
+    function vider(n) { while (n.firstChild) { n.removeChild(n.firstChild); } }
+    function creer(balise, classe, texte) {
+      var n = document.createElement(balise);
+      if (classe) { n.className = classe; }
+      if (texte !== undefined) { n.textContent = texte; }
+      return n;
+    }
+    function dire(t) { $('statut').textContent = t; }
+    function libelleNumero(v) { return v.numero === 0 ? 'Origine' : 'Tour ' + v.numero_texte + ' · ' + v.type; }
+    function libelleCourt(n) { var v = parNumero[n]; return v ? (v.numero === 0 ? 'Origine' : 'Tour ' + v.numero_texte) : 'Version ' + n; }
+    function statutLib(v) {
+      if (v.statut === 'origine') { return ['', 'origine']; }
+      if (v.statut === 'rejetee') { return ['rejetee', 'rejetée']; }
+      if (v.type === 'rien') { return ['gardee', 'rien à changer']; }
+      return ['gardee', 'gardée'];
+    }
+
+    $('meta').textContent = [
+      D.titre,
+      D.format + ', ' + (D.versions.length - 1) + ' tours sur ' + (D.borne === null ? '?' : D.borne),
+      'modèle ' + (D.modele || '?') + ', effort ' + (D.effort || '?'),
+      D.arret ? 'arrêt : ' + D.arret : null,
+      D.plafond === null ? null : 'plafond ' + D.plafond + ' mots'
+    ].filter(Boolean).join(' · ');
+
+    // ── Menu ──────────────────────────────────────────────────────────────────────────────────
+    function versionsFiltrees() {
+      return D.versions.filter(function (v) {
+        if (etat.filtre === 'gardees') { return v.statut !== 'rejetee'; }
+        if (etat.filtre === 'rejetees') { return v.statut === 'rejetee'; }
+        return true;
+      });
+    }
+    function rendreListe() {
+      var liste = $('liste');
+      var focus = document.activeElement ? document.activeElement.getAttribute('data-numero') : null;
+      vider(liste);
+      var visibles = versionsFiltrees();
+      visibles.forEach(function (v) {
+        var li = creer('li');
+        var b = creer('button', 'version');
+        b.type = 'button';
+        b.setAttribute('data-numero', v.numero);
+        b.setAttribute('aria-current', v.numero === etat.choix ? 'true' : 'false');
+        var l1 = creer('span', 'ligne1');
+        l1.appendChild(creer('span', '', libelleNumero(v)));
+        var st = statutLib(v);
+        l1.appendChild(creer('span', 'etat ' + st[0], st[1]));
+        b.appendChild(l1);
+        if (v.commentaire) { b.appendChild(creer('span', 'commentaire', v.commentaire)); }
+        b.appendChild(creer('span', 'mesure', v.numero === 0 ? v.total + ' mots' : '+' + v.ajoutes + ' / −' + v.retires + ' mots, ' + v.total + ' au total'));
+        if (v.motif) { b.appendChild(creer('span', 'motif', 'Motif du rejet : ' + v.motif)); }
+        b.addEventListener('click', function () { choisir(v.numero); });
+        li.appendChild(b);
+        liste.appendChild(li);
+      });
+      var retour = focus === null ? null : liste.querySelector('[data-numero="' + focus + '"]');
+      if (retour) { retour.focus(); }
+      var vide = $('vide-filtre');
+      vide.hidden = visibles.length > 0;
+      if (!visibles.length) { vide.textContent = etat.filtre === 'rejetees' ? 'Aucune version rejetée.' : 'Aucune version gardée.'; }
+      document.querySelectorAll('.filtre').forEach(function (f) {
+        f.setAttribute('aria-pressed', f.getAttribute('data-filtre') === etat.filtre ? 'true' : 'false');
+      });
+    }
+
+    // ── Aperçu d'une version, quel que soit son format ───────────────────────────────────────────
+    function rendreApercuDans(hote, v, altPrefixe) {
+      vider(hote);
+      if (v.apercu === 'html') {
+        var cadre = creer('iframe');
+        cadre.setAttribute('sandbox', 'allow-scripts');
+        cadre.setAttribute('title', 'Aperçu — ' + altPrefixe);
+        cadre.setAttribute('srcdoc', v.doc);
+        hote.appendChild(cadre);
+      } else if (v.apercu === 'images') {
+        var grille = creer('div', 'apercu-images');
+        v.pages.forEach(function (id, i) {
+          var vue = creer('div', 'vue-page');
+          var img = creer('img');
+          img.src = IMG[id];
+          img.alt = altPrefixe + ', page ' + (i + 1);
+          img.loading = 'lazy';
+          vue.appendChild(img);
+          grille.appendChild(vue);
+        });
+        hote.appendChild(grille);
+      } else if (v.apercu === 'texte') {
+        hote.appendChild(creer('p', 'avis', 'Aperçu en texte extrait : ' + v.raison + '.'));
+        hote.appendChild(creer('pre', 'extrait', v.texteApercu || '(aucun texte lisible)'));
+      } else {
+        hote.appendChild(creer('p', 'vide', v.raison || 'Cette version n\'a pas de rendu.'));
+      }
+    }
+    function choisir(numero) {
+      etat.choix = numero;
+      var v = parNumero[numero];
+      rendreListe();
+      $('titre-panneau').textContent = v ? libelleNumero(v) : 'Aperçu';
+      if (v) { rendreApercuDans($('apercu-hote'), v, libelleNumero(v)); }
+      if (etat.vue === 'comparer') { rendreComparaison(); }
+    }
+
+    // ── Comparer ─────────────────────────────────────────────────────────────────────────────────
+    function precedenteGardee(v) {
+      var trouvee = null;
+      D.versions.forEach(function (x) {
+        if (x.numero < v.numero && x.statut !== 'rejetee' && x.type !== 'rien' && x.fichier) { trouvee = x.numero; }
+      });
+      return trouvee;
+    }
+    function gaucheEffective(v) { return etat.gaucheLibre ? etat.gauche : precedenteGardee(v); }
+    function remplirChoix(v, gauche) {
+      [['comparer-gauche', gauche], ['comparer-droite', v ? v.numero : null]].forEach(function (c) {
+        var s = $(c[0]);
+        vider(s);
+        if (c[1] === null) { var a = creer('option', '', 'Choisir une version'); a.value = ''; s.appendChild(a); }
+        D.versions.forEach(function (x) {
+          if (!x.fichier && x.numero !== c[1]) { return; }
+          var o = creer('option', '', libelleNumero(x) + (x.statut === 'rejetee' ? ' (rejetée)' : ''));
+          o.value = String(x.numero);
+          s.appendChild(o);
+        });
+        s.value = c[1] === null ? '' : String(c[1]);
+      });
+    }
+    function montrer(bloc) {
+      $('vide-comparer').hidden = bloc !== 'vide';
+      $('pages-comparer').hidden = bloc !== 'pages';
+      $('cadres-comparer').hidden = bloc !== 'cadres';
+      $('cote-a-cote').hidden = bloc !== 'texte';
+      $('seulement-modifiees').hidden = bloc !== 'pages';
+    }
+    function direVide(t) { $('vide-comparer').textContent = t; montrer('vide'); }
+    function pousserSegments(hote, segments, Balise) {
+      vider(hote);
+      segments.forEach(function (s) {
+        if (s.s) { hote.appendChild(creer(Balise, '', s.t)); }
+        else { hote.appendChild(document.createTextNode(s.t)); }
+      });
+    }
+
+    var charger = function (src) { return new Promise(function (ok, ko) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = ko; i.src = src; }); };
+    function pixels(img) {
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      var x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(img, 0, 0);
+      return x.getImageData(0, 0, c.width, c.height).data;
+    }
+    // Les rectangles qui diffèrent, en parts de la page : même logique que formats.py zones_ecart.
+    function zonesEcart(srcA, srcB) {
+      if (srcA === srcB) { return Promise.resolve({ differente: false, zones: [] }); }
+      return Promise.all([charger(srcA), charger(srcB)]).then(function (paire) {
+        var a = paire[0], b = paire[1];
+        var w = a.naturalWidth, h = a.naturalHeight;
+        if (w !== b.naturalWidth || h !== b.naturalHeight) { return { differente: true, zones: [] }; }
+        var pa = pixels(a), pb = pixels(b);
+        var rangs = new Array(h);
+        var y0 = -1, y1 = -1;
+        for (var y = 0; y < h; y++) {
+          var x0 = -1, x1 = -1;
+          for (var x = 0; x < w; x++) {
+            var i = (y * w + x) * 4;
+            var dl = 0.299 * Math.abs(pa[i] - pb[i]) + 0.587 * Math.abs(pa[i + 1] - pb[i + 1]) + 0.114 * Math.abs(pa[i + 2] - pb[i + 2]);
+            if (dl > SEUIL_PIXEL) { if (x0 < 0) { x0 = x; } x1 = x; }
+          }
+          rangs[y] = x0 < 0 ? null : [x0, x1];
+          if (x0 >= 0) { if (y0 < 0) { y0 = y; } y1 = y; }
+        }
+        if (y0 < 0) { return { differente: false, zones: [] }; }
+        var blanc = Math.max(1, Math.round(BLANC_ENTRE_ZONES * h));
+        var bandes = [];
+        for (var yy = y0; yy <= y1; yy++) {
+          var r = rangs[yy];
+          if (!r) { continue; }
+          var last = bandes[bandes.length - 1];
+          if (last && yy - last[3] <= blanc) {
+            last[0] = Math.min(last[0], r[0]); last[2] = Math.max(last[2], r[1] + 1); last[3] = yy + 1;
+          } else { bandes.push([r[0], yy, r[1] + 1, yy + 1]); }
+        }
+        if (bandes.length > ZONES_MAX) {
+          var gx0 = w, gx1 = 0;
+          bandes.forEach(function (bz) { gx0 = Math.min(gx0, bz[0]); gx1 = Math.max(gx1, bz[2]); });
+          bandes = [[gx0, y0, gx1, y1 + 1]];
+        }
+        var zones = bandes.map(function (z) {
+          var ax = Math.max(0, z[0] / w - MARGE_ZONE), ay = Math.max(0, z[1] / h - MARGE_ZONE);
+          var bx = Math.min(1, z[2] / w + MARGE_ZONE), by = Math.min(1, z[3] / h + MARGE_ZONE);
+          return { x: ax, y: ay, l: bx - ax, h: by - ay };
+        });
+        return { differente: true, zones: zones };
+      });
+    }
+    function figurePage(numero, rang, imgId, zones) {
+      var figure = creer('figure');
+      figure.appendChild(creer('figcaption', '', libelleCourt(numero)));
+      if (imgId) {
+        var vue = creer('div', 'vue-page');
+        var img = creer('img');
+        img.src = IMG[imgId];
+        img.alt = (D.ext === 'pptx' ? 'Diapositive ' : 'Page ') + rang + ', ' + libelleCourt(numero);
+        img.loading = 'lazy';
+        vue.appendChild(img);
+        zones.forEach(function (z) {
+          var r = creer('span', 'zone');
+          r.style.left = (z.x * 100) + '%'; r.style.top = (z.y * 100) + '%';
+          r.style.width = (z.l * 100) + '%'; r.style.height = (z.h * 100) + '%';
+          vue.appendChild(r);
+        });
+        figure.appendChild(vue);
+      } else {
+        figure.appendChild(creer('p', 'vide', 'Cette version n\'a pas cette page.'));
+      }
+      return figure;
+    }
+    function comparerPages(g, d, jeton) {
+      var nom = D.ext === 'pptx' ? 'Diapositive' : 'Page';
+      var hote = $('pages-comparer');
+      vider(hote);
+      var nb = Math.max(g.pages ? g.pages.length : 0, d.pages ? d.pages.length : 0);
+      $('seulement-modifiees').setAttribute('aria-pressed', etat.seulesModifiees ? 'true' : 'false');
+      montrer('pages');
+      $('ecart-comparer').textContent = 'Calcul de l\'écart des pages…';
+      var rangs = [];
+      for (var i = 0; i < nb; i++) { rangs.push(i); }
+      var modifiees = 0;
+      Promise.all(rangs.map(function (i) {
+        var gi = g.pages && g.pages[i] ? g.pages[i] : null;
+        var di = d.pages && d.pages[i] ? d.pages[i] : null;
+        if (!gi || !di) { return Promise.resolve({ rang: i + 1, differente: true, zones: [], gi: gi, di: di }); }
+        return zonesEcart(IMG[gi], IMG[di]).then(function (r) { return { rang: i + 1, differente: r.differente, zones: r.zones, gi: gi, di: di }; });
+      })).then(function (pages) {
+        if (jeton !== etat.comparaison) { return; }
+        vider(hote);
+        pages.forEach(function (p) {
+          if (p.differente) { modifiees++; }
+          if (etat.seulesModifiees && !p.differente) { return; }
+          var bloc = creer('section', 'page-comparee');
+          bloc.appendChild(creer('h3', '', nom + ' ' + p.rang + (p.differente ? ', modifiée' : ', identique')));
+          var paire = creer('div', 'cote-a-cote');
+          paire.appendChild(figurePage(g.numero, p.rang, p.gi, p.zones));
+          paire.appendChild(figurePage(d.numero, p.rang, p.di, p.zones));
+          bloc.appendChild(paire);
+          hote.appendChild(bloc);
+        });
+        if (etat.seulesModifiees && !modifiees) { hote.appendChild(creer('p', 'vide', 'Aucune page ne diffère : retire le filtre pour voir les 2 versions.')); }
+        var mesure = modifiees
+          ? nom + 's modifiées : ' + modifiees + ' sur ' + pages.length + ', ce qui diffère est encadré en rouge.'
+          : 'Aucune différence visible entre ces 2 versions.';
+        $('ecart-comparer').textContent = mesure + ' ' + d.ajoutes + ' mots ajoutés, ' + d.retires + ' mots retirés par rapport à la gauche.';
+      }).catch(function () {
+        if (jeton === etat.comparaison) { $('ecart-comparer').textContent = 'Écart des pages non calculé : ce navigateur refuse la lecture des images.'; }
+      });
+    }
+    function rendreComparaison() {
+      var v = parNumero[etat.choix];
+      $('ecart-comparer').textContent = '';
+      $('forme-rendu').setAttribute('aria-pressed', etat.forme === 'rendu' ? 'true' : 'false');
+      $('forme-texte').setAttribute('aria-pressed', etat.forme === 'texte' ? 'true' : 'false');
+      if (!v) { direVide('Choisis une version dans le menu.'); return; }
+      if (v.numero === 0 && !etat.gaucheLibre) { direVide('L\'origine n\'a pas de version précédente : choisis un tour, ou une version à gauche.'); remplirChoix(v, null); return; }
+      var gauche = gaucheEffective(v);
+      remplirChoix(v, gauche);
+      if (gauche === null) { direVide('Choisis une version à gauche.'); return; }
+      if (gauche === v.numero) { direVide('Les 2 côtés montrent la même version : choisis-en une autre à gauche.'); return; }
+      var g = parNumero[gauche], d = v;
+      var jeton = ++etat.comparaison;
+      if (etat.forme === 'texte') {
+        var c = comparer(g.texte || '', d.texte || '');
+        $('titre-gauche').textContent = libelleCourt(g.numero) + ', mots retirés barrés';
+        $('titre-droite').textContent = libelleCourt(d.numero) + ', mots ajoutés soulignés';
+        pousserSegments($('texte-gauche'), c.gauche, 'del');
+        pousserSegments($('texte-droite'), c.droite, 'ins');
+        $('ecart-comparer').textContent = c.ajoutes + ' mots ajoutés, ' + c.retires + ' mots retirés.';
+        montrer('texte');
+        return;
+      }
+      if (aImages && g.apercu === 'images' && d.apercu === 'images') { comparerPages(g, d, jeton); return; }
+      // Markdown, HTML, ou un format à images dont un aperçu manque : les 2 rendus côte à côte.
+      $('titre-cadre-gauche').textContent = libelleCourt(g.numero);
+      $('titre-cadre-droite').textContent = libelleCourt(d.numero);
+      rendreApercuDans($('cadre-gauche-hote'), g, libelleCourt(g.numero));
+      rendreApercuDans($('cadre-droite-hote'), d, libelleCourt(d.numero));
+      $('ecart-comparer').textContent = (aImages ? 'Images de pages indisponibles pour une version : ' : '') + d.ajoutes + ' mots ajoutés, ' + d.retires + ' mots retirés (voir « En texte marqué » pour le détail).';
+      montrer('cadres');
+    }
+    $('comparer-gauche').addEventListener('change', function (e) { etat.gaucheLibre = e.target.value !== ''; etat.gauche = e.target.value === '' ? null : Number(e.target.value); rendreComparaison(); });
+    $('comparer-droite').addEventListener('change', function (e) { if (e.target.value !== '') { choisir(Number(e.target.value)); } });
+    $('forme-rendu').addEventListener('click', function () { etat.forme = 'rendu'; rendreComparaison(); });
+    $('forme-texte').addEventListener('click', function () { etat.forme = 'texte'; rendreComparaison(); });
+    $('seulement-modifiees').addEventListener('click', function () { etat.seulesModifiees = !etat.seulesModifiees; rendreComparaison(); });
+    function pleineLargeur(oui) { $('plan').classList.toggle('sans-menu', oui); $('pleine-largeur').setAttribute('aria-pressed', oui ? 'true' : 'false'); }
+    $('pleine-largeur').addEventListener('click', function () { pleineLargeur(!$('plan').classList.contains('sans-menu')); });
+
+    function montrerVue(vue) {
+      etat.vue = vue;
+      var comparer = vue === 'comparer';
+      $('onglet-apercu').setAttribute('aria-selected', comparer ? 'false' : 'true');
+      $('onglet-comparer').setAttribute('aria-selected', comparer ? 'true' : 'false');
+      $('onglet-apercu').tabIndex = comparer ? -1 : 0;
+      $('onglet-comparer').tabIndex = comparer ? 0 : -1;
+      $('vue-apercu').hidden = comparer;
+      $('vue-comparer').hidden = !comparer;
+      if (comparer) { rendreComparaison(); } else { pleineLargeur(false); choisir(etat.choix); }
+    }
+    $('onglet-apercu').addEventListener('click', function () { montrerVue('apercu'); });
+    $('onglet-comparer').addEventListener('click', function () { montrerVue('comparer'); });
+    $('onglets').addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
+      var vers = etat.vue === 'apercu' ? 'comparer' : 'apercu';
+      montrerVue(vers);
+      $(vers === 'comparer' ? 'onglet-comparer' : 'onglet-apercu').focus();
+      e.preventDefault();
+    });
+    document.querySelectorAll('.filtre').forEach(function (f) {
+      f.addEventListener('click', function () { etat.filtre = f.getAttribute('data-filtre'); rendreListe(); });
+    });
+
+    // ── Revue à l'aveugle : un tirage au hasard, sans aucun enregistrement ────────────────────────
+    function melanger(liste) {
+      var t = liste.slice();
+      var r = new Uint32Array(t.length);
+      crypto.getRandomValues(r);
+      for (var i = t.length - 1; i > 0; i--) { var j = r[i] % (i + 1); var tmp = t[i]; t[i] = t[j]; t[j] = tmp; }
+      return t;
+    }
+    function basculerMode(aveugle) {
+      document.body.setAttribute('data-mode', aveugle ? 'aveugle' : 'normal');
+      $('menu-normal').hidden = aveugle;
+      $('menu-aveugle').hidden = !aveugle;
+      $('onglets').hidden = aveugle;
+      $('ouvrir-aveugle').hidden = aveugle;
+      $('quitter-aveugle').hidden = !aveugle;
+      $('menu').setAttribute('aria-label', aveugle ? 'Lettres à classer' : 'Versions du document');
+      $('titre').textContent = aveugle ? 'Revue à l\'aveugle' : 'Versions du document';
+      document.title = aveugle ? 'Digit-AI — Revue à l\'aveugle · make-it-better' : TITRE_NORMAL;
+      if (aveugle) { montrerVue('apercu'); $('vue-comparer').hidden = true; }
+    }
+    function ouvrirRevue() {
+      var ordre = melanger(D.aveugle);
+      etat.aveugle = { lettres: {}, leve: false, classe: false };
+      ordre.forEach(function (numero, i) { etat.aveugle.lettres[String.fromCharCode(65 + i)] = numero; });
+      etat.ordre = Object.keys(etat.aveugle.lettres).sort();
+      etat.marquees = {};
+      etat.lettre = etat.ordre[0];
+      basculerMode(true);
+      dire(etat.ordre.length + ' lettres à classer pour ' + D.titre + '. L\'aveugle reste partiel : l\'origine ou une longueur inhabituelle peuvent se reconnaître.');
+      rendreRangs();
+      choisirLettre(etat.lettre);
+    }
+    function choisirLettre(lettre) {
+      etat.lettre = lettre;
+      $('titre-panneau').textContent = 'Lettre ' + lettre;
+      var v = parNumero[etat.aveugle.lettres[lettre]];
+      rendreApercuDans($('apercu-hote'), v, 'Lettre ' + lettre);
+      rendreRangs();
+    }
+    function deplacer(lettre, sens) {
+      var i = etat.ordre.indexOf(lettre), j = i + sens;
+      if (j < 0 || j >= etat.ordre.length) { return; }
+      etat.ordre.splice(i, 1); etat.ordre.splice(j, 0, lettre);
+      rendreRangs();
+      dire('Lettre ' + lettre + ' au rang ' + (j + 1) + '.');
+    }
+    function rendreRangs() {
+      var a = etat.aveugle;
+      var hote = $('rangs');
+      var focus = document.activeElement ? document.activeElement.id : '';
+      vider(hote);
+      var fige = a.classe;
+      etat.ordre.forEach(function (lettre, i) {
+        var li = creer('li', 'rang');
+        li.setAttribute('aria-current', lettre === etat.lettre ? 'true' : 'false');
+        var voir = creer('button', '', 'Lettre ' + lettre);
+        voir.type = 'button'; voir.id = 'voir-' + lettre;
+        voir.addEventListener('click', function () { choisirLettre(lettre); });
+        li.appendChild(voir);
+        if (!fige) {
+          var haut = creer('button', '', 'Monter'); haut.type = 'button'; haut.id = 'monter-' + lettre;
+          haut.disabled = i === 0; haut.setAttribute('aria-label', 'Monter la lettre ' + lettre);
+          haut.addEventListener('click', function () { deplacer(lettre, -1); });
+          li.appendChild(haut);
+          var bas = creer('button', '', 'Descendre'); bas.type = 'button'; bas.id = 'descendre-' + lettre;
+          bas.disabled = i === etat.ordre.length - 1; bas.setAttribute('aria-label', 'Descendre la lettre ' + lettre);
+          bas.addEventListener('click', function () { deplacer(lettre, 1); });
+          li.appendChild(bas);
+        }
+        var label = creer('label');
+        var coche = creer('input'); coche.type = 'checkbox'; coche.checked = Boolean(etat.marquees[lettre]); coche.disabled = a.leve;
+        coche.addEventListener('change', function () { etat.marquees[lettre] = coche.checked; });
+        label.appendChild(coche); label.appendChild(document.createTextNode('pertinente'));
+        li.appendChild(label);
+        if (a.leve) {
+          var v = parNumero[a.lettres[lettre]];
+          li.appendChild(creer('span', 'revele', '= ' + (v.numero === 0 ? 'Origine' : 'Tour ' + v.numero_texte) + (etat.marquees[lettre] ? ' · marquée pertinente' : '')));
+        }
+        hote.appendChild(li);
+      });
+      var retour = focus ? document.getElementById(focus) : null;
+      if (retour && retour.disabled) {
+        retour = document.getElementById(focus.replace(/^(monter|descendre)/, function (m) { return m === 'monter' ? 'descendre' : 'monter'; }));
+      }
+      if (retour) { retour.focus(); }
+      $('enregistrer-classement').hidden = fige;
+      $('lever-aveugle').hidden = !fige || a.leve;
+      $('recommencer-aveugle').hidden = !a.leve;
+      $('consigne-aveugle').textContent = a.leve
+        ? 'Aveugle levé : chaque lettre dit sa version. Rien n\'a été enregistré.'
+        : fige ? 'Classement figé. Lève l\'aveugle pour voir chaque version.' : 'Regarde chaque lettre, puis range-les de la meilleure à la moins bonne. Le classement ne se récrit pas une fois validé.';
+    }
+    $('ouvrir-aveugle').addEventListener('click', ouvrirRevue);
+    $('enregistrer-classement').addEventListener('click', function () { etat.aveugle.classe = true; rendreRangs(); dire('Classement figé.'); });
+    $('lever-aveugle').addEventListener('click', function () { etat.aveugle.leve = true; rendreRangs(); dire('Aveugle levé.'); });
+    $('recommencer-aveugle').addEventListener('click', ouvrirRevue);
+    $('quitter-aveugle').addEventListener('click', function () { etat.aveugle = null; basculerMode(false); choisir(etat.choix); });
+
+    // ── Démarrage ─────────────────────────────────────────────────────────────────────────────────
+    var gardees = D.versions.filter(function (v) { return v.statut !== 'rejetee' && v.type !== 'rien'; });
+    etat.choix = gardees.length ? gardees[gardees.length - 1].numero : D.versions[D.versions.length - 1].numero;
+    choisir(etat.choix);
+    dire(D.aveugle_terminal ? '' : 'L\'essai n\'avait pas atteint son arrêt à l\'export : la revue à l\'aveugle reste ouvrable, mais ses versions valent pour cet instantané.');
+  })();
+  </script>
+</body>
+</html>

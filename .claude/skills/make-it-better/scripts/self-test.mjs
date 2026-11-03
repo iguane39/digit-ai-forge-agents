@@ -28,6 +28,7 @@ const { CAS, LIGNES_FIXTURE: CAS_LIGNES } = await import('./lib/cas-simules.mjs'
 const { argumentsDeTour, CONSIGNE_FIXE, consigneDeTour, ecartsDeFormes, envDeTour, GAIN_MAX_FORME_PCT, ligneDeFormat, lirePlafond, lireModifs, lireNote, manquesDuCadre, VOIE_PDF_D124, espaceParDefaut, resoudreCli } = await import('./lancer.mjs');
 const { analyserSortie, ecartIdentite, lireQuota, pauseQuota } = await import('./lib/sortie.mjs');
 const { jugerFaits, extraireNoms, NON_JUGE } = await import('./oracle-faits-sources.mjs');
+const { allouerIndice, rassembler, construirePage } = await import('./exporter-page.mjs');
 const { markdownEnHtml } = await import('./lib/markdown.mjs');
 const { comparer, ecartMots } = await import('./lib/diff.mjs');
 const { htmlEnTexte, markdownEnTexte, compterMots } = await import('./lib/texte.mjs');
@@ -975,6 +976,58 @@ if (partie('serveur')) {
   s3.serveur.close();
 }
 
+// ── L'export en page autonome (exporter-page.mjs) ─────────────────────────────────────────────────
+if (partie('export')) {
+  // allouerIndice : le contrat du pilot (a, réemploi à contenu identique, lettre suivante), réimplémenté sans en dépendre.
+  const ti = mkdtempSync(join(BAC, 'indice-'));
+  verifier('export : indice a si rien du jour', allouerIndice({ dossier: ti, prefixe: 'P - ', jour: '20261103', contenu: 'A' }) === 'a');
+  writeFileSync(join(ti, 'P - 20261103a.html'), 'A');
+  verifier('export : même contenu réemploie sa lettre', allouerIndice({ dossier: ti, prefixe: 'P - ', jour: '20261103', contenu: 'A' }) === 'a');
+  verifier('export : contenu changé prend la lettre suivante', allouerIndice({ dossier: ti, prefixe: 'P - ', jour: '20261103', contenu: 'B' }) === 'b');
+  verifier('export : un autre radical du jour est compté (R-4)', allouerIndice({ dossier: ti, prefixe: 'Q - ', jour: '20261103', contenu: 'C' }) === 'b');
+
+  // TF-2076, écart 6 vs 5 : le texte marqué se compte en mots (lettres ou chiffres), jamais en jetons bruts.
+  const avant = 'Objectif tenu : clarté coût délai équipe planning — rien de plus .';
+  const apres = 'Objectif tenu — rien de plus .';
+  const cmp = comparer(avant, apres);
+  const jetonsRetires = (cmp.gauche.filter((s) => s.s).map((s) => s.t).join('').match(/\S+/g) || []).length;
+  verifier('export : retrait = 5 mots, non 6 jetons (le deux-points isolé ne compte pas)', cmp.retires === 5 && jetonsRetires === 6, `retires=${cmp.retires}, jetons=${jetonsRetires}`);
+  verifier('export : ecartMots et comparer s\'accordent sur le compte', ecartMots(avant, apres).retires === cmp.retires && ecartMots(avant, apres).ajoutes === cmp.ajoutes);
+
+  // Une page construite depuis un essai md simulé : autoportante, le code de diff du skill inséré tel quel.
+  const esp = fabriquerEspace('export-md');
+  lancerSync(['--document', noteFixture('md'), '--espace', esp, '--simuler', 'rejets-2', '--tours', '4']);
+  const { donnees, images } = rassembler(esp, {});
+  const page = construirePage(donnees, images);
+  verifier('export : 5 versions (origine + 4 tours)', donnees.versions.length === 5, String(donnees.versions.length));
+  verifier('export : aveugle = versions retenues (origine + tour cible)', JSON.stringify(donnees.aveugle) === JSON.stringify([0, 3]), JSON.stringify(donnees.aveugle));
+  verifier('export : aucun gabarit laissé non substitué', !/__DONNEES__|__IMAGES__|__DIFF__/.test(page));
+  verifier('export : la règle de comptage du skill est dans la page (lettres/chiffres)', page.includes('mots.filter((m) => /[\\p{L}\\p{N}]/u.test(m)).length'));
+  verifier('export : comparer et ecartMots présents dans la page', /function comparer\b/.test(page) && /function ecartMots\b/.test(page));
+  verifier('export : seuils de formats.py repris (SEUIL_PIXEL 24, ZONES_MAX 12)', /SEUIL_PIXEL = 24/.test(page) && /ZONES_MAX = 12/.test(page));
+  verifier('export : aveugle tiré par crypto.getRandomValues', /crypto\.getRandomValues/.test(page));
+  verifier('export : autoportant — ni fetch, ni /api/, ni /apercu/, ni ressource http externe', !(/\bfetch\(/.test(page)) && !/\/api\//.test(page) && !/\/apercu\//.test(page) && !/(src|href)="https?:/.test(page));
+  verifier('export : aperçu md en iframe srcdoc sandboxé', donnees.versions[0].apercu === 'html' && /setAttribute\('srcdoc'/.test(page) && /setAttribute\('sandbox', 'allow-scripts'\)/.test(page));
+
+  // Un espace PDF synthétique : aperçus embarqués en data:, deux identiques dédoublonnés en une seule image.
+  const espPdf = join(BAC, 'export-pdf');
+  mkdirSync(join(espPdf, 'document'), { recursive: true });
+  writeFileSync(join(espPdf, 'document', 'origine.pdf'), 'pdf');
+  const essaiPdf = join(espPdf, 'essais', 'opus-1');
+  ecrireJson(join(essaiPdf, 'etat.json'), { modele: 'opus', effort: 'medium', tours_max: 2, debut: '2026-11-03T00:00:00.000Z', arret: { type: 'borne', date: '2026-11-03T00:00:00.000Z' } });
+  for (const t of [{ numero: 0, statut: 'gardee', type: 'origine', mots: { ajoutes: 0, retires: 0, total: 100 } }, { numero: 1, statut: 'gardee', type: 'reformulation', mots: { ajoutes: 2, retires: 1, total: 101 } }, { numero: 2, statut: 'gardee', type: 'reformulation', mots: { ajoutes: 1, retires: 0, total: 102 } }]) {
+    ecrireJson(join(essaiPdf, 'tours', pad(t.numero), 'controle.json'), t);
+    writeFileSync(join(essaiPdf, 'tours', pad(t.numero), 'document.pdf'), 'pdf');
+    const ap = join(espPdf, 'apercus', 'opus-1', pad(t.numero));
+    mkdirSync(ap, { recursive: true });
+    writeFileSync(join(ap, 'page-001.png'), Buffer.from(t.numero === 0 ? 'IMG-ORIGINE' : 'IMG-COMMUNE'));
+  }
+  const rPdf = rassembler(espPdf, {});
+  verifier('export : aperçus embarqués en data:image/png', Object.values(rPdf.images).length > 0 && Object.values(rPdf.images).every((u) => u.startsWith('data:image/png;base64,')));
+  verifier('export : 2 aperçus identiques dédoublonnés en une seule image', Object.keys(rPdf.images).length === 2, String(Object.keys(rPdf.images).length));
+  verifier('export : versions identiques → même image, version distincte → autre image', rPdf.donnees.versions[1].pages[0] === rPdf.donnees.versions[2].pages[0] && rPdf.donnees.versions[0].pages[0] !== rPdf.donnees.versions[1].pages[0]);
+}
+
 // ── Structure : ce qui ne doit jamais arriver ────────────────────────────────────────────────────
 if (partie('structure')) {
   const sansCommentaires = (f) => readFileSync(f, 'utf8').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
@@ -983,10 +1036,10 @@ if (partie('structure')) {
   }
   verifier('lancer.mjs n\'importe pas lib/aveugle.mjs', !/aveugle\.mjs/.test(readFileSync(join(ICI, 'lancer.mjs'), 'utf8')));
   verifier('lancer.mjs ne juge pas : aucun appel de modèle hors du tour', (readFileSync(join(ICI, 'lancer.mjs'), 'utf8').match(/argumentsDeTour\(/g) || []).length === 2);
-  verifier('aucun createHash dans le skill', !['lancer.mjs', 'serveur-versions.mjs', 'bilan.mjs', 'oracle-faits-sources.mjs', 'lib/aveugle.mjs', 'lib/commun.mjs'].some((f) => /createHash/.test(readFileSync(join(ICI, f), 'utf8'))));
+  verifier('aucun createHash dans le skill', !['lancer.mjs', 'serveur-versions.mjs', 'bilan.mjs', 'oracle-faits-sources.mjs', 'exporter-page.mjs', 'lib/aveugle.mjs', 'lib/commun.mjs'].some((f) => /createHash/.test(readFileSync(join(ICI, f), 'utf8'))));
   verifier('pymupdf chargé dans la seule commande pdf-appliquer', (readFileSync(join(ICI, 'formats.py'), 'utf8').match(/^\s+import pymupdf/gm) || []).length === 1);
   verifier('digit-ai-pdf n\'importe jamais pymupdf', !readdirSync(join(RACINE, '..', 'digit-ai-pdf', 'scripts')).filter((f) => f.endsWith('.py')).some((f) => /^\s*(import|from)\s+(pymupdf|fitz)\b/m.test(readFileSync(join(RACINE, '..', 'digit-ai-pdf', 'scripts', f), 'utf8'))));
-  verifier('page : aucune ressource externe', !/(src|href)="https?:/.test(readFileSync(join(RACINE, 'assets', 'page-versions.html'), 'utf8')));
+  for (const pg of ['page-versions.html', 'page-export.html']) verifier(`page ${pg} : aucune ressource externe`, !/(src|href)="https?:/.test(readFileSync(join(RACINE, 'assets', pg), 'utf8')));
   const skill = readFileSync(join(RACINE, 'SKILL.md'), 'utf8');
   const description = /description: >\n([\s\S]*?)\nmetadata:/.exec(skill)?.[1].replace(/\s+/g, ' ').trim() || '';
   verifier('SKILL.md : description sous 1 024 caractères', description.length > 0 && description.length <= 1024, String(description.length));

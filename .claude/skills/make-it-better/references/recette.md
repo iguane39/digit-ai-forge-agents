@@ -10,6 +10,8 @@ Tout se joue depuis `scripts/`, hors de tout dépôt pour ce qui écrit. `<racin
 | Export réel, processus laissés, Word figé à 120 secondes, Word du porteur | `node recette-word.mjs --racine <racine>` | non | Word |
 | Export réel, repli, PowerPoint du porteur intact | `node recette-powerpoint.mjs --racine <racine>` | non | PowerPoint |
 | Parcours du porteur dans Chromium, comparaison d'un deck si la racine porte un espace `note-pptx` | `python recette-navigateur.py --racine <racine>` | non | Word, PowerPoint |
+| Page autonome exportée, jugée en fichier (aucun serveur) | `node exporter-page.mjs --espace <espace> --sortie <dossier>`, puis les oracles ci-dessous sur le `.html` produit | non | non |
+| Parcours du porteur dans la page exportée (Chromium, `file://`) : aperçu, comparaison, revue à l'aveugle | `python recette-export.py` | non | non |
 
 `recette-powerpoint.mjs` ne ferme jamais un PowerPoint qu'elle n'a pas ouvert. Si un PowerPoint tourne déjà, elle n'y ouvre rien, relit son numéro, sa date et son titre après chaque export, et ne joue pas le cas de l'instance lancée puis quittée, qu'elle annonce alors. Un deck réel s'éprouve sans modèle sur une copie hors de tout dépôt : `node lancer.mjs --document <copie> --espace <espace> --simuler normal`.
 
@@ -23,4 +25,11 @@ La page se juge après sa dernière écriture, chaque oracle attendu en exit 0 :
 python ~/.claude/skills/digit-ai-page-html/scripts/check_html.py assets/page-versions.html
 python ~/.claude/skills/digit-ai-page-html/scripts/render_page.py http://127.0.0.1:4750/
 node $FORGE_ROOT/digit-ai-forge-design/oracles/run-oracles-design.mjs assets/page-versions.html
+```
+
+La page exportée se juge en fichier, sans serveur, chaque oracle en exit 0 (la référence du produit est 13/13 PASS, TF-2076) :
+
+```bash
+node $FORGE_ROOT/digit-ai-forge-design/oracles/run-oracles-design.mjs "<page exportée>.html" --rendu
+python ~/.claude/skills/digit-ai-page-html/scripts/check_html.py "<page exportée>.html"
 ```
