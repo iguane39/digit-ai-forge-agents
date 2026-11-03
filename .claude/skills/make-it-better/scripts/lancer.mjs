@@ -331,7 +331,7 @@ function jugerPowerpoint(ctx, dir, base, sortiePptx) {
   if (autres.length) motifs.push(`le tour a touché autre chose que le texte des diapositives : ${autres.slice(0, 5).join(', ')}`);
   f.parties_touchees = autres;
 
-  // oracle-pptx ne parse pas le XML : sans LibreOffice, une balise cassée lui rendrait un exit 0.
+  // oracle-pptx parse le XML depuis TF-2064 (règle X1) ; ce contrôle reste parce qu'il compare aussi les formes entre deux versions.
   const formes = appelerFormats(['pptx-formes', sortiePptx]);
   if (formes.code !== 0) motifs.push(`diapositives illisibles : ${formes.json?.motif || formes.stderr}`);
   else if (formes.json.malformes.length) motifs.push(`XML mal formé : ${formes.json.malformes.slice(0, 3).join(' ; ')}`);
