@@ -502,17 +502,47 @@ function ouvrir(artefact) {
 //                    discriminant (« Zorglub », « Chronopode ») ;
 //   · identifiant  — SENSIBLE à la casse, sous-chaîne. Une chaîne technique n'est pas un mot ;
 //   · sigle        — insensible à la casse, MOT ENTIER. Pour un token court (2 à 5 lettres) qui
-//                    vit à l'intérieur de mots ordinaires.
+//                    vit à l'intérieur de mots ordinaires ;
+//   · nom_mot_courant — SENSIBLE à la casse, MOT ENTIER (TF-2130, 04/11/2026). Pour un nom qui est
+//                    AUSSI un mot courant de la langue. Le fait : la porte a refusé l'envoi du pilot
+//                    sur 2 lignes d'une étude et sur un message de commit qui employaient, au sens
+//                    courant, le terme abrégé des tests d'intrusion, parce qu'un produit inscrit à la
+//                    table porte ce terme pour nom. Aucun des trois genres ne convenait : le `nom`
+//                    (insensible à la casse, sous-chaîne) attrape l'usage courant ET les mots
+//                    composés ; le `sigle` (insensible à la casse) attrape l'usage courant ;
+//                    l'`identifiant` (sensible à la casse, sous-chaîne) attrape les mots composés.
+//                    Le quatrième genre est le SEUL qui cumule la casse exacte et la frontière de
+//                    mot : « FooBar » (graphie inventée du jeu d'essai) est attrapé écrit
+//                    exactement ainsi, entre deux non-alphanumériques ; « foobar », « FOOBAR »,
+//                    « fooBar », « FooBarBaz », « XFooBar » et « FooBar_suite » ne le sont pas. Le
+//                    choix est DÉCLARÉ à l'inscription, terme par terme, lisible dans la table : on
+//                    resserre ce qu'on cherche au lieu de retirer le terme (et d'éteindre l'angle).
+//                    Ce que le genre NE COUVRE PAS se dit : la graphie exacte reste protégée, mais
+//                    une mention du même nom en minuscules passe. C'est le prix du mot courant, et
+//                    la table ne doit l'accorder qu'à un nom que la langue emploie réellement.
+// Deux leçons de casse se tiennent ensemble, et ce genre les respecte toutes deux. Celle du 01/09
+// (casse des sigles) : deux contrôles du même sujet doivent s'accorder sur les graphies, sans quoi le
+// nettoyage se croit fini et le refus tombe à la publication ; un consommateur de la table qui
+// lirait `noms_mot_courant` insensible à la casse recréerait ce désaccord. Celle du 06/09 (TF-0880) :
+// une graphie cherchée en sous-chaîne a mordu au milieu d'un blob base64 de police, 3 constats sur 8
+// faux. D'où la règle de ce quatrième genre : la casse est exacte PARCE QUE le mot est courant, et la
+// frontière est posée PARCE QUE le mot compose.
 // La frontière de mot est explicite plutôt que confiée à `\b` : les noms du parc portent tirets,
 // points et accents, et `\b` place une frontière au milieu de « Client-A ».
 function termes(ref) {
   const t = [];
-  // La borne de date (TF-0982) vit dans un bloc `depuis` SÉPARÉ des trois listes : les lecteurs
-  // qui ne la connaissent pas continuent de lire `noms`/`identifiants`/`sigles` à l'identique.
+  // La borne de date (TF-0982) vit dans un bloc `depuis` SÉPARÉ des listes : les lecteurs qui ne la
+  // connaissent pas continuent de lire `noms`/`identifiants`/`sigles` à l'identique. Une table qui
+  // ne porte pas `noms_mot_courant` (toutes celles d'avant TF-2130) se lit exactement comme avant.
   const d = ref.depuis;
   for (const n of ref.noms || []) t.push({ mot: n, casse: false, genre: 'nom', motEntier: false, depuis: borneDe(d, n) });
   for (const i of ref.identifiants || []) t.push({ mot: i, casse: true, genre: 'identifiant', motEntier: false, depuis: borneDe(d, i) });
   for (const g of ref.sigles || []) t.push({ mot: g, casse: false, genre: 'sigle', motEntier: true, depuis: borneDe(d, g) });
+  // Une entrée vide ou non textuelle n'est pas un nom : `git grep -w -e ''` mordrait sur tout.
+  for (const m of ref.noms_mot_courant || []) {
+    if (typeof m !== 'string' || !m.trim()) continue;
+    t.push({ mot: m, casse: true, genre: 'nom_mot_courant', motEntier: true, depuis: borneDe(d, m) });
+  }
   return t;
 }
 
@@ -832,7 +862,7 @@ const { chemin: refPath, pistes } = resoudreReferentiel(cible);
 if (!refPath) {
   out('SKIP', [], [
     'RÉFÉRENTIEL DES NOMS INTERDITS ABSENT — cet oracle ne peut rien mesurer, et il refuse de rendre PASS pour autant : un contrôle sans son référentiel produit de la confiance, pas du doute.',
-    'REMÈDE : cloner le canal confidentiel du parc, dont la table vit en `<racine>\\_confidentiel\\tables\\noms-interdits.json` — cette piste est explorée par défaut, sans aucun argument. À défaut, créer un fichier `_noms-interdits.json` HORS de tout dépôt publié — `{ "noms": ["…"], "identifiants": ["…"] }` — puis le désigner par `--referentiel=<chemin>` ou la variable d\'environnement FORGE_NOMS_INTERDITS.',
+    'REMÈDE : cloner le canal confidentiel du parc, dont la table vit en `<racine>\\_confidentiel\\tables\\noms-interdits.json` — cette piste est explorée par défaut, sans aucun argument. À défaut, créer un fichier `_noms-interdits.json` HORS de tout dépôt publié — `{ "noms": ["…"], "identifiants": ["…"] }` (clés facultatives en plus : `sigles`, mot entier insensible à la casse ; `noms_mot_courant`, mot entier SENSIBLE à la casse, pour un nom qui est aussi un mot courant) — puis le désigner par `--referentiel=<chemin>` ou la variable d\'environnement FORGE_NOMS_INTERDITS.',
     'Pistes explorées, dans l\'ordre : ' + pistes.join(' · '),
   ], 2);
 }
@@ -841,7 +871,7 @@ let ref;
 try { ref = JSON.parse(fs.readFileSync(refPath, 'utf8')); }
 catch (e) { out('SKIP', [], ['référentiel illisible (' + refPath + ') : ' + e.message], 2); }
 const T = termes(ref);
-if (!T.length) out('SKIP', [], ['référentiel vide (' + refPath + ') : ni `noms`, ni `identifiants`, ni `sigles` — rien à chercher'], 2);
+if (!T.length) out('SKIP', [], ['référentiel vide (' + refPath + ') : ni `noms`, ni `identifiants`, ni `sigles`, ni `noms_mot_courant` — rien à chercher'], 2);
 
 // C5 : la table des produits. SON ABSENCE NE FAIT PAS SKIP DE L'ORACLE ENTIER — elle éteint C5 et
 // le DIT. Un oracle qui refuserait de mesurer C1-C4 faute de la seconde table rendrait la porte

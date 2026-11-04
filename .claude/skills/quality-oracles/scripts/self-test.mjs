@@ -2249,6 +2249,149 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-2130 (04/11/2026) — UN NOM QUI EST AUSSI UN MOT COURANT : QUATRIÈME GENRE, `noms_mot_courant`.
+//
+// LE FAIT. Le 04/11, la porte a refusé l'envoi du pilot sur 2 lignes d'une étude et sur un message de
+// commit qui employaient, au sens courant, le terme abrégé des tests d'intrusion, parce qu'un produit
+// inscrit à la table porte ce terme pour nom. Aucun des trois genres ne convenait : le nom (insensible
+// à la casse, sous-chaîne) attrape l'usage courant et les mots composés ; le sigle (insensible à la
+// casse, mot entier) attrape l'usage courant ; l'identifiant (sensible à la casse, sous-chaîne)
+// attrape les mots composés.
+//
+// CE QUE CE BANC PROUVE, EN DEUX SENS QUI NE SE REMPLACENT PAS, SUR CHAQUE ANGLE (C1 contenu, C2 nom
+// de fichier, C3 message, C4 contenu d'histoire, et le mode `--message` du hameçon) :
+//   (A) LE SENS ROUGE — la graphie EXACTE, en mot entier, est attrapée : sans lui, un genre qui ne
+//       déclenche jamais passerait pour une porte qui sait distinguer ;
+//   (B) LE SENS VERT — la même graphie en minuscules, en capitales, ou collée à un autre mot
+//       (« FooBarBaz », « XFooBar », « FooBar_suite ») ne l'est PAS.
+// Et un contrôle de NON-RÉGRESSION : les trois genres d'avant, dans la MÊME table, mordent comme avant.
+// La graphie « FooBar » est INVENTÉE : aucun nom du parc ne s'écrit ici.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-motcourant-'));
+  try {
+    const MOT = 'FooBar';
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const tClients = path.join(tables, 'clients.json');
+    const tProduits = path.join(tables, 'produits.json');
+    fs.writeFileSync(tClients, JSON.stringify({
+      noms: ['Zorglubtron'], identifiants: ['wks-12345678901234'], sigles: ['ZQX'], noms_mot_courant: [MOT],
+    }), 'utf8');
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { 'Zorgonaute-Machin': 'Produit-95' } }), 'utf8');
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const jouer = (cible, ...plus) => {
+      const r = spawnSync(process.execPath, [
+        path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), cible,
+        '--referentiel=' + tClients, '--produits=' + tProduits, ...plus,
+      ], { encoding: 'utf8', timeout: 300000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    // Un dépôt jetable : `fichiers` entrent au premier commit (message `m1`) ; si `retrait`, ils sortent
+    // de l'arbre au second (message neutre) — l'arbre courant est alors propre et seul C4 parle.
+    const batir = (nom, fichiers, m1, retrait) => {
+      const r = path.join(depots, nom);
+      fs.mkdirSync(r, { recursive: true });
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q'); g('config', 'user.email', 'banc@local'); g('config', 'user.name', 'banc');
+      fs.writeFileSync(path.join(r, 'garde.md'), 'Ce fichier reste, et ne porte rien.\n', 'utf8');
+      for (const [f, c] of Object.entries(fichiers)) fs.writeFileSync(path.join(r, f), c, 'utf8');
+      g('add', '-A'); g('commit', '-q', '-m', m1);
+      if (retrait) {
+        for (const f of Object.keys(fichiers)) retirerVerifie(path.join(r, f));
+        g('add', '-A'); g('commit', '-q', '-m', 'retrait des pieces');
+      }
+      return r;
+    };
+    // Le contenu : DEUX fichiers qui doivent mordre (graphie exacte, mot entier — la ponctuation et le
+    // tiret bornent), CINQ qui ne doivent pas. Les noms de fichiers sont neutres : un terme dans un nom
+    // lèverait C2 et C4 de nom, et le banc ne saurait plus ce qu'il mesure.
+    const contenus = {
+      'piece-exacte.md': 'Le produit ' + MOT + ' est livre.\n',
+      'piece-ponct.md': 'Voir (' + MOT + '), ' + MOT + '-suite et « ' + MOT + ' ».\n',
+      'piece-minuscule.md': 'Le test ' + MOT.toLowerCase() + ' en minuscules, ' + MOT.toUpperCase() + ' en capitales et fooBAR en casse mixte.\n',
+      'piece-suffixe.md': 'Le mot ' + MOT + 'Baz est colle a son suffixe.\n',
+      'piece-prefixe.md': 'Le mot X' + MOT + ' est colle a son prefixe.\n',
+      'piece-souligne.md': 'Le mot ' + MOT + '_suite est lie par un souligne.\n',
+      'piece-genres.md': 'Zorglubtron ici.\nLe sigle ZQX seul.\nLe mot azqxue est ordinaire.\nwks-12345678901234 ici.\n',
+    };
+    const DOIVENT = ['piece-exacte.md', 'piece-ponct.md'];
+    const NE_DOIVENT_PAS = ['piece-minuscule.md', 'piece-suffixe.md', 'piece-prefixe.md', 'piece-souligne.md'];
+    const fichiersDe = (j, regle, filtre) => (j ? (j.findings || []) : [])
+      .filter(f => f.regle === regle && (!filtre || filtre.test(f.msg)) && f.msg.includes('« ' + MOT + ' »'))
+      // C4 localise « <révision>:<chemin> », les autres angles « <chemin>:<ligne> » ou le chemin seul.
+      .map(f => (regle === 'C4' ? f.where.split(':').slice(1).join(':') : f.where.split(':')[0]));
+    const verdictDe = (etiquette, j, trouves) => {
+      if (!j) { ko(`TF-2130 ${etiquette} : sortie de l oracle inexploitable`); return; }
+      const manque = DOIVENT.filter(f => !trouves.includes(f));
+      const trop = NE_DOIVENT_PAS.filter(f => trouves.includes(f));
+      if (manque.length) ko(`TF-2130 ${etiquette} (sens rouge) : la graphie exacte « ${MOT} » en mot entier n est PAS attrapée dans ${manque.join(', ')} — le genre \`noms_mot_courant\` ne déclenche pas`);
+      else if (trop.length) ko(`TF-2130 ${etiquette} (sens vert) : « ${MOT} » est attrapée à tort dans ${trop.join(', ')} — minuscules, capitales, casse mixte, mots composés : le genre doit être sensible à la casse ET borné au mot entier`);
+      else ok(`TF-2130 ${etiquette} : la graphie exacte en mot entier est attrapée (${DOIVENT.length} fichiers), minuscules / capitales / casse mixte / préfixe / suffixe / souligné ne le sont pas (${NE_DOIVENT_PAS.length} fichiers)`);
+    };
+
+    // C1 : l'arbre courant.
+    const arbre = batir('arbre', { ...contenus, 'FooBar-notes.md': 'Rien ici.\n' }, 'premier depot du banc', false);
+    const ja = jouer(arbre);
+    verdictDe('C1 contenu', ja, fichiersDe(ja, 'C1'));
+    // C2 : les noms de fichiers — le nom exact borné par un tiret mord ; sa version en minuscules et les
+    // noms composés non. Les variantes vivent dans un SECOND dépôt : « FooBar-notes.md » et « foobar-notes.md »
+    // ne coexistent pas sur un système de fichiers insensible à la casse (Windows), et un cas où l'un écrase
+    // l'autre serait vide de sens.
+    const c2 = fichiersDe(ja, 'C2');
+    const rien = 'Rien ici.\n';
+    const noms = batir('arbre-noms', { 'foobar-notes.md': rien, 'FooBarBaz-notes.md': rien, 'XFooBar-notes.md': rien }, 'premier depot du banc', false);
+    const jn = jouer(noms);
+    const c2v = fichiersDe(jn, 'C2');
+    if (!ja || !jn) ko('TF-2130 C2 nom de fichier : sortie de l oracle inexploitable');
+    else if (!c2.includes('FooBar-notes.md')) ko('TF-2130 C2 nom de fichier (sens rouge) : « FooBar-notes.md » n est PAS attrapé');
+    else if (c2v.length) ko(`TF-2130 C2 nom de fichier (sens vert) : ${c2v.join(', ')} attrapé(s) à tort — minuscules ou nom composé`);
+    else ok('TF-2130 C2 nom de fichier : « FooBar-notes.md » mord ; « foobar-notes.md », « FooBarBaz-notes.md » et « XFooBar-notes.md » non');
+
+    // NON-RÉGRESSION : les trois genres d'avant, dans la même table, sur le même passage.
+    const lignesGenres = (ja ? ja.findings || [] : []).filter(f => f.regle === 'C1' && f.where.startsWith('piece-genres.md:')).map(f => f.where.split(':')[1]).sort();
+    if (!ja) { /* déjà dit */ }
+    else if (lignesGenres.join(',') !== '1,2,4') ko(`TF-2130 non-régression : les trois genres d avant mordent sur les lignes [${lignesGenres}] de piece-genres.md, attendu [1,2,4] (nom, sigle en mot entier, identifiant ; le mot azqxue reste muet)`);
+    else ok('TF-2130 non-régression : nom, sigle (mot entier) et identifiant mordent comme avant dans la même table que `noms_mot_courant` (lignes 1, 2 et 4 ; « azqxue » muet)');
+
+    // C4 : le contenu de l'histoire, fichiers RETIRÉS de l'arbre — le groupe `git grep -w` sans `-i`.
+    const histoire = batir('histoire', contenus, 'premier depot du banc', true);
+    const jh = jouer(histoire);
+    verdictDe('C4 contenu d histoire', jh, fichiersDe(jh, 'C4', /CONTENU d'un fichier de l'historique/));
+
+    // C3 : les messages de commit.
+    const mess = path.join(depots, 'messages');
+    fs.mkdirSync(mess, { recursive: true });
+    {
+      const g = (...a) => spawnSync('git', ['-C', mess, ...a], { encoding: 'utf8' });
+      g('init', '-q'); g('config', 'user.email', 'banc@local'); g('config', 'user.name', 'banc');
+      const poser = (n, msg) => { fs.writeFileSync(path.join(mess, 'f.txt'), n + '\n', 'utf8'); g('add', '-A'); g('commit', '-q', '-m', msg); return g('rev-parse', 'HEAD').stdout.trim().slice(0, 12); };
+      const shaExact = poser('1', 'Ajoute ' + MOT + ' au catalogue');
+      const shaMin = poser('2', 'Rappelle ' + MOT.toLowerCase() + ' et ' + MOT.toUpperCase() + ' en usage courant');
+      const shaCol = poser('3', 'Corrige ' + MOT + 'Baz et X' + MOT + ' et ' + MOT + '_suite');
+      const jm = jouer(mess);
+      const shas = fichiersDe(jm, 'C3');
+      if (!jm) ko('TF-2130 C3 message : sortie de l oracle inexploitable');
+      else if (!shas.includes(shaExact)) ko(`TF-2130 C3 message (sens rouge) : le message portant la graphie exacte « ${MOT} » n est PAS attrapé`);
+      else if (shas.includes(shaMin) || shas.includes(shaCol)) ko('TF-2130 C3 message (sens vert) : un message en minuscules, capitales ou mot composé est attrapé à tort');
+      else ok('TF-2130 C3 message : le message portant la graphie exacte est attrapé, ceux en minuscules / capitales / mots composés ne le sont pas');
+    }
+
+    // Le hameçon commit-msg : `--message=<fichier>`.
+    const msgFichier = (nom, texte) => { const p = path.join(tmp, nom); fs.writeFileSync(p, texte, 'utf8'); return p; };
+    const jmo = jouer(mess, '--message=' + msgFichier('msg-exact.txt', 'Ajoute ' + MOT + ' au catalogue\n'));
+    const jmn = jouer(mess, '--message=' + msgFichier('msg-courant.txt', 'Le test ' + MOT.toLowerCase() + ' est un usage courant\n# ' + MOT + ' en commentaire git\nIl y a ' + MOT + 'Baz aussi\n'));
+    if (!jmo || !jmn) ko('TF-2130 --message : sortie de l oracle inexploitable');
+    else if (jmo.verdict !== 'FAIL' || fichiersDe(jmo, 'C3').length !== 1) ko(`TF-2130 --message (sens rouge) : le message portant la graphie exacte rend ${jmo.verdict} / ${fichiersDe(jmo, 'C3').length} constat(s), attendu FAIL / 1`);
+    else if (jmn.verdict !== 'PASS') ko(`TF-2130 --message (sens vert) : un message en minuscules / mot composé rend ${jmn.verdict}, attendu PASS (la ligne de commentaire git n est jamais jugée)`);
+    else ok('TF-2130 --message : la graphie exacte fait échouer le hameçon (1 constat), l usage courant en minuscules et le mot composé passent');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0982 (08/09/2026) — LA BORNE DE DATE DES TABLES, ET CE QU'ELLE N'EXCUSE PAS.
 //
 // LE FAIT PAYÉ, ET IL EST MESURÉ. Le 08/09, cette porte rendait FAIL sur le dépôt du pilot avec
