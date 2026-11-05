@@ -31,8 +31,13 @@
  *     <summary>Nom du document cite — 12 Ko</summary>
  *     <script type="text/plain" class="src-brut">…le document, tel quel…<\/script>
  *   </details>
- *   <script src="source-reader.js"><\/script>
+ *   (balise de script dont l'attribut de source designe source-reader.js, ou ce fichier inline)
  *   <script>DigitAISourceReader.init();<\/script>
+ *
+ * TF-2175 (05/11/2026) : ce commentaire est copie tel quel dans chaque page qui embarque le
+ * composant, et il ecrivait l'attribut de source avec une adresse nue vers ce fichier :
+ * static_cache_gate de forge-development y lisait un « statique-nu ». Il ne l'ecrit plus ;
+ * self_test.py le verifie pour tous les assets.
  *
  * Le document vit dans un <script type="text/plain"> : c'est le SEUL emplacement ou du Markdown
  * brut ne sera ni interprete comme du HTML, ni reflowe, ni echappe deux fois. Un <pre> cache

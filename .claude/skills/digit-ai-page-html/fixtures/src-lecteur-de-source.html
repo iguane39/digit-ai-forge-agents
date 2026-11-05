@@ -91,7 +91,7 @@ de performance.</p>
 <!-- COMPOSANT-EMBARQUE:DEBUT source-reader.js — copie du socle digit-ai-page-html/assets/source-reader.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="source-reader.js" data-empreinte="sha256:0a572ea2848cba6f7f37e478b696071f2dad827f849536b20aee346dc10e24bf">
+<script data-composant="source-reader.js" data-empreinte="sha256:f4534e857b7b4d4a8b2a72452f6322540226f8d159cbb26fbcbac5eda1a0b799">
 /* source-reader — le LECTEUR DE SOURCE d'une page autoportante (TF-0489, 23/08/2026).
  *
  * promesses-verifiees — ce fichier ADHÈRE au contrôle des promesses de commentaire
@@ -125,8 +125,13 @@ de performance.</p>
  *     <summary>Nom du document cite — 12 Ko</summary>
  *     <script type="text/plain" class="src-brut">…le document, tel quel…<\/script>
  *   </details>
- *   <script src="source-reader.js"><\/script>
+ *   (balise de script dont l'attribut de source designe source-reader.js, ou ce fichier inline)
  *   <script>DigitAISourceReader.init();<\/script>
+ *
+ * TF-2175 (05/11/2026) : ce commentaire est copie tel quel dans chaque page qui embarque le
+ * composant, et il ecrivait l'attribut de source avec une adresse nue vers ce fichier :
+ * static_cache_gate de forge-development y lisait un « statique-nu ». Il ne l'ecrit plus ;
+ * self_test.py le verifie pour tous les assets.
  *
  * Le document vit dans un <script type="text/plain"> : c'est le SEUL emplacement ou du Markdown
  * brut ne sera ni interprete comme du HTML, ni reflowe, ni echappe deux fois. Un <pre> cache

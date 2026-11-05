@@ -4156,13 +4156,21 @@ def run_assets_inlinables():
     # autoportante (composant embarque, scelle par empreinte) : il ne doit pas ecrire d'adresse
     # statique nue, que static_cache_gate de forge-development lit comme `statique-nu` (2 faux
     # constats mesures le 03/11/2026 sur les projections ARCHITECTURE.html et MODELE-DONNEES.html).
-    nues = adresses_statiques_nues((FIXTURES.parent / "assets" / "find-in-page.js").read_text(encoding="utf-8"))
-    out.append({"fixture": "assets/find-in-page.js", "verdict": "OK" if not nues else "ECHEC",
-                "attendu": "aucune adresse statique nue (href|src vers .js/.css sans version)",
-                "obtenu": f"lignes {nues}" if nues else "aucune",
-                "regle": "TF-2094 static_cache_gate", "detail": ""})
+    # TF-2175 — la regle vaut pour TOUS les assets inlinables : source-reader.js portait la meme ligne
+    # (`<script src="source-reader.js">`, ligne 34), vue le 05/11/2026 pendant TF-2094 ; la garde ne
+    # lisait que find-in-page.js, donc la meme faute pouvait vivre dans n'importe quel autre asset.
+    for chemin in sorted((FIXTURES.parent / "assets").glob("*.[jc]s*")):
+        if chemin.suffix not in (".js", ".css"):
+            continue
+        nues = adresses_statiques_nues(chemin.read_text(encoding="utf-8"))
+        out.append({"fixture": f"assets/{chemin.name}", "verdict": "OK" if not nues else "ECHEC",
+                    "attendu": "aucune adresse statique nue (href|src vers .js/.css sans version)",
+                    "obtenu": f"lignes {nues}" if nues else "aucune",
+                    "regle": "TF-2094 static_cache_gate", "detail": ""})
     ligne_avant = ' *   <script src="find-in-page.js"><\\/script>'
-    vu_nu = adresses_statiques_nues(ligne_avant) == [1]
+    # TF-2175 : la ligne d'avant correctif de source-reader.js, verbatim, est reconnue elle aussi.
+    vu_nu = (adresses_statiques_nues(ligne_avant) == [1]
+             and adresses_statiques_nues(' *   <script src="source-reader.js"><\\/script>') == [1])
     ligne_versionnee = ' *   <script src="find-in-page.js?v=3f9a1c"><\\/script>'
     muet_versionnee = adresses_statiques_nues(ligne_versionnee) == []
     out.append({"fixture": "ligne d'avant correctif TF-2094 (sens rouge) + sa forme versionnee (sens vert)",
