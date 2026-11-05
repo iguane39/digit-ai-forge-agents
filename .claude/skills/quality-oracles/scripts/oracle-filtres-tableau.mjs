@@ -44,9 +44,12 @@ function tables(html) {
     const thead = /<thead\b[^>]*>([\s\S]*?)<\/thead>/i.exec(m[2]);
     const tbody = /<tbody\b[^>]*>([\s\S]*?)<\/tbody>/i.exec(m[2]);
     const ths = thead ? [...thead[1].matchAll(/<th\b([^>]*)>([\s\S]*?)<\/th>/gi)].map(t => ({ attrs: attrs(t[1]), texte: texte(t[2]) })) : [];
+    /* TF-2158 : les cellules BRUTES de chaque rangee d'en-tete (colonne i = cellule i de chaque rangee). */
+    const rangeesEntete = thead ? [...thead[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+      .map(r => [...r[1].matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)].map(c => ({ attrs: attrs(c[1]), brut: c[2], texte: texte(c[2]) }))) : [];
     const lignes = tbody ? [...tbody[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
       .map(r => [...r[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(c => texte(c[1]))) : [];
-    out.push({ attrs: a, ths, lignes, ligne: html.slice(0, m.index).split('\n').length });
+    out.push({ attrs: a, ths, rangeesEntete, lignes, ligne: html.slice(0, m.index).split('\n').length });
   }
   return out;
 }
@@ -62,6 +65,61 @@ function colonnesCategorielles(t) {
     if (forcee !== undefined || (distinctes.size > 1 && distinctes.size < n)) cols.push(i);
   }
   return cols;
+}
+
+/* TF-2158 (lot Produit-86 20261104a, RP-7) — DEUX DEFAUTS D'ERGONOMIE QUE LE PORTEUR A VUS D'EMBLEE, apres
+   une critique PASS et des filtres PASS : des filtres DOUBLES, et un filtre sur une colonne de 55 valeurs
+   pour 3 etats. G1-G6 jugeaient le cablage, jamais l'USAGE du filtre.
+
+   G10 — UNE COLONNE, UN SEUL CONTROLE DE FILTRE. Le composant pose une facette dans l'en-tete de CHAQUE
+   colonne d'un tableau data-filterable, sauf `data-filter-col="off"`. Un second controle sur la meme colonne
+   — une liste ou un champ DANS l'en-tete (autre cellule de la meme colonne, dans une rangee d'en-tete), ou
+   un controle HORS du tableau qui le designe (aria-controls | data-table = id du tableau)
+   et nomme la colonne (aria-label, name, data-col, data-colonne, ou son <label for>) —
+   fait deux filtres pour une colonne. La sortie est l'une des deux : retirer le controle manuel, ou
+   declarer la colonne hors facette (`data-filter-col="off"` + motif) quand le controle manuel est le bon.
+   LIMITE DITE : un filtre pose par un script, sans controle dans le HTML source ou sans aria-controls /
+   data-table vers l'id du tableau, n'est pas vu (non_juge).
+
+   G11 — PAS DE FACETTE SUR UNE COLONNE AUX VALEURS PRESQUE TOUTES UNIQUES. Au-dela de 15 valeurs distinctes
+   (la forme « recherche » du composant, references/composant-filtres-tableau.md G7) et quand au moins 90 %
+   des lignes portent une valeur distincte, la facette est une liste de cases que personne ne parcourt. Le
+   composant n'admet qu'une sortie, deja declaree : `data-filter-col="off"` + `data-filter-reason`. Les deux
+   SEUILS (15 et 90 %) sont ceux de l'agent de TF-2158, non fondes sur une mesure du parc : le seul fait est
+   le cas du porteur (55 valeurs). Sous 15 valeurs, TF-0782 s'applique : une colonne cle de 8 valeurs sur 8
+   lignes GARDE sa facette. */
+const SEUIL_VALEURS_UNIQUES = 15;
+const PART_VALEURS_UNIQUES = 0.9;
+const TYPES_NON_FILTRE = /^(hidden|checkbox|radio|button|submit|reset|image|file)$/i;
+
+const normaliser = (s) => texte(String(s ?? '')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+/* Un controle de saisie qui peut filtrer : select, champ de saisie (hors case, bouton, cache), role combobox. */
+function controlesDeFiltre(htmlFragment) {
+  const trouves = [];
+  for (const m of htmlFragment.matchAll(/<select\b([^>]*)>/gi)) trouves.push({ balise: 'select', attrs: attrs(m[1]) });
+  for (const m of htmlFragment.matchAll(/<input\b([^>]*)>/gi)) {
+    const a = attrs(m[1]);
+    if (!TYPES_NON_FILTRE.test(a.type || 'text')) trouves.push({ balise: 'input', attrs: a });
+  }
+  for (const m of htmlFragment.matchAll(/<(?!select\b|input\b)[a-z]+\b([^>]*\brole\s*=\s*["']combobox["'][^>]*)>/gi)) trouves.push({ balise: 'combobox', attrs: attrs(m[1]) });
+  return trouves;
+}
+
+/* Les controles HORS tableau qui designent la table `id` : { colonne (libelle normalise ou '') , balise }. */
+function controlesExternes(html, id) {
+  const hors = html.replace(/<table\b[\s\S]*?<\/table>/gi, '');
+  const libelles = new Map();
+  for (const m of hors.matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)) { const a = attrs(m[1]); if (a.for) libelles.set(a.for, texte(m[2])); }
+  const out = [];
+  for (const c of controlesDeFiltre(hors)) {
+    const a = c.attrs;
+    const vise = a['aria-controls'] ?? a['data-table'] ?? a['data-filtre-table'] ?? a['data-tf-table'];
+    if (vise === undefined || vise.trim() !== id) continue;
+    const nom = [a['aria-label'], a['data-col'], a['data-colonne'], a['name'], libelles.get(a.id)].find(v => v && v.trim());
+    out.push({ colonne: nom ? normaliser(nom) : '', balise: c.balise });
+  }
+  return out;
 }
 
 /* RS-1 (TF-0837) : assets externes declares par le document (script src / link href
@@ -165,6 +223,17 @@ function controler(html, chemin) {
     if (!id) add('G4', 'bloquant', 'Tableau data-filterable sans attribut id : le composant ne peut ni etre initialise ni relie a son compteur.', oue);
     if (!t.ths.length) add('G4', 'bloquant', 'Tableau data-filterable sans <thead> porteur de <th> : prerequis du composant.', oue);
 
+    /* G11 (TF-2158) : une facette sur une colonne aux valeurs presque toutes uniques. */
+    const premiere = t.rangeesEntete[0] || [];
+    for (let i = 0; i < premiere.length; i++) {
+      if (premiere[i].attrs['data-filter-col'] === 'off') continue;
+      const valeurs = t.lignes.map(l => l[i] ?? '');
+      const distinctes = new Set(valeurs).size;
+      if (valeurs.length >= SEUIL_LIGNES && distinctes > SEUIL_VALEURS_UNIQUES && distinctes / valeurs.length >= PART_VALEURS_UNIQUES) {
+        add('G11', 'bloquant', `Colonne "${premiere[i].texte}" : ${distinctes} valeurs distinctes sur ${valeurs.length} lignes (${Math.round(100 * distinctes / valeurs.length)} %) — sa facette est une liste de ${distinctes} cases que personne ne parcourt. Geste : data-filter-col="off" avec data-filter-reason sur ce <th> (la recherche de page couvre l'identifiant), seule sortie du composant (G7).`, oue);
+      }
+    }
+
     if (!initAll && id) {
       const initCible = new RegExp(`DigitAITableFilters\\s*\\.\\s*init\\s*\\([^)]*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(corpus);
       if (!initCible) add('G3', 'bloquant', `Tableau "${id}" jamais initialise : ni initAll(), ni init() le designant (document ou asset externe declare).`, oue);
@@ -177,11 +246,33 @@ function controler(html, chemin) {
     }
   }
 
+  /* G10 (TF-2158) : une colonne, un seul controle de filtre. Jugee sur TOUT tableau portant un controle manuel
+     ou une facette du composant — un tableau exempte (data-filterable="off") n'a pas de facette, mais deux
+     controles manuels sur la meme colonne restent un doublon. */
+  for (const t of toutes) {
+    const premiere = t.rangeesEntete[0] || [];
+    const id = t.attrs['id'];
+    const facette = t.attrs['data-filterable'] !== undefined && t.attrs['data-filterable'] !== 'off';
+    const externes = id ? controlesExternes(html, id) : [];
+    premiere.forEach((cellule, i) => {
+      const manuels = [];
+      for (const rangee of t.rangeesEntete) if (rangee[i]) manuels.push(...controlesDeFiltre(rangee[i].brut).map(c => ({ ...c, lieu: "dans l'en-tete" })));
+      const libelle = normaliser(cellule.texte);
+      if (libelle) for (const c of externes) if (c.colonne === libelle) manuels.push({ ...c, lieu: 'hors du tableau' });
+      const composant = facette && cellule.attrs['data-filter-col'] !== 'off' ? 1 : 0;
+      if (composant + manuels.length >= 2) {
+        add('G10', 'bloquant', `Colonne "${cellule.texte}"${id ? ` du tableau "${id}"` : ''} : ${composant + manuels.length} controles de filtre pour une seule colonne (${[composant ? 'la facette du composant' : null, ...manuels.map(c => `un ${c.balise} ${c.lieu}`)].filter(Boolean).join(' + ')}). Geste : retirer le controle manuel, ou declarer la colonne hors facette (data-filter-col="off" avec data-filter-reason) quand c'est le controle manuel qui est le bon.`, `ligne ${t.ligne}`);
+      }
+    });
+  }
+
   if (filtrables > 0 && !assetPresent) add('G2', 'bloquant', 'Aucune reference a table-filters.js ni a DigitAITableFilters : le composant est declare mais absent.', 'document');
   if (filtrables > 0 && !printOk) add('G6', 'bloquant', 'Aucune regle @media print reaffichant tr[data-tf-hidden] (document ou asset externe declare) : un PDF exporte apres filtrage sortirait tronque.', 'document');
 
   OUT.non_juge.push('Comportement d\'execution : construction des panneaux, bascules Tous/Aucun, recherche accent-insensible, combinaison ET entre colonnes — exige un rendu navigateur (render_page.py).');
   OUT.non_juge.push('Pertinence des colonnes retenues comme categorielles : heuristique de cardinalite, non validee metier.');
+  OUT.non_juge.push(`G10 (TF-2158) : seuls les controles ECRITS dans le HTML source sont vus (liste ou champ dans l'en-tete, ou controle hors tableau qui porte aria-controls / data-table = id du tableau ET nomme la colonne) — un filtre pose par un script, une tuile KPI (data-kpi-table) ou un controle qui ne designe pas le tableau ne sont pas comptes.`);
+  OUT.non_juge.push(`G11 (TF-2158) : seuils de ${SEUIL_VALEURS_UNIQUES} valeurs distinctes et de ${Math.round(PART_VALEURS_UNIQUES * 100)} % de lignes distinctes — poses par l'agent de TF-2158, non fondes sur une mesure du parc ; seules les lignes du premier <tbody> sont comptees.`);
   if (exemptees) OUT.non_juge.push(`${exemptees} tableau(x) exempte(s) par data-filterable="off" — non juge(s).`);
   if (lues.length) OUT.non_juge.push(`Assets externes lus pour G3/G6 (RS-1) : ${lues.join(', ')}.`);
   if (manquantes.length) OUT.non_juge.push(`Assets externes references mais illisibles depuis le dossier de la page — G3/G6 juges sans leur contenu : ${manquantes.join(', ')}.`);

@@ -1107,7 +1107,7 @@
    "content_patterns": [
     "<table"
    ],
-   "checklist": "G1 tableau en perimetre (>= 8 lignes et >= 1 colonne categorielle) marque data-filterable ou exempte avec motif · G2 asset table-filters.js reference · G3 tableau initialise · G4 id + thead porteur de th · G5 compteur data-tf-count-for avec aria-live · G6 regle @media print reaffichant tr[data-tf-hidden]",
+   "checklist": "G1 tableau en perimetre (>= 8 lignes et >= 1 colonne categorielle) marque data-filterable ou exempte avec motif · G2 asset table-filters.js reference · G3 tableau initialise · G4 id + thead porteur de th · G5 compteur data-tf-count-for avec aria-live · G6 regle @media print reaffichant tr[data-tf-hidden] · G10 un seul controle de filtre par colonne (facette du composant + liste dans l en-tete ou hors tableau qui designe le tableau) · G11 pas de facette sur une colonne de plus de 15 valeurs distinctes dont au moins 90 % des lignes ont une valeur distincte (sortie : data-filter-col=off + data-filter-reason) — TF-2158",
    "statut": "ok",
    "non_juge": [
     "comportement d'execution (panneaux, Tous/Aucun, recherche, combinaison ET) — exige un rendu navigateur",
@@ -2277,6 +2277,28 @@
     "LE TEXTE ÉCRIT PAR UN SCRIPT dans une page HTML, et le texte dessiné dans une image"
    ],
    "note": "ext VIDE À DESSEIN : rien dans une extension ne dit qu'un fichier est une version, et le contrôle exige l'origine. lancer.mjs et bilan.mjs de make-it-better l'appellent ; en ligne de commande, sans --origine, il cherche origine.md et sources/ à côté de la version."
+  },
+  {
+   "domaine": "Code : appel de modèle tenu sous une transaction d'écriture",
+   "ext": [
+    ".py"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-appel-modele-sous-verrou.mjs",
+    "{file}"
+   ],
+   "checklist": "AM1 aucun appel de modèle (SDK Anthropic/OpenAI, claude lancé par subprocess, requête vers une API de modèle, fonction du même fichier qui l'appelle) pendant qu'une transaction d'écriture est ouverte (INSERT/UPDATE/DELETE/REPLACE ou BEGIN IMMEDIATE/EXCLUSIVE non validés, écriture d'ORM dans un with transactionnel) · exemption déclarée « # appel-sous-verrou-ok: <raison, 8 caractères au moins> »",
+   "statut": "ok",
+   "provenance": "TF-2163, Produit-86 lot 20261104a RA-2, 05/11/2026 : des pseudonymes rangés en base SQLite avant l'appel du modèle, le verrou d'écriture tenu pendant la réflexion, la fiche d'une mission en erreur 500. Analyse ast de Python (scripts/lib/appel_modele_sous_verrou.py).",
+   "non_juge": [
+    "Python seulement ; SQLite et ORM courants (SQLAlchemy, Django)",
+    "suivi dans UN fichier : écriture faite dans un autre module, ou transaction ouverte par l'appelant d'une fonction qui appelle le modèle",
+    "appel de modèle reconnu par son nom pointé (client enveloppé sous un autre nom non vu, sauf défini dans le fichier)",
+    "écritures d'ORM comptées seulement dans un with transactionnel",
+    "durée réelle du verrou et mode de journalisation (WAL) : un verrou court et mesuré s'exempte avec sa raison"
+   ]
   }
  ]
 }

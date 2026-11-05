@@ -1053,6 +1053,46 @@
    ]
   },
   {
+   "nom": "filtres-tableau-colonne-unique",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-filtres-tableau.mjs",
+    "{fixture}"
+   ],
+   "red": "filtres-colonne-unique-rouge.html",
+   "green": "filtres-colonne-unique-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "\"regle\":\"G11\""
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "note": "TF-2158 — G11 : une facette sur une colonne de 20 valeurs distinctes sur 20 lignes est refusée ; la verte joue le geste du message (data-filter-col=\"off\" + data-filter-reason)."
+  },
+  {
+   "nom": "filtres-tableau-filtre-double",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-filtres-tableau.mjs",
+    "{fixture}"
+   ],
+   "red": "filtres-double-rouge.html",
+   "green": "filtres-double-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "\"regle\":\"G10\""
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "note": "TF-2158 — G10 : deux contrôles pour une même colonne (facette du composant + liste dans l'en-tête, ou + liste hors tableau qui désigne le tableau) sont refusés ; la verte joue le geste du message (colonne déclarée hors facette, le contrôle manuel en est le seul)."
+  },
+  {
    "nom": "cadence-de-mission",
    "cmd": [
     "node",
@@ -2200,6 +2240,28 @@
     "absent de l'origine et de sources/"
    ],
    "provenance": "TF-2050, prompt du skill make-it-better, pilot 20261102g, 02/11/2026 — note fictive. La rouge change un nombre, invente une personne, un cabinet et une citation ; la verte reformule et ne cite que l'origine et sources/."
+  },
+  {
+   "nom": "appel-modele-sous-verrou",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-appel-modele-sous-verrou.mjs",
+    "{fixture}"
+   ],
+   "red": "appel-modele-sous-verrou-red.py",
+   "green": "appel-modele-sous-verrou-green.py",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "ranger_pseudonymes()",
+    "proposer_avec_bloc()",
+    "exemption_trop_courte()"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2163, Produit-86 lot 20261104a RA-2, 05/11/2026 — la rouge porte les trois formes (écriture par un helper du fichier, écriture et appel dans un with sqlite3.connect, exemption sans raison) ; la verte joue les gestes du message (commit avant l'appel, appel avant l'écriture, lecture seule, sortie de with) et une exemption déclarée avec sa raison."
   }
  ]
 }

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fixture verte — un seul contrôle par colonne (TF-2158)</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; --accent:#2563eb; --surface:#fff; --danger:#c0392b; --r-sm:6px; }
+  body { font-family: system-ui, sans-serif; padding:24px; }
+  table { border-collapse:collapse; }
+  th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  @media print {
+    .tf-btn, .tf-panel { display:none !important; }
+    tr[data-tf-hidden] { display:table-row !important; }
+  }
+</style>
+</head>
+<body>
+<h1>Mandats suivis</h1>
+
+<!--
+  FIXTURE VERTE de G10 : le geste que le message propose, JOUÉ. La colonne Mandat est déclarée hors
+  facette (data-filter-col="off" + motif) et sa liste déroulante manuelle en est le seul contrôle ;
+  État et Client gardent la facette du composant et rien d'autre. Un contrôle qui ne désigne aucun
+  tableau (aria-controls absent) n'est pas un filtre de colonne. Attendu : PASS.
+-->
+<label for="f-mandat">Mandat</label>
+<select id="f-mandat" aria-controls="mandats"><option value="">Tous</option><option>M-001</option><option>M-002</option></select>
+<label for="f-recherche">Recherche libre</label>
+<input id="f-recherche" type="search">
+<table id="mandats" data-filterable>
+  <thead>
+    <tr><th data-filter-col="off" data-filter-reason="filtré par la liste déroulante posée au-dessus du tableau">Mandat</th><th>État</th><th>Client</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>M-001</td><td>Ouvert</td><td>Client-A</td></tr>
+    <tr><td>M-002</td><td>Livré</td><td>Client-B</td></tr>
+    <tr><td>M-003</td><td>En cours</td><td>Client-C</td></tr>
+    <tr><td>M-004</td><td>Ouvert</td><td>Client-D</td></tr>
+    <tr><td>M-005</td><td>Livré</td><td>Client-A</td></tr>
+    <tr><td>M-006</td><td>En cours</td><td>Client-B</td></tr>
+    <tr><td>M-007</td><td>Ouvert</td><td>Client-C</td></tr>
+    <tr><td>M-008</td><td>Livré</td><td>Client-D</td></tr>
+    <tr><td>M-009</td><td>En cours</td><td>Client-A</td></tr>
+    <tr><td>M-010</td><td>Ouvert</td><td>Client-B</td></tr>
+    <tr><td>M-011</td><td>Livré</td><td>Client-C</td></tr>
+    <tr><td>M-012</td><td>En cours</td><td>Client-D</td></tr>
+    <tr><td>M-013</td><td>Ouvert</td><td>Client-A</td></tr>
+    <tr><td>M-014</td><td>Livré</td><td>Client-B</td></tr>
+    <tr><td>M-015</td><td>En cours</td><td>Client-C</td></tr>
+    <tr><td>M-016</td><td>Ouvert</td><td>Client-D</td></tr>
+    <tr><td>M-017</td><td>Livré</td><td>Client-A</td></tr>
+    <tr><td>M-018</td><td>En cours</td><td>Client-B</td></tr>
+    <tr><td>M-019</td><td>Ouvert</td><td>Client-C</td></tr>
+    <tr><td>M-020</td><td>Livré</td><td>Client-D</td></tr>
+  </tbody>
+</table>
+<div class="tf-count" data-tf-count-for="mandats" aria-live="polite"></div>
+
+<script src="../../digit-ai-page-html/assets/table-filters.js"></script>
+<script>DigitAITableFilters.init(document.getElementById('mandats'));</script>
+</body>
+</html>

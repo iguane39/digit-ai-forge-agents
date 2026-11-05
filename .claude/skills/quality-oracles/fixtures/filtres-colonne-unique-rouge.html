@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fixture rouge — filtre sur une colonne aux valeurs presque toutes uniques (TF-2158)</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; --accent:#2563eb; --surface:#fff; --danger:#c0392b; --r-sm:6px; }
+  body { font-family: system-ui, sans-serif; padding:24px; }
+  table { border-collapse:collapse; }
+  th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  @media print {
+    .tf-btn, .tf-panel { display:none !important; }
+    tr[data-tf-hidden] { display:table-row !important; }
+  }
+</style>
+</head>
+<body>
+<h1>Mandats suivis</h1>
+
+<!--
+  FIXTURE ROUGE de G11 (TF-2158, lot Produit-86 20261104a RP-7). 20 lignes, la colonne Mandat porte 20
+  valeurs distinctes sur 20 lignes : le composant en fait une liste de 20 cases à cocher, un filtre
+  que personne n'utilise (cas du porteur : 55 valeurs de mandat pour 3 états). La colonne État
+  (3 valeurs) est un vrai filtre. Câblage G1-G6 complet : seule G11 doit se déclencher.
+  Attendu : FAIL sur G11, une seule fois, qui nomme la colonne Mandat.
+-->
+<table id="mandats" data-filterable>
+  <thead>
+    <tr><th>Mandat</th><th>État</th><th>Client</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>M-001</td><td>Ouvert</td><td>Client-A</td></tr>
+    <tr><td>M-002</td><td>Livré</td><td>Client-B</td></tr>
+    <tr><td>M-003</td><td>En cours</td><td>Client-C</td></tr>
+    <tr><td>M-004</td><td>Ouvert</td><td>Client-D</td></tr>
+    <tr><td>M-005</td><td>Livré</td><td>Client-A</td></tr>
+    <tr><td>M-006</td><td>En cours</td><td>Client-B</td></tr>
+    <tr><td>M-007</td><td>Ouvert</td><td>Client-C</td></tr>
+    <tr><td>M-008</td><td>Livré</td><td>Client-D</td></tr>
+    <tr><td>M-009</td><td>En cours</td><td>Client-A</td></tr>
+    <tr><td>M-010</td><td>Ouvert</td><td>Client-B</td></tr>
+    <tr><td>M-011</td><td>Livré</td><td>Client-C</td></tr>
+    <tr><td>M-012</td><td>En cours</td><td>Client-D</td></tr>
+    <tr><td>M-013</td><td>Ouvert</td><td>Client-A</td></tr>
+    <tr><td>M-014</td><td>Livré</td><td>Client-B</td></tr>
+    <tr><td>M-015</td><td>En cours</td><td>Client-C</td></tr>
+    <tr><td>M-016</td><td>Ouvert</td><td>Client-D</td></tr>
+    <tr><td>M-017</td><td>Livré</td><td>Client-A</td></tr>
+    <tr><td>M-018</td><td>En cours</td><td>Client-B</td></tr>
+    <tr><td>M-019</td><td>Ouvert</td><td>Client-C</td></tr>
+    <tr><td>M-020</td><td>Livré</td><td>Client-D</td></tr>
+  </tbody>
+</table>
+<div class="tf-count" data-tf-count-for="mandats" aria-live="polite"></div>
+
+<script src="../../digit-ai-page-html/assets/table-filters.js"></script>
+<script>DigitAITableFilters.init(document.getElementById('mandats'));</script>
+</body>
+</html>
