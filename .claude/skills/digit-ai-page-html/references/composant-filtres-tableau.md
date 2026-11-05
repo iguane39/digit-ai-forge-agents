@@ -150,6 +150,25 @@ le `<th>`. Le motif est lisible à l'exécution (`api.exemptions`) et l'oracle r
 muette. Exemple admis : une clé technique à valeur unique par ligne, que la recherche de page
 couvre déjà.
 
+## G10, G11 — l'usage d'un filtre, pas son seul câblage (TF-2158, 05/11/2026)
+
+Le porteur a vu d'emblée, le 04/11, ce que G1-G6 ne jugeaient pas : des filtres **doublés**, et un
+filtre sur une colonne de 55 valeurs pour 3 états. `oracle-filtres-tableau.mjs` (quality-oracles) refuse
+désormais, en bloquant :
+
+- **G10 — une colonne, un seul contrôle de filtre.** La facette du composant plus une liste ou un champ
+  dans l'en-tête de la même colonne, ou plus un contrôle hors du tableau qui le désigne (`aria-controls`
+  ou `data-table` égal à son `id`) et nomme la colonne (`aria-label`, `name`, `data-col`, `data-colonne`,
+  ou son `<label for>`). Sorties : retirer le contrôle manuel, ou déclarer la colonne hors facette
+  (`data-filter-col="off"` + `data-filter-reason`) quand c'est le contrôle manuel qui est le bon.
+- **G11 — pas de facette sur une colonne aux valeurs presque toutes uniques.** Plus de 15 valeurs
+  distinctes et au moins 90 % de lignes à valeur distincte : la facette est une liste de cases que
+  personne ne parcourt. Même sortie, déclarée. Sous 15 valeurs, G7 (TF-0782) s'applique : la colonne
+  clé garde sa facette. Les deux seuils sont ceux de TF-2158, non fondés sur une mesure du parc.
+
+Ne sont pas vus : un filtre posé par un script sans contrôle dans le HTML source, une visite guidée ou
+des infobulles de lexique (exigences d'`oracle-exploitabilite`, forge-design).
+
 ## G9 — un en-tête DÉFINIT sa colonne (TF-0777, 02/09)
 
 Une facette et un tri ne valent que ce que vaut la colonne qu'ils manipulent. Sur le livrable
