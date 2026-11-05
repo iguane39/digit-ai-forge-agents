@@ -572,7 +572,9 @@ const nonVideTexte = (v) => typeof v === "string" && v.trim() !== "";
  *     (run-oracles-design, run-oracles-conception) ;
  *   · un ORACLE : `{ oracle, verdict, … }` (contrat d'un oracle direct, `--contrat-runner` du design,
  *     le juge d'enclenchement du pilot) ;
- *   · une LISTE : `[{ oracle, verdict, … }]`.
+ *   · une LISTE : `[{ oracle, verdict, … }]` ;
+ *   · le rapport --json de FORGE-TESTS : `{ adaptateurs: [{ nom, pan, verdict }], … }`, un verdict PAR PAN,
+ *     consigné sous l'oracle `forge-tests:<pan>` (TF-2153, 05/11/2026 — la graphie que R-61 bis du pilot lit).
  * Rend `{ lanceur, cible, elements, refus[] }` — `refus` nomme CHAQUE élément inconsignable.
  */
 function verdictsDuRapport(rapport) {
@@ -583,10 +585,25 @@ function verdictsDuRapport(rapport) {
     cible = [rapport.cible, rapport.artefact].find(nonVideTexte) || null;
     if (Array.isArray(rapport.oracles)) elements = rapport.oracles;
     else if (nonVideTexte(rapport.oracle)) elements = [rapport];
+    else if (Array.isArray(rapport.adaptateurs)) {
+      // TF-2153 (05/11/2026) : le rapport --json de forge-tests (`forge_tests/noyau.py`) porte
+      // `adaptateurs: [{ nom, pan, verdict }]`, un verdict PAR PAN. Il se consigne sous l'oracle
+      // `forge-tests:<pan>` — la graphie que R-61 bis du pilot reconnaît (`nomServi`) ; le nom de
+      // l'adaptateur est gardé (`adaptateur`). Le rapport n'étant pas un lanceur d'oracles, le
+      // lanceur est `forge-tests`. Un élément sans `pan` reste inconsignable et se nomme comme tel.
+      lanceur = lanceur || "forge-tests";
+      elements = rapport.adaptateurs.map((a) => (!a || typeof a !== "object" ? a : {
+        ...a,
+        oracle: nonVideTexte(a.pan) ? `forge-tests:${a.pan.trim()}` : undefined,
+        _champNom: "pan",
+        ...(nonVideTexte(a.nom) ? { adaptateur: a.nom.trim() } : {}),
+      }));
+    }
   }
   if (!elements) {
     return { refus: ["forme de rapport non reconnue — attendu `{ oracles: [{ oracle, verdict }] }` (un lanceur), " +
-      "`{ oracle, verdict }` (un oracle) ou `[{ oracle, verdict }]` (une liste)"] };
+      "`{ oracle, verdict }` (un oracle), `[{ oracle, verdict }]` (une liste) ou `{ adaptateurs: [{ nom, pan, verdict }] }` " +
+      "(le rapport --json de forge-tests, un verdict par pan)"] };
   }
   if (!elements.length) {
     return { refus: ["le rapport ne porte AUCUN verdict (`oracles` vide) — rien n'a tourné, et un lot vide ne se consigne pas comme une preuve"] };
@@ -595,7 +612,11 @@ function verdictsDuRapport(rapport) {
   const sortie = elements.map((el, i) => {
     const ou = `élément ${i + 1}/${elements.length}`;
     if (!el || typeof el !== "object") { refus.push(`${ou} : n'est pas un objet`); return null; }
-    if (!nonVideTexte(el.oracle)) { refus.push(`${ou} : \`oracle\` absent ou vide — sans le NOM de l'oracle, aucun juge ne sait ce qui a tourné`); return null; }
+    if (!nonVideTexte(el.oracle)) {
+      const champ = el._champNom || "oracle";
+      refus.push(`${ou} : \`${champ}\` absent ou vide — sans le NOM de l'${champ === "pan" ? "adaptateur, le pan" : "oracle"}, aucun juge ne sait ce qui a tourné`);
+      return null;
+    }
     const brut = typeof el.verdict === "string" ? el.verdict.trim() : "";
     const haut = brut.toUpperCase();
     const verdict = VERDICTS_CANONIQUES.includes(haut) ? haut : VERDICTS_EQUIVALENTS[haut] || null;
@@ -613,6 +634,7 @@ function verdictsDuRapport(rapport) {
       ...(motif ? { motif: motif.length > 400 ? `${motif.slice(0, 400)}…` : motif } : {}),
       ...(Number.isInteger(el.exit) ? { exit_oracle: el.exit } : {}),
       ...(Array.isArray(el.findings) ? { constats: el.findings.length } : {}),
+      ...(nonVideTexte(el.adaptateur) ? { adaptateur: el.adaptateur } : {}),
     };
   });
   return { lanceur, cible, elements: sortie, refus };

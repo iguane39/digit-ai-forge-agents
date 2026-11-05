@@ -1199,6 +1199,48 @@ check("consigner (rouge) : aucune source, deux sources, ou un argument inconnu �
   if (lignesDe(lf).length !== 1) throw new Error("une entrée a été écrite malgré un refus d'arguments");
 });
 
+// ---- TF-2153 (05/11/2026) : le rapport --json de forge-tests a la forme `adaptateurs[{nom, pan, verdict}]`
+// (forge_tests/noyau.py, clé « adaptateurs » du dict rendu par `rapport`) ; `consigner` la refusait
+// (« forme de rapport non reconnue »), constaté sur un rapport réel par l'agent de TF-2124 le 04/11/2026.
+const RAPPORT_FORGE_TESTS = {
+  adaptateurs: [
+    { nom: "api", pan: "api", verdict: "PASS" },
+    { nom: "personas", pan: "parcours-personas", verdict: "FAIL" },
+    { nom: "migrations", pan: "migrations", verdict: "NA" },
+  ],
+  couverture_par_pan: {}, pans_non_couverts: [], findings: [{ pan: "parcours-personas" }], verdict: "FAIL",
+};
+check("consigner (vert TF-2153) : le rapport --json de forge-tests (`adaptateurs[{nom, pan, verdict}]`) → une entrée par pan, oracle `forge-tests:<pan>`, verify PASS", () => {
+  const lf = ledgerOuvert("ledger-consigner-forge-tests.jsonl");
+  const rp = join(out, "rapport-forge-tests.json");
+  writeFileSync(rp, JSON.stringify(RAPPORT_FORGE_TESTS), "utf8");
+  const sortie = run(ledger, ["consigner", lf, "--rapport", rp, "--forge", "tests", "--cible", "C:/produit"]);
+  if (!sortie.includes("3 entrée(s) oracles_verdict ajoutée(s)")) throw new Error(`écho inattendu : ${sortie.slice(0, 160)}`);
+  const e = lignesDe(lf).slice(1);
+  if (e.map((x) => `${x.oracle}=${x.verdict}`).join() !== "forge-tests:api=PASS,forge-tests:parcours-personas=FAIL,forge-tests:migrations=NA")
+    throw new Error(`oracle/verdict par pan : ${e.map((x) => `${x.oracle}=${x.verdict}`).join()}`);
+  if (!e.every((x) => x.type === "oracles_verdict" && x.consigne_par === "ledger.mjs consigner" && x.lanceur === "forge-tests" && x.cible === "C:/produit" && x.forge === "tests"))
+    throw new Error("champs communs du lot manquants");
+  if (e.map((x) => x.adaptateur).join() !== "api,personas,migrations") throw new Error("le nom de l'adaptateur n'est pas gardé");
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("verify aurait dû passer");
+});
+check("consigner (rouge TF-2153) : un pan absent et un verdict inconnu dans `adaptateurs` → lot REFUSÉ, chacun nommé, ledger inchangé ; `adaptateurs: []` refusé", () => {
+  const lf = ledgerOuvert("ledger-consigner-forge-tests-rouge.jsonl");
+  const avant = readFileSync(lf, "utf8");
+  const rp = join(out, "rapport-forge-tests-fautif.json");
+  writeFileSync(rp, JSON.stringify({ adaptateurs: [{ nom: "api", pan: "api", verdict: "PASS" }, { nom: "x", verdict: "PASS" }, { nom: "c", pan: "back", verdict: "BOF" }] }), "utf8");
+  const vide = join(out, "rapport-forge-tests-vide.json");
+  writeFileSync(vide, JSON.stringify({ adaptateurs: [], verdict: "PARTIEL" }), "utf8");
+  for (const [fichier, motifs] of [[rp, ["AUCUNE entrée écrite", "élément 2/3", "`pan` absent", "« BOF » inconnu"]], [vide, ["AUCUN verdict"]]]) {
+    let err = null;
+    try { execFileSync("node", [ledger, "consigner", lf, "--rapport", fichier], { encoding: "utf8", stdio: "pipe" }); }
+    catch (e) { err = String(e.stderr || ""); }
+    if (err === null) throw new Error(`le rapport ${fichier} aurait dû être refusé`);
+    for (const m of motifs) if (!err.includes(m)) throw new Error(`refus sans « ${m} » : ${err.slice(0, 240)}`);
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("écriture partielle malgré le refus");
+});
+
 check("qualification_enclenchement (vert) : `fonde` ou `a_tort` avec sa cause → écrite", () => {
   const lf = ledgerOuvert("ledger-qualification-vert.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "qualification_enclenchement", qualification: "a_tort", cause: "forge mobilisée pour son journal, pas pour ses oracles" })]);
