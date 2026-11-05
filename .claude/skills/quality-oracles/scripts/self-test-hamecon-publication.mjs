@@ -56,6 +56,8 @@ const INSTALLEUR = path.join(ICI, 'installer-hamecon-publication.mjs');
 const ORACLE_SOURCE = path.join(ICI, 'oracle-nom-client-publie.mjs');
 // TF-1221 — la porte des secrets (règle SP2 sur les fichiers que l'envoi ajoute).
 const PORTE_SECRETS_SOURCE = path.join(ICI, 'porte-secrets-publies.mjs');
+// TF-2168 (D-175) — la porte d'identité de publication, jouée avant celle des secrets.
+const PORTE_IDENTITE_SOURCE = path.join(ICI, 'porte-identite-publication.mjs');
 // TF-0980 — le lanceur du hameçon de COMMIT, et la racine du parc telle que ce dépôt la voit.
 // `<forge>/.claude/skills/quality-oracles/scripts` → `<forge>` → la racine du parc.
 const LANCEUR_SOURCE = path.join(ICI, 'pre-commit-anonymiser.mjs');
@@ -91,6 +93,9 @@ function poserOracleSource(racine) {
   fs.copyFileSync(path.join(ICI, 'lib', 'contrat.mjs'), path.join(d, 'lib', 'contrat.mjs'));
   // TF-1221 — le pre-push joue aussi la porte des secrets, cherchée au même repli.
   fs.copyFileSync(PORTE_SECRETS_SOURCE, path.join(d, 'porte-secrets-publies.mjs'));
+  // TF-2168 — la porte d'identité (un seul fichier, aucune dépendance) : absente de la source, le banc
+  // le DIT en échec (cas 18) au lieu de poser un hameçon qui chercherait une porte introuvable.
+  if (fs.existsSync(PORTE_IDENTITE_SOURCE)) fs.copyFileSync(PORTE_IDENTITE_SOURCE, path.join(d, 'porte-identite-publication.mjs'));
   return d;
 }
 
@@ -383,6 +388,7 @@ try {
       })) + '); process.exit(1);\n');
       // TF-1221 — le pre-push joue la porte des secrets avant celle des noms : la vraie, à côté du jouet.
       fs.copyFileSync(PORTE_SECRETS_SOURCE, path.join(dPorte, 'porte-secrets-publies.mjs'));
+      if (fs.existsSync(PORTE_IDENTITE_SOURCE)) fs.copyFileSync(PORTE_IDENTITE_SOURCE, path.join(dPorte, 'porte-identite-publication.mjs'));
       const d11 = depot(maison, 'comptes', false);
       git(d11, 'remote', 'add', 'origin', distantJetable(maison, 'comptes-distant'));
       sh(maison, 'node', [INSTALLEUR, d11, '--seul=pre-push']);
@@ -1148,6 +1154,228 @@ try {
       else kos.push('cas 7 — la chaîne réelle du pilot n\'expose pas `passer` (' + pilotChaine + ') : le contrat d\'appel entre les deux dépôts a dérivé. ' + ((sonde.stderr || '').trim().slice(0, 300) || (sonde.stdout || '').trim()));
     }
   } finally { try { fs.rmSync(cc, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
+
+  // --- cas 18 : SEUL LE COMPTE DE L'UTILISATEUR DE LA FACTORY PUBLIE (D-175, TF-2168) ------------
+  // LE FAIT PAYÉ, 05/11/2026 à 09:17 : l'envoi de digit-ai-forge-audit est parti sous le compte du profil
+  // de session d'un produit client (GH_CONFIG_DIR). L'hébergeur l'a refusé en 403, par hasard : un compte
+  // client doté du droit d'écriture aurait publié. Décision humaine D-175 : « Seule l'identité de
+  // l'utilisateur de la Factory peut publier pour la Factory et les forges, personne d'autre. »
+  // Le banc ne fait AUCUN appel réseau : un faux gh (PORTE_IDENTITE_GH) rend le compte que dit
+  // l'environnement de l'envoi, comme le vrai gh : GH_CONFIG_DIR posé → un compte client, absent → le
+  // compte du poste. Les dépôts visés déclarent une URL github.com ; une réécriture `insteadOf` locale
+  // la renvoie vers un dépôt nu jetable, qui reçoit le vrai `git push`. Chaque sens se juge sur la seule
+  // preuve qui compte : la branche est-elle arrivée au distant ?
+  {
+    if (!fs.existsSync(PORTE_IDENTITE_SOURCE)) kos.push('cas 18 — la porte d\'identité de publication n\'existe pas (' + PORTE_IDENTITE_SOURCE + ') : un envoi sous n\'importe quel compte passe');
+    const aLeDistant = (distant) => spawnSync('git', ['--git-dir=' + distant, 'rev-parse', '--verify', '-q', 'refs/heads/main'], { encoding: 'utf8' }).status === 0;
+    const fauxGh = path.join(racine, 'faux-gh.mjs');
+    fs.writeFileSync(fauxGh, [
+      "import fs from 'node:fs';",
+      "if (process.env.FAUX_GH_JOURNAL) fs.appendFileSync(process.env.FAUX_GH_JOURNAL, process.argv.slice(2).join(' ') + ' | GH_CONFIG_DIR=' + (process.env.GH_CONFIG_DIR || '') + '\\n');",
+      "const mode = process.env.FAUX_GH_MODE || '';",
+      "if (mode === 'echec') { process.stderr.write('HTTP 401: Bad credentials\\n'); process.exit(1); }",
+      "if (mode === 'vide') process.exit(0);",
+      "if (mode === 'lent') setTimeout(() => {}, 60000);",
+      "else process.stdout.write((process.env.GH_CONFIG_DIR ? 'compte-client' : 'compte-banc') + '\\n');",
+    ].join('\n'));
+    const REMEDE18 = 'Rejouer l\'envoi sous le compte du poste, pour cette seule commande : env -u GH_CONFIG_DIR -u GH_TOKEN -u GITHUB_TOKEN git push …';
+    const ref18 = path.join(racine, 'identite-publication-banc.json');
+    fs.writeFileSync(ref18, JSON.stringify({ schema: 'banc', comptes_autorises: ['compte-banc'], depots: ['digit-ai-factory', 'digit-ai-forge-*'], remede: REMEDE18 }, null, 1));
+    const journal18 = path.join(racine, 'faux-gh.journal');
+    const appels = (j) => (fs.existsSync(j) ? fs.readFileSync(j, 'utf8').split('\n').filter(Boolean).length : 0);
+    // L'environnement de l'envoi : aucun profil ni jeton hérité du poste, sauf ce que le cas pose.
+    const ENV18 = (extra) => ({ ...ENV_JEU_ESSAI, PORTE_IDENTITE_GH: fauxGh, FORGE_IDENTITE_PUBLICATION: ref18, FAUX_GH_JOURNAL: journal18,
+      GH_CONFIG_DIR: undefined, GH_TOKEN: undefined, GITHUB_TOKEN: undefined, FAUX_GH_MODE: undefined, ...(extra || {}) });
+    const ASSISTANT_GH = "!'C:\\Program Files\\GitHub CLI\\gh.exe' auth git-credential";
+    // Un dépôt dont l'URL déclarée est github.com (nom = `nom`) et dont l'envoi atterrit dans un nu jetable.
+    const viser = (dossier, nom, { url, assistants = ['', ASSISTANT_GH] } = {}) => {
+      const d = depot(racine, dossier, false);
+      const distant = distantJetable(racine, dossier + '-distant');
+      const declaree = url || 'https://github.com/proprietaire-banc/' + nom + '.git';
+      git(d, 'remote', 'add', 'origin', declaree);
+      git(d, 'config', '--local', 'url.' + distant.replace(/\\/g, '/') + '.insteadOf', declaree);
+      for (const a of assistants) git(d, 'config', '--local', '--add', 'credential.https://github.com.helper', a);
+      sh(racine, 'node', [INSTALLEUR, d, '--seul=pre-push']);
+      return { d, distant };
+    };
+    const lire = (r) => { try { return JSON.parse((r.stdout || '').trim()); } catch { return null; } };
+
+    // (18a) sens VERT : le compte autorisé publie ; gh est interrogé avec les arguments attendus
+    const a = viser('identite-vert', 'digit-ai-forge-banc');
+    const p18a = sh(a.d, 'git', ['push', 'origin', 'main'], ENV18());
+    const journal = fs.existsSync(journal18) ? fs.readFileSync(journal18, 'utf8') : '';
+    if (p18a.status === 0 && aLeDistant(a.distant) && /api --hostname github\.com user --jq \.login/.test(journal))
+      oks.push('cas 18a (D-175, sens vert) — compte autorisé : PUBLIÉ, la branche arrive au distant, gh est interrogé par `api --hostname github.com user --jq .login`');
+    else kos.push('cas 18a (D-175, sens vert) — compte autorisé : push exit ' + p18a.status + ', au distant : ' + aLeDistant(a.distant) + ', appels gh : « ' + journal.trim().slice(0, 120) + ' » : ' + (p18a.stderr || '').trim().slice(0, 300));
+
+    // (18b) sens ROUGE : le profil d'un autre compte (GH_CONFIG_DIR) → refusé, rien au distant, le compte
+    // lu et le remède nommés, et c'est la porte d'identité qui parle (pas celle des secrets)
+    const b = viser('identite-autre', 'digit-ai-forge-banc');
+    const p18b = sh(b.d, 'git', ['push', 'origin', 'main'], ENV18({ GH_CONFIG_DIR: path.join(racine, 'profil-client') }));
+    const e18b = p18b.stderr || '';
+    if (p18b.status !== 0 && !aLeDistant(b.distant) && /compte de publication non autorisé/.test(e18b) && /compte-client/.test(e18b)
+        && /env -u GH_CONFIG_DIR -u GH_TOKEN -u GITHUB_TOKEN git push/.test(e18b) && /GH_CONFIG_DIR=.*profil-client/.test(fs.readFileSync(journal18, 'utf8')))
+      oks.push('cas 18b (D-175, sens rouge) — l\'environnement de l\'envoi porte le profil d\'un autre compte : REFUSÉ, rien au distant, le compte lu (compte-client) et le remède nommés, et gh a reçu GH_CONFIG_DIR');
+    else kos.push('cas 18b (D-175, sens rouge) — un envoi sous un autre compte n\'est pas refusé : exit ' + p18b.status + ', au distant : ' + aLeDistant(b.distant) + ' : ' + e18b.trim().slice(0, 400));
+
+    // (18c) le REMÈDE dit par le refus, joué à la lettre : `env -u …` retire le profil pour la seule commande
+    const shId = trouverSh();
+    if (!shId) kos.push('cas 18c (D-175, remède joué) — aucun `sh` trouvé à côté de git : le banc ne peut pas jouer `env -u …`');
+    else {
+      const cmdRemede = REMEDE18.split(' : ').pop().replace('…', 'origin main');
+      const e = envBanc(ENV18({ GH_CONFIG_DIR: path.join(racine, 'profil-client') }));
+      const cle = Object.keys(e).find((k) => k.toUpperCase() === 'PATH') || 'PATH';
+      e[cle] = path.dirname(shId) + path.delimiter + (e[cle] || '');
+      const p18c = spawnSync(shId, ['-c', cmdRemede], { cwd: b.d, encoding: 'utf8', env: e });
+      if (p18c.status === 0 && aLeDistant(b.distant) && /^env -u GH_CONFIG_DIR/.test(cmdRemede))
+        oks.push('cas 18c (D-175, remède joué) — `' + cmdRemede + '` sous le profil d\'un autre compte : PUBLIÉ sous le compte du poste');
+      else kos.push('cas 18c (D-175, remède joué) — le remède du refus ne publie pas : exit ' + p18c.status + ', au distant : ' + aLeDistant(b.distant) + ' : ' + (p18c.stderr || '').trim().slice(0, 300));
+    }
+
+    // (18d) compte ILLISIBLE → refusé (SKIP refuse), motif en clair : gh en échec, sortie vide, délai
+    // dépassé (borne raccourcie à 1,5 s par PORTE_IDENTITE_DELAI_MS), exécutable introuvable
+    const illisibles = [
+      ['gh en échec (code 1)', { FAUX_GH_MODE: 'echec' }, /code 1/],
+      ['gh sans sortie', { FAUX_GH_MODE: 'vide' }, /identifiant de compte lisible/],
+      ['gh sans réponse dans le délai', { FAUX_GH_MODE: 'lent', PORTE_IDENTITE_DELAI_MS: '1500' }, /sans réponse après/],
+      ['gh introuvable', { PORTE_IDENTITE_GH: path.join(racine, 'gh-qui-n-existe-pas') }, /ne se lance pas/],
+    ];
+    const echecs18d = [];
+    for (const [i, [libelle, extra, motif]] of illisibles.entries()) {
+      const v = viser('identite-illisible-' + i, 'digit-ai-forge-banc');
+      const t0 = Date.now();
+      const p = sh(v.d, 'git', ['push', 'origin', 'main'], ENV18(extra));
+      const e = p.stderr || '';
+      if (!(p.status !== 0 && !aLeDistant(v.distant) && /porte SKIP : /.test(e) && motif.test(e) && /env -u GH_CONFIG_DIR/.test(e) && Date.now() - t0 < 15000))
+        echecs18d.push(libelle + ' → exit ' + p.status + ', au distant ' + aLeDistant(v.distant) + ' : ' + e.trim().slice(0, 200));
+    }
+    if (!echecs18d.length) oks.push('cas 18d (D-175) — compte ILLISIBLE (gh en échec, sans sortie, sans réponse dans le délai, introuvable) : REFUSÉ à chaque fois, motif « porte SKIP » en clair, remède nommé, délai tenu');
+    else kos.push('cas 18d (D-175) — un compte illisible n\'est pas refusé comme il faut : ' + echecs18d.join(' ; '));
+
+    // (18e) un PRODUIT (hors portée) publie sous n'importe quel compte, SANS appeler gh : SANS_OBJET dit
+    const journalProduit = path.join(racine, 'faux-gh-produit.journal');
+    const produit = viser('identite-produit', 'produit-banc');
+    const envProduit = ENV18({ GH_CONFIG_DIR: path.join(racine, 'profil-client'), FAUX_GH_JOURNAL: journalProduit });
+    const direct18e = sh(produit.d, 'node', [PORTE_IDENTITE_SOURCE, produit.d], envProduit);
+    const j18e = lire(direct18e);
+    const p18e = sh(produit.d, 'git', ['push', 'origin', 'main'], envProduit);
+    if (p18e.status === 0 && aLeDistant(produit.distant) && appels(journalProduit) === 0 && direct18e.status === 0 && j18e && j18e.verdict === 'PASS'
+        && j18e.sans_objet === true && /SANS_OBJET/.test(j18e.note || ''))
+      oks.push('cas 18e (D-175, hors portée) — un produit (nom hors de `depots`) publie sous le profil d\'un autre compte : PUBLIÉ, gh jamais appelé, la porte dit SANS_OBJET (exit 0)');
+    else kos.push('cas 18e (D-175, hors portée) — produit : push exit ' + p18e.status + ', gh appelé ' + appels(journalProduit) + ' fois, porte exit ' + direct18e.status + ' : ' + ((p18e.stderr || '') + (direct18e.stdout || '')).trim().slice(0, 300));
+
+    // (18f) RÉFÉRENTIEL absent : un dépôt visé est refusé (exit 2), le motif dit où il est cherché ; un
+    // produit passe encore ; sans variable, la porte le cherche sous <racine>/digit-ai-factory/references/
+    const sansRef = ENV18({ FORGE_IDENTITE_PUBLICATION: path.join(racine, 'identite-qui-n-existe-pas.json') });
+    const f1 = viser('identite-sans-ref', 'digit-ai-forge-banc');
+    const p18f1 = sh(f1.d, 'git', ['push', 'origin', 'main'], sansRef);
+    const f2 = viser('identite-sans-ref-produit', 'produit-banc');
+    const p18f2 = sh(f2.d, 'git', ['push', 'origin', 'main'], sansRef);
+    const nuRef = fs.mkdtempSync(path.join(os.tmpdir(), 'identite-racine-'));
+    let sansVariable;
+    try {
+      const refsDir = path.join(nuRef, 'digit-ai-factory', 'references');
+      fs.mkdirSync(refsDir, { recursive: true });
+      fs.copyFileSync(ref18, path.join(refsDir, 'IDENTITE-PUBLICATION.json'));
+      const dRef = path.join(nuRef, 'digit-ai-forge-banc');
+      fs.mkdirSync(dRef);
+      git(dRef, 'init', '-q', '-b', 'main', '.');
+      git(dRef, 'remote', 'add', 'origin', 'https://github.com/proprietaire-banc/digit-ai-forge-banc.git');
+      git(dRef, 'config', '--local', '--add', 'credential.https://github.com.helper', '');
+      git(dRef, 'config', '--local', '--add', 'credential.https://github.com.helper', ASSISTANT_GH);
+      sansVariable = lire(sh(dRef, 'node', [PORTE_IDENTITE_SOURCE, dRef], ENV18({ FORGE_ROOT: undefined, FORGE_IDENTITE_PUBLICATION: undefined })));
+    } finally { try { fs.rmSync(nuRef, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
+    const e18f1 = p18f1.stderr || '';
+    if (p18f1.status !== 0 && !aLeDistant(f1.distant) && /porte SKIP : /.test(e18f1) && /introuvable/.test(e18f1) && /IDENTITE-PUBLICATION/.test(e18f1)
+        && p18f2.status === 0 && aLeDistant(f2.distant) && sansVariable && sansVariable.verdict === 'PASS' && sansVariable.compte === 'compte-banc')
+      oks.push('cas 18f (D-175) — référentiel ABSENT : un dépôt visé est REFUSÉ (porte SKIP, chemin cherché dit), un produit passe encore ; sans variable la porte le trouve sous <racine>/digit-ai-factory/references/');
+    else kos.push('cas 18f (D-175) — référentiel absent : dépôt visé exit ' + p18f1.status + ' (au distant ' + aLeDistant(f1.distant) + '), produit exit ' + p18f2.status + ', sans variable ' + JSON.stringify(sansVariable && { v: sansVariable.verdict, c: sansVariable.compte }) + ' : ' + e18f1.trim().slice(0, 300));
+
+    // (18g) l'ASSISTANT d'identification n'est pas gh seul → refusé (la porte ne sait pas quel compte il présentera)
+    const autresAssistants = [
+      ['gestionnaire du système seul', ['', 'manager']],
+      ['gestionnaire puis gh, sans remise à zéro', ['manager', ASSISTANT_GH]],
+      ['aucun assistant', ['']],
+    ];
+    const echecs18g = [];
+    for (const [i, [libelle, assistants]] of autresAssistants.entries()) {
+      const v = viser('identite-assistant-' + i, 'digit-ai-forge-banc', { assistants });
+      const p = sh(v.d, 'git', ['push', 'origin', 'main'], ENV18());
+      if (!(p.status !== 0 && !aLeDistant(v.distant) && /porte SKIP : /.test(p.stderr || '') && /assistant d'identification/.test(p.stderr || '')))
+        echecs18g.push(libelle + ' → exit ' + p.status + ', au distant ' + aLeDistant(v.distant) + ' : ' + (p.stderr || '').trim().slice(0, 200));
+    }
+    if (!echecs18g.length) oks.push('cas 18g (D-175) — assistant autre que `gh auth git-credential` seul (gestionnaire, gestionnaire puis gh, aucun) : REFUSÉ, le motif nomme l\'assistant lu');
+    else kos.push('cas 18g (D-175) — un assistant étranger n\'est pas refusé : ' + echecs18g.join(' ; '));
+
+    // (18h) un envoi par SSH : le compte est celui de la clé, que gh ne dit pas → refusé, motif dit
+    const ssh = viser('identite-ssh', 'digit-ai-forge-banc', { url: 'git@github.com:proprietaire-banc/digit-ai-forge-banc.git' });
+    const p18h = sh(ssh.d, 'git', ['push', 'origin', 'main'], ENV18());
+    if (p18h.status !== 0 && !aLeDistant(ssh.distant) && /porte SKIP : envoi par ssh/.test(p18h.stderr || ''))
+      oks.push('cas 18h (D-175) — destination en ssh sur un dépôt visé : REFUSÉ (porte SKIP : envoi par ssh), rien au distant');
+    else kos.push('cas 18h (D-175) — un envoi par ssh n\'est pas refusé : exit ' + p18h.status + ' : ' + (p18h.stderr || '').trim().slice(0, 300));
+
+    // (18i) le CONTRAT des oracles : JSON {oracle, verdict, findings[], non_juge[]}, exit 0 / 1 / 2, motif sur SKIP
+    const vert = lire(sh(a.d, 'node', [PORTE_IDENTITE_SOURCE, a.d], ENV18()));
+    const rougeR = sh(b.d, 'node', [PORTE_IDENTITE_SOURCE, b.d], ENV18({ GH_CONFIG_DIR: path.join(racine, 'profil-client') }));
+    const rouge = lire(rougeR);
+    const skipR = sh(b.d, 'node', [PORTE_IDENTITE_SOURCE, b.d], ENV18({ FAUX_GH_MODE: 'echec' }));
+    const skip = lire(skipR);
+    const horsDepot = sh(racine, 'node', [PORTE_IDENTITE_SOURCE, path.join(racine, 'dossier-qui-n-existe-pas')], ENV18());
+    const nonJuge = (o) => o && Array.isArray(o.non_juge) && o.non_juge.length > 0;
+    if (vert && vert.verdict === 'PASS' && Array.isArray(vert.findings) && !vert.findings.length && nonJuge(vert) && vert.compte === 'compte-banc'
+        && rougeR.status === 1 && rouge && rouge.verdict === 'FAIL' && rouge.findings.length === 1 && rouge.findings[0].regle === 'D-175'
+        && /compte-client/.test(rouge.findings[0].msg) && /env -u GH_CONFIG_DIR/.test(rouge.findings[0].msg) && nonJuge(rouge)
+        && skipR.status === 2 && skip && skip.verdict === 'SKIP' && typeof skip.motif === 'string' && skip.motif.length > 0 && skip.non_juge[0] === skip.motif
+        && horsDepot.status === 2 && (lire(horsDepot) || {}).verdict === 'SKIP')
+      oks.push('cas 18i (D-175) — contrat des oracles : PASS exit 0 (findings vides, non_juge, compte), FAIL exit 1 (un constat D-175 qui nomme le compte et le remède), SKIP exit 2 (motif en tête du non_juge), dépôt introuvable SKIP exit 2');
+    else kos.push('cas 18i (D-175) — contrat : vert ' + JSON.stringify(vert && vert.verdict) + ', rouge exit ' + rougeR.status + ' ' + JSON.stringify(rouge && rouge.verdict) + ', skip exit ' + skipR.status + ' ' + JSON.stringify(skip && skip.verdict) + ', hors dépôt exit ' + horsDepot.status);
+
+    // (18j) l'ASSISTANT gh se reconnaît sous toutes ses graphies, jamais un autre (jugé sur le code de la porte)
+    try {
+      const m = await import(pathToFileURL(PORTE_IDENTITE_SOURCE).href);
+      const reconnus = [ASSISTANT_GH, '!gh auth git-credential', "!'/usr/bin/gh' auth git-credential", '!"C:\\Program Files\\GitHub CLI\\gh.exe" auth git-credential', '!/usr/local/bin/gh auth git-credential'];
+      const refuses = ['manager', 'osxkeychain', '!ghx auth git-credential', '!gh auth login', '!/bin/sh -c "gh auth git-credential"', 'gh auth git-credential', '!gh auth git-credential --extra', ''];
+      const mal = [...reconnus.filter((v) => !m.estAssistantGh(v)).map((v) => 'refusé à tort : ' + v), ...refuses.filter((v) => m.estAssistantGh(v)).map((v) => 'accepté à tort : ' + v)];
+      const noms = [['https://github.com/proprietaire-banc/digit-ai-forge-audit.git', 'digit-ai-forge-audit'], ['git@github.com:proprietaire-banc/digit-ai-factory.git', 'digit-ai-factory'], ['C:\\tmp\\digit-ai-forge-x.git\\', 'digit-ai-forge-x'], ['https://github.com/proprietaire-banc/Produit-84', 'Produit-84']];
+      for (const [url, attendu] of noms) if (m.nomDepuisUrl(url) !== attendu) mal.push('nom de ' + url + ' → ' + m.nomDepuisUrl(url));
+      if (!mal.length) oks.push('cas 18j (D-175) — l\'assistant gh est reconnu sous ' + reconnus.length + ' graphies et refusé sous ' + refuses.length + ' autres ; le nom du dépôt distant se lit sur ' + noms.length + ' formes d\'URL');
+      else kos.push('cas 18j (D-175) — ' + mal.join(' ; '));
+    } catch (err) { kos.push('cas 18j (D-175) — la porte ne se charge pas comme module : ' + String(err.message).slice(0, 200)); }
+
+    // (18k) CÂBLAGE du pre-push : la porte d'identité est jouée AVANT celle des secrets, et un porteur de
+    // secrets sous un autre compte est refusé pour le COMPTE (l'identité parle la première)
+    const hook18 = fs.readFileSync(path.join(a.d, '.git', 'hooks', 'pre-push'), 'utf8');
+    const iId = hook18.indexOf('porte-identite-publication.mjs'), iSec = hook18.indexOf('porte-secrets-publies.mjs');
+    const k = viser('identite-ordre', 'digit-ai-forge-banc');
+    fs.writeFileSync(path.join(k.d, '.env'), 'CLE=valeur-de-recette\n');
+    git(k.d, 'add', '-f', '--', '.env'); git(k.d, 'commit', '-q', '-m', 'Configuration locale');
+    const p18k = sh(k.d, 'git', ['push', 'origin', 'main'], ENV18({ GH_CONFIG_DIR: path.join(racine, 'profil-client') }));
+    const e18k = p18k.stderr || '';
+    if (iId > 0 && iSec > iId && p18k.status !== 0 && /compte de publication non autorisé/.test(e18k) && !/SP2/.test(e18k) && !aLeDistant(k.distant))
+      oks.push('cas 18k (D-175) — le pre-push joue la porte d\'identité AVANT celle des secrets : un `.env` ajouté sous un autre compte est refusé pour le compte (SP2 ne parle pas)');
+    else kos.push('cas 18k (D-175) — ordre des portes : identité à ' + iId + ', secrets à ' + iSec + ', push exit ' + p18k.status + ' : ' + e18k.trim().slice(0, 300));
+
+    // (18l) porte INTROUVABLE, ou qui sort 0 SANS verdict PASS lu : l'envoi est refusé (TF-1373 : jamais sur le seul code de sortie)
+    const desert18 = fs.mkdtempSync(path.join(os.tmpdir(), 'sans-porte-identite-'));
+    try {
+      fs.writeFileSync(path.join(desert18, '_noms-interdits.json'), fs.readFileSync(path.join(racine, '_noms-interdits.json')));
+      const dir18 = poserOracleSource(desert18);
+      fs.rmSync(path.join(dir18, 'porte-identite-publication.mjs'), { force: true });
+      const envDesert = ENV18({ HOME: desert18, USERPROFILE: desert18, FORGE_ROOT: desert18 });
+      const l1 = viser('identite-sans-porte', 'digit-ai-forge-banc');
+      const p18l1 = sh(l1.d, 'git', ['push', 'origin', 'main'], envDesert);
+      // une porte qui sort 0 et n'imprime rien, déposée à l'emplacement prioritaire (la copie installée)
+      const dirHome = path.join(desert18, '.claude', 'skills', 'quality-oracles', 'scripts');
+      fs.mkdirSync(dirHome, { recursive: true });
+      fs.writeFileSync(path.join(dirHome, 'porte-identite-publication.mjs'), 'process.exit(0);\n');
+      const l2 = viser('identite-porte-muette', 'digit-ai-forge-banc');
+      const p18l2 = sh(l2.d, 'git', ['push', 'origin', 'main'], envDesert);
+      if (p18l1.status !== 0 && !aLeDistant(l1.distant) && /porte d'identité de publication .*introuvable/.test(p18l1.stderr || '')
+          && p18l2.status !== 0 && !aLeDistant(l2.distant) && /porte SKIP|verdict ILLISIBLE/.test(p18l2.stderr || ''))
+        oks.push('cas 18l (D-175, TF-1373) — porte d\'identité INTROUVABLE : envoi REFUSÉ, motif dit ; porte qui sort 0 sans verdict : REFUSÉ aussi (le code de sortie seul ne suffit jamais)');
+      else kos.push('cas 18l (D-175, TF-1373) — sans porte exit ' + p18l1.status + ' : ' + (p18l1.stderr || '').trim().slice(0, 200) + ' | porte muette exit ' + p18l2.status + ' : ' + (p18l2.stderr || '').trim().slice(0, 200));
+    } finally { try { fs.rmSync(desert18, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
+  }
 
   // --- retrait propre ---------------------------------------------------------
   const ret = sh(racine, 'node', [INSTALLEUR, d1, d2, d4, d5, d6, '--retirer']);

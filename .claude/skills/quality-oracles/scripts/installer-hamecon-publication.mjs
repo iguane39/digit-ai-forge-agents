@@ -82,6 +82,14 @@
 // --remotes=<distant>` : l'histoire déjà publiée n'est plus rejugée à chaque envoi, l'arbre courant
 // l'est toujours en entier.
 //
+// LE PRE-PUSH REFUSE UN ENVOI SOUS UN AUTRE COMPTE QUE CELUI DE L'UTILISATEUR DE LA FACTORY (D-175,
+// 05/11/2026, TF-2168). Avant la porte des secrets, il joue `porte-identite-publication.mjs`, qui lit le
+// compte que git présentera (`gh api user`, avec l'environnement de l'envoi) et le confronte au
+// référentiel du pilot `references/IDENTITE-PUBLICATION.json`. Hors portée (un produit) : PASS, SANS_OBJET.
+// Compte hors liste (exit 1), compte illisible, assistant d'identification autre que gh, envoi par ssh,
+// référentiel introuvable (exit 2), porte introuvable : refus qui nomme le remède. L'envoi ne passe que sur
+// le code 0 ET le verdict PASS lus ensemble.
+//
 // LE PRE-PUSH REFUSE AUSSI UN PORTEUR DE SECRETS AJOUTÉ (TF-1221, 13/10/2026). Avant la porte des noms,
 // il joue `porte-secrets-publies.mjs` sur les mêmes révisions : la règle SP2 d'`oracle-secrets-hors-
 // perimetre` (pilot), copiée seule parce que l'oracle du pilot juge le disque d'un parc et sort en 0
@@ -160,6 +168,52 @@ if [ -z "$ORACLE" ]; then
   echo "  Contournement explicite si vous savez ce que vous faites : git push --no-verify" >&2
   exit 1
 fi
+
+# --- D-175 (05/11/2026, TF-2168) : SEUL LE COMPTE DE L'UTILISATEUR DE LA FACTORY PUBLIE -----------
+# Le 05/11, l'envoi d'une forge est parti sous le compte du profil de session d'un produit client
+# (GH_CONFIG_DIR) ; l'hebergeur l'a refuse, par hasard. Cette porte lit le compte que git presentera
+# (gh api user, avec l'environnement de CET envoi) et refuse tout compte hors du referentiel du pilot
+# (references/IDENTITE-PUBLICATION.json). Elle joue AVANT celle des secrets, qui est plus longue : un
+# envoi sous un mauvais compte n'a pas a attendre le jugement de son contenu. Un produit n'est pas
+# vise : la porte rend alors PASS, SANS_OBJET. Un compte illisible (SKIP) refuse aussi. Comme pour
+# les autres portes, l'envoi ne passe que sur le code 0 ET le verdict PASS lu dans la sortie.
+PORTE_IDENTITE=""
+for CANDIDAT in \\
+  "$HOME/.claude/skills/quality-oracles/scripts/porte-identite-publication.mjs" \\
+  "$RACINE/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/porte-identite-publication.mjs"
+do
+  [ -f "$CANDIDAT" ] && PORTE_IDENTITE="$CANDIDAT" && break
+done
+if [ -z "$PORTE_IDENTITE" ]; then
+  echo "PUBLICATION REFUSEE — la porte d'identité de publication (porte-identite-publication.mjs) est introuvable : SKIP, et SKIP refuse." >&2
+  echo "  cherche dans : ~/.claude/skills/... puis \\$RACINE/digit-ai-forge-agents/..." >&2
+  echo "  Un garde-fou absent ne se remplace pas par un passage en force silencieux." >&2
+  exit 1
+fi
+SORTIE_IDENTITE="$(node "$PORTE_IDENTITE" "$(git rev-parse --show-toplevel)" 2>&1)"
+CODE_IDENTITE=$?
+case "$CODE_IDENTITE:$SORTIE_IDENTITE" in
+  0:*'"verdict":"PASS"'*) ;;
+  *)
+    echo "" >&2
+    printf '%s' "$SORTIE_IDENTITE" | node -e '
+      let t = ""; process.stdin.on("data", (d) => (t += d)).on("end", () => {
+        try {
+          const o = JSON.parse(t);
+          if (o.verdict === "FAIL") {
+            console.error("PUBLICATION REFUSEE — compte de publication non autorisé (D-175) : seul le compte de l’utilisateur de la Factory publie.");
+            for (const f of (o.findings || [])) console.error("  " + f.regle + "  " + f.where + "  " + f.msg);
+          } else {
+            console.error("PUBLICATION REFUSEE — la porte d’identité de publication ne peut pas juger (verdict " + o.verdict + ", D-175) : SKIP refuse aussi.");
+            if (o.motif) console.error("  porte SKIP : " + o.motif);
+            if (o.remede) console.error("  Remède : " + o.remede);
+          }
+        } catch { console.error("PUBLICATION REFUSEE — verdict ILLISIBLE de porte-identite-publication ; sortie : " + t.slice(0, 2000)); }
+      });
+    ' >&2
+    exit 1
+    ;;
+esac
 
 # Une section propre a CE depot (ex. la borne R-38 du pilot) s'ecrit entre les deux lignes
 # suivantes : l'installeur la recopie a chaque repose (TF-1402). Hors d'elles, tout est reecrit.

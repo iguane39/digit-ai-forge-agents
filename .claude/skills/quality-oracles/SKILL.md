@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.22.0"
+  version: "2.23.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -203,6 +203,15 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   distante nulle (branche neuve) redonnent exactement ces 4 constats. Distant injoignable : plage d'avant. Le passé publié est exclu,
   non compté (HISTOIRE RESTREINTE, au non jugé). Recette `self-test-hamecon-publication.mjs`, cas 16 quater (refusé avant, accepté
   après ; un ajout porteur dans le même envoi reste refusé). Les hooks posés se mettent à jour par une repose de l'installeur.
+- **Identité de publication au pre-push (2.23.0, D-175, TF-2168)** — avant la porte des secrets, le pre-push joue
+  `scripts/porte-identite-publication.mjs` : le compte que rend `gh api user`, lancé avec l'environnement de l'envoi
+  (`GH_CONFIG_DIR`, `GH_TOKEN`, `GITHUB_TOKEN`), doit figurer dans `comptes_autorises` du référentiel du pilot
+  `references/IDENTITE-PUBLICATION.json`. Le fait : le 05/11/2026 à 09:17, l'envoi d'une forge est parti sous le compte du
+  profil de session d'un produit client et n'a été arrêté que par le 403 de l'hébergeur. Un produit (nom hors de `depots`) passe,
+  SANS_OBJET dit. Compte hors liste : refus (exit 1) qui nomme le compte lu et le remède ; compte illisible, assistant autre
+  que `gh auth git-credential` seul, envoi par ssh, référentiel introuvable : refus aussi (exit 2). `git push --no-verify`
+  reste le contournement explicite de tous les hameçons. Recette `self-test-hamecon-publication.mjs`, cas 18 (a à l), faux gh
+  et aucun appel réseau. Les hooks posés se mettent à jour par une repose de l'installeur, décidée par le pilot.
 - **Profils** — `profils/digit-ai.json` · `generique.json` (défaut : digit-ai, env `QO_PROFIL`) : budgets perf,
   politique pptx, convention de nommage, marqueurs de sources et motifs additionnels (claims : `motifs_bloquants` / `motifs_warn`),
   niveaux d'exigence (§6), seuils `visual_diff` (seuil_ratio, breakpoints, tolerance_pixel), rubrique du juge, `ignore_patterns`. Un contexte client = un JSON, zéro code.
