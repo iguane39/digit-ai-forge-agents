@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V15 en-tete pose sur ses lignes, sans rognage — 20261105a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{margin:0 auto;padding:24px;max-width:960px}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+/* Meme document que v15-entete-rogne-par-ancetre.html, a une declaration pres : le <thead> est
+   sorti du flux (position:absolute) sans que RIEN ne le rogne (pas d'overflow, pas de clip). */
+.sorti-du-flux{position:absolute;white-space:nowrap}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2170 (lot Produit-84 20261105a), sens ROUGE de V15 : la contre-epreuve de la fixture verte
+  `v15-entete-rogne-par-ancetre.html`. Le <thead> est sorti du flux mais VISIBLE : ses <th> sont
+  poses sur la premiere ligne du corps, un defaut reel. Sans cette paire, ne plus compter un
+  en-tete rogne pourrait devenir ne plus compter aucun en-tete decale.
+  Attendu a 1440 px : 1 `entete_pose_sur_lignes`.
+-->
+<body><main class="wrap">
+<h1>Pieces recues</h1>
+<table id="pieces"><thead class="sorti-du-flux"><tr><th>Piece</th><th>Etat</th><th>Echeance</th></tr></thead>
+<tbody>
+<tr><td>Justificatif de domicile</td><td>Recu</td><td>18 novembre</td></tr>
+<tr><td>Releve d'identite bancaire</td><td>A relancer</td><td>21 novembre</td></tr>
+<tr><td>Avis d'imposition</td><td>Recu</td><td>25 novembre</td></tr>
+</tbody></table>
+</main></body></html>

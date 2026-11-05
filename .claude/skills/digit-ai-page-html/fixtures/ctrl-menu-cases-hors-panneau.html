@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — cases de hauteurs inegales hors de tout panneau — 20261105a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{max-width:900px;margin:0 auto;padding:24px}
+.cases{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px;align-items:start}
+.cases label{display:flex;align-items:center;gap:8px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2162 (lot Produit-86 20261104a, RD-6), contre-epreuve ROUGE de `ctrl-menu-cases-deplie.html` :
+  la MEME grille de cases, sans bouton aria-expanded ni panneau. Ce n'est pas un menu deplie, c'est
+  une rangee de la page : le constat reste. Sans cette paire, exclure les cases d'un panneau
+  pourrait devenir exclure toute case.
+  Attendu a 1440 px : au moins 1 `controles_desalignes`.
+-->
+<body><main class="wrap"><h1>Console des volumes</h1>
+<div class="cases">
+  <label><input type="checkbox" checked> Mandat</label>
+  <label><input type="checkbox" checked> Etat du dossier au dernier point de controle du comite de pilotage mensuel</label>
+  <label><input type="checkbox"> Echeance</label>
+  <label><input type="checkbox" checked> Responsable de la remediation designe par le client</label>
+  <label><input type="checkbox"> Volume</label>
+  <label><input type="checkbox"> Source</label>
+  <label><input type="checkbox"> Perimetre de la derniere extraction validee avec le service et son referent</label>
+  <label><input type="checkbox"> Palier</label>
+</div>
+</main></body></html>

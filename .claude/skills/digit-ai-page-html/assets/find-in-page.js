@@ -35,11 +35,15 @@
  * TF-1062 (11/09) : ce commentaire l'écrivait lui-même EN CLAIR. Une copie inlinée à la main
  * était coupée ici, et le câblage ci-dessous devenait du vrai DOM — trois identifiants
  * dupliqués, que oracle-a11y a comptés à juste titre. Cette explication ne cite plus la
- * séquence ; self_test.py vérifie qu'aucun asset inlinable ne la porte :
+ * séquence ; self_test.py vérifie qu'aucun asset inlinable ne la porte.
+ * TF-2094 (05/11/2026) : ce commentaire est copié tel quel dans chaque page qui embarque le
+ * composant, et il écrivait l'attribut de source avec une adresse nue vers ce fichier :
+ * static_cache_gate de forge-development y lisait un « statique-nu » (2 faux constats). Il ne
+ * l'écrit plus ; self_test.py le vérifie aussi. Câblage :
  *   <input id="find" type="text" placeholder="Rechercher…">
  *   <div id="findCount" class="find-count" aria-live="polite"></div>
  *   <div id="content"> … contenu à fouiller … </div>
- *   <script src="find-in-page.js"><\/script>
+ *   (balise de script dont l'attribut de source désigne find-in-page.js, ou ce fichier inliné)
  *   <script>
  *     DigitAIFindInPage.init(
  *       document.getElementById('find'),

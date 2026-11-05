@@ -1525,10 +1525,26 @@ MEASURE_JS = r"""
   //   · un enfant plus haut que la fenetre est une REGION de page, pas la cellule d'un champ
   //     (une etiquette et son champ ne font jamais un ecran de haut).
   // Les grilles imbriquees restent jugees : une rangee de champs DANS <main> l'est toujours.
+  //
+  // TF-2162 (lot Produit-86 20261104a, RD-6) — LES CASES D'UN PANNEAU OU D'UN MENU DEPLIE NE SONT
+  // PAS UNE RANGEE. Un menu de colonnes ouvert range ses cases en grille, les libelles courent sur
+  // une a trois lignes, et les cases centrees dans leur libelle tombent a des hauteurs differentes :
+  // 7 constats bloquants sur un produit, levables seulement par data-alignement-ok. Un enfant dont
+  // le premier controle est une CASE (checkbox, radio) et qui vit dans un panneau ou un menu deplie
+  // n'est pas compte. Panneau ou menu deplie = un `details`, un role menu|listbox|dialog, un
+  // `[popover]`, ou la cible `aria-controls` d'un bouton `aria-expanded="true"`. Les CHAMPS de
+  // saisie du meme panneau restent juges (ctrl-champs-dans-panneau-deplie.html) ; un menu qui ne
+  // porte aucun de ces marqueurs n'est pas reconnu, `data-alignement-ok` reste le geste.
   {
     const premierControle = (el) => el.matches('input, select, textarea, button')
       ? el : el.querySelector('input, select, textarea, button');
     const hauteurFenetre = window.innerHeight || 900;
+    const cibles = [...document.querySelectorAll('[aria-expanded="true"][aria-controls]')]
+      .flatMap((t) => t.getAttribute('aria-controls').split(/\s+/).filter(Boolean))
+      .map((id) => document.getElementById(id)).filter(Boolean);
+    const dansPanneauDeplie = (el) => !!el.closest('details, [role="menu"], [role="listbox"], [role="dialog"], [popover]')
+      || cibles.some((p) => p.contains(el));
+    const estCase = (c) => { const x = premierControle(c); return !!x && x.matches('input[type="checkbox"], input[type="radio"]'); };
     for (const boite of document.body.querySelectorAll('*')) {
       const cs = getComputedStyle(boite);
       if (cs.display !== 'grid' && cs.display !== 'flex') continue;
@@ -1536,7 +1552,8 @@ MEASURE_JS = r"""
       const enfants = [...boite.children]
         .filter((c) => visible(c) && premierControle(c) && visible(premierControle(c)))
         .filter((c) => !premierControle(c).closest('nav')
-                       && c.getBoundingClientRect().height <= hauteurFenetre);
+                       && c.getBoundingClientRect().height <= hauteurFenetre)
+        .filter((c) => !(estCase(c) && dansPanneauDeplie(c)));
       if (enfants.length < 2) continue;
       const boites = enfants.map((c) => ({ c, r: c.getBoundingClientRect(),
                                            ctrl: premierControle(c).getBoundingClientRect() }));
@@ -2503,11 +2520,42 @@ MESURE_ENTETE_JS = r"""
     const txt = ((cap && cap.textContent) || t.id || '').trim().replace(/\s+/g, ' ').slice(0, 40);
     return txt ? `table ${i} « ${txt} »` : `table ${i}`;
   };
+  // TF-2170 (lot Produit-84 20261105a) - UN ELEMENT ROGNE PAR UN ANCETRE N'EST PAS VU. Un `<th>`
+  // dont l'ancetre (`<thead>`, bande, conteneur) est une boite a `overflow` hidden|clip de ~1 px
+  // - le motif « reserve au lecteur d'ecran » - garde sa taille reelle et se mesurait comme pose
+  // sur les lignes : 11 bloquants par theme sur un rapport, alors que l'ecran n'en montre rien ;
+  // le gabarit du produit avait du reduire l'en-tete a 1 px pour faire taire le constat. Rogne =
+  // la boite de l'element n'a pas plus de 1 px de recouvrement avec la boite d'un ancetre qui
+  // rogne, sur l'axe que cet ancetre rogne. `overflow: auto|scroll` ne rogne pas (l'element reste
+  // atteignable par defilement : c'est la branche b, qui mesure justement ce cas). Limites : un
+  // element `fixed` echappe a ses ancetres ; un `absolute` n'est rogne que par les ancetres
+  // situes a partir de son bloc conteneur ; `clip`/`clip-path` poses sur l'element lui-meme ne
+  // sont pas lus (seul l'`overflow` des ancetres l'est, comme la decision l'a pose).
+  const rogneParAncetre = (el) => {
+    const cs0 = getComputedStyle(el);
+    if (cs0.position === 'fixed') return false;
+    const r = el.getBoundingClientRect();
+    let sorti = cs0.position === 'absolute';   // tant que le bloc conteneur n'est pas franchi
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      if (sorti) {
+        if (s.position === 'static') continue;
+        sorti = false;                          // `a` est le bloc conteneur : il rogne, lui, l'absolute
+      }
+      const rogneX = s.overflowX === 'hidden' || s.overflowX === 'clip';
+      const rogneY = s.overflowY === 'hidden' || s.overflowY === 'clip';
+      if (!rogneX && !rogneY) continue;
+      const c = a.getBoundingClientRect();
+      if (rogneX && Math.min(r.right, c.right) - Math.max(r.left, c.left) <= 1) return true;
+      if (rogneY && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) <= 1) return true;
+    }
+    return false;
+  };
   const visibleBoite = (el) => {
     const s = getComputedStyle(el);
     if (s.display === 'none' || s.visibility === 'hidden') return false;
     const r = el.getBoundingClientRect();
-    return r.width > 1 && r.height > 1;
+    return r.width > 1 && r.height > 1 && !rogneParAncetre(el);
   };
   const tables = [...document.querySelectorAll('table')].filter(
     (t) => t.tHead && t.tHead.rows.length && t.tBodies.length && visibleBoite(t));

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — champs de saisie desalignes dans un panneau deplie — 20261105a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+.wrap{max-width:1000px;margin:0 auto;padding:24px}
+button{font:inherit;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.panneau{margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.rangee{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
+.champ label{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
+.champ input{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2162 (lot Produit-86 20261104a, RD-6), contre-epreuve ROUGE : ne plus compter les CASES d'un
+  panneau deplie n'exempte pas les CHAMPS DE SAISIE qu'il contient. Quatre champs d'une meme
+  rangee, un libelle sur deux lignes qui pousse le sien vers le bas : un vrai defaut, meme dans un
+  panneau ouvert par un bouton aria-expanded="true".
+  Attendu a 1440 px : au moins 1 `controles_desalignes`.
+-->
+<body><main class="wrap"><h1>Hypotheses de la simulation</h1>
+<button type="button" id="hyp" aria-expanded="true" aria-controls="panneau-hyp">Hypotheses</button>
+<div class="panneau" id="panneau-hyp"><div class="rangee">
+  <div class="champ"><label for="a">Volume annuel (hypothese a confirmer par le comite du 15/09 prochain)</label><input id="a" type="text" value="1 000"></div>
+  <div class="champ"><label for="b">Part de marche</label><input id="b" type="text" value="12 %"></div>
+  <div class="champ"><label for="c">Valeur moyenne</label><input id="c" type="text" value="84 EUR"></div>
+  <div class="champ"><label for="d">Duree</label><input id="d" type="text" value="3,4 nuits"></div>
+</div></div>
+</main></body></html>

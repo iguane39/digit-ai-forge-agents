@@ -666,6 +666,12 @@ CAS_RENDU = {
     # la jumelle porte une vraie rangee decalee DANS le contenu, qui doit rester rouge.
     "ctrl-grille-sommaire-contenu.html": ("controles_desalignes", 0),
     "ctrl-grille-sommaire-rangee-desalignee.html": ("controles_desalignes", 1),
+    # TF-2162 (lot Produit-86 20261104a, RD-6) — les CASES d'un menu ou d'un panneau deplie ne sont pas une
+    # rangee : 2 constats avant le correctif, 0 apres. Deux contre-epreuves, qui restent rouges : la meme
+    # grille de cases hors de tout panneau, et des CHAMPS de saisie desalignes dans un panneau deplie.
+    "ctrl-menu-cases-deplie.html": ("controles_desalignes", 0),
+    "ctrl-menu-cases-hors-panneau.html": ("controles_desalignes", 1),
+    "ctrl-champs-dans-panneau-deplie.html": ("controles_desalignes", 1),
     "donnees-tableau-rogne.html": ("rognage_donnees", 1),
     "donnees-tableau-entier.html": ("rognage_donnees", 0),
     "donnees-prose-etroite.html": ("prose_etroite", 1),
@@ -733,6 +739,12 @@ CAS_RENDU = {
     "v15-tableau-court-bride.html": [("entete_masque_par_collants", 0),
                                      ("entete_bride_par_tableau", 1)],
     "v15-tableau-vide.html": ("entete_masque_par_collants", 1),
+    # TF-2170 (lot Produit-84 20261105a) — un en-tete ROGNE par un ancetre (`thead` reserve au lecteur
+    # d'ecran : boite de 1 px, overflow:hidden) n'est pas « pose sur ses lignes » : 1 constat avant
+    # le correctif, 0 apres. La contre-epreuve ne differe que par le rognage (thead sorti du flux
+    # mais visible) et reste a 1 : ne plus compter un en-tete rogne n'est pas ne plus compter.
+    "v15-entete-rogne-par-ancetre.html": ("entete_pose_sur_lignes", 0),
+    "v15-entete-pose-non-rogne.html": ("entete_pose_sur_lignes", 1),
     # TF-1061 — une barre sticky, au-dessus, OPAQUE survole : zero V4. La meme, transparente,
     # recouvre vraiment : un V4.
     "v4-sticky-survol-opaque.html": ("v4_overlap", 0),
@@ -4059,6 +4071,21 @@ def fermantes_nues(texte):
     return [i for i, ligne in enumerate(texte.splitlines(), 1) if RE_FERMANTE_NUE.search(ligne)]
 
 
+# TF-2094 — la porte `static_cache_gate` de forge-development (conductor/gates/static_cache_gate.py,
+# `_STATIC_REF`) lit TOUTE adresse locale d'attribut href|src qui pointe un .css/.js/.mjs sans version
+# (`?v=`, `?h=`…) ni empreinte dans le nom. Transcrite ici, sans l'exemption des adresses externes
+# ni celle des adresses versionnees : un asset qui s'inline ne doit en ecrire AUCUNE, meme en commentaire.
+RE_ADRESSE_STATIQUE = re.compile(
+    r"""(?:href|src)\s*=\s*(?P<q>["'])(?P<v>[^"']*?\.(?:css|js|mjs)(?![A-Za-z0-9])[^"']*)(?P=q)""", re.I)
+
+
+def adresses_statiques_nues(texte):
+    """TF-2094 — les adresses locales non versionnees ecrites dans un asset (liste de n° de ligne)."""
+    return [i for i, ligne in enumerate(texte.splitlines(), 1)
+            if any(not m.group("v").lower().startswith(("http://", "https://", "//", "data:", "blob:"))
+                   and "?" not in m.group("v") for m in RE_ADRESSE_STATIQUE.finditer(ligne))]
+
+
 
 def run_echeance_forme_ancienne():
     """D-4 (b), decision humaine du 16/09/2026 — une forme ancienne est admise JUSQU A UNE DATE.
@@ -4125,6 +4152,24 @@ def run_assets_inlinables():
         out.append({"fixture": f"assets/{chemin.name}", "verdict": "OK" if not lignes else "ECHEC",
                     "attendu": "aucune fermante en clair", "obtenu": f"lignes {lignes}" if lignes else "aucune",
                     "regle": "TF-1062 asset inlinable", "detail": ""})
+    # TF-2094 — le commentaire d'usage de find-in-page.js est copie A L'IDENTIQUE dans chaque page
+    # autoportante (composant embarque, scelle par empreinte) : il ne doit pas ecrire d'adresse
+    # statique nue, que static_cache_gate de forge-development lit comme `statique-nu` (2 faux
+    # constats mesures le 03/11/2026 sur les projections ARCHITECTURE.html et MODELE-DONNEES.html).
+    nues = adresses_statiques_nues((FIXTURES.parent / "assets" / "find-in-page.js").read_text(encoding="utf-8"))
+    out.append({"fixture": "assets/find-in-page.js", "verdict": "OK" if not nues else "ECHEC",
+                "attendu": "aucune adresse statique nue (href|src vers .js/.css sans version)",
+                "obtenu": f"lignes {nues}" if nues else "aucune",
+                "regle": "TF-2094 static_cache_gate", "detail": ""})
+    ligne_avant = ' *   <script src="find-in-page.js"><\\/script>'
+    vu_nu = adresses_statiques_nues(ligne_avant) == [1]
+    ligne_versionnee = ' *   <script src="find-in-page.js?v=3f9a1c"><\\/script>'
+    muet_versionnee = adresses_statiques_nues(ligne_versionnee) == []
+    out.append({"fixture": "ligne d'avant correctif TF-2094 (sens rouge) + sa forme versionnee (sens vert)",
+                "verdict": "OK" if vu_nu and muet_versionnee else "ECHEC",
+                "attendu": "nue reconnue, versionnee muette",
+                "obtenu": f"nue {'reconnue' if vu_nu else 'muette'}, versionnee {'muette' if muet_versionnee else 'accusee'}",
+                "regle": "TF-2094 contre-epreuve", "detail": ""})
     rouge = " * Câblage minimal (RA-1, 13/08 : la séquence « </script » est ÉCHAPPÉE en <\\/script> dans"
     vu = fermantes_nues(rouge) == [1]
     out.append({"fixture": "ligne d'avant correctif (sens rouge)", "verdict": "OK" if vu else "ECHEC",
