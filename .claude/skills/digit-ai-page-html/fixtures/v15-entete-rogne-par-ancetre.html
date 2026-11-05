@@ -24,7 +24,8 @@ th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
   faire taire le constat. Un element rogne par un ancetre dont l'overflow n'est pas `visible`
   n'est pas compte.
   Attendu a 1440 px : 0 `entete_pose_sur_lignes` (le meme document SANS rognage est la fixture
-  rouge `v15-entete-pose-non-rogne.html` : 1 constat).
+  rouge `v15-entete-pose-non-rogne.html` : 1 constat). TF-2176 : 0 `entete_desaligne` aussi (2
+  constats avant le correctif : un libelle rogne ne se desaligne de rien) ; la fixture rouge en garde 2.
 -->
 <body><main class="wrap">
 <h1>Pieces recues</h1>

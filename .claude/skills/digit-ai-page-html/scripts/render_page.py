@@ -256,6 +256,47 @@ def ensure_local_fonts() -> None:
 
 
 # ---------------------------------------------------------------------------
+# TF-2176 (05/11/2026) - UNE SEULE DEFINITION DE « ROGNE PAR UN ANCETRE », DEUX MESURES.
+# V15 (MESURE_ENTETE_JS) l'a depuis TF-2170 ; la famille `entete_desaligne` (MEASURE_JS) mesurait
+# encore le meme `<th>` rogne : 2 constats sur la fixture v15-entete-rogne-par-ancetre.html. La
+# fonction vit ici, une fois, et se pose dans les deux scripts par le jeton __ROGNE_PAR_ANCETRE__
+# (mesure_js() pour MEASURE_JS, la ligne qui suit MESURE_ENTETE_JS pour V15) : deux copies a la
+# main auraient derive, comme les composants embarques que embarquer-composants.mjs scelle.
+# ---------------------------------------------------------------------------
+ROGNE_PAR_ANCETRE_JS = r"""  // TF-2170 (lot Produit-84 20261105a) - UN ELEMENT ROGNE PAR UN ANCETRE N'EST PAS VU. Un `<th>`
+  // dont l'ancetre (`<thead>`, bande, conteneur) est une boite a `overflow` hidden|clip de ~1 px
+  // - le motif « reserve au lecteur d'ecran » - garde sa taille reelle et se mesurait comme pose
+  // sur les lignes : 11 bloquants par theme sur un rapport, alors que l'ecran n'en montre rien ;
+  // le gabarit du produit avait du reduire l'en-tete a 1 px pour faire taire le constat. Rogne =
+  // la boite de l'element n'a pas plus de 1 px de recouvrement avec la boite d'un ancetre qui
+  // rogne, sur l'axe que cet ancetre rogne. `overflow: auto|scroll` ne rogne pas (l'element reste
+  // atteignable par defilement : c'est la branche b, qui mesure justement ce cas). Limites : un
+  // element `fixed` echappe a ses ancetres ; un `absolute` n'est rogne que par les ancetres
+  // situes a partir de son bloc conteneur ; `clip`/`clip-path` poses sur l'element lui-meme ne
+  // sont pas lus (seul l'`overflow` des ancetres l'est, comme la decision l'a pose).
+  const rogneParAncetre = (el) => {
+    const cs0 = getComputedStyle(el);
+    if (cs0.position === 'fixed') return false;
+    const r = el.getBoundingClientRect();
+    let sorti = cs0.position === 'absolute';   // tant que le bloc conteneur n'est pas franchi
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      if (sorti) {
+        if (s.position === 'static') continue;
+        sorti = false;                          // `a` est le bloc conteneur : il rogne, lui, l'absolute
+      }
+      const rogneX = s.overflowX === 'hidden' || s.overflowX === 'clip';
+      const rogneY = s.overflowY === 'hidden' || s.overflowY === 'clip';
+      if (!rogneX && !rogneY) continue;
+      const c = a.getBoundingClientRect();
+      if (rogneX && Math.min(r.right, c.right) - Math.max(r.left, c.left) <= 1) return true;
+      if (rogneY && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) <= 1) return true;
+    }
+    return false;
+  };
+"""
+
+# ---------------------------------------------------------------------------
 # Mesures exécutées DANS la page (bounding boxes et styles calculés réels).
 # ---------------------------------------------------------------------------
 MEASURE_JS = r"""
@@ -2159,6 +2200,7 @@ MEASURE_JS = r"""
       if (/inset\(\s*50%/.test(s.clipPath || '')) return true;
       return false;
     };
+    __ROGNE_PAR_ANCETRE__
     let vusA = 0;
     for (const t of document.querySelectorAll('table')) {
       if (vusA >= 6 || !visible(t)) continue;
@@ -2173,6 +2215,8 @@ MEASURE_JS = r"""
         if (vusA >= 6) return;
         const td = ligne.cells[i];
         if (!td || th.colSpan > 1 || td.colSpan > 1 || masqueA11y(th)) return;
+        // TF-2176 : un en-tete ROGNE par un ancetre (thead reserve au lecteur d'ecran) ne se voit pas, comme pour V15.
+        if (rogneParAncetre(th)) return;
         const a = getComputedStyle(td).textAlign;
         const bt = bordTexte(th, '.tf-btn, .tf-panel, .tf-unique, button, [hidden]');
         // Cote cellule : la BOITE de chaque enfant (un badge porte son propre padding, son bord est
@@ -2520,37 +2564,7 @@ MESURE_ENTETE_JS = r"""
     const txt = ((cap && cap.textContent) || t.id || '').trim().replace(/\s+/g, ' ').slice(0, 40);
     return txt ? `table ${i} « ${txt} »` : `table ${i}`;
   };
-  // TF-2170 (lot Produit-84 20261105a) - UN ELEMENT ROGNE PAR UN ANCETRE N'EST PAS VU. Un `<th>`
-  // dont l'ancetre (`<thead>`, bande, conteneur) est une boite a `overflow` hidden|clip de ~1 px
-  // - le motif « reserve au lecteur d'ecran » - garde sa taille reelle et se mesurait comme pose
-  // sur les lignes : 11 bloquants par theme sur un rapport, alors que l'ecran n'en montre rien ;
-  // le gabarit du produit avait du reduire l'en-tete a 1 px pour faire taire le constat. Rogne =
-  // la boite de l'element n'a pas plus de 1 px de recouvrement avec la boite d'un ancetre qui
-  // rogne, sur l'axe que cet ancetre rogne. `overflow: auto|scroll` ne rogne pas (l'element reste
-  // atteignable par defilement : c'est la branche b, qui mesure justement ce cas). Limites : un
-  // element `fixed` echappe a ses ancetres ; un `absolute` n'est rogne que par les ancetres
-  // situes a partir de son bloc conteneur ; `clip`/`clip-path` poses sur l'element lui-meme ne
-  // sont pas lus (seul l'`overflow` des ancetres l'est, comme la decision l'a pose).
-  const rogneParAncetre = (el) => {
-    const cs0 = getComputedStyle(el);
-    if (cs0.position === 'fixed') return false;
-    const r = el.getBoundingClientRect();
-    let sorti = cs0.position === 'absolute';   // tant que le bloc conteneur n'est pas franchi
-    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
-      const s = getComputedStyle(a);
-      if (sorti) {
-        if (s.position === 'static') continue;
-        sorti = false;                          // `a` est le bloc conteneur : il rogne, lui, l'absolute
-      }
-      const rogneX = s.overflowX === 'hidden' || s.overflowX === 'clip';
-      const rogneY = s.overflowY === 'hidden' || s.overflowY === 'clip';
-      if (!rogneX && !rogneY) continue;
-      const c = a.getBoundingClientRect();
-      if (rogneX && Math.min(r.right, c.right) - Math.max(r.left, c.left) <= 1) return true;
-      if (rogneY && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) <= 1) return true;
-    }
-    return false;
-  };
+  __ROGNE_PAR_ANCETRE__
   const visibleBoite = (el) => {
     const s = getComputedStyle(el);
     if (s.display === 'none' || s.visibility === 'hidden') return false;
@@ -2734,6 +2748,8 @@ MESURE_ENTETE_JS = r"""
   return { poses, decolles, masques, brides };
 }
 """
+# TF-2176 : la definition partagee de « rogne par un ancetre » se pose dans le script de V15.
+MESURE_ENTETE_JS = MESURE_ENTETE_JS.replace("__ROGNE_PAR_ANCETRE__", ROGNE_PAR_ANCETRE_JS)
 
 
 # ---------------------------------------------------------------------------
@@ -3125,7 +3141,8 @@ def mesure_js() -> str:
             .replace("__V24_MIN_CPL__", str(V24_MIN_CPL))
             .replace("__V24_MIN_LIGNES__", str(V24_MIN_LIGNES))
             .replace("__SOMMAIRE_MIN_CHAP__", str(SOMMAIRE_MIN_CHAPITRES))
-            .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS)))
+            .replace("__SOMMAIRE_MIN_ECRANS__", str(SOMMAIRE_MIN_ECRANS))
+            .replace("__ROGNE_PAR_ANCETRE__", ROGNE_PAR_ANCETRE_JS))
 
 
 def mesure_large_js() -> str:

@@ -743,8 +743,11 @@ CAS_RENDU = {
     # d'ecran : boite de 1 px, overflow:hidden) n'est pas « pose sur ses lignes » : 1 constat avant
     # le correctif, 0 apres. La contre-epreuve ne differe que par le rognage (thead sorti du flux
     # mais visible) et reste a 1 : ne plus compter un en-tete rogne n'est pas ne plus compter.
-    "v15-entete-rogne-par-ancetre.html": ("entete_pose_sur_lignes", 0),
-    "v15-entete-pose-non-rogne.html": ("entete_pose_sur_lignes", 1),
+    # TF-2176 — la famille `entete_desaligne` (alignement du libelle sur sa colonne) ignore le meme
+    # en-tete rogne : 2 constats (« Etat », « Echeance ») avant le correctif, 0 apres. La contre-epreuve
+    # visible garde ses 2 constats : un libelle sorti du flux mais VISIBLE reste decale de ses valeurs.
+    "v15-entete-rogne-par-ancetre.html": [("entete_pose_sur_lignes", 0), ("entete_desaligne", 0)],
+    "v15-entete-pose-non-rogne.html": [("entete_pose_sur_lignes", 1), ("entete_desaligne", 2)],
     # TF-1061 — une barre sticky, au-dessus, OPAQUE survole : zero V4. La meme, transparente,
     # recouvre vraiment : un V4.
     "v4-sticky-survol-opaque.html": ("v4_overlap", 0),
