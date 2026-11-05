@@ -146,6 +146,12 @@
  * lignes a, b — deux écrivains sans verrou commun »), EN TÊTE des écarts, distinct de toute
  * autre rupture.
  *
+ * R-61 bis À L'ÉCRITURE D'UN run_close « PRÊT » (TF-2152, 05/11/2026). `append` d'un `run_close` de statut
+ * `pret_*` ou `en_production` rejoue `oracle-conformite-projet --declarer-pret` du pilot avant d'écrire et
+ * REFUSE sur FAIL (avertissement jusqu'au 18/11/2026 inclus, FAIL dès le 19/11/2026, lu à l'horloge ;
+ * `LEDGER_AUJOURDHUI=AAAA-MM-JJ` fixe le jour pour la recette ; `FORGE_ORACLE_CONFORMITE_PROJET` désigne
+ * l'oracle). Oracle introuvable ou ledger hors d'un dossier `forge/` : écrit, et `[NON VÉRIFIÉ]` le dit.
+ *
  * RECTIFICATION DES FORGES MOBILISÉES (TF-1722, 15/10/2026). Une entrée `rectification_forges_mobilisees`
  * (TF-1715 du pilot) sans `forges_mobilisees` non vide ou sans `cause` est refusée à l'écriture, quel
  * que soit le schéma : le juge de l'enclenchement l'ignorerait (constante CHAMPS_RECTIFICATION_FORGES).
@@ -180,7 +186,8 @@
  * délai (Atomics.wait, sommeil synchrone) puis erreur explicite si le verrou reste pris.
  */
 import { readFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSync, readdirSync, statSync, readSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname, basename, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { spawnSync } from "node:child_process";
 
@@ -640,6 +647,57 @@ function verdictsDuRapport(rapport) {
   return { lanceur, cible, elements: sortie, refus };
 }
 
+// ---- R-61 bis À L'ÉCRITURE D'UN run_close « PRÊT » (TF-2152, 05/11/2026) ----------------------------
+//: TF-2124 du pilot a livré R-61 bis (`oracle-conformite-projet.mjs`) : un run qui se déclare prêt porte
+//: au ledger de ce run un PASS de `parcours-personas` (forge-tests) ET d'`oracle-exploitabilite`
+//: (forge-design). La règle se jouait quand ETAPES-RUN.md la fait rejouer, ou après coup ; ce script
+//: écrivait le run_close sans la jouer. `append` d'un run_close de statut `pret_*` ou `en_production`
+//: (le motif de l'oracle) rejoue donc l'oracle avec `--declarer-pret` AVANT d'écrire, et REFUSE sur FAIL.
+//: La sévérité est celle de l'oracle, lue à l'horloge : AVERTISSEMENT (écrit, dit) jusqu'au 18/11/2026,
+//: FAIL dès le 19/11/2026. `LEDGER_AUJOURDHUI=AAAA-MM-JJ` fixe le jour pour la recette (--aujourd-hui).
+//: Ce qui ne peut pas se juger se DIT `[NON VÉRIFIÉ]` et n'empêche pas l'écriture : oracle du pilot
+//: introuvable sur ce poste, ou ledger hors d'un dossier `forge/` (la racine du projet ne se déduit pas).
+//: Le pilot rejoue la règle après coup sur le ledger ; un refus d'ici n'est donc jamais la seule porte.
+const STATUT_PRET = /^(?:pret|en_production)/i;
+const ICI = dirname(fileURLToPath(import.meta.url));
+function oracleConformiteProjet(racineProjet) {
+  if (process.env.FORGE_ORACLE_CONFORMITE_PROJET) return process.env.FORGE_ORACLE_CONFORMITE_PROJET; // désignation explicite : seule piste
+  const relatif = join("digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
+  const pistes = [
+    process.env.FORGE_ROOT ? join(process.env.FORGE_ROOT, relatif) : null,
+    join(dirname(racineProjet), relatif),                     // le produit et le pilot sont frères sous la racine
+    join(ICI, "..", "..", "..", "..", "..", relatif),          // ce dépôt versionné, frère du pilot
+  ].filter(Boolean);
+  return pistes.find((p) => existsSync(p)) || pistes[0];
+}
+/** Rend les lignes à imprimer ; refuse (fail) sur FAIL de R-61 bis. */
+function jouerR61bis(ledgerFile, obj) {
+  const abs = resolve(ledgerFile);
+  if (basename(dirname(abs)).toLowerCase() !== "forge") {
+    return [`[NON VÉRIFIÉ] R-61 bis (TF-2152) : le ledger n'est pas dans un dossier \`forge/\` (${abs}) — la racine du projet ne se déduit pas, la règle n'a pas été jouée à l'écriture de ce run_close « ${obj.statut} »`];
+  }
+  const racine = dirname(dirname(abs));
+  const oracle = oracleConformiteProjet(racine);
+  if (!existsSync(oracle)) {
+    return [`[NON VÉRIFIÉ] R-61 bis (TF-2152) : oracle-conformite-projet du pilot introuvable (${oracle}) — poser FORGE_ROOT ; la règle n'a pas été jouée à l'écriture de ce run_close « ${obj.statut} »`];
+  }
+  const args = [oracle, racine, "--regles", "R-61 bis", "--declarer-pret", ...(process.env.LEDGER_AUJOURDHUI ? ["--aujourd-hui", process.env.LEDGER_AUJOURDHUI] : [])];
+  const r = spawnSync(process.execPath, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  let sortie = null;
+  try { sortie = JSON.parse(r.stdout); } catch { /* traité ci-dessous */ }
+  const f = sortie && Array.isArray(sortie.findings) ? sortie.findings.find((x) => x.regle === "R-61 bis") : null;
+  if (!f) {
+    return [`[NON VÉRIFIÉ] R-61 bis (TF-2152) : l'oracle n'a rendu aucun constat R-61 bis (exit ${r.status}${sortie && sortie.message ? ` — ${sortie.message}` : ""}) — la règle n'a pas été jouée à l'écriture de ce run_close « ${obj.statut} »`];
+  }
+  if (f.statut === "FAIL") {
+    fail(`entrée refusée (run_close « ${obj.statut} », R-61 bis, TF-2152) — ${f.message}. Aucune écriture : jouer les deux contrôles, les consigner par \`ledger.mjs consigner\`, puis réécrire le run_close.`);
+  }
+  if (f.statut === "SANS_OBJET") return [`[INFO] R-61 bis (TF-2152) sans objet : ${f.message}`];
+  return /^AVERTISSEMENT/.test(f.message)
+    ? [`[ATTENTION] R-61 bis (TF-2152) — ${f.message}`]
+    : [`[OK] R-61 bis (TF-2152) : ${f.message}`];
+}
+
 if (cmd === "append") {
   if (!file) fail_usage();
   // Forme reconnue : UN payload JSON positionnel, OU --fichier <chemin> — jamais les deux,
@@ -705,7 +763,10 @@ if (cmd === "append") {
     const probleme = validerPartiesMobilisees(obj[CHAMP_PARTIES]);
     if (probleme) fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-1841) — \`${CHAMP_PARTIES}\` ${probleme} : le juge de l enclenchement l ignorerait et garderait la promesse entiere`);
   }
+  // TF-2152 : un run_close « prêt » joue R-61 bis AVANT d'être écrit (refus sur FAIL, avant le verrou).
+  const annoncesPret = obj.type === "run_close" && STATUT_PRET.test(String(obj.statut ?? "")) ? jouerR61bis(file, obj) : [];
   const [seq] = ecrireSousVerrou(file, [obj]);
+  for (const a of annoncesPret) console.log(a);
   const tsFourni = typeof obj.ts === "string" && obj.ts.trim() ? obj.ts.trim() : null;
   if (tsFourni) console.log(`[ATTENTION] \`ts\` imposé par le payload (${tsFourni}) au lieu de l'horodatage machine`);
   for (const a of annoncesVersion) console.log(a);

@@ -1241,6 +1241,131 @@ check("consigner (rouge TF-2153) : un pan absent et un verdict inconnu dans `ada
   if (readFileSync(lf, "utf8") !== avant) throw new Error("écriture partielle malgré le refus");
 });
 
+// ---- TF-2152 (05/11/2026) : un run_close « prêt » joue R-61 bis (oracle-conformite-projet du pilot,
+// `--declarer-pret`) AVANT d'être écrit, et `append` refuse sur FAIL. Le jour se fixe pour la recette par
+// LEDGER_AUJOURDHUI (l'option --aujourd-hui de l'oracle) : avertissement jusqu'au 18/11/2026, FAIL dès le 19.
+// Pilot absent de ce poste : non joué, et dit.
+{
+  const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
+  if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2152 : R-61 bis — oracle-conformite-projet du pilot introuvable (${juge})`);
+  else {
+    const produit = (nom) => {
+      const racine = mkdtempSync(join(out, `produit-${nom}-`));
+      mkdirSync(join(racine, "forge"));
+      const lf = join(racine, "forge", "ledger.jsonl");
+      run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.1", forges_mobilisees: ["agents"], substrat: "essai TF-2152" })]);
+      return lf;
+    };
+    const avec = (jour, extra = {}) => ({ ...process.env, FORGE_ORACLE_CONFORMITE_PROJET: juge, ...(jour ? { LEDGER_AUJOURDHUI: jour } : {}), ...extra });
+    const ecrire = (lf, payload, env) => {
+      try { return { code: 0, sortie: execFileSync("node", [ledger, "append", lf, JSON.stringify(payload)], { encoding: "utf8", stdio: "pipe", env }), err: "" }; }
+      catch (e) { return { code: e.status, sortie: String(e.stdout || ""), err: String(e.stderr || "") }; }
+    };
+    const CLOTURE_PRETE = { type: "run_close", statut: "pret_client", resume: "run clos prêt, essai TF-2152" };
+    const VERDICTS_USAGE = [
+      { type: "oracles_verdict", oracle: "forge-tests:parcours-personas", verdict: "PASS" },
+      { type: "oracles_verdict", oracle: "oracle-exploitabilite", verdict: "PASS" },
+    ];
+
+    check("ledger TF-2152 (rouge) : un run_close pret_* sans les deux contrôles d'usage, à partir du 19/11/2026 → REFUSÉ par R-61 bis, nommé, ledger inchangé", () => {
+      const lf = produit("rouge");
+      const avant = readFileSync(lf, "utf8");
+      const r = ecrire(lf, CLOTURE_PRETE, avec("2026-11-20"));
+      if (r.code === 0) throw new Error("le run_close prêt a été écrit alors que R-61 bis est en échec");
+      for (const m of ["R-61 bis", "TF-2152", "parcours-personas", "oracle-exploitabilite", "Aucune écriture"])
+        if (!r.err.includes(m)) throw new Error(`refus sans « ${m} » : ${r.err.slice(0, 300)}`);
+      if (readFileSync(lf, "utf8") !== avant) throw new Error("le refus a quand même écrit dans le ledger");
+      // `en_production` se juge comme `pret_*`
+      if (ecrire(lf, { type: "run_close", statut: "en_production", resume: "x" }, avec("2026-11-20")).code === 0) throw new Error("en_production aurait dû être refusé aussi");
+    });
+    check("ledger TF-2152 (vert) : les deux contrôles consignés PASS au ledger du run → le run_close prêt s'écrit, journal intègre ; le geste que le refus propose est joué", () => {
+      const lf = produit("vert");
+      const rp = join(out, "rapport-usage-r61.json");
+      writeFileSync(rp, JSON.stringify(VERDICTS_USAGE), "utf8");
+      run(ledger, ["consigner", lf, "--rapport", rp]);
+      const r = ecrire(lf, CLOTURE_PRETE, avec("2026-11-20"));
+      if (r.code !== 0) throw new Error(`le run_close aurait dû s'écrire : ${r.err.slice(0, 300)}`);
+      if (!lignesDe(lf).some((x) => x.type === "run_close" && x.statut === "pret_client")) throw new Error("run_close absent du ledger");
+      if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("verify aurait dû passer");
+    });
+    check("ledger TF-2152 : avant le 19/11/2026 R-61 bis AVERTIT (écrit, `[ATTENTION]` dit le manque) ; un statut non prêt n'appelle pas l'oracle", () => {
+      const lf = produit("avertissement");
+      const r = ecrire(lf, CLOTURE_PRETE, avec("2026-11-10"));
+      if (r.code !== 0) throw new Error(`l'avertissement ne doit pas refuser : ${r.err.slice(0, 200)}`);
+      if (!r.sortie.includes("[ATTENTION]") || !r.sortie.includes("R-61 bis") || !r.sortie.includes("AVERTISSEMENT")) throw new Error(`avertissement non dit : ${r.sortie.slice(0, 300)}`);
+      const lf2 = produit("non-pret");
+      // Oracle désigné inexistant : s'il était consulté pour un statut non prêt, la sortie le dirait.
+      const r2 = ecrire(lf2, { type: "run_close", statut: "abandonne", resume: "run abandonné" }, avec("2026-11-20", { FORGE_ORACLE_CONFORMITE_PROJET: join(out, "n-existe-pas.mjs") }));
+      if (r2.code !== 0 || r2.sortie.includes("R-61 bis")) throw new Error(`un statut non prêt ne se juge pas : ${r2.err.slice(0, 200)}${r2.sortie.slice(0, 200)}`);
+    });
+    check("ledger TF-2152 : oracle introuvable, ou ledger hors d'un dossier forge/ → écrit mais `[NON VÉRIFIÉ]` le dit, jamais un vert muet", () => {
+      const lf = produit("sans-oracle");
+      const r = ecrire(lf, CLOTURE_PRETE, avec("2026-11-20", { FORGE_ORACLE_CONFORMITE_PROJET: join(out, "n-existe-pas.mjs") }));
+      if (r.code !== 0 || !r.sortie.includes("[NON VÉRIFIÉ]") || !r.sortie.includes("introuvable")) throw new Error(`oracle absent non dit : ${r.err.slice(0, 200)}${r.sortie.slice(0, 200)}`);
+      const nu = join(out, "ledger-hors-forge.jsonl");
+      run(ledger, ["append", nu, JSON.stringify({ type: "run_open", substrat: "hors forge/" })]);
+      const r2 = ecrire(nu, CLOTURE_PRETE, avec("2026-11-20"));
+      if (r2.code !== 0 || !r2.sortie.includes("[NON VÉRIFIÉ]") || !r2.sortie.includes("forge")) throw new Error(`ledger hors forge/ non dit : ${r2.err.slice(0, 200)}${r2.sortie.slice(0, 200)}`);
+    });
+  }
+}
+
+// ---- TF-2163 (05/11/2026) : le rétablissement des pseudonymes se fait par MOTIF, pas par chaîne exacte.
+// Le fait (Produit-86, RA-2) : le modèle a ôté les crochets de `[Client-A]` ; 3 propositions sur 3 sont
+// restées sur leur pseudonyme et ont été refusées « hors périmètre ». Sens rouge : la chaîne exacte
+// (l'ancien rétablissement) laisse le pseudonyme nu. Sens vert : le motif le rétablit. Gardes : une
+// borne, la casse, un crochet d'une autre phrase, un `$` de la valeur réelle, un pseudonyme orphelin.
+{
+  const { retablirPseudonymes } = await import(new URL(`file:///${join(here, "retablir-pseudonymes.mjs").split("\\").join("/")}`).href);
+  const TABLE = { "Client-A": "Société Exemple", "Client-AB": "Autre & Cie", "Produit-12": "Outil $& interne" };
+  const parExacte = (texte) => Object.entries(TABLE).reduce((t, [p, v]) => t.split(`[${p}]`).join(v), texte);
+  check("pseudonymes TF-2163 (rouge) : la chaîne exacte `[Client-A]` laisse le pseudonyme nu quand le modèle a ôté les crochets", () => {
+    const repondu = "Je propose de relancer Client-A sur le Produit-12.";
+    if (parExacte(repondu) !== repondu) throw new Error("la chaîne exacte aurait dû ne rien rétablir : le sens rouge ne prouve plus rien");
+    const r = retablirPseudonymes(repondu, TABLE);
+    if (r.texte !== "Je propose de relancer Société Exemple sur le Outil $& interne.") throw new Error(`motif : ${r.texte}`);
+    if (r.retablis.length !== 2 || r.retablis.some((x) => x.sansCrochets !== 1)) throw new Error(`comptes : ${JSON.stringify(r.retablis)}`);
+  });
+  check("pseudonymes TF-2163 (vert) : avec crochets, crochets doubles, espaces, ouvrant ou fermant perdu, séparateur changé → rétabli, sans crochet résiduel", () => {
+    const cas = [
+      ["[Client-A] a signé", "Société Exemple a signé"],
+      ["[[Client-A]] a signé", "Société Exemple a signé"],
+      ["[ Client-A ] a signé", "Société Exemple a signé"],
+      ["[Client-A a signé", "Société Exemple a signé"],
+      ["Client-A] a signé", "Société Exemple a signé"],
+      ["Client A a signé, puis Client_A", "Société Exemple a signé, puis Société Exemple"],
+      ["Client-A, Client-A.", "Société Exemple, Société Exemple."],
+    ];
+    for (const [entree, attendu] of cas) {
+      const r = retablirPseudonymes(entree, TABLE).texte;
+      if (r !== attendu) throw new Error(`« ${entree} » → « ${r} », attendu « ${attendu} »`);
+    }
+  });
+  check("pseudonymes TF-2163 (gardes) : borne (Client-AB ≠ Client-A), casse, crochet d'une autre phrase gardé, `$` littéral, sans table → texte inchangé", () => {
+    const g = (t) => retablirPseudonymes(t, TABLE).texte;
+    if (g("Client-AB et Client-A") !== "Autre & Cie et Société Exemple") throw new Error(`borne : ${g("Client-AB et Client-A")}`);
+    if (g("Client-A2 reste") !== "Client-A2 reste") throw new Error("Client-A2 ne doit pas devenir Client-A suivi de 2");
+    if (g("le client a signé") !== "le client a signé") throw new Error("la casse doit protéger le français ordinaire");
+    if (g("[voir Client-A] puis fin") !== "[voir Société Exemple] puis fin") throw new Error(`crochet d'une autre phrase : ${g("[voir Client-A] puis fin")}`);
+    if (g("Client-A-bis") !== "Client-A-bis") throw new Error("Client-A-bis est un autre mot");
+    if (retablirPseudonymes("Client-A", {}).texte !== "Client-A") throw new Error("table vide : texte inchangé");
+  });
+  check("pseudonymes TF-2163 : un pseudonyme de la forme de la table mais absent d'elle (Client-Z) est RENDU dans `inconnus`, et la CLI sort 1", () => {
+    const r = retablirPseudonymes("Client-A puis [Client-Z] et Produit-99", TABLE);
+    if (r.inconnus.join("|") !== "Client-Z|Produit-99") throw new Error(`inconnus : ${JSON.stringify(r.inconnus)}`);
+    if (!r.texte.startsWith("Société Exemple puis")) throw new Error("le connu doit être rétabli malgré l'orphelin");
+    const tf = join(out, "table-pseudo.json"), rf = join(out, "reponse-pseudo.txt");
+    writeFileSync(tf, JSON.stringify(TABLE), "utf8");
+    writeFileSync(rf, "Client-A puis Client-Z", "utf8");
+    let code = 0;
+    try { execFileSync("node", [join(here, "retablir-pseudonymes.mjs"), "--table", tf, "--fichier", rf], { encoding: "utf8", stdio: "pipe" }); }
+    catch (e) { code = e.status; }
+    if (code !== 1) throw new Error(`exit ${code} attendu 1 sur un orphelin`);
+    writeFileSync(rf, "Client-A seul", "utf8");
+    if (!JSON.parse(run(join(here, "retablir-pseudonymes.mjs"), ["--table", tf, "--fichier", rf])).texte.startsWith("Société Exemple")) throw new Error("CLI : texte non rétabli");
+  });
+}
+
 check("qualification_enclenchement (vert) : `fonde` ou `a_tort` avec sa cause → écrite", () => {
   const lf = ledgerOuvert("ledger-qualification-vert.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "qualification_enclenchement", qualification: "a_tort", cause: "forge mobilisée pour son journal, pas pour ses oracles" })]);

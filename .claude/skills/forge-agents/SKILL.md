@@ -37,6 +37,8 @@ agent que si elle le mérite (critère à 3 conditions) ; sinon elle reste dans 
 node scripts/compile-agent-def.mjs defs/*.yaml --out .claude/agents/
 node scripts/ledger.mjs verify <dossier-projet>/ledger.jsonl
 node scripts/ledger.mjs consigner <dossier-projet>/ledger.jsonl -- node <lanceur> <cible>  # une entrée oracles_verdict PAR oracle (TF-1319)
+node scripts/ledger.mjs append <dossier-projet>/forge/ledger.jsonl '{"type":"run_close","statut":"pret_client",…}'  # joue R-61 bis du pilot avant d'écrire, refuse sur FAIL (TF-2152)
+node scripts/retablir-pseudonymes.mjs --table <table.json> [--fichier <réponse>]  # pseudonymes rétablis PAR MOTIF, crochets perdus admis (TF-2163)
 node scripts/self-test.mjs   # fixtures verte/rouges — à rejouer après toute modification
 node scripts/otlp-project.mjs <dossier-projet>/ledger.jsonl --out spans.json  # TF-0106 (1)
 bash scripts/self-test-gate-budget.sh   # gate G0 budget, TF-0106 (2) — isolé, QUEUE_DIR temporaire
