@@ -39,13 +39,14 @@ const effort = (e) => (e ? `complexité ${LIB_CPLX[e.complexite] ?? e.complexite
 const lien = (id) => (/^AM-/.test(id) ? `<a href="#${esc(id)}">${esc(id)}</a>` : `<code>${esc(id)}</code>`);
 
 /** Un tableau au socle : repli en cartes (data-label sur chaque cellule), et filtrable dès 8 lignes. */
-function tableau({ id, entetes, lignes, legende, filtrable = null }) {
+function tableau({ id, entetes, lignes, legende, filtrable = null, horsFacette = {} }) {
+  // horsFacette : { "<en-tête>": "<motif>" } — colonne sortie de la facette (data-filter-col="off", TF-2248).
   const filtre = filtrable ?? lignes.length >= 8;
   const attrs = `id="${id}" class="repli-cartes"${filtre ? ' data-filterable' : ''}`;
   const corps = lignes.map((l) => (l.brut ? l.brut : `<tr>${l.map((c, i) => `<td data-label="${esc(entetes[i])}">${c}</td>`).join('')}</tr>`)).join('\n');
   return `<div class="table-hote"><table ${attrs}>
 <caption>${esc(legende)}</caption>
-<thead><tr>${entetes.map((e) => `<th scope="col">${esc(e)}</th>`).join('')}</tr></thead>
+<thead><tr>${entetes.map((e) => `<th scope="col"${horsFacette[e] ? ` data-filter-col="off" data-filter-reason="${esc(horsFacette[e])}"` : ''}>${esc(e)}</th>`).join('')}</tr></thead>
 <tbody>
 ${corps}
 </tbody></table></div>${filtre ? `\n<p class="tf-count" data-tf-count-for="${id}" aria-live="polite"></p>` : ''}`;
@@ -118,7 +119,7 @@ export function corpsDePage(plan, audit, domaines) {
       ? `<ul class="chiffres">${f.chiffres.map((c) => `<li><strong>${esc(c.valeur)}</strong> — <span aria-describedby="leg-chiffres" class="badge ${c.statut === 'mesure' ? 'ok' : c.statut === 'lu' ? 'info' : 'part'}">${esc(LIB_CHIFFRE[c.statut] ?? c.statut)}</span> ${esc(c.source || c.commande || '')}</li>`).join('')}</ul>`
       : 'aucun chiffre';
     const st = f.statut_existant || {};
-    lignesFiches.push({ brut: `<tr id="${esc(f.id)}"><td data-label="Rang" data-v="${esc(f.rang)}">${esc(f.rang)}</td><td data-label="Fiche"><button type="button" class="td-btn" aria-expanded="false" aria-controls="${esc(det)}" aria-label="Déplier la fiche ${esc(f.id)}">›</button> <code>${esc(f.id)}</code> ${esc(f.titre)}</td><td data-label="Domaine">${esc(parCode.get(codeDe(f))?.libelle ?? codeDe(f))}</td><td data-label="Horizon">${esc(f.horizon)}</td><td data-label="Effort">${esc(effort(f.effort))}</td><td data-label="Statut">${esc(LIB_STATUT[st.valeur] ?? st.valeur)}</td></tr>` });
+    lignesFiches.push({ brut: `<tr id="${esc(f.id)}"><td data-label="Rang" data-v="${esc(f.rang)}">${esc(f.rang)}</td><td data-label="Fiche" data-tf-valeur="${esc(f.id)}"><button type="button" class="td-btn" aria-expanded="false" aria-controls="${esc(det)}" aria-label="Déplier la fiche ${esc(f.id)}">›</button> <code>${esc(f.id)}</code> ${esc(f.titre)}</td><td data-label="Domaine">${esc(parCode.get(codeDe(f))?.libelle ?? codeDe(f))}</td><td data-label="Horizon">${esc(f.horizon)}</td><td data-label="Effort">${esc(effort(f.effort))}</td><td data-label="Statut">${esc(LIB_STATUT[st.valeur] ?? st.valeur)}</td></tr>` });
     lignesFiches.push({ brut: `<tr data-detail id="${esc(det)}" hidden><td colspan="${NCOL}"><dl class="champs">
 <dt>Constat</dt><dd>${esc(f.constat?.texte)} <span class="source">Source : ${esc(f.constat?.source)}</span></dd>
 <dt>Cible servie</dt><dd>${esc(f.cible?.texte)} <span class="source">Source : ${esc(f.cible?.source)}</span></dd>
@@ -134,7 +135,7 @@ export function corpsDePage(plan, audit, domaines) {
   }
   ajouter('fiches', 'Toutes les fiches', 'Chaque amélioration en une ligne, triable et filtrable par colonne ; le chevron déplie la fiche sur ses dix champs, ses chiffres et leur statut.',
     'Ce chapitre contient une ligne par fiche, dans l’ordre du rang ; le chevron ouvre ses dix champs, ce que le chapitre 1 résume en décisions.',
-    exempleFiches + tableau({ id: 'tab-fiches', entetes: ['Rang', 'Fiche', 'Domaine', 'Horizon', 'Effort', 'Statut'], lignes: lignesFiches, legende: 'Les fiches du plan, dans l’ordre de leur rang.', filtrable: fiches.length >= 8 })
+    exempleFiches + tableau({ id: 'tab-fiches', entetes: ['Rang', 'Fiche', 'Domaine', 'Horizon', 'Effort', 'Statut'], lignes: lignesFiches, legende: 'Les fiches du plan, dans l’ordre de leur rang.', filtrable: fiches.length >= 8, horsFacette: { Rang: 'une valeur par fiche : le rang est l’ordre du tableau, la recherche de page couvre l’identifiant' } })
     + `<div class="chap lire" data-mesure-lecture><p class="legende" id="leg-chiffres">Statut d’un chiffre : « Mesuré » porte la commande et sa sortie ; « Lu » cite le document et la ligne ; « Hypothèse » est déclarée comme telle et attend sa mesure.</p></div>`);
 
   // (4) Couverture et plans existants.

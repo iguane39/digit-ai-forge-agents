@@ -2,7 +2,7 @@
 name: plan-d-amelioration
 description: Joint, juge et rend le plan d'amélioration qui suit un audit applicatif. Une amélioration est un écart à une AMBITION du produit, une remédiation un écart à une NORME du référentiel d'audit. Les améliorations vivent dans un fichier de données (fiche à dix champs, treize domaines, chiffres à statut) ; le skill les JOINT aux actions de remédiation de forge-audit (zéro doublon avec un contrôle évalué, renvois résolus, table de jonction), les JUGE par un oracle du contrat de sortie (PA1-PA14) et les REND en page HTML autoportante au socle digit-ai-page-html, huit chapitres, et en Markdown. Use when / déclencher dès qu'il faut produire, vérifier ou remettre un plan d'amélioration, des axes d'amélioration ou une trajectoire d'évolution après un audit. Ne pas déclencher pour mener l'audit (→ forge-audit), corriger des anomalies (→ audite-et-corrige-l-appli), challenger un plan fini (→ contre-expertise) ni rédiger une propale (→ digit-ai-propale).
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # plan-d-amelioration — joindre, juger, rendre un plan d'amélioration post-audit
