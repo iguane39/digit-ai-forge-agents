@@ -70,16 +70,16 @@ Ces quatre points sont sous la boxe du hub mais à des x différents, ce qui fai
 ```svg
 <!-- DEV MVP → Hub : couloir gauche -->
 <path d="M192,418 L192,370 L580,370 L580,352" fill="none" style="stroke:var(--c-slate-fg)" stroke-width="1.5" marker-end="url(#arrNet)">
-  <title>Peering VNet bidirectionnel RG DEV MVP ↔ hub | ...</title>
+  <title>Peering VNet bidirectionnel RG DEV MVP et hub | ...</title>
 </path>
 
 <!-- PROD → Hub : couloir centre-droit (note : le x du couloir est 378, qui est x_centre_PROD_décalé pour éviter STAGING) -->
 <path d="M838,418 L838,378 L740,378 L740,352" fill="none" style="stroke:var(--c-slate-fg)" stroke-width="1.5" marker-end="url(#arrNet)">
-  <title>Peering VNet bidirectionnel RG PROD ↔ hub | ...</title>
+  <title>Peering VNet bidirectionnel RG PROD et hub | ...</title>
 </path>
 ```
 
-Pour rendre la bidirectionnalité visuellement, soit ajouter un `marker-start` symétrique, soit garder le flèche unidirectionnelle (peering bilatéral mais la convention « ↔ » est dans le tooltip).
+Pour rendre la bidirectionnalité visuellement, soit ajouter un `marker-start` symétrique, soit garder le flèche unidirectionnelle (peering bilatéral mais la convention « bidirectionnel » est dans le tooltip ; la double flèche « ↔ » ne s'écrit pas dans un livrable, oracle-slop S6 la juge un emoji, TF-2263).
 
 ## Flèche hub ↔ ExpressRoute
 

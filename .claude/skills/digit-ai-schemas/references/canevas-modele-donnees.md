@@ -19,7 +19,7 @@ coexistent dans le parc, et ils ne rendent pas la même chose :
 | | Ce canevas | `digit-ai-forge-audit` · `tools/rapport-engine.mjs`, fonction `renderERD` |
 | --- | --- | --- |
 | Rendu | cartes HTML positionnées + calque SVG pour les arêtes | SVG pur |
-| Colonnes | badges PK / UK / FK / NN | texte « `[PK] nom *` », 🔒 pour les PII |
+| Colonnes | badges PK / UK / FK / NN | texte « `[PK] nom *` », cadenas SVG pour les PII |
 | Arêtes | ancrées **sur la ligne de la colonne** | de carte à carte |
 | Mise à l'échelle | `fitSchema` (tient toujours dans la largeur) | aucune : `overflow-x:auto` et `min-width` jusqu'à 1200 px, donc défilement |
 | Dictionnaire | dictionnaire compagnon | dictionnaire compagnon lui aussi — table Table / Colonnes / PII / Note, filtrable au-delà du seuil |
@@ -131,7 +131,7 @@ const DB_SCHEMA_DATA = {
 
 - **bandes** : colonnes verticales = domaines fonctionnels (référentiel, cœur métier, notifications, plateforme…). 3 à 5 bandes maximum. **Ordonner les bandes pour que les relations relient des bandes adjacentes** autant que possible.
 - **tables** : `style` porte la classification — `gray` référentiel, `blue` transactionnel/interne, `coral` table contenant des PII, `teal` pilotage, `dashed` table externe / autre schéma référencée sans contrainte. La classification apparaît dans le dictionnaire (`Référentiel`, `Interne`, `Confidentiel · PII`, `Pilotage`, `Externe`).
-- **columns** : `k` = `'PK' | 'UK' | 'FK'` (badges noir / violet / bleu), `nn` = NOT NULL (badge gris), `pii` = donnée personnelle (🔒 + nom en corail gras — icône ET couleur, jamais couleur seule), `note` = précision affichée dans le dictionnaire. Colonnes sœurs regroupables sur une ligne (`latitude / longitude`).
+- **columns** : `k` = `'PK' | 'UK' | 'FK'` (badges noir / violet / bleu), `nn` = NOT NULL (badge gris), `pii` = donnée personnelle (cadenas SVG dessiné + nom en corail gras — icône ET couleur, jamais couleur seule ; jamais l'emoji, oracle-slop S6, TF-2263), `note` = précision affichée dans le dictionnaire. Colonnes sœurs regroupables sur une ligne (`latitude / longitude`).
 - **relations** : `enforced: true` = FK contrainte en base (trait plein bleu), `false` = référence logique sans FK (pointillé ambré) — distinction centrale en audit (risque d'orphelins). `card` = cardinalité (`N–1`, `1–1`…). `fromCol` / `toCol` ancrent l'arête sur la **ligne exacte** de la colonne.
 
 ## Routage des arêtes (géré par le moteur)
@@ -158,7 +158,7 @@ Légende obligatoire doublant chaque code : carrés couleur + libellés pour les
 
 - Coordonnées manuelles dans le HTML — tout passe par `DB_SCHEMA_DATA`
 - Relation traversant une carte — réordonner les bandes ou laisser le moteur router par la voie basse
-- PII signalée par la seule couleur — toujours 🔒 + graisse
+- PII signalée par la seule couleur — toujours cadenas SVG + graisse (jamais l'emoji, S6)
 - Toutes les colonnes d'une table très large — tronquer aux colonnes structurantes (clés, FK, PII, métier) et renvoyer au dictionnaire
 - Mélange schéma physique / modèle ORM sans le dire — préciser la source de vérité dans le sous-titre ou les tips
 

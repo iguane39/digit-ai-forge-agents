@@ -193,8 +193,24 @@ Ce qui change, et qui s'applique à toute page produite :
 Elle joue `check_html.py`, le lanceur de forge-design et `render_page.py` aux deux thèmes sur une instance du
 gabarit et sur l'exemple, puis quatre cas rouges, un défaut à la fois : un `<link>` Google Fonts (A1), une
 couleur en dur (T1), la projection sombre retirée (B-T4), la pastille remise sur le couloir (mesure de géométrie de la recette : `render_page` ne la voit pas sous un groupe titré). Un outil
-absent du poste rend un SKIP nommé. Elle ne juge pas les quatre fragments (ils se jugent dans leur page
-hôte), ni le canevas du modèle de données, ni la lecture humaine du rendu.
+absent du poste rend un SKIP nommé. Elle ne juge pas la lecture humaine du rendu ; les quatre fragments et le canevas du modèle de données sont jugés par la section suivante.
+
+### Les cinq autres gabarits passent `run-oracles-design --rendu` tels quels (TF-2263, 06/11/2026)
+
+Retour du lot Produit-84 20261106c (RT-54) : une page de schéma bâtie sur un gabarit du skill passait `check_html.py` et échouait à la critique d'implémentation de forge-design (`run-oracles-design.mjs --rendu`). Mesuré le 06/11/2026 sur ce dépôt, chaque gabarit instancié tel quel, avant correction : flux temporel 105 bloquants `render_page` (V4, cadres de swimlane qui contiennent leurs nœuds), topologie 58 (V4 sur le cadre des zones et sur les pastilles de bande, V2, `prose_etroite`) et un constat `oracle-slop` S6, tableau de bord 2 (V18, tableau à 24 % de la largeur offerte au 4K), modèle de données 3 (`oracle-slop` S6, `oracle-bascule` B-T1 et B-T3) ; schéma différentiel et multi-bandes passaient déjà. Après correction les six gabarits de page ou de fragment rendent PASS. Ce qui change, et que tout schéma produit reprend :
+
+- **un cadre qui contient ses nœuds les déclare par paires** : chaque `rect.svg-frame` (swimlane, zone isolée) porte un `id` et `data-overlap-ok` listant les `id` des éléments qu'il abrite ; tout nœud dupliqué reçoit son `id` et s'ajoute à la liste. Un recouvrement non déclaré reste jugé (V4) ;
+- **la pastille de bande est un groupe titré et se pose entre deux couloirs** (`<g id="bande-N-pastille"><title>…`), comme dans le gabarit multi-bandes ;
+- **pas d'emoji** (S6) : la double flèche des infobulles de peering s'écrit « et », le cadenas des colonnes personnelles est un SVG dessiné ;
+- **le modèle de données porte la bascule de thème** (bouton, persistance `digitai-theme`, jetons de focus) du gabarit multi-bandes, et les pages déclarent leurs polices de marque (`data-police-de-marque` sur `<html>`) ;
+- **une page de données donne au tableau toute la largeur offerte** (`width: 100%`) et aligne l'en-tête sur ses cellules ;
+- **une phrase de légende de plus d'une ligne se coupe en deux `<text>`** et se lit à un contraste de 4,5:1 au moins.
+
+La recette joue ces six contrôles (cinq instances, plus un sens rouge : le flux temporel sans ses `data-overlap-ok` échoue pour V4). **Avant de livrer une page de schéma, jouer cette étape sur la page produite**, pas seulement sur le gabarit :
+
+```bash
+node <digit-ai-forge-design>/oracles/run-oracles-design.mjs <page.html> --rendu --json-only   # exit 0 = PASS
+```
 
 ### Les règles de largeur s'écrivent sous `screen` (TF-1895, 21/10/2026)
 
@@ -248,6 +264,7 @@ chaque chapitre porte son chapeau `.ch-apprend` (L7) et chaque chapitre à table
 3. **Lire `references/conventions-communes.md`** : palette, classes CSS, tooltips, routage.
 4. **Instancier le template** (`assets/template-{nom}.html`) en conservant couloirs, pastilles de bande, palette.
 5. **Rendre et valider (OBLIGATOIRE)** : exécuter la boucle render-view-fix décrite dans la section « Boucle de validation visuelle » ci-dessous jusqu'à ce que le schéma passe l'audit. Ne jamais livrer un SVG jugé sur le seul code.
+5 bis. **Rejouer la critique d'implémentation sur la page produite** : `node <digit-ai-forge-design>/oracles/run-oracles-design.mjs <page.html> --rendu --json-only`, exit 0 exigé (jetons, cadres déclarés par paires, mouvement réduit, bascule, rendu aux deux thèmes — TF-2263). Une page qui n'a passé que `check_html.py` n'est pas jugée.
 6. **Encapsuler, nommer, livrer** : page hôte Digit-AI, nommage conventionnel, `present_files` sans post-amble.
 
 ## Boucle de validation visuelle (obligatoire)

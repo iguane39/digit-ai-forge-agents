@@ -19,9 +19,15 @@
 //      ne la voit pas sur un groupe titré) — chacun doit ÉCHOUER pour sa raison ;
 //   4. `exemple-reference.html` passe `check_html.py`, le lanceur de forge-design et `render_page.py`.
 //
-// CE QU'ELLE NE JUGE PAS : les quatre gabarits-fragments (topologie, flux temporel, tableau de bord,
-// schéma différentiel), qui s'insèrent dans le squelette du gabarit multi-bandes et se jugent dans la page
-// hôte ; le canevas du modèle de données ; la lecture humaine du rendu (capture à ouvrir).
+//   5. (TF-2263, 06/11/2026) LES CINQ AUTRES GABARITS, instanciés tels quels, passent `run-oracles-design.mjs
+//      --rendu` : les quatre fragments (topologie, flux temporel, tableau de bord, schéma différentiel), insérés
+//      dans le squelette multi-bandes, et la page du modèle de données. Le fait : une page de schéma bâtie sur le
+//      gabarit échouait à la critique d'implémentation (RT-54, Produit-84 du 06/11) ; mesuré sur ce dépôt, le flux
+//      temporel rendait 105 bloquants V4 (cadres de swimlane qui contiennent leurs nœuds), la topologie 58, le
+//      tableau de bord 2 (V18), le modèle de données 3 (S6, B-T1, B-T3). Sens rouge : le flux temporel sans ses
+//      `data-overlap-ok` échoue pour V4. Trois rendus à la fois ; ces contrôles jouent aussi sous --rapide.
+//
+// CE QU'ELLE NE JUGE PAS : la lecture humaine du rendu (capture à ouvrir).
 //
 // Un outil absent du poste (page-html, forge-design, Python, Playwright) rend un SKIP NOMMÉ, jamais un vert.
 //
@@ -30,7 +36,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -251,6 +257,65 @@ try {
           ? ok(`exemple de référence · render_page.py : PASS, 0 bloquant sur ${r.largeurs} largeurs`)
           : ko(`exemple de référence · render_page.py : ${r.verdict}, ${r.total} bloquant(s) sur ${r.largeurs} largeur(s) ${JSON.stringify(r.parLargeur)} ${r.stderr}`);
       }
+    }
+  }
+
+  // (5) TF-2263 — les cinq autres gabarits, instanciés tels quels, passent run-oracles-design --rendu
+  if (fs.existsSync(GABARIT)) {
+    if (!designPresent) skip('digit-ai-forge-design absent (' + DESIGN + ') : les cinq autres gabarits ne sont pas jugés par run-oracles-design --rendu');
+    else if (!playwrightPresent) skip('Playwright absent : les cinq autres gabarits ne sont pas jugés par run-oracles-design --rendu');
+    else {
+      const remplir = (html) => html.replace(/\{\{([A-Z_0-9]+)\}\}/g, (m, k) => (k in VALEURS ? VALEURS[k] : 'Texte ' + k.toLowerCase().replace(/_/g, ' ').slice(0, 14)));
+      const squelette = fs.readFileSync(GABARIT, 'utf8');
+      const instancier = (canevas) => {
+        const gabaritCanevas = fs.readFileSync(path.join(SKILL, 'assets', 'template-' + canevas + '.html'), 'utf8');
+        if (/<head>/i.test(gabaritCanevas)) return remplir(gabaritCanevas);   // page complète (modèle de données)
+        const debut = squelette.indexOf('<div class="diagram-wrap">');
+        const finLegende = squelette.indexOf('</p>', squelette.indexOf('<p class="caption">')) + 4;
+        if (debut < 0 || finLegende < 4) throw new Error('ancres du schéma introuvables dans le squelette multi-bandes');
+        return remplir(squelette.slice(0, debut) + gabaritCanevas + squelette.slice(finLegende));
+      };
+      const lancerAsync = (bin, args, delai) => new Promise((resolve) => {
+        const c = spawn(bin, args, { env });
+        let out = '', err = '';
+        const t = setTimeout(() => c.kill(), delai);
+        c.stdout.on('data', (d) => { out += d; });
+        c.stderr.on('data', (d) => { err += d; });
+        c.on('close', (code) => { clearTimeout(t); resolve({ status: code, stdout: out, stderr: err }); });
+      });
+      const canevas = ['flux-temporel', 'topologie', 'tableau-de-bord', 'schema-differentiel', 'modele-donnees'];
+      const travaux = canevas.map((c) => ({ nom: c, attendu: 'PASS', fichier: ecrire('rendu-' + c + '.html', instancier(c)) }));
+      // sens rouge : le flux temporel sans ses déclarations par paire (data-overlap-ok) échoue pour V4
+      const flux = instancier('flux-temporel');
+      const sansPaires = flux.replace(/ data-overlap-ok="[^"]*"/g, '');
+      if (sansPaires === flux) ko('sens rouge · le flux temporel ne porte plus de data-overlap-ok : la mutation ne s\'applique plus');
+      else travaux.push({ nom: 'flux-temporel sans data-overlap-ok', attendu: 'FAIL', regle: 'V4', fichier: ecrire('rouge-flux-sans-paires.html', sansPaires) });
+      const resultats = new Array(travaux.length);
+      let suivant = 0;
+      await Promise.all([0, 1, 2].map(async () => {
+        while (suivant < travaux.length) {
+          const i = suivant++;
+          const r = await lancerAsync('node', [DESIGN, travaux[i].fichier, '--rendu', '--json-only'], 900000);
+          let j = null; try { j = JSON.parse(r.stdout); } catch { /* illisible : verdict inconnu */ }
+          resultats[i] = j;
+        }
+      }));
+      travaux.forEach((t, i) => {
+        const j = resultats[i];
+        const verdict = j ? j.verdict : '?';
+        const echoues = j ? j.oracles.filter((o) => o.verdict === 'FAIL') : [];
+        const resume = echoues.map((o) => o.oracle + ' ' + [...new Set((o.findings || []).filter((f) => ['majeur', 'bloquant', 'critique'].includes(f.sev || f.severite)).map((f) => f.regle))].join('/')).join(' · ');
+        if (t.attendu === 'PASS') {
+          verdict === 'PASS'
+            ? ok('gabarit ' + t.nom + ' · instance tel quel : run-oracles-design --rendu PASS sur ' + j.oracles.length + ' oracle(s), dont render_page aux deux thèmes')
+            : ko('gabarit ' + t.nom + ' · instance tel quel : run-oracles-design --rendu ' + verdict + ' — ' + resume);
+        } else {
+          const rp = j ? j.oracles.find((o) => o.oracle.startsWith('render_page')) : null;
+          (verdict === 'FAIL' && rp && (rp.findings || []).some((f) => f.regle === t.regle))
+            ? ok('sens rouge · ' + t.nom + ' : run-oracles-design --rendu échoue pour ' + t.regle + ' (cadres qui contiennent leurs nœuds sans déclaration par paire)')
+            : ko('sens rouge · ' + t.nom + ' n\'échoue pas pour ' + t.regle + ' (verdict ' + verdict + ' ' + resume + ')');
+        }
+      });
     }
   }
 } finally {

@@ -8,6 +8,9 @@
   - viewBox 1320 × 820
   - Axe temporel vertical (haut = source, bas = destination)
   - Swimlanes : org Squad à gauche, org DSI au centre, artefacts ACR à droite, intégrations à l'extrême droite
+  - Chaque cadre de swimlane (rect.svg-frame) CONTIENT ses nœuds par construction : il déclare ses contenus PAR PAIRES
+    (data-overlap-ok = ids des éléments qu'il contient, TF-1146) ; tout nœud dupliqué reçoit un id et s'ajoute à la liste
+    du cadre qui l'abrite. Un recouvrement non déclaré reste jugé par render_page (V4). TF-2263.
 -->
 
 <div class="diagram-wrap">
@@ -32,11 +35,11 @@
     <line x1="40" y1="50" x2="1280" y2="50" stroke-width="1" style="stroke:var(--line-strong)"/>
 
     <!-- ===== SWIMLANE 1 · ORG SQUAD (x: 32 → 412) ===== -->
-    <rect x="32" y="76" width="380" height="690" rx="14" class="svg-frame" style="stroke:var(--c-slate-stroke)"/>
-    <text x="48" y="98" class="svg-tband" style="fill:var(--c-slate-fg)">{{ORG_SQUAD}}</text>
+    <rect id="lane-squad-cadre" x="32" y="76" width="380" height="690" rx="14" class="svg-frame" style="stroke:var(--c-slate-stroke)" data-overlap-ok="lane-squad-titre noeud-tag noeud-m1 noeud-m2 noeud-gate-light"/>
+    <text id="lane-squad-titre" x="48" y="98" class="svg-tband" style="fill:var(--c-slate-fg)">{{ORG_SQUAD}}</text>
 
     <!-- Étape 1 : tag git -->
-    <g class="svg-c-gray">
+    <g id="noeud-tag" class="svg-c-gray">
       <title>{{NOM_TAG}} | Trigger : {{TRIGGER_TAG}} | Ownership : {{OWNER_TAG}}</title>
       <rect x="50" y="116" width="340" height="48" rx="8"/>
       <text x="220" y="135" text-anchor="middle" class="svg-th" style="font-size:11.5px">{{TITRE_TAG}}</text>
@@ -44,7 +47,7 @@
     </g>
 
     <!-- Pipeline M1 -->
-    <g class="svg-agent-mission">
+    <g id="noeud-m1" class="svg-agent-mission">
       <title>{{NOM_M1}} | Trigger : {{TRIGGER_M1}} | Agent pool : `{{POOL_M1}}` | Artefact : `{{ARTEFACT_M1}}`</title>
       <rect x="50" y="184" width="340" height="68" rx="8"/>
       <text x="220" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:var(--c-purple-deep)">{{TITRE_M1}}</text>
@@ -53,7 +56,7 @@
     </g>
 
     <!-- Pipeline M2 -->
-    <g class="svg-agent-mission">
+    <g id="noeud-m2" class="svg-agent-mission">
       <title>{{NOM_M2}} | Trigger : {{TRIGGER_M2}} | Artefacts : {{ARTEFACTS_M2}}</title>
       <rect x="50" y="272" width="340" height="68" rx="8"/>
       <text x="220" y="294" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:var(--c-purple-deep)">{{TITRE_M2}}</text>
@@ -62,7 +65,7 @@
     </g>
 
     <!-- Gate humain DA Light -->
-    <g class="svg-c-amber">
+    <g id="noeud-gate-light" class="svg-c-amber">
       <title>{{NOM_GATE_LIGHT}} | Environment : `{{ENV_GATE_LIGHT}}` | Approvers : `{{APPROVERS_LIGHT}}` | Délai cible : {{DELAI_LIGHT}}</title>
       <rect x="50" y="360" width="340" height="56" rx="8"/>
       <text x="220" y="382" text-anchor="middle" class="svg-th" style="font-size:11.5px">{{TITRE_GATE_LIGHT}}</text>
@@ -70,11 +73,11 @@
     </g>
 
     <!-- ===== SWIMLANE 2 · ORG DSI (x: 438 → 1288) ===== -->
-    <rect x="438" y="76" width="850" height="690" rx="14" class="svg-frame" style="stroke:var(--c-purple-fg)"/>
-    <text x="454" y="98" class="svg-tband" style="fill:var(--c-purple-fg)">{{ORG_DSI}}</text>
+    <rect id="lane-dsi-cadre" x="438" y="76" width="850" height="690" rx="14" class="svg-frame" style="stroke:var(--c-purple-fg)" data-overlap-ok="lane-dsi-titre noeud-m3 col-artefacts-titre noeud-tag-mvp noeud-tag-rc noeud-tag-prod col-integrations-titre noeud-storage noeud-ev noeud-cmdb"/>
+    <text id="lane-dsi-titre" x="454" y="98" class="svg-tband" style="fill:var(--c-purple-fg)">{{ORG_DSI}}</text>
 
     <!-- Pipeline M3 -->
-    <g class="svg-agent-mission">
+    <g id="noeud-m3" class="svg-agent-mission">
       <title>{{NOM_M3}} | Trigger : {{TRIGGER_M3}} | Service Connections : `{{SC_M3}}` | Artefacts : {{ARTEFACTS_M3}}</title>
       <rect x="456" y="184" width="350" height="80" rx="8"/>
       <text x="631" y="206" text-anchor="middle" class="svg-th" style="font-size:11.5px;fill:var(--c-purple-deep)">{{TITRE_M3}}</text>
@@ -87,10 +90,10 @@
     <!-- Gate DA Finale, M6, Triple Approbation, M7 selon les patterns ci-dessus -->
 
     <!-- ===== COLONNE ARTEFACTS ACR (x ≈ 830) ===== -->
-    <text x="830" y="170" class="svg-tband" style="fill:var(--c-slate-fg)">{{TITRE_COL_ARTEFACTS}}</text>
+    <text id="col-artefacts-titre" x="830" y="170" class="svg-tband" style="fill:var(--c-slate-fg)">{{TITRE_COL_ARTEFACTS}}</text>
 
     <!-- Artefact vX.Y.Z-mvp (blue) -->
-    <g class="svg-c-blue">
+    <g id="noeud-tag-mvp" class="svg-c-blue">
       <title>{{TAG_MVP}} | {{DESC_TAG_MVP}}</title>
       <rect x="830" y="184" width="220" height="60" rx="8"/>
       <text x="940" y="206" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_TAG_MVP}}</text>
@@ -99,7 +102,7 @@
     </g>
 
     <!-- Artefact vX.Y.Z-rc (teal) plus bas, à la hauteur de M6 -->
-    <g class="svg-c-teal">
+    <g id="noeud-tag-rc" class="svg-c-teal">
       <title>{{TAG_RC}} | {{DESC_TAG_RC}}</title>
       <rect x="830" y="544" width="220" height="60" rx="8"/>
       <text x="940" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_TAG_RC}}</text>
@@ -108,17 +111,17 @@
     </g>
 
     <!-- Artefact vX.Y.Z (coral) en bas, à la hauteur de M7 -->
-    <g class="svg-c-coral">
+    <g id="noeud-tag-prod" class="svg-c-coral">
       <title>{{TAG_PROD}} | {{DESC_TAG_PROD}}</title>
       <rect x="830" y="724" width="220" height="32" rx="8"/>
       <text x="940" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_TAG_PROD}}</text>
     </g>
 
     <!-- ===== COLONNE INTÉGRATIONS (x ≈ 1080) ===== -->
-    <text x="1080" y="170" class="svg-tband" style="fill:var(--c-slate-fg)">{{TITRE_COL_INTEGRATIONS}}</text>
+    <text id="col-integrations-titre" x="1080" y="170" class="svg-tband" style="fill:var(--c-slate-fg)">{{TITRE_COL_INTEGRATIONS}}</text>
 
     <!-- Storage da-dossiers (amber) à la hauteur de M5 -->
-    <g class="svg-c-amber">
+    <g id="noeud-storage" class="svg-c-amber">
       <title>{{NOM_STORAGE}} | {{DESC_STORAGE}}</title>
       <rect x="1080" y="384" width="200" height="72" rx="8"/>
       <text x="1180" y="406" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_STORAGE}}</text>
@@ -127,7 +130,7 @@
     </g>
 
     <!-- API EasyVista (amber) à la hauteur de M6 -->
-    <g class="svg-c-amber">
+    <g id="noeud-ev" class="svg-c-amber">
       <title>{{NOM_EV}} | {{DESC_EV}}</title>
       <rect x="1080" y="544" width="200" height="84" rx="8"/>
       <text x="1180" y="566" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_EV}}</text>
@@ -137,7 +140,7 @@
     </g>
 
     <!-- API CMDB (amber) à la hauteur de M7 -->
-    <g class="svg-c-amber">
+    <g id="noeud-cmdb" class="svg-c-amber">
       <title>{{NOM_CMDB}} | {{DESC_CMDB}}</title>
       <rect x="1080" y="724" width="200" height="32" rx="8"/>
       <text x="1180" y="745" text-anchor="middle" class="svg-th" style="font-size:11px">{{TITRE_CMDB}}</text>

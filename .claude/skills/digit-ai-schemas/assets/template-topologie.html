@@ -8,6 +8,8 @@
   - viewBox 1400 × 720
   - 3 bandes : zones isolées (haut) + hub central + spokes peerés (bas)
   - Couloirs verticaux dédiés pour chaque flèche de peering, points d'arrivée distincts sous le hub
+  - Le cadre des zones isolées (rect.svg-frame) CONTIENT ses zones par construction : il les déclare par paires
+    (data-overlap-ok = ids des zones, TF-1146) ; une zone dupliquée reçoit un id et s'ajoute à la liste. TF-2263.
 -->
 
 <div class="diagram-wrap">
@@ -25,14 +27,16 @@
     </defs>
 
     <!-- ===== BANDE 1 · ZONES ISOLÉES (y: 8 → 220) ===== -->
-    <rect x="20" y="8" width="430" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
-    <text x="32" y="24" class="svg-tband" style="fill:var(--c-slate-fg);font-size:9.5px">1 · {{NOM_BANDE_ISOLEE}}</text>
+    <g id="bande-1-pastille"><title>Bande 1 · {{NOM_BANDE_ISOLEE}}</title>
+      <rect x="20" y="8" width="430" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
+      <text x="32" y="24" class="svg-tband" style="fill:var(--c-slate-fg);font-size:9.5px">1 · {{NOM_BANDE_ISOLEE}}</text>
+    </g>
 
     <!-- Cadre englobant des zones isolées -->
-    <rect x="40" y="50" width="470" height="160" rx="14" class="svg-frame" style="stroke:var(--c-slate-stroke)"/>
+    <rect id="cadre-zones-isolees" x="40" y="50" width="470" height="160" rx="14" class="svg-frame" style="stroke:var(--c-slate-stroke)" data-overlap-ok="zone-isolee-1 zone-isolee-2"/>
 
     <!-- Zone isolée 1 (gray) -->
-    <g class="svg-c-gray">
+    <g id="zone-isolee-1" class="svg-c-gray">
       <title>{{NOM_ZONE_1}} | {{DETAIL_1}} | Peering : aucun | Subscription : `{{SUB_1}}`</title>
       <rect x="60" y="76" width="200" height="114" rx="8"/>
       <text x="160" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">{{TITRE_ZONE_1}}</text>
@@ -42,7 +46,7 @@
     </g>
 
     <!-- Zone isolée 2 (blue) -->
-    <g class="svg-c-blue">
+    <g id="zone-isolee-2" class="svg-c-blue">
       <title>{{NOM_ZONE_2}} | {{DETAIL_2}} | Subscription : `{{SUB_2}}`</title>
       <rect x="290" y="76" width="200" height="114" rx="8"/>
       <text x="390" y="100" text-anchor="middle" class="svg-th" style="font-size:12px">{{TITRE_ZONE_2}}</text>
@@ -52,8 +56,10 @@
     </g>
 
     <!-- ===== BANDE 2 · HUB CENTRAL (y: 240 → 360) ===== -->
-    <rect x="20" y="240" width="320" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
-    <text x="32" y="256" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · {{NOM_BANDE_HUB}}</text>
+    <g id="bande-2-pastille"><title>Bande 2 · {{NOM_BANDE_HUB}}</title>
+      <rect x="20" y="240" width="320" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-purple-fg)"/>
+      <text x="32" y="256" class="svg-tband" style="fill:var(--c-purple-fg);font-size:9.5px">2 · {{NOM_BANDE_HUB}}</text>
+    </g>
 
     <!-- Hub central (purple) -->
     <g class="svg-c-purple">
@@ -73,15 +79,17 @@
       <text x="1180" y="342" text-anchor="middle" class="svg-tlabel">{{DETAIL_CONNEXION}}</text>
     </g>
 
-    <!-- Flèche bidirectionnelle hub ↔ connexion externe -->
+    <!-- Flèche bidirectionnelle entre le hub et la connexion externe -->
     <line x1="1050" y1="315" x2="1080" y2="315" class="svg-arr-strong"
           marker-end="url(#arrNet)" marker-start="url(#arrNetStart)">
       <title>{{TOOLTIP_LIEN_EXTERNE}}</title>
     </line>
 
     <!-- ===== BANDE 3 · SPOKES PEERÉS (y: 380 → 660) ===== -->
-    <rect x="20" y="380" width="380" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
-    <text x="32" y="396" class="svg-tband" style="fill:var(--c-slate-fg);font-size:9.5px">3 · {{NOM_BANDE_SPOKES}}</text>
+    <g id="bande-3-pastille"><title>Bande 3 · {{NOM_BANDE_SPOKES}}</title>
+      <rect x="212" y="380" width="185" height="22" rx="6" stroke-width="0.6" style="fill:var(--bg);stroke:var(--c-slate-fg)"/>
+      <text x="224" y="396" class="svg-tband" style="fill:var(--c-slate-fg);font-size:9.5px">3 · {{NOM_BANDE_SPOKES}}</text>
+    </g>
 
     <!--
       Quatre spokes alignés, centres aux x : 192, 515, 838, 1161
@@ -133,16 +141,16 @@
     -->
 
     <path d="M192,418 L192,370 L580,370 L580,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-      <title>Peering VNet bidirectionnel {{SPOKE_1}} ↔ hub | {{DETAIL_PEERING_1}}</title>
+      <title>Peering VNet bidirectionnel {{SPOKE_1}} et hub | {{DETAIL_PEERING_1}}</title>
     </path>
     <path d="M515,418 L515,378 L660,378 L660,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-      <title>Peering VNet bidirectionnel {{SPOKE_2}} ↔ hub | {{DETAIL_PEERING_2}}</title>
+      <title>Peering VNet bidirectionnel {{SPOKE_2}} et hub | {{DETAIL_PEERING_2}}</title>
     </path>
     <path d="M838,418 L838,378 L740,378 L740,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-      <title>Peering VNet bidirectionnel {{SPOKE_3}} ↔ hub | {{DETAIL_PEERING_3}}</title>
+      <title>Peering VNet bidirectionnel {{SPOKE_3}} et hub | {{DETAIL_PEERING_3}}</title>
     </path>
     <path d="M1161,418 L1161,370 L820,370 L820,352" fill="none" stroke-width="1.5" marker-end="url(#arrNet)" style="stroke:var(--c-slate-fg)">
-      <title>Peering VNet bidirectionnel {{SPOKE_4}} ↔ hub | {{DETAIL_PEERING_4}}</title>
+      <title>Peering VNet bidirectionnel {{SPOKE_4}} et hub | {{DETAIL_PEERING_4}}</title>
     </path>
 
     <!-- ===== LÉGENDE (y: 680) ===== -->
@@ -153,7 +161,8 @@
       <rect x="240" y="0" width="14" height="14" rx="3" stroke-dasharray="4 4" style="fill:var(--bg);stroke:var(--c-slate-stroke)"/>
       <text x="262" y="11" class="svg-ts" style="font-size:11px">Spoke isolé (sans peering hub)</text>
 
-      <text x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage) sont exposés via Private Endpoint dans le subnet PE dédié de chaque spoke</text>
+      <text x="470" y="11" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em;fill:var(--c-slate-fg)">Tous les services PaaS (Key Vault, ACR, AI Foundry, Storage)</text>
+      <text x="470" y="25" class="svg-tlabel" style="font-size:10px;letter-spacing:0.04em;fill:var(--c-slate-fg)">sont exposés via Private Endpoint dans le subnet PE dédié de chaque spoke</text>
     </g>
 
   </svg>
