@@ -5,8 +5,8 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.9.0"
-  updated: "2026-10-29"
+  version: "2.10.0"
+  updated: "2026-11-06"
 ---
 
 # Prompt Analyzer L99
@@ -84,6 +84,15 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    grave qu'il rend est recompté à la source avant d'entrer dans la passe suivante ; le journal
    `<analyse>.boucle.json` doit rendre PASS à `node {skilldir}/scripts/oracle-boucle-l99.mjs`
    avant que le Ch8 affiche un score mesuré. Protocole complet : `references/boucle.md`.
+   Une note de relecteur se recompte à la source avant d'entrer dans une correction, et une
+   régression due à un défaut que la correction a créé ouvre une passe de reprise unique au lieu de
+   livrer la passe précédente avec ses majeurs connus (TF-2202, B11 et B12 de l'oracle).
+11. **Contrat de sortie : l'oracle de forme de chaque format produit** (TF-2194) : le contrat du
+   Ch8 nomme `check_html.py` pour une page HTML et `check_markdown.py` pour un Markdown, **y
+   compris pour la voie de repli** (générateur en échec, format de secours). Le 05/11/2026, un
+   contrat qui ne nommait que `check_html.py` a laissé sortir un Markdown à 9 défauts de forme,
+   poussé et promu avant que l'oracle ne le voie. Détail : `references/couches.md`, section
+   « Contrat de sortie : l'oracle de forme de chaque format produit ».
 
 ## Les 8 couches (vue d'ensemble)
 

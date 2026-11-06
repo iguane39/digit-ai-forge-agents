@@ -29,6 +29,14 @@
 //       écarté que si le recompte le dément (`dementi: true`).
 //   B10 `verification_cloture` : chaque passe à partir de la 2e porte la vérification de clôture
 //       de la correction qui l'a produite, par un agent qui ne note pas.
+// Règles du retour Produit-86 du 05/11/2026 (TF-2202), jouées seulement si l'arbitre les déclare :
+//   B11 `recompte_notes` : chaque passe à partir de la 2e déclare `notes_reprises` (liste, vide si
+//       aucune), et chaque note de relecteur reprise dans la correction porte son recompte à la
+//       source (commande + résultat). Une note reprise sans recompte a créé un bloquant, passe à 40.
+//   B12 `reprise_unique` : une passe rejetée pour régression dont la cause est un défaut CRÉÉ par la
+//       correction (`cause_regression.nature = "defaut_cree"`, recomptée) ouvre UNE passe de reprise
+//       (`reprise: true`, `reprise_de: <n>`) qui ne corrige que ce défaut ; pas de seconde reprise,
+//       pas de reprise sans cause ; la reprise ne compte pas dans la borne.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -59,6 +67,8 @@ export function juger(j) {
   const ko = (regle, lieu, message) => f.push({ regle, statut: 'FAIL', lieu, message });
   const a = j && j.arbitre;
   const passes = Array.isArray(j && j.passes) ? j.passes : [];
+  // TF-2202 : la passe de reprise unique ne compte pas dans la borne ; sans la clé `reprise_unique`, rien ne change.
+  const passesBorne = passes.filter((p) => !(a && a.reprise_unique === true && p.reprise === true)).length;
 
   // B1 — arbitre figé
   if (!a) ko('B1', 'arbitre', 'arbitre absent : la règle d arrêt doit être écrite avant la passe 1');
@@ -127,8 +137,8 @@ export function juger(j) {
           ko('B5', 'arret.raison', `gain de ${pa.score_mesure - avant.score_mesure} points, pas inférieur au gain minimal`);
       }
       const borneEff = a && a.extension && nb(a.extension.borne) ? a.extension.borne : a && a.borne;
-      if (ar.raison === 'borne' && nb(borneEff) && passes.length < borneEff)
-        ko('B5', 'arret.raison', `borne déclarée atteinte à ${passes.length} passe(s) sur ${borneEff}`);
+      if (ar.raison === 'borne' && nb(borneEff) && passesBorne < borneEff)
+        ko('B5', 'arret.raison', `borne déclarée atteinte à ${passesBorne} passe(s) sur ${borneEff}`);
       gardees.slice(0, Math.max(pos, 0)).forEach(({ p, i }) => {
         if (retenus(p).length === 0) ko('B5', `passes[${i}]`, 'cette passe atteignait déjà « 0 bloquant et 0 majeur » : la boucle devait s arrêter');
       });
@@ -157,7 +167,7 @@ export function juger(j) {
         if (retenus(passes[iD]).length === 0) ko('B6', 'arbitre.extension', `la passe ${x.decidee_apres_passe} n a plus de défaut grave retenu : rien à prolonger`);
       }
     }
-    if (passes.length > borneEff) ko('B6', 'passes', `${passes.length} passes pour une borne de ${borneEff}`);
+    if (passesBorne > borneEff) ko('B6', 'passes', `${passesBorne} passes pour une borne de ${borneEff}`);
   }
 
   // B7 — score affiché
@@ -195,6 +205,44 @@ export function juger(j) {
       const v = p.verification_cloture || {};
       if (!propre(v.agent) || v.note !== false || !nb(v.clotures) || !nb(v.defauts_crees))
         ko('B10', `passes[${i}].verification_cloture`, 'vérification de clôture absente, ou faite par un agent qui note : agent, note false, clotures et defauts_crees attendus');
+    });
+  }
+
+  // B11 — une note de relecteur reprise dans une correction est recomptée à la source (TF-2202)
+  if (a && a.recompte_notes === true) {
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      if (!Array.isArray(p.notes_reprises)) {
+        ko('B11', `passes[${i}].notes_reprises`, 'liste des notes reprises absente : la déclarer, vide si aucune note du relecteur n est reprise');
+        return;
+      }
+      p.notes_reprises.forEach((n, k) => {
+        const rc = n.recompte || {};
+        if (!propre(n.note) || !propre(rc.commande) || !propre(rc.resultat))
+          ko('B11', `passes[${i}].notes_reprises[${k}]`, 'note reprise sans recompte à la source (note, commande et résultat attendus) : une note non recomptée n entre pas dans une correction');
+      });
+    });
+  }
+
+  // B12 — une régression due à un défaut créé ouvre une passe de reprise unique (TF-2202)
+  if (a && a.reprise_unique === true) {
+    const causeCree = (p) => estRejetee(p) && p.cause_regression && p.cause_regression.nature === 'defaut_cree';
+    passes.forEach((p, i) => {
+      if (causeCree(p)) {
+        const rc = p.cause_regression.recompte || {};
+        if (!propre(p.cause_regression.citation) || !propre(rc.commande) || !propre(rc.resultat))
+          ko('B12', `passes[${i}].cause_regression`, 'cause « défaut créé » sans citation ni recompte à la source (commande et résultat)');
+        const suite = passes[i + 1];
+        if (p.reprise !== true && !(suite && suite.reprise === true && suite.reprise_de === p.n))
+          ko('B12', `passes[${i}]`, 'régression due à un défaut créé par la correction : la passe de reprise unique (reprise: true, reprise_de) est attendue juste après');
+      }
+      if (p.reprise === true) {
+        const src = passes[i - 1];
+        if (!(src && p.reprise_de === src.n && causeCree(src)))
+          ko('B12', `passes[${i}]`, 'passe de reprise sans la passe rejetée qui la précède pour cause de défaut créé : pas de reprise sans cause');
+        if (passes.findIndex((x) => x.reprise === true) !== i)
+          ko('B12', `passes[${i}]`, 'seconde passe de reprise : une seule par boucle');
+      }
     });
   }
 
@@ -262,6 +310,56 @@ function selfTest() {
   rougeEssai('B10 passe 2 sans vérification de clôture', 'B10', essai, (j) => { delete j.passes[1].verification_cloture; });
   rougeEssai('B10 vérificateur qui note', 'B10', essai, (j) => { j.passes[1].verification_cloture.note = true; });
   rougeEssai('B5 arrêt « regression » sans passe qui baisse', 'B5', regression, (j) => { j.passes[1].score_mesure = 86; });
+  // TF-2202 : les règles B11 et B12, jouées seulement si l'arbitre les déclare.
+  const notes = () => {
+    const j = essai();
+    Object.assign(j.arbitre, { recompte_notes: true, reprise_unique: true });
+    j.passes[1].notes_reprises = [{ note: 'relecteur-1 : « 29 fichiers citent azure »', source: 'relecteur-1', recompte: { commande: 'git -C forge-development grep -il azure', resultat: '29 fichiers' } }];
+    return j;
+  };
+  cas.push({ nom: 'TF-2202 notes recomptées, vert', j: notes(), attendu: [] });
+  // La passe 2 régresse à 40 sur un bloquant que sa correction a créé (le défaut du 05/11/2026).
+  const faute = (j) => {
+    const p = j.passes[1];
+    const cause = { commande: 'git grep -n "section 7" prompt-p2.md', resultat: '0 occurrence : la section 7 n existe pas' };
+    Object.assign(p, { score_mesure: 40, rejetee: true, decision: 'rejeter', majeurs_clos: 2,
+      cause_regression: { nature: 'defaut_cree', citation: 'renvoi à une section absente', recompte: cause } });
+    p.defauts.push({ severite: 'bloquant', citation: 'renvoi à une section absente', recompte: cause, statut: 'retenu' });
+    p.verification_cloture.defauts_crees = 1;
+    return j;
+  };
+  // Vert : la reprise corrige le défaut créé et clôt la boucle ; borne 2, la reprise n'y compte pas.
+  const repriseGardee = () => {
+    const j = faute(notes());
+    j.arbitre.borne = 2;
+    j.passes.push({ n: 3, reprise: true, reprise_de: 2, fichier: 'prompt-p3.md', mots: 1295,
+      relecteur: { agent: 'relecteur-3', aveugle: true, interdits: ['analyse', 'passes précédentes'] },
+      score_mesure: 91, defauts: [{ severite: 'mineur', citation: 'l. 118', statut: 'retenu' }], majeurs_clos: 2, rejetee: false, decision: 'arreter',
+      verification_cloture: { agent: 'verificateur-1', note: false, clotures: 1, defauts_crees: 0 }, notes_reprises: [] });
+    j.arret = { passe: 3, raison: 'zero_majeur' }; j.score_affiche = { valeur: 91, nature: 'mesure' };
+    return j;
+  };
+  cas.push({ nom: 'TF-2202 reprise unique gardée, borne 2 et 3 passes dont la reprise, vert', j: repriseGardee(), attendu: [] });
+  // Vert : la reprise régresse à son tour, la boucle livre la passe 1 gardée.
+  const repriseRejetee = () => {
+    const j = repriseGardee();
+    Object.assign(j.passes[2], { score_mesure: 70, rejetee: true, decision: 'rejeter' });
+    j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' };
+    return j;
+  };
+  cas.push({ nom: 'TF-2202 reprise rejetée à son tour, arrêt sur la passe 1, vert', j: repriseRejetee(), attendu: [] });
+  const rougeB = (nom, regle, base, muter) => { const j = base(); muter(j); cas.push({ nom, j, attendu: [regle] }); };
+  rougeB('B11 note reprise sans recompte', 'B11', notes, (j) => { delete j.passes[1].notes_reprises[0].recompte; });
+  rougeB('B11 liste des notes reprises absente', 'B11', notes, (j) => { delete j.passes[1].notes_reprises; });
+  rougeB('B12 régression par défaut créé arrêtée sans reprise (le défaut du 05/11)', 'B12', () => faute(notes()), (j) => {
+    j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' };
+  });
+  rougeB('B12 reprise sans cause de défaut créé', 'B12', repriseGardee, (j) => { delete j.passes[1].cause_regression; });
+  rougeB('B12 cause « défaut créé » sans recompte', 'B12', repriseGardee, (j) => { delete j.passes[1].cause_regression.recompte; });
+  rougeB('B12 seconde reprise', 'B12', repriseRejetee, (j) => {
+    j.passes[2].cause_regression = { nature: 'defaut_cree', citation: 'x', recompte: { commande: 'git grep x', resultat: '0' } };
+    j.passes.push({ ...j.passes[2], n: 4, reprise_de: 3, cause_regression: undefined });
+  });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

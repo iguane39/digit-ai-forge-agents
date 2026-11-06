@@ -102,6 +102,30 @@ redécouvre mal.
 **Borne** : L99 **cite** ces règles, il ne les vérifie pas et ne les exécute jamais. La
 vérification appartient au producteur du livrable, par les oracles nommés.
 
+## Contrat de sortie : l'oracle de forme de chaque format produit, voie de repli comprise (TF-2194, 06/11/2026)
+
+**Le fait mesuré.** Le 05/11/2026, le contrat de sortie d'un prompt d'audit (boucle L99, 86/100
+mesuré) nommait `check_html.py` seul pour la forme, ou citait l'échec du générateur. Le générateur
+a échoué, le livrable est sorti en Markdown, et aucun oracle de forme ne le visait. Joué après
+coup, `check_markdown.py` rendait exit 1 avec 9 défauts (4 de M7, 5 de M10), alors que les trois
+oracles du contrat rendaient PASS et que le livrable était déjà poussé et promu : une version et
+un commit de plus pour le corriger. Même classe que TF-0765, côté Markdown.
+
+**Règle.** Le contrat de sortie du Ch8 nomme, pour **chaque format que le prompt réécrit peut
+produire**, l'oracle de forme de ce format :
+
+- une page HTML : `check_html.py` ;
+- un document Markdown : `check_markdown.py` (règles M7 / M10 / M14 / M18), du socle
+  `digit-ai-page-html` ;
+- les autres formats : l'oracle de leur domaine au registre `quality-oracles`.
+
+Une **voie de repli** (le générateur échoue, un format de secours prend le relais) produit un
+format de plus : le contrat nomme l'oracle du format de repli au même titre que celui du format
+nominal. Un contrat qui prévoit un repli Markdown sans `check_markdown.py` est incomplet.
+
+**Borne** : L99 **cite** ces oracles, il ne les exécute pas ; le producteur du livrable les joue
+avant de le remettre.
+
 ## Nom du livrable : dans un projet de la factory, le Ch8 cite R-4 et R-25 (TF-1441, 28/09/2026)
 
 **Le fait mesuré.** Dans un projet de la factory, le Chapitre 8 d'une analyse a prescrit au
@@ -322,7 +346,7 @@ Ce chapitre est le livrable principal. Il contient :
      juger, ouvrir la décision d'accès avec son mode opératoire (qui la prend, auprès de qui).
    - **Nommer le livrable selon R-4 et R-25 dans un projet de la factory**, en citant les deux
      règles (TF-1441 ; voir « Nom du livrable » plus haut) — jamais un gabarit de nom composé ici.
-4. **Contrat de sortie** : critères d'acceptation **vérifiables** que la réponse produite par le prompt réécrit devra satisfaire (ex. « doit contenir X », « ≤ N mots », « cite ses sources », « pas de Y »). L'étalon Ch1 cadre le *prompt* ; le contrat cadre la *sortie*. Embarquer ce contrat dans le prompt réécrit chaque fois que c'est possible, et le rappeler ici en clair.
+4. **Contrat de sortie** : critères d'acceptation **vérifiables** que la réponse produite par le prompt réécrit devra satisfaire (ex. « doit contenir X », « ≤ N mots », « cite ses sources », « pas de Y »). L'étalon Ch1 cadre le *prompt* ; le contrat cadre la *sortie*. Embarquer ce contrat dans le prompt réécrit chaque fois que c'est possible, et le rappeler ici en clair. **Le contrat nomme l'oracle de forme de chaque format que le prompt peut produire, voie de repli comprise** (TF-2194 ; voir « Contrat de sortie : l'oracle de forme de chaque format produit ») : `check_html.py` pour une page HTML, `check_markdown.py` pour un Markdown.
 5. **Changelog tracé** : chaque modification est rattachée au défaut qu'elle corrige (ex. « +audience → bloquant Ch3 #2 / cause d'échec Ch5 #1 »). Aucune correction ne sort du chapeau : tout se rattache à un défaut nommé.
 5 bis. **Écarts à la lettre (obligatoire, TF-0176 du 13/08)** : quand le prompt d'origine porte une demande humaine, le Ch8 liste EXPLICITEMENT chaque endroit où le prompt réécrit s'écarte du texte littéral de cette demande (seuil ajouté, périmètre restreint, condition introduite, formulation adoucie) — un tableau « vous avez écrit → je propose → pourquoi », soumis à validation poste par poste. Un affaiblissement noyé dans un prompt long que l'humain valide en bloc N'EST PAS un écart validé : le 13/08, « pour chaque liste, des filtres » devenu « dès 8 lignes » a traversé une validation humaine sans être vu, et le livrable a été refusé. Aucun écart = le dire (« aucun écart à la lettre »).
 

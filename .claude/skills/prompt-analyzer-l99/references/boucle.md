@@ -54,6 +54,22 @@ du pilot. Sur un même prompt de départ noté 74 par un jury fixe, la retenue �
 bloquant que sa correction a créé et que le vérificateur de C avait attrapé. Un journal sans ces
 clés est jugé par les règles d'avant.
 
+**Deux clés de plus, du retour Produit-86 du 05/11/2026** (TF-2202), jouées seulement si l'arbitre
+les déclare, donc sans effet sur les journaux d'avant :
+
+- `recompte_notes` : `true`. Une note du relecteur ou du vérificateur, chiffre, citation, renvoi ou
+  correction proposée, se recompte à la source avant d'entrer dans une correction. Le journal porte,
+  à chaque passe à partir de la 2e, `notes_reprises` (liste vide si aucune), chaque note avec son
+  `recompte` (commande et résultat). Le fait : une note reprise sans recompte a créé un bloquant, la
+  passe 2 est tombée à 40 et la passe 1 a été livrée avec 9 majeurs que la passe 2 fermait (B11).
+- `reprise_unique` : `true`. Une passe rejetée pour régression dont la cause est un défaut CRÉÉ par
+  la correction (`cause_regression` : `nature: "defaut_cree"`, citation, recompte) n'arrête pas la
+  boucle sur la passe gardée. Elle ouvre UNE passe de reprise (`reprise: true`, `reprise_de`) qui
+  repart de la passe rejetée et ne corrige que ce défaut. La reprise est jugée comme toute passe
+  (relecteur aveugle, vérification de clôture, B8) ; si elle régresse à son tour, l'arrêt se pose
+  sur la dernière passe gardée, raison `regression`. Pas de seconde reprise, pas de reprise sans
+  cause, et la reprise ne compte pas dans la borne (B12).
+
 **Extension jusqu'à 5 passes** (TF-2024, autorisation humaine du 29/10/2026 : « Adapte pour
 aller jusqu'à 5 passes si estimé nécessaire. »). À la borne de base, ou plus tôt, la session
 prolonge la boucle quand elle l'estime nécessaire, à deux conditions : la dernière passe a gagné
@@ -93,12 +109,17 @@ n'est pas fini (P5 de l'étude).
 3. **Recompter avant de retenir.** Chaque défaut bloquant ou majeur du relecteur se vérifie à la
    source, par une commande exécutée (`git grep`, lecture du fichier, comptage). Un défaut que
    le recompte dément est écarté, avec sa commande. Mesuré le 16/10/2026 : 2 chiffres de
-   relecteur sur 5 prompts étaient faux, dont un défaut qui n'existait pas.
+   relecteur sur 5 prompts étaient faux, dont un défaut qui n'existait pas. Le recompte ne vise pas
+   que les défauts graves : toute NOTE du relecteur ou du vérificateur que la correction reprend
+   (chiffre, citation, renvoi) se recompte aussi avant d'y entrer, et se consigne à
+   `notes_reprises` (TF-2202).
 4. **Mesurer la longueur** du prompt en mots.
 5. **Décider la suite.** Une passe dont le prompt grossit de plus de 15 % sans clore un majeur
    est REJETÉE : on repart de la version précédente. Une passe dont le score mesuré baisse sous
    la passe gardée précédente est REJETÉE aussi (D-111 (a)) : la boucle s'arrête sur la passe
-   gardée, raison `regression`, et c'est elle qui est livrée. Sinon, on s'arrête au premier cas
+   gardée, raison `regression`, et c'est elle qui est livrée, sauf si la régression tient à un
+   défaut que la correction a créé : une passe de reprise unique s'ouvre alors (TF-2202, voir
+   `reprise_unique`). Sinon, on s'arrête au premier cas
    atteint :
    - 0 bloquant et 0 majeur retenus, et seuil de score tenu s'il y en a un ;
    - gain de score mesuré inférieur à 3 points par rapport à la passe retenue précédente ;
@@ -144,7 +165,8 @@ boucle sans journal PASS n'est pas un mode boucle.
 
 `decision` vaut `continuer`, `arreter` ou `rejeter`. `arret.raison` vaut `zero_majeur`,
 `gain_insuffisant`, `borne` ou `regression`. Sous l'essai D-111 (a), l'arbitre porte en plus
-`retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10.
+`retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
+`recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12.
 
 ## Annexe — sortie demandée au relecteur
 
