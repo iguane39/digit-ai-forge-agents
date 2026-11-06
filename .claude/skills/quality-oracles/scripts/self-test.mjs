@@ -982,6 +982,46 @@ else {
   else ok('TF-1480 : oracle-parite-assets sur une cible absente rend SKIP (exit 2) avec un motif qui la nomme, et juge toujours une cible présente (' + jp.verdict + ')');
 }
 
+// TF-2186 (06/11/2026) — DEUX JUGES DE LA MÊME PARITÉ NE SE CONTREDISENT PAS SUR LA FEUILLE DU GABARIT.
+// Le fait : `embarquer-composants --constat` refusait deux fixtures V1 (copie de `boilerplate.css` de
+// 19 244 octets contre 20 316) pendant qu'`oracle-parite-assets` rendait PASS sur les mêmes copies :
+// la feuille du gabarit est une source SYNTHÉTIQUE (extraite de `boilerplate.html`, TF-0926) et
+// l'oracle ne lisait que les `.js`/`.css` du dossier. Ce cas pose la feuille par le poseur, puis juge
+// la même page par les DEUX juges, dans les trois états — à jour, périmée (une ligne du gabarit
+// retirée de la copie, sous l'empreinte d'une version antérieure, comme le 08/09), retouchée sur place sous l'empreinte juste (P3 seul). Sens rouge : sur
+// l'ancien oracle, l'état « périmée » rendait PASS ici et le cas rougit.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2186-'));
+  try {
+    const poseur = path.join(SKILLSROOT, 'digit-ai-page-html', 'scripts', 'embarquer-composants.mjs');
+    const oracle = path.join(SKILLDIR, 'scripts', 'oracle-parite-assets.mjs');
+    const page = path.join(tmp, 'page-gabarit.html');
+    fs.writeFileSync(page, '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="UTF-8">\n'
+      + '<title>Digit-AI — feuille du gabarit · essai — 20261106a</title>\n</head>\n<body>\n<h1>Essai</h1>\n</body>\n</html>\n', 'utf8');
+    const pose = spawnSync(process.execPath, [poseur, '--poser', page, '--composants', 'boilerplate.css'], { encoding: 'utf8', timeout: 60000 });
+    const juger = (p) => {
+      const c = spawnSync(process.execPath, [poseur, '--constat', p], { encoding: 'utf8', timeout: 60000 });
+      const o = spawnSync(process.execPath, [oracle, p], { encoding: 'utf8', timeout: 60000 });
+      let j = null; try { j = JSON.parse((o.stdout || '').trim()); } catch { /* rendu plus bas */ }
+      return { poseur: c.status, oracle: o.status, verdict: j && j.verdict, regles: j ? (j.findings || []).map((f) => f.regle).sort().join(',') : '?' };
+    };
+    const fraiche = fs.readFileSync(page, 'utf8');
+    const a = juger(page);
+    const perimee = path.join(tmp, 'page-perimee.html');
+    fs.writeFileSync(perimee, fraiche.replace('--hh: 64px;', '', 1).replace(/data-empreinte="sha256:[0-9a-f]{64}"/, 'data-empreinte="sha256:' + '0'.repeat(64) + '"'), 'utf8');
+    const b = juger(perimee);
+    const retouchee = path.join(tmp, 'page-retouchee.html');
+    fs.writeFileSync(retouchee, fraiche.replace('--hh: 64px;', '--hh: 65px;', 1), 'utf8');
+    const c = juger(retouchee);
+    if (pose.status !== 0 || !fraiche.includes('data-composant="boilerplate.css"')) ko('TF-2186 : le poseur n a pas posé la feuille du gabarit — le cas ne mesure rien');
+    else if (fraiche === fs.readFileSync(perimee, 'utf8') || fraiche === fs.readFileSync(retouchee, 'utf8')) ko('TF-2186 : la ligne `--hh: 64px;` a changé dans le gabarit — la mutation ne mute plus rien, le cas est à réécrire');
+    else if (a.poseur !== 0 || a.oracle !== 0 || a.verdict !== 'PASS') ko(`TF-2186 : feuille à jour — poseur exit ${a.poseur}, oracle ${a.verdict} (attendu 0 et PASS)`);
+    else if (b.poseur !== 1 || b.oracle !== 1 || b.verdict !== 'FAIL' || b.regles !== 'P2,P3') ko(`TF-2186 : feuille PÉRIMÉE — poseur exit ${b.poseur}, oracle ${b.verdict} ${b.regles} (attendu 1 et FAIL P2,P3) : les deux juges se contredisent`);
+    else if (c.poseur !== 1 || c.oracle !== 1 || c.verdict !== 'FAIL' || c.regles !== 'P3') ko(`TF-2186 : feuille RETOUCHÉE — poseur exit ${c.poseur}, oracle ${c.verdict} ${c.regles} (attendu 1 et FAIL P3)`);
+    else ok('TF-2186 : sur la feuille du gabarit, le poseur et l oracle de parité s accordent — à jour (0, PASS), périmée (1, FAIL P2,P3), retouchée (1, FAIL P3)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1481 (28/09/2026) — LE JUGE TROUVE SA RUBRIQUE SOUS WINDOWS. Le dossier du skill se dérivait
 // de `new URL(import.meta.url).pathname` (« /C:/… »), que `path.resolve` préfixait d'une seconde
 // lettre de lecteur (« C:\C:\… ») : la rubrique n'était jamais trouvée, SKIP permanent. Sans appeler

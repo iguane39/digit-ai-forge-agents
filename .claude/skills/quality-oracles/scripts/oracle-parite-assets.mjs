@@ -63,6 +63,7 @@ const IGNORES = new Set(['.oracles', '__pycache__', 'node_modules', '.git', 'fon
 const NON_JUGE = [
   "ne juge que les copies TEXTUELLES dans des fichiers .html : un composant recopié dans un .js, un .md ou une archive n'est pas vu",
   "reconnaît une copie à la PREMIÈRE LIGNE de la source (sa bannière) : une copie dont on a retiré l'en-tête de commentaire devient invisible — c'est le prix d'un détecteur à bruit nul, et le contrôle de déclaration (P1) est ce qui rend ce contournement visible à la revue",
+  "la feuille du gabarit (`boilerplate.css`, extraite de `boilerplate.html`) n'a pas de bannière : sa copie se reconnaît à `data-composant=\"boilerplate.css\"`, et une copie de cette feuille sans déclaration n'est pas vue",
   "ne dit PAS si une copie est LÉGITIME : c'est l'exemption écrite qui le dit, et une exemption est une décision humaine, jamais une déduction",
   "ne juge que le socle passé en --socle (par défaut digit-ai-page-html/assets) : un composant copié depuis un AUTRE skill n'est pas suivi tant que son dossier n'est pas déclaré socle",
   "ne juge pas le COMPORTEMENT de la copie : une copie à la parité peut échouer chez son hôte faute des jetons CSS qu'elle consomme (c'est render_page et check_html qui le voient)",
@@ -89,6 +90,24 @@ for (const n of fs.readdirSync(socle).sort()) {
   // Une bannière trop courte ne discrimine rien : la refuser plutôt que d'accuser au hasard.
   if (banniere.length < 24) continue;
   sources.set(n, { texte, sha: crypto.createHash('sha256').update(texte, 'utf8').digest('hex'), banniere });
+}
+// TF-2186 (06/11/2026) — LA FEUILLE DU GABARIT EST UNE SOURCE, ET CET ORACLE NE LA VOYAIT PAS.
+// `embarquer-composants.mjs` expose `boilerplate.css` comme source SYNTHÉTIQUE (TF-0926) : le CSS
+// du premier bloc `<style>` de `boilerplate.html`, qui n'est pas un fichier `.css` du socle. Cet
+// oracle ne lisait que les `.js`/`.css` du dossier : pour lui `boilerplate.css` n'existait pas, et
+// une copie périmée de la feuille passait PASS pendant que le poseur la refusait (19 244 octets
+// contre 20 316 sur v1-tableau-repli-cartes.html et v1-tableau-sans-repli.html, mesuré le 05/11).
+// Le poseur avait raison, l'oracle était aveugle : il juge désormais la même source, extraite de
+// la même façon. Pas de bannière exploitable (la première ligne d'un bloc `<style>` est `:root {`) :
+// la copie se reconnaît à sa DÉCLARATION `data-composant="boilerplate.css"`. Une copie de la feuille
+// SANS déclaration reste invisible, et le dit au non_juge.
+const gabarit = path.join(socle, 'boilerplate.html');
+if (!sources.has('boilerplate.css') && fs.existsSync(gabarit)) {
+  const bloc = fs.readFileSync(gabarit, 'utf8').match(/<style>([\s\S]*?)<\/style>/);
+  if (bloc) {
+    const texte = bloc[1].replace(/^\n+/, '').replace(/\n+$/, '');
+    sources.set('boilerplate.css', { texte, sha: crypto.createHash('sha256').update(texte, 'utf8').digest('hex'), banniere: null });
+  }
 }
 if (!sources.size) {
   out('SKIP', [{ sev: 'info', regle: 'P0', msg: `aucun asset .js/.css exploitable dans ${socle}`, where: socle }], NON_JUGE, 2);
@@ -139,12 +158,19 @@ for (const fichier of balayees) {
   }
 
   for (const [nom, src] of sources) {
-    const banniereEch = src.banniere.replace(/<\/script/gi, '<\\/script');
     // Toutes les occurrences de la bannière : un fichier peut porter deux copies du même composant.
     const positions = [];
-    for (const aiguille of new Set([src.banniere, banniereEch])) {
-      let i = html.indexOf(aiguille);
-      while (i !== -1) { positions.push(i); i = html.indexOf(aiguille, i + 1); }
+    if (src.banniere === null) {
+      // Source synthétique (TF-2186) : sans bannière, la copie se reconnaît à sa déclaration.
+      const re = new RegExp(`data-composant\\s*=\\s*"${nom.replace(/\./g, '\\.')}"`, 'g');
+      let md;
+      while ((md = re.exec(html)) !== null) positions.push(md.index);
+    } else {
+      const banniereEch = src.banniere.replace(/<\/script/gi, '<\\/script');
+      for (const aiguille of new Set([src.banniere, banniereEch])) {
+        let i = html.indexOf(aiguille);
+        while (i !== -1) { positions.push(i); i = html.indexOf(aiguille, i + 1); }
+      }
     }
     if (!positions.length) continue;
     copies += positions.length;
