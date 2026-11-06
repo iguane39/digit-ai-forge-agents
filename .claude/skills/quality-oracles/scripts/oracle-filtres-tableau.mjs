@@ -47,9 +47,12 @@ function tables(html) {
     /* TF-2158 : les cellules BRUTES de chaque rangee d'en-tete (colonne i = cellule i de chaque rangee). */
     const rangeesEntete = thead ? [...thead[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
       .map(r => [...r[1].matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)].map(c => ({ attrs: attrs(c[1]), brut: c[2], texte: texte(c[2]) }))) : [];
-    const lignes = tbody ? [...tbody[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
-      .map(r => [...r[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(c => texte(c[1]))) : [];
-    out.push({ attrs: a, ths, rangeesEntete, lignes, ligne: html.slice(0, m.index).split('\n').length });
+    /* TF-2196 : la VALEUR DE FACETTE d'une cellule est `data-tf-valeur` quand elle existe (comme le composant,
+       TF-2195), sinon son texte. `cellules` garde le marquage brut de chaque cellule du corps. */
+    const rangees = tbody ? [...tbody[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+      .map(r => [...r[1].matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)].map(c => ({ attrs: attrs(c[1]), brut: c[2] }))) : [];
+    const lignes = rangees.map(r => r.map(c => (c.attrs['data-tf-valeur'] !== undefined ? c.attrs['data-tf-valeur'].trim() : texte(c.brut))));
+    out.push({ attrs: a, ths, rangeesEntete, lignes, cellules: rangees, ligne: html.slice(0, m.index).split('\n').length });
   }
   return out;
 }
@@ -90,7 +93,18 @@ function colonnesCategorielles(t) {
    lignes GARDE sa facette. */
 const SEUIL_VALEURS_UNIQUES = 15;
 const PART_VALEURS_UNIQUES = 0.9;
-const TYPES_NON_FILTRE = /^(hidden|checkbox|radio|button|submit|reset|image|file)$/i;
+/* G12 (TF-2196, Produit-86 RP-16 du 05/11/2026) — LE FILTRE SERT-IL A QUELQUE CHOSE ? Quatre PASS avaient
+   couvert des filtres a une valeur par ligne (84 sur 84, 67 pour 3 agents) : l'oracle jugeait la PRESENCE du
+   composant, pas l'UTILITE de ses valeurs. Une cellule COMPOSITE — au moins deux fragments de texte separes
+   par du marquage (pastille + nom + reference) — donne au composant son texte entier pour valeur de facette,
+   donc une valeur par ligne. Elle porte `data-tf-valeur` (TF-2195), ou sa colonne sort de la facette
+   (`data-filter-col="off"` + motif). Une cellule a UN fragment (un badge « Clos ») n'est pas composite.
+   G13 (avertissement) — autant de valeurs distinctes que de lignes dans une colonne facettee de 8 a 15 lignes
+   (au-dela de 15, G11 refuse) : une facette qui ne regroupe rien. Le seuil de 8 est SEUIL_LIGNES. */
+const fragmentsDeTexte = (brut) => brut.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, '')
+  .replace(/<[^>]*>/g, '\u0001').replace(/&nbsp;/g, ' ').split('\u0001').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+const estComposite = (brut) => fragmentsDeTexte(brut).length >= 2;
+const TYPES_NON_FILTRE =/^(hidden|checkbox|radio|button|submit|reset|image|file)$/i;
 
 const normaliser = (s) => texte(String(s ?? '')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
@@ -234,6 +248,25 @@ function controler(html, chemin) {
       }
     }
 
+    /* G12 / G13 (TF-2196) : la valeur de facette est utile. */
+    for (let i = 0; i < premiere.length; i++) {
+      if (premiere[i].attrs['data-filter-col'] === 'off') continue;
+      const cellules = t.cellules.map(r => r[i]).filter(Boolean);
+      const composites = cellules.filter(c => c.attrs['data-tf-valeur'] === undefined && estComposite(c.brut));
+      /* SEUIL POSE PAR L'AGENT (TF-2196), non fonde sur une mesure du parc : la moitie des cellules de la colonne.
+         Mesure du 06/11 sur les 26 pages a data-filterable du depot : sans seuil, une page (digit-ai-schemas,
+         exemple-reference) bascule PASS -> FAIL sur 5 colonnes de prose dont 1 a 3 cellules portent un <code> ;
+         avec, aucune ; le cas du porteur (3 fragments dans CHAQUE cellule) est refuse dans les deux cas. */
+      if (composites.length && composites.length * 2 >= cellules.length) {
+        add('G12', 'bloquant', `Colonne "${premiere[i].texte}" : ${composites.length} cellule(s) composite(s) sur ${cellules.length} (plusieurs fragments de texte balises, par exemple "${fragmentsDeTexte(composites[0].brut).join(' | ').slice(0, 60)}") sans data-tf-valeur — le composant prend leur texte entier pour valeur de facette, soit une valeur par ligne. Geste : data-tf-valeur="<la valeur a filtrer>" sur chaque cellule, ou data-filter-col="off" avec data-filter-reason sur ce <th>.`, oue);
+      }
+      const valeurs = t.lignes.map(l => l[i] ?? '');
+      const distinctes = new Set(valeurs).size;
+      if (valeurs.length >= SEUIL_LIGNES && valeurs.length <= SEUIL_VALEURS_UNIQUES && distinctes === valeurs.length) {
+        OUT.findings.push({ regle: 'G13', severite: 'avertissement', sev: 'warn', message: `Colonne "${premiere[i].texte}" : ${distinctes} valeurs distinctes pour ${valeurs.length} lignes — la facette ne regroupe rien. Si la colonne est une cle, la recherche de page suffit (data-filter-col="off" avec data-filter-reason) ; sinon declarer la valeur a filtrer (data-tf-valeur).`, ou: oue });
+      }
+    }
+
     if (!initAll && id) {
       const initCible = new RegExp(`DigitAITableFilters\\s*\\.\\s*init\\s*\\([^)]*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(corpus);
       if (!initCible) add('G3', 'bloquant', `Tableau "${id}" jamais initialise : ni initAll(), ni init() le designant (document ou asset externe declare).`, oue);
@@ -273,6 +306,7 @@ function controler(html, chemin) {
   OUT.non_juge.push('Pertinence des colonnes retenues comme categorielles : heuristique de cardinalite, non validee metier.');
   OUT.non_juge.push(`G10 (TF-2158) : seuls les controles ECRITS dans le HTML source sont vus (liste ou champ dans l'en-tete, ou controle hors tableau qui porte aria-controls / data-table = id du tableau ET nomme la colonne) — un filtre pose par un script, une tuile KPI (data-kpi-table) ou un controle qui ne designe pas le tableau ne sont pas comptes.`);
   OUT.non_juge.push(`G11 (TF-2158) : seuils de ${SEUIL_VALEURS_UNIQUES} valeurs distinctes et de ${Math.round(PART_VALEURS_UNIQUES * 100)} % de lignes distinctes — poses par l'agent de TF-2158, non fondes sur une mesure du parc ; seules les lignes du premier <tbody> sont comptees.`);
+  OUT.non_juge.push(`G12/G13 (TF-2196) : G12 refuse une colonne dont la moitie au moins des cellules sont composites (seuil pose par l'agent) ; une cellule est composite quand elle porte au moins deux fragments de texte separes par du marquage — un script qui remplit les cellules apres le chargement n'est pas vu ; G13 s'arrete a ${SEUIL_VALEURS_UNIQUES} lignes (au-dela, G11 refuse) et signale une valeur par ligne, pas la pertinence d'un regroupement.`);
   if (exemptees) OUT.non_juge.push(`${exemptees} tableau(x) exempte(s) par data-filterable="off" — non juge(s).`);
   if (lues.length) OUT.non_juge.push(`Assets externes lus pour G3/G6 (RS-1) : ${lues.join(', ')}.`);
   if (manquantes.length) OUT.non_juge.push(`Assets externes references mais illisibles depuis le dossier de la page — G3/G6 juges sans leur contenu : ${manquantes.join(', ')}.`);

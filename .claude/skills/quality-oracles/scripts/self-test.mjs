@@ -3632,6 +3632,41 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-2196 (06/11/2026) — oracle-filtres-tableau JUGE L'UTILITÉ DES VALEURS, pas seulement la présence du composant.
+// Le manifest tient la paire (rouge : FAIL + G12 + G13 ; verte : PASS). Ce bloc tient ce que le manifest ne
+// peut pas dire : (1) la verte ne porte AUCUN constat (les gestes des messages, joués, suffisent) ; (2) G13
+// est un AVERTISSEMENT : la même page avec la seule clé unique non déclarée reste PASS et porte G13, rendu
+// `sev: warn` pour que le niveau « production » le promeuve ; (3) la moitié de seuil de G12 : une colonne
+// dont une cellule sur quatre seulement est composite n'est pas refusée.
+{
+  const FILTRES = path.join(SKILLDIR, 'scripts', 'oracle-filtres-tableau.mjs');
+  const jouer = (html) => {
+    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2196-'));
+    try {
+      const f = path.join(t, 'page.html');
+      fs.writeFileSync(f, html);   // l'asset relatif de la fixture, introuvable ici, n'est qu'un non_juge de G3/G6 : le marquage seul est jugé
+      const r = spawnSync(process.execPath, [FILTRES, f], { encoding: 'utf8', timeout: 60000 });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    } finally { fs.rmSync(t, { recursive: true, force: true }); }
+  };
+  const verte = fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'filtres-composite-verte.html'), 'utf8');
+  const v = jouer(verte);
+  !v || v.verdict !== 'PASS' || v.findings.length ? ko('TF-2196 verte : verdict ' + (v && v.verdict) + ', ' + (v && v.findings.length) + ' constat(s) — les gestes des messages doivent suffire, sans aucun constat')
+    : ok('TF-2196 verte : data-tf-valeur sur les cellules composites et la clé déclarée hors facette → PASS, aucun constat');
+  const cleNue = jouer(verte.replace(/<th data-filter-col="off" data-filter-reason="[^"]*">/, '<th>'));
+  const g13 = cleNue && cleNue.findings.filter(f => f.regle === 'G13');
+  !cleNue || cleNue.verdict !== 'PASS' || g13.length !== 1 || g13[0].sev !== 'warn' || g13[0].severite !== 'avertissement'
+    ? ko('TF-2196 G13 : une clé unique de 8 lignes doit rendre PASS avec un seul G13 en avertissement (sev warn), obtenu ' + (cleNue && cleNue.verdict) + ' ' + JSON.stringify(g13))
+    : ok('TF-2196 G13 : une clé unique de 8 lignes avertit sans refuser (PASS, sev warn), et la retirer de la verte fait réapparaître l\'avertissement');
+  const quart = jouer(verte.replace(/ data-tf-valeur="Agent C"/g, ''));
+  const majorite = jouer(verte.replace(/ data-tf-valeur="Agent [AB]"/g, ''));
+  const g12q = quart && quart.findings.filter(f => f.regle === 'G12');
+  const g12m = majorite && majorite.findings.filter(f => f.regle === 'G12');
+  !quart || quart.verdict !== 'PASS' || g12q.length !== 0 || !majorite || majorite.verdict !== 'FAIL' || g12m.length !== 1
+    ? ko('TF-2196 G12 : 2 cellules composites sur 8 sans valeur déclarée doivent passer, 6 sur 8 être refusées — obtenu ' + (quart && quart.verdict) + ' / ' + (majorite && majorite.verdict) + ' ' + JSON.stringify(g12m))
+    : ok('TF-2196 G12 : la moitié de la colonne est le seuil — 2 cellules composites sur 8 sans valeur déclarée passent, 6 sur 8 sont refusées (FAIL)');
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

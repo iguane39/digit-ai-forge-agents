@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fixture rouge — cellules composites sans valeur de facette déclarée (TF-2196)</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; --accent:#2563eb; --surface:#fff; --danger:#c0392b; --r-sm:6px; }
+  body { font-family: system-ui, sans-serif; padding:24px; }
+  table { border-collapse:collapse; }
+  th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  @media print {
+    .tf-btn, .tf-panel { display:none !important; }
+    tr[data-tf-hidden] { display:table-row !important; }
+  }
+</style>
+</head>
+<body>
+<h1>Interventions par agent</h1>
+
+<!--
+  FIXTURE ROUGE de G12 et G13 (TF-2196, Produit-86 RP-16 du 05/11/2026). Quatre PASS avaient couvert des
+  filtres à une valeur par ligne : l'oracle jugeait la présence du composant, pas l'utilité de ses valeurs.
+  Ici la colonne « Agent » mêle une pastille, un nom et une référence dans CHAQUE cellule, sans
+  data-tf-valeur : le composant prendrait le texte entier pour valeur, soit huit valeurs pour huit lignes.
+  Attendu : FAIL sur G12 (bloquant) ; la colonne « Réf. » (huit valeurs pour huit lignes) porte en plus
+  l'AVERTISSEMENT G13. Données inventées.
+-->
+<table id="interventions" data-filterable>
+  <thead>
+    <tr><th>Réf.</th><th>Agent</th><th>Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>I-001</td><td><span>●</span> <strong>Agent A</strong> <small>réf. 001</small></td><td>Clos</td></tr>
+    <tr><td>I-002</td><td><span>●</span> <strong>Agent B</strong> <small>réf. 002</small></td><td>Clos</td></tr>
+    <tr><td>I-003</td><td><span>●</span> <strong>Agent C</strong> <small>réf. 003</small></td><td>Ouvert</td></tr>
+    <tr><td>I-004</td><td><span>●</span> <strong>Agent A</strong> <small>réf. 004</small></td><td>Ouvert</td></tr>
+    <tr><td>I-005</td><td><span>●</span> <strong>Agent B</strong> <small>réf. 005</small></td><td>Clos</td></tr>
+    <tr><td>I-006</td><td><span>●</span> <strong>Agent A</strong> <small>réf. 006</small></td><td>Clos</td></tr>
+    <tr><td>I-007</td><td><span>●</span> <strong>Agent C</strong> <small>réf. 007</small></td><td>Ouvert</td></tr>
+    <tr><td>I-008</td><td><span>●</span> <strong>Agent B</strong> <small>réf. 008</small></td><td>Ouvert</td></tr>
+  </tbody>
+</table>
+<div class="tf-count" data-tf-count-for="interventions" aria-live="polite"></div>
+
+<script src="../../digit-ai-page-html/assets/table-filters.js"></script>
+<script>DigitAITableFilters.init(document.getElementById('interventions'));</script>
+</body>
+</html>

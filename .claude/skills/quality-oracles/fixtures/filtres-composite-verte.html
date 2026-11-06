@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fixture verte — valeur de facette déclarée sur les cellules composites (TF-2196)</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; --accent:#2563eb; --surface:#fff; --danger:#c0392b; --r-sm:6px; }
+  body { font-family: system-ui, sans-serif; padding:24px; }
+  table { border-collapse:collapse; }
+  th, td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .tf-count { margin-top:4px; font-size:.72rem; color:var(--muted); min-height:1em; }
+  @media print {
+    .tf-btn, .tf-panel { display:none !important; }
+    tr[data-tf-hidden] { display:table-row !important; }
+  }
+</style>
+</head>
+<body>
+<h1>Interventions par agent</h1>
+
+<!--
+  FIXTURE VERTE de G12 et G13 : les gestes que leurs messages proposent, JOUÉS. La même page, chaque
+  cellule « Agent » porte data-tf-valeur (trois agents, trois cases), et la colonne « Réf. », une
+  clé unique par ligne, est déclarée hors facette avec son motif (la recherche de page la couvre).
+  Attendu : PASS, sans aucun constat. Données inventées.
+-->
+<table id="interventions" data-filterable>
+  <thead>
+    <tr><th data-filter-col="off" data-filter-reason="identifiant unique par ligne : la recherche de page le couvre">Réf.</th><th>Agent</th><th>Statut</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>I-001</td><td data-tf-valeur="Agent A"><span>●</span> <strong>Agent A</strong> <small>réf. 001</small></td><td>Clos</td></tr>
+    <tr><td>I-002</td><td data-tf-valeur="Agent B"><span>●</span> <strong>Agent B</strong> <small>réf. 002</small></td><td>Clos</td></tr>
+    <tr><td>I-003</td><td data-tf-valeur="Agent C"><span>●</span> <strong>Agent C</strong> <small>réf. 003</small></td><td>Ouvert</td></tr>
+    <tr><td>I-004</td><td data-tf-valeur="Agent A"><span>●</span> <strong>Agent A</strong> <small>réf. 004</small></td><td>Ouvert</td></tr>
+    <tr><td>I-005</td><td data-tf-valeur="Agent B"><span>●</span> <strong>Agent B</strong> <small>réf. 005</small></td><td>Clos</td></tr>
+    <tr><td>I-006</td><td data-tf-valeur="Agent A"><span>●</span> <strong>Agent A</strong> <small>réf. 006</small></td><td>Clos</td></tr>
+    <tr><td>I-007</td><td data-tf-valeur="Agent C"><span>●</span> <strong>Agent C</strong> <small>réf. 007</small></td><td>Ouvert</td></tr>
+    <tr><td>I-008</td><td data-tf-valeur="Agent B"><span>●</span> <strong>Agent B</strong> <small>réf. 008</small></td><td>Ouvert</td></tr>
+  </tbody>
+</table>
+<div class="tf-count" data-tf-count-for="interventions" aria-live="polite"></div>
+
+<script src="../../digit-ai-page-html/assets/table-filters.js"></script>
+<script>DigitAITableFilters.init(document.getElementById('interventions'));</script>
+</body>
+</html>

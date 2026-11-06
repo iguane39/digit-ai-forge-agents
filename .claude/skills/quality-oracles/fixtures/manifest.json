@@ -1073,6 +1073,28 @@
    "note": "TF-2158 — G11 : une facette sur une colonne de 20 valeurs distinctes sur 20 lignes est refusée ; la verte joue le geste du message (data-filter-col=\"off\" + data-filter-reason)."
   },
   {
+   "nom": "filtres-tableau-composite",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-filtres-tableau.mjs",
+    "{fixture}"
+   ],
+   "red": "filtres-composite-rouge.html",
+   "green": "filtres-composite-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "\"regle\":\"G12\"",
+    "\"regle\":\"G13\""
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2196 (Produit-86, lot 20261105b RP-16, 05/11/2026) : quatre PASS avaient couvert des filtres à une valeur par ligne (84 sur 84, 67 pour 3 agents) ; l'oracle jugeait la présence du composant, pas l'utilité de ses valeurs. La rouge rejoue le cas : une colonne dont chaque cellule mêle pastille, nom et référence, sans data-tf-valeur (G12, bloquant), et une clé unique de 8 lignes (G13, avertissement). Avant correction, l'oracle rendait PASS sur la rouge.",
+   "note": "TF-2196 — G12 : la moitié au moins des cellules d'une colonne facettée sont composites et sans data-tf-valeur ; G13 (avertissement, verdict inchangé) : autant de valeurs distinctes que de lignes, de 8 à 15 lignes. La verte joue les gestes des messages (data-tf-valeur ; data-filter-col=\"off\" avec data-filter-reason sur la clé)."
+  },
+  {
    "nom": "filtres-tableau-filtre-double",
    "cmd": [
     "node",
