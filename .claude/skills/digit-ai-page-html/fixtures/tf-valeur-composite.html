@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — filtres · valeur de facette déclarée et saisie qui filtre — 20261106a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!--
+  TF-2195 (Produit-86, retour du 05/11/2026), fixture À DOUBLE SENS jouée par self_test
+  (run_filtres_runtime).
+
+  LE DÉFAUT PAYÉ. Une cellule composite (pastille + nom + référence) donnait au composant son
+  texte entier comme valeur de facette : 84 valeurs pour 84 lignes, 67 pour 3 agents. Le filtre
+  n'en était pas un, et la recherche du panneau ne masquait rien : la feuille du composant
+  imposait `display: flex` aux cases, ce qui annulait l'attribut `hidden` que la saisie pose.
+
+  CETTE PAGE charge la feuille RÉELLE du composant (`../assets/table-filters.css`), sans règle
+  `[hidden]` de son cru : c'est ce qui laisse voir le second défaut. Les sens joués par le banc :
+    · la valeur de facette d'une cellule se lit dans `data-tf-valeur` : 3 agents, 3 cases ;
+    · sens rouge : `window.__valeursTexteEntier(0)` rend ce que l'ancienne lecture aurait produit
+      (le texte rendu de chaque cellule) et le banc EXIGE qu'il y en ait plus que 3 ;
+    · la saisie dans le panneau masque les cases qui ne correspondent pas ET les lignes dont la
+      valeur ne correspond pas ; vidée, tout revient.
+  Données inventées, aucune donnée réelle.
+-->
+<link rel="stylesheet" href="../assets/table-filters.css">
+<style>
+  :root { --ink:#0F172A; --muted:#64748B; --line:#E6EAF2; --surface:#FFFFFF; --bg:#FAFBFF;
+          --blue:#2563EB; --r-sm:8px; --sans:"DM Sans",system-ui,sans-serif; }
+  body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--bg); }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px; }
+  table { width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { position:relative; font-weight:700; }
+  .pastille { display:inline-block; width:.6em; height:.6em; border-radius:50%; background:var(--blue); }
+  small { color:var(--muted); }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Interventions par agent</h1>
+  <p>Chaque cellule « Agent » mêle une pastille, le nom de l'agent et la référence de
+     l'intervention : le texte rendu est unique à chaque ligne, la valeur de facette est le nom.</p>
+  <table id="interventions" data-filterable>
+    <caption>Exemple inventé — aucune donnée réelle.</caption>
+    <thead>
+      <tr><th>Agent</th><th>Statut</th></tr>
+    </thead>
+    <tbody>
+      <tr><td data-tf-valeur="Agent A"><span class="pastille" aria-hidden="true"></span> <strong>Agent A</strong> <small>réf. 001</small></td><td>clos</td></tr>
+      <tr><td data-tf-valeur="Agent B"><span class="pastille" aria-hidden="true"></span> <strong>Agent B</strong> <small>réf. 002</small></td><td>clos</td></tr>
+      <tr><td data-tf-valeur="Agent C"><span class="pastille" aria-hidden="true"></span> <strong>Agent C</strong> <small>réf. 003</small></td><td>ouvert</td></tr>
+      <tr><td data-tf-valeur="Agent A"><span class="pastille" aria-hidden="true"></span> <strong>Agent A</strong> <small>réf. 004</small></td><td>ouvert</td></tr>
+      <tr><td data-tf-valeur="Agent B"><span class="pastille" aria-hidden="true"></span> <strong>Agent B</strong> <small>réf. 005</small></td><td>clos</td></tr>
+      <tr><td data-tf-valeur="Agent A"><span class="pastille" aria-hidden="true"></span> <strong>Agent A</strong> <small>réf. 006</small></td><td>clos</td></tr>
+      <tr><td data-tf-valeur="Agent C"><span class="pastille" aria-hidden="true"></span> <strong>Agent C</strong> <small>réf. 007</small></td><td>ouvert</td></tr>
+      <tr><td data-tf-valeur="Agent B"><span class="pastille" aria-hidden="true"></span> <strong>Agent B</strong> <small>réf. 008</small></td><td>ouvert</td></tr>
+    </tbody>
+  </table>
+  <div class="tf-count" data-tf-count-for="interventions" aria-live="polite"></div>
+</main>
+<script src="../assets/table-filters.js"></script>
+<script>
+  /* Ce que l'ancienne lecture aurait compté : le texte rendu de chaque cellule de la colonne. */
+  window.__valeursTexteEntier = function (i) {
+    var vus = {};
+    document.querySelectorAll('#interventions tbody tr').forEach(function (tr) {
+      vus[tr.cells[i].textContent.trim()] = true;
+    });
+    return Object.keys(vus).length;
+  };
+  window.__tf = DigitAITableFilters.init(document.getElementById('interventions'));
+</script>
+</body>
+</html>

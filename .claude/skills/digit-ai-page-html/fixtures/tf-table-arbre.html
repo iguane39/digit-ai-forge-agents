@@ -116,7 +116,7 @@ tr[data-niveau="3"] > td:first-child { background-position: 60px 0; }
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.css — copie du socle digit-ai-page-html/assets/table-filters.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="table-filters.css" data-empreinte="sha256:8945bd067654224f565ab34b3db0f338040e741c84ff3cc7ce918572a7ff1cb5">
+<style data-composant="table-filters.css" data-empreinte="sha256:731ac60907b4fda473fd3fef4e517f8bc3d69bb8a5857b4f5a4456b57ab122fe">
 /* table-filters.css — habillage charté du composant de filtres de colonne (D-12).
    TF-0176 (13/08) : un composant se livre AVEC son CSS — livré nu, il sort en rendu brut
    navigateur chez tous ses hôtes (constaté sur le dashboard forge-tests du 13/08, refusé
@@ -186,6 +186,10 @@ th.tf-num .tf-btn { float: left; margin-left: 0; margin-right: 8px; }
 }
 .tf-opts label:hover { background: var(--bg, Canvas); }
 .tf-opts input[type="checkbox"] { accent-color: var(--blue, LinkText); }
+/* TF-2195 (Produit-86, 05/11/2026) : `.tf-opts label { display: flex }` annulait l'attribut `hidden`
+   que la saisie du panneau pose sur les cases, et la recherche ne masquait rien. La feuille
+   RESPECTE `hidden` pour tout ce qu'elle habille : le panneau, ses cases et ses boutons. */
+.tf-panel[hidden], .tf-panel [hidden], .tf-btn[hidden], .tf-reset[hidden], .tf-unique[hidden] { display: none; }
 /* TF-0782 (02/09) : la cardinalite decide de la FORME du panneau, pas de son existence — et
    une forme qui change sans le dire est une affordance muette. Le panneau ouvert sur sa
    recherche (plus de 15 valeurs) ou reduit a une valeur unique porte sa note. */
@@ -659,7 +663,7 @@ window.BancArbre = {
 <!-- COMPOSANT-EMBARQUE:DEBUT table-filters.js — copie du socle digit-ai-page-html/assets/table-filters.js,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<script data-composant="table-filters.js" data-empreinte="sha256:1260259330bd1aabb7086d3f8ef0b2fec4eb580477d55047c402c353e4d4ea66">
+<script data-composant="table-filters.js" data-empreinte="sha256:47e398a51384c5cca12b6b97481bdcffd5fa63d53ec39575a77583014da986e2">
 /* Digit-AI — Filtres de colonne sur tableaux de données.
    Socle commun : voir references/composant-filtres-tableau.md (checklist G1-G9).
    Viewer-only : le JS ne s'exécute pas à l'export WeasyPrint, la regle @media print
@@ -667,6 +671,13 @@ window.BancArbre = {
    Lot Produit-05 20260820b (TF-0429/0430/0431, 21/08) : rappel apresFiltrage et instance
    enveloppable, etat vide avec « tout reafficher », panneau qui choisit son cote et
    neutralise le rognage de son conteneur defilant tant qu'il est ouvert.
+
+   TF-2195 (Produit-86 20261105b RP-15, 05/11/2026) — LA VALEUR D'UNE FACETTE SE DECLARE, ET LA SAISIE
+   FILTRE. Une cellule composite (pastille + nom + reference) donnait son texte entier comme valeur :
+   84 valeurs pour 84 lignes, un filtre qui n'en etait pas un. `data-tf-valeur` sur la cellule dit la
+   valeur de facette (et sa cle d'ordre a defaut de `data-v`). La saisie du panneau masque les cases
+   qui ne correspondent pas ET les lignes dont la valeur ne correspond pas (la feuille respecte
+   `hidden`, voir table-filters.css) ; « Tout reafficher » la vide.
 
    Lot Produit-02 20260902b/d (TF-0768/0769/0781/0782, 02/09) — L'ORDRE ET L'EXISTENCE.
    Quatre defauts d'une meme famille : le composant lisait le TEXTE RENDU la ou il fallait lire
@@ -734,10 +745,15 @@ window.BancArbre = {
     }) : [];
   }
 
-  /* Le LIBELLE d'une cellule : ce que le lecteur voit, et ce qu'il coche. */
+  /* Le LIBELLE d'une cellule : ce que le lecteur voit, et ce qu'il coche.
+     TF-2195 (Produit-86, 05/11/2026) — une cellule COMPOSITE (pastille + nom + reference) donnait
+     son texte entier comme valeur : 84 valeurs pour 84 lignes, 67 pour 3 agents. `data-tf-valeur`
+     sur la cellule dit la valeur de facette ; sans lui, le texte rendu reste la valeur. */
   function valeur(tr, i) {
     var td = tr.cells[i];
-    return td ? td.textContent.trim() : '';
+    if (!td) return '';
+    var d = td.getAttribute('data-tf-valeur');
+    return d === null ? td.textContent.trim() : String(d).trim();
   }
 
   /* La CLE D'ORDRE d'une cellule (TF-0768/0781) : `data-v`, sinon `data-sort`, sinon le texte
@@ -748,7 +764,7 @@ window.BancArbre = {
     if (!td) return '';
     var d = td.getAttribute('data-v');
     if (d === null) d = td.getAttribute('data-sort');
-    return d === null ? td.textContent.trim() : String(d).trim();
+    return d === null ? valeur(tr, i) : String(d).trim();
   }
 
   /* Comparateur unique du composant — tri de lignes ET ordre des valeurs de facette.
@@ -1009,6 +1025,12 @@ window.BancArbre = {
         Object.keys(e.selection).forEach(function (k) { e.selection[k] = true; });
         var p = document.getElementById(e.bouton.getAttribute('aria-controls'));
         if (p) Array.prototype.forEach.call(p.querySelectorAll('.tf-opt'), function (cb) { cb.checked = true; });
+        /* TF-2195 : « tout réafficher » vide aussi la saisie, sinon la ligne vide proposerait un bouton sans effet. */
+        e.requete = '';
+        if (p) {
+          var champ = p.querySelector('.tf-search'); if (champ) champ.value = '';
+          Array.prototype.forEach.call(p.querySelectorAll('.tf-opts label'), function (lab) { lab.hidden = false; });
+        }
       });
       api.appliquer();
     }
@@ -1017,7 +1039,9 @@ window.BancArbre = {
       var visibles = 0;
       lignes.forEach(function (tr) {
         var ok = etats.every(function (e) {
-          return e.selection[valeur(tr, e.col.index)] !== false;
+          var v = valeur(tr, e.col.index);
+          /* TF-2195 : la saisie du panneau filtre aussi les LIGNES, pas seulement la liste de cases. */
+          return e.selection[v] !== false && (!e.requete || norm(v).indexOf(e.requete) !== -1);
         });
         if (ok) {
           tr.removeAttribute('data-tf-hidden');
@@ -1042,7 +1066,7 @@ window.BancArbre = {
         if (V) { V.apply(tr); }
       });
       etats.forEach(function (e) {
-        var actif = Object.keys(e.selection).some(function (k) { return !e.selection[k]; });
+        var actif = !!e.requete || Object.keys(e.selection).some(function (k) { return !e.selection[k]; });
         e.bouton.classList.toggle('tf-on', actif);
       });
       if (compteur) {
@@ -1158,6 +1182,8 @@ window.BancArbre = {
           Array.prototype.forEach.call(ui.options.children, function (lab) {
             lab.hidden = q !== '' && norm(lab.textContent).indexOf(q) === -1;
           });
+          etat.requete = q;
+          api.appliquer();
         });
 
         /* Tous / Aucun portent sur les valeurs actuellement visibles dans la liste. */

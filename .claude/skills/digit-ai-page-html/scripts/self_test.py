@@ -748,6 +748,13 @@ CAS_RENDU = {
     # visible garde ses 2 constats : un libelle sorti du flux mais VISIBLE reste decale de ses valeurs.
     "v15-entete-rogne-par-ancetre.html": [("entete_pose_sur_lignes", 0), ("entete_desaligne", 0)],
     "v15-entete-pose-non-rogne.html": [("entete_pose_sur_lignes", 1), ("entete_desaligne", 2)],
+    # TF-2220 (Produit-86, lot 20261105h RP-40) — un <details> FERME n'a que la largeur de son resume dans une
+    # rangee flex : son contenu se mesurait a 42 px (154 px sur le livrable fautif, 1 376 ouvert) et rendait des
+    # constats de largeur de texte sur un panneau que le lecteur ne voit pas. 2 constats `prose_verticale` avant
+    # le correctif, 0 apres. La contre-epreuve, le MEME panneau ouvert et borne a 260 px, garde ses 2 constats :
+    # ne plus juger un panneau ferme n'est pas ne plus juger un panneau.
+    "details-ferme-resume-etroit.html": [("prose_verticale", 0), ("prose_etroite", 0), ("l2_width", 0), ("l2_filet", 0)],
+    "details-ouvert-etroit.html": ("prose_verticale", 2),
     # TF-1061 — une barre sticky, au-dessus, OPAQUE survole : zero V4. La meme, transparente,
     # recouvre vraiment : un V4.
     "v4-sticky-survol-opaque.html": ("v4_overlap", 0),
@@ -3635,7 +3642,7 @@ def run_filtres_runtime():
                         "detail": str(erreur).splitlines()[0][:300]})
 
     fichiers = ("tf-tri-milliers.html", "tf-facettes-ordre.html", "tf-etat-rejoue.html",
-                "tf-th-sticky-preserve.html")
+                "tf-th-sticky-preserve.html", "tf-valeur-composite.html")
     manquantes = [n for n in fichiers if not (FIXTURES / n).exists()]
     for n in manquantes:
         out.append({"fixture": n, "verdict": "ABSENTE", "attendu": "fixture présente",
@@ -3802,6 +3809,44 @@ def run_filtres_runtime():
                 {"colle": True, "libre": True}, ancre, "TF-0899 ancrage")
 
         proteger("tf-th-sticky-preserve.html", "TF-0899", section_ancrage)
+
+        # ---- TF-2195 : valeur de facette DECLAREE, `hidden` respecte, saisie qui filtre ---
+        def section_valeur_composite():
+            page.goto((FIXTURES / "tf-valeur-composite.html").resolve().as_uri())
+            page.wait_for_load_state("load")
+            th = "document.querySelectorAll('#interventions thead th')[0]"
+            cases = (f"() => [...{th}.querySelectorAll('.tf-opts label')]"
+                     ".filter(l => getComputedStyle(l).display !== 'none').map(l => l.textContent.trim())")
+            lignes = ("() => [...document.querySelectorAll('#interventions tbody tr')]"
+                      ".filter(tr => getComputedStyle(tr).display !== 'none'"
+                      " && !tr.hasAttribute('data-tf-empty')).length")
+            cas("tf-valeur-composite · la facette lit data-tf-valeur : 3 agents, 3 cases",
+                ["Agent A", "Agent B", "Agent C"], page.evaluate(cases), "TF-2195 valeur")
+            cas("tf-valeur-composite · l'ancienne lecture (texte entier) en donnait plus (sens rouge)",
+                True, page.evaluate("() => window.__valeursTexteEntier(0)") > 3, "TF-2195 contre-epreuve")
+            page.evaluate(f"() => {th}.querySelector('.tf-btn').click()")
+            page.fill("#interventions thead th .tf-search", "agent b")
+            cas("tf-valeur-composite · la saisie masque les cases qui ne correspondent pas ([hidden] respecte)",
+                ["Agent B"], page.evaluate(cases), "TF-2195 hidden")
+            cas("tf-valeur-composite · la saisie filtre aussi les LIGNES (3 sur 8)",
+                3, page.evaluate(lignes), "TF-2195 saisie")
+            cas("tf-valeur-composite · le declencheur signale le filtre actif pendant la saisie",
+                True, page.evaluate(f"() => {th}.querySelector('.tf-btn').classList.contains('tf-on')"),
+                "TF-2195 etat actif")
+            page.fill("#interventions thead th .tf-search", "zzz")
+            cas("tf-valeur-composite · une saisie sans correspondance vide le tableau et propose de tout reafficher",
+                {"lignes": 0, "bouton": True},
+                {"lignes": page.evaluate(lignes),
+                 "bouton": page.evaluate("() => !!document.querySelector('#interventions tr[data-tf-empty] .tf-reset')")},
+                "TF-2195 ligne vide")
+            page.evaluate("() => document.querySelector('#interventions tr[data-tf-empty] .tf-reset').click()")
+            cas("tf-valeur-composite · « Tout reafficher » vide la saisie : 8 lignes, 3 cases, champ vide",
+                {"lignes": 8, "cases": 3, "champ": ""},
+                {"lignes": page.evaluate(lignes), "cases": len(page.evaluate(cases)),
+                 "champ": page.input_value("#interventions thead th .tf-search")},
+                "TF-2195 reinitialisation")
+
+        proteger("tf-valeur-composite.html", "TF-2195", section_valeur_composite)
 
         page.close()
         navigateur.close()

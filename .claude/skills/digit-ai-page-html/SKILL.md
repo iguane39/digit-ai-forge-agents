@@ -7,13 +7,24 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.42.0"
+  version: "1.43.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.43.0 (06/11/2026)** — **le composant de filtres lit la valeur déclarée d'une facette et sa saisie filtre (TF-2195) ; un panneau fermé n'est plus
+jugé à la largeur de son résumé (TF-2220) ; Produit-86, lots 20261105b RP-15 et 20261105h RP-40, décisions R-58 : exécutées.** *(TF-2220 d'abord :
+`render_page` ne juge plus la prose d'un `<details>` fermé, que sa mise en page réduit à la largeur du résumé, 42 px sur la fixture, 154 px sur le
+livrable fautif contre 1 376 ouvert ; les quatre mesures de largeur de texte `l2_filet`, `l2_width`, `prose_etroite` et `prose_verticale` l'ignorent,
+`--etats-ouverts` ouvre le panneau et le juge à sa largeur réelle. Fixtures `details-ferme-resume-etroit.html` : 2 constats avant, 0 après, et
+`details-ouvert-etroit.html`, le même panneau ouvert et borné à 260 px, garde ses 2 constats.)* TF-2195 : des filtres à une valeur par ligne (84 sur 84, 67 pour 3 agents) venaient d'une cellule composite
+dont le texte entier servait de valeur. `data-tf-valeur` sur la cellule dit la valeur de facette ; `table-filters.css` respecte `[hidden]` (la
+règle `display: flex` des cases annulait la recherche) ; la saisie du panneau masque les cases et les lignes qui ne correspondent pas. Fixture
+`tf-valeur-composite.html` : 6 échecs sur le composant d'avant, 7 cas verts après ; 15 copies embarquées (10 pages) scellées de nouveau. Détail :
+`references/composant-filtres-tableau.md`, section « La valeur d'une facette se déclare, et la saisie filtre ».
 
 **1.42.0 (29/10/2026)** — **neuf retours de produits corrigés à la cause (TF-1962 à TF-1967, TF-1969, TF-1970, TF-1992 ; lots Produit-84 des
 19/10 et Produit-85 du 24/10, décisions R-58 : exécutées).** Chaque règle a sa fixture rouge et sa verte, jouées avant et après ; 29 cas

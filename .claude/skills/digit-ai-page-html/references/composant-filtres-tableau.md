@@ -169,6 +169,23 @@ désormais, en bloquant :
 Ne sont pas vus : un filtre posé par un script sans contrôle dans le HTML source, une visite guidée ou
 des infobulles de lexique (exigences d'`oracle-exploitabilite`, forge-design).
 
+## La valeur d'une facette se déclare, et la saisie filtre (TF-2195, 05/11/2026)
+
+Le 05/11/2026, un produit a livré des filtres à une valeur par ligne : 84 valeurs pour 84 lignes,
+67 pour 3 agents. La cellule mêlait une pastille, un nom et une référence, et le composant prenait
+son **texte entier** pour valeur. Dans le même rendu, la recherche du panneau ne masquait rien : la
+feuille imposait `display: flex` aux cases et annulait l'attribut `hidden` que la saisie pose.
+
+- **`data-tf-valeur` sur la cellule** dit la valeur de facette : `<td data-tf-valeur="Agent A">…</td>`.
+  Sans lui, le texte rendu reste la valeur (comportement d'avant). À défaut de `data-v`, la valeur
+  déclarée donne aussi la clé d'ordre. Une cellule composite sans `data-tf-valeur` est refusée par
+  `oracle-filtres-tableau` (TF-2196).
+- **La feuille respecte `[hidden]`** pour le panneau, ses cases et les boutons qu'elle habille.
+- **La saisie du panneau filtre les valeurs et les lignes** : les cases qui ne contiennent pas la
+  saisie se masquent, et les lignes dont la valeur ne la contient pas aussi (casse et accents
+  ignorés). Le déclencheur prend la marque « actif » pendant la saisie ; « Tout réafficher » la vide.
+  Tous / Aucun continuent de porter sur les cases visibles.
+
 ## G9 — un en-tête DÉFINIT sa colonne (TF-0777, 02/09)
 
 Une facette et un tri ne valent que ce que vaut la colonne qu'ils manipulent. Sur le livrable

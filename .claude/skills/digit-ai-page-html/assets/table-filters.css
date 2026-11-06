@@ -67,6 +67,10 @@ th.tf-num .tf-btn { float: left; margin-left: 0; margin-right: 8px; }
 }
 .tf-opts label:hover { background: var(--bg, Canvas); }
 .tf-opts input[type="checkbox"] { accent-color: var(--blue, LinkText); }
+/* TF-2195 (Produit-86, 05/11/2026) : `.tf-opts label { display: flex }` annulait l'attribut `hidden`
+   que la saisie du panneau pose sur les cases, et la recherche ne masquait rien. La feuille
+   RESPECTE `hidden` pour tout ce qu'elle habille : le panneau, ses cases et ses boutons. */
+.tf-panel[hidden], .tf-panel [hidden], .tf-btn[hidden], .tf-reset[hidden], .tf-unique[hidden] { display: none; }
 /* TF-0782 (02/09) : la cardinalite decide de la FORME du panneau, pas de son existence — et
    une forme qui change sans le dire est une affordance muette. Le panneau ouvert sur sa
    recherche (plus de 15 valeurs) ou reduit a une valeur unique porte sa note. */

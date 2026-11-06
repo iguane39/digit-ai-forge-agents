@@ -317,6 +317,16 @@ MEASURE_JS = r"""
     const r = el.getBoundingClientRect();
     return r.width > 1 && r.height > 1;
   };
+  // TF-2220 (Produit-86, 05/11/2026) : le contenu d'un <details> FERME n'est pas peint, et sa mise en page
+  // suit la largeur du RESUME (154 px mesures sur un livrable, 1 376 px une fois ouvert). Une regle de largeur
+  // de texte ne le juge pas : `--etats-ouverts` ouvre le panneau et le juge a sa largeur reelle.
+  const dansDetailsFerme = (el) => {
+    const resume = el.closest('summary');
+    for (let d = el.closest('details'); d; d = d.parentElement ? d.parentElement.closest('details') : null) {
+      if (!d.open && !(resume && resume.parentElement === d)) return true;
+    }
+    return false;
+  };
   const label = (el) => {
     let t = el.tagName.toLowerCase();
     if (el.id) t += '#' + el.id;
@@ -1161,6 +1171,7 @@ MEASURE_JS = r"""
     const vusF = new Set();
     for (const el of document.body.querySelectorAll('p, dd, li, blockquote, caption, .va, .prose')) {
       if (!visible(el) || vusF.has(el)) continue;
+      if (dansDetailsFerme(el)) continue;           // TF-2220 : un panneau fermé n'est pas jugé à la largeur de son résumé
       vusF.add(el);
       const txt = (el.textContent || '').trim();
       const mots = txt.split(/\s+/).filter(Boolean).length;
@@ -1193,6 +1204,7 @@ MEASURE_JS = r"""
       const txt = (el.textContent || '').trim();
       if (txt.length < __L2_MIN_CHARS__) continue;
       if (el.closest('table') || el.closest('nav')) continue;
+      if (dansDetailsFerme(el)) continue;           // TF-2220
       const cs = getComputedStyle(el);
       if (cs.display === 'inline') continue;
       // TF-0421 (lot Produit-05 20260820a) : la bride se mesure QUELLE QUE SOIT la propriete.
@@ -1672,6 +1684,7 @@ MEASURE_JS = r"""
     for (const el of document.body.querySelectorAll('*')) {
       if (!visible(el)) continue;
       if (el.closest('table, nav, .tf-panel, [data-mesure-lecture]')) continue;
+      if (dansDetailsFerme(el)) continue;           // TF-2220
       const cs = getComputedStyle(el);
       if (cs.display === 'inline' || cs.display === 'none') continue;
       // Le texte PROPRE de l'element : un conteneur qui herite du texte de ses enfants n'est
@@ -1858,7 +1871,7 @@ MEASURE_JS = r"""
     const verticales = [];
     for (const el of document.body.querySelectorAll(SELECTEUR)) {
       if (el.closest(EXCLUS) || el.querySelector(SELECTEUR)) continue;
-      if (!visible(el)) continue;
+      if (!visible(el) || dansDetailsFerme(el)) continue;   // TF-2220
       if (getComputedStyle(el).display === 'inline') continue;
       const longueur = (el.textContent || '').replace(/\s+/g, ' ').trim().length;
       if (longueur < MIN_LIGNES * MIN_CPL * 0.3) continue;   // sous ~54 caracteres : pas de prose

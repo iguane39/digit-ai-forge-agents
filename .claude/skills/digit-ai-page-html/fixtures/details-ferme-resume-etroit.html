@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — details fermé à résumé étroit sur une page de données — 20261106a</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#2563EB;
+ --hh:56px;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+.wrap{margin:0;padding:24px}
+.chapo{color:var(--muted);margin:0 0 16px}
+.rangee{display:flex;gap:16px;align-items:flex-start}
+details{background:var(--surface);border:1px solid var(--line);padding:8px 12px}
+summary{cursor:pointer;color:var(--blue)}
+dl{margin:8px 0 0}
+dt{font-weight:700}
+dd{margin:0 0 8px;color:var(--muted)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de TF-2220 (Produit-86, lot 20261105h RP-40, 05/11/2026).
+
+  LE DÉFAUT PAYÉ. Dans une rangée flex, un <details> FERMÉ n'a que la largeur de son résumé : la liste de
+  définitions qu'il cache se mesurait à cette largeur (154 px sur le livrable fautif, contre 1 376 px une
+  fois ouverte). Les règles de largeur de texte (prose_etroite, L2) accusaient un bloc que le lecteur ne
+  voit pas tant qu'il n'a pas ouvert le panneau, et qui ne sera pas étroit ouvert.
+
+  Ici, le <details> fermé tient dans un résumé « Voir » de quelques dizaines de pixels ; le chapeau pleine
+  largeur écarte les règles de contenu étroit de la page. Avant correction : au moins 1 constat
+  `prose_verticale` (le bloc de prose du panneau fermé, 5 à 6 caractères par ligne). Attendu après : 0.
+  Sa contre-épreuve est details-ouvert-etroit.html, le même panneau OUVERT et réellement étroit, qui garde
+  ses constats : ne plus juger un panneau fermé n'est pas ne plus juger un panneau.
+-->
+<body><main class="wrap" data-page="donnees"><h1>Contrats suivis</h1>
+<p class="chapo">Cette page rassemble les contrats de maintenance suivis par la direction, leur périmètre, leurs engagements de service et l'échéance de leur prochain renouvellement, contrat par contrat.</p>
+<div class="rangee">
+<details><summary>Voir</summary>
+<dl><dt>Périmètre</dt><dd>Ce contrat couvre l'ensemble des interventions de maintenance corrective et évolutive menées sur le périmètre applicatif décrit en annexe, y compris les astreintes de week-end et les interventions hors heures ouvrées.</dd>
+<dt>Engagements</dt><dd>Délai de prise en charge de quatre heures ouvrées, rétablissement sous deux jours ouvrés pour un incident bloquant, compte rendu mensuel adressé au comité de pilotage du contrat.</dd></dl>
+</details>
+</div>
+</main></body></html>
