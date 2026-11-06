@@ -152,6 +152,16 @@
  * `LEDGER_AUJOURDHUI=AAAA-MM-JJ` fixe le jour pour la recette ; `FORGE_ORACLE_CONFORMITE_PROJET` désigne
  * l'oracle). Oracle introuvable ou ledger hors d'un dossier `forge/` : écrit, et `[NON VÉRIFIÉ]` le dit.
  *
+ * VOCABULAIRE DES TYPES, REMPLACEMENT, JOURNAL HORS RUN (TF-2245, 06/11/2026). `append` et `consigner` reprennent
+ * ce que `gabarits/ledger.py` du pilot tenait seul : (a) un type hors du vocabulaire du CONTRAT-INTERFACE.md §3 est
+ * REFUSÉ à l'écriture (le message nomme le vocabulaire) et seulement DÉCLARÉ par `verify` (`[DÉCLARÉ]`, non bloquant :
+ * 1 444 entrées sur 7 243 des ledgers du parc sont hors vocabulaire, et on ne réécrit pas un ledger) ; (b) `remplace` vide,
+ * `artefacts_remplaces` sans `remplace` ou de forme fausse sont REFUSÉS, `remplace` sans `artefacts_remplaces` est écrit
+ * puis signalé `[À PORTER]` et déclaré par `verify` (`secret_range`, dont `remplace` est un booléen, est hors contrôle) ;
+ * (c) le journal hors run `forge/hors-run.jsonl` (TF-2223) ne s'ouvre pas par `run_open`, ne porte que `retour`,
+ * `question_humain`, `reponse_humain` et `demande_humain`, marque chaque entrée `hors_run: true`, et `verify` ne lui
+ * reproche pas l'absence de `run_open`.
+ *
  * RECTIFICATION DES FORGES MOBILISÉES (TF-1722, 15/10/2026). Une entrée `rectification_forges_mobilisees`
  * (TF-1715 du pilot) sans `forges_mobilisees` non vide ou sans `cause` est refusée à l'écriture, quel
  * que soit le schéma : le juge de l'enclenchement l'ignorerait (constante CHAMPS_RECTIFICATION_FORGES).
@@ -401,6 +411,49 @@ const CHAMPS_QUALIFICATION_ENCLENCHEMENT = [
     (v) => (typeof v === "string" ? null : `doit etre une CHAINE (recu ${typeof v})`)],
 ];
 
+//: TF-2245 (06/11/2026) — LE VOCABULAIRE DES TYPES, LE REMPLACEMENT ET LE JOURNAL HORS RUN : trois choses que
+//: `gabarits/ledger.py` du pilot tenait déjà et que ce script ignorait, de sorte que les deux écrivains d'un même ledger
+//: divergeaient (ledger.py refusait ce que ledger.mjs écrivait). Le vocabulaire est celui du CONTRAT-INTERFACE.md §3 du
+//: pilot, tel que ledger.py le porte ; la recette le croise avec ce fichier quand le pilot est sur le poste.
+//: À L'ÉCRITURE un type hors vocabulaire est refusé, le message nomme le vocabulaire ; À LA VÉRIFICATION il n'est que
+//: DÉCLARÉ (`[DÉCLARÉ]`, non bloquant) : il désigne une entrée déjà écrite, et on ne réécrit jamais un ledger existant
+//: (mesuré le 06/11/2026 sur les 35 ledgers du parc, 1 444 entrées sur 7 243 sont hors vocabulaire).
+const TYPES_VOCABULAIRE = ["run_open", "etape_open", "invocation", "oracles_verdict", "escalade_modele",
+  "question_humain", "reponse_humain", "etape_close", "retour", "relais_arme", "run_close",
+  "rectification_versions_forges", "rectification_run_open", "rectification_horodatage",
+  "rectification_forges_mobilisees", "go_publication", "conflit_regles", "demande_emise", "demande_recue",
+  "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement", "secret_range"];
+//: TF-2223 du pilot — sans ledger de run, ces types s'écrivent au journal `forge/hors-run.jsonl` (même discipline de
+//: `seq` et de `ts`, champ `hors_run: true`), pas au ledger du run, dont R-42 exige qu'il s'ouvre par `run_open`.
+//: Le journal hors run se reconnaît à son NOM : c'est le chemin de doctrine, et il ne s'ouvre pas par `run_open`.
+const TYPES_HORS_RUN = ["retour", "question_humain", "reponse_humain", "demande_humain"];
+const NOM_JOURNAL_HORS_RUN = "hors-run.jsonl";
+const estJournalHorsRun = (f) => basename(f) === NOM_JOURNAL_HORS_RUN;
+//: TF-2206 du pilot — `remplace` nomme la ou les décisions remplacées, `artefacts_remplaces` ce qu'elles avaient créé et
+//: ce que cela devient. `secret_range` est hors de ce contrôle : son champ `remplace` est un booléen (« la ligne existait déjà »).
+const SORTS_REMPLACES = ["retire", "conserve", "a_decider"];
+const REMEDE_REMPLACEMENT = `--remplace <D-N> --artefacts_remplaces [{"artefact": "…", "sort": "${SORTS_REMPLACES.join("|")}"}]`;
+function problemeRemplacement(obj) {
+  if (obj.type === "secret_range") return null;
+  if ("remplace" in obj) {
+    const r = Array.isArray(obj.remplace) ? obj.remplace : [obj.remplace];
+    if (!r.length || !r.every((x) => typeof x === "string" && x.trim())) {
+      return "`remplace` doit nommer la ou les décisions remplacées (« D-46 »), pas une valeur vide";
+    }
+  }
+  if ("artefacts_remplaces" in obj) {
+    if (!("remplace" in obj)) return "`artefacts_remplaces` sans `remplace` : de quelle décision ces artefacts sont-ils ?";
+    const a = obj.artefacts_remplaces;
+    if (!Array.isArray(a) || !a.length || !a.every((x) => x && typeof x === "object" && typeof x.artefact === "string" && x.artefact.trim() && SORTS_REMPLACES.includes(x.sort))) {
+      return `\`artefacts_remplaces\` : liste non vide de {artefact, sort}, sort parmi ${SORTS_REMPLACES.join(", ")}`;
+    }
+  }
+  return null;
+}
+//: L'oubli que l'écriture n'a pas refusé : `remplace` sans `artefacts_remplaces` (onze ressources, deux exigences et leurs
+//: contrôles restés après le remplacement de D-46 par D-49, chez un produit).
+const remplaceSansArtefacts = (e) => e.type !== "secret_range" && Boolean(e.remplace) && !e.artefacts_remplaces;
+
 //: TF-1422 (28/09/2026) : l'INSTANT que désigne un `ts`, en millisecondes, ou NaN s'il n'en
 //: désigne aucun (absent, vide, illisible). Deux écritures d'une même heure (`…T09:30:00+02:00`
 //: et `…T07:30:00.000Z`) désignent le même instant ; comparées comme chaînes, elles s'ordonnaient
@@ -448,6 +501,7 @@ function releaseLock(lockFile) {
  */
 function ecrireSousVerrou(file, objs) {
   const lockFile = `${file}.lock`;
+  const horsRun = estJournalHorsRun(file);
   acquireLock(lockFile);
   // Note : process.exit() (dans fail()) ne déroule pas les blocs finally — toute sortie en
   // erreur pendant la section verrouillée doit donc libérer le verrou explicitement avant
@@ -478,12 +532,28 @@ function ecrireSousVerrou(file, objs) {
           }
         }
       }
-    } else if (objs[0].type !== "run_open") {
-      throw new Error("première entrée d'un ledger : type run_open exigé");
+    } else if (!(horsRun && TYPES_HORS_RUN.includes(objs[0].type)) && objs[0].type !== "run_open") {
+      // TF-2245 : un `retour` ou une décision sans run ouvert n'a pas à ouvrir un run pour s'écrire ; l'indication du journal
+      // hors run évite de faire écrire un `run_open` factice (R-42 exige que le ledger du run s'ouvre par un vrai).
+      throw new Error("première entrée d'un ledger : type run_open exigé" +
+        (TYPES_HORS_RUN.includes(objs[0].type)
+          ? ` — sans run ouvert, un \`${objs[0].type}\` s'écrit au journal hors run \`forge/${NOM_JOURNAL_HORS_RUN}\` (TF-2223, TF-2245), que le prochain lot de retours compile`
+          : ""));
     }
     const maintenant = new Date().toISOString();
     const lignes = [];
     for (const obj of objs) {
+      // TF-2245 : le vocabulaire des types du pilot (CONTRAT-INTERFACE.md §3) et le contrôle du remplacement, refusés AVANT
+      // d'écrire : une entrée écrite ne se réécrit pas. Ce cœur est partagé par `append` et `consigner`.
+      if (horsRun) {
+        if (!TYPES_HORS_RUN.includes(obj.type)) {
+          throw new Error(`type \`${obj.type}\` refusé dans le journal hors run (TF-2223) : il ne porte que ${TYPES_HORS_RUN.join(", ")} ; le reste s'écrit au ledger du run`);
+        }
+      } else if (!TYPES_VOCABULAIRE.includes(obj.type)) {
+        throw new Error(`type inconnu : ${obj.type} — attendus ${[...TYPES_VOCABULAIRE].sort().join(", ")} (CONTRAT-INTERFACE.md §3 du pilot ; \`reponse_humain\` pour un arbitrage humain)`);
+      }
+      const defautRemplacement = problemeRemplacement(obj);
+      if (defautRemplacement) throw new Error(`${defautRemplacement} (TF-2206, TF-2245) — rien n'est écrit`);
       // L'entrée elle-même, si c'est un run_open qui déclare (ou redéclare) un schéma, DEVIENT le
       // schéma actif — pour SE juger elle-même (cas du tout premier run_open d'un ledger neuf).
       if (obj.type === "run_open" && typeof obj.schema_ledger === "string" && obj.schema_ledger.trim()) {
@@ -530,7 +600,9 @@ function ecrireSousVerrou(file, objs) {
       }
       const { ts: _tsPayload, ...corps } = obj;
       const tsEntree = tsFourni || maintenant;
-      lignes.push(JSON.stringify({ seq, ts: tsEntree, ...corps }));
+      lignes.push(JSON.stringify(horsRun
+        ? { seq, ts: tsEntree, type: corps.type, ...corps, hors_run: true }   // TF-2245 : la marque du journal hors run (ledger.py)
+        : { seq, ts: tsEntree, ...corps }));
       seqs.push(seq);
       seq++;
       const ms = instant(tsEntree);
@@ -773,6 +845,14 @@ if (cmd === "append") {
   // TF-1366 (d) : l'écho NOMME le type et les champs écrits — un « [OK] » muet sur le contenu ne
   // permet pas de relire, depuis la seule sortie de la commande, ce qui vient d'être ajouté.
   console.log(`[OK] entrée ${seq} ajoutée (type ${obj.type} ; champs : ${clesUtiles.join(", ")})`);
+  // TF-2206, TF-2245 : une décision qui en remplace une autre dit ce que la première avait créé, et son sort.
+  if (remplaceSansArtefacts(obj)) {
+    console.log("[À PORTER] remplace sans artefacts_remplaces : lister ce que la décision remplacée avait créé (ressources, exigences, " +
+      `contrôles) avec son sort, par une entrée de plus : ${REMEDE_REMPLACEMENT}`);
+  }
+  if (estJournalHorsRun(file)) {
+    console.log(`[HORS RUN] aucun run ouvert : entrée écrite au journal ${NOM_JOURNAL_HORS_RUN} (seq ${seq}), pas au ledger du run ; le prochain lot de retours la compile`);
+  }
 } else if (cmd === "consigner") {
   if (!file) fail(USAGE_CONSIGNER);
   // Ce qui précède `--` sont les options de consigner ; ce qui suit est la commande du lanceur,
@@ -964,7 +1044,8 @@ if (cmd === "append") {
         ecartsIntegrite.push(`${quoi} (append-only rompu)`);
       }
     }
-    if (i === 0 && e.type !== "run_open") ecartsIntegrite.push("ligne 1 : première entrée — type run_open exigé");
+    // TF-2245 : le journal hors run (`hors-run.jsonl`, TF-2223 du pilot) ne s'ouvre pas par `run_open` ; tout autre fichier, si.
+    if (i === 0 && e.type !== "run_open" && !estJournalHorsRun(file)) ecartsIntegrite.push("ligne 1 : première entrée — type run_open exigé");
     // Monotonie jugée contre le MAXIMUM COURANT : après un recul, l'entrée fautive ne devient
     // pas la référence. Sinon un seul recul suffit à rendre invisible tout ce qui le suit.
     // TF-1422 : jugée sur des INSTANTS, et un `ts` dont on ne tire aucun instant est un écart.
@@ -1013,6 +1094,26 @@ if (cmd === "append") {
     else ecartsDoublons.push(doublon);
   }
   const ecarts = [...ecartsDoublons, ...ecartsRectif, ...ecartsIntegrite];
+
+  // TF-2245 : ce que `append` refuse désormais, `verify` le DÉCLARE sur l'existant sans le mettre en échec — le contrat du
+  // pilot interdit de réécrire un ledger, et exiger une correction interdite ferait désactiver le contrôle (gabarits/ledger.py).
+  // Le compte se dit par type, avec ses premiers seq : aucune borne silencieuse.
+  const horsVocabulaire = new Map();
+  entrees.forEach((e) => {
+    if (typeof e.type === "string" && !TYPES_VOCABULAIRE.includes(e.type)) horsVocabulaire.set(e.type, [...(horsVocabulaire.get(e.type) || []), e.seq]);
+  });
+  for (const [t, seqs] of horsVocabulaire) {
+    console.log(`[DÉCLARÉ] vocabulaire — ${seqs.length} entrée(s) de type « ${t} » hors du vocabulaire du pilot (seq ${seqs.slice(0, 5).join(", ")}${seqs.length > 5 ? `, … ${seqs.length - 5} autre(s)` : ""}) — ` +
+      "déjà écrite(s), non réécrite(s) ; employer `reponse_humain` pour un arbitrage humain");
+  }
+  const remplacesSansArtefacts = entrees.filter(remplaceSansArtefacts);
+  for (const e of remplacesSansArtefacts) {
+    console.log(`[DÉCLARÉ] remplacement — seq ${e.seq} : remplace ${JSON.stringify(e.remplace)} sans \`artefacts_remplaces\` — entrée déjà écrite, non réécrite ; consigner par ajout ${REMEDE_REMPLACEMENT}`);
+  }
+  const nbHorsVocabulaire = [...horsVocabulaire.values()].reduce((n, l) => n + l.length, 0);
+  const declaresDit = nbHorsVocabulaire || remplacesSansArtefacts.length
+    ? ` · ${nbHorsVocabulaire + remplacesSansArtefacts.length} écart(s) DÉCLARÉ(S) non bloquant(s)${nbHorsVocabulaire ? ` (${nbHorsVocabulaire} hors vocabulaire)` : ""}${remplacesSansArtefacts.length ? ` (${remplacesSansArtefacts.length} remplace sans artefacts_remplaces)` : ""}`
+    : "";
 
   // Déclaration sans objet : dite à voix haute, jamais bloquante. Elle ne peut rien couvrir
   // d'avance (les entrées visées sont antérieures, donc figées) — mais taire une déclaration
@@ -1119,7 +1220,7 @@ if (cmd === "append") {
   const sansContenuDit = !sansContenuBloquant && sansContenu.length
     ? ` · ${sansContenu.length} entrée(s) SANS CONTENU (non bloquant, schéma ${schemaDeclare || "absent"})`
     : "";
-  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sansContenuDit}`);
+  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sansContenuDit}${declaresDit}`);
 } else {
   fail("commande inconnue (append | consigner | verify)");
 }

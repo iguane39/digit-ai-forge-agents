@@ -76,7 +76,7 @@ check("rouge 3 : lot avec un def invalide → refus sans écriture partielle", (
 check("ledger : run_open + append + verify PASS, corruption → FAIL", () => {
   const lf = join(out, "ledger.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "self-test" })]);
-  run(ledger, ["append", lf, JSON.stringify({ type: "limites", detail: "fixture" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", detail: "fixture" })]);
   if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("verify aurait dû passer");
   appendFileSync(lf, JSON.stringify({ seq: 9, ts: "2020-01-01T00:00:00Z", type: "triche" }) + "\n");
   try { execFileSync("node", [ledger, "verify", lf], { stdio: "pipe" }); }
@@ -222,8 +222,8 @@ check("ledger TF-0385 : les autres types ne sont PAS contraints", () => {
   // dont l absence de forme rendait un fait incalculable est jugé.
   const lf = join(out, "ledger-autres-types.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", schema_ledger: "1.0" })]);
-  run(ledger, ["append", lf, JSON.stringify({ type: "note", n_importe_quoi: true })]);
-  run(ledger, ["append", lf, JSON.stringify({ type: "mise_en_production", detail: "libre" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", n_importe_quoi: true })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", detail: "libre" })]);
   if (!run(ledger, ["verify", lf]).includes("[PASS]")) {
     throw new Error("un type non contraint doit rester libre");
   }
@@ -237,7 +237,7 @@ check("ledger --fichier : payload lu depuis un fichier (avec BOM UTF-8 PowerShel
   run(ledger, ["append", lf, "--fichier", p1]);
   // BOM UTF-8 : Out-File/Set-Content PowerShell 5.1 l'écrivent par défaut sur un fichier —
   // --fichier doit l'absorber sans « Unexpected token » (raison d'être de l'option, RA-1).
-  writeFileSync(p2, "﻿" + JSON.stringify({ type: "limites", detail: "fixture --fichier" }));
+  writeFileSync(p2, "﻿" + JSON.stringify({ type: "etape_open", detail: "fixture --fichier" }));
   run(ledger, ["append", lf, "--fichier", p2]);
   const verif = run(ledger, ["verify", lf]);
   if (!verif.includes("[PASS]")) throw new Error("verify aurait dû passer sur un ledger alimenté par --fichier");
@@ -262,8 +262,8 @@ await checkAsync("ledger : verrou — appends concurrents (2 process × N) sans 
   const N = 15;
   const appels = [];
   for (let i = 0; i < N; i++) {
-    appels.push(spawnAppend(lf2, { type: "entry", proc: "a", i }));
-    appels.push(spawnAppend(lf2, { type: "entry", proc: "b", i }));
+    appels.push(spawnAppend(lf2, { type: "etape_open", proc: "a", i }));
+    appels.push(spawnAppend(lf2, { type: "etape_open", proc: "b", i }));
   }
   await Promise.all(appels);
   const verifOut = run(ledger, ["verify", lf2]);
@@ -407,7 +407,7 @@ check("ledger TF-0410 : append refuse un `ts` de payload ANTÉRIEUR au maximum, 
   const avant = readFileSync(lf, "utf8");
   try {
     execFileSync("node", [ledger, "append", lf, JSON.stringify({
-      type: "mise_en_production", ts: "2026-01-01T09:00:00Z", detail: "heure du run Azure",
+      type: "etape_open", ts: "2026-01-01T09:00:00Z", detail: "heure du run Azure",
     })], { encoding: "utf8", stdio: "pipe" });
     throw new Error("append aurait dû refuser un ts antérieur");
   } catch (e) {
@@ -418,7 +418,7 @@ check("ledger TF-0410 : append refuse un `ts` de payload ANTÉRIEUR au maximum, 
   }
   if (readFileSync(lf, "utf8") !== avant) throw new Error("le fichier a été modifié malgré le refus — un refus doit être sans écriture");
   // Et le sens inverse : un ts fourni qui NE remonte PAS reste accepté, mais annoncé.
-  const okOut = run(ledger, ["append", lf, JSON.stringify({ type: "note", ts: "2026-01-01T13:00:00Z", detail: "consignation fixée" })]);
+  const okOut = run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", ts: "2026-01-01T13:00:00Z", detail: "consignation fixée" })]);
   if (!okOut.includes("[ATTENTION]")) throw new Error("un ts imposé par le payload doit être annoncé, jamais silencieux");
   if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre après un ts imposé non décroissant");
   const lignes = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
@@ -480,20 +480,20 @@ check("ledger TF-1422 : la garde d'`append` compare des instants dans les deux s
   const lf = join(out, "ts-append-instants.jsonl");
   ecrireBrut(lf, [{ seq: 1, ts: "2026-09-25T09:30:00+02:00", type: "run_open", substrat: "self-test-ts" }]);
   // Vert : 07:45Z est postérieur à 09:30+02:00 (07:30Z), alors que la chaîne est « plus petite ».
-  const ok = run(ledger, ["append", lf, JSON.stringify({ type: "note", ts: "2026-09-25T07:45:00.000Z", detail: "postérieur, écrit en UTC" })]);
+  const ok = run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", ts: "2026-09-25T07:45:00.000Z", detail: "postérieur, écrit en UTC" })]);
   if (!ok.includes("[OK] entrée 2")) throw new Error("un ts postérieur écrit en UTC doit être accepté : " + ok);
   const avant = readFileSync(lf, "utf8");
   // Rouge : 09:40+02:00 (07:40Z) précède le maximum 07:45Z, alors que la chaîne est « plus grande ».
   for (const [ts, motif] of [["2026-09-25T09:40:00+02:00", "ANTÉRIEUR"], ["hier soir", "ILLISIBLE"]]) {
     let err = null;
-    try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note", ts, detail: "refus attendu" })], { encoding: "utf8", stdio: "pipe" }); }
+    try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "etape_open", ts, detail: "refus attendu" })], { encoding: "utf8", stdio: "pipe" }); }
     catch (e) { err = String(e.stderr || ""); }
     if (err === null) throw new Error(`append aurait dû refuser le ts ${ts}`);
     if (!err.includes("[LEDGER FAIL]") || !err.includes(motif)) throw new Error(`refus attendu nommant ${motif}, reçu : ${err.slice(0, 200)}`);
   }
   if (readFileSync(lf, "utf8") !== avant) throw new Error("le fichier a été modifié malgré un refus — un refus doit être sans écriture");
   // Le remède que le refus propose se joue (TF-1013) : sans `ts`, l'outil pose l'horodatage machine.
-  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "ts laissé à l outil" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", detail: "ts laissé à l outil" })]);
   if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre après le remède");
 });
 
@@ -551,13 +551,13 @@ check("ledger TF-1366 (b) : `append` refuse une entrée réduite à son `type` (
   const lf = join(out, "ledger-reduite-type.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "amorce" })]);
   let sortie = null;
-  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note" })], { encoding: "utf8", stdio: "pipe" }); }
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "etape_open" })], { encoding: "utf8", stdio: "pipe" }); }
   catch (e) { sortie = String(e.stderr || ""); }
   if (sortie === null) throw new Error("append aurait dû refuser une entrée réduite à son seul type");
   if (!sortie.includes("aucun contenu")) throw new Error("le refus ne dit pas pourquoi (aucun contenu) : " + sortie);
   // Le même refus vaut avec un `ts` fourni explicite — « et un ts éventuel » (b).
   let sortie2 = null;
-  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note", ts: "2026-01-01T00:00:00Z" })], { encoding: "utf8", stdio: "pipe" }); }
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "etape_open", ts: "2026-01-01T00:00:00Z" })], { encoding: "utf8", stdio: "pipe" }); }
   catch (e) { sortie2 = String(e.stderr || ""); }
   if (sortie2 === null) throw new Error("append aurait dû refuser une entrée réduite à son type + ts");
   const lignes = readFileSync(lf, "utf8").split("\n").filter(Boolean);
@@ -567,7 +567,7 @@ check("ledger TF-1366 (b) : `append` refuse une entrée réduite à son `type` (
 check("ledger TF-1366 (b) : une entrée avec du contenu au-delà de `type`/`ts` reste acceptée (la règle ne déborde pas)", () => {
   const lf = join(out, "ledger-avec-contenu.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "x" })]);
-  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "un contenu" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", detail: "un contenu" })]);
   if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("une entrée avec contenu doit rester acceptée");
 });
 
@@ -632,15 +632,15 @@ check("ledger TF-1366 (e) : entrée sans contenu, schéma 1.1 → FAIL bloquant"
 check("ledger TF-1367 : `append` refuse un `seq` fourni par le payload, et la même entrée sans lui reçoit le numéro suivant", () => {
   const lf = join(out, "ledger-seq-fourni.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "numero fourni" })]);
-  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "deuxieme" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", detail: "deuxieme" })]);
   let sortie = null;
-  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "note", detail: "recopie", seq: 2 })], { encoding: "utf8", stdio: "pipe" }); }
+  try { execFileSync("node", [ledger, "append", lf, JSON.stringify({ type: "etape_open", detail: "recopie", seq: 2 })], { encoding: "utf8", stdio: "pipe" }); }
   catch (e) { sortie = String(e.stderr || ""); }
   if (sortie === null) throw new Error("append aurait dû refuser un `seq` fourni par le payload");
   if (!sortie.includes("`seq`")) throw new Error("le refus ne nomme pas le champ seq : " + sortie);
   const avant = readFileSync(lf, "utf8").split("\n").filter(Boolean);
   if (avant.length !== 2) throw new Error(`2 entrées attendues après le refus, ${avant.length} — un refus a laissé passer une écriture`);
-  run(ledger, ["append", lf, JSON.stringify({ type: "note", detail: "recopie" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "etape_open", detail: "recopie" })]);
   const apres = readFileSync(lf, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l).seq);
   if (apres.join(",") !== "1,2,3") throw new Error(`numéros attendus 1,2,3 — obtenus ${apres.join(",")}`);
   run(ledger, ["verify", lf]);
@@ -1438,6 +1438,131 @@ check("parties_mobilisees (vert TF-1841) : bien formé sur run_open et rectifica
     if (ok.invalides.length || ok.parties["digit-ai-forge-agents"]?.join() !== "forge-agents") throw new Error(`le juge ne lit pas ce que append accepte : ${JSON.stringify(ok)}`);
   });
 }
+
+// --- TF-2245 (06/11/2026) : ledger.mjs reprend le vocabulaire des types du CONTRAT-INTERFACE §3, les
+// contrôles de `remplace` / `artefacts_remplaces` et le journal hors run de `gabarits/ledger.py` du pilot.
+// Le fait : les deux écrivains du même ledger divergeaient — ledger.mjs acceptait tout type et ne contrôlait pas ces
+// champs ; ledger.py refusait. Un écrivain refuse (exit 1, aucune écriture), l'autre doit refuser le même cas.
+const refuse = (lf, payload, nom = "append") => {
+  const avant = existsSync(lf) ? readFileSync(lf, "utf8") : null;
+  try { execFileSync("node", [ledger, nom, lf, JSON.stringify(payload)], { encoding: "utf8", stdio: "pipe" }); }
+  catch (e) {
+    if (!e.status) throw e;
+    const apres = existsSync(lf) ? readFileSync(lf, "utf8") : null;
+    if (apres !== avant) throw new Error("le fichier a changé malgré le refus — un refus est sans écriture");
+    return String(e.stderr || "");
+  }
+  throw new Error(`aurait dû refuser ${JSON.stringify(payload).slice(0, 120)}`);
+};
+const TYPES_ATTENDUS = ["run_open", "etape_open", "invocation", "oracles_verdict", "escalade_modele", "question_humain",
+  "reponse_humain", "etape_close", "retour", "relais_arme", "run_close", "rectification_versions_forges",
+  "rectification_run_open", "rectification_horodatage", "rectification_forges_mobilisees", "go_publication",
+  "conflit_regles", "demande_emise", "demande_recue", "deplacement_effectue", "deplacement_en_attente",
+  "demande_humain", "qualification_enclenchement", "secret_range"];
+check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'écriture, le message nomme le vocabulaire, rien n'est écrit", () => {
+  const lf = join(out, "t2245-vocabulaire.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
+  const err = refuse(lf, { type: "decision_humaine", detail: "type improvisé" });
+  if (!err.includes("[LEDGER FAIL]") || !err.includes("decision_humaine") || !err.includes("reponse_humain")) {
+    throw new Error("le refus doit citer le type refusé et le vocabulaire (dont reponse_humain) : " + err.slice(0, 300));
+  }
+  if (lignesDe(lf).length !== 1) throw new Error("le refus a laissé une écriture");
+  // Le vocabulaire que le refus annonce est EXACTEMENT celui de la liste attendue (ni type manquant, ni type en trop).
+  const annonce = (err.match(/attendus ([a-z_, ]+) \(/) || [])[1];
+  if (!annonce || annonce !== [...TYPES_ATTENDUS].sort().join(", ")) throw new Error("le vocabulaire annoncé diverge de la liste attendue : " + annonce);
+});
+check("ledger TF-2245 : les 24 types du vocabulaire sont acceptés à l'écriture (sauf contraintes propres de chaque type)", () => {
+  const lf = join(out, "t2245-24-types.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
+  const payload = {
+    oracles_verdict: { oracle: "x", verdict: "PASS" },
+    rectification_forges_mobilisees: { forges_mobilisees: ["agents"], cause: "x" },
+    qualification_enclenchement: { qualification: "fonde", cause: "x" },
+    rectification_horodatage: { entrees: [{ seq: 1, ts_consigne: "x", ts_reel_estime: "x", cause: "x" }] },
+    secret_range: { nom: "X", remplace: false },
+  };
+  for (const t of TYPES_ATTENDUS.filter((x) => x !== "run_open")) {
+    run(ledger, ["append", lf, JSON.stringify({ type: t, detail: "t2245", ...(payload[t] || {}) })]);
+  }
+  const n = lignesDe(lf).length;
+  if (n !== TYPES_ATTENDUS.length) throw new Error(`${TYPES_ATTENDUS.length} entrées attendues, ${n}`);
+});
+{
+  const gabarit = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "gabarits", "ledger.py");
+  if (!existsSync(gabarit)) console.log(`  [NON JOUÉ] ledger TF-2245 : parité avec gabarits/ledger.py — gabarit du pilot introuvable (${gabarit})`);
+  else check("ledger TF-2245 : parité avec gabarits/ledger.py du pilot — mêmes types, mêmes types hors run, mêmes sorts de remplacement", () => {
+    const py = readFileSync(gabarit, "utf8");
+    const mots = (re) => { const m = py.match(re); if (!m) throw new Error(`motif ${re} introuvable dans ledger.py`); return [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]).sort().join(","); };
+    const attendu = (l) => [...l].sort().join(",");
+    if (mots(/^TYPES = \{([^}]*)\}/m) !== attendu(TYPES_ATTENDUS)) throw new Error("le vocabulaire des types diverge de ledger.py : " + mots(/^TYPES = \{([^}]*)\}/m));
+    if (mots(/^HORS_RUN = \{([^}]*)\}/m) !== attendu(["retour", "question_humain", "reponse_humain", "demande_humain"])) throw new Error("les types hors run divergent de ledger.py");
+    if (mots(/^SORTS = \(([^)]*)\)/m) !== attendu(["retire", "conserve", "a_decider"])) throw new Error("les sorts de remplacement divergent de ledger.py");
+  });
+}
+check("ledger TF-2245 (rouge/vert) : `remplace` vide, `artefacts_remplaces` sans `remplace` ou de forme fausse → refus ; forme juste → écrite", () => {
+  const lf = join(out, "t2245-remplace.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
+  refuse(lf, { type: "reponse_humain", decision: "D-49", remplace: "  " });
+  refuse(lf, { type: "reponse_humain", decision: "D-49", remplace: [] });
+  refuse(lf, { type: "reponse_humain", decision: "D-49", remplace: ["D-46", ""] });
+  const sansRemplace = refuse(lf, { type: "reponse_humain", decision: "D-49", artefacts_remplaces: [{ artefact: "a", sort: "retire" }] });
+  if (!sansRemplace.includes("remplace")) throw new Error("le refus doit nommer `remplace` : " + sansRemplace.slice(0, 200));
+  refuse(lf, { type: "reponse_humain", decision: "D-49", remplace: "D-46", artefacts_remplaces: [] });
+  refuse(lf, { type: "reponse_humain", decision: "D-49", remplace: "D-46", artefacts_remplaces: [{ artefact: "a", sort: "supprime" }] });
+  refuse(lf, { type: "reponse_humain", decision: "D-49", remplace: "D-46", artefacts_remplaces: [{ artefact: " ", sort: "retire" }] });
+  const sorts = refuse(lf, { type: "reponse_humain", decision: "D-49", remplace: "D-46", artefacts_remplaces: "tout" });
+  if (!sorts.includes("retire") || !sorts.includes("conserve") || !sorts.includes("a_decider")) throw new Error("le refus doit nommer les trois sorts : " + sorts.slice(0, 300));
+  const ok = run(ledger, ["append", lf, JSON.stringify({ type: "reponse_humain", decision: "D-49", remplace: ["D-46", "D-47"],
+    artefacts_remplaces: [{ artefact: "onze ressources", sort: "retire" }, { artefact: "deux exigences", sort: "a_decider" }] })]);
+  if (ok.includes("[À PORTER]")) throw new Error("une forme complète ne doit rien réclamer");
+  if (lignesDe(lf).length !== 2) throw new Error("2 entrées attendues (run_open + la forme juste), " + lignesDe(lf).length);
+});
+check("ledger TF-2245 : `remplace` sans `artefacts_remplaces` est écrit et le dit [À PORTER] ; `secret_range` (remplace booléen) reste hors contrôle", () => {
+  const lf = join(out, "t2245-a-porter.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
+  const o = run(ledger, ["append", lf, JSON.stringify({ type: "reponse_humain", decision: "D-49", remplace: "D-46" })]);
+  if (!o.includes("[À PORTER]") || !o.includes("artefacts_remplaces")) throw new Error("l'oubli doit se dire à l'écriture : " + o);
+  const s = run(ledger, ["append", lf, JSON.stringify({ type: "secret_range", nom: "SUPABASE_TOKEN", empreinte: "ab12", remplace: true })]);
+  if (s.includes("[À PORTER]")) throw new Error("secret_range n'est pas une décision remplaçante");
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("un oubli déjà écrit ne met jamais en échec : " + v);
+  const declares = v.split("\n").filter((l) => l.includes("[DÉCLARÉ]") && l.includes("remplace"));
+  if (declares.length !== 1 || !declares[0].includes("seq 2")) throw new Error("verify doit déclarer le seul seq 2 (pas secret_range) : " + v);
+});
+check("ledger TF-2245 : verify DÉCLARE les types hors vocabulaire déjà écrits (non bloquant), avec le compte et sans borne silencieuse", () => {
+  const lf = join(out, "t2245-verify-vocabulaire.jsonl");
+  const e = [{ seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "t2245" }];
+  for (let i = 0; i < 8; i++) e.push({ seq: i + 2, ts: `2026-01-01T10:00:0${i + 1}Z`, type: i < 7 ? "constat" : "decision", detail: "antérieur" });
+  ecrireBrut(lf, e);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("un type hors vocabulaire déjà écrit ne met jamais en échec : " + v);
+  if (!/\[DÉCLARÉ\][^\n]*7 entrée\(s\)[^\n]*constat/.test(v) || !/\[DÉCLARÉ\][^\n]*1 entrée\(s\)[^\n]*decision/.test(v)) {
+    throw new Error("le compte par type doit être dit (7 constat, 1 decision) : " + v);
+  }
+  if (!v.includes("reponse_humain")) throw new Error("le remède doit être dit : " + v);
+});
+check("ledger TF-2245 (rouge/vert) : journal hors run — un retour s'écrit comme première entrée à hors-run.jsonl, marqué hors_run, seq 1 puis 2, verify PASS", () => {
+  const dossier = join(out, "t2245-forge");
+  mkdirSync(dossier, { recursive: true });
+  const hr = join(dossier, "hors-run.jsonl");
+  const sans = join(dossier, "ledger.jsonl");
+  // Rouge : sans journal hors run, le même retour est refusé en première entrée d'un ledger, avec l'indication du journal.
+  const err = refuse(sans, { type: "retour", source: "produit", detail: "t2245" });
+  if (!err.includes("hors-run.jsonl")) throw new Error("le refus d'une première entrée `retour` doit pointer le journal hors run : " + err.slice(0, 300));
+  // Vert.
+  run(ledger, ["append", hr, JSON.stringify({ type: "retour", source: "produit", detail: "premier" })]);
+  run(ledger, ["append", hr, JSON.stringify({ type: "demande_humain", texte: "mot pour mot" })]);
+  const l = lignesDe(hr);
+  if (l.length !== 2 || l[0].seq !== 1 || l[1].seq !== 2 || !l.every((x) => x.hors_run === true)) throw new Error("seq 1, 2 et hors_run:true attendus : " + JSON.stringify(l));
+  if (!run(ledger, ["verify", hr]).includes("[PASS]")) throw new Error("un journal hors run intègre doit passer verify sans run_open");
+  // Le journal hors run ne porte que les quatre types hors run.
+  refuse(hr, { type: "oracles_verdict", oracle: "x", verdict: "PASS" });
+  refuse(hr, { type: "run_open", substrat: "x" });
+  // Et la même première entrée hors d'un journal hors run reste un FAIL de verify : la règle R-42 n'est pas assouplie.
+  const lf = join(dossier, "ledger-sans-run-open.jsonl");
+  ecrireBrut(lf, [{ seq: 1, ts: "2026-01-01T10:00:00Z", type: "retour", detail: "x" }]);
+  if (!verifyRouge(lf).sortie.includes("run_open")) throw new Error("un ledger de run sans run_open doit rester un FAIL");
+});
 
 rmSync(out, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 console.log(`\nSelf-test forge-agents : ${pass} PASS, ${failCount} FAIL`);
