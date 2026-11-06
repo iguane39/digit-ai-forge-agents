@@ -6,7 +6,7 @@ contre-épreuve rouge NON_MATERIEL 0/5 : `run-admission/verdict-contre-epreuve-o
 
 ## 0. Mérite un expert (3 conditions, renseignées à la création)
 1. Récurrence : décision humaine du 28/10/2026 (« Fais P1 & P2 & A1 & A2 », item TF-1994, ligne C1 de l'étude 20261028a) ; la cible de plan `cloudflare-workers` de forge-ops (TF-1995) et le profil d'audit `cloudflare` de forge-audit (TF-1996), en construction le même jour, partent du même vocabulaire
-2. Corpus disponible : checklist propre constituée le 28/10/2026 (`references/corpus-ops-cloudflare.md`, 13 points, 36 pages officielles lues et datées le jour même, faits mesurés au pilot marqués comme tels)
+2. Corpus disponible : checklist propre constituée le 28/10/2026 (`references/corpus-ops-cloudflare.md`, 14 points (le 14e, des réglages de sécurité, classé le 06/11/2026 sur le registre du pilot), 36 pages officielles lues et datées le jour même, faits mesurés au pilot marqués comme tels)
 3. Non-recouvrement : ops-aws, ops-azure, ops-gcp et ops-railway portent le déploiement de conteneurs ; ops-supabase porte le back-end Supabase et renvoie le front à la fiche de son hébergeur ; seo-web porte le référencement ; aucune des 18 fiches existantes ne citait Cloudflare ni wrangler (`git grep -il`, 28/10/2026)
 
 ## 1. domaine

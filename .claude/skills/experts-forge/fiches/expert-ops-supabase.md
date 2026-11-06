@@ -6,7 +6,7 @@ contre-épreuve rouge NON_MATERIEL 0/5).
 
 ## 0. Mérite un expert (3 conditions, renseignées à la création)
 1. Récurrence : mandat humain du 16/10/2026 (prompt « Competences Supabase dans les forges », version b) ; toute cible `plan supabase` de forge-ops consommera cette fiche
-2. Corpus disponible : checklist propre constituée le 16/10/2026 (`references/corpus-ops-supabase.md`, 9 points, sources officielles datées)
+2. Corpus disponible : checklist propre constituée le 16/10/2026 (`references/corpus-ops-supabase.md`, 10 points (le 10e, des réglages de sécurité, classé le 06/11/2026 sur le registre du pilot), sources officielles datées)
 3. Non-recouvrement : data-platform-cloud porte les plateformes DATA (Fabric/Snowflake/Databricks) ; ops-azure, ops-aws, ops-gcp et ops-railway portent le déploiement de conteneurs ; aucune fiche ne couvre l'exploitation d'un back-end Supabase (migrations, RLS, clés, sauvegardes)
 
 ## 1. domaine

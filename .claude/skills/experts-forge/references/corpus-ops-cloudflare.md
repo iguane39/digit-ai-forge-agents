@@ -36,6 +36,7 @@ sources:
   - https://developers.cloudflare.com/fundamentals/api/reference/permissions/ (lu le 2026-10-28 à 10:45, mise à jour de la page du 2026-10-12)
   - https://developers.cloudflare.com/workers/wrangler/commands/general/ (lu le 2026-10-28 à 10:45, mise à jour de la page du 2026-09-02)
   - https://developers.cloudflare.com/workers/local-development/local-data/ (lu le 2026-10-28 à 10:51, mise à jour de la page du 2026-06-25)
+  - digit-ai-factory output/03-etudes/Digit-AI - Étude - Securite par defaut de bout en bout - 20261106a.json, entrées Cloudflare (registre des réglages, pages des éditeurs lues le 2026-11-06 par l'étude ; classement repris, non relu ici)
   - digit-ai-factory references/INTEGRATIONS-FOURNISSEURS.md, section Cloudflare (mesures du 2026-08-25, relu le 2026-10-28)
   - digit-ai-forge-ops references/GESTES-EXPLOITATION.md, section G-03, et scripts/verifier-migration-dns.mjs (existence et options vérifiées le 2026-10-28)
 verifie_le: 2026-10-28
@@ -211,3 +212,13 @@ digit-ai-factory, section Cloudflare, mesures du 25/08/2026 (TF-0611 à TF-0613)
     https://developers.cloudflare.com/fundamentals/api/reference/permissions/ (12/10/2026) ;
     https://developers.cloudflare.com/workers/wrangler/commands/general/ (02/09/2026) ;
     https://developers.cloudflare.com/workers/local-development/local-data/ (25/06/2026)
+14. **Réglages de sécurité de la plateforme** — registre du pilot lu le 06/11/2026 (copie de l'étude
+   « Sécurité par défaut de bout en bout » 20261106a ; classements repris, pages des éditeurs non relues ici).
+   Chaque réglage est classé **défaut** (appliqué à la création, relu à chaque livraison) ou **décision**
+   (option posée au cadrage avec son coût, écart accepté consigné). La source est
+   `references/REGLAGES-SURS-PAR-DEFAUT.json` du pilot, qui porte les commandes d'application et de lecture
+   et les attendus : un plan renvoie au registre, il ne les redit pas.
+   - HTTPS imposé par redirection sur la zone (Always Use HTTPS) — **défaut** : disponible en offre Free, aucun
+     flux du produit témoin en http ; à poser à la création de la zone et relu à chaque livraison.
+   - En-tête HSTS de la zone (max-age 12 mois, sans includeSubDomains ni preload) — **défaut** : disponible en offre
+     Free ; les deux options laissées éteintes engagent moins que le défaut et se décident à part.

@@ -2,7 +2,7 @@
 name: experts-forge
 description: Analyse la demande et complète la réponse en cours par des contributions d'experts de domaine (data, interop-archi…) — annotations ancrées dans un corpus résolu, pool symétrique amont du pool de juges quality-oracles. Chaque expert est un artefact déclaratif (fiche 6 champs : domaine, déclencheurs, corpus, rubrique, frontière, fixture), admis au registre seulement si sa contribution a été jugée matériellement différente d'une baseline (loi : « un expert qui ne change pas matériellement une réponse n'est pas un expert »). Use when / déclencher quand une demande matche les declencheurs d'une fiche en statut ok du registre (analyse de flux de données, import/export, intégration, synchronisation entre systèmes, interopérabilité, dépendance éditeur), ou pour consulter, rejouer ou faire admettre une fiche expert. Ne pas déclencher pour juger un livrable fini (→ quality-oracles), exécuter un workflow multi-agents (→ skill méta), dessiner un schéma (→ digit-ai-schemas), ou auditer un dataset (→ data-quality-auditor).
 metadata:
-  version: "1.6.0"
+  version: "1.7.0"
 ---
 
 # experts-forge — pool de contributeurs par domaine
@@ -82,6 +82,25 @@ node scripts/oracle-angles-vides.mjs references/registre-experts.md
 Enregistré au registre de `quality-oracles` (domaine « Angle d'expertise déclaré vide
 (dette de couverture) »), déclenché par contenu, fixtures rouge/verte rejouées par le
 self-test de `quality-oracles`.
+
+## Porte des réglages de plateforme classés (TF-2227, 06/11/2026)
+
+Chaque corpus `corpus-ops-<plateforme>.md` porte un point « Réglages de sécurité de la plateforme » qui
+cite le registre du pilot (`REGLAGES-SURS-PAR-DEFAUT.json`, dossier `references` du pilot, daté) et classe chaque réglage que
+ce registre inscrit pour la plateforme : **défaut** (appliqué à la création, relu à chaque livraison) ou
+**décision** (posé au cadrage, écart accepté consigné). MFA des membres d'organisation Supabase et
+Always Use HTTPS de Cloudflare y sont. Une plateforme sans réglage au registre le dit. Le registre bouge :
+un réglage ajouté ou retiré rend le corpus rouge.
+
+```bash
+node scripts/oracle-reglages-corpus.mjs [--registre <json>]   # tous les corpus ops ; registre introuvable : SKIP, jamais PASS
+node scripts/self-test-reglages.mjs                           # corpus réels contre fixtures/reglages-registre.json (copie), 14 cas
+```
+
+La recette porte une copie du registre (`fixtures/reglages-registre.json`), jamais une dépendance au
+fichier du pilot. Enregistré au registre de `quality-oracles`, fixtures rouge/verte au self-test.
+Écart déclaré : GitHub (3 réglages au registre) n'a aucun corpus d'expert, l'oracle le dit en
+avertissement G8.
 
 ## Exemple en action
 

@@ -1,6 +1,6 @@
 # Registre des oracles de qualité par domaine
 
-> **Vue humaine** (v2.54.0, alignée sur le JSON le 06/11/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
+> **Vue humaine** (v2.55.0, alignée sur le JSON le 06/11/2026). Source machine (orchestrateur `scripts/run-oracles.mjs`) : `registre-oracles.json`.
 > Un oracle = un contrôle **déterministe, exécuté, à verdict PASS/FAIL** (standard §3 du SKILL).
 > Ce registre **grandit** : tout domaine sans oracle reçoit un oracle (standard §3) **remonté ici** (règle §4).
 >
@@ -150,6 +150,7 @@
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
 | Angle d'expertise déclaré vide (dette de couverture) | `node {skillsroot}/experts-forge/scripts/oracle-angles-vides.mjs <registre-experts.md> [--date AAAA-MM-JJ]` — **G1** six colonnes renseignées · **G2** vocabulaire fermé (`ouvert` · `comblé` · `écarté`) · **G3** « comblé » : artefact cité dont l'**existence est vérifiée par exécution** · **G4** « ouvert » au-delà de son échéance = **ÉCHEC** · **G5** « écarté » : raison écrite | cli | ✅ |
+| Réglage de sécurité de plateforme classé au corpus d'expert (défaut ou décision) | `node {skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs <corpus-ops-*.md> [--registre <json>] [--plateforme <Nom>]` — **G1** point « Réglages de sécurité de la plateforme » · **G2** renvoi à `REGLAGES-SURS-PAR-DEFAUT.json` · **G3** registre daté · **G4** plateforme sans réglage : le dit · **G5** chaque réglage du registre listé · **G6** classement défaut ou décision conforme · **G7** aucune puce périmée · **G8** (avertissement) plateforme du registre sans corpus ; registre introuvable : SKIP | cli | ✅ |
 
 > **Un angle vide déclaré et non comblé n'est pas neutre.** Un angle nommé le 20/08/2026
 > (« fiche expert migration de plateforme brownfield ») est resté ouvert onze jours sans que

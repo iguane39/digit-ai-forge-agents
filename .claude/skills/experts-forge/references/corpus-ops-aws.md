@@ -29,3 +29,8 @@ forge-ops sur le service canonique **AWS App Runner** (conteneur web managé).
    (instances en pause) ; le vCPU s'ajoute quand le service sert — pas de scale-to-zero
    complet : un staging App Runner oublié coûte. L'étape MEP prévoit pause/suppression.
    Source : https://aws.amazon.com/apprunner/pricing/
+7. **Réglages de sécurité de la plateforme** — registre du pilot lu le 06/11/2026 (copie de l'étude
+   « Sécurité par défaut de bout en bout » 20261106a) : `references/REGLAGES-SURS-PAR-DEFAUT.json` du pilot
+   n'inscrit aucun réglage pour AWS. Un réglage inscrit plus tard se classe ici, **défaut** (appliqué à la
+   création, relu à chaque livraison) ou **décision** (posé au cadrage, écart accepté consigné) ; sans ce
+   classement, `scripts/oracle-reglages-corpus.mjs` rend ce corpus rouge.

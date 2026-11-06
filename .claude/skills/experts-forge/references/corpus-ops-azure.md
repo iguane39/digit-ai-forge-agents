@@ -29,3 +29,8 @@ forge-ops sur le service canonique **Azure Container Apps** (ACA).
 7. **Coûts d'ordre de grandeur** — plan Consumption : vCPU-s + GiB-s avec franchise mensuelle
    gratuite ; scale-to-zero natif (staging économe) ; piège : `minReplicas > 0` = coût fixe.
    Source : https://azure.microsoft.com/pricing/details/container-apps/
+8. **Réglages de sécurité de la plateforme** — registre du pilot lu le 06/11/2026 (copie de l'étude
+   « Sécurité par défaut de bout en bout » 20261106a) : `references/REGLAGES-SURS-PAR-DEFAUT.json` du pilot
+   n'inscrit aucun réglage pour Azure. Un réglage inscrit plus tard se classe ici, **défaut** (appliqué à la
+   création, relu à chaque livraison) ou **décision** (posé au cadrage, écart accepté consigné) ; sans ce
+   classement, `scripts/oracle-reglages-corpus.mjs` rend ce corpus rouge.

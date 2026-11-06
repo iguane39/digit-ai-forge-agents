@@ -2284,6 +2284,78 @@
     "PASS"
    ],
    "provenance": "TF-2163, Produit-86 lot 20261104a RA-2, 05/11/2026 — la rouge porte les trois formes (écriture par un helper du fichier, écriture et appel dans un with sqlite3.connect, exemption sans raison) ; la verte joue les gestes du message (commit avant l'appel, appel avant l'écriture, lecture seule, sortie de with) et une exemption déclarée avec sa raison."
+  },
+  {
+     "nom": "reglages-corpus-absent",
+     "cmd": [
+        "node",
+        "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
+        "{fixture}",
+        "--registre",
+        "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
+        "--plateforme",
+        "Supabase"
+     ],
+     "red": "reglages-corpus-rouge-absent.md",
+     "green": "reglages-corpus-vert.md",
+     "attendu_red": [
+        "FAIL"
+     ],
+     "attendu_messages_red": [
+        "G5 — le réglage « Double vérification imposée"
+     ],
+     "attendu_green": [
+        "PASS"
+     ],
+     "provenance": "TF-2227, étude « Sécurité par défaut de bout en bout » du 06/11/2026 — la MFA d'organisation Supabase n'apparaissait dans aucun corpus d'expert ; la rouge est le corpus Supabase sans cette puce."
+  },
+  {
+     "nom": "reglages-corpus-classe-faux",
+     "cmd": [
+        "node",
+        "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
+        "{fixture}",
+        "--registre",
+        "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
+        "--plateforme",
+        "Supabase"
+     ],
+     "red": "reglages-corpus-rouge-classe-faux.md",
+     "green": "reglages-corpus-vert.md",
+     "attendu_red": [
+        "FAIL"
+     ],
+     "attendu_messages_red": [
+        "G6 — le réglage « TLS imposé"
+     ],
+     "attendu_green": [
+        "PASS"
+     ],
+     "provenance": "TF-2227, 06/11/2026 — le TLS imposé, défaut au registre, classé décision enseignerait l'inverse de ce que la création applique ; la rouge change ce seul mot."
+  },
+  {
+     "nom": "reglages-corpus-sans-renvoi",
+     "cmd": [
+        "node",
+        "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
+        "{fixture}",
+        "--registre",
+        "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
+        "--plateforme",
+        "Supabase"
+     ],
+     "red": "reglages-corpus-rouge-sans-renvoi.md",
+     "green": "reglages-corpus-vert.md",
+     "attendu_red": [
+        "FAIL"
+     ],
+     "attendu_messages_red": [
+        "G2 — le point"
+     ],
+     "attendu_green": [
+        "PASS"
+     ],
+     "provenance": "TF-2227, 06/11/2026 — un classement qui ne cite pas le registre du pilot est une affirmation du corpus, pas une lecture ; la rouge retire le renvoi seul."
   }
  ]
 }
