@@ -7,13 +7,26 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.43.0"
+  version: "1.44.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.44.0 (09/11/2026)** — **`render_page.py` rend et mesure chaque scène d'une page à scènes déclarées, aux largeurs du socle (TF-2299, RA-04 ; lot
+Produit-81 du 09/11/2026, décision R-58 : exécutée).** Sur cinq animations de sept ou huit scènes, 32 scènes sur 37 n'étaient jamais rendues ni mesurées
+(`non_juge` : « seul l'état initial »), et une planche de captures écrite à la main y a trouvé deux défauts que tous les juges avaient laissés passer.
+Désormais, tout élément `[data-scene]` autre que `html` et `body` (le corps porte la scène *courante*, pas une scène) est une scène : sur une page neuve,
+par largeur, `render_page` l'atteint par les gestes d'un lecteur (flèche droite jusqu'à ce qu'elle se voie, puis le sommaire `[data-aller]`), mène les
+animations d'entrée à leur terme, la mesure comme la page (V1 à V4, V9, V18, canvas) et la capture (`<page>-w<largeur>-scene<NN>.png`). Sans drapeau :
+une page sans scène déclarée n'est pas touchée. Un défaut de scène compte dans le verdict. **Une scène qu'aucun geste n'affiche est NON JOUÉE**, nommée
+au `non_juge` avec ses gestes essayés, jamais couverte par un vert. Le `non_juge` dit aussi ce qui reste non mesuré : les images intermédiaires d'une
+animation, le minuteur du lecteur (lecture automatique), les états « pause » et « fin », un état ouvert à l'intérieur d'une scène, un autre geste que
+ceux-ci, une scène déclarée autrement que par `[data-scene]`. Fixtures `scenes-rouge.html` (sept scènes, adresse insécable en scène 4 : l'état initial
+rend PASS, le parcours rend FAIL à 390 et 1 280 px, scène 4 seule), `scenes-verte.html` (sept scènes, PASS) et `scenes-inatteignables.html` (deux scènes
+cachées, nommées non jouées) : 3 cas échouent sur la version d'avant, 3 passent après.
 
 **1.43.0 (06/11/2026)** — **le composant de filtres lit la valeur déclarée d'une facette et sa saisie filtre (TF-2195) ; un panneau fermé n'est plus
 jugé à la largeur de son résumé (TF-2220) ; Produit-86, lots 20261105b RP-15 et 20261105h RP-40, décisions R-58 : exécutées.** *(TF-2220 d'abord :
@@ -764,6 +777,7 @@ python scripts/render_page.py page.html            # défaut : 3840, 2560, 1920,
 # revue de lecture : --sections "[role=tabpanel]"  → une capture par section, par largeur
 # composants interactifs : --matrice-etats         → cinq états mesurés ET capturés (TF-0493)
 # filtres croisés        : --matrice-paires        → (col A = val a) × (col B = val b) (TF-1093)
+# page à scènes          : aucun drapeau           → chaque [data-scene] jouée, mesurée, capturée (TF-2299)
 python scripts/render_page.py http://127.0.0.1:8000/page.html --matrice-paires   # INSTANCE SERVIE
 ```
 

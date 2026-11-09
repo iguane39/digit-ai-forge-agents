@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture scènes — verte : sept scènes déclarées, toutes conformes — 20261109a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- TF-2299, sens VERT. Une page à scènes comme les animations du cas fondateur : un manifeste
+     SCENES, des sections `section.scene[data-scene]` dont une seule est visible, le clavier
+     (flèche droite et flèche gauche) et un sommaire (`data-aller`) pour changer de scène. Le
+     corps porte lui aussi `data-scene` (la scène courante) : ce n'est pas une scène. Chaque
+     scène tient à toutes les largeurs, y compris l'adresse longue de la scène 4, qui se coupe.
+     Sa jumelle rouge `scenes-rouge.html` ne diffère que par cette adresse, insécable. -->
+<style>
+:root {
+  --head: "Montserrat", system-ui, sans-serif;
+  --sans: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --ink: #0F172A;
+  --muted: #475569;
+  --line: #E6EAF2;
+  --surface: #FFFFFF;
+  --bg: #FAFBFF;
+  --accent: #1d4ed8;
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); line-height: 1.5; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 24px 20px 48px; }
+h1 { font-family: var(--head); font-weight: 800; font-size: 1.8rem; line-height: 1.2; margin: 0 0 8px; }
+.chapeau { color: var(--muted); margin: 0 0 24px; }
+.lecteur { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.scene { padding: 28px 32px; }
+.scene[hidden] { display: none; }
+.scene h3 { font-family: var(--head); font-weight: 800; font-size: 1.5rem; line-height: 1.25; margin: 0 0 12px; }
+.scene p { font-size: 1.05rem; margin: 0 0 12px; }
+.adresse { display: block; font-family: var(--mono); font-size: .9rem; color: var(--ink); overflow-wrap: anywhere; }
+.sommaire { margin: 20px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.sommaire button { font: inherit; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.sommaire button[aria-current="step"] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.sommaire button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body data-scene="0">
+  <div class="wrap">
+    <header>
+      <h1>Sept scènes, une seule visible à la fois</h1>
+      <p class="chapeau">Fixture de TF-2299 : la scène courante se change au clavier ou au sommaire.</p>
+    </header>
+    <main>
+      <div class="lecteur" role="region" aria-label="Animation en 7 scènes">
+        <section class="scene" data-scene="0" aria-labelledby="titre-scene-0">
+          <h3 id="titre-scene-0">Scène 1, le point de départ</h3>
+          <p>Un texte court qui tient à toutes les largeurs.</p>
+        </section>
+        <section class="scene" data-scene="1" aria-labelledby="titre-scene-1" hidden>
+          <h3 id="titre-scene-1">Scène 2, la deuxième étape</h3>
+          <p>Un texte court qui tient à toutes les largeurs.</p>
+        </section>
+        <section class="scene" data-scene="2" aria-labelledby="titre-scene-2" hidden>
+          <h3 id="titre-scene-2">Scène 3, la troisième étape</h3>
+          <p>Un texte court qui tient à toutes les largeurs.</p>
+        </section>
+        <section class="scene" data-scene="3" aria-labelledby="titre-scene-3" hidden>
+          <h3 id="titre-scene-3">Scène 4, les adresses vérifiables</h3>
+          <p>Les adresses se coupent quand la ligne manque de place :</p>
+          <code class="adresse">https://documentation-interne.exemple-fixture.test/espaces/qualite/referentiels/lignage-des-donnees/fiche-de-controle-2026.html</code>
+        </section>
+        <section class="scene" data-scene="4" aria-labelledby="titre-scene-4" hidden>
+          <h3 id="titre-scene-4">Scène 5, la cinquième étape</h3>
+          <p>Un texte court qui tient à toutes les largeurs.</p>
+        </section>
+        <section class="scene" data-scene="5" aria-labelledby="titre-scene-5" hidden>
+          <h3 id="titre-scene-5">Scène 6, la sixième étape</h3>
+          <p>Un texte court qui tient à toutes les largeurs.</p>
+        </section>
+        <section class="scene" data-scene="6" aria-labelledby="titre-scene-6" hidden>
+          <h3 id="titre-scene-6">Scène 7, le gain</h3>
+          <p>Un texte court qui tient à toutes les largeurs.</p>
+        </section>
+      </div>
+      <nav aria-label="Scènes de l'animation">
+        <ol class="sommaire">
+          <li><button type="button" data-aller="0" aria-current="step">1</button></li>
+          <li><button type="button" data-aller="1">2</button></li>
+          <li><button type="button" data-aller="2">3</button></li>
+          <li><button type="button" data-aller="3">4</button></li>
+          <li><button type="button" data-aller="4">5</button></li>
+          <li><button type="button" data-aller="5">6</button></li>
+          <li><button type="button" data-aller="6">7</button></li>
+        </ol>
+      </nav>
+    </main>
+  </div>
+  <script>
+/* SCENES:debut */
+const SCENES = [
+  {"titre": "Scène 1"}, {"titre": "Scène 2"}, {"titre": "Scène 3"}, {"titre": "Scène 4"},
+  {"titre": "Scène 5"}, {"titre": "Scène 6"}, {"titre": "Scène 7"}
+];
+/* SCENES:fin */
+(function () {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section.scene[data-scene]'));
+  var allers = Array.prototype.slice.call(document.querySelectorAll('[data-aller]'));
+  var i = 0;
+  function aller(k) {
+    if (k < 0 || k >= SCENES.length) return;
+    i = k;
+    sections.forEach(function (s, j) { s.hidden = j !== k; });
+    allers.forEach(function (a, j) { if (j === k) a.setAttribute('aria-current', 'step'); else a.removeAttribute('aria-current'); });
+    document.body.dataset.scene = String(k);
+  }
+  allers.forEach(function (a) { a.addEventListener('click', function () { aller(Number(a.getAttribute('data-aller'))); }); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); aller(i + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); aller(i - 1); }
+  });
+})();
+  </script>
+</body>
+</html>

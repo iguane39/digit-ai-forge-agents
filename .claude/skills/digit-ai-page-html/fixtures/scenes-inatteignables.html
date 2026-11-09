@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture scènes — inatteignables : trois scènes déclarées, aucun geste n'y mène — 20261109a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3Ctext x='32' y='44' font-family='Segoe UI,Roboto,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+<!-- TF-2299, sens ROUGE de couverture. Trois scènes sont déclarées (`data-scene`), mais la page
+     n'a aucun lecteur : ni flèche, ni sommaire, aucun script. Seule la scène 1 se voit. Les
+     scènes 2 et 3 restent cachées quel que soit le geste du lecteur : l'outil ne peut ni les
+     rendre ni les mesurer, et il doit le DIRE (non jugé, avec les gestes essayés), jamais
+     rendre un vert qui les couvre. -->
+<style>
+:root {
+  --head: "Montserrat", system-ui, sans-serif;
+  --sans: "Inter", system-ui, sans-serif;
+  --ink: #0F172A;
+  --muted: #475569;
+  --line: #E6EAF2;
+  --surface: #FFFFFF;
+  --bg: #FAFBFF;
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); line-height: 1.5; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 24px 20px 48px; }
+h1 { font-family: var(--head); font-weight: 800; font-size: 1.8rem; line-height: 1.2; margin: 0 0 16px; }
+.scene { padding: 24px 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.scene[hidden] { display: none; }
+.scene h2 { font-family: var(--head); font-weight: 800; font-size: 1.4rem; line-height: 1.25; margin: 0 0 12px; }
+.scene p { margin: 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Trois scènes déclarées, une seule atteignable</h1>
+    <main>
+      <section class="scene" data-scene="0" aria-labelledby="titre-scene-0">
+        <h2 id="titre-scene-0">Scène 1, la seule qu'on voit</h2>
+        <p>Rien ne permet de passer à la suite.</p>
+      </section>
+      <section class="scene" data-scene="1" aria-labelledby="titre-scene-1" hidden>
+        <h2 id="titre-scene-1">Scène 2, cachée pour toujours</h2>
+        <p>Aucun geste ne l'affiche.</p>
+      </section>
+      <section class="scene" data-scene="2" aria-labelledby="titre-scene-2" hidden>
+        <h2 id="titre-scene-2">Scène 3, cachée pour toujours</h2>
+        <p>Aucun geste ne l'affiche.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

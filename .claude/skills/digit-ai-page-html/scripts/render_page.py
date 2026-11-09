@@ -3980,6 +3980,136 @@ _SECTION_JS_RESTAURER_VISIBLE = """() => {
 }"""
 
 
+# TF-2299 (lot Produit-81 du 09/11/2026, RA-04, decision R-58 du 09/11) — UNE PAGE A SCENES SE JOUE
+# SCENE PAR SCENE. Une animation de sept ou huit scenes declare ses etats par des elements
+# `[data-scene]` dont un seul se voit a la fois ; le lecteur change de scene au clavier (fleche
+# droite) ou par un sommaire (`[data-aller]`). L'oracle ne rendait que l'etat initial : sur cinq
+# animations, 32 scenes sur 37 n'ont JAMAIS ete rendues ni mesurees, et une planche de captures
+# ecrite a la main y a trouve deux defauts que tous les juges avaient laisses passer (une etape
+# orpheline, des adresses coupees au milieu du domaine). Le corps de la page porte lui aussi
+# `data-scene` (la scene COURANTE) : ce n'est pas une scene, d'ou l'exclusion de html et body.
+# Chaque scene repart d'une page NEUVE (aucune scene n'herite de l'etat de la precedente), est
+# atteinte par le geste d'un lecteur, puis mesuree et capturee a l'etat REPOSE. Une scene qu'aucun
+# geste n'atteint est declaree NON JOUEE, jamais verte.
+SCENES_SELECTEUR = "[data-scene]:not(html):not(body)"
+SCENES_GESTES = "fleche droite, puis sommaire [data-aller]"
+
+_SCENES_JS_ETAT = """(sel) => Array.from(document.querySelectorAll(sel)).map((el) => {
+  const r = el.getBoundingClientRect();
+  let vu = el.checkVisibility ? el.checkVisibility({checkVisibilityCSS: true}) : r.width > 0;
+  return {id: el.getAttribute('data-scene'), visible: vu && r.width > 0 && r.height > 0};
+})"""
+
+# Les animations d'entree d'une scene (delais compris) sont menees a leur terme : la mesure porte
+# sur la scene REPOSEE, pas sur une image intermediaire. Une animation infinie refuse, et reste.
+_SCENES_JS_REPOSER = """() => { let n = 0;
+  for (const a of document.getAnimations()) { try { a.finish(); n++; } catch (e) {} }
+  return n; }"""
+
+
+def _atteindre_scene(page, k: int) -> tuple[str, str]:
+    """Amene la scene `k` a l'ecran par les gestes d'un lecteur. Rend (geste, motif d'echec)."""
+    etat = page.evaluate(_SCENES_JS_ETAT, SCENES_SELECTEUR)
+    if etat[k]["visible"]:
+        return "etat initial", ""
+    signature = [e["visible"] for e in etat]
+    appuis = 0
+    for _ in range(len(etat)):
+        page.keyboard.press("ArrowRight")
+        appuis += 1
+        page.wait_for_timeout(120)
+        etat = page.evaluate(_SCENES_JS_ETAT, SCENES_SELECTEUR)
+        if etat[k]["visible"]:
+            return f"fleche droite x{appuis}", ""
+        nouvelle = [e["visible"] for e in etat]
+        if nouvelle == signature:
+            break                      # le geste ne change plus rien : inutile d'insister
+        signature = nouvelle
+    identifiant = etat[k]["id"]
+    clic = "aucun [data-aller] ne porte cet identifiant"
+    cible = page.query_selector(f'[data-aller="{identifiant}"]') if identifiant is not None else None
+    if cible:
+        try:
+            cible.click(timeout=2000)
+            page.wait_for_timeout(120)
+            if page.evaluate(_SCENES_JS_ETAT, SCENES_SELECTEUR)[k]["visible"]:
+                return "sommaire [data-aller]", ""
+            clic = "le clic sur [data-aller] ne l'affiche pas"
+        except Exception as erreur:  # noqa: BLE001 — un clic impossible se dit, il ne leve pas
+            clic = f"clic sur [data-aller] impossible ({type(erreur).__name__})"
+    return "", (f"aucun geste de lecteur ne l'affiche : {appuis} appui(s) sur la fleche droite "
+                f"sans effet sur cette scene, {clic}")
+
+
+def jouer_scenes(page, url: str, js: str, js_large: str, width: int, png_dir: Path, stem: str,
+                 capture_timeout: int, scale: float, hauteur_max: int) -> dict | None:
+    """Joue chaque scene declaree a CETTE largeur, une page neuve par scene. None si la page ne
+    declare aucune scene. Ne leve jamais : tout ce qui empeche la mesure se declare."""
+    try:
+        declarees = page.evaluate(_SCENES_JS_ETAT, SCENES_SELECTEUR)
+    except Exception:  # noqa: BLE001
+        return None
+    if not declarees:
+        return None
+    scenes: dict = {}
+    bloquants = 0
+    for k, decl in enumerate(declarees):
+        nom = str(decl["id"]) if decl["id"] not in (None, "") else str(k)
+        cle = nom if nom not in scenes else f"{nom}#{k}"
+        page.goto(url)
+        page.wait_for_load_state("networkidle")
+        page.evaluate("document.fonts && document.fonts.ready")
+        page.wait_for_timeout(250)
+        try:
+            geste, motif = _atteindre_scene(page, k)
+        except Exception as erreur:  # noqa: BLE001
+            geste, motif = "", f"le lecteur a leve {type(erreur).__name__} pendant le geste"
+        if not geste:
+            scenes[cle] = {"applique": False, "index": k, "motif": motif}
+            continue
+        try:
+            page.evaluate(_SCENES_JS_REPOSER)
+        except Exception:  # noqa: BLE001
+            pass
+        page.wait_for_timeout(150)
+        issues = page.evaluate(js)
+        issues["v18_prose_etiree"] = []
+        issues["v18_tableau_etrique"] = []
+        if width >= V18_MIN_VIEWPORT:
+            try:
+                v18 = page.evaluate(js_large)
+                issues["v18_prose_etiree"] = v18.get("proses") or []
+                issues["v18_tableau_etrique"] = v18.get("tableaux") or []
+                issues["unmeasured"].extend(v18.get("notes") or [])
+            except Exception as erreur:  # noqa: BLE001
+                issues["unmeasured"].append({
+                    "what": f"V18 scene {nom}",
+                    "detail": f"V18 non jugee ({type(erreur).__name__}) a {width} px"})
+        mesurer_actifs_visuels(page, issues, capture_timeout, scale)
+        canvas = mesurer_canvas(page, issues, capture_timeout)
+        png = png_dir / f"{stem}-w{width}-scene{k + 1:02d}.png"
+        hauteur = int(page.evaluate("() => document.documentElement.scrollHeight"))
+        capture: dict = {"faite": True, "motif": "", "hauteur_css": hauteur}
+        if hauteur > hauteur_max:
+            capture = {"faite": False, "hauteur_css": hauteur,
+                       "motif": f"scene trop haute pour etre capturee : {hauteur} px, seuil "
+                                f"{hauteur_max} px (--hauteur-max)"}
+        else:
+            try:
+                page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+            except Exception as erreur:  # noqa: BLE001
+                capture = {"faite": False, "hauteur_css": hauteur,
+                           "motif": f"capture impossible : {type(erreur).__name__} — les "
+                                    "familles du DOM restent jugees"}
+        bloquant = compter_bloquants(issues)
+        bloquants += bloquant
+        scenes[cle] = {"applique": True, "index": k, "geste": geste, "issues": issues,
+                       "blocking": bloquant, "capture": capture,
+                       "png": str(png) if capture["faite"] else None,
+                       "canvas_vus": canvas["vus"]}
+    return {"declarees": len(declarees), "scenes": scenes, "bloquants": bloquants}
+
+
 def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool,
         out_dir: Path | None = None, etats_ouverts: bool = False,
         capture_timeout: int = CAPTURE_TIMEOUT_DEFAUT, sections: str | None = None,
@@ -4017,6 +4147,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
     theme_tenu: list[str] = []           # TF-1775 : largeurs ou la page a reecrit data-theme, contree
     mires_vues: list[int] = []           # TF-1788 : largeurs ou une mire de connexion est rendue
     canvas_par_largeur: dict[int, dict] = {}   # TF-1859 : bilan de la mesure des canvas, par largeur
+    scenes_par_largeur: dict[int, dict] = {}   # TF-2299 : scenes declarees jouees, par largeur
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -4381,6 +4512,14 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                     "FILTRES CROISES NON JOUES : la matrice d'etats ne pose qu'UN filtre a la "
                     "fois. Une intersection vide que chaque facette prise seule ne montre pas "
                     "reste invisible ici — `--matrice-paires` l'enumere (TF-1093)")
+            # TF-2299 — chaque scene declaree (`[data-scene]`) se joue a cette largeur, sur page
+            # neuve, apres tout le reste : la page n'a plus besoin de son etat initial.
+            jeu_scenes = jouer_scenes(page, cible.url, js, js_large, width, png_dir, cible.stem,
+                                      capture_timeout, scale, hauteur_max)
+            if jeu_scenes is not None:
+                blocking_total += jeu_scenes["bloquants"]
+                scenes_par_largeur[width] = jeu_scenes
+                report["breakpoints"][width]["scenes"] = jeu_scenes
             page.close()
         browser.close()
 
@@ -4464,6 +4603,19 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
         etats_couverts.append("les etats de la matrice (--matrice-etats)")
     if matrice_paires:
         etats_couverts.append("les paires de filtres croises (--matrice-paires)")
+    # TF-2299 — les scenes declarees se jouent d'office, sans drapeau : elles se comptent ici.
+    scenes_declarees = max((j["declarees"] for j in scenes_par_largeur.values()), default=0)
+    scenes_non_jouees: dict[tuple, list[int]] = {}
+    scenes_jouees = 0
+    for largeur_s, jeu_s in scenes_par_largeur.items():
+        for nom_s, s in jeu_s["scenes"].items():
+            if s["applique"]:
+                scenes_jouees += 1
+            else:
+                scenes_non_jouees.setdefault((nom_s, s["motif"]), []).append(largeur_s)
+    if scenes_par_largeur:
+        etats_couverts.append(f"chacune des {scenes_declarees} scene(s) declaree(s) "
+                              f"({SCENES_SELECTEUR}, joue d'office)")
     if etats_couverts:
         report["non_juge"].append(
             "ETAT DE LA PAGE : seul l'etat INITIAL est rendu et mesure PAR DEFAUT ; cette "
@@ -4478,7 +4630,29 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             "--matrice-etats, --matrice-paires rejouent des etats DECLARES, aucun n'est actif). "
             "Une page a plusieurs vues (onglets, etapes, accordeons) dont le changement depend "
             "d'un script garde ses AUTRES vues NI RENDUES NI MESUREES, meme sur un verdict PASS "
-            "(TF-1370)")
+            f"(TF-1370). Aucune scene n'est declaree par {SCENES_SELECTEUR} sur cette page : "
+            "les scenes ainsi declarees se jouent d'office (TF-2299), une animation pilotee "
+            "autrement n'est pas reconnue")
+
+    if scenes_par_largeur:
+        attendues = scenes_declarees * len(scenes_par_largeur)
+        report["non_juge"].append(
+            f"SCENES (TF-2299) : {scenes_declarees} scene(s) declaree(s) par {SCENES_SELECTEUR} "
+            "(html et body exclus : le corps porte la scene COURANTE, ce n'est pas une scene), "
+            f"{scenes_jouees} scene(s)-largeur jouee(s) sur {attendues}. Chaque scene repart d'une "
+            f"page neuve et est atteinte par un geste de lecteur ({SCENES_GESTES}), puis mesuree "
+            "comme la page (V1 a V4, V9, V18, canvas) et capturee a l'etat REPOSE : les animations "
+            "d'entree sont menees a leur terme d'office. PAS mesure : les images INTERMEDIAIRES "
+            "d'une animation (delais et mouvements d'entree), le minuteur du lecteur (lecture "
+            "automatique, enchainement des scenes dans le temps), les etats « pause » et « fin », "
+            "un etat ouvert A L'INTERIEUR d'une scene (details, filtres : --etats-ouverts ne s'y "
+            "applique pas), un geste autre que ceux-ci (bouton « suivante », molette, toucher), une "
+            "scene que la page ne declare pas par [data-scene]")
+        for (nom_s, motif_s), largeurs_s in scenes_non_jouees.items():
+            report["non_juge"].append(
+                f"SCENE NON JOUEE : « {nom_s} » a {', '.join(str(w) + ' px' for w in largeurs_s)} — "
+                f"{motif_s}. Cette scene n'est NI RENDUE NI MESUREE : ne pas lire le verdict comme "
+                "un vert qui la couvre (TF-2299)")
 
     # TF-0365 — ce qui n a pas pu etre mesure se DIT, dans la sortie machine autant qu au
     # terminal. Un PASS qui tairait l absence des images serait plus faible que celui d hier en
@@ -4685,6 +4859,23 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                         kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "info")
                         for item in c["issues"].get(key, []) or []:
                             print(f"      [{kind}] {title} : {item['what']} — {item['detail']}")
+            # TF-2299 — chaque scene declaree, scene par scene : une scene NON JOUEE se lit ici
+            # aussi, « aucun defaut » sur une scene jamais rendue serait le pire des verdicts.
+            jeu = data.get("scenes")
+            if jeu:
+                print(f"  — scènes déclarées : {jeu['declarees']}, "
+                      f"{sum(1 for s in jeu['scenes'].values() if s.get('applique'))} jouée(s), "
+                      f"{jeu['bloquants']} bloquant(s)")
+                for nom, s in jeu["scenes"].items():
+                    if not s.get("applique"):
+                        print(f"      scène « {nom} » NON JOUÉE : {s.get('motif', '')}")
+                        continue
+                    print(f"      scène « {nom} » ({s['geste']}) : {s['blocking']} bloquant(s)"
+                          + ("" if s.get("png") else f" — capture NON FAITE : {s['capture']['motif']}"))
+                    for key, title, sev in FAMILLES:
+                        kind = {"bloquant": "BLOQUANT", "avertissement": "avertissement"}.get(sev, "info")
+                        for item in s["issues"].get(key, []) or []:
+                            print(f"          [{kind}] {title} : {item['what']} — {item['detail']}")
         print(f"\nVerdict : {report['verdict']}")
         for note in report["non_juge"]:
             print(f"  non jugé — {note}")

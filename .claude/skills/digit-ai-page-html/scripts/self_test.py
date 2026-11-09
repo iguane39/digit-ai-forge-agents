@@ -4842,6 +4842,109 @@ def run_etat_initial_non_juge():
     return out
 
 
+def run_scenes_declarees():
+    """TF-2299 — UNE PAGE A SCENES SE JOUE SCENE PAR SCENE (lot Produit-81 du 09/11/2026, RA-04).
+
+    Cinq animations de sept ou huit scenes : 32 scenes sur 37 jamais rendues ni mesurees, car
+    `render_page.py` ne jugeait que l'etat initial. Une planche de captures ecrite a la main y a
+    trouve deux defauts que tous les juges avaient laisses passer.
+
+    Trois fixtures, trois sens. ROUGE : sept scenes, la quatrieme porte une adresse insecable ; la
+    scene visible au chargement est saine, donc l'etat initial rend PASS (c'est le silence d'avant)
+    et seul le parcours des scenes montre le defaut. VERTE : les memes sept scenes, l'adresse se
+    coupe, tout est joue et rien ne bloque ; le corps de page, qui porte `data-scene`, n'est pas
+    compte comme une scene. INATTEIGNABLES : trois scenes declarees, aucun lecteur ; les deux
+    scenes cachees doivent etre nommees NON JOUEES, jamais couvertes par un vert.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    out = []
+
+    def jouer(nom):
+        page = FIXTURES / nom
+        if not page.exists():
+            return page, None, ""
+        dossier = tempfile.mkdtemp(prefix="self-test-scenes-")
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", rendu, str(page), "--widths", "390,1280",
+             "--scale", "1", "--out", dossier, "--output", "json"],
+            capture_output=True, text=True, encoding="utf-8")
+        pngs = sorted(p.name for p in Path(dossier).glob("*-scene*.png"))
+        shutil.rmtree(dossier, ignore_errors=True)
+        try:
+            return page, json.loads(r.stdout), pngs
+        except Exception:  # noqa: BLE001 — une sortie illisible se compte comme un échec
+            return page, None, (r.stderr or r.stdout)[-300:]
+
+    def absente(page):
+        return [{"fixture": page.name, "verdict": "ABSENTE", "attendu": "fixture présente",
+                 "obtenu": "absente", "regle": "TF-2299", "detail": ""}]
+
+    # ROUGE : l'etat initial est vert, le defaut ne vit que dans la scene « 3 ».
+    page, rapport, pngs = jouer("scenes-rouge.html")
+    if not page.exists():
+        return absente(page)
+    bp = (rapport or {}).get("breakpoints") or {}
+    initial = [bp.get(w, {}).get("blocking") for w in ("390", "1280")]
+    par_scene = {w: {n: s.get("blocking") for n, s in
+                     ((bp.get(w) or {}).get("scenes") or {}).get("scenes", {}).items()}
+                 for w in ("390", "1280")}
+    fautives = {w: sorted(n for n, b in par_scene[w].items() if b) for w in par_scene}
+    ok = (rapport is not None and rapport.get("verdict") == "FAIL" and initial == [0, 0]
+          and fautives == {"390": ["3"], "1280": ["3"]}
+          and all(len(par_scene[w]) == 7 for w in par_scene) and len(pngs) == 14)
+    out.append({"fixture": "scenes-rouge · defaut dans la scene 4 seule, etat initial vert",
+                "verdict": "OK" if ok else "ECHEC",
+                "attendu": "FAIL, etat initial 0 bloquant, seule la scene 3 bloque, 7 scenes x 2 largeurs",
+                "regle": "TF-2299 rouge",
+                "obtenu": (f"{rapport.get('verdict') if rapport else 'illisible'}, initial {initial}, "
+                           f"scenes fautives {fautives}, {len(pngs) if isinstance(pngs, list) else 0} PNG"),
+                "detail": "" if ok else str(pngs)[:300]})
+
+    # VERTE : tout est joue, rien ne bloque, le corps de page n'est pas une scene.
+    page, rapport, pngs = jouer("scenes-verte.html")
+    if not page.exists():
+        return out + absente(page)
+    bp = (rapport or {}).get("breakpoints") or {}
+    jeux = [(bp.get(w) or {}).get("scenes") or {} for w in ("390", "1280")]
+    jouees = [sum(1 for s in j.get("scenes", {}).values() if s.get("applique")) for j in jeux]
+    declarees = [j.get("declarees") for j in jeux]
+    ligne = " ".join(n for n in (rapport or {}).get("non_juge", []) if n.startswith("SCENES (TF-2299)"))
+    ok = (rapport is not None and rapport.get("verdict") == "PASS" and jouees == [7, 7]
+          and declarees == [7, 7] and len(pngs) == 14
+          and "14 scene(s)-largeur jouee(s) sur 14" in ligne and "minuteur" in ligne
+          and "PAS mesure" in ligne and "SCENE NON JOUEE" not in " ".join(rapport["non_juge"]))
+    out.append({"fixture": "scenes-verte · sept scenes jouees, aucune ne bloque",
+                "verdict": "OK" if ok else "ECHEC",
+                "attendu": "PASS, 7 declarees (body exclu) et 7 jouees a chaque largeur, non_juge dit le non mesure",
+                "regle": "TF-2299 verte",
+                "obtenu": f"{(rapport or {}).get('verdict')}, declarees {declarees}, jouees {jouees}",
+                "detail": "" if ok else ligne[:300]})
+
+    # INATTEIGNABLES : deux scenes declarees qu'aucun geste n'affiche, nommees NON JOUEES.
+    page, rapport, pngs = jouer("scenes-inatteignables.html")
+    if not page.exists():
+        return out + absente(page)
+    bp = (rapport or {}).get("breakpoints") or {}
+    scenes = ((bp.get("390") or {}).get("scenes") or {}).get("scenes", {})
+    non_jouees = sorted(n for n, s in scenes.items() if not s.get("applique"))
+    lignes = [n for n in (rapport or {}).get("non_juge", []) if n.startswith("SCENE NON JOUEE")]
+    ok = (rapport is not None and non_jouees == ["1", "2"] and scenes.get("0", {}).get("applique")
+          and len(lignes) == 2 and all("NI RENDUE NI MESUREE" in n for n in lignes))
+    out.append({"fixture": "scenes-inatteignables · deux scenes cachees nommees non jouees",
+                "verdict": "OK" if ok else "ECHEC",
+                "attendu": "scenes 1 et 2 NON JOUEES, une ligne chacune au non_juge, largeurs comprises",
+                "regle": "TF-2299 couverture",
+                "obtenu": f"non jouees {non_jouees}, {len(lignes)} ligne(s) au non_juge",
+                "detail": "" if ok else str(lignes)[:300]})
+    return out
+
+
 def run_thead_colle():
     """TF-0900 — LE CONTENEUR DE TABLEAU CONTRE LE THEAD COLLANT, mesure d'execution.
 
@@ -6194,6 +6297,10 @@ def main():
     etat_initial = run_etat_initial_non_juge()
     if etat_initial:
         res += etat_initial
+    # TF-2299 — une page a scenes declarees ([data-scene]) se joue scene par scene.
+    scenes_declarees = run_scenes_declarees()
+    if scenes_declarees:
+        res += scenes_declarees
     # TF-0890 — le poseur de composants : une API qu'on peut IMPORTER, et une pose jouable hors
     # de l'arbre des skills. Sans ces deux portes, un produit reecrit le poseur.
     poseur = run_poseur_composants()
