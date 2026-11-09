@@ -10,7 +10,7 @@ description: >
   elle-même (→ `gabarits/ETUDE-OPPORTUNITE.md`), qualifier un entrant de produit (→ qualifie-l-entrant)
   ni analyser un prompt (→ prompt-analyzer-l99).
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Tri de sujets — décider où une étude changera une décision

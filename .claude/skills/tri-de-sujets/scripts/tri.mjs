@@ -176,7 +176,9 @@ function principal(argv) {
     process.stderr.write(usage + '\n');
     return 2;
   }
-  const contenu = readFileSync(fichier, 'utf8');
+  // Une redirection PowerShell écrit une marque d'ordre d'octets que JSON.parse refuse.
+  const lire = (f) => readFileSync(f, 'utf8').replace(/^﻿/, '');
+  const contenu = lire(fichier);
   if (verbe === 'normaliser') {
     const r = normaliser(contenu, option(a, '--format') || 'auto');
     if (!r.entrees.length) r.message = 'liste vide : rien à trier, aucun tableau';
@@ -186,7 +188,7 @@ function principal(argv) {
   if (verbe === 'soustraire') {
     const sources = [];
     a.forEach((x, i) => {
-      if (x === '--deja') sources.push({ nom: a[i + 1], contenu: readFileSync(a[i + 1], 'utf8') });
+      if (x === '--deja') sources.push({ nom: a[i + 1], contenu: lire(a[i + 1]) });
     });
     const reprendre = (option(a, '--reprendre') || 'non qualifié').split(',').map((s) => s.trim());
     const r = soustraire(JSON.parse(contenu).entrees, sources, reprendre);

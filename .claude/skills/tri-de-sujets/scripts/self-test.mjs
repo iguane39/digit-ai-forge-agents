@@ -69,6 +69,20 @@ verifier('tableau : 3 colonnes sans motif', !rendreTableau(r, { motif: 'aucun' }
 verifier('tableau : motif réduit', rendreTableau(r, { motif: 'existant' }).includes('| X |'));
 verifier('tableau : vide dit', rendreTableau({ lignes: [] }).startsWith("Rien n'a été retenu"));
 
+// un JSON écrit par une redirection PowerShell porte une marque d'ordre d'octets (09/11/2026)
+{
+  const d = mkdtempSync(join(tmpdir(), 'tri-bom-'));
+  const fe = join(d, 'entrees.json');
+  const fr = join(d, 'rangement.json');
+  writeFileSync(fe, '﻿' + JSON.stringify({ entrees: [{ id: 'a' }, { id: 'b' }] }));
+  writeFileSync(fr, '﻿' + JSON.stringify({ entrees: [{ id: 'a', etat: 'retenu' }] }));
+  const s = spawnSync(process.execPath, [join(ICI, 'tri.mjs'), 'soustraire', fe, '--deja', fr], { encoding: 'utf8' });
+  let garde = [];
+  try { garde = JSON.parse(s.stdout).entrees.map((x) => x.id); } catch { /* sortie illisible : cas rouge */ }
+  verifier('lecture : marque d\'ordre d\'octets tolérée', s.status === 0 && garde.join() === 'b');
+  rmSync(d, { recursive: true, force: true });
+}
+
 // oracle, depuis la source versionnée ou la copie installée : les 2 skills sont voisins
 const qo = join(ICI, '..', '..', 'quality-oracles');
 const oracle = join(qo, 'scripts', 'oracle-tri-de-sujets.mjs');
