@@ -2,7 +2,7 @@
 name: experts-forge
 description: Analyse la demande et complète la réponse en cours par des contributions d'experts de domaine (data, interop-archi…) — annotations ancrées dans un corpus résolu, pool symétrique amont du pool de juges quality-oracles. Chaque expert est un artefact déclaratif (fiche 6 champs : domaine, déclencheurs, corpus, rubrique, frontière, fixture), admis au registre seulement si sa contribution a été jugée matériellement différente d'une baseline (loi : « un expert qui ne change pas matériellement une réponse n'est pas un expert »). Use when / déclencher quand une demande matche les declencheurs d'une fiche en statut ok du registre (analyse de flux de données, import/export, intégration, synchronisation entre systèmes, interopérabilité, dépendance éditeur), ou pour consulter, rejouer ou faire admettre une fiche expert. Ne pas déclencher pour juger un livrable fini (→ quality-oracles), exécuter un workflow multi-agents (→ skill méta), dessiner un schéma (→ digit-ai-schemas), ou auditer un dataset (→ data-quality-auditor).
 metadata:
-  version: "1.7.0"
+  version: "1.8.0"
 ---
 
 # experts-forge — pool de contributeurs par domaine
@@ -26,11 +26,12 @@ Sébastien pour les 2 premières fiches (ses raisons deviennent
 1. Matcher la demande via l'oracle de routage `scripts/route-experts.mjs`
    (patterns lus depuis les fiches, statuts depuis le registre — source unique).
    Seules les fiches **ok** sont routées ; `todo`/`refuse` matchent sans router.
-   Fixtures R1–R11 rejouables : `scripts/self-test-routage.mjs` (R6 route
+   Fixtures R1–R13 rejouables : `scripts/self-test-routage.mjs` (R6 route
    `migration-plateforme-brownfield`, R7 prouve qu'une migration de **données**
    seule ne le route pas — l'exclusion de la fiche est mécanique, pas seulement écrite ;
    R8 route `ops-cloudflare`, R9 prouve que « pages », « accès », D1 ou R2 seuls ne le routent pas ;
-   R10 prouve que la fiche `securite-offensive`, refusée à l'admission, matche un sujet de pentest sans le router, R11 que « sécurité », « attaque » et « vulnérabilité » seuls ne la matchent pas).
+   R10 prouve que la fiche `securite-offensive`, refusée à l'admission, matche un sujet de pentest sans le router, R11 que « sécurité », « attaque » et « vulnérabilité » seuls ne la matchent pas,
+   R12 route `ops-github`, R13 prouve que « GitHub » et « pull request » seuls ne le routent pas).
 2. Produire d'abord la réponse de base normalement (skills métier compris).
 3. Pour chaque fiche matchée : **lire réellement le corpus** (chemins du champ 3),
    puis dérouler la `rubrique` — 1 à 3 annotations actionnables par axe, ancrées
@@ -94,13 +95,13 @@ un réglage ajouté ou retiré rend le corpus rouge.
 
 ```bash
 node scripts/oracle-reglages-corpus.mjs [--registre <json>]   # tous les corpus ops ; registre introuvable : SKIP, jamais PASS
-node scripts/self-test-reglages.mjs                           # corpus réels contre fixtures/reglages-registre.json (copie), 14 cas
+node scripts/self-test-reglages.mjs                           # corpus réels contre fixtures/reglages-registre.json (copie), 17 cas
 ```
 
 La recette porte une copie du registre (`fixtures/reglages-registre.json`), jamais une dépendance au
 fichier du pilot. Enregistré au registre de `quality-oracles`, fixtures rouge/verte au self-test.
-Écart déclaré : GitHub (3 réglages au registre) n'a aucun corpus d'expert, l'oracle le dit en
-avertissement G8.
+GitHub (3 réglages au registre) a son corpus depuis le 09/11/2026 (`corpus-ops-github.md`, point 12, expert `ops-github`
+admis, TF-2278) : l'oracle ne rend plus d'avertissement G8, aucune plateforme du registre n'est sans corpus.
 
 ## Exemple en action
 

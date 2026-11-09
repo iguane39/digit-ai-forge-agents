@@ -21,13 +21,13 @@ const jouer = (args) => {
 };
 const verifier = (nom, ok, detail) => { n++; if (!ok) fails++; console.log(`${ok ? 'PASS' : 'FAIL'} ${nom}${ok ? '' : ' — ' + detail}`); };
 
-// vert : les six corpus ops réels contre la copie du registre
+// vert : les sept corpus ops réels contre la copie du registre (GitHub depuis TF-2278, 09/11/2026)
 const refs = join(skill, 'references');
 const vert = jouer(['--registre', registreCopie, '--references', refs]);
-verifier('R1 vert — les corpus ops réels classent les 6 réglages Supabase et Cloudflare du registre, les 4 autres plateformes disent « aucun réglage »',
-  vert.code === 0 && vert.j.verdict === 'PASS' && vert.j.findings.some((f) => /6 réglage\(s\) classé/.test(f.msg)), JSON.stringify(vert.j && vert.j.findings.map((f) => f.msg.slice(0, 80))));
-verifier('R2 vert — GitHub (3 réglages, aucun corpus) est DIT en avertissement G8, jamais passé sous silence',
-  !!vert.j && vert.j.findings.some((f) => f.sev === 'avertissement' && f.msg.startsWith('G8') && f.msg.includes('GitHub')), 'pas de G8');
+verifier('R1 vert — les corpus ops réels classent les 9 réglages Supabase, Cloudflare et GitHub du registre, les 4 autres plateformes disent « aucun réglage »',
+  vert.code === 0 && vert.j.verdict === 'PASS' && vert.j.findings.some((f) => /9 réglage\(s\) classé/.test(f.msg)), JSON.stringify(vert.j && vert.j.findings.map((f) => f.msg.slice(0, 80))));
+verifier('R2 vert — GitHub (3 réglages) a son corpus depuis TF-2278 : l\'avertissement G8 a disparu, aucune plateforme du registre n\'est sans corpus',
+  !!vert.j && !vert.j.findings.some((f) => f.sev === 'avertissement' || /^G8/.test(f.msg)), JSON.stringify(vert.j && vert.j.findings.map((f) => f.msg.slice(0, 60))));
 
 // copie des corpus pour les mutations
 const copie = join(tmp, 'references');
@@ -49,6 +49,12 @@ rouge('R7 rouge — le renvoi au registre retiré : G2', 'G2', 'corpus-ops-cloud
 rouge('R8 rouge — le registre non daté : G3', 'G3', 'corpus-ops-supabase.md', (s) => s.replace('registre du pilot lu le 06/11/2026', 'registre du pilot lu'));
 rouge('R9 rouge — le point retiré du corpus AWS : G1', 'G1', 'corpus-ops-aws.md', (s) => s.replace('**Réglages de sécurité de la plateforme**', '**Autre point**'));
 rouge('R10 rouge — une puce classant un réglage absent du registre : G7', 'G7', 'corpus-ops-azure.md', (s) => s.trimEnd() + '\n   - Réglage inventé de la plateforme — **défaut** : sans entrée au registre.\n');
+
+// TF-2278 : les trois réglages GitHub, un défaut à la fois (le corpus GitHub porte ses puces à 4 espaces, leurs suites à 6)
+const sansPuceGithub = (motif) => (s) => s.split('\n').filter((l, i, a) => !(l.includes(motif) || (a[i - 1] && a[i - 1].includes(motif) && /^\s{6}\S/.test(l) && !/^\s*-/.test(l)))).join('\n');
+rouge('R14 rouge — les alertes Dependabot retirées du corpus GitHub : G5', 'G5', 'corpus-ops-github.md', sansPuceGithub('Alertes Dependabot sur les dépendances vulnérables'));
+rouge('R15 rouge — la protection des secrets à la poussée classée défaut au lieu de décision (elle exige un achat) : G6', 'G6', 'corpus-ops-github.md', (s) => s.replace('(secret_scanning_push_protection) — **décision**', '(secret_scanning_push_protection) — **défaut**'));
+rouge('R16 rouge — le corpus GitHub sans renvoi au registre : G2', 'G2', 'corpus-ops-github.md', (s) => s.replace(/REGLAGES-SURS-PAR-DEFAUT\.json/g, 'REGLAGES.json'));
 
 rouge('R10 bis rouge — la plateforme sans réglage ne le dit plus (« aucun réglage » retiré du corpus GCP) : G4', 'G4', 'corpus-ops-gcp.md', (s) => s.replace('aucun réglage', 'des réglages'));
 
