@@ -281,6 +281,50 @@
    "provenance": "TF-1700 (lot Produit-82 20261014b, RA-1, 14/10/2026) — run-oracles déclenche oracle-sca sur le DOSSIER dès qu'un manifeste y apparaît ; l'oracle ne lisait que la racine et rendait SKIP « aucun manifeste » sur un dépôt qui portait tests/requirements.txt. Les deux dossiers ne portent leur manifeste que dans tests/ : avant la correction, rouge et verte rendaient SKIP ; après, la rouge (requests==2.19.0) FAIL et la verte (packaging==24.1) PASS."
   },
   {
+   "nom": "sca-verrou-uv",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sca.mjs",
+    "{fixture}",
+    "--osv-fige={skilldir}/fixtures/sca-osv-fige.json"
+   ],
+   "red": "sca-verrou-red",
+   "green": "sca-verrou-green",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "PyPI requests@2.19.0"
+   ],
+   "dependant_outil": "aucun sous --osv-fige (TF-1107 : données figées datées) ; en usage réel pip-audit, uvx pip-audit ou OSV (réseau)",
+   "provenance": "TF-2281 (09/11/2026, reste de TF-2272) — oracle-sca ne lisait ni uv.lock ni poetry.lock : un produit Python verrouillé rendait SKIP « aucun manifeste ». Les deux dossiers ne portent qu'un uv.lock : avant la correction, rouge et verte rendaient SKIP ; après, la rouge (requests 2.19.0, projet virtual et paquet git écartés) FAIL et la verte (packaging 24.1, projet editable écarté) PASS."
+  },
+  {
+   "nom": "sca-verrou-poetry",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sca.mjs",
+    "{fixture}",
+    "--osv-fige={skilldir}/fixtures/sca-osv-fige.json"
+   ],
+   "red": "sca-verrou-poetry-red",
+   "green": "sca-verrou-poetry-green",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "PyPI flask@0.12"
+   ],
+   "dependant_outil": "aucun sous --osv-fige (TF-1107 : données figées datées) ; en usage réel pip-audit, uvx pip-audit ou OSV (réseau)",
+   "provenance": "TF-2281 (09/11/2026) — même défaut côté poetry.lock. La rouge porte flask 0.12 et une table [package.dependencies] (name et version) qui ne doit pas être lue comme un paquet : lue comme tel, elle rendrait SKIP faute de réponse figée pour ne-doit-pas-etre-lu@9.9.9. La verte porte packaging 24.1 et la même table."
+  },
+  {
    "nom": "a11y",
    "cmd": [
     "python3",

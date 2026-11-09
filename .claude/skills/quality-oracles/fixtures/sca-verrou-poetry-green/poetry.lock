@@ -1,0 +1,21 @@
+# Fixture synthétique (TF-2281) — sens vert d'oracle-sca sur un verrou poetry : packaging 24.1 (aucun avis aux données
+# figées sca-osv-fige.json), avec la même table [package.dependencies] qui ne doit pas être lue comme un paquet.
+
+[[package]]
+name = "packaging"
+version = "24.1"
+description = "Fixture synthétique."
+optional = false
+python-versions = "*"
+files = [
+    {file = "packaging-24.1.tar.gz", hash = "sha256:0000000000000000000000000000000000000000000000000000000000000000"},
+]
+
+[package.dependencies]
+name = "ne-doit-pas-etre-lu"
+version = "9.9.9"
+
+[metadata]
+lock-version = "2.0"
+python-versions = "^3.11"
+content-hash = "0000000000000000000000000000000000000000000000000000000000000000"

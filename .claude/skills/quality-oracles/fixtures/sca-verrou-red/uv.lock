@@ -1,0 +1,30 @@
+# Fixture synthétique (TF-2281) — sens rouge d'oracle-sca sur un verrou uv : requests 2.19.0 (avis connus aux données
+# figées sca-osv-fige.json), le projet lui-même (source virtual) et un paquet hors registre (git, nommé au non_juge).
+version = 1
+requires-python = ">=3.11"
+
+[[package]]
+name = "demo-app"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "requests" },
+    { name = "paquet-git" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "requests", specifier = "==2.19.0" },
+    { name = "paquet-git", git = "https://example.invalid/paquet-git.git" },
+]
+
+[[package]]
+name = "requests"
+version = "2.19.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://example.invalid/requests-2.19.0.tar.gz", hash = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+
+[[package]]
+name = "paquet-git"
+version = "0.0.1"
+source = { git = "https://example.invalid/paquet-git.git?rev=0000000#0000000000000000000000000000000000000000" }

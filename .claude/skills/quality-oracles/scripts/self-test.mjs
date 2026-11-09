@@ -3372,6 +3372,87 @@ else {
   }
 }
 
+// TF-2281 (09/11/2026, reste de TF-2272) — oracle-sca LIT uv.lock ET poetry.lock, ET LANCE pip-audit PAR uvx.
+// La paire rouge/verte de verrou est au manifest (données OSV figées). Ce cas prouve les VOIES D'OUTIL, sans réseau :
+// un outil SIMULÉ (fixtures/sca-outil-simule.mjs) joue `pip-audit` et `uvx pip-audit`, désigné par QO_SCA_PIP_AUDIT /
+// QO_SCA_UVX ; un chemin injouable simule l'absence de l'outil. Sens : pip-audit absent et uvx présent → le verrou est
+// audité par `uvx pip-audit … --no-deps --disable-pip`, dans un requirements dérivé hors de la cible puis supprimé ;
+// le projet lui-même et le paquet hors registre ne sont pas audités et le second est nommé ; deux versions d'un même
+// nom → deux couches (pip-audit refuse le doublon) ; l'outil en échec rend un SKIP nommé, jamais un PASS.
+{
+  const SIM = path.join(SKILLDIR, 'fixtures', 'sca-outil-simule.mjs');
+  const ABSENT = path.join(os.tmpdir(), 'qo-sca-outil-absent');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-sca-verrou-'));
+  const tmpOracle = path.join(tmp, 'tmp'); fs.mkdirSync(tmpOracle);
+  const trace = path.join(tmp, 'appels.jsonl');
+  const lireTrace = () => (fs.existsSync(trace) ? fs.readFileSync(trace, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l)) : []);
+  const juger = (cible, env) => {
+    fs.rmSync(trace, { force: true });
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-sca.mjs'), cible],
+      { encoding: 'utf8', timeout: 120000, env: { ...process.env, QO_PERIMETRE: '', QO_SIM_TRACE: trace, TEMP: tmpOracle, TMP: tmpOracle, TMPDIR: tmpOracle, ...env } });
+    try { return JSON.parse(r.stdout); } catch { return null; }
+  };
+  const viaUvx = { QO_SCA_PIP_AUDIT: ABSENT, QO_SCA_UVX: SIM };
+  const direct = { QO_SCA_PIP_AUDIT: SIM, QO_SCA_UVX: ABSENT };
+  const dossier = (nom, fichier, contenu) => { const d = path.join(tmp, nom); fs.mkdirSync(d); fs.writeFileSync(path.join(d, fichier), contenu); return d; };
+  const bloc = (nom, version, source) => `[[package]]\nname = "${nom}"\nversion = "${version}"\nsource = ${source}\n\n`;
+  const REG = '{ registry = "https://pypi.org/simple" }';
+  const enteteUv = 'version = 1\nrequires-python = ">=3.11"\n\n';
+  const projet = bloc('demo-app', '0.1.0', '{ virtual = "." }');
+  const gitUv = bloc('paquet-git', '0.0.1', '{ git = "https://example.invalid/paquet-git.git?rev=0000000#0000000000000000000000000000000000000000" }');
+  try {
+    const uvVuln = dossier('uv-vuln', 'uv.lock', enteteUv + projet + bloc('django', '1.4', REG) + gitUv);
+    let j = juger(uvVuln, viaUvx);
+    const appels = lireTrace().filter(a => a.argv.includes('-r'));
+    const reqUtilise = appels[0] && appels[0].argv[appels[0].argv.indexOf('-r') + 1];
+    !j || j.verdict !== 'FAIL' || !j.findings.some(f => f.sev === 'bloquant' && /PyPI django@1\.4/.test(f.msg) && f.where === 'uv.lock')
+      ? ko(`TF-2281 uv.lock avec django 1.4, pip-audit absent, uvx présent : attendu FAIL sur PyPI django@1.4 (uv.lock), obtenu ${j && j.verdict}`)
+      : ok('TF-2281 uv.lock avec django 1.4, pip-audit absent et uvx présent : FAIL sur PyPI django@1.4, constat localisé sur uv.lock');
+    appels.length !== 1 || appels[0].mode !== 'uvx' || !appels[0].argv.includes('--no-deps') || !appels[0].argv.includes('--disable-pip')
+      ? ko(`TF-2281 uv.lock : un seul appel « uvx pip-audit … --no-deps --disable-pip » attendu (rien n'est résolu ni installé), obtenu ${JSON.stringify(appels)}`)
+      : ok('TF-2281 uv.lock : un seul appel « uvx pip-audit … --no-deps --disable-pip », rien n\'est résolu ni installé');
+    typeof reqUtilise !== 'string' || !reqUtilise.startsWith(tmpOracle) || reqUtilise.startsWith(uvVuln) || fs.readdirSync(tmpOracle).length !== 0
+      ? ko(`TF-2281 le requirements dérivé du verrou doit être écrit dans le dossier temporaire, jamais dans la cible, et supprimé : ${reqUtilise}, ${fs.readdirSync(tmpOracle).length} reste(s)`)
+      : ok('TF-2281 le requirements dérivé du verrou est écrit dans le dossier temporaire, jamais dans la cible, et supprimé après l\'audit');
+    !j || !j.non_juge.some(x => /paquet-git/.test(x)) || j.non_juge.some(x => /demo-app/.test(x))
+      ? ko(`TF-2281 uv.lock : le paquet hors registre doit être NOMMÉ au non_juge et le projet lui-même absent : ${JSON.stringify(j && j.non_juge.filter(x => /registre/.test(x)))}`)
+      : ok('TF-2281 uv.lock : le paquet git est nommé au non_juge (non audité), le projet lui-même n\'y figure pas');
+
+    j = juger(uvVuln, direct);
+    const tr = lireTrace();
+    !j || j.verdict !== 'FAIL' || !tr.length || !tr.every(a => a.mode === 'direct')
+      ? ko(`TF-2281 pip-audit présent, uvx absent : pip-audit doit être lancé directement, sans uvx (verdict ${j && j.verdict}, appels ${JSON.stringify(tr.map(a => a.mode))})`)
+      : ok('TF-2281 pip-audit présent et uvx absent : pip-audit est lancé directement, sans uvx (FAIL sur le verrou)');
+
+    const uvMulti = dossier('uv-multi', 'uv.lock', enteteUv + bloc('alpha', '1.0.0', REG) + bloc('alpha', '2.0.0', REG) + bloc('beta', '3.1.0', REG));
+    j = juger(uvMulti, viaUvx);
+    const couches = lireTrace().filter(a => a.argv.includes('-r'));
+    !j || j.verdict !== 'PASS' || couches.length !== 2
+      ? ko(`TF-2281 uv.lock avec deux versions du même paquet : attendu PASS en 2 couches (pip-audit refuse le doublon), obtenu ${j && j.verdict} en ${couches.length} appel(s)`)
+      : ok('TF-2281 uv.lock avec deux versions du même paquet : PASS en deux couches, pip-audit n\'a pas à refuser un doublon');
+
+    const poetry = dossier('poetry-vuln', 'poetry.lock', '[[package]]\nname = "django"\nversion = "1.4"\n\n[package.dependencies]\nname = "ne-doit-pas-etre-lu"\nversion = "9.9.9"\n\n'
+      + '[[package]]\nname = "paquet-git"\nversion = "0.0.1"\n\n[package.source]\ntype = "git"\nurl = "https://example.invalid/paquet-git.git"\n\n[metadata]\nlock-version = "2.0"\n');
+    j = juger(poetry, viaUvx);
+    const lignes = lireTrace().filter(a => a.argv.includes('-r'));
+    !j || j.verdict !== 'FAIL' || !j.non_juge.some(x => /paquet-git/.test(x)) || JSON.stringify(j).includes('ne-doit-pas-etre-lu') || lignes.length !== 1
+      ? ko(`TF-2281 poetry.lock : attendu FAIL sur django 1.4, paquet git nommé, table [package.dependencies] non lue comme un paquet, obtenu ${j && j.verdict}`)
+      : ok('TF-2281 poetry.lock : FAIL sur django 1.4 ; la table [package.dependencies] n\'est pas lue comme un paquet, le paquet git est nommé au non_juge');
+
+    j = juger(uvVuln, { ...direct, QO_SIM_ECHEC: '1' });
+    !j || j.verdict !== 'SKIP' || !/sans sortie exploitable/.test(String(j.motif)) || !/uv\.lock/.test(String(j.motif))
+      ? ko(`TF-2281 outil en échec : attendu SKIP dont le motif nomme le verrou et l'absence de sortie, jamais PASS ; obtenu ${j && j.verdict} « ${j && j.motif} »`)
+      : ok('TF-2281 outil présent mais audit en échec : SKIP motivé qui nomme le verrou, jamais un PASS');
+
+    const req = dossier('req-uvx', 'requirements.txt', 'django==1.4\n');
+    j = juger(req, viaUvx);
+    const rq = lireTrace().filter(a => a.argv.includes('-r'));
+    !j || j.verdict !== 'FAIL' || rq.length !== 1 || rq[0].mode !== 'uvx' || rq[0].argv.includes('--no-deps')
+      ? ko(`TF-2281 requirements.txt, pip-audit absent et uvx présent : attendu FAIL via uvx, sans --no-deps (résolution normale), obtenu ${j && j.verdict} ${JSON.stringify(rq)}`)
+      : ok('TF-2281 requirements.txt avec django 1.4, pip-audit absent et uvx présent : FAIL via « uvx pip-audit », résolution normale');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-1701 (lot Produit-82 20261014b, RA-2) — GITLEAKS LISAIT LES EMPREINTES D'UN JOURNAL D'ORACLES
 // COMME DES CLÉS. Sa règle `generic-api-key` accusait les empreintes SHA-256 indexées par des chemins
 // contenant `make_htpasswd` ou `masquer_secrets`, et oracle-secrets rendait FAIL sur la preuve d'un run.
