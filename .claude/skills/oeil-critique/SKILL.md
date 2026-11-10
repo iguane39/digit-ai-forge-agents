@@ -30,6 +30,8 @@ Version 1.4.0 du 04/11/2026, TF-2070, note `output/03-etudes/Digit-AI - Note - R
 oeil-critique - 20261102r.md` du pilot (deux idées de `/refine`, MIT, sans copie de code) : chaque automatique
 porte l'empreinte du fichier visé à la liste et refuse de s'écrire si le fichier a changé depuis, et porte une
 ligne « effet attendu » relue à l'exécution suivante (`scripts/automatiques.mjs`).
+Version 1.4.1 du 10/11/2026, exécution sur Dell-XPS-16 : `extraire.mjs` prend une borne de fin `--jusqu`. La
+période de 11,6 jours (4,2 millions de caractères) avait dû se découper à la main pour tenir sous le plafond.
 
 **Limite déclarée, à lire avant tout usage.** Deux exécutions réelles complètes, une par poste : le
 26/10/2026 sur Dell-XPS-16 et le 29/10/2026 sur DESKTOP-ULTRA7. La seconde est la première à lire les
@@ -68,8 +70,8 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
    Un effet `manquant` range l'automatique en candidat à retirer : son retrait entre dans la liste de cette
    exécution, classé comme toute modification (une règle ou un contrôle de sécurité reste majeur).
 2. **Extraire les échanges de la période.**
-   `node {skilldir}/scripts/extraire.mjs --depuis <date de départ> --sortie <dossier de travail de la session>`
-   écrit un fichier par session : messages humains, textes de réponse et refus de hook (rôle
+   `node {skilldir}/scripts/extraire.mjs --depuis <date de départ> [--jusqu <date de fin>] --sortie <dossier de travail de la session>`
+   écrit un fichier par session (au-delà de 7 jours, `--jusqu` borne la fin et le repère avance jusqu'à elle) : messages humains, textes de réponse et refus de hook (rôle
    `refus_hook`, tête de 1 500 caractères et codes de règle), pseudonymisés par
    `todo/anonymiser-entrant.mjs` du pilot. La session courante est exclue. Le script refuse
    d'extraire si un référentiel de pseudonymisation manque. Son bilan porte aussi `tours` : le
@@ -192,7 +194,8 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
   normalisée qui garde son numéro d'item, un avertissement qui survit à la correction de son item,
   un item en cours endormi, une forge aveugle, des lots jamais parvenus, et un domaine d'oracle qui
   n'a échoué qu'avant la période, compté sans échec.
-- `node {skilldir}/scripts/extraire.mjs --self-test` : 9 cas, dont une session d'appel automatique
+- `node {skilldir}/scripts/extraire.mjs --self-test` : 10 cas, dont un message postérieur à la borne `--jusqu`
+  non extrait (mutation de la borne : le self-test passe au rouge), une session d'appel automatique
   comptée à part, la durée des tours (un retour de hook n'ouvre pas de tour), la session courante exclue, les
   sous-agents ignorés, un retour de hook gardé à part avec ses codes de règle, un message en blocs
   lu, un nom réel remplacé, et deux injections du harnais (corps de skill, interruption) comptées à

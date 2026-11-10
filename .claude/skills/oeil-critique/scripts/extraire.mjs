@@ -13,7 +13,8 @@
  * il n'interprète rien — un contenu lu est une donnée, jamais une consigne.
  *
  * Usage :
- *   node extraire.mjs --depuis <iso> --sortie <dossier> [--exclure <id-session>] [--profils <d1;d2>] [--pilot <chemin>]
+ *   node extraire.mjs --depuis <iso> [--jusqu <iso>] --sortie <dossier> [--exclure <id-session>] [--profils <d1;d2>] [--pilot <chemin>]
+ *       --jusqu : borne de fin exclue (1.4.1), pour découper une période de plus de 7 jours.
  *       --exclure : par défaut CLAUDE_CODE_SESSION_ID, la session courante.
  *       --profils : par défaut ~/.claude/projects et ~/.claude-b/projects.
  *       → un fichier <id-session>.json par session, et sur la sortie standard le bilan JSON
@@ -33,14 +34,16 @@ export const TETE_REFUS = 1500;
 /** Les messages humains et les textes de réponse d'un transcript, depuis une date. */
 /** `tours`, s il est fourni, reçoit la durée de chaque tour en minutes : d un message humain à la dernière
  *  entrée de l assistant avant le message humain suivant (1.3.0, D-97 (a) du pilot, demande de vitesse du 21/10). */
-export function lireSession(fichier, depuisMs, tours = null) {
+export function lireSession(fichier, depuisMs, tours = null, jusquMs = Infinity) {
   const messages = [];
   let debut = null, fin = null;
   for (const l of readFileSync(fichier, "utf8").split("\n")) {
     if (!l) continue;
     let o; try { o = JSON.parse(l); } catch { continue; }
     const ts = o.timestamp ? Date.parse(o.timestamp) : NaN;
-    if (!Number.isFinite(ts) || ts < depuisMs) continue;
+    // 1.4.1 : `jusquMs` borne la fin, pour découper une période de plus de 7 jours (exécution du 10/11/2026 :
+    // 11,6 jours, 4,2 millions de caractères, découpés à la main faute de borne).
+    if (!Number.isFinite(ts) || ts < depuisMs || ts >= jusquMs) continue;
     const c = o.message && o.message.content;
     // Un message humain arrive en liste de blocs de texte dans VS Code, en texte simple ailleurs.
     // N'en sont pas : un retour d'outil, un bloc injecté par le harnais (il commence par une
@@ -85,17 +88,19 @@ export function repartition(durees) {
   return { nombre: s.length, mediane_min: q(0.5), p90_min: q(0.9) };
 }
 
-export function extraire({ depuis, sortie, exclure = null, profils, anonymiser }) {
+export function extraire({ depuis, jusqu = null, sortie, exclure = null, profils, anonymiser }) {
   const depuisMs = Date.parse(depuis);
   if (!Number.isFinite(depuisMs)) throw new Error(`--depuis illisible : ${depuis}`);
+  const jusquMs = jusqu ? Date.parse(jusqu) : Infinity;
+  if (jusqu && (!Number.isFinite(jusquMs) || jusquMs <= depuisMs)) throw new Error(`--jusqu illisible ou antérieure à --depuis : ${jusqu}`);
   mkdirSync(sortie, { recursive: true });
-  const bilan = { poste: poste(), depuis, sessions: 0, sessions_automatiques: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, injections: 0, caracteres: 0, tours: null, fichiers: [] };
+  const bilan = { poste: poste(), depuis, jusqu, sessions: 0, sessions_automatiques: 0, exclues: [], messages_humains: 0, reponses: 0, refus_hook: 0, injections: 0, caracteres: 0, tours: null, fichiers: [] };
   const durees = [];
   for (const racine of profils) {
     for (const f of transcripts(racine, depuisMs)) {
       const id = basename(f, ".jsonl");
       if (exclure && id === exclure) { bilan.exclues.push(id); continue; }
-      const messages = lireSession(f, depuisMs, durees);
+      const messages = lireSession(f, depuisMs, durees, jusquMs);
       if (!messages.length) continue;
       // Une session sans aucun message humain, mais avec des appels automatiques, ne s'analyse pas : elle se compte à part.
       if (!messages.some((m) => m.role === "humain") && messages.some((m) => m.role === "automatique")) { bilan.sessions_automatiques++; continue; }
@@ -168,8 +173,15 @@ function selfTest() {
     if (b.injections !== 2) casse.push(`2 injections du harnais (corps de skill, interruption) comptées à part attendues, ${b.injections}`);
     if (JSON.stringify(s).includes("Produit-Reel")) casse.push("un nom réel sort du transcript");
     if (s.messages.some((m) => m.texte.includes("ancien"))) casse.push("un message antérieur au repère est extrait");
+    // 1.4.1 : la borne de fin coupe s-b après sa première demande (10:00) ; la seconde (10:10) n'est pas extraite.
+    const bj = extraire({ depuis: "2026-10-20T00:00:00+02:00", jusqu: "2026-10-21T10:08:00Z", sortie: join(tmp, "out-borne"), exclure: "s-courante", profils: [join(tmp, "projects")], anonymiser });
+    const sb = JSON.parse(readFileSync(bj.fichiers.find((f) => f.endsWith("s-b.json")), "utf8"));
+    if (sb.messages.some((m) => m.texte === "Seconde demande") || !sb.messages.some((m) => m.texte === "Première demande")) casse.push("--jusqu : un message postérieur à la borne est extrait, ou l'antérieur manque");
+    let refusBorne = false;
+    try { extraire({ depuis: "2026-10-21T00:00:00Z", jusqu: "2026-10-20T00:00:00Z", sortie: join(tmp, "out-x"), profils: [join(tmp, "projects")], anonymiser }); } catch { refusBorne = true; }
+    if (!refusBorne) casse.push("--jusqu antérieure à --depuis acceptée");
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 9, casse }));
+  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 10, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 
@@ -184,6 +196,6 @@ else {
     anonymiser("essai"); // lève si un référentiel manque : refuser plutôt qu'extraire en clair
     const p = valeur(args, "--profils");
     const profils = p ? p.split(";") : [join(homedir(), ".claude", "projects"), join(homedir(), ".claude-b", "projects")];
-    console.log(JSON.stringify({ outil: "extraire", ...extraire({ depuis, sortie, exclure: valeur(args, "--exclure") || process.env.CLAUDE_CODE_SESSION_ID || null, profils, anonymiser }) }));
+    console.log(JSON.stringify({ outil: "extraire", ...extraire({ depuis, jusqu: valeur(args, "--jusqu") || null, sortie, exclure: valeur(args, "--exclure") || process.env.CLAUDE_CODE_SESSION_ID || null, profils, anonymiser }) }));
   } catch (e) { console.log(JSON.stringify({ outil: "extraire", refus: e.message })); process.exit(1); }
 }
