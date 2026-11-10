@@ -28,7 +28,8 @@ utilisateur, c'est une **navigation** : le contraste signale le changement de pa
 
 `lire-marque.mjs` rend la **première** famille de la pile pour pptxgenjs (une face de police, pas
 une pile CSS) : la police doit être installée sur le poste de rendu, sinon PowerPoint substitue
-en silence. **Graisses, corps et interlignage : [à valider]** — ni la charte v2 ni les jetons du
+en silence. `lire-marque.mjs` le vérifie (champ `polices_poste`, TF-2354), et le texte du PDF
+exporté se lit pour les mots doublés que cette substitution produit (`scripts/controler-mots-doubles.py`). **Graisses, corps et interlignage : [à valider]** — ni la charte v2 ni les jetons du
 support « diapositives » ne portent d'échelle typographique. Ne pas les figer slide par slide.
 
 ## 2 · Palette — correspondance jeton → usage
@@ -126,11 +127,27 @@ Toujours **français**. Année de référence : **2026**, sauf instruction contr
 « L'IA à taille humaine » — baseline de couverture attestée par le gabarit B de
 `digit-ai-propale`. Toute autre formulation de marque : **[à valider]**.
 
-## 9 · Ce que cette charte ne fixe pas (non jugé)
+## 9 · Usages tranchés par le porteur, puis ce que cette charte ne fixe pas (non jugé)
 
-Icônes, jeu de puces, style de tableau, emploi des couleurs sémantiques sur une diapositive,
-ombres, animations, gabarit de notes de présentateur, échelle typographique (graisses, corps,
-interlignage). Le dossier de marque porte des jetons pour une partie d'entre eux (sémantiques,
-rayons, espacements) mais **pas** leur usage sur ce support : ne pas les improviser slide par
-slide — les faire trancher par le porteur de la charte, puis les écrire **ici, comme usage**, et
-chez l'émetteur, **comme valeur**.
+### Style d'un tableau de contenu — décision D-44 (a) du 29/09/2026 (TF-2371)
+
+Le porteur a tranché le style d'un tableau sur une diapositive de **contenu**. Ce sont des **usages** :
+ils nomment la clé rendue par `lire-marque.mjs`, jamais une valeur (celle-ci vit chez l'émetteur).
+
+- **En-tête de tableau** : fond `fond_couverture` (le thème sombre), encre `encre_couverture`, en **gras**.
+- **Formes à recopier** (propositions entre guillemets, dans une colonne de consignes) : encre `accent_filets`, en **gras**.
+- **Filets et lignes du corps** : `trait_contenu`, comme au § 2.
+- La première ligne se déclare aussi comme en-tête dans le fichier (`firstRow`), ce que
+  `scripts/accessibilite-deck.py` pose et contrôle (TF-2368).
+
+*Le fait* : la charte ne fixait pas le style de tableau et demandait de le faire trancher avant emploi ; deux
+supports (un pitch, une revue de CV) ont employé l'usage ci-dessus, et la décision tranchée n'était pas redescendue
+dans la charte.
+
+### Ce que la charte ne fixe pas encore
+
+Icônes, jeu de puces, emploi des couleurs sémantiques sur une diapositive, ombres, animations, gabarit de
+notes de présentateur, échelle typographique (graisses, corps, interlignage). Le dossier de marque porte des
+jetons pour une partie d'entre eux (sémantiques, rayons, espacements) mais **pas** leur usage sur ce support :
+ne pas les improviser slide par slide — les faire trancher par le porteur de la charte, puis les écrire **ici,
+comme usage** (voir l'usage tranché ci-dessus), et chez l'émetteur, **comme valeur**.

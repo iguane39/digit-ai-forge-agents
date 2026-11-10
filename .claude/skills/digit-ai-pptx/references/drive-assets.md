@@ -14,11 +14,16 @@ quoi et par quel critère on y sélectionne un fichier.
 | Classe | Dépôt / ID | Contenu | Sélection |
 |---|---|---|---|
 | **Illustrations** | bibliothèque `images` · `1CszZdULRFiGe6x0TLZyTZS2nH_XCj9_A` | ~1000 `.jpg` tagués en kebab-case (`equipe-reunion-presentation.jpg`, `datacenter-salle-serveurs.jpg`, `arbre-champ-majestueux.jpg`…) | par **tags** = tokens du nom (`--search`) |
-| **Logos** | sous-dossier `logos` · `1DQfv1_Zr6xSVGNrXEXv59NviNIdCvQ_4` | `.png` transparents, logos clients/partenaires (`Client-O.png`, `Client-P.png`, `Client-B.png`) | par **nom du client** |
+| **Logos** | sous-dossier `logos` · `1DQfv1_Zr6xSVGNrXEXv59NviNIdCvQ_4` | `.png` transparents, logos clients/partenaires (`Client-O.png`, `Client-P.png`, `Client-B.png`) ; un logo vectoriel `.svg` déposé à la main se prépare aussi (§ 4) | par **nom du client** |
 | **Profils** | sous-dossier `profils` · `180h2DHTjZUDQp2I9GJvIpmvuG3w-uWGN` | `.webp` carrés, photos de personnes (`dirigeant`, `second-intervenant`, `intervenant-3`, `intervenant-4`, `intervenant-5`) | par **rôle** |
 
 `logos` et `profils` sont imbriqués dans `images` (listables comme sous-dossiers). Raccourcis
 du script : `images`, `logos`, `profils`.
+
+> **Le nom du dossier des logos se lit, il ne se suppose pas (TF-2377).** Ce fichier dit `logos` pour le
+> dépôt Drive ; la bibliothèque d'images **locale** de l'émetteur peut nommer le sien `logo`. Le 30/09/2026, le
+> logo d'un client était dans « logo » alors que le skill cherchait « logos ». Lister la bibliothèque de
+> l'émetteur (`--list`, ou son dossier local) et prendre le nom que l'on y lit.
 
 > **Noms de fichiers pseudonymisés (2026-09-11, TF-1021).** Les noms de logos clients et de
 > photos de profil cités dans ce fichier sont des **pseudonymes** (`Client-O.png`,
@@ -76,6 +81,16 @@ valider. Budget : base64 transite par le contexte → ≤ ~10 images / ~1,5 Mo p
 ## 4. Préparation — `prepare_images.py` (ratio préservé, aucun cadre)
 
 Avant embarquement, **toujours** passer par `scripts/prepare_images.py` :
+
+- **Formats admis (TF-2377)** : rasters `jpg`, `jpeg`, `png`, `webp`, `gif`, `bmp`, `tif`, `tiff` (Pillow) et
+  `svg`. Un SVG est rendu par un **navigateur** (Chromium de Playwright, à défaut le Chrome ou l'Edge du poste)
+  parce qu'il applique les dégradés : fond transparent, facteur 3, puis **rognage à la boîte non transparente**.
+  Le 30/09/2026, un logo à dégradé rendu par un moteur qui les ignore est sorti **noir au lieu de vert**, sans
+  erreur. Tout autre format (`ai`, `eps`, `pdf`, `emf`, `wmf`, `cdr`, `psd`, `heic`…) est **refusé avec un
+  message** (exit 2, rien d'écrit) ; il en va de même d'un SVG qui référence une ressource externe, qui n'a
+  ni dimensions ni `viewBox`, ou quand aucun navigateur n'est lançable : le rendu approximatif n'existe pas.
+  `fetch_drive_assets.py` ne liste ni ne télécharge que les rasters : un SVG vient du dossier local de
+  l'émetteur.
 
 - **Transcodage** `.webp`/`.gif` → **PNG** : PowerPoint n'embarque pas le webp de façon
   fiable ; les profils sont en webp → transcodage obligatoire. (Le rendu peut sinon afficher
