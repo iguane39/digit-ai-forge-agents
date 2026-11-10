@@ -21,6 +21,36 @@ Chaque ligne donne un **point de départ** : le curseur ethos/logos/pathos (E / 
 - **Logos** = raisonnement (faits, chiffres, ROI, options). Domine dès qu'il faut **décider** ou **acheter**.
 - **Pathos** = engagement (douleur, désir, récit, sécurité). Domine dès qu'il faut **adhérer**, **mémoriser** ou **débloquer** une relation.
 
+## Formation / atelier — détail (TF-2315, TF-2317)
+
+**Cadrage avant le programme.** Le programme d'une formation part de l'usage attendu, pas de la
+lettre de la propale. Pour chaque module, deux questions se posent avant d'écrire une ligne du
+programme : quel est son public réel (qui le suit, à quel poste et quel niveau, ce qu'il fera de la
+formation le lendemain), et se suit-il seul ou suppose-t-il un autre module déjà suivi. Les réponses forment le tableau
+« Public par module » du fichier de cadrage (`references/gabarit-cadrage.md`). Le programme se
+confronte ensuite à ce que chaque public devra savoir faire. Un écart avec la lettre de la propale
+se dit et se fait trancher : il ne se comble pas en silence. *Le fait* : le 13/10/2026, des modules
+bâtis sur la lettre de la propale ont été enchaînés comme s'ils se suivaient dans l'ordre ; le
+retour du 26/10 (« les formations ne correspondent à rien de demandé ») a fait refaire les 3 supports.
+
+**Trois pièces, tirées d'un seul fichier de contenu.** Une formation n'est pas livrée avec moins de
+trois pièces, et le contrat de sortie est binaire :
+- le **support**, les diapositives projetées (rendu par `digit-ai-pptx`) ;
+- le **kit du participant** : énoncés des exercices, consignes, ressources ; aucune solution ;
+- la **fiche du formateur** : préparation de la veille (matériel, accès, comptes, essais), déroulé
+  avec la durée de chaque diapositive, solutions des exercices, questions orales à poser, plan de
+  secours (exercice qui échoue, temps qui manque).
+
+Les trois pièces sortent du même fichier de contenu : une pièce écrite à la main à côté dérive des
+autres. La somme des durées d'un bloc ne dépasse pas son créneau, et une pièce ne renvoie qu'à une
+pièce qui existe (une note de support qui cite « la fiche du formateur » la livre). *Le fait* : relevé
+le 09/11/2026, quatre jours avant la séance, d'une formation d'une journée livrée en deux pièces
+depuis le 13/10 : la note de la diapositive 18 renvoyait à un « kit formateur » qui n'existait pas, les
+solutions des exercices 4 et 5 étaient imprimées dans le kit du participant, et le matin portait 226
+minutes de notes pour 195 de créneau. Le contrôle sur les pièces livrées (fiche présente, aucune
+solution dans le kit) est confié à `oracle-programme-formation` du skill `quality-oracles` (décision
+du 10/11/2026) ; le self-test de ce skill tient ici le texte du contrat, pièce par pièce (C5).
+
 ## Publication réseau — détail (TF-1155)
 
 Deux écritures, jamais interchangeables. Le **profil d'une personne** écrit à la première

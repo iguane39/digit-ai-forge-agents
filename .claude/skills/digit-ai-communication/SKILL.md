@@ -18,7 +18,7 @@ La compétence n'est pas d'appliquer tous les leviers, c'est de **régler le cur
 
 ## Workflow
 
-1. **Recueillir les entrants** (ci-dessous). Si **livrable**, **audience** ou **objectif** manque, poser la question AVANT de produire.
+1. **Recueillir les entrants** (ci-dessous). Si **livrable**, **audience** ou **objectif** manque, poser la question AVANT de produire. Puis **écrire le cadrage** dans un fichier (gabarit : [references/gabarit-cadrage.md](references/gabarit-cadrage.md), exemple rempli : [references/exemple-cadrage.md](references/exemple-cadrage.md)) : audience, décision attendue, contexte, objection attendue ; pour une formation ou un atelier, aussi le public réel de chaque module et s'il se suit seul (TF-2317). `node scripts/verifier-cadrage.mjs <fichier de cadrage.md>` doit rendre exit 0 avant l'étape 2 ; `digit-ai-pptx` refuse de générer un support sans ce fichier (TF-2379).
 2. **Identifier le livrable** et charger son preset dans [references/presets-livrables.md](references/presets-livrables.md) : curseur, structure par défaut, patterns prioritaires, piège.
 3. **Ajuster le curseur** au cas précis et le justifier.
 4. **Choisir 3 patterns** dans [references/corpus-patterns.md](references/corpus-patterns.md), et dire pourquoi les autres sont écartés.
@@ -65,4 +65,5 @@ Sortie : preset COPIL -> curseur E 30 / L 60 / P 10, pyramide DROITE.
 
 - [references/corpus-patterns.md](references/corpus-patterns.md) — bibliothèque de patterns (les 7 leviers d'origine + standards reconnus, tagués structure / narratif / live / langage).
 - [references/presets-livrables.md](references/presets-livrables.md) — presets de réglage par type de livrable (curseur, structure, patterns, piège), et le contrat de sortie binaire de chaque modèle de publication.
+- [references/gabarit-cadrage.md](references/gabarit-cadrage.md) — le fichier de cadrage de l'étape 1 (audience, décision attendue, contexte, objection, public par module d'une formation), jugé par `scripts/verifier-cadrage.mjs` ; [references/exemple-cadrage.md](references/exemple-cadrage.md) en est la version remplie.
 - [references/contrats-publication.json](references/contrats-publication.json) — part lisible par machine de ces contrats de sortie ; lue par le contrôle de la semaine du pilot, tenue alignée sur la prose par le self-test (C4).
