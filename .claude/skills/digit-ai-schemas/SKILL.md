@@ -36,7 +36,7 @@ Quel que soit le canevas, **toujours lire `references/conventions-communes.md`**
 - Flèches en L pur, jamais en escalier multiple, jamais à travers un nœud ; couloirs verticaux dédiés pour les flux descendants
 - Titres de bande dans des pastilles blanches encadrées, hors couloirs de flèches
 - Tooltips au format structuré `Titre | Puce 1 | Puce 2 | Puce N` (backticks pour le code inline)
-- Footer : `Digit-AI · Conseil et stratégie IA · 2026` — **marque paramétrable** pour un engagement client (`charte-livrable.json`, voir `references/conventions-communes.md`) ; le reste de la charte ne se paramètre pas
+- Footer : la formule de l'**émetteur**, lue par `node scripts/lire-signature.mjs` (clé « Footer de page de schéma » de son `MARQUE.md`, exit 2 ⇒ rendre la main, jamais de valeur écrite ici — TF-2350) — **marque paramétrable** pour un engagement client (`charte-livrable.json`, voir `references/conventions-communes.md`) ; le reste de la charte ne se paramètre pas
 
 Gabarit minimal d'un nœud et d'une flèche avec tooltips :
 

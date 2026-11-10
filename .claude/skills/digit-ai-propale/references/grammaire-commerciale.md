@@ -106,10 +106,9 @@ tableau de référence, pas une slide de narration.
 
 ## 8 · Lexique récurrent (à doser, pas à saturer)
 
-« livré ET utilisable en production de façon autonome » · « chaque lot justifie le
-suivant par les résultats mesurés » · « parcours métier complet » · « shadow mode » ·
-« human-in-the-loop » · « logique de bundle » · « effet socle » · « la valeur se
-mesure » · « L'IA à taille humaine » (cover et engagement souveraineté).
+Le lexique de l'émetteur se LIT dans `MARQUE.md` de son dossier de marque, § Vocabulaire (le lecteur
+`scripts/lire-instance.mjs` ne le charge pas : c'est du vocabulaire, pas une signature). Il se dose, il ne
+se sature pas ; la baseline (`{signatures.baseline}`) vaut pour la couverture et l'engagement de souveraineté.
 
 ## 9 · Interdits
 

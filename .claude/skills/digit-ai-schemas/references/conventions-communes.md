@@ -328,16 +328,20 @@ Toujours en bas de la page hôte, format imposé :
 
 ```html
 <footer class="footer">
-  <div class="brand">DIGIT-AI · CONSEIL ET STRATÉGIE IA</div>
-  <div>{Type document} · {Audience} · {Année}</div>
+  <div class="brand">{footer.marque}</div>
+  <div>{footer.droite_gabarit : Type document · Audience · Année}</div>
 </footer>
 ```
 
 La marque du footer est **paramétrable**, et c'est le seul point de la charte qui le soit.
 
-- **Défaut, et valeur employée quand rien n'est déclaré** : `DIGIT-AI · CONSEIL ET STRATÉGIE IA · 2026`.
+- **Défaut, et valeur employée quand rien n'est déclaré** : la signature de l'**émetteur**, lue par
+  `node scripts/lire-signature.mjs [--marque <dossier de marque>]` (`footer.marque` à gauche,
+  `footer.droite_gabarit` à droite, `annee_reference` pour l'année). Elle vit dans son `MARQUE.md`, tableau
+  « Baseline, signatures et coordonnées publiques » (TF-2350). **Exit 2 ⇒ rendre la main** : le skill n'écrit
+  aucune marque de son cru. Les gabarits HTML portent `{{MARQUE_FOOTER}}` et `{{ANNEE_REF}}` à remplacer.
 - **Engagement client** : un fichier `charte-livrable.json` à la racine du projet en cours
-  (ou sous `$FORGE_ROOT`) porte `{ "marque": "…", "baseline": "…", "annee": "2026" }` ; s'il
+  (ou sous `$FORGE_ROOT`) porte `{ "marque": "…", "baseline": "…", "annee": "<année>" }` ; s'il
   existe, ses valeurs remplacent la marque et la baseline du footer, et le reste de la charte
   — polices, palette, routage des flèches, tooltips — ne bouge PAS.
 - **Ce fichier ne se commite jamais dans un dépôt publié** : il porte un nom de client, et un
@@ -349,7 +353,7 @@ fork a divergé — il lui manquait une section entière du générateur maison 
 portait celui du client, fuitait dans un registre publié. Un paramètre ne diverge pas et ne
 nomme personne.
 
-Année toujours `2026` jusqu'à modification explicite des instructions.
+Année : `annee_reference` de la signature lue chez l'émetteur, jusqu'à modification explicite des instructions.
 
 CSS du footer :
 ```css

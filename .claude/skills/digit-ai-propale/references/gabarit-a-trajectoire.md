@@ -1,7 +1,7 @@
 # Gabarit A — « Trajectoire produit »
 
-**Quand l'utiliser** : projet applicatif structuré (souvent un CDC), ≥ 3 lots de
-~5 semaines, client avec DSI ou direction métier, besoin de prouver la maîtrise du
+**Quand l'utiliser** : projet applicatif structuré (souvent un CDC), ≥ 3 lots à la cadence
+de l'émetteur (`{sections.cadence-d-un-lot-applicatif}`), client avec DSI ou direction métier, besoin de prouver la maîtrise du
 périmètre. Références corpus : Client-F (13 slides), Client-G (14 slides), Client-J
 (42 slides, forme validée marché — version longue avec slides parcours).
 
@@ -17,7 +17,7 @@ cf. `personas-ligne-editoriale.md` §4 — réservée aux RFP denses ≥ 4 lots)
 - Accroche démarche : « Proposition commerciale — démarche incrémentale par releases
   utilisables » ou équivalent
 - 1 ligne « De {situation actuelle} à {cible}, en {n} lots »
-- Client, site/contexte, mois année, Confidentiel, digit-ai.fr, réf. CDC si applicable
+- Mention de couverture : `{signatures.mention-de-couverture}` (client, site/contexte, mois année…), réf. CDC si applicable
 
 ### 2 · Contexte — « Votre enjeu : {reformulation orientée action} »
 Deux colonnes :
@@ -63,15 +63,14 @@ la **slide parcours** — titre = message-clé bénéfice, flux `{source} ▶ {m
 - Si stack libre : 3 blocs FRONT / BACK / BDD avec justification 1 ligne chacun
 - Si stack imposée par le client : assumer le désaccord — colonne « NOTRE
   RECOMMANDATION » vs « STACK IMPOSÉE PAR LE CDC » avec limites factuelles
-- Le cas échéant, bloc « reprise du code » : recommander la montée en compétence
-  Développeur Augmenté (formation Digit-AI) plutôt qu'une reprise manuelle
+- Le cas échéant, bloc « reprise du code » : recommander la montée en compétence par l'offre de
+  formation de `{sections.offres-citees-par-les-gabarits}` plutôt qu'une reprise manuelle
 
 ### Suivante · Planning — « {x} semaines, {n} lots en chaîne continue »
 - Frise S1 → S{x} avec barres par lot et jalons « ▸ MEP L{x} »
-- **CLÉS DE LECTURE** : « Chaque lot = 5 semaines : 1 sem. validation specs +
-  2 sem. dév + 1 sem. tests & validation + 1 sem. correction + MEP » ·
-  « Facturation au forfait par lot après chaque MEP » · « Toute modification après
-  validation des spécifications fera l'objet d'un avenant »
+- **CLÉS DE LECTURE** : la cadence d'un lot, telle que l'écrit `{sections.cadence-d-un-lot-applicatif}`
+  (semaines par étape, mise en service) · la facturation et l'avenant, tels que les écrit
+  `{sections.modalites-de-facturation-et-de-perimetre}`
 
 ### Suivante · Investissement
 Structure canonique → voir `entrants-chiffrage.md`.
@@ -93,7 +92,7 @@ périmètre chiffré.
 
 ### Suivante · Prochaine étape — « Démarrage du L0 »
 2-3 blocs numérotés : Décision (go/no-go + bon de commande) → Démarrage (sprint 0,
-première livraison à 2 semaines). Contact : contact@digit-ai.fr · digit-ai.fr
+première livraison à 2 semaines). Contact : `{signatures.coordonnees-publiques}`
 
 ### (Optionnel) Annexe · Objections anticipées — « ce qu'un décideur va se demander »
 
@@ -102,7 +101,7 @@ première livraison à 2 semaines). Contact : contact@digit-ai.fr · digit-ai.fr
 ici on pré-répond aux objections prévisibles du décideur qui n'était pas au RDV. 3 à 5
 paires question → réponse courte :
 - « Pourquoi vous plutôt qu'une grosse ESN / un intégrateur ? » → différenciateur réel
-  (démarche incrémentale, lots utilisables en prod, Développeur Augmenté), pas un slogan.
+  (démarche incrémentale, lots utilisables en prod, offre de formation citée par l'émetteur), pas un slogan.
 - « Pourquoi ce montant ? » → ancrage sur la valeur de chaque lot livré et utilisable en
   prod, pas sur un volume de jours.
 - « Et si ça dérape ? » → forfait par lot après MEP, avenant sur specs validées, recette
@@ -117,4 +116,4 @@ traiter en amont, pas une slide à habiller.
 Slide canonique — générée par le skill `digit-ai-pptx`, ne pas la recomposer.
 
 ## Footer (toutes slides sauf cover)
-« Digit-AI · Proposition commerciale · {CLIENT} · {Mois Année} · Confidentiel » + pagination n / N.
+`{signatures.footer-de-proposition}` (formule de l'émetteur) + pagination n / N.

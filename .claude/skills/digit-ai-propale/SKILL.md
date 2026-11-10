@@ -14,7 +14,7 @@ description: >
   RDV en proposition, ou de produire le lot suivant d'une mission existante. Rendu délégué
   par paramètre : PPTX à digit-ai-pptx, DOCX à digit-ai-docx.
 metadata:
-  version: "1.3.1"
+  version: "1.4.0"
 ---
 
 # Digit-AI Propale
@@ -23,6 +23,23 @@ Générateur de propositions commerciales Digit-AI. Ce skill couvre le **contenu
 narration, lots, chiffrage) ; le **rendu** est délégué à `digit-ai-pptx` — **ne jamais
 dupliquer charte ou pipeline ici**.
 
+## Données d'instance de l'émetteur — elles se lisent, elles ne s'écrivent pas (TF-2350)
+
+Baseline, kicker et mention de couverture, footer, coordonnées, année de référence, cadence d'un lot,
+modalités, validité, engagements, architecture type, offre de formation citée : ces valeurs décrivent
+l'**émetteur**, pas la capacité de ce skill. La loi n° 4 les veut chez l'émetteur, datées et sourcées, et il les
+y a rapatriées (le fichier MARQUE.md de son dossier de marque, § « Baseline, signatures et coordonnées publiques », et le fichier modalites.md de son dossier des offres).
+Avant d'écrire une ligne du plan :
+
+```bash
+node scripts/lire-instance.mjs [--marque <dossier de marque>] [--offres <dossier des offres>]
+```
+
+Les gabarits désignent une valeur par `{signatures.<clé>}` ou `{sections.<clé>}` : la remplacer par ce que
+rend le lecteur. **Exit 2 ⇒ s'arrêter et rendre la main**, en citant ce qui manque : le skill ne retombe sur
+aucune valeur écrite en dur, il ne devine pas une baseline ni une coordonnée. Une section marquée
+`perissable` (noms de modèles et d'hébergeurs) se vérifie à chaque emploi.
+
 ## Workflow
 
 1. **Qualifier les entrants** — lire `references/entrants-chiffrage.md`. Identifier le
@@ -30,7 +47,7 @@ dupliquer charte ou pipeline ici**.
    manque de critiques : **au maximum 4 questions groupées** (périmètre, lots, budget ou
    TJM, échéance), puis hypothèses explicites — jamais de question au compte-gouttes.
 2. **Choisir le gabarit** :
-   - Projet applicatif sur CDC, ≥ 3 lots ~5 sem. → **Gabarit A** (`references/gabarit-a-trajectoire.md`)
+   - Projet applicatif sur CDC, ≥ 3 lots à la cadence de l'émetteur → **Gabarit A** (`references/gabarit-a-trajectoire.md`)
    - Mission agents IA / PME, 1-3 lots courts, vente par bénéfices → **Gabarit B** (`references/gabarit-b-sommaire.md`)
    - Prolongation d'une mission en production → **variante lot suivant** (section dédiée du gabarit B)
    - En cas de doute, proposer le choix à l'utilisateur en une ligne.
@@ -112,9 +129,9 @@ travaux). La trame imposée par l'acheteur du marché visé prime toujours sur l
    « l'utilisateur » générique. Pas de lot sans critère de mise en production vérifiable.
 4. **Estimations de gains toujours prudentes** : « hypothèses médianes, à calibrer »,
    « sans engagement de résultat ». Jamais de ROI affirmé sans source dans les entrants.
-5. **Modalités récurrentes** (sauf contre-indication des entrants) : forfait par lot,
-   modification après validation des specs = avenant, pas de frais de déplacement en
-   Métropole Lilloise, données en région UE quand des données client transitent par un LLM.
+5. **Modalités récurrentes** (sauf contre-indication des entrants) : celles que l'émetteur écrit dans
+   `{sections.modalites-de-facturation-et-de-perimetre}` (facturation, avenant, déplacements, région des
+   données, garantie, coûts récurrents) — lues par `scripts/lire-instance.mjs`, jamais écrites ici (TF-2350).
 
 ## Mode présentation live (conditionnel)
 
@@ -128,6 +145,7 @@ il sélectionne un chemin de lecture.
 
 ## Références
 
+- [scripts/lire-instance.mjs](scripts/lire-instance.mjs) — lit les données d'instance de l'émetteur (exit 2 s'il en manque) ; fixtures `fixtures/instance/`
 - [entrants-chiffrage.md](references/entrants-chiffrage.md) — contrat d'entrée, checklist, cadrage, règles de chiffrage
 - [gabarit-a-trajectoire.md](references/gabarit-a-trajectoire.md) — gabarit « Trajectoire produit » (projets applicatifs lotis)
 - [gabarit-b-sommaire.md](references/gabarit-b-sommaire.md) — gabarit « Sommaire numéroté » (agents IA / PME) + lot suivant

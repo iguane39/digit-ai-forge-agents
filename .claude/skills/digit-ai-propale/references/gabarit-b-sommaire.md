@@ -10,15 +10,16 @@ Client-I (15 slides), Client-H Lot 2 (12 slides).
 ## Squelette slide par slide
 
 ### 1 · Cover
-- Baseline « L'IA à taille humaine » + « PROPOSITION COMMERCIALE · {année} »
-  (+ « LOT {n} » si lot suivant)
+- Baseline `{signatures.baseline}` + kicker `{signatures.kicker-de-couverture}` (le « LOT {n} »
+  d'un lot suivant est prévu par le kicker lui-même)
 - **Titre = bénéfice à l'impératif ou résultat** (« Reprenez le contrôle de vos emails
   et de vos documents », « Du Bon de Livraison à la Facture ») — jamais un titre
   technique
 - Sous-titre descriptif 1 ligne
 - 3 bullets de réassurance (synergie des lots, « sans changer d'outil », outil maître
   préservé, données UE)
-- « Document préparé pour {Prénom / contact} — {Société, ville} » · date · Confidentiel
+- « Document préparé pour {Prénom / contact} — {Société, ville} » · date · mention de diffusion de
+  `{signatures.mention-de-couverture}`
 
 ### 2 · SOMMAIRE — sous-titre narratif (« De votre contexte à notre plan d'action »)
 Grille 01-0N, chaque entrée : numéro + titre + sous-ligne de 3-6 mots.
@@ -58,8 +59,10 @@ Pied : principe POC-first.
 
 ### 04 · Architecture & souveraineté
 3 colonnes : **Captation & intégration** (APIs) / **Traitement — sur mesure** (stack,
-hébergement région UE, code versionné) / **Intelligence — LLM** (modèle léger pour la
-classification, Sonnet pour la rédaction, Bedrock UE ou option 100 % souveraine Mistral).
+hébergement selon les engagements, code versionné) / **Intelligence — LLM** (modèle léger pour la
+classification, un modèle plus capable pour la rédaction, hébergement et option souveraine : composition de
+`{sections.architecture-type-citee}`, **périssable** — les noms de modèles et d'hébergeurs se vérifient à chaque
+emploi, jamais recopiés d'un gabarit).
 Bandeau : l'outil maître du client « n'est jamais modifié ».
 
 ### 05 · Planning & phasage
@@ -82,9 +85,9 @@ Production en continu). Si créneau concret disponible : le proposer
 Structure canonique → voir `entrants-chiffrage.md`.
 
 ### (Optionnel) 08 · Nos engagements
-4 cartes : Human-in-the-loop · Données en région UE (aucun entraînement sur vos
-données, DPA fournisseurs) · Option 100 % souveraine (Mistral, « cohérent avec
-"L'IA à taille humaine" ») · Périmètre minimal & outil maître préservé.
+Une carte par engagement de `{sections.engagements-affiches-dans-une-proposition}` (validation humaine,
+données, option souveraine, périmètre et outil maître préservés…), formulés comme l'émetteur les écrit ;
+l'engagement de souveraineté peut citer `{signatures.baseline}`.
 
 ### 0N · Prochaines étapes
 3 étapes fléchées : Validation → Cadrage J0 (créneau) → Démarrage.
@@ -97,11 +100,11 @@ de vigilance** (§4 grammaire, qui exposent les red flags issus des entrants) : 
 pré-répond aux objections prévisibles du décideur qui n'était pas au RDV. 3 à 5 paires
 question → réponse courte :
 - « Pourquoi vous plutôt qu'une grosse ESN / un intégrateur ? » → différenciateur réel
-  (à taille humaine, Claude Code, mise en prod réelle), pas un slogan.
+  (le positionnement de `{signatures.baseline}`, la méthode, la mise en prod réelle), pas un slogan.
 - « Pourquoi ce montant ? » → ancrage sur la valeur du parcours livré et utilisable en
   prod, pas sur un volume de jours.
 - « Et si ça dérape en cours de route ? » → forfait par lot, avenant sur specs validées,
-  mise en service progressive supervisée, human-in-the-loop.
+  mise en service progressive supervisée, engagements de `{sections.engagements-affiches-dans-une-proposition}`.
 - « Qu'est-ce qui n'est pas inclus ? » → renvoi aux exclusions (§3), destinations nommées.
 
 Ne pas maquiller une objection sans réponse solide : si elle n'en a pas, c'est un signal
