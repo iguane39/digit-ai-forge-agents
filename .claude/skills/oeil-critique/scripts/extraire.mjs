@@ -20,13 +20,41 @@
  *       → un fichier <id-session>.json par session, et sur la sortie standard le bilan JSON
  *         { poste, depuis, sessions, exclues, messages_humains, reponses, caracteres, fichiers }.
  *   node extraire.mjs --self-test
- * Exit 0 / 1 (refus : référentiel de pseudonymisation absent) / 2 (usage).
+ *       Depuis la 1.5.1 (D-198 (b) du 10/11/2026), le nom de répertoire de tout produit du parc absent de la table
+ *       des pseudonymes est rendu « (produit hors table) », dans le champ projet comme dans les textes : l'exécution
+ *       du 10/11 avait écrit 13 extraits sur 39 avec ce nom en clair. La liste vient de `sources.mjs`
+ *       (`nomsDuParc`, `pseudonymiserParc`), la même que celle du relevé silencieux ; les dépôts de l'écosystème
+ *       restent nommés. Sans cette liste, l'extraction refuse.
+ * Exit 0 / 1 (refus : référentiel de pseudonymisation ou liste des produits du parc absent) / 2 (usage).
  */
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { pilot, poste, valeur, transcripts } from "./lib.mjs";
+import { nomsDuParc, pseudonymiserParc } from "./sources.mjs";
+
+/**
+ * Le masque des noms de répertoire du parc (1.5.1) : `texte(t)` pour un texte extrait, `projet(p)` pour le nom
+ * du dossier de transcripts, où le chemin du produit est écrit avec un tiret à la place de chaque signe non
+ * alphanumérique. `pseudoProduit` est `pseudonymeProduit` du pilot (« Produit-NN » ou « (produit hors table) »),
+ * `estPublic` est `estDepotEcosysteme`. Refuse plutôt que laisser passer un nom : sans l'une des deux fonctions,
+ * ou sans aucun répertoire lisible au parc, la liste manque.
+ */
+export function masqueurParc(racine, pseudoProduit, estPublic) {
+  if (typeof pseudoProduit !== "function" || typeof estPublic !== "function") throw new Error("extraire : pseudonymeur de produit manquant, extraction refusée");
+  const noms = nomsDuParc(racine, estPublic);
+  if (!noms.length) throw new Error("extraire : liste des produits du parc introuvable, extraction refusée");
+  const memo = new Map();
+  const pseudo = (n) => { if (!memo.has(n)) memo.set(n, pseudoProduit(n)); return memo.get(n); };
+  const codes = new Map(noms.map((n) => [n.replace(/[^\p{L}\p{N}]/gu, "-").toLowerCase(), n]));
+  const alternance = [...codes.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const dansProjet = new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternance})(?![\\p{L}\\p{N}])`, "giu");
+  return {
+    texte: (t) => pseudonymiserParc(t, noms, pseudo),
+    projet: (p) => String(p).replace(dansProjet, (m) => pseudo(codes.get(m.toLowerCase()))),
+  };
+}
 
 /** Caractères gardés d'un retour de hook : la tête porte le verdict et les codes de règle. */
 export const TETE_REFUS = 1500;
@@ -88,7 +116,9 @@ export function repartition(durees) {
   return { nombre: s.length, mediane_min: q(0.5), p90_min: q(0.9) };
 }
 
-export function extraire({ depuis, jusqu = null, sortie, exclure = null, profils, anonymiser }) {
+export function extraire({ depuis, jusqu = null, sortie, exclure = null, profils, anonymiser, masque }) {
+  // 1.5.1 : refuser plutôt qu'extraire un nom de produit hors table en clair.
+  if (!masque || typeof masque.texte !== "function" || typeof masque.projet !== "function") throw new Error("extraire : masque des noms du parc manquant, extraction refusée");
   const depuisMs = Date.parse(depuis);
   if (!Number.isFinite(depuisMs)) throw new Error(`--depuis illisible : ${depuis}`);
   const jusquMs = jusqu ? Date.parse(jusqu) : Infinity;
@@ -104,8 +134,9 @@ export function extraire({ depuis, jusqu = null, sortie, exclure = null, profils
       if (!messages.length) continue;
       // Une session sans aucun message humain, mais avec des appels automatiques, ne s'analyse pas : elle se compte à part.
       if (!messages.some((m) => m.role === "humain") && messages.some((m) => m.role === "automatique")) { bilan.sessions_automatiques++; continue; }
-      const projet = anonymiser(basename(join(f, ".."))).texte;
-      const pseudo = messages.map((m) => ({ ...m, texte: anonymiser(m.texte).texte }));
+      // Les noms du parc d'abord : l'anonymiseur peut déformer un nom de répertoire sans l'effacer (même ordre que sources.mjs).
+      const projet = anonymiser(masque.projet(basename(join(f, "..")))).texte;
+      const pseudo = messages.map((m) => ({ ...m, texte: anonymiser(masque.texte(m.texte)).texte }));
       const cible = join(sortie, `${id}.json`);
       writeFileSync(cible, JSON.stringify({ session: id, projet, messages: pseudo }, null, 1) + "\n");
       bilan.sessions++;
@@ -158,7 +189,14 @@ function selfTest() {
     writeFileSync(join(profil, "s-courante.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "lance l'œil critique" } }) + "\n");
     writeFileSync(join(profil, "s-courante", "subagents", "agent-x.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "consigne d'agent" } }) + "\n");
     const anonymiser = (t) => ({ texte: String(t).replaceAll("Produit-Reel", "Produit-99") });
-    const b = extraire({ depuis: "2026-10-20T00:00:00+02:00", sortie: join(tmp, "out"), exclure: "s-courante", profils: [join(tmp, "projects")], anonymiser });
+    // 1.5.1 : un parc fictif voisin du pilot : un produit de la table, un produit hors table, un dépôt de l'écosystème.
+    // Noms inventés ; le pilot de l'essai est `digit-ai-factory`, public comme tout dépôt `digit-ai-*`.
+    const parc = join(tmp, "parc"), racinePilot = join(parc, "digit-ai-factory");
+    for (const d of ["digit-ai-factory", "digit-ai-forge-fictive", "Produit-Reel", "Projet-Fictif-Zeta"]) mkdirSync(join(parc, d), { recursive: true });
+    const estPublic = (n) => n.startsWith("digit-ai");
+    const pseudoParc = (n) => (n === "Produit-Reel" ? "Produit-99" : "(produit hors table)");
+    const masque = masqueurParc(racinePilot, pseudoParc, estPublic);
+    const b = extraire({ depuis: "2026-10-20T00:00:00+02:00", sortie: join(tmp, "out"), exclure: "s-courante", profils: [join(tmp, "projects")], anonymiser, masque });
     if (b.sessions !== 2) casse.push(`2 sessions attendues, ${b.sessions} lue(s) (sous-agents, session courante ou appel automatique comptés ?)`);
     // 1.3.1 : une session d'appel automatique (turnOrigin « sdk ») se compte à part et ne s'analyse pas.
     if (b.sessions_automatiques !== 1 || b.fichiers.some((f) => f.endsWith("s-juge.json"))) casse.push(`1 session automatique comptée à part, sans extrait, attendue : ${b.sessions_automatiques}`);
@@ -174,14 +212,39 @@ function selfTest() {
     if (JSON.stringify(s).includes("Produit-Reel")) casse.push("un nom réel sort du transcript");
     if (s.messages.some((m) => m.texte.includes("ancien"))) casse.push("un message antérieur au repère est extrait");
     // 1.4.1 : la borne de fin coupe s-b après sa première demande (10:00) ; la seconde (10:10) n'est pas extraite.
-    const bj = extraire({ depuis: "2026-10-20T00:00:00+02:00", jusqu: "2026-10-21T10:08:00Z", sortie: join(tmp, "out-borne"), exclure: "s-courante", profils: [join(tmp, "projects")], anonymiser });
+    const bj = extraire({ depuis: "2026-10-20T00:00:00+02:00", jusqu: "2026-10-21T10:08:00Z", sortie: join(tmp, "out-borne"), exclure: "s-courante", profils: [join(tmp, "projects")], anonymiser, masque });
     const sb = JSON.parse(readFileSync(bj.fichiers.find((f) => f.endsWith("s-b.json")), "utf8"));
     if (sb.messages.some((m) => m.texte === "Seconde demande") || !sb.messages.some((m) => m.texte === "Première demande")) casse.push("--jusqu : un message postérieur à la borne est extrait, ou l'antérieur manque");
     let refusBorne = false;
-    try { extraire({ depuis: "2026-10-21T00:00:00Z", jusqu: "2026-10-20T00:00:00Z", sortie: join(tmp, "out-x"), profils: [join(tmp, "projects")], anonymiser }); } catch { refusBorne = true; }
+    try { extraire({ depuis: "2026-10-21T00:00:00Z", jusqu: "2026-10-20T00:00:00Z", sortie: join(tmp, "out-x"), profils: [join(tmp, "projects")], anonymiser, masque }); } catch { refusBorne = true; }
     if (!refusBorne) casse.push("--jusqu antérieure à --depuis acceptée");
+    // 1.5.1 (D-198 (b)) : un produit hors table, qui sortait en clair dans le champ projet et dans les textes avant le masque.
+    const texteZ = "Corrige Projet-Fictif-Zeta, puis projet-fictif-zeta sous digit-ai-forge-fictive et Produit-Reel";
+    const dirZ = join(tmp, "projects-parc", "C--dev-Projet-Fictif-Zeta");
+    mkdirSync(dirZ, { recursive: true });
+    writeFileSync(join(dirZ, "s-z.jsonl"), [
+      ligne({ type: "user", timestamp: apres, message: { content: texteZ } }),
+      ligne({ type: "assistant", timestamp: apres, message: { content: [{ type: "text", text: "Projet-Fictif-Zeta est corrigé" }] } }),
+    ].join("\n") + "\n");
+    const dirE = join(tmp, "projects-parc", "C--dev-digit-ai-forge-fictive");
+    mkdirSync(dirE, { recursive: true });
+    writeFileSync(join(dirE, "s-e.jsonl"), ligne({ type: "user", timestamp: apres, message: { content: "Voir digit-ai-forge-fictive" } }) + "\n");
+    const lire = (r, id) => JSON.parse(readFileSync(r.fichiers.find((f) => f.endsWith(`${id}.json`)), "utf8"));
+    const entree = (sortieParc, m) => extraire({ depuis: "2026-10-20T00:00:00+02:00", sortie: join(tmp, sortieParc), profils: [join(tmp, "projects-parc")], anonymiser, masque: m });
+    // Témoin de fixture : sans le masque, le nom sort bien (champ projet et textes) ; la fixture porte le défaut.
+    const sansMasque = lire(entree("out-sans", { texte: (t) => t, projet: (p) => p }), "s-z");
+    if (!JSON.stringify(sansMasque).includes("Projet-Fictif-Zeta")) casse.push("témoin : sans masque, le nom hors table devrait sortir (fixture sans défaut)");
+    // Rouge : avec le masque, le nom hors table ne sort ni dans le champ projet ni dans les textes, quelle que soit la casse.
+    const rp = entree("out-parc", masque), z = lire(rp, "s-z");
+    if (/zeta/i.test(JSON.stringify(z)) || z.projet !== "C--dev-(produit hors table)" || !z.messages[0].texte.startsWith("Corrige (produit hors table), puis (produit hors table) sous")) casse.push(`un nom de produit hors table sort de l'extrait, ${JSON.stringify(z)}`);
+    // Témoin : le produit de la table est rendu par son pseudonyme, le dépôt de l'écosystème reste nommé (texte et projet).
+    const e = lire(rp, "s-e");
+    if (!z.messages[0].texte.endsWith("sous digit-ai-forge-fictive et Produit-99") || e.projet !== "C--dev-digit-ai-forge-fictive" || e.messages[0].texte !== "Voir digit-ai-forge-fictive") casse.push(`produit de la table au pseudonyme et dépôt de l'écosystème nommé attendus, ${JSON.stringify([z.messages[0].texte, e.projet, e.messages[0].texte])}`);
+    // Source absente refusée : sans pseudonymeur, sans parc lisible, ou sans masque, l'extraction n'écrit rien.
+    const refuse = (f) => { try { f(); return false; } catch { return true; } };
+    if (!refuse(() => masqueurParc(racinePilot, undefined, estPublic)) || !refuse(() => masqueurParc(join(tmp, "absent", "digit-ai-factory"), pseudoParc, estPublic)) || !refuse(() => entree("out-refus", undefined)) || existsSync(join(tmp, "out-refus"))) casse.push("source absente : pseudonymeur manquant, parc illisible et masque manquant doivent refuser sans rien écrire");
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 10, casse }));
+  console.log(JSON.stringify({ outil: "extraire", self_test: casse.length ? "FAIL" : "PASS", cas: 14, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 
@@ -194,8 +257,11 @@ else {
     const racine = pilot(args);
     const { anonymiser } = await import(pathToFileURL(join(racine, "todo", "anonymiser-entrant.mjs")).href);
     anonymiser("essai"); // lève si un référentiel manque : refuser plutôt qu'extraire en clair
+    const { pseudonymeProduit } = await import(pathToFileURL(join(racine, "scripts", "lib-pseudonyme-produit.mjs")).href);
+    const { estDepotEcosysteme } = await import(pathToFileURL(join(racine, "scripts", "lib-parc.mjs")).href);
+    const masque = masqueurParc(racine, pseudonymeProduit, estDepotEcosysteme);
     const p = valeur(args, "--profils");
     const profils = p ? p.split(";") : [join(homedir(), ".claude", "projects"), join(homedir(), ".claude-b", "projects")];
-    console.log(JSON.stringify({ outil: "extraire", ...extraire({ depuis, jusqu: valeur(args, "--jusqu") || null, sortie, exclure: valeur(args, "--exclure") || process.env.CLAUDE_CODE_SESSION_ID || null, profils, anonymiser }) }));
+    console.log(JSON.stringify({ outil: "extraire", ...extraire({ depuis, jusqu: valeur(args, "--jusqu") || null, sortie, exclure: valeur(args, "--exclure") || process.env.CLAUDE_CODE_SESSION_ID || null, profils, anonymiser, masque }) }));
   } catch (e) { console.log(JSON.stringify({ outil: "extraire", refus: e.message })); process.exit(1); }
 }
