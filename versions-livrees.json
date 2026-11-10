@@ -1,7 +1,7 @@
 {
   "manifeste": "versions-livrees",
   "initialise_le": "2026-07-23",
-  "mis_a_jour_le": "2026-11-10 (entrée oeil-critique seule, 1.4.0 → 1.5.0, code dupliqué et constats de simplification ; autres écarts laissés au constat ; précédent : 2026-11-09 (entrée tri-de-sujets 1.1.0 → 1.1.1, lecture d un JSON qui porte une marque d ordre d octets ; autres écarts laissés au constat ; précédent : 2026-11-05 (entrée quality-oracles 2.23.0 et registre 2.52.0, TF-2168, D-175 du pilot ; autres écarts laissés au constat ; précédent : 2026-11-04 (entrée oeil-critique seule, 1.3.2 → 1.4.0, TF-2070 ; autres écarts laissés au constat ; précédent : 2026-11-02 (entrée make-it-better 1.2.0, comparaison au choix et dans le format ; autres écarts laissés au constat ; précédent : entrée make-it-better 1.1.0, D-144 (a) du pilot ; autres écarts laissés au constat ; précédent : entrée la-boucle 1.1.0 et registre de quality-oracles 2.51.0, TF-2051 et TF-2050 ; précédent : entrée make-it-better neuve et registre de quality-oracles 2.49.0 ; autres écarts laissés au constat ; précédent : 2026-11-02 (entrée tri-de-sujets neuve et registre de quality-oracles 2.48.0) ; précédent : 2026-10-30 (entrée digit-ai-pdf neuve et registre de quality-oracles 2.47.0, TF-2031, D-112 (a) du pilot ; autres écarts laissés au constat ; précédent : 2026-10-29 (entrée oeil-critique seule, mise à jour à la main pour D-97 (a) du pilot : 1.2.0 → 1.3.0, après D-95 (b) : 1.0.0 → 1.2.0 ; écarts prompt-analyzer-l99 et registre de quality-oracles laissés au constat, ils relèvent d'autres travaux ; précédent : 2026-10-28, entrée experts-forge seule pour TF-1994)))))))",
+  "mis_a_jour_le": "2026-11-10 (entrées de la campagne du 10/11/2026 du pilot : digit-ai-cv-review neuve 1.0.0, digit-ai-docx 1.1.0, digit-ai-page-html 1.45.0, digit-ai-pptx 2.8.0, digit-ai-propale 1.4.0, quality-oracles 2.27.0 et registre 2.57.0 ; autres écarts laissés au constat ; précédent : 2026-11-10 (entrée oeil-critique seule, 1.4.0 → 1.5.0, code dupliqué et constats de simplification ; autres écarts laissés au constat ; précédent : 2026-11-09 (entrée tri-de-sujets 1.1.0 → 1.1.1, lecture d un JSON qui porte une marque d ordre d octets ; autres écarts laissés au constat ; précédent : 2026-11-05 (entrée quality-oracles 2.23.0 et registre 2.52.0, TF-2168, D-175 du pilot ; autres écarts laissés au constat ; précédent : 2026-11-04 (entrée oeil-critique seule, 1.3.2 → 1.4.0, TF-2070 ; autres écarts laissés au constat ; précédent : 2026-11-02 (entrée make-it-better 1.2.0, comparaison au choix et dans le format ; autres écarts laissés au constat ; précédent : entrée make-it-better 1.1.0, D-144 (a) du pilot ; autres écarts laissés au constat ; précédent : entrée la-boucle 1.1.0 et registre de quality-oracles 2.51.0, TF-2051 et TF-2050 ; précédent : entrée make-it-better neuve et registre de quality-oracles 2.49.0 ; autres écarts laissés au constat ; précédent : 2026-11-02 (entrée tri-de-sujets neuve et registre de quality-oracles 2.48.0) ; précédent : 2026-10-30 (entrée digit-ai-pdf neuve et registre de quality-oracles 2.47.0, TF-2031, D-112 (a) du pilot ; autres écarts laissés au constat ; précédent : 2026-10-29 (entrée oeil-critique seule, mise à jour à la main pour D-97 (a) du pilot : 1.2.0 → 1.3.0, après D-95 (b) : 1.0.0 → 1.2.0 ; écarts prompt-analyzer-l99 et registre de quality-oracles laissés au constat, ils relèvent d'autres travaux ; précédent : 2026-10-28, entrée experts-forge seule pour TF-1994))))))))",
   "note": "M5 (note P1 §3/D3) : versions réelles montées dans {repo forge}/.claude/skills, extraites mécaniquement des frontmatters — comparées par l'oracle etat-forge (O3) en début de session forge. Source claude.ai de la file des candidats : /areas/forge-file-candidats.md.",
   "skills": {
     "accueil-factory": {
@@ -24,12 +24,16 @@
       "version": null,
       "source": "frontmatter sans champ version (constat, rien d inventé)"
     },
-    "digit-ai-docx": {
+    "digit-ai-cv-review": {
       "version": "1.0.0",
       "source": "frontmatter SKILL.md"
     },
+    "digit-ai-docx": {
+      "version": "1.1.0",
+      "source": "frontmatter SKILL.md"
+    },
     "digit-ai-page-html": {
-      "version": "1.42.0",
+      "version": "1.45.0",
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-pdf": {
@@ -37,11 +41,11 @@
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-pptx": {
-      "version": "2.7.0",
+      "version": "2.8.0",
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-propale": {
-      "version": "1.3.0",
+      "version": "1.4.0",
       "source": "frontmatter SKILL.md"
     },
     "digit-ai-propale-review": {
@@ -90,9 +94,9 @@
       "source": "frontmatter SKILL.md"
     },
     "quality-oracles": {
-      "version": "2.23.0",
+      "version": "2.27.0",
       "source": "frontmatter SKILL.md",
-      "registre": "2.52.0"
+      "registre": "2.57.0"
     },
     "tri-de-sujets": {
       "version": "1.1.1",
