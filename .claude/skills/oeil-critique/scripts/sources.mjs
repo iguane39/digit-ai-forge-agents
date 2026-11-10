@@ -311,12 +311,18 @@ export function nomsDuParc(racine, estPublic) {
  * des passes successives réécriraient le marqueur lui-même si un répertoire porte un mot du marqueur.
  * Le nom se cherche en entier (ni lettre, chiffre, souligné ni tiret de part et d'autre), sans casse.
  * Prix déclaré : un répertoire au nom d'un mot courant masque aussi ce mot dans une ligne d'alerte.
+ * 1.5.1 : `composesDes` (absent : jamais) étend la recherche aux noms d'au moins ce nombre de caractères quand un
+ * tiret les touche (« <client>-<nom> » dans un chemin de transcripts, « <nom>-05 » pour une session) : un nom assez
+ * long pour être distinctif reste le nom du produit au bout d'un tiret. Les noms plus courts gardent la règle entière.
  */
-export function pseudonymiserParc(texte, noms, pseudoProduit) {
+export function pseudonymiserParc(texte, noms, pseudoProduit, composesDes = Infinity) {
   if (!noms.length) return String(texte);
   const parNom = new Map(noms.map((n) => [n.toLowerCase(), n]));
-  const alternance = [...parNom.values()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-  return String(texte).replace(new RegExp(`(?<![\\p{L}\\p{N}_-])(?:${alternance})(?![\\p{L}\\p{N}_-])`, "giu"), (m) => pseudoProduit(parNom.get(m.toLowerCase())));
+  const alterner = (liste) => [...liste].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const entiers = `(?<![\\p{L}\\p{N}_-])(?:${alterner(parNom.values())})(?![\\p{L}\\p{N}_-])`;
+  const longs = [...parNom.values()].filter((n) => n.length >= composesDes);
+  const motif = longs.length ? `${entiers}|(?<![\\p{L}\\p{N}_])(?:${alterner(longs)})(?![\\p{L}\\p{N}_])` : entiers;
+  return String(texte).replace(new RegExp(motif, "giu"), (m) => pseudoProduit(parNom.get(m.toLowerCase())));
 }
 
 export function silencieux(racine, depuis, profils, anonymiser, pseudoProduit, estPublic) {

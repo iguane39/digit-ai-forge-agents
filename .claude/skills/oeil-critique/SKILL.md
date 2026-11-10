@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Six missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, process attendus, existant et suppressions. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.5.1"
+  version: "1.5.2"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -42,6 +42,11 @@ textes, le nom de répertoire de tout produit du parc absent de la table des pse
 comme le relevé silencieux depuis la 1.3.3, avec la liste de `sources.mjs` (`nomsDuParc`, `pseudonymiserParc`) ;
 les dépôts de l'écosystème restent nommés, et sans cette liste l'extraction refuse. Le fait : l'exécution du
 10/11/2026 avait écrit 13 extraits sur 39 avec le nom d'un produit hors table en clair.
+Version 1.5.2 du 10/11/2026, rejeu réel de la 1.5.1 : le masque laissait le nom au bout d'un tiret (chemin de transcripts
+« <client>-<nom> », étiquette de session « <nom>-05 »), dans 8 extraits sur 39. Un nom de 6 caractères ou plus se masque
+désormais aussi au bout d'un tiret (`pseudonymiserParc`, paramètre `composesDes`), et les produits déclarés de l'écosystème
+(`PRODUITS_DE_L_ECOSYSTEME`) restent nommés, comme la décision D-198 (b) le dit. Rejeu sur la période du 29/10 au 05/11 :
+19 extraits sur 39 avant, 0 après.
 
 **Limite déclarée, à lire avant tout usage.** Deux exécutions réelles complètes, une par poste : le
 26/10/2026 sur Dell-XPS-16 et le 29/10/2026 sur DESKTOP-ULTRA7. La seconde est la première à lire les
@@ -210,7 +215,7 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
 - `node {skilldir}/scripts/extraire.mjs --self-test` : 14 cas, dont (1.5.1) un nom de produit hors table qui ne sort plus
   ni du champ projet ni des textes (son témoin, sans masque, le laisse sortir ; mutations du masque des textes, du masque du
   projet et de l'écosystème : le self-test passe au rouge), le produit de la table rendu par son pseudonyme, le dépôt de
-  l'écosystème gardé, et la source absente refusée sans rien écrire (pseudonymeur, parc illisible, masque manquant) ;
+  l'écosystème gardé avec ses produits déclarés, un nom long masqué au bout d'un tiret et un nom court laissé entier (1.5.2), et la source absente refusée sans rien écrire (pseudonymeur, parc illisible, masque manquant) ;
   un message postérieur à la borne `--jusqu`
   non extrait (mutation de la borne : le self-test passe au rouge), une session d'appel automatique
   comptée à part, la durée des tours (un retour de hook n'ouvre pas de tour), la session courante exclue, les
