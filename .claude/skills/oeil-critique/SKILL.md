@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Six missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, process attendus, existant et suppressions. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.5.0"
+  version: "1.5.1"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -37,6 +37,11 @@ demande aussi à `code-review` ses constats de simplification, et la mission 6 r
 (`sources.mjs existant`, champ `doublons`). Premier relevé le 10/11/2026 : 1 339 fichiers lus en 18 s, 103
 paires dont 59 entre dépôts, par exemple un lecteur YAML recopié dans 3 forges. Ce relevé voit une copie
 d'un seul tenant de 12 lignes au moins ; une copie retouchée ligne à ligne lui échappe.
+Version 1.5.1 du 10/11/2026, décision humaine D-198 (b) : `extraire.mjs` masque, dans le champ projet et dans les
+textes, le nom de répertoire de tout produit du parc absent de la table des pseudonymes (« (produit hors table) »),
+comme le relevé silencieux depuis la 1.3.3, avec la liste de `sources.mjs` (`nomsDuParc`, `pseudonymiserParc`) ;
+les dépôts de l'écosystème restent nommés, et sans cette liste l'extraction refuse. Le fait : l'exécution du
+10/11/2026 avait écrit 13 extraits sur 39 avec le nom d'un produit hors table en clair.
 
 **Limite déclarée, à lire avant tout usage.** Deux exécutions réelles complètes, une par poste : le
 26/10/2026 sur Dell-XPS-16 et le 29/10/2026 sur DESKTOP-ULTRA7. La seconde est la première à lire les
@@ -78,8 +83,9 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
    `node {skilldir}/scripts/extraire.mjs --depuis <date de départ> [--jusqu <date de fin>] --sortie <dossier de travail de la session>`
    écrit un fichier par session (au-delà de 7 jours, `--jusqu` borne la fin et le repère avance jusqu'à elle) : messages humains, textes de réponse et refus de hook (rôle
    `refus_hook`, tête de 1 500 caractères et codes de règle), pseudonymisés par
-   `todo/anonymiser-entrant.mjs` du pilot. La session courante est exclue. Le script refuse
-   d'extraire si un référentiel de pseudonymisation manque. Son bilan porte aussi `tours` : le
+   `todo/anonymiser-entrant.mjs` du pilot. La session courante est exclue. Un produit du parc absent de la table des pseudonymes y est rendu « (produit hors table) » (1.5.1), dans le
+   champ projet comme dans les textes. Le script refuse
+   d'extraire si un référentiel de pseudonymisation ou la liste des produits du parc manque. Son bilan porte aussi `tours` : le
    nombre de tours, leur durée médiane et leur 90e centile, en minutes (1.3.0), et
    `sessions_automatiques`, les sessions d'appel automatique écartées de l'analyse (1.3.2).
 2 bis. **Relever ce que la conversation ne montre pas** (1.2.0, D-95 (b)).
@@ -201,7 +207,11 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
   normalisée qui garde son numéro d'item, un avertissement qui survit à la correction de son item,
   un item en cours endormi, une forge aveugle, des lots jamais parvenus, et un domaine d'oracle qui
   n'a échoué qu'avant la période, compté sans échec.
-- `node {skilldir}/scripts/extraire.mjs --self-test` : 10 cas, dont un message postérieur à la borne `--jusqu`
+- `node {skilldir}/scripts/extraire.mjs --self-test` : 14 cas, dont (1.5.1) un nom de produit hors table qui ne sort plus
+  ni du champ projet ni des textes (son témoin, sans masque, le laisse sortir ; mutations du masque des textes, du masque du
+  projet et de l'écosystème : le self-test passe au rouge), le produit de la table rendu par son pseudonyme, le dépôt de
+  l'écosystème gardé, et la source absente refusée sans rien écrire (pseudonymeur, parc illisible, masque manquant) ;
+  un message postérieur à la borne `--jusqu`
   non extrait (mutation de la borne : le self-test passe au rouge), une session d'appel automatique
   comptée à part, la durée des tours (un retour de hook n'ouvre pas de tour), la session courante exclue, les
   sous-agents ignorés, un retour de hook gardé à part avec ses codes de règle, un message en blocs
