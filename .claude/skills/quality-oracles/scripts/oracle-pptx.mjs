@@ -153,6 +153,10 @@ if (z.ok) {
     for (const [couleur, ou] of Object.entries(z.couleurs))
       if (!admises.has(couleur)) findings.push({ sev: 'bloquant', regle: 'P3', msg: `couleur de texte #${couleur} hors de la palette du profil`, where: base + ':' + ou });
   }
+  // TF-2372 : une règle qui ne se joue pas faute de clé au profil le DIT. Avant, P1 à P3 restaient muettes et le PASS
+  // se lisait comme « format, polices et couleurs conformes » alors que rien n'avait été comparé.
+  const inactives = [['P1', !POL.format, 'pptx.format'], ['P2', !Array.isArray(POL.polices), 'pptx.polices'], ['P3', !Array.isArray(POL.palette), 'pptx.palette']].filter(r => r[1]);
+  if (inactives.length) non_juge.push(`${inactives.map(r => r[0]).join(', ')} NON jouée(s) : ${iProfil >= 0 && !profilErreur ? 'le profil « ' + pArg + ' » ne déclare pas ' + inactives.map(r => r[2]).join(', ') : 'aucun profil passé (--profil)'} — ${inactives.map(r => ({ P1: 'format de la diapositive', P2: 'polices', P3: 'couleurs de texte' })[r[0]]).join(', ')} non jugé(s)`);
   if (POL.format || Array.isArray(POL.polices) || Array.isArray(POL.palette)) non_juge.push(
     'débordement de texte hors de son cadre : non jugé par heuristique — le rendu PowerPoint le montre (TF-1130 : les deux défauts réels du support l’ont été au rendu)',
     'couleurs héritées du thème ou des masques (schemeClr) : seules les couleurs EXPLICITES des runs de texte sont jugées par P3');

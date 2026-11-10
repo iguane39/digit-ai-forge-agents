@@ -3748,6 +3748,222 @@ else {
     : ok('TF-2196 G12 : la moitié de la colonne est le seuil — 2 cellules composites sur 8 sans valeur déclarée passent, 6 sur 8 sont refusées (FAIL)');
 }
 
+// LOT DU 10/11/2026 (retours du produit marketing des 09/11 b et c, et d'un produit de la chaîne de dev) — OUTILS DE
+// DIAPOSITIVES ET DE RENDU DE quality-oracles. Chaque bloc rejoue le défaut dans les deux sens ; les paires de decks vivent
+// au manifest (a11y-transition, charte-pptx-pastille-numerotee, charte-pptx-gabarit-b, charte-pptx-entites-xml,
+// charte-pptx-kicker-couverture, charte-pptx-marque, pptx-profil-digit-ai), ce qui suit prouve ce que le manifest ne montre pas.
+
+// TF-2313 — l'oracle d'accessibilité juge la page REPOSÉE : il attend les animations et transitions finies (5 s au plus),
+// n'attend pas une animation sans fin, et dit une page qui ne se pose pas.
+{
+  const py = resolvePython();
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const jouer = (html) => {
+    const r = spawnSync(py[0], [...py.slice(1), path.join(SKILLDIR, 'scripts', 'oracle-a11y.py'), html], { encoding: 'utf8', timeout: 180000, env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' } });
+    try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [(r.stderr || '').slice(0, 160)] }; }
+  };
+  const v = py ? jouer(path.join(FX, 'a11y-transition-green.html')) : null;
+  if (!py) ok('TF-2313 : NON JOUÉ — python indisponible sur ce poste, et c est dit');
+  else if (v.verdict === 'SKIP') ok('TF-2313 : NON JOUÉ — Playwright/Chromium indisponible sur ce poste (' + (v.motif || '').slice(0, 60) + ') : la page à transition ne peut pas se juger ici, et c est dit');
+  else {
+    const info = (v.findings || []).find((f) => /^repos de la page : /.test(f.msg));
+    if (v.verdict !== 'PASS') ko('TF-2313 (A) : la page dont le bouton reçoit son libellé à la fin du fondu rend ' + v.verdict + ' — l oracle l a jugée avant la fin de la transition');
+    else if (!info || !/ 1 animation\(s\) ou transition\(s\) finie\(s\) attendue\(s\)/.test(info.msg) || !/1 animation\(s\) sans fin ignoree\(s\)/.test(info.msg))
+      ko('TF-2313 (A) : le repos de la page ne se dit pas comme attendu (1 transition attendue, 1 animation sans fin ignorée) — ' + (info ? info.msg : 'aucun constat de repos'));
+    else ok('TF-2313 (A) : la page à fondu de 1,2 s est jugée REPOSÉE (PASS) ; le fondu est attendu, le spinner sans fin est ignoré, et les deux se disent');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2313-'));
+    try {
+      const longue = path.join(tmp, 'longue.html');
+      fs.writeFileSync(longue, '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Animation longue</title><style>.x{width:10px;height:10px;background:#036;animation:a 9s linear 1}@keyframes a{to{transform:translateX(40px)}}</style></head><body><h1>Titre</h1><div class="x"></div></body></html>', 'utf8');
+      const l = jouer(longue);
+      const dit = (l.non_juge || []).some((x) => /^repos de la page NON atteint apres 5 s : 1 animation\(s\) finie\(s\) encore en cours/.test(x));
+      const ms = Number(((l.findings || []).find((f) => /^repos de la page/.test(f.msg)) || { msg: '' }).msg.replace(/^.*\((\d+) ms\).*$/, '$1'));
+      if (l.verdict === 'SKIP') ok('TF-2313 (B) : NON JOUÉ — Playwright/Chromium indisponible');
+      else if (l.verdict !== 'PASS' || !dit || !(ms >= 4500 && ms <= 7500)) ko(`TF-2313 (B) : une animation finie de 9 s doit être attendue 5 s au plus (${ms} ms), la page jugée en l état et le dit — verdict ${l.verdict}, mention ${dit ? 'présente' : 'absente'}`);
+      else ok(`TF-2313 (B) : une animation finie de 9 s est attendue ${ms} ms (5 s au plus), la page est jugée en l état, et le non_juge le dit`);
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
+}
+
+// TF-2363 — oracle-visual-diff range références et historique sous le .oracles/ commun aux journaux, au-dessus du segment
+// de livraison, comme le veut TF-0501 ; hors livraison rien ne change ; des références d'avant restent lues, et le disent.
+{
+  const py = resolvePython();
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const O = path.join(SKILLDIR, 'scripts', 'oracle-visual-diff.py');
+  const profil = path.join(SKILLDIR, 'profils', 'digit-ai.json');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2363-'));
+  const lancer = (page, ...extra) => {
+    const r = spawnSync(py[0], [...py.slice(1), O, page, '--profil', profil, ...extra], { encoding: 'utf8', timeout: 240000, env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' } });
+    try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [(r.stderr || '').slice(0, 160)] }; }
+  };
+  const tracesDans = (dossier) => { const trouves = []; const parcourir = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (/^\.oracles|\.oracles-/.test(e.name)) trouves.push(path.join(d, e.name)); if (e.isDirectory()) parcourir(path.join(d, e.name)); } }; if (fs.existsSync(dossier)) parcourir(dossier); return trouves; };
+  try {
+    const livraison = path.join(tmp, 'produit', 'output', 'rapport');
+    fs.mkdirSync(livraison, { recursive: true });
+    const page = path.join(livraison, 'page.html');
+    fs.copyFileSync(path.join(FX, 'visual-green.html'), page);
+    const acceptee = py ? lancer(page, '--accepter') : null;
+    if (!py) ok('TF-2363 : NON JOUÉ — python indisponible sur ce poste, et c est dit');
+    else if (acceptee.verdict === 'SKIP') ok('TF-2363 : NON JOUÉ — Playwright, Chromium ou Pillow indisponible (' + (acceptee.motif || '').slice(0, 60) + ') : la régression visuelle ne se joue pas ici, et c est dit');
+    else {
+      const sous = path.join(tmp, 'produit', '.oracles', 'output', 'rapport');
+      const attendus = [path.join(sous, '.oracles-goldens', 'page.html-w1280.png'), path.join(sous, '.oracles-goldens', 'page.html-w380.png'), path.join(sous, 'page.html.oracles-historique.jsonl')];
+      const manque = attendus.filter((f) => !fs.existsSync(f));
+      const dansLivraison = tracesDans(path.join(tmp, 'produit', 'output'));
+      if (acceptee.verdict !== 'PASS' || manque.length) ko(`TF-2363 (A) : --accepter sous output/ doit ranger références et historique sous .oracles/ — verdict ${acceptee.verdict}, absents : ${manque.map((f) => path.relative(tmp, f)).join(' · ')}`);
+      else if (dansLivraison.length) ko('TF-2363 (A) : des traces d audit sont restées dans le dossier livré : ' + dansLivraison.map((f) => path.relative(tmp, f)).join(' · '));
+      else ok('TF-2363 (A) : sous output/, --accepter range les références et l historique sous <racine>/.oracles/output/rapport/ et ne laisse aucune trace dans le dossier livré');
+      const juge = lancer(page);
+      const conforme = (juge.findings || []).filter((f) => /conforme au golden/.test(f.msg)).length;
+      if (juge.verdict !== 'PASS' || conforme !== 2) ko(`TF-2363 (B) : la page inchangée doit passer sur les deux largeurs — ${juge.verdict}, ${conforme} largeur(s) conforme(s)`);
+      else ok('TF-2363 (B) : la page inchangée est jugée contre les références rangées sous .oracles/ (PASS, 2 largeurs)');
+      fs.copyFileSync(path.join(FX, 'visual-red.html'), page);
+      const regresse = lancer(page);
+      const dossierGoldens = path.join(tmp, 'produit', '.oracles', 'output', 'rapport', '.oracles-goldens');
+      const diffs = fs.existsSync(dossierGoldens) ? fs.readdirSync(dossierGoldens).filter((f) => /-diff\.png$/.test(f)).length : 0;
+      const encoreDedans = tracesDans(path.join(tmp, 'produit', 'output'));
+      if (regresse.verdict !== 'FAIL' || !diffs || encoreDedans.length) ko(`TF-2363 (C) : la page modifiée doit échouer avec son image de différence sous .oracles/ — ${regresse.verdict}, ${diffs} image(s) de différence, ${encoreDedans.length} trace(s) dans le dossier livré`);
+      else ok('TF-2363 (C) : la page modifiée échoue (FAIL), son image de différence est rangée sous .oracles/, rien dans le dossier livré');
+      // (D) — des références restées dans le dossier livré (avant TF-2363) sont lues, et le disent ; plus rien n'y est écrit.
+      const ancien = path.join(tmp, 'ancien', 'output', 'r');
+      fs.mkdirSync(path.join(ancien, '.oracles-goldens'), { recursive: true });
+      fs.copyFileSync(path.join(FX, 'visual-green.html'), path.join(ancien, 'page.html'));
+      for (const w of [1280, 380]) fs.copyFileSync(path.join(FX, '.oracles-goldens', `visual-green.html-w${w}.png`), path.join(ancien, '.oracles-goldens', `page.html-w${w}.png`));
+      const avant = tracesDans(path.join(tmp, 'ancien', 'output')).length;
+      const lu = lancer(path.join(ancien, 'page.html'));
+      const dit = (lu.non_juge || []).some((x) => /références lues à l'ancien emplacement/.test(x));
+      const apres = tracesDans(path.join(tmp, 'ancien', 'output')).length;
+      if (lu.verdict !== 'PASS' || !dit || apres !== avant) ko(`TF-2363 (D) : des références d avant doivent être lues et dites sans rien écrire dans le dossier livré — ${lu.verdict}, mention ${dit ? 'présente' : 'absente'}, traces ${avant} → ${apres}`);
+      else ok('TF-2363 (D) : des références restées dans le dossier livré sont encore lues (PASS), le non_juge le dit, et rien n y est écrit');
+      // (E) — hors livraison, l'emplacement d'avant ne change pas.
+      const src = path.join(tmp, 'src');
+      fs.mkdirSync(src, { recursive: true });
+      fs.copyFileSync(path.join(FX, 'visual-green.html'), path.join(src, 'page.html'));
+      lancer(path.join(src, 'page.html'), '--accepter');
+      if (!fs.existsSync(path.join(src, '.oracles-goldens', 'page.html-w1280.png')) || fs.existsSync(path.join(src, '.oracles')))
+        ko('TF-2363 (E) : hors arbre de livraison, les références doivent rester à côté du fichier, sans .oracles/');
+      else ok('TF-2363 (E) : hors arbre de livraison, les références restent à côté du fichier, comme avant');
+    }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-2327 — run-oracles : l'option --json (le journal en JSON sur la sortie standard, rien d'autre) se découvre à l'usage,
+// par --help, et par le rappel qu'une sortie texte redirigée reçoit sur la sortie d'erreur.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2327-'));
+  try {
+    const R = path.join(SKILLDIR, 'scripts', 'run-oracles.mjs');
+    const cible = path.join(tmp, 'note.md');
+    fs.writeFileSync(cible, '# Note\n\nUn contenu stable, jugé tel quel.\n', 'utf8');
+    const aide = spawnSync(process.execPath, [R, '--help'], { encoding: 'utf8', timeout: 60000 });
+    const sans = spawnSync(process.execPath, [R], { encoding: 'utf8', timeout: 60000 });
+    if (aide.status !== 0 || !/--json/.test(aide.stdout) || !/sortie standard/.test(aide.stdout))
+      ko(`TF-2327 (A) : --help doit afficher l usage, option --json décrite, sur la sortie standard (code 0) — code ${aide.status}, ${(aide.stdout || '').slice(0, 80)}`);
+    else if (sans.status !== 2 || !/--json/.test(sans.stderr)) ko('TF-2327 (A) : sans cible, l usage (sortie d erreur, code 2) doit décrire --json — code ' + sans.status);
+    else ok('TF-2327 (A) : --help affiche l usage sur la sortie standard (code 0), --json décrit ; sans cible l usage reste sur la sortie d erreur (code 2)');
+    const texte = spawnSync(process.execPath, [R, cible, '--no-cache'], { encoding: 'utf8', timeout: 180000 });
+    const json = spawnSync(process.execPath, [R, cible, '--no-cache', '--json'], { encoding: 'utf8', timeout: 180000 });
+    let journal = null, ecrit = null;
+    try { journal = JSON.parse(json.stdout); ecrit = JSON.parse(fs.readFileSync(cible + '.oracles.json', 'utf8')); } catch { /* ko ci-dessous */ }
+    if (!/--json/.test(texte.stderr)) ko('TF-2327 (B) : une sortie texte redirigée doit rappeler --json sur la sortie d erreur — stderr « ' + texte.stderr.trim().slice(0, 100) + ' »');
+    else if (/--json/.test(json.stderr)) ko('TF-2327 (B) : avec --json le rappel ne doit pas être répété — stderr « ' + json.stderr.trim().slice(0, 100) + ' »');
+    else if (/^[─\s]*Oracles qualité/.test(texte.stdout) === false) ko('TF-2327 (B) : la sortie standard texte a changé');
+    else ok('TF-2327 (B) : une sortie texte redirigée rappelle --json sur la sortie d erreur (la sortie standard texte est inchangée) ; avec --json le rappel ne paraît pas');
+    if (!journal || !ecrit || json.stdout.trim()[0] !== '{' || journal.verdict !== ecrit.verdict || journal.cible !== ecrit.cible || JSON.stringify(journal.resume) !== JSON.stringify(ecrit.resume) || JSON.stringify(journal.resultats) !== JSON.stringify(ecrit.resultats))
+      ko('TF-2327 (C) : la sortie standard de --json doit être, seule, le journal écrit dans <cible>.oracles.json');
+    else ok('TF-2327 (C) : avec --json la sortie standard est, seule, le journal de <cible>.oracles.json (verdict, cible, résumé et résultats identiques)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-2325 — --profil accepte le NOM d'un profil (profils/<nom>.json) en plus de son chemin, pour oracle-nommage et pour
+// oracle-charte-pptx-semantique ; le gabarit B (sommaire sans intercalaire) est jugé et le dit.
+{
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const jouer = (script, args) => {
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', script), ...args], { encoding: 'utf8', timeout: 120000 });
+    try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [(r.stderr || '').slice(0, 160)] }; }
+  };
+  const bon = 'Digit-AI - Note Client - Cadrage - 20260720a.md', mauvais = 'Digit-AI - Note_Client - 2026.md';
+  const parNomOk = jouer('oracle-nommage.mjs', [path.join(FX, bon), '--profil', 'digit-ai']);
+  const parNomKo = jouer('oracle-nommage.mjs', [path.join(FX, mauvais), '--profil', 'digit-ai']);
+  const parChemin = jouer('oracle-nommage.mjs', [path.join(FX, mauvais), '--profil', path.join(SKILLDIR, 'profils', 'digit-ai.json')]);
+  if (parNomOk.verdict !== 'PASS' || parNomKo.verdict !== 'FAIL' || parChemin.verdict !== 'FAIL')
+    ko(`TF-2325 (A) : oracle-nommage --profil digit-ai (par le nom) doit juger comme par le chemin — nom conforme ${parNomOk.verdict} (attendu PASS), nom fautif ${parNomKo.verdict} (attendu FAIL), par le chemin ${parChemin.verdict}`);
+  else ok('TF-2325 (A) : oracle-nommage --profil digit-ai juge par le nom comme par le chemin (nom conforme PASS, nom fautif FAIL), au lieu du SKIP « profil sans convention »');
+  const charte = jouer('oracle-charte-pptx-semantique.mjs', [path.join(FX, 'charte-pptx-client-green.pptx'), '--profil', 'digit-ai']);
+  const charteChemin = jouer('oracle-charte-pptx-semantique.mjs', [path.join(FX, 'charte-pptx-client-green.pptx'), '--profil', path.join(SKILLDIR, 'profils', 'digit-ai.json')]);
+  if (charte.verdict !== 'FAIL' || JSON.stringify(charte.findings) !== JSON.stringify(charteChemin.findings))
+    ko(`TF-2325 (B) : oracle-charte-pptx-semantique --profil digit-ai (par le nom) doit juger comme par le chemin — ${charte.verdict}, ${(charte.non_juge || [])[0] || ''}`);
+  else ok('TF-2325 (B) : oracle-charte-pptx-semantique --profil digit-ai juge par le nom comme par le chemin (mêmes constats)');
+  const gabarit = jouer('oracle-charte-pptx-semantique.mjs', [path.join(FX, 'charte-pptx-gabarit-b-green.pptx')]);
+  const dit = (gabarit.non_juge || []).some((x) => /^S1 : aucun intercalaire dans ce deck — sommaire de la forme du gabarit B/.test(x) && /bijection sommaire ↔ intercalaires ne l'est pas/.test(x));
+  const info = (gabarit.findings || []).some((f) => f.sev === 'info' && /S1 — forme du gabarit B, sans intercalaire/.test(f.msg));
+  if (gabarit.verdict !== 'PASS' || !dit || !info) ko(`TF-2325 (C) : le sommaire du gabarit B passe et DIT que la bijection n est pas jugée — ${gabarit.verdict}, non_juge ${dit ? 'dit' : 'muet'}, conforme ${info ? 'dit' : 'muet'}`);
+  else ok('TF-2325 (C) : le sommaire du gabarit B passe (PASS), et le non_juge comme le constat « conforme » disent que la bijection avec les intercalaires n est pas jugée');
+  const kicker = jouer('oracle-charte-pptx-semantique.mjs', [path.join(FX, 'charte-pptx-kicker-green.pptx')]);
+  if (kicker.verdict !== 'PASS' || !(kicker.non_juge || []).some((x) => /^S2 : le kicker de la couverture/.test(x)))
+    ko('TF-2375 : le kicker de couverture est admis ET dit au non_juge — ' + kicker.verdict);
+  else ok('TF-2375 : le kicker de couverture en capitales est admis (PASS) et dit au non_juge ; la rouge du manifest le refuse ailleurs');
+}
+
+// TF-2372 — le profil digit-ai.json déclare format, polices et palette des diapositives, et P1 à P3 disent quand elles ne se
+// jouent pas faute de profil.
+{
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const prof = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'profils', 'digit-ai.json'), 'utf8'));
+  const p = prof.pptx || {};
+  const hex = (p.palette || []).every((c) => /^[0-9A-F]{6}$/.test(c)) && new Set(p.palette || []).size === (p.palette || []).length;
+  if (p.format !== '16:9' || !Array.isArray(p.polices) || !['Montserrat', 'Inter'].every((f) => p.polices.includes(f)) || !(p.palette || []).length || !hex || !p.palette.includes('2563EB') || !p.palette.includes('FAFBFF') || !p.palette.includes('0F172A'))
+    ko('TF-2372 (A) : le profil digit-ai doit déclarer pptx.format 16:9, pptx.polices (Montserrat, Inter) et pptx.palette (hexadécimaux distincts, dont 2563EB, FAFBFF, 0F172A) — obtenu ' + JSON.stringify({ format: p.format, polices: p.polices, palette: (p.palette || []).length }));
+  else ok(`TF-2372 (A) : le profil digit-ai déclare le format ${p.format}, ${p.polices.length} polices et ${p.palette.length} couleurs de diapositives, dérivés des jetons de la marque`);
+  const jouer = (args) => {
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-pptx.mjs'), ...args], { encoding: 'utf8', timeout: 120000 });
+    try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [(r.stderr || '').slice(0, 160)] }; }
+  };
+  const sousDigit = jouer([path.join(FX, 'pptx-format-red.pptx'), '--profil', 'digit-ai']);
+  const regles = new Set((sousDigit.findings || []).map((f) => f.regle).filter(Boolean));
+  if (sousDigit.verdict !== 'FAIL' || !['P1', 'P2', 'P3'].every((r) => regles.has(r))) ko(`TF-2372 (B) : sous le profil digit-ai, le deck 4:3 à police et couleur étrangères doit échouer par P1, P2 et P3 — ${sousDigit.verdict} ${[...regles].join('+')}`);
+  else ok('TF-2372 (B) : sous le profil digit-ai, le deck 4:3 à police et couleur étrangères échoue par P1, P2 et P3 (muettes avant)');
+  const sansProfil = jouer([path.join(FX, 'pptx-green.pptx')]);
+  const generique = jouer([path.join(FX, 'pptx-green.pptx'), '--profil', 'generique']);
+  const dit = (j) => (j.non_juge || []).find((x) => /^P1, P2, P3 NON jouée\(s\) : /.test(x)) || '';
+  if (sansProfil.verdict !== 'PASS' || !/aucun profil passé/.test(dit(sansProfil)) || generique.verdict !== 'PASS' || !/le profil « generique » ne déclare pas pptx\.format, pptx\.polices, pptx\.palette/.test(dit(generique)))
+    ko(`TF-2372 (C) : P1 à P3 doivent dire qu elles ne sont pas jouées, sans profil (« aucun profil passé ») comme sous un profil qui ne déclare rien — sans ${dit(sansProfil) || 'muet'} ; generique ${dit(generique) || 'muet'}`);
+  else ok('TF-2372 (C) : sans profil, comme sous un profil qui ne déclare ni format, ni polices, ni palette, P1 à P3 disent au non_juge qu elles ne sont pas jouées (le PASS ne dit plus « conforme » en silence)');
+  const voisin = jouer([path.join(FX, 'pptx-format-green.pptx'), '--profil', path.join(FX, 'profil-pptx-format.json')]);
+  if (voisin.verdict !== 'PASS' || (voisin.non_juge || []).some((x) => /NON jouée\(s\)/.test(x))) ko('TF-2372 (D) : un profil qui déclare les trois règles ne doit pas les dire non jouées — ' + voisin.verdict);
+  else ok('TF-2372 (D) : un profil qui déclare format, polices et palette ne les dit pas non jouées');
+}
+
+// TF-2373 — S5 lit aussi le tableau « On dit / On ne dit pas » de la marque de l'émetteur : cherché en remontant depuis le deck
+// (donnees/marque/MARQUE.md) ou donné par --marque ; absent, il est DIT ; un terme réservé n'est qu'un avertissement.
+{
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const O = path.join(SKILLDIR, 'scripts', 'oracle-charte-pptx-semantique.mjs');
+  const jouer = (args) => { const r = spawnSync(process.execPath, [O, ...args], { encoding: 'utf8', timeout: 120000 }); try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [(r.stderr || '').slice(0, 160)] }; } };
+  const rouge = path.join(FX, 'charte-pptx-marque-red', 'deck.pptx'), marque = path.join(FX, 'charte-pptx-marque-red', 'donnees', 'marque', 'MARQUE.md');
+  const montee = jouer([rouge]);
+  const bloquants = (montee.findings || []).filter((f) => f.sev === 'bloquant' && /^S5 /.test(f.msg));
+  const avert = (montee.findings || []).filter((f) => f.sev === 'avertissement' && /^S5 /.test(f.msg));
+  if (montee.verdict !== 'FAIL' || bloquants.length !== 1 || avert.length !== 1) ko(`TF-2373 (A) : « limite » et « phase » bloquent (un constat), « risque » (réservé à une proposition) avertit (un constat) — ${montee.verdict}, ${bloquants.length} bloquant(s), ${avert.length} avertissement(s)`);
+  else ok('TF-2373 (A) : la marque cherchée en remontant depuis le deck proscrit « limite » (3 emplois, notes comprises) et « phase » (bloquant), et n avertit que pour « risque » (réservé à une proposition)');
+  const copie = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2373-'));
+  try {
+    const deck = path.join(copie, 'deck.pptx');
+    fs.copyFileSync(rouge, deck);
+    const sans = jouer([deck]);
+    const nonJouee = (sans.non_juge || []).some((x) => /^S5 \(marque\) NON jouée : aucun donnees\/marque\/MARQUE\.md en remontant depuis le deck/.test(x));
+    const donne = jouer([deck, '--marque', marque]);
+    const absent = jouer([deck, '--marque', path.join(copie, 'inexistant.md')]);
+    const dit = (absent.non_juge || []).some((x) => /^S5 \(marque\) NON jouée : --marque .*introuvable/.test(x));
+    if (sans.verdict !== 'PASS' || !nonJouee) ko(`TF-2373 (B) : sans dossier de marque, S5 (marque) doit se dire NON jouée sans refuser le deck — ${sans.verdict}, mention ${nonJouee ? 'dite' : 'absente'}`);
+    else if (donne.verdict !== 'FAIL' || !(donne.findings || []).some((f) => /« limite » \(3\) → « point de vigilance »/.test(f.msg))) ko('TF-2373 (B) : --marque <MARQUE.md> doit désigner la marque quand elle ne se trouve pas au-dessus du deck — ' + donne.verdict);
+    else if (absent.verdict !== 'PASS' || !dit) ko(`TF-2373 (B) : --marque vers un fichier absent doit se dire NON jouée — ${absent.verdict}, mention ${dit ? 'dite' : 'absente'}`);
+    else ok('TF-2373 (B) : sans dossier de marque S5 (marque) se dit NON jouée (PASS conservé) ; --marque désigne la marque hors arbre ; un --marque absent est dit');
+  } finally { fs.rmSync(copie, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));

@@ -26,7 +26,18 @@ const args = process.argv.slice(2);
 const JSONOUT = args.includes('--json');
 const NOCACHE = args.includes('--no-cache');
 const target = args.find(a => !a.startsWith('--'));
-if (!target || !fs.existsSync(target)) { console.error('usage: node run-oracles.mjs <fichier|dossier> [--json] [--profil <nom|chemin>] [--no-cache] [--versionne]'); process.exit(2); }
+// TF-2327 : l'option `--json` existe depuis la 2.8.0 (contrat de sortie, §5) mais rien ne la montrait à qui redirige la
+// sortie vers un fichier .json : il recevait le tableau texte et reconstruisait le rapport depuis le journal. L'usage
+// la décrit maintenant, `--help` l'affiche sur la sortie standard (code 0), et une sortie texte REDIRIGÉE le rappelle
+// sur la sortie d'erreur, sans toucher à la sortie standard.
+const USAGE = 'usage: node run-oracles.mjs <fichier|dossier> [--json] [--profil <nom|chemin>] [--no-cache] [--versionne]\n'
+  + '  --json       écrit le JOURNAL (celui de <cible>.oracles.json) en un seul objet JSON sur la sortie standard, rien d\'autre ; code de sortie inchangé\n'
+  + '  --profil     profil par nom (profils/<nom>.json) ou par chemin\n'
+  + '  --no-cache   ne reprend aucun verdict du cache\n'
+  + '  --versionne  ne juge que le contenu que git suit ou suivrait';
+if (args.includes('--help') || args.includes('-h')) { console.log(USAGE); process.exit(0); }
+if (!target || !fs.existsSync(target)) { console.error(USAGE); process.exit(2); }
+if (!JSONOUT && !process.stdout.isTTY) console.error('sortie redirigée : le tableau texte est écrit tel quel ; pour le journal en JSON sur la sortie standard, ajouter --json');
 
 // ---- profil (C1) : politiques contextuelles — nom (→ profils/<nom>.json) ou chemin ------------
 const profArg = args.includes('--profil') ? args[args.indexOf('--profil') + 1] : (process.env.QO_PROFIL || 'digit-ai');

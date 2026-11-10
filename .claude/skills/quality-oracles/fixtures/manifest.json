@@ -2330,6 +2330,155 @@
    "provenance": "TF-2163, Produit-86 lot 20261104a RA-2, 05/11/2026 — la rouge porte les trois formes (écriture par un helper du fichier, écriture et appel dans un with sqlite3.connect, exemption sans raison) ; la verte joue les gestes du message (commit avant l'appel, appel avant l'écriture, lecture seule, sortie de with) et une exemption déclarée avec sa raison."
   },
   {
+   "nom": "a11y-transition",
+   "cmd": [
+    "python3",
+    "{skilldir}/scripts/oracle-a11y.py",
+    "{fixture}"
+   ],
+   "red": "a11y-transition-red.html",
+   "green": "a11y-transition-green.html",
+   "attendu_red": [
+    "FAIL",
+    "SKIP"
+   ],
+   "attendu_green": [
+    "PASS",
+    "SKIP"
+   ],
+   "dependant_outil": "Playwright/Chromium",
+   "provenance": "TF-2313 (retours du 09/11/2026) : un toast jugé au milieu de son fondu de 0,25 s rendait un contraste de 1,53 sur la chaîne, 7,16:1 une fois affiché, le même banc passait sur le poste. Les deux pages FICTIVES portent le même fondu de 1,2 s et le même spinner sans fin ; la verte donne son libellé au bouton à la fin de la transition (jugée avant la fin, elle échoue), la rouge ne le donne jamais (jugée après la fin, elle échoue encore, pour la bonne raison)."
+  },
+  {
+   "nom": "charte-pptx-pastille-numerotee",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-pastille-red.pptx",
+   "green": "charte-pptx-pastille-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S1 — intercalaire « 03 » sans entrée de sommaire correspondante"
+   ],
+   "provenance": "TF-2324 et TF-2356 (retours du produit marketing des 09/11/2026 b et c) : S1 prenait pour intercalaire toute diapositive qui porte un paragraphe réduit à un numéro (une pastille « 1 » sur une diapositive de contenu), et lisait la pagination « 02 / 6 » du sommaire comme une entrée ; 6 à 18 constats bloquants faux par deck. Decks FICTIFS (fixtures/gen-charte-pptx-sommaire-marque-fixtures.py) : la verte porte la pastille, la pagination et deux intercalaires de formes différentes (sans titre, à fond sombre) ; la rouge y ajoute un vrai intercalaire « 03 » absent du sommaire."
+  },
+  {
+   "nom": "charte-pptx-gabarit-b",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-gabarit-b-red.pptx",
+   "green": "charte-pptx-gabarit-b-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S1 — sommaire sans intercalaires (forme du gabarit B)",
+    "« 04 Planning » ne tient pas son rang"
+   ],
+   "provenance": "TF-2325 (retour du produit marketing du 09/11/2026 b, seq 630) : le gabarit B de digit-ai-propale prescrit un sommaire dont les sections ne s'ouvrent pas par un intercalaire, et S1 refusait tout deck de cette forme. Decks FICTIFS (fixtures/gen-charte-pptx-sommaire-marque-fixtures.py) : la verte numérote 01 à 03 sans intercalaire, la rouge saute de 02 à 04. Un deck qui mêle les deux formes reste refusé : charte-pptx-semantique et charte-pptx-pptxgenjs."
+  },
+  {
+   "nom": "charte-pptx-entites-xml",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-entites-red.pptx",
+   "green": "charte-pptx-entites-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S7 (E-11) — liste en ligne de 3 élément(s) : « Lot 1 ; lot 2 ; lot 3 »"
+   ],
+   "provenance": "TF-2323 (retour du produit marketing du 09/11/2026 b, seq 578) : « &gt; », « &amp; » et « &lt; » portent chacun un point-virgule, et un chemin de menu, un sigle ou une balise d'exemple devenaient des listes en ligne (6 constats bloquants faux sur 4 decks). Decks FICTIFS (fixtures/gen-charte-pptx-sommaire-marque-fixtures.py) : la verte porte les trois entités, la rouge y ajoute une vraie liste en ligne, seule refusée."
+  },
+  {
+   "nom": "charte-pptx-kicker-couverture",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-kicker-red.pptx",
+   "green": "charte-pptx-kicker-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S2 — texte au-dessus du titre (kicker interdit) : « Une phrase placée",
+    "S2 — texte au-dessus du titre (kicker interdit) : « NOTRE CONVICTION »"
+   ],
+   "provenance": "TF-2375 (retour du produit marketing du 09/11/2026 c, seq 445) : S2 refusait le kicker de couverture « PROPOSITION COMMERCIALE · {année} » que la charte de digit-ai-pptx et la marque autorisent ; tenir la marque faisait échouer l'oracle. Decks FICTIFS (fixtures/gen-charte-pptx-sommaire-marque-fixtures.py) : la verte porte le kicker au-dessus du titre de couverture ; la rouge garde ce kicker, y ajoute une phrase en minuscules au-dessus du titre de couverture et un kicker au-dessus du titre de la diapositive 2 : l'exemption ne vaut que pour le libellé en capitales de la couverture."
+  },
+  {
+   "nom": "charte-pptx-marque",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-charte-pptx-semantique.mjs",
+    "{fixture}"
+   ],
+   "red": "charte-pptx-marque-red/deck.pptx",
+   "green": "charte-pptx-marque-green/deck.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "S5 — 2 terme(s) proscrit(s) par la marque de l'émetteur",
+    "« limite » (3) → « point de vigilance »",
+    "« phase » (1) → « lot »",
+    "« risque » (1) → « point de vigilance » [réserve de la marque : dans une proposition]"
+   ],
+   "provenance": "TF-2373 (retour du produit marketing du 09/11/2026 c, seq 443) : S5 ne lisait que LEXIQUE.json et LEXIQUE-TRANSVERSE.json ; le tableau « On dit / On ne dit pas » du dossier de marque n'était joué par aucun oracle, et un deck portant « Limite » sur 3 pages passait S5. Decks FICTIFS et MARQUE.md fictif (fixtures/gen-charte-pptx-sommaire-marque-fixtures.py) : « limite » vit aussi dans les notes du présentateur ; « risque », réservé à une proposition, n'est qu'un avertissement."
+  },
+  {
+   "nom": "pptx-profil-digit-ai",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "pptx-format-red.pptx",
+   "green": "pptx-format-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "format 1.333:1",
+    "police « Comic Sans MS » hors du jeu du profil",
+    "couleur de texte #FF00FF hors de la palette du profil"
+   ],
+   "provenance": "TF-2372 (retour du produit marketing du 09/11/2026 c, seq 442) : le profil digit-ai.json ne déclarait ni pptx.format, ni pptx.polices, ni pptx.palette, et P1 à P3 rendaient PASS sans rien comparer. Les decks sont ceux de pptx-format, jugés cette fois sous le profil RÉEL : la verte (16:9, Roboto et DM Sans, #0F172A) est dans la charte, la rouge cumule format 4:3, police et couleur étrangères."
+  },
+  {
      "nom": "reglages-corpus-absent",
      "cmd": [
         "node",

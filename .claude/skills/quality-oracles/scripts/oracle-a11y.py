@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """oracle-a11y — Domaine « Accessibilite (WCAG structurel) ».
 
-Charge la page dans Chromium (Playwright) et applique un jeu deterministe de
+Charge la page dans Chromium (Playwright), attend la fin de ses animations et transitions
+finies (5 s au plus, TF-2313), puis applique un jeu deterministe de
 controles WCAG 2.2 a haute valeur : lang, title, alt d'images, noms accessibles
 des controles de formulaire, texte des liens/boutons, ordre des titres, id
 dupliques, viewport zoomable, tabindex positif. Bloquant sur les manques
@@ -72,18 +73,61 @@ JS = r"""() => {
   return {fail,warn};
 }"""
 
+# TF-2313 (09/11/2026) : UNE PAGE SE JUGE REPOSEE, JAMAIS AU MILIEU D'UNE TRANSITION. Une chaine de dev a juge un
+# toast de 12 px au milieu de son fondu de 0,25 s (contraste de 1,53 mesure, 7,16:1 une fois affiche) ; le meme banc
+# passait sur le poste, ou la page etait deja posee. Le poste ne devait pas etre plus indulgent que la chaine : avant
+# toute mesure, l'oracle attend la fin des animations et transitions FINIES de la page, 5 s au plus. Une animation
+# sans fin (iterations = Infinity : spinner, pulsation) ne finira jamais et n'est pas attendue. Les controles de
+# cet oracle sont structurels, mais une page qui complete son DOM (libelle, nom accessible) a la fin d'une
+# transition est jugee de la meme facon : l'etat repose, ou rien.
+LIMITE_REPOS_MS = 5000
+REPOS_JS = r"""async (limite) => {
+  const t0 = performance.now();
+  const deuxImages = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const finies = () => document.getAnimations().filter(a => {
+    if (a.playState !== 'running' && a.playState !== 'pending') return false;
+    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
+    return !(t && t.iterations === Infinity);
+  });
+  const infinies = () => document.getAnimations().filter(a => {
+    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
+    return t && t.iterations === Infinity;
+  }).length;
+  await deuxImages();
+  let attendues = 0, restantes = 0;
+  while (true) {
+    const encours = finies();
+    if (!encours.length) break;
+    attendues += encours.length;
+    const reste = limite - (performance.now() - t0);
+    if (reste <= 0) { restantes = encours.length; break; }
+    await Promise.race([Promise.allSettled(encours.map(a => a.finished)), new Promise(r => setTimeout(r, reste))]);
+    await deuxImages();
+    if (performance.now() - t0 >= limite) { restantes = finies().length; break; }
+  }
+  return { attendues, restantes, infinies: infinies(), ms: Math.round(performance.now() - t0) };
+}"""
+
 abspath = os.path.abspath(file).replace("\\", "/")
 try:
     with sync_playwright() as p:
         b = p.chromium.launch()
         pg = b.new_page()
         pg.goto("file:///" + abspath, wait_until="load", timeout=30000)
+        repos = pg.evaluate(REPOS_JS, LIMITE_REPOS_MS)
         r = pg.evaluate(JS)
         b.close()
 except Exception as e:
     emit("SKIP", [], ["rendu impossible : " + str(e)[:120]])
 
 findings = [{"sev": "bloquant", "msg": m} for m in r["fail"]] + [{"sev": "warn", "msg": m} for m in r["warn"]]
+# TF-2313 : le repos se dit. Des animations finies attendues, des animations sans fin ignorees, ou une page qui ne
+# se pose pas en 5 s (alors jugee en l'etat, et dit au non_juge : un etat non pose n'est pas declare conforme).
+non_juge = list(NON_JUGE)
+if repos["attendues"] or repos["infinies"]:
+    findings.append({"sev": "info", "msg": "repos de la page : %d animation(s) ou transition(s) finie(s) attendue(s) (%d ms), %d animation(s) sans fin ignoree(s)" % (repos["attendues"], repos["ms"], repos["infinies"])})
+if repos["restantes"]:
+    non_juge.append("repos de la page NON atteint apres %d s : %d animation(s) finie(s) encore en cours, la page est jugee en l'etat" % (LIMITE_REPOS_MS // 1000, repos["restantes"]))
 if r["fail"]:
-    emit("FAIL", findings)
-emit("PASS", findings if findings else [{"sev": "info", "msg": "controles WCAG structurels OK"}])
+    emit("FAIL", findings, non_juge)
+emit("PASS", findings if findings else [{"sev": "info", "msg": "controles WCAG structurels OK"}], non_juge)

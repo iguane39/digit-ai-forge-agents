@@ -10,7 +10,16 @@
 #     verdict de l'historique du fichier est un FAIL de ce domaine (on n'entérine pas un
 #     rendu qui vient d'échouer sans re-run) ; journalisée (golden_maj: true) ;
 #   · zones dynamiques : masques rectangulaires déclarés dans
-#     .oracles-goldens/<fichier>.masques.json ([{x,y,w,h}]), listés en non_juge à chaque run.
+#     .oracles-goldens/<fichier>.masques.json ([{x,y,w,h}]), listés en non_juge à chaque run ;
+#   · EMPLACEMENT (TF-2363, doctrine TF-0501 de run-oracles) : sous un arbre de LIVRAISON (output, old, dist,
+#     build), les références et l'historique ne vivent pas à côté du livrable — ce que le client reçoit ne
+#     contient pas les traces de son audit. Ils vivent sous le `.oracles/` commun aux journaux, au-dessus du
+#     premier segment de livraison, en rejouant l'arborescence relative : output/a/page.html range ses
+#     références dans <racine>/.oracles/output/a/.oracles-goldens/ et son historique dans
+#     <racine>/.oracles/output/a/page.html.oracles-historique.jsonl, le fichier que run-oracles écrit déjà.
+#     Hors livraison (fixtures, sources), rien ne change : à côté du fichier. Des références restées à
+#     l'ancien emplacement (dans le dossier livré) sont encore LUES, et le disent au non_juge ; plus rien n'y
+#     est écrit.
 # Verdicts : FAIL = divergence > seuil ou dimensions différentes · PASS = goldens concordants
 # · SKIP = golden absent / outil de rendu absent. Contrat JSON commun · exit 0/1/2.
 import json, os, sys, datetime
@@ -67,10 +76,32 @@ except Exception as e:
     out("SKIP", [], NJ_BASE + [f"outil de rendu absent ({e.__class__.__name__}) — installer playwright + chromium + pillow"], 2)
 
 fpath = Path(file).resolve()
-gdir = fpath.parent / ".oracles-goldens"
+SEGMENTS_LIVRAISON = {"output", "old", "Old", "dist", "build"}   # les mêmes que run-oracles.mjs (TF-0501)
+
+def dossier_des_traces(dossier):
+    """Le dossier qui porte références et historique : au-dessus du premier segment de livraison, sous .oracles/,
+    l'arborescence relative rejouée ; à côté du fichier quand rien n'est livré (TF-2363)."""
+    parts = dossier.parts
+    for i, seg in enumerate(parts):
+        if seg in SEGMENTS_LIVRAISON:
+            return Path(*parts[:i]) / ".oracles" / Path(*parts[i:])
+    return dossier
+
+traces = dossier_des_traces(fpath.parent)
+gdir = traces / ".oracles-goldens"
+histo_path = traces / (fpath.name + ".oracles-historique.jsonl")
+gdir_ancien = fpath.parent / ".oracles-goldens"          # lecture seule : l'emplacement d'avant TF-2363
+histo_ancien = fpath.parent / (fpath.name + ".oracles-historique.jsonl")
+ancien_lu = False
+if traces != fpath.parent and not gdir.is_dir() and gdir_ancien.is_dir():
+    gdir, ancien_lu = gdir_ancien, True
+if traces != fpath.parent and not histo_path.is_file() and histo_ancien.is_file():
+    histo_path = histo_ancien
 mask_path = gdir / (fpath.name + ".masques.json")
 masks = []
 nj = list(NJ_BASE)
+if ancien_lu:
+    nj.append(f"références lues à l'ancien emplacement, dans le dossier livré ({gdir_ancien}) : à ranger sous {traces / '.oracles-goldens'} (--accepter les y réécrit), elles ne devraient pas être remises au client")
 if mask_path.is_file():
     try:
         masks = json.load(open(mask_path))
@@ -106,7 +137,7 @@ def apply_masks(img):
 
 # ---- --accepter : gouvernance hors boucle (R5) ------------------------------------------------
 if ACCEPT:
-    histo = fpath.parent / (fpath.name + ".oracles-historique.jsonl")
+    histo = histo_path
     if histo.is_file():
         try:
             last = json.loads(histo.read_text().strip().splitlines()[-1])
@@ -114,13 +145,15 @@ if ACCEPT:
                 out("FAIL", [{"sev": "bloquant", "msg": "--accepter refusé : le dernier run journalisé est un FAIL de ce domaine — corriger puis re-runner avant d'entériner un golden", "where": histo.name}], nj, 1)
         except Exception:
             pass
-    gdir.mkdir(exist_ok=True)
+    # TF-2363 : on écrit toujours à l'emplacement courant, jamais à l'ancien (le dossier livré)
+    gdir = traces / ".oracles-goldens"
+    gdir.mkdir(parents=True, exist_ok=True)
     made = []
     for w in conf["breakpoints"]:
         gp = gdir / f"{fpath.name}-w{w}.png"
         gp.write_bytes(capture(w))
         made.append(gp.name)
-    with open(fpath.parent / (fpath.name + ".oracles-historique.jsonl"), "a") as h:
+    with open(traces / (fpath.name + ".oracles-historique.jsonl"), "a") as h:
         h.write(json.dumps({"date_iso": datetime.datetime.now().isoformat(), "golden_maj": True, "goldens": made}) + "\n")
     out("PASS", [{"sev": "info", "msg": "goldens entérinés (hors boucle) : " + " · ".join(made), "where": str(gdir.name)}], nj, 0)
 
@@ -145,7 +178,9 @@ for w in conf["breakpoints"]:
     ratio = divergent / (W * H)
     judged += 1
     if ratio > float(conf["seuil_ratio"]):
-        dp = gdir / f"{fpath.name}-w{w}-diff.png"
+        # TF-2363 : l'image de différence est une trace d'audit comme les références ; jamais dans le dossier livré
+        (traces / ".oracles-goldens").mkdir(parents=True, exist_ok=True)
+        dp = traces / ".oracles-goldens" / f"{fpath.name}-w{w}-diff.png"
         diff.point(lambda v: 255 if v > tol else 0).save(dp)
         findings.append({"sev": "bloquant", "msg": f"régression visuelle au breakpoint {w} : {ratio:.4%} de pixels divergents > seuil {float(conf['seuil_ratio']):.4%}", "where": dp.name})
     else:

@@ -10,8 +10,9 @@
 //   charte-pptx-pptxgenjs-brut.pptx   deck conforme, tel que pptxgenjs l'écrit : pieds NOMMÉS (objectName
 //                                     « Pied de page », « Pagination ») mais sans espace réservé ftr/sldNum ;
 //   charte-pptx-pptxgenjs-green.pptx  le même deck passé par digit-ai-pptx/scripts/poser-pieds-de-page.py ;
-//   charte-pptx-pptxgenjs-red.pptx    deck brut à trois défauts : un sommaire à une entrée sans intercalaire
-//                                     (S1), un sur-titre au-dessus du titre (S2), aucun pied de page (S4).
+//   charte-pptx-pptxgenjs-red.pptx    deck brut à trois défauts : un sommaire à une entrée sans intercalaire, dans un
+//                                     deck qui porte un autre intercalaire (S1), un sur-titre au-dessus du titre
+//                                     (S2), aucun pied de page (S4).
 // Rejouable : node gen-charte-pptx-pptxgenjs-fixtures.mjs <dossier qui contient node_modules/pptxgenjs>
 // (sans argument, pptxgenjs est cherché depuis ce dossier, puis en global).
 import { createRequire } from 'node:module';
@@ -53,6 +54,12 @@ function deck(rouge) {
     s3.addText('NOTRE CONVICTION', { x: 0.6, y: 0.1, w: 6, h: 0.3, objectName: 'Sur-titre' });
     s3.addText('Contexte détaillé', { placeholder: 'titre' });
     s3.addText('Corps de la diapositive', { x: 0.6, y: 2.0, w: 10, h: 0.6, objectName: 'Corps' });
+    // 4 — un intercalaire « 02 Proposition » que le sommaire ne porte pas (TF-2325, 10/11/2026) : sans lui, le rouge
+    // serait un sommaire SANS AUCUN intercalaire, forme du gabarit B que S1 accepte désormais ; avec lui, le deck
+    // mêle les deux formes et S1 juge la bijection entière (« soit toutes, soit aucune »).
+    const s4 = diapo();
+    s4.addText('02', { x: 0.6, y: 2.4, w: 2, h: 0.8, objectName: 'Numéro d intercalaire' });
+    s4.addText('Proposition', { x: 0.6, y: 3.2, w: 8, h: 0.8, objectName: 'Intitulé d intercalaire' });
   } else {
     // 3 — intercalaire 01, 4 — contenu
     const s3 = diapo();

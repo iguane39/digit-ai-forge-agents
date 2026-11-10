@@ -14,7 +14,16 @@
     "transitions_interdites": true,
     "_charte": "TF-1490 (01/10/2026) : S3 et S4 d'oracle-charte-pptx-semantique suivent ces deux clés. La charte Digit-AI admet les logos sur la couverture et la diapositive des interlocuteurs seulement, et veut le pied de page et la pagination en espaces réservés (ftr, sldNum) au niveau de la diapositive.",
     "logos": "couverture-interlocuteurs",
-    "pied_de_page": "espace-reserve"
+    "pied_de_page": "espace-reserve",
+    "_diapositives": "TF-2372 (10/11/2026) : P1 à P3 d'oracle-pptx jugent désormais les diapositives sous ce profil. format, polices et palette sont DÉRIVÉS des jetons du support « diapositives » du dossier de marque de l'émetteur (tokens-diapositives.tokens.json, version du 11/09/2026) : polices = les noms de police des piles typographie.head, typographie.sans et typographie.mono, hors familles génériques (system-ui, sans-serif, monospace, ui-monospace) ; palette = les 37 couleurs distinctes des thèmes clair ET sombre (couverture et intercalaires sont sombres) ; format = 16:9, que la charte v2 de digit-ai-pptx tient pour [à valider] (aucun jeton ne le porte). Un jeton qui change se reporte ici à la main : cette liste est une donnée, datée et sourcée, pas un calcul.",
+    "format": "16:9",
+    "polices": ["Montserrat", "Roboto", "Inter", "DM Sans", "JetBrains Mono", "Consolas"],
+    "palette": [
+      "FAFBFF", "FFFFFF", "0F172A", "64748B", "94A3B8", "E6EAF2", "2563EB", "15803D", "F2FCF5", "CFEEDD",
+      "D97706", "FFFBEB", "FDE9C8", "0E9488", "EFFDFB", "C7F0EA", "B91C1C", "FEF2F2", "F6CFCF", "172033",
+      "EEF2F8", "A9B4C4", "7C8AA0", "263248", "7DA2F5", "7BE0A0", "0F2A1B", "1C4A30", "FBBF6D", "2B2210",
+      "4A3A18", "5FE6D6", "0E2A27", "164E48", "F5A3A3", "2C1416", "4C1F22"
+    ]
   },
   "nommage": {
     "_decision": "Q3-bis (décision humaine du 09/08/2026) : le nom du PROJET prime sur l'émetteur. La convention n'est plus ancrée sur « Digit-AI » — c'est le motif date + indice qui discrimine un livrable daté de n'importe quel autre fichier.",
