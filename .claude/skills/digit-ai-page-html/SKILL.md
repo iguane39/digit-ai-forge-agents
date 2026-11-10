@@ -7,13 +7,34 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.44.0"
+  version: "1.45.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.45.0 (10/11/2026)** — **six retours du produit marketing (RA-202, RA-203, RA-212, RA-214, RA-215 et un reste de TF-2299) : l'export PDF aux
+polices de la charte, la page imprimée mesurée, la complétude d'une source de données, deux contrôles qui cessent de se tromper (TF-2352, TF-2353,
+TF-2362, TF-2364, TF-2365, TF-2391 ; campagne du 10/11/2026, lot FA4, décisions R-58 : exécutées).** Chaque règle a sa fixture rouge et sa fixture verte,
+jouées avant et après ; 26 cas neufs au self-test (`run_lot_fa4`). **(1) `scripts/exporter_pdf.py` (TF-2352).** Une page du socle déclare ses polices sans
+`@font-face` (règle A1) ; sur un poste qui ne les a pas, l'impression PDF retombait sur Segoe UI et Consolas. L'export pose les familles de la page depuis un
+CACHE LOCAL (les WOFF2 de `../digit-ai-schemas/scripts/fonts`, ou `--cache`, ou `DIGIT_AI_POLICES`) en `@font-face` data: dans une copie de travail
+temporaire, la page et le dépôt restant intacts, puis LIT les polices que le PDF embarque : une police de repli embarquée est un échec (exit 1), avec son
+nom. Rejouer l'ancien geste (cache sans Montserrat) rend `AAAAAA+SegoeUI-Bold` ; le cache du socle rend `MontserratThin-Bold`, `Inter-Regular`,
+`JetBrainsMono-Regular`. **(2) `check_html.py` ne juge plus le repli dans un `@font-face` (TF-2353).** Un bloc `@font-face` nomme une famille embarquée
+(règle A1), un repli n'y a pas de sens : l'avertissement « font-family sans repli système » en sortait 1 à 4 par livrable, à lire et à écarter. Les règles
+d'usage sont jugées comme avant (la rouge en garde un, sur elle seule). **(3) `check_completude.py --source-donnees` (TF-2362).** Une source JSON ou un
+module Python (lu par `ast`, jamais exécuté) et une cible HTML ou PDF, comparées par CHAÎNES : chaque chaîne de la source doit se retrouver dans le texte de
+la cible, la manquante est nommée avec son chemin (`$.sections[1].items[2]`). Un compte de mots ne dit pas quelle phrase a disparu. **(4)
+`scripts/check_impression.py` (TF-2364, TF-2365).** G1 s'écrivait « impression toujours claire » sans oracle qui la joue : le contrôle imprime la page deux
+fois, thème par défaut puis `data-theme="dark"` sur la racine, et compare les pages en image (la fixture rouge diffère de 99,94 % des pixels ; le remède
+`@media screen` donne 0). Sur une page à `@page` de taille fixe, il mesure aussi la marge basse du dernier bloc de chaque page (seuil 5 mm, `--marge-mm`) et
+nomme la page fautive (0,9 mm sur la fixture). `render_page.py` dit désormais à chaque exécution que la page imprimée n'est pas mesurée par lui.
+**(5) `mesurer_bruit.py` compte les défauts de scène (TF-2391).** Depuis 1.44.0 les familles d'une scène vivent sous `scenes.scenes[nom].issues` ; le compte
+ne lisait que l'état initial. Sur `scenes-rouge.html` le taux de `v1_overflow` passe de 0 à 1 page sur 2, ventilé « dont 1 en scène ». **Version MINEURE :**
+quatre scripts ou options neufs, aucune règle existante ne durcit (G1 et la marge basse sont des contrôles à jouer, pas une porte de `check_html`).
 
 **1.44.0 (09/11/2026)** — **`render_page.py` rend et mesure chaque scène d'une page à scènes déclarées, aux largeurs du socle (TF-2299, RA-04 ; lot
 Produit-81 du 09/11/2026, décision R-58 : exécutée).** Sur cinq animations de sept ou huit scènes, 32 scènes sur 37 n'étaient jamais rendues ni mesurées
@@ -899,6 +920,31 @@ python scripts/check_format_a4.py page.html                 # une page A4 demand
 python scripts/check_format_a4.py page.html --pages 2 --sans-ecran --output json
 ```
 
+**La page IMPRIMÉE se mesure aussi (TF-2364, TF-2365).** `render_page` juge l'écran, `check_html` la feuille : aucun ne regardait le
+papier. Deux défauts sont passés verts : une page imprimée après un passage en thème sombre sortait en cartes sombres sur papier blanc (G1
+« impression toujours claire » n'avait aucun oracle qui la joue), et le pied d'une feuille à hauteur figée finissait à 0,1 mm du bord.
+`check_impression.py` imprime la page deux fois, thème par défaut puis `data-theme="dark"` posé sur la racine, compare les pages en image (plus de
+0,05 % de pixels en écart, ou un autre nombre de pages, est un échec) et, sur une page qui déclare un `@page` de taille fixe, mesure pour chaque
+page la marge entre le bas de la feuille et le dernier bloc (5 mm au moins, `--marge-mm`). Sans `@page` de taille fixe, la marge est dite non
+mesurée ; sans bascule de thème, les deux impressions sont identiques et G1 passe. À jouer sur toute page qui s'imprime, d'office sur une page à
+`@page` fixe (le socle ne la lance pas encore de lui-même : `render_page` rappelle la limite à chaque exécution).
+
+```bash
+python scripts/check_impression.py page.html                     # exit 0 PASS · 1 FAIL · 2 SKIP motivé (Chromium, pymupdf, numpy)
+python scripts/check_impression.py page.html --marge-mm 8 --output json
+```
+
+**L'export PDF embarque les polices de la charte (TF-2352).** Une page du socle ne porte pas de `@font-face` (règle A1) : sur un poste qui n'a pas
+ses polices, l'impression PDF retombait sur Segoe UI et Consolas, sans que le poste producteur, lui, le voie. `exporter_pdf.py` pose les familles de
+la page depuis un cache local de WOFF2 (celui de `digit-ai-schemas/scripts/fonts`, ou `--cache`, ou `DIGIT_AI_POLICES`) dans une copie de travail
+temporaire, imprime, puis lit les polices du PDF : une police de repli embarquée est un échec nommé. La page livrée reste inchangée. La route
+manuelle (copie de travail et `@font-face` en `file://`) reste valable pour une famille que le cache n'a pas ; l'export dit alors laquelle.
+
+```bash
+python scripts/exporter_pdf.py page.html --out page.pdf          # exit 0 PASS · 1 police de repli embarquée · 2 SKIP motivé
+python scripts/exporter_pdf.py page.html --out page.pdf --cache <dossier de WOFF2> --tolerer-repli "Segoe UI Symbol"
+```
+
 Enfin, contrôler la **lisibilité** — ce que le lecteur peut effectivement lire et utiliser :
 
 ```bash
@@ -983,6 +1029,18 @@ ou déplacé reste bloquant, même sous une dérogation de couverture.
 publiée, un rapport d'audit. Une page écrite à la main n'a pas de source à laquelle se comparer, et
 ce contrôle ne s'y applique pas.
 
+**Une source de données, une cible PDF (TF-2362, RA-212).** Un kit généré depuis un module Python de contenu et livré en PDF n'avait aucun oracle :
+la prescription ci-dessus ne comparait qu'un HTML à un Markdown, et un contrôle ad hoc a dû s'écrire. `--source-donnees` prend un JSON ou un module
+Python (lu par `ast`, jamais exécuté ; une f-string ou un appel, dont le texte se calcule, est dit non lu) et compare par CHAÎNES : chaque feuille
+texte de la source doit se retrouver dans le texte de la cible, HTML ou PDF (espaces, casse, apostrophes, césure de fin de ligne et balisage de la
+chaîne normalisés). La chaîne manquante est nommée avec son chemin, et le compte de mots d'avant n'aurait pas dit laquelle. Les clés qui ne sont pas du
+texte de page (`id`, `href`, `classe`) se déclarent à ignorer, sinon elles comptent manquantes : le non_juge le dit.
+
+```bash
+python scripts/check_completude.py kit.pdf --source-donnees contenu.json --ignorer-cles id,classe     # exit 0 PASS · 1 FAIL · 2 SKIP
+python scripts/check_completude.py page.html --source-donnees module_de_contenu.py --output json
+```
+
 ## La chaîne ne s'arrête pas à ce socle : quatre oracles de `digit-ai-forge-design` jugent la même page (TF-1173)
 
 **Le fait mesuré, 16/09/2026 (lot Produit-64 20260916b, RD-9 : son retour n° 9).** Un guide développeur déclaré PASS
@@ -1026,6 +1084,9 @@ contrôles que le producteur lance de toute façon.
 - Format imprimé demandé (« une page A4 »), pages comptées dans les conditions du lecteur : `scripts/check_format_a4.py`
   (TF-1882) — section « Une demande de format imprimé se COMPTE » ci-dessus ; registre :
   `../quality-oracles/references/registre-oracles.md`
+- La page imprimée (G1 en thème sombre, marge basse d'une feuille fixe) : `scripts/check_impression.py` (TF-2364, TF-2365) ; l'export PDF aux
+  polices de la charte : `scripts/exporter_pdf.py` (TF-2352) — sections « La page IMPRIMÉE se mesure aussi » et « L'export PDF embarque les
+  polices » ci-dessus
 - Bruit d'une règle du rendu sur un parc, avant/après, en une commande : `scripts/mesurer_bruit.py`
   (TF-1225) — [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md), « Mesurer le
   bruit d'une règle »

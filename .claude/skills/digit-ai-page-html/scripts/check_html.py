@@ -809,7 +809,10 @@ def check_charte(html: str):
     if police_syne_declaree(html):
         fails.append("Police Syne détectée — interdite par la charte.")
 
-    for decl in re.findall(r"font-family\s*:\s*([^;}{]+)", low):
+    # TF-2353 — un bloc @font-face nomme une famille embarquée (règle A1) : un repli n'y a pas de sens,
+    # et la règle d'usage qui consomme la famille porte le sien. Seules les règles d'usage sont jugées.
+    hors_font_face = re.sub(r"@font-face\s*\{[^}]*\}", "", low)
+    for decl in re.findall(r"font-family\s*:\s*([^;}{]+)", hors_font_face):
         if '"' in decl or "'" in decl:
             if not re.search(r"(system-ui|sans-serif|-apple-system|monospace|serif)", decl):
                 warns.append(f"font-family sans repli système : {decl.strip()[:60]}")

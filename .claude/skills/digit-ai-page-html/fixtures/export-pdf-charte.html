@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture TF-2352 — export PDF aux polices de la charte — 20261110a</title>
+<!-- TF-2352. Une page du socle qui déclare ses polices SANS @font-face (règle A1 : aucune requête, polices en repli
+     système). Sur un poste qui n'a pas Montserrat, Inter et JetBrains Mono, un export PDF retombe sur la police
+     système. `exporter_pdf.py` les pose depuis le cache local, dans une copie de travail. -->
+<style>
+:root { --head: "Montserrat", system-ui, sans-serif; --sans: "Inter", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace; --ink: #0F172A; --bg: #FFFFFF; }
+body { margin: 0; padding: 16mm; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+h1 { font-family: var(--head); font-weight: 700; }
+code { font-family: var(--mono); }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<h1>Titre en Montserrat</h1>
+<p>Texte courant en Inter, sur un poste qui n'a pas la police.</p>
+<p><code>identifiant_en_chasse_fixe</code></p>
+</body>
+</html>

@@ -6165,6 +6165,359 @@ def run_lot_a_composants():
     return out
 
 
+def _cas_fa4(nom, regle, ok, attendu, obtenu, detail=""):
+    """Une ligne de rapport du lot FA4 (campagne du 10/11/2026), au format des autres bancs."""
+    return {"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+            "obtenu": obtenu, "regle": regle, "detail": "" if ok else str(detail)[:300]}
+
+
+def run_fa4_tf2353():
+    """TF-2353 (RA-203) — check_html ne juge pas le repli système dans un bloc @font-face.
+
+    LE FAIT PAYE. L'avertissement « font-family sans repli système » frappait les déclarations
+    @font-face, où un repli n'a pas de sens : une famille embarquée en base64 (règle A1) porte un nom,
+    jamais une pile. Un dossier du 16/09/2026 sortait 4 avertissements pour 2 familles, à lire et à
+    écarter à chaque livrable. Les deux sens : la verte (deux @font-face, tous les usages avec repli)
+    n'en sort aucun ; la rouge (un usage sans repli) en sort un, sur CET usage et non sur le @font-face.
+    La fixture `a5-polices-embarquees.html` (polices réelles en data:) est le témoin du parc.
+    """
+    out = []
+    RE = "font-family sans repli système"
+    for nom, attendu in (("a5-font-face-sans-repli.html", 0), ("a5-polices-embarquees.html", 0),
+                         ("a5-usage-sans-repli.html", 1)):
+        _, warns = check((FIXTURES / nom).read_text(encoding="utf-8"), regles="charte")
+        vus = [w for w in warns if w.startswith(RE)]
+        ok = len(vus) == attendu
+        if nom == "a5-usage-sans-repli.html":
+            ok = ok and "montserrat" in vus[0] and "inter" not in vus[0]
+        out.append(_cas_fa4(nom, "TF-2353 repli hors @font-face", ok,
+                            f"{attendu} avertissement(s) « sans repli système »", f"{len(vus)} : {vus[:2]}", vus))
+    return out
+
+
+def run_fa4_tf2391():
+    """TF-2391 — mesurer_bruit.py compte les défauts de SCÈNE que render_page.py mesure (reste de TF-2299).
+
+    LE FAIT. Depuis 1.44.0, `render_page.py` joue chaque scène déclarée d'une page et range ses
+    familles sous `breakpoints[w].scenes.scenes[nom].issues` ; `mesurer_bruit.py` ne lisait que
+    `breakpoints[w].issues` (l'état initial), si bien qu'un défaut de scène ne comptait pour aucune
+    famille : le taux d'accusation d'une règle sous-estimait le parc exactement là où 1.44.0 voit.
+    `scenes-rouge.html` porte un v1_overflow dans la seule scène 4 (état initial vert) : un compte
+    qui lit l'état initial rend 0 page accusée, un compte qui lit aussi les scènes en rend 1 sur 2
+    (`scenes-verte.html`, mêmes sept scènes sans défaut, est le témoin). Silencieux sans playwright.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return []
+    import tempfile
+    outil = str(Path(__file__).resolve().parent / "mesurer_bruit.py")
+    atelier = Path(tempfile.mkdtemp(prefix="self-test-bruit-scenes-"))
+    out = []
+    try:
+        parc = atelier / "parc"
+        parc.mkdir()
+        for nom in ("scenes-rouge.html", "scenes-verte.html"):
+            shutil.copy(FIXTURES / nom, parc / nom)
+        r = subprocess.run([sys.executable, "-X", "utf8", outil, str(parc), "--familles", "v1_overflow",
+                            "--widths", "1280", "--jobs", "2", "--cache", str(atelier / "cache"),
+                            "--output", "json"], capture_output=True, text=True, encoding="utf-8")
+        try:
+            apres = json.loads(r.stdout)["apres"]
+        except Exception:  # noqa: BLE001
+            apres = {"erreur": (r.stderr or r.stdout)[-300:]}
+        f = (apres.get("familles") or {}).get("v1_overflow", {})
+        accusees = [Path(p).name for p in f.get("accusees", [])]
+        ok = apres.get("mesurees") == 2 and f.get("pages_accusees") == 1 and f.get("taux") == 0.5
+        out.append(_cas_fa4("scenes-rouge + scenes-verte · le défaut de scène est compté", "TF-2391 compte des scènes", ok,
+                            "2 mesurées, 1 accusée (v1_overflow), taux 0.5",
+                            f"{apres.get('mesurees')} mesurées, {f.get('pages_accusees')} accusée(s), taux {f.get('taux')}",
+                            apres))
+        out.append(_cas_fa4("scenes-rouge seule accusée (la verte n'est pas bruyante)", "TF-2391 compte des scènes",
+                            accusees == ["scenes-rouge.html"], "['scenes-rouge.html']", str(accusees)))
+        out.append(_cas_fa4("le constat est ventilé : 1 en scène, 0 à l'état initial", "TF-2391 ventilation",
+                            f.get("constats_en_scene") == 1 and f.get("constats") == 1,
+                            "constats 1, constats_en_scene 1", f"constats {f.get('constats')}, "
+                            f"constats_en_scene {f.get('constats_en_scene')}", f))
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
+def run_fa4_impression():
+    """TF-2364 (G1 « impression toujours claire ») et TF-2365 (marge basse de la page imprimée) — check_impression.py.
+
+    LE FAIT. G1 s'écrivait sans oracle qui le joue : un one-pager PASS à check_html et à render_page sortait
+    en cartes sombres sur papier blanc après un passage en thème sombre (706 177 pixels sur 1 169 883 en
+    écart). Un bandeau poussé à 0,1 mm du bord d'une feuille à hauteur figée n'était vu que par l'oracle
+    du produit. Quatre fixtures, chacune jugée pour UNE raison :
+      · `impression-sombre-rouge.html` : le bloc sombre n'est pas borné à l'écran, G1 tombe (≈ 100 % de pixels) ;
+      · `impression-fixe-verte.html` : deux feuilles A4 fixes, pied à 12 mm, thème sombre sous `screen` : PASS,
+        0 pixel d'écart, deux marges mesurées ;
+      · `impression-marge-rouge.html` : la même page, pied de la SECONDE feuille au bord : FAIL sur la page 2
+        seule, la page 1 reste verte, G1 reste vert (la marge ne dépend pas du thème) ;
+      · `lisibilite-verte.html` : aucun @page de taille fixe, aucun thème sombre : PASS, et la marge basse est
+        dite NON mesurée (jamais un PASS muet).
+    Silencieux sans playwright, pymupdf ou numpy (le script rend alors SKIP, motif écrit).
+    """
+    try:
+        import importlib
+        for m in ("playwright.sync_api", "pymupdf", "numpy"):
+            importlib.import_module(m)
+    except ImportError:
+        return []
+    outil = str(Path(__file__).resolve().parent / "check_impression.py")
+
+    def jouer(nom):
+        r = subprocess.run([sys.executable, "-X", "utf8", outil, str(FIXTURES / nom), "--output", "json"],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return r.returncode, json.loads(r.stdout)
+        except Exception:  # noqa: BLE001
+            return r.returncode, {"erreur": (r.stderr or r.stdout)[-300:]}
+
+    out = []
+    code, j = jouer("impression-sombre-rouge.html")
+    g1 = (j.get("mesures") or {}).get("g1") or [{}]
+    ok = (code == 1 and j.get("verdict") == "FAIL" and g1[0].get("ratio", 0) > 0.5
+          and any(e.startswith("G1 : page 1") for e in j.get("echecs", [])) and not j.get("page_fixe"))
+    out.append(_cas_fa4("impression-sombre-rouge · le thème sombre sort à l'impression", "TF-2364 G1 impression claire", ok,
+                        "FAIL (exit 1), G1 page 1 en écart de plus de 50 % des pixels",
+                        f"exit {code}, {j.get('verdict')}, écart {g1[0].get('ratio')}", j))
+    code, j = jouer("impression-fixe-verte.html")
+    m = (j.get("mesures") or {})
+    ok = (code == 0 and j.get("verdict") == "PASS" and [x.get("differents") for x in m.get("g1", [])] == [0, 0]
+          and [x.get("marge_mm") for x in m.get("marge_basse", [])] and
+          all(x["marge_mm"] >= 5 for x in m.get("marge_basse", [])) and len(m.get("marge_basse", [])) == 2)
+    out.append(_cas_fa4("impression-fixe-verte · 0 pixel d'écart, deux marges de 12 mm", "TF-2364 G1 + TF-2365 marge basse", ok,
+                        "PASS (exit 0), 0 pixel d'écart sur 2 pages, 2 marges >= 5 mm",
+                        f"exit {code}, {j.get('verdict')}, g1 {[x.get('differents') for x in m.get('g1', [])]}, "
+                        f"marges {[x.get('marge_mm') for x in m.get('marge_basse', [])]}", j))
+    code, j = jouer("impression-marge-rouge.html")
+    m = (j.get("mesures") or {})
+    marges = [x.get("marge_mm") for x in m.get("marge_basse", [])]
+    ok = (code == 1 and j.get("verdict") == "FAIL" and len(marges) == 2 and marges[0] >= 5 and marges[1] < 5
+          and len(j.get("echecs", [])) == 1 and j["echecs"][0].startswith("marge basse : page 2"))
+    out.append(_cas_fa4("impression-marge-rouge · le pied de la page 2 finit à moins de 5 mm", "TF-2365 marge basse", ok,
+                        "FAIL (exit 1), un seul échec : la marge de la page 2 (< 5 mm), la page 1 saine",
+                        f"exit {code}, {j.get('verdict')}, marges {marges}, échecs {j.get('echecs')}", j))
+    code, j = jouer("lisibilite-verte.html")
+    dit = [n for n in j.get("non_juge", []) if n.startswith("LA MARGE BASSE n'est pas mesurée")]
+    ok = code == 0 and j.get("verdict") == "PASS" and j.get("page_fixe") is False and len(dit) == 1
+    out.append(_cas_fa4("lisibilite-verte · sans @page fixe, la marge est dite non mesurée", "TF-2365 périmètre", ok,
+                        "PASS (exit 0), page_fixe faux, une ligne « MARGE BASSE n'est pas mesurée » au non_juge",
+                        f"exit {code}, {j.get('verdict')}, page_fixe {j.get('page_fixe')}, {len(dit)} ligne(s)", j))
+    return out
+
+
+def run_fa4_tf2362():
+    """TF-2362 (RA-212) — check_completude.py accepte une source de DONNÉES et une cible PDF, par comparaison de chaînes.
+
+    LE FAIT. Le socle prescrit check_completude.py pour toute page issue d'un générateur, mais il ne comparait qu'un
+    HTML à un Markdown. Un kit généré depuis un module Python de données et livré en PDF n'avait aucun oracle : un
+    contrôle ad hoc (K10) a retrouvé 586 chaînes sur deux PDF et rendu FAIL sur une fiche amputée de 2 mots. Les deux
+    sens, sur une source JSON et sur son équivalent en module Python (lu par ast, jamais exécuté : la ligne
+    `os.environ[...]` du module lèverait), vers un HTML et vers un PDF imprimé de ce HTML :
+      · la verte (8 chaînes affichées) PASSE, apostrophe courbe de la source contre droite de la page comprise ;
+      · l'amputée (2 mots d'un item) ÉCHOUE et nomme `sections[1].items[2]` ;
+      · sans `--ignorer-cles`, un identifiant qui ne s'affiche pas est compté MANQUANT (le non_juge le dit) ;
+      · une source sans aucune chaîne rend SKIP (exit 2), jamais PASS ; `--source` et `--source-donnees` s'excluent ;
+      · une cible PDF sans source de données est refusée ; la césure de fin de ligne ne fait pas échouer une
+        chaîne présente, et n'en sauve pas une absente.
+    """
+    import tempfile
+    outil = str(Path(__file__).resolve().parent / "check_completude.py")
+    donnees = FIXTURES / "completude-donnees.json"
+    module = FIXTURES / "completude-contenu.py"
+    verte = FIXTURES / "completude-donnees-verte.html"
+    amputee = FIXTURES / "completude-donnees-amputee.html"
+    out = []
+
+    def jouer(*args):
+        r = subprocess.run([sys.executable, "-X", "utf8", outil, *map(str, args), "--output", "json"],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return r.returncode, json.loads(r.stdout), r.stderr
+        except Exception:  # noqa: BLE001
+            return r.returncode, {}, (r.stderr or r.stdout)[-300:]
+
+    ign = ("--ignorer-cles", "id,classe")
+    code, j, _ = jouer(verte, "--source-donnees", donnees, *ign)
+    out.append(_cas_fa4("JSON → HTML vert · 9 chaînes retrouvées", "TF-2362 verte", code == 0 and j.get("verdict") == "PASS"
+                        and j.get("chaines_jugees") == 9 and j.get("chaines_retrouvees") == 9,
+                        "PASS, 9 jugées, 9 retrouvées", f"exit {code}, {j.get('verdict')}, {j.get('chaines_retrouvees')}/{j.get('chaines_jugees')}", j))
+    code, j, _ = jouer(amputee, "--source-donnees", donnees, *ign)
+    man = [m["chemin"] for m in j.get("chaines_manquantes", [])]
+    out.append(_cas_fa4("JSON → HTML amputé de 2 mots · l'item perdu est nommé", "TF-2362 rouge",
+                        code == 1 and j.get("verdict") == "FAIL" and man == ["completude-donnees.json:$.sections[1].items[2]"],
+                        "FAIL (exit 1), seule manquante : sections[1].items[2]", f"exit {code}, {j.get('verdict')}, {man}", j))
+    code, j, _ = jouer(verte, "--source-donnees", donnees)
+    man = [m["chemin"] for m in j.get("chaines_manquantes", [])]
+    out.append(_cas_fa4("sans --ignorer-cles · l'identifiant et la classe sont comptés manquants, et dits", "TF-2362 non_juge",
+                        code == 1 and any(c.endswith("$.classe") for c in man)
+                        and any(n.startswith("TOUTE CHAÎNE DE LA SOURCE EST CRUE AFFICHÉE") for n in j.get("non_juge", [])),
+                        "FAIL, $.classe manquante, non_juge « crue affichée »", f"exit {code}, {man[:3]}", j))
+    os_environ_absente = "VARIABLE_QUI_N_EXISTE_PAS_TF2362"
+    code, j, err = jouer(verte, "--source-donnees", module, *ign)
+    notes = " ".join(j.get("non_juge", []))
+    out.append(_cas_fa4("module Python → HTML vert · lu par ast sans exécution, expressions non lues dites", "TF-2362 module",
+                        code == 0 and j.get("verdict") == "PASS" and "2 expression(s) du module de contenu ne se lisent pas" in notes
+                        and os_environ_absente not in err,
+                        "PASS sans exécuter le module (2 expressions non lues dites)", f"exit {code}, {j.get('verdict')}, {err[-120:]}", notes[-200:]))
+    code, j, _ = jouer(amputee, "--source-donnees", module, *ign)
+    out.append(_cas_fa4("module Python → HTML amputé · FAIL", "TF-2362 module rouge",
+                        code == 1 and [m["chemin"].split(":", 1)[1] for m in j.get("chaines_manquantes", [])] == ["SECTIONS[1].items[2]"],
+                        "FAIL, SECTIONS[1].items[2]", f"exit {code}, {[m['chemin'] for m in j.get('chaines_manquantes', [])]}", j))
+
+    # Cas sans navigateur : source vide, exclusion des deux modes, PDF sans source de données, césure.
+    atelier = Path(tempfile.mkdtemp(prefix="self-test-completude-donnees-"))
+    try:
+        vide = atelier / "vide.json"
+        vide.write_text('{"nombre": 3, "actif": true}', encoding="utf-8")
+        code, j, _ = jouer(verte, "--source-donnees", vide)
+        out.append(_cas_fa4("source sans aucune chaîne · SKIP, jamais PASS", "TF-2362 source vide",
+                            code == 2 and j.get("verdict") == "SKIP", "SKIP (exit 2)", f"exit {code}, {j.get('verdict')}", j))
+        code, _, err = jouer(verte, "--source-donnees", donnees, "--source", FIXTURES / "completude-source.md")
+        out.append(_cas_fa4("--source et --source-donnees ensemble · refus (exit 2)", "TF-2362 exclusion",
+                            code == 2 and "s'excluent" in err, "exit 2, « s'excluent »", f"exit {code}, {err[-100:]}", err))
+        faux = atelier / "cible.pdf"
+        faux.write_bytes(b"%PDF-1.4\n")
+        code, _, err = jouer(faux, "--source", FIXTURES / "completude-source.md")
+        out.append(_cas_fa4("cible PDF avec une source Markdown · refus (exit 2)", "TF-2362 cible PDF",
+                            code == 2 and "--source-donnees" in err, "exit 2, renvoie à --source-donnees", f"exit {code}, {err[-100:]}", err))
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("check_completude_fa4", outil)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        present = mod.verifier_donnees("une inter-\nprétation juste", [("c", "interprétation")])
+        absent = mod.verifier_donnees("une inter-\npellation juste", [("c", "interprétation")])
+        out.append(_cas_fa4("césure de fin de ligne · la chaîne présente est retrouvée, l'absente reste manquante",
+                            "TF-2362 césure",
+                            present["verdict"] == "PASS" and present["retrouvees_a_un_trait_dunion_pres"] == 1
+                            and absent["verdict"] == "FAIL",
+                            "PASS (1 à un trait d'union près) puis FAIL", f"{present['verdict']} / {absent['verdict']}", present))
+
+        # La cible PDF : le HTML vert et l'amputé imprimés par Chromium, lus par pymupdf.
+        try:
+            import importlib
+            importlib.import_module("pymupdf")
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return out
+        pdfs = {}
+        with sync_playwright() as p:
+            nav = p.chromium.launch()
+            try:
+                for nom, src in (("verte", verte), ("amputee", amputee)):
+                    pg = nav.new_page()
+                    pg.goto(src.resolve().as_uri())
+                    pg.wait_for_timeout(300)
+                    pdfs[nom] = atelier / f"{nom}.pdf"
+                    pg.pdf(path=str(pdfs[nom]), format="A4", print_background=True)
+                    pg.close()
+            finally:
+                nav.close()
+        code, j, _ = jouer(pdfs["verte"], "--source-donnees", donnees, *ign)
+        out.append(_cas_fa4("JSON → PDF vert · 9 chaînes retrouvées dans la couche texte", "TF-2362 PDF vert",
+                            code == 0 and j.get("verdict") == "PASS" and j.get("chaines_retrouvees") == 9,
+                            "PASS, 9 retrouvées", f"exit {code}, {j.get('verdict')}, {j.get('chaines_retrouvees')}", j))
+        code, j, _ = jouer(pdfs["amputee"], "--source-donnees", donnees, *ign)
+        man = [m["chemin"] for m in j.get("chaines_manquantes", [])]
+        out.append(_cas_fa4("JSON → PDF amputé de 2 mots · l'item perdu est nommé", "TF-2362 PDF rouge",
+                            code == 1 and man == ["completude-donnees.json:$.sections[1].items[2]"],
+                            "FAIL, sections[1].items[2] seule", f"exit {code}, {man}", j))
+        code, j, _ = jouer(pdfs["verte"], "--source-donnees", module, *ign)
+        out.append(_cas_fa4("module Python → PDF vert · PASS", "TF-2362 PDF module",
+                            code == 0 and j.get("verdict") == "PASS", "PASS", f"exit {code}, {j.get('verdict')}", j))
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
+def run_fa4_tf2352():
+    """TF-2352 (RA-202) — l'export PDF du socle embarque les polices de la charte depuis un cache local.
+
+    LE FAIT. Une page du socle déclare ses polices sans @font-face (règle A1) ; sur un poste qui ne les a pas, l'impression
+    PDF retombait sur Segoe UI et Consolas (12/09/2026 : AAAAAA+SegoeUI et DAAAAA+Consolas, puis DMSans9pt, Roboto et
+    JetBrainsMono depuis une copie de travail portant des @font-face). `exporter_pdf.py` pose les familles du cache local
+    dans une copie de travail et lit les polices du PDF. Trois sens :
+      · ROUGE — une famille qu'AUCUN poste n'a (« Essai Tf2352 », fabriquée dans une copie de la fixture) et qu'aucun cache
+        ne fournit : le PDF embarque la police système, l'export le dit (FAIL) ;
+      · ROUGE — le cache ne porte pas Montserrat (il ne tient que DM Sans) : sur un poste qui n'a pas Montserrat le titre
+        retombe sur la police système, FAIL ; sur un poste qui l'a, le rouge n'est pas rejouable et le cas le dit ;
+      · VERT — le cache du socle (digit-ai-schemas/scripts/fonts) : PASS, Montserrat, Inter et JetBrains Mono embarquées, la
+        page source inchangée octet pour octet.
+    Silencieux sans playwright ni pymupdf.
+    """
+    try:
+        import importlib
+        for m in ("playwright.sync_api", "pymupdf"):
+            importlib.import_module(m)
+    except ImportError:
+        return []
+    import hashlib
+    import tempfile
+    outil = str(Path(__file__).resolve().parent / "exporter_pdf.py")
+    cache_socle = Path(__file__).resolve().parent.parent.parent / "digit-ai-schemas" / "scripts" / "fonts"
+    if not cache_socle.is_dir():
+        return [_cas_fa4("cache de polices du socle", "TF-2352 export PDF", False, "digit-ai-schemas/scripts/fonts présent",
+                         "absent", str(cache_socle))]
+    source = FIXTURES / "export-pdf-charte.html"
+    out = []
+    atelier = Path(tempfile.mkdtemp(prefix="self-test-export-pdf-"))
+
+    def jouer(page, pdf, *args):
+        r = subprocess.run([sys.executable, "-X", "utf8", outil, str(page), "--out", str(pdf), "--output", "json", *args],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return r.returncode, json.loads(r.stdout)
+        except Exception:  # noqa: BLE001
+            return r.returncode, {"erreur": (r.stderr or r.stdout)[-300:]}
+
+    try:
+        essai = atelier / "essai.html"
+        essai.write_text(source.read_text(encoding="utf-8").replace("Montserrat", "Essai Tf2352"), encoding="utf-8")
+        code, j = jouer(essai, atelier / "essai.pdf")
+        ok = code == 1 and j.get("verdict") == "FAIL" and "Essai Tf2352" in j.get("familles_non_couvertes", []) and bool(j.get("repli"))
+        out.append(_cas_fa4("famille introuvable (aucun poste, aucun cache) · le repli système est embarqué et dit", "TF-2352 rouge", ok,
+                            "FAIL (exit 1), « Essai Tf2352 » non couverte, au moins une police de repli",
+                            f"exit {code}, {j.get('verdict')}, non couvertes {j.get('familles_non_couvertes')}, repli {j.get('repli')}", j))
+        cache_dm = atelier / "cache-dm-sans"
+        cache_dm.mkdir()
+        shutil.copy(cache_socle / "dm-sans-latin-400-normal.woff2", cache_dm)
+        code, j = jouer(source, atelier / "sans-montserrat.pdf", "--cache", str(cache_dm))
+        installee = code == 0 and not j.get("repli")
+        if installee:
+            out.append(_cas_fa4("cache sans Montserrat · rouge NON REJOUABLE ici (police installée sur ce poste)", "TF-2352 rouge", True,
+                                "FAIL sur un poste sans Montserrat", "PASS : Montserrat est installée sur ce poste, rouge non rejoué", j))
+        else:
+            ok = code == 1 and j.get("verdict") == "FAIL" and "Montserrat" in j.get("familles_non_couvertes", []) and bool(j.get("repli"))
+            out.append(_cas_fa4("cache sans Montserrat · le titre retombe sur la police système, FAIL", "TF-2352 rouge", ok,
+                                "FAIL (exit 1), Montserrat non couverte, une police de repli embarquée",
+                                f"exit {code}, {j.get('verdict')}, repli {j.get('repli')}", j))
+        avant = hashlib.sha256(source.read_bytes()).hexdigest()
+        voisins = sorted(p.name for p in FIXTURES.iterdir())
+        code, j = jouer(source, atelier / "charte.pdf")
+        noms = " ".join(j.get("polices_du_pdf", [])).lower()
+        ok = (code == 0 and j.get("verdict") == "PASS" and j.get("repli") == [] and "montserrat" in noms and "inter" in noms
+              and "jetbrainsmono" in noms and j.get("familles_posees") == ["Montserrat", "Inter", "JetBrains Mono"])
+        out.append(_cas_fa4("cache du socle · Montserrat, Inter et JetBrains Mono embarquées, aucun repli", "TF-2352 vert", ok,
+                            "PASS (exit 0), 3 familles posées, aucune police de repli",
+                            f"exit {code}, {j.get('verdict')}, polices {j.get('polices_du_pdf')}", j))
+        intact = hashlib.sha256(source.read_bytes()).hexdigest() == avant and sorted(p.name for p in FIXTURES.iterdir()) == voisins
+        out.append(_cas_fa4("la page source reste intacte, aucun fichier ne naît à côté d'elle (copie de travail temporaire)",
+                            "TF-2352 copie de travail", intact, "empreinte identique, mêmes fichiers dans fixtures/", "inchangée" if intact else "modifiée"))
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
+def run_lot_fa4():
+    """Lot FA4 de la campagne du 10/11/2026 : TF-2353, TF-2352, TF-2362, TF-2364, TF-2365, TF-2391."""
+    return run_fa4_tf2353() + run_fa4_tf2391() + run_fa4_impression() + run_fa4_tf2362() + run_fa4_tf2352()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -6181,7 +6534,8 @@ def main():
            + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
            + run_classe_source_machine() + run_avertissements_15_10()
            + run_l39_graphique_maison() + run_dates_jjmm()
-           + run_kpi_hors_page_conteneur() + run_lot_a_check_html())
+           + run_kpi_hors_page_conteneur() + run_lot_a_check_html()
+           + run_lot_fa4())
     # TF-1964 — le composant embarque lit des jetons que l'hote ne declare pas : repli et alerte.
     composants_jetons = run_lot_a_composants()
     if composants_jetons:

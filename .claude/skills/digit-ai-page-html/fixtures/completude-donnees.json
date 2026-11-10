@@ -1,0 +1,21 @@
+{
+  "classe": "kit-apporteurs",
+  "titre": "Kit des apporteurs",
+  "sections": [
+    {
+      "id": "intro",
+      "titre": "Ce que vous apportez",
+      "corps": "Un apporteur présente une opportunité et suit le dossier jusqu'à sa signature."
+    },
+    {
+      "id": "etapes",
+      "titre": "Les trois étapes",
+      "items": ["Qualifier le besoin", "Présenter l'équipe", "Suivre la proposition"]
+    },
+    {
+      "id": "contact",
+      "titre": "Qui contacter",
+      "corps": "Écrire à l’équipe commerciale avant toute relance du client."
+    }
+  ]
+}

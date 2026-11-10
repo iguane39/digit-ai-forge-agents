@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture TF-2353 — rouge : une règle d'usage sans repli reste avertie — 20261110a</title>
+<!-- TF-2353, sens ROUGE. Même page que la verte, avec UNE règle d'usage sans pile de repli
+     (celle du titre de premier niveau). Ne pas juger le repli dans un @font-face ne doit pas
+     désarmer l'avertissement là où il a un sens : il sort une fois, sur cette règle seule. -->
+<style>
+@font-face { font-family: "Inter"; font-weight: 400; font-display: swap;
+  src: url(data:font/woff2;base64,AAAA) format("woff2"); }
+@font-face{font-family:'Montserrat';font-weight:700;src:url(data:font/woff2;base64,BBBB) format("woff2")}
+:root { --head: "Montserrat", system-ui, sans-serif; --sans: "Inter", system-ui, sans-serif; --ink: #0F172A; --bg: #FAFBFF; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+h1 { font-family: "Montserrat"; }
+p { font-family: "Inter", system-ui, sans-serif; }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Polices embarquées, un usage sans repli</h1>
+<p>Les déclarations @font-face nomment une famille ; une règle d'usage n'a pas de pile de repli.</p>
+</main>
+</body>
+</html>

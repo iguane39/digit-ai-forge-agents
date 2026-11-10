@@ -21,8 +21,8 @@ CE QUE CE SCRIPT FAIT, en une commande :
 Sortie : par famille, le nombre de pages accusees et de constats, avant et apres, le taux
 d'accusation (pages accusees / pages mesurees), et la liste des pages NOUVELLEMENT accusees.
 
-CE QU'IL NE JUGE PAS (non_juge, publie a chaque sortie) : l'etat INITIAL de chaque page seulement
-(aucun `--etats-ouverts`, aucune matrice), aux seules largeurs demandees ; une page dont le rendu
+CE QU'IL NE JUGE PAS (non_juge, publie a chaque sortie) : l'etat INITIAL de chaque page et ses scenes
+declarees seulement (TF-2391 ; aucun `--etats-ouverts`, aucune matrice), aux seules largeurs demandees ; une page dont le rendu
 echoue est comptee a part, jamais comme une page sans constat ; le parc est celui qu'on lui donne
 — il ne decouvre pas les consommateurs tout seul.
 
@@ -56,8 +56,9 @@ ICI = Path(__file__).resolve().parent
 IGNORES = {".git", "node_modules", "__pycache__", ".oracles", "fixtures", "captures"}
 
 NON_JUGE = [
-    "seul l'etat INITIAL de chaque page est rendu (aucun --etats-ouverts, aucune matrice) : une "
-    "regle qui ne se declenche que dans un etat ouvert n'est pas mesuree ici",
+    "seuls l'etat INITIAL de chaque page et ses SCENES declarees (data-scene, TF-2391) sont rendus (aucun "
+    "--etats-ouverts, aucune matrice) : une regle qui ne se declenche que dans un etat ouvert n'est pas "
+    "mesuree ici ; une scene qu'aucun geste n'affiche (NON JOUEE) n'est pas comptee",
     "seules les largeurs demandees (--widths) sont jouees",
     "une page dont le rendu echoue est comptee dans « echecs », jamais comme une page sans constat",
     "le parc est celui qu'on lui donne : ce script ne decouvre pas les pages consommatrices",
@@ -120,7 +121,8 @@ def figer(scripts: Path, dest: Path) -> Path:
 def rendre(page: Path, scripts: Path, widths: str, cle_outil: str, cache: Path,
            captures: Path) -> dict:
     """Le rapport de `render_page.py` pour cette page, pris au cache s'il y est."""
-    cle = hashlib.sha256(page.read_bytes() + cle_outil.encode() + widths.encode()).hexdigest()
+    # « resume-scenes » : la forme du resume en cache (TF-2391) ; une entree d'avant les scenes ne se reprend pas.
+    cle = hashlib.sha256(page.read_bytes() + cle_outil.encode() + widths.encode() + b"resume-scenes").hexdigest()
     fichier = cache / f"{cle}.json"
     if fichier.exists():
         try:
@@ -134,11 +136,18 @@ def rendre(page: Path, scripts: Path, widths: str, cle_outil: str, cache: Path,
         rapport = json.loads(r.stdout)
     except Exception:  # noqa: BLE001
         return {"cache": False, "echec": (r.stderr or r.stdout or "sortie vide")[-300:]}
-    resume = {"familles": {}}
+    resume = {"familles": {}, "familles_en_scene": {}}
     for bp in rapport.get("breakpoints", {}).values():
         for cle_f, val in (bp.get("issues") or {}).items():
             if isinstance(val, list):
                 resume["familles"][cle_f] = resume["familles"].get(cle_f, 0) + len(val)
+        # TF-2391 : depuis 1.44.0 (TF-2299) chaque scene declaree est jouee, et ses familles vivent sous
+        # `scenes.scenes[nom].issues`. Un defaut de scene compte pour sa famille, et se ventile a part.
+        for scene in ((bp.get("scenes") or {}).get("scenes") or {}).values():
+            for cle_f, val in (scene.get("issues") or {}).items():
+                if isinstance(val, list) and val:
+                    resume["familles"][cle_f] = resume["familles"].get(cle_f, 0) + len(val)
+                    resume["familles_en_scene"][cle_f] = resume["familles_en_scene"].get(cle_f, 0) + len(val)
     resume["verdict"] = rapport.get("verdict")
     fichier.write_text(json.dumps(resume, ensure_ascii=False), encoding="utf-8")
     return {"cache": False, **resume}
@@ -169,6 +178,7 @@ def bilan(mesures: dict, familles: list[str] | None) -> dict:
         out["familles"][f] = {
             "pages_accusees": len(accusees),
             "constats": sum((mesures[p].get("familles") or {}).get(f, 0) for p in mesurees),
+            "constats_en_scene": sum((mesures[p].get("familles_en_scene") or {}).get(f, 0) for p in mesurees),
             "taux": round(len(accusees) / len(mesurees), 4) if mesurees else None,
             "accusees": sorted(accusees),
             "constats_par_page": {p: mesures[p]["familles"][f] for p in sorted(accusees)},
@@ -240,6 +250,8 @@ def main() -> int:
         if familles is None and not d["constats"] and not (a.avant_ref and rapport["avant"]["familles"].get(f, {}).get("constats")):
             continue
         ligne = f"  {f:<28} apres : {d['pages_accusees']:>3} page(s) ({d['taux']:.1%}), {d['constats']} constat(s)"
+        if d["constats_en_scene"]:
+            ligne += f" dont {d['constats_en_scene']} en scene"
         if a.avant_ref:
             av = rapport["avant"]["familles"].get(f, {"pages_accusees": 0, "constats": 0, "taux": 0.0})
             ligne += (f" · avant : {av['pages_accusees']} page(s) ({(av['taux'] or 0):.1%}), "

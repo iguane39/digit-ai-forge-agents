@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture TF-2364 et TF-2365 — verte : feuille fixe, pied à 12 mm, thème sombre borné à l'écran — 20261110a</title>
+<!-- TF-2364 et TF-2365, sens VERT. Deux feuilles A4 paysage à hauteur figée (@page de taille fixe). Le pied
+     de chaque feuille finit à 12 mm du bord. Le bloc du thème sombre est sous @media screen : l'impression
+     en thème sombre est identique à l'impression par défaut (0 pixel d'écart). -->
+<style>
+@page { size: A4 landscape; margin: 0; }
+:root { --ink: #0F172A; --bg: #FFFFFF; --accent: #2563EB; }
+html, body { margin: 0; }
+body { font-family: system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+.feuille { position: relative; width: 297mm; height: 209mm; overflow: hidden; background: #fff; break-after: page; }
+.feuille:last-child { break-after: auto; }
+.feuille h1 { margin: 0; padding: 14mm 16mm 0; }
+.feuille p { margin: 0; padding: 6mm 16mm; }
+.pied { position: absolute; left: 0; right: 0; bottom: 12mm; height: 8mm; background: var(--accent); color: #fff; padding: 0 16mm; line-height: 8mm; }
+@media screen { [data-theme="dark"] body { background: #0B1220; color: #E8ECF5; } [data-theme="dark"] .feuille { background: #16203A; } }
+</style>
+</head>
+<body>
+<section class="feuille"><h1>Feuille 1</h1><p>Contenu de la première feuille.</p><div class="pied">Pied de la feuille 1</div></section>
+<section class="feuille"><h1>Feuille 2</h1><p>Contenu de la seconde feuille.</p><div class="pied">Pied de la feuille 2</div></section>
+</body>
+</html>

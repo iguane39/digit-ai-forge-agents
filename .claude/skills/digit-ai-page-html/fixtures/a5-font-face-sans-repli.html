@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture TF-2353 — verte : un @font-face n'a pas de repli à porter — 20261110a</title>
+<!-- TF-2353, sens VERT. La page embarque ses polices (règle A1) : deux déclarations @font-face
+     dont le font-family est un NOM de famille, jamais une pile. Un repli système n'a pas de sens
+     dans ce bloc ; toutes les règles d'USAGE ci-dessous portent le leur. Aucun avertissement
+     « font-family sans repli système » ne doit sortir. -->
+<style>
+@font-face { font-family: "Inter"; font-weight: 400; font-display: swap;
+  src: url(data:font/woff2;base64,AAAA) format("woff2"); }
+@font-face{font-family:'Montserrat';font-weight:700;src:url(data:font/woff2;base64,BBBB) format("woff2")}
+:root { --head: "Montserrat", system-ui, sans-serif; --sans: "Inter", system-ui, sans-serif; --ink: #0F172A; --bg: #FAFBFF; }
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); }
+h1 { font-family: "Montserrat", system-ui, sans-serif; }
+p { font-family: "Inter", system-ui, sans-serif; }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Polices embarquées, usage avec repli</h1>
+<p>Les déclarations @font-face nomment une famille ; les règles d'usage portent la pile de repli.</p>
+</main>
+</body>
+</html>
