@@ -821,6 +821,53 @@
    "provenance": "Mission formation — blocs annoncés ≠ sommes de séquences, contrôle rejoué 2× en scripts Python jetables dans le même fil, 23/07/2026 (note P1 §0, inventaire P2 §3 O1)"
   },
   {
+   "nom": "programme-formation-piece-formateur",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-programme-formation.mjs",
+    "{fixture}"
+   ],
+   "red": "formation-contenu-formateur-red.json",
+   "green": "formation-contenu-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "P1 — aucune pièce du formateur",
+    "et 1 note(s) de diapositive y renvoient",
+    "C8 — le kit du participant porte un corrigé"
+   ],
+   "commentaire": "TF-2315 — mode « contenu commun » (.json) : le fichier d'où se tirent support, notes, kit et fiche du formateur. La VERTE porte sa section « formateur » et un kit sans solution : PASS. La ROUGE, tirée de la verte, retire la section alors qu'une note y renvoie (P1) et imprime la solution de l'exercice 2 au kit sous une marque « Corrigé » (C8). Avant TF-2315, les deux rendaient SKIP (« extension non gérée »).",
+   "provenance": "TF-2315 (RA-06, lot du produit marketing du 09/11/2026, seq 703) — une note de diapositive renvoyait à un « kit formateur » jamais écrit, et les solutions des exercices 4 et 5 étaient imprimées dans le kit du participant, quatre jours avant la séance."
+  },
+  {
+   "nom": "programme-formation-coherence-pieces",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-programme-formation.mjs",
+    "{fixture}"
+   ],
+   "red": "formation-contenu-coherence-red.json",
+   "green": "formation-contenu-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "C6 — « Exercice 3 » : durées différentes",
+    "C7 — matin : 205 minutes de notes pour un créneau de 195",
+    "C8 — une ligne de la solution",
+    "C9 — la fiche « Fiche mémo : le compte rendu complet » omet l'élément « responsables »"
+   ],
+   "commentaire": "TF-2316 — les quatre contrôles de cohérence entre pièces, lus sur le contenu commun. La ROUGE, tirée de la verte, porte un défaut par contrôle : durée d'un exercice différente entre diapositive et kit (C6), notes du matin au-delà du créneau du déroulé (C7), ligne de solution recopiée sans marque dans le kit (C8), fiche mémo qui omet un élément de la grille enseignée (C9). Avant TF-2316, SKIP (« extension non gérée »).",
+   "provenance": "TF-2316 (RA-07, lot du produit marketing du 09/11/2026, seq 692) — le 26/10/2026, support, notes et kit ont passé tous leurs oracles avec 8 défauts de cohérence, trouvés par une revue humaine."
+  },
+  {
    "nom": "charte-pptx-semantique",
    "cmd": [
     "node",

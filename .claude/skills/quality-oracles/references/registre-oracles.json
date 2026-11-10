@@ -569,7 +569,7 @@
     "{skilldir}/scripts/oracle-programme-formation.mjs",
     "{file}"
    ],
-   "checklist": "5 contrôles C1-C5 en tête d oracle-programme-formation.mjs ; déclenchement auto par contenu (« durée annoncée : ») — .docx par invocation explicite uniquement (content matching limité aux formats texte)",
+   "checklist": "5 contrôles C1-C5 en tête d oracle-programme-formation.mjs ; déclenchement auto par contenu (« durée annoncée : ») — .docx par invocation explicite uniquement (content matching limité aux formats texte) · mode CONTENU COMMUN (.json, invocation explicite, `--fin \"17 h 00\"` si le contenu ne porte pas `fin`) : P1 pièce du formateur présente (TF-2315), C6 même durée d un exercice sur diapositive, notes et kit, C7 notes d une demi-journée dans son créneau, C8 aucune solution au kit du participant (marque ou ligne recopiée), C9 fiche mémo fidèle à la grille qu elle résume (TF-2316)",
    "statut": "ok",
    "non_juge": [
     "qualité pédagogique du contenu → fiche ingenierie-pedagogique",
