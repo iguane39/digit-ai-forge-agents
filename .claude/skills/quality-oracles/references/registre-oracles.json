@@ -454,12 +454,13 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "montant € hors table sans source ni « à vérifier » = bloquant ; % et grands nombres non sourcés = avertissement ; libellé répété à valeurs divergentes = bloquant ; actif selon profil",
+   "checklist": "montant € hors table sans source ni « à vérifier » = bloquant ; % et grands nombres non sourcés = avertissement ; libellé répété à valeurs divergentes = bloquant ; actif selon profil · TF-2358 montant ou TJM d'une ligne de tableau (hors lignes de total) sans source = bloquant, le tableau étant sourcé par son en-tête, sa légende, sa note ou une colonne de source (adresse, citation, preuve, calcul…) · TF-2318 texte de diapositives (lignes-repères « Diapositive N », ou sauts de page avec --diapositives) : une source posée dans la diapositive couvre ses chiffres · TF-2359 texte à plat : une cellule courte est couverte par la cellule d'en-tête à marqueur posée au-dessus d'elle · TF-2319 --grille <grille.json> : G1 montant absent de la grille et G2 unité contraire = bloquant, G3 unité non dite = avertissement · TF-2357 données embarquées (url(data:…), attributs data:) écartées avant analyse : une page autoportante de 272 Ko jugée en 1 à 2 s",
    "statut": "partiel",
    "non_juge": [
     "véracité des sources citées",
     "affirmations non chiffrées",
-    "tables → oracle-calculs"
+    "lignes Total, Sous-total et Total général des tableaux → oracle-calculs (re-somme)",
+    "G1-G3 sans --grille ; pourcentages, grands nombres et jours-homme des lignes de tableau"
    ],
    "timeout_ms": 600000
   },
@@ -568,7 +569,7 @@
     "{skilldir}/scripts/oracle-programme-formation.mjs",
     "{file}"
    ],
-   "checklist": "5 contrôles C1-C5 en tête d oracle-programme-formation.mjs ; déclenchement auto par contenu (« durée annoncée : ») — .docx par invocation explicite uniquement (content matching limité aux formats texte)",
+   "checklist": "5 contrôles C1-C5 en tête d oracle-programme-formation.mjs ; déclenchement auto par contenu (« durée annoncée : ») — .docx par invocation explicite uniquement (content matching limité aux formats texte) · mode CONTENU COMMUN (.json, invocation explicite, `--fin \"17 h 00\"` si le contenu ne porte pas `fin`) : P1 pièce du formateur présente (TF-2315), C6 même durée d un exercice sur diapositive, notes et kit, C7 notes d une demi-journée dans son créneau, C8 aucune solution au kit du participant (marque ou ligne recopiée), C9 fiche mémo fidèle à la grille qu elle résume (TF-2316)",
    "statut": "ok",
    "non_juge": [
     "qualité pédagogique du contenu → fiche ingenierie-pedagogique",
@@ -2348,6 +2349,81 @@
    "commande": "scripts/porte-identite-publication.mjs <depot>",
    "provenance": "D-175 du 05/11/2026 (TF-2168, lot Produit-84 - RETOURS - 20261105a, RT-46) : l'envoi de digit-ai-forge-audit est parti à 09:17 sous le compte du profil de session d'un produit client et a été refusé 403 par l'hébergeur ; publié à 09:18 sous le compte du poste. Paire rouge/verte : cas 18 de scripts/self-test-hamecon-publication.mjs (faux gh, aucun appel réseau).",
    "note": "Un oracle de câblage, sans paire au manifest des fixtures : son entrée est un dépôt git vivant avec un remote et un environnement d'envoi, que le manifest (un fichier par cas) ne peut pas porter. Le banc du hameçon joue les deux sens sur de vrais dépôts et de vrais git push. Variables de banc : PORTE_IDENTITE_GH (exécutable gh) et PORTE_IDENTITE_DELAI_MS (raccourcit la borne de 20 s, ne l'allonge jamais)."
+  },
+  {
+   "domaine": "Rendu PDF d'une page HTML",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pdf.mjs",
+    "{file}"
+   ],
+   "checklist": "P1 le PDF s'ouvre et porte au moins une page (--pages N exige N pages) · P2 chaque page au format attendu (--format A4 par défaut, ou Letter), portrait ou paysage, à 2 points près · P3 chaque police qui dessine du texte (police courante d'un Tj, TJ, ' ou \") est embarquée et en sous-ensemble ; une police seulement déclarée n'est pas jugée, et la sortie le dit · P4 texte extractible et titres attendus (--titres \"A|B\") lus par trois lecteurs, pypdf, PyMuPDF et pdftotext : un défaut n'est écrit que si TOUS les lecteurs disponibles échouent, un désaccord est une information (TF-2367, lib/texte-pdf.mjs) ; --lecteurs a,b,c désigne et exige les lecteurs · P5 aucun nom interdit dans le texte extrait, jugé par oracle-nom-client-publie sur un dépôt jetable (--referentiel=, --produits= transmis) · P6 aucune trace de rendu : adresse file://, serveur local, chemin de disque, valeur de --source ; avec --sans-courriel, aucune adresse électronique. Invocation explicite : le format A4 n'a de sens que pour l'impression d'une page HTML, ce qu'aucun lanceur ne lit dans un PDF.",
+   "statut": "ok",
+   "non_juge": [
+    "fidélité du rendu à la page source (mise en page, couleurs, images) → render_page.py, oracle-visual-diff",
+    "contours et boîte englobante des polices → oracle-polices-embarquees",
+    "champs de formulaire et signatures → oracle-formulaire-pdf",
+    "ordre de lecture du texte (pdftotext rend l'ordre visuel, pypdf et PyMuPDF l'ordre de création)",
+    "adresse électronique sans --sans-courriel ; adresse de page publique sauf désignée par --source"
+   ],
+   "timeout_ms": 600000
+  },
+  {
+   "domaine": "Document Word retouché, jugé contre sa version d'origine",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-docx-retouche.mjs",
+    "{file}"
+   ],
+   "checklist": "Invocation explicite avec --origine <origine.docx> et --declaration <retouches.json> (retires, ajoutes, deplaces, tableaux : retouches, pagination, nombre) · K1 même liste de parties, et toute partie hors word/document.xml et docProps/*.xml identique octet pour octet · K2 paragraphes retirés et ajoutés égaux aux déclarés (multiensembles), ordre des paragraphes communs conservé hors déplacements déclarés · K3 tableau non déclaré identique à celui de même rang ; déclaré « pagination », il n'en diffère que par w:cantSplit et w:keepNext · K5 aucun nom interdit dans le texte ajouté (porte des noms, lib/noms-texte.mjs) · K6 aucun marqueur de travail ajouté · K8 w14:paraId uniques. La sortie désigne un paragraphe par son rang, un tableau par son numéro, sans recopier de texte.",
+   "statut": "ok",
+   "non_juge": [
+    "K4 durées recalculées d'un CV et K7 mise en page mesurée sur le PDF rendu par Word : non jugées",
+    "vérité des paragraphes ajoutés, qualité rédactionnelle",
+    "schéma du paquet (→ validate.py) et validité d'ouverture (→ oracle-docx)"
+   ],
+   "timeout_ms": 300000
+  },
+  {
+   "domaine": "Fidélité des chiffres d'un livrable dérivé à son document source",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-fidelite-source.mjs",
+    "{file}"
+   ],
+   "checklist": "Invocation explicite avec --source <document source> et --faits <faits.json> (quality-oracles/faits-source@1) · F1 chaque fait : affirmation lue au livrable, passage lu tel quel dans la source, nombres de l'affirmation lus dans le passage (chiffres ou lettres), fait littéral lu tel quel dans la source ou reformulation déclarée (TF-2320) · F2 aucun nombre orphelin hors faits et structures déclarées · F3 grandeur recomptée sur les lignes de la source qui portent un motif, jamais lue dans sa prose · F4 chaque temps de frise annonce des étapes dont les titres portent les mots attendus · --epreuve : chaque altération du livrable ET de la table des faits doit faire échouer le jugement (TF-2320).",
+   "statut": "ok",
+   "non_juge": [
+    "vérité de la source elle-même",
+    "affirmation sans nombre que la table ne déclare pas",
+    "justesse d'une reformulation déclarée (ses nombres restent jugés)",
+    "livrable .pptx, .docx ou .pdf : texte à extraire d'abord"
+   ],
+   "timeout_ms": 300000
+  },
+  {
+   "domaine": "Anonymisation d'un dossier d'intervenant",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-anonymisation-dossier.mjs",
+    "{file}"
+   ],
+   "checklist": "Invocation explicite avec --nominatif <version nominative> [--profil-source <profil>] [--lieux <motif>] [--generiques \"A,B\"] [--perimetre <motif>] · les termes identifiants se TIRENT à l'exécution de la version nominative et du profil source, sans être recopiés (ni au code, ni à la sortie) · A1 identité : mots retirés du titre de premier niveau et mots à capitale du nom du profil absents · A2 employeurs et lieux : mots à capitale retirés d'une ligne, et ceux des lignes nominatives déclarées par --lieux, absents partout · A3 coordonnées du profil et de la version nominative absentes · A4 périmètre du diff : même nombre de lignes, chaque ligne modifiée retire un terme identifiant et aucun nombre · A5 porte des noms sur le texte anonymisé (lib/noms-texte.mjs) · la version nominative elle-même échoue, comme au contrôle du produit.",
+   "statut": "ok",
+   "non_juge": [
+    "terme identifiant absent de la version nominative et du profil (seule la porte des noms le voit, s'il est à sa table)",
+    "employeur écrit en minuscules ou sous une autre graphie ; mot déclaré générique",
+    "rendu PDF du dossier (→ oracle-pdf) ; qualité de la périphrase qui remplace un nom"
+   ],
+   "timeout_ms": 300000
   }
  ]
 }

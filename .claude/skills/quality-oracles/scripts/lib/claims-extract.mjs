@@ -31,10 +31,15 @@ export function canonUnit(u) {
 // « Libellé : X unité » hors tables → [{ key, v, line, brut }]
 // unités : € / k€ / % (v1) + j / jours / j.h / jours-homme / j/h (v2.2)
 const LABELLED = /([A-Za-zÀ-ÿ'’ %()\/-]{4,60}?)\s*[:=]\s*(\d[\d\s\u00a0\u202f.,]*)\s*(k€|K€|€|%|(?:j\.?h\.?|jours?[- ]hommes?|j\/h|j(?:ours?)?)\b)/g;
+// TF-2357 (10/11/2026) : les blancs d'une ligne sont réduits avant la recherche. Le libellé admet
+// l'espace et le motif le fait suivre de `\s*` : sur une suite de N espaces sans « : », il reculait au
+// carré de N (8 596 ms à 8 000 caractères, mesuré sur une page autoportante blanchie). La clé
+// (normLabel) et la valeur (numOf) réduisaient déjà les blancs : seul `brut`, l'extrait affiché, change.
 export function extractLabelled(lines, isTableLine) {
   const out = [];
-  lines.forEach((l, i) => {
-    if (isTableLine(l)) return;
+  lines.forEach((l0, i) => {
+    if (isTableLine(l0)) return;
+    const l = l0.replace(/[ \t  ]{2,}/g, ' ');
     for (const m of l.matchAll(LABELLED)) {
       const { unit, mult } = canonUnit(m[3]);
       const v = numOf(m[2]);

@@ -36,10 +36,12 @@ const NON_JUGE_BASE = [
   'pourcentages croisés (part d\'une table rapportée au total d\'une autre)',
   'colonnes % sans ligne de total (répartition non totalisée)',
   'chiffres sans ligne de total de contrôle (à vérifier à la source)',
+  'tableaux (TF-2358) : seules les lignes Total, Sous-total et Total général sont jugées ici, par re-somme ; la SOURCE des montants des autres lignes (tableau avec ou sans total) est jugée par oracle-claims',
   'justesse métier des valeurs unitaires (seule la cohérence arithmétique est jugée)',
   'ambiguïté séparateur unique + 3 décimales (traité comme milliers)',
   'effectifs annoncés sans ancre immédiate (liste ou tableau juste dessous) — non rapprochables',
   'effectifs de 1 (« une question ») et noms hors liste des dénombrables de lib/effectifs.mjs',
+  'N2 (TF-2378) : un effectif et une liste du même nom ne sont confrontés que s\'ils désignent le même ensemble — une mention en contexte de mesure (« baisse de 10 points », « sur 20 points ») n\'est pas un compte, et deux qualificatifs sans mot commun (« questions de référence », « questions fermées ») sont deux ensembles ; deux qualifications sans mot commun d\'un MÊME ensemble ne sont donc pas confrontées',
   'listes imbriquées HTML : les <li> de sous-listes sont comptés avec les items de premier niveau',
   'I1 (même indicateur, deux valeurs) : deux tuiles entre elles, deux mentions en prose entre elles, la forme « libellé : nombre », un libellé d\'un seul mot — seule la valeur déclarée (tuile, dt/dd) est confrontée à la prose',
   ...NON_JUGE_MESURE

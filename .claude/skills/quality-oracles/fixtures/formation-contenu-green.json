@@ -1,0 +1,54 @@
+{
+  "commentaire": "Jeu d'essai TF-2315/TF-2316 — formation INVENTÉE, contenu commun d'où se tirent le support, les notes, le kit du participant et la fiche du formateur. Cas VERT : pièce du formateur présente, durées concordantes, demi-journées dans leur créneau, aucune solution au kit, fiche mémo fidèle à sa grille.",
+  "id": "compte-rendu-utile",
+  "intitule": "Rédiger un compte rendu utile",
+  "public": "vos chefs de projet",
+  "duree": "1 jour",
+  "fin": "17 h 00",
+  "deroule": [
+    ["9 h 00", "Accueil et attentes", "théorie"],
+    ["9 h 20", "Exercice 1 : relire un compte rendu", "pratique"],
+    ["10 h 00", "Pause", "pause"],
+    ["10 h 15", "Les éléments d'un compte rendu complet", "théorie"],
+    ["10 h 45", "Exercice 2 : écrire les décisions", "pratique"],
+    ["12 h 30", "Déjeuner", "pause"],
+    ["13 h 30", "Diffuser et archiver le jour même", "théorie"],
+    ["14 h 00", "Exercice 3 : diffuser le compte rendu", "pratique"],
+    ["15 h 30", "Pause", "pause"],
+    ["15 h 45", "Mise en commun et bilan", "théorie"]
+  ],
+  "parties": [
+    { "titre": "Lire ce qui existe", "diapos": [
+      { "type": "texte_photo", "titre": ["Un compte rendu sert à décider"], "notes": { "duree": "20 minutes" } },
+      { "type": "exercice", "titre": ["Exercice 1 : relire un compte rendu"], "duree": "40 minutes", "notes": { "duree": "40 minutes" } }
+    ] },
+    { "titre": "Écrire l'essentiel", "diapos": [
+      { "type": "etapes", "titre": ["4 éléments font un compte rendu complet"], "etapes": [{ "titre": "Les décisions" }, { "titre": "Les actions" }, { "titre": "Les responsables" }, { "titre": "Les échéances" }], "notes": { "duree": "30 minutes" } },
+      { "type": "exercice", "titre": ["Exercice 2 : écrire les décisions"], "duree": "45 minutes", "notes": { "duree": "45 minutes" } }
+    ] },
+    { "titre": "Diffuser et archiver", "diapos": [
+      { "type": "cartes", "titre": ["Diffuser et archiver le compte rendu le jour même"], "notes": { "duree": "30 minutes" } },
+      { "type": "exercice", "titre": ["Exercice 3 : diffuser le compte rendu"], "duree": "60 minutes", "notes": { "duree": "60 minutes" } }
+    ] },
+    { "titre": "Mettre en commun", "diapos": [
+      { "type": "cartes", "titre": ["Ce que chacun garde de la journée"], "notes": { "duree": "60 minutes" } }
+    ] }
+  ],
+  "bilan": { "titre": ["Bilan de la journée"], "duree": "15 minutes" },
+  "kit": {
+    "fiches": [
+      { "titre": "Fiche mémo : le compte rendu complet", "points": ["Décisions : ce qui a été tranché, et par qui.", "Actions : ce qui doit être fait ensuite.", "Responsables : un nom par action.", "Échéances : une date par action."] }
+    ],
+    "exercices": [
+      { "titre": "Exercice 1 : relisez un compte rendu", "duree": "40 minutes", "enonce": "Relisez le compte rendu fourni et soulignez ce qui manque pour décider." },
+      { "titre": "Exercice 2 : écrivez les décisions", "duree": "45 minutes", "enonce": "Écrivez les décisions de la réunion fictive, une par ligne." },
+      { "titre": "Exercice 3 : diffusez le compte rendu", "duree": "60 minutes", "enonce": "Préparez le message qui diffuse le compte rendu à l'équipe." }
+    ]
+  },
+  "formateur": {
+    "solutions": {
+      "Exercice 2 : écrire les décisions": "Décision 1 : le lancement est reporté à la semaine suivante.\nDécision 2 : le budget de la campagne reste celui de la réunion précédente."
+    },
+    "secours": "Si le compte rendu fourni manque, distribuer la version imprimée de la pochette."
+  }
+}

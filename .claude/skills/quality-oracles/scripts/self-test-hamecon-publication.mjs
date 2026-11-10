@@ -994,15 +994,70 @@ try {
     else if (/Zorglub/.test(commite)) kos.push('cas 6b — le commit passe mais le nom est TOUJOURS dans l\'objet git : le hook s\'exécute sans rien corriger, ou ne s\'exécute pas. Commité : ' + commite.trim().slice(0, 120));
     else if (!/Client-A/.test(commite)) kos.push('cas 6b — le nom a disparu du commit sans que le pseudonyme y soit : le contenu a été perdu, pas pseudonymisé. Commité : ' + commite.trim().slice(0, 120));
     else oks.push('cas 6b — dépôt PORTEUR : le commit PASSE et l\'objet git porte le PSEUDONYME, pas le nom — le hameçon corrige au lieu de refuser');
-    // Le fichier de travail suit l'index : sans cela, le prochain `git add` réintroduirait le nom.
-    if (c6v.status === 0 && /Client-A/.test(fs.readFileSync(path.join(avecHook, 'note.md'), 'utf8')))
-      oks.push('cas 6b — le fichier de TRAVAIL est corrigé lui aussi : le prochain `git add` ne réintroduira pas le nom');
-    else if (c6v.status === 0) kos.push('cas 6b — l\'index est corrigé mais pas le fichier de travail : le nom revient au prochain `git add`');
-    // La correction est TRACÉE : une réécriture silencieuse est indiscernable d'une corruption.
-    const journal = path.join(avecHook, '.claude', 'anonymisation-au-commit.jsonl');
+    // TF-2321 (10/11/2026) — LE FICHIER DE TRAVAIL N'EST PAS RÉÉCRIT. Jusqu'au 10/11 ce cas exigeait
+    // l'inverse (« le fichier de travail suit l'index »), et c'est ce geste qui, chez un produit le
+    // 02/10/2026, a réécrit 40 fichiers du disque, dont un entrant de input/ sans original dans git. La
+    // décision du 10/11/2026 (R-58) le retourne : une anonymisation s'applique à la copie publiée. Le
+    // commit porte le pseudonyme, le disque garde son texte, et le prochain `git add` repasse par le
+    // hameçon. Assertion RETOURNÉE par décision, pas assouplie : le défaut qu'elle protégeait (un nom
+    // qui revient au commit suivant) reste tenu, par le hameçon qui rejoue à chaque commit.
+    if (c6v.status === 0 && /Zorglub/.test(fs.readFileSync(path.join(avecHook, 'note.md'), 'utf8')))
+      oks.push('cas 6b (TF-2321) — le fichier de TRAVAIL garde son texte : seule la copie indexée, celle qui part dans le commit, est pseudonymisée');
+    else if (c6v.status === 0) kos.push('cas 6b (TF-2321) — le hameçon a RÉÉCRIT le fichier de travail : il ne devait toucher que la copie indexée');
+    // La correction est TRACÉE : une réécriture silencieuse est indiscernable d'une corruption. Depuis
+    // TF-2321 le journal vit dans le répertoire git commun du dépôt qui commite, hors de son arbre.
+    const journal = path.join(avecHook, '.git', 'anonymisation-au-commit.jsonl');
     if (fs.existsSync(journal) && /note\.md/.test(fs.readFileSync(journal, 'utf8')))
-      oks.push('cas 6b — la substitution est JOURNALISÉE dans le dépôt qui commite : qui relit son diff peut savoir pourquoi son fichier a changé');
-    else kos.push('cas 6b — aucun journal de substitution : une correction silencieuse et non tracée est indiscernable d\'une corruption');
+      oks.push('cas 6b — la substitution est JOURNALISÉE dans le dépôt qui commite (.git/anonymisation-au-commit.jsonl), hors de son arbre de travail');
+    else kos.push('cas 6b — aucun journal de substitution dans .git/ : une correction silencieuse et non tracée est indiscernable d\'une corruption');
+    if (fs.existsSync(path.join(avecHook, '.claude', 'anonymisation-au-commit.jsonl')))
+      kos.push('cas 6b (TF-2321) — le journal est encore écrit dans l\'arbre de travail (.claude/) : le hameçon y écrit un fichier');
+
+    // --- (6b quater) TF-2321 : un fichier indexé EN PARTIE ---------------------------------
+    // La chaîne lisait le disque : les lignes NON indexées entraient dans le commit avec le nom réécrit.
+    // Depuis TF-2321 la copie indexée est lue : le commit porte la seule partie indexée, pseudonymisée,
+    // et le disque garde ses deux lignes, nom compris.
+    const partiel = nu('indexe-en-partie');
+    sh(cc, 'node', [INSTALLEUR, partiel]);
+    fs.writeFileSync(path.join(partiel, 'note.md'), 'Ligne indexée, remise a Zorglub.\n');
+    git(partiel, 'add', '-A');
+    fs.appendFileSync(path.join(partiel, 'note.md'), 'Ligne non indexée, brouillon en cours.\n');
+    const c6q = sh(partiel, 'git', ['commit', '-q', '-m', 'note du banc'], ENV_COMMIT);
+    const commitePartiel = lireCommite(partiel, 'note.md');
+    const disquePartiel = fs.readFileSync(path.join(partiel, 'note.md'), 'utf8');
+    if (c6q.status === 0 && /Client-A/.test(commitePartiel) && !/non indexée/.test(commitePartiel) && /Zorglub/.test(disquePartiel) && /non indexée/.test(disquePartiel))
+      oks.push('cas 6b quater (TF-2321) — fichier indexé en partie : le commit porte la seule partie indexée, pseudonymisée ; le disque garde ses deux lignes');
+    else kos.push('cas 6b quater (TF-2321) — fichier indexé en partie (exit ' + c6q.status + ') : commité « ' + commitePartiel.trim().slice(0, 120) + ' », disque « ' + disquePartiel.trim().slice(0, 120) + ' »');
+
+    // --- (6b quinquies) TF-2321 : un entrant de input/ n'est JAMAIS réécrit --------------------
+    const entrant = nu('entrant-input');
+    sh(cc, 'node', [INSTALLEUR, entrant]);
+    fs.mkdirSync(path.join(entrant, 'input'), { recursive: true });
+    fs.writeFileSync(path.join(entrant, 'input', 'cahier.md'), 'Cahier remis par Zorglub, version du client.\n');
+    fs.writeFileSync(path.join(entrant, 'note.md'), 'Note de travail remise a Zorglub.\n');
+    git(entrant, 'add', '-A');
+    const c6qq = sh(entrant, 'git', ['commit', '-q', '-m', 'entrant du banc'], ENV_COMMIT);
+    const commiteEntrant = lireCommite(entrant, 'input/cahier.md');
+    if (c6qq.status === 0 && /Zorglub/.test(commiteEntrant) && /Zorglub/.test(fs.readFileSync(path.join(entrant, 'input', 'cahier.md'), 'utf8'))
+        && /Client-A/.test(lireCommite(entrant, 'note.md')) && /hors de portée/.test(c6qq.stderr || ''))
+      oks.push('cas 6b quinquies (TF-2321) — un entrant de input/ n\'est réécrit ni sur le disque ni à l\'index, et la sortie le dit ; la note voisine est pseudonymisée');
+    else kos.push('cas 6b quinquies (TF-2321) — entrant de input/ (exit ' + c6qq.status + ') : commité « ' + commiteEntrant.trim().slice(0, 100) + ' », sortie « ' + (c6qq.stderr || '').trim().slice(0, 160) + ' »');
+
+    // --- (6b sexies) TF-2322 : la SOURCE d'un contrôle de fidélité, déclarée hors de portée -----
+    // Le 02/10/2026, la source d'un contrôle de fidélité a été réécrite comme le livrable, et le
+    // contrôle est resté vert sur un deck faux. Un produit la déclare `-anonymiser` dans .gitattributes.
+    const fidelite = nu('source-de-fidelite');
+    sh(cc, 'node', [INSTALLEUR, fidelite]);
+    fs.writeFileSync(path.join(fidelite, '.gitattributes'), 'sources/** -anonymiser\n');
+    fs.mkdirSync(path.join(fidelite, 'sources'), { recursive: true });
+    fs.writeFileSync(path.join(fidelite, 'sources', 'faits.json'), '{ "fait": "visite remise a Zorglub" }\n');
+    fs.writeFileSync(path.join(fidelite, 'deck.md'), 'Deck remis a Zorglub.\n');
+    git(fidelite, 'add', '-A');
+    const c6qs = sh(fidelite, 'git', ['commit', '-q', '-m', 'source du banc'], ENV_COMMIT);
+    if (c6qs.status === 0 && /Zorglub/.test(lireCommite(fidelite, 'sources/faits.json')) && /Client-A/.test(lireCommite(fidelite, 'deck.md'))
+        && /hors de portée/.test(c6qs.stderr || ''))
+      oks.push('cas 6b sexies (TF-2322) — une source déclarée « -anonymiser » reste hors de portée du hameçon ; le livrable voisin est pseudonymisé');
+    else kos.push('cas 6b sexies (TF-2322) — source déclarée hors de portée (exit ' + c6qs.status + ') : commitée « ' + lireCommite(fidelite, 'sources/faits.json').trim().slice(0, 100) + ' »');
 
     // --- (6b ter) TF-1633 : un NOM DE FICHIER ACCENTUÉ est lu, pas cité --------------------
     // Sans -z, git rend « "synth\303\250se.md" » : le chemin cité est introuvable, le contenu
@@ -1152,6 +1207,39 @@ try {
       ], { encoding: 'utf8', env: envBanc({}) });
       if ((sonde.stdout || '').trim() === 'function') oks.push('cas 7 — la chaîne RÉELLE du pilot est résolvable et expose `passer` : le contrat d\'appel entre les deux dépôts tient');
       else kos.push('cas 7 — la chaîne réelle du pilot n\'expose pas `passer` (' + pilotChaine + ') : le contrat d\'appel entre les deux dépôts a dérivé. ' + ((sonde.stderr || '').trim().slice(0, 300) || (sonde.stdout || '').trim()));
+
+      // --- (7 bis) TF-2322 : UN NOM DE PRODUIT HOMONYME D'UN LIEU PUBLIC, DE BOUT EN BOUT ------
+      // Le 02/10/2026, le pseudonyme d'un produit a remplacé le nom d'un lieu public dans un
+      // générateur, ses sources et sa table de faits : le deck régénéré portait le pseudonyme en
+      // couverture. La table le règle depuis TF-2130 : une entrée `{ pseudo, formes }` ne fait
+      // substituer que ses graphies déclarées. Ce cas le prouve à travers le lanceur et la chaîne
+      // RÉELLE du pilot, sur des tables jetables aux noms inventés : clé nue, le lieu est falsifié
+      // dans le commit (le défaut) ; formes déclarées, le lieu reste et seule la forme du produit
+      // est pseudonymisée. Dans les deux sens, le disque garde son texte (TF-2321).
+      const tablesH = path.join(cc, 'tables-homonyme');
+      fs.mkdirSync(tablesH, { recursive: true });
+      const tClients = path.join(tablesH, 'noms-interdits.json');
+      fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [], pseudonymes: { Zorglub: 'Client-A' } }), 'utf8');
+      const texteH = 'Visite du musée de Valbrise ; l\'outil ValbriseApp est prêt.\n';
+      for (const [sens, entree] of [['clé nue', 'Produit-77'], ['formes déclarées', { pseudo: 'Produit-77', formes: ['ValbriseApp'] }]]) {
+        const tProduits = path.join(tablesH, 'produits-' + (sens === 'clé nue' ? 'nue' : 'formes') + '.json');
+        fs.writeFileSync(tProduits, JSON.stringify({ produits: { Valbrise: entree } }), 'utf8');
+        const dH = nu('homonyme-' + (sens === 'clé nue' ? 'nue' : 'formes'));
+        sh(cc, 'node', [INSTALLEUR, dH]);
+        fs.writeFileSync(path.join(dH, 'visite.md'), texteH);
+        git(dH, 'add', '-A');
+        const envH = { ...ENV_COMMIT, FORGE_ANONYMISEUR: pilotChaine, FORGE_NOMS_INTERDITS: tClients, FORGE_PRODUITS_PSEUDO: tProduits };
+        const cH = sh(dH, 'git', ['commit', '-q', '-m', 'visite du banc'], envH);
+        const commiteH = lireCommite(dH, 'visite.md');
+        const disqueIntact = fs.readFileSync(path.join(dH, 'visite.md'), 'utf8') === texteH;
+        if (sens === 'clé nue') {
+          if (cH.status === 0 && /musée de Produit-77/.test(commiteH) && disqueIntact)
+            oks.push('cas 7 bis (sens rouge, TF-2322) — clé NUE : la chaîne réelle falsifie le lieu homonyme dans le commit (« musée de Produit-77 ») — c\'est le défaut que les formes déclarées lèvent ; le disque est intact');
+          else kos.push('cas 7 bis (sens rouge) — le témoin du défaut ne reproduit rien (exit ' + cH.status + ') : commité « ' + commiteH.trim().slice(0, 120) + ' », disque intact : ' + disqueIntact + ' — ' + (cH.stderr || '').trim().slice(0, 200));
+        } else if (cH.status === 0 && /musée de Valbrise/.test(commiteH) && /outil Produit-77/.test(commiteH) && disqueIntact)
+          oks.push('cas 7 bis (TF-2322) — formes DÉCLARÉES : le lieu homonyme reste, seule la forme du produit est pseudonymisée dans le commit, et le disque est intact');
+        else kos.push('cas 7 bis (TF-2322) — formes déclarées (exit ' + cH.status + ') : commité « ' + commiteH.trim().slice(0, 120) + ' », disque intact : ' + disqueIntact + ' — ' + (cH.stderr || '').trim().slice(0, 200));
+      }
     }
   } finally { try { fs.rmSync(cc, { recursive: true, force: true }); } catch { /* zone temporaire */ } }
 

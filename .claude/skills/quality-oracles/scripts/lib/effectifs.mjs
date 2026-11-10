@@ -11,6 +11,9 @@
 //      ou d'un tableau, est comparé au cardinal réel de cette ancre.
 // N2 — une fois le cardinal réel connu pour un nom, tout AUTRE effectif annoncé pour ce même nom
 //      dans le document et qui en diffère est signalé (cas du badge contradictoire).
+//      TF-2378 (10/11/2026) : seulement s'ils désignent le MÊME ENSEMBLE (voir `memeEnsemble`).
+//      Un plan accusé à tort : « la crédibilité baisse de 10 points » (unité d'un curseur) face à
+//      une liste de 5 points à trancher, « 20 questions de référence » face à 5 questions fermées.
 //
 // Périmètre volontairement étroit (bruit mesuré à 0 sur le parc du dépôt) : l'effectif doit être
 // ≥ 2, porté par un titre ou une ligne s'achevant par « : », et l'ancre doit suivre immédiatement.
@@ -140,6 +143,60 @@ function ancreHtml(text, from) {
   return n >= 2 ? { type: 'liste', ligne, cardinal: n, detail: n + ' item(s)' } : null;
 }
 
+// ---- TF-2378 : N2 ne confronte que le MÊME ENSEMBLE ------------------------------------------
+// LE FAIT (lot du produit marketing du 09/11/2026, seq 349, plan du 28/09/2026) : N2 confrontait tout
+// effectif d'un nom au cardinal mesuré pour ce nom. Le plan disait « points » des items d'une liste
+// (« Cinq points à trancher ») et de l'unité d'un curseur (« la crédibilité baisse de 10 points »), et
+// « questions » de 20 questions de référence comme de 5 questions fermées de démarrage : deux passes
+// FAIL, puis une phrase juste réécrite pour faire taire une collision de mot.
+// LA RÈGLE : une mention n'est confrontée à une annonce ancrée que si elles désignent le même ensemble.
+//   · Une mention en CONTEXTE DE MESURE n'est pas un compte : un mot de variation (baisse, hausse,
+//     gagne, perd, recule…) parmi les trois mots qui précèdent le nombre, ou une échelle (« sur 20
+//     points », « 7 points sur 10 »). Elle n'est jamais confrontée.
+//   · Le QUALIFICATIF d'une annonce : les mots pleins qui suivent le nom jusqu'à la première
+//     ponctuation (six mots au plus), plus le qualificatif placé avant le nom (« autres »,
+//     « nouveaux »…) ; mots repliés (accents, casse, pluriel, féminin), mots-outils retirés.
+//   · Une mention NUE (sans qualificatif) reprend l'ensemble annoncé : elle est confrontée.
+//   · Une mention QUALIFIÉE n'est confrontée qu'aux annonces dont le qualificatif partage au moins un
+//     mot avec le sien. Face à une annonce nue, ou sans mot commun, elle nomme une partie ou un autre
+//     ensemble, et N2 se tait.
+// LIMITE DÉCLARÉE (non_juge d'oracle-calculs) : deux qualifications sans mot commun d'un MÊME ensemble
+// (« écarts résiduels » pour « écarts que la boucle n'a pas pu lever ») ne sont pas confrontées.
+const MOTS_OUTILS_N2 = new Set(['le', 'la', 'les', 'l', 'un', 'une', 'des', 'de', 'du', 'd', 'au', 'aux', 'a', 'en', 'et', 'ou',
+  'par', 'pour', 'sur', 'sous', 'dans', 'avec', 'sans', 'avant', 'apres', 'entre', 'chez', 'vers', 'depuis', 'pendant', 'selon',
+  'contre', 'parmi', 'hors', 'que', 'qu', 'qui', 'dont', 'ne', 'n', 'pas', 'plus', 'moins', 'ce', 'cet', 'cette', 'ces', 'c',
+  'son', 'sa', 'ses', 'leur', 'leurs', 'notre', 'nos', 'votre', 'vos', 'il', 'elle', 'ils', 'elles', 'on', 'y', 'se', 's',
+  'est', 'sont', 'ont', 'ete', 'etre', 'tres', 'tout', 'tous', 'toute', 'toutes', 'aussi', 'encore', 'deja', 'ici', 'j', 'm', 't']);
+const replieN2 = w => w.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const racineN2 = w => { let r = w; if (r.length > 3) r = r.replace(/[sx]$/, ''); if (r.length > 3) r = r.replace(/e$/, ''); return r; };
+const FIN_QUALIFICATIF = /[.,;:!?()«»"“”—–[\]|]/;
+const RX_VARIATION = /^(baiss|hauss|monte|montee|descend|gagn|perd|recul|progress|augment|diminu|chut|varie|variation|grimp|plong|cede)/;
+function qualificatif(apres, avantNom) {
+  const zone = apres.split(FIN_QUALIFICATIF)[0] || '';
+  const mots = [...String(avantNom || '').split(/\s+/), ...zone.split(/[\s'’]+/).filter(Boolean).slice(0, 6)];
+  const q = new Set();
+  for (const m of mots) {
+    const w = replieN2(m).replace(/[^a-z0-9-]/g, '');
+    if (!w || MOTS_OUTILS_N2.has(w) || /^\d+$/.test(w)) continue;
+    q.add(racineN2(w));
+  }
+  return q;
+}
+function contexteDeMesure(avant, apres) {
+  const precedents = avant.split(/[\s'’]+/).filter(Boolean).slice(-3).map(w => replieN2(w).replace(/[^a-z0-9-]/g, ''));
+  if (precedents.some(w => RX_VARIATION.test(w))) return true;
+  if (precedents.length && precedents[precedents.length - 1] === 'sur') return true;
+  return /^\s*sur\s+\d/.test(apres);
+}
+const memeEnsemble = (qAnnonce, qMention) => !qMention.size || (qAnnonce.size > 0 && [...qMention].some(w => qAnnonce.has(w)));
+// Le qualificatif et le contexte d'une occurrence de RX_EFFECTIF, lus dans le texte qui la porte.
+const portee = (texte, m) => {
+  const avant = texte.slice(Math.max(0, m.index - 120), m.index);
+  const apres = texte.slice(m.index + m[0].length, m.index + m[0].length + 240);
+  const avantNom = m[0].slice(m[1].length, m[0].length - m[2].length);
+  return { qualif: qualificatif(apres, avantNom), mesure: contexteDeMesure(avant, apres) };
+};
+
 // ---- API --------------------------------------------------------------------------------------
 // Retourne { findings, verifies, annonces } — findings au contrat commun (sev/msg/where).
 export function verifierEffectifs(text, ext, base) {
@@ -159,7 +216,7 @@ export function verifierEffectifs(text, ext, base) {
         if (fourchette(titre, m.index)) continue;
         if (NUMEROTATION.test(m[1])) continue;                   // « 05 Points » : un numéro de chapitre, pas un compte
         const ancrable = ouvre(titre, m.index);
-        annoncesToutes.push({ n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne, ancre: ancrable ? () => ancreHtml(text, h.index + h[0].length) : () => null });
+        annoncesToutes.push({ n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne, ...portee(titre, m), ancre: ancrable ? () => ancreHtml(text, h.index + h[0].length) : () => null });
       }
     }
     // Effectifs hors titres (badges, encarts) : jamais ancrés, servis à N2 seulement.
@@ -167,7 +224,7 @@ export function verifierEffectifs(text, ext, base) {
     for (const m of plat.matchAll(RX_EFFECTIF)) {
       if (fourchette(plat, m.index)) continue;
       if (NUMEROTATION.test(m[1])) continue;
-      annoncesToutes.push({ n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne: 0, ancre: () => null });
+      annoncesToutes.push({ n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne: 0, ...portee(plat, m), ancre: () => null });
     }
   } else {
     const lines = text.split('\n');
@@ -181,7 +238,7 @@ export function verifierEffectifs(text, ext, base) {
         if (fourchette(l, m.index)) continue;
         const ancrable = enTete && ouvre(l, m.index);
         annoncesToutes.push({
-          n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne: i + 1,
+          n: valeur(m[1]), nom: m[2].toLowerCase(), brut: m[0].trim(), ligne: i + 1, ...portee(l, m),
           ancre: ancrable ? () => ancreMarkdown(lines, i + 1) : () => null
         });
       }
@@ -193,16 +250,22 @@ export function verifierEffectifs(text, ext, base) {
     const anc = a.ancre();
     if (!anc) continue;
     annonces++;
-    cardinaux.set(a.nom, anc.cardinal);
+    // TF-2378 : chaque annonce ancrée garde son qualificatif ; un nom peut ancrer plusieurs ensembles.
+    if (!cardinaux.has(a.nom)) cardinaux.set(a.nom, []);
+    cardinaux.get(a.nom).push({ cardinal: anc.cardinal, qualif: a.qualif });
     if (anc.cardinal !== a.n) {
       findings.push({ sev: 'bloquant', msg: `N1 — effectif annoncé « ${a.brut} » ≠ cardinal réel ${anc.cardinal} (${anc.type} ligne ${anc.ligne} : ${anc.detail})`, where: base + ':' + a.ligne });
     } else verifies++;
   }
-  // N2 — autres mentions du même nom dénombrable, une fois le cardinal réel mesuré.
+  // N2 — autres mentions du même nom dénombrable, une fois le cardinal réel mesuré, et du MÊME ENSEMBLE
+  // (TF-2378) : une unité de mesure n'est pas un compte, deux qualifications sans mot commun sont deux ensembles.
   for (const a of annoncesToutes) {
     if (!a.n || a.n < 2 || a.ancre()) continue;
-    const reel = cardinaux.get(a.nom);
-    if (reel === undefined || reel === a.n) continue;
+    const ancrees = cardinaux.get(a.nom);
+    if (!ancrees || a.mesure) continue;
+    const memes = ancrees.filter(x => memeEnsemble(x.qualif, a.qualif));
+    if (!memes.length || memes.some(x => x.cardinal === a.n)) continue;
+    const reel = memes[0].cardinal;
     findings.push({ sev: 'bloquant', msg: `N2 — compte contradictoire dans le même document : « ${a.brut} » alors que le cardinal réel mesuré est ${reel}`, where: base + (a.ligne ? ':' + a.ligne : '') });
   }
   return { findings, verifies, annonces };

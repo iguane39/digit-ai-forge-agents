@@ -554,6 +554,147 @@
    ]
   },
   {
+   "nom": "claims-diapositives",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-diapositives-red.txt",
+   "green": "claims-diapositives-green.txt",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 4 800 € »"
+   ],
+   "commentaire": "TF-2318 — texte extrait d'un deck, formes dans leur ordre de création : la note de source de chaque diapositive est la dernière forme, à plusieurs lignes du montant du titre. La VERTE rendait FAIL deux fois avant TF-2318 (fenêtre de trois lignes) et passe désormais : la source se cherche dans la diapositive entière. La ROUGE retire la seule note de la diapositive 2 : son montant est accusé, et la source de la diapositive 1 ne s'y étend pas.",
+   "provenance": "TF-2318 (RA-09, lot du produit marketing du 09/11/2026, seq 510) — même diapositive à l'œil, PASS ou FAIL selon l'ordre de création des formes (30/09/2026) ; un générateur a forcé l'ordre de ses formes pour passer."
+  },
+  {
+   "nom": "claims-tableau-html",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-red.html",
+   "green": "claims-tableau-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 480 € » d'une ligne de tableau sans source"
+   ],
+   "commentaire": "TF-2358 — une grille de 5 prix en tableau HTML, SANS ligne de total. Avant TF-2358 les deux pages rendaient SKIP : cet oracle excluait les lignes de tableau au motif qu'elles relèvent d'oracle-calculs, qui ne juge que les totaux, et les 5 prix n'étaient jugés par personne. La VERTE source le tableau par sa légende (<caption>) : PASS. La ROUGE a la même grille sans source : 5 montants accusés.",
+   "provenance": "TF-2358 (RA-208, lot du produit marketing du 09/11/2026, seq 342) — livret du 25/09/2026 : grille de 5 prix PASS en HTML, 5 bloquants sur le texte extrait du PDF."
+  },
+  {
+   "nom": "claims-tableau-extraction-en-lignes",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-structure-red.txt",
+   "green": "claims-tableau-structure-green.txt",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 4 800 € » d'une ligne de tableau sans source"
+   ],
+   "commentaire": "TF-2359, première des deux extractions du MÊME tableau (en-tête « Montant HT [1] », renvoi [1] sous le tableau) : les rangées en lignes « | a | b | ». Avant TF-2359 les deux sens rendaient SKIP (lignes de tableau hors périmètre) ; l'extraction à plat de la même grille rendait FAIL. La VERTE est sourcée par sa cellule d'en-tête : PASS. La ROUGE retire le renvoi : FAIL. Jumelle de « claims-tableau-extraction-a-plat » : mêmes verdicts attendus.",
+   "provenance": "TF-2359 (RA-209, lot du produit marketing du 09/11/2026, seq 438) — grille de prix d'une propale : PASS extraite en lignes de tableau, 5 bloquants extraite à plat d'un PDF (29/09/2026)."
+  },
+  {
+   "nom": "claims-tableau-extraction-a-plat",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-a-plat-red.txt",
+   "green": "claims-tableau-a-plat-green.txt",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 4 800 € » sans source"
+   ],
+   "commentaire": "TF-2359, seconde extraction du MÊME tableau : une cellule par ligne, comme pdftotext la rend. La VERTE rendait 5 bloquants avant TF-2359 (fenêtre de trois lignes, l'en-tête à deux lignes du premier prix) et passe désormais : la cellule d'en-tête à marqueur couvre les cellules courtes posées sous elle. La ROUGE retire le renvoi : FAIL. Même verdict que la jumelle en lignes, dans les deux sens.",
+   "provenance": "TF-2359 (RA-209, lot du produit marketing du 09/11/2026, seq 438) — grille de prix d'une propale : PASS extraite en lignes de tableau, 5 bloquants extraite à plat d'un PDF (29/09/2026)."
+  },
+  {
+   "nom": "claims-tableau-colonne-source",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-colonne-source-red.md",
+   "green": "claims-tableau-colonne-source-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 40 € » d'une ligne de tableau sans source"
+   ],
+   "commentaire": "TF-2358, colonne de source : un relevé dont chaque ligne porte son adresse (sans https://, ce qui n'est pas un marqueur) et sa date. La VERTE passe parce que chaque ligne remplit la colonne « Adresse ». La ROUGE vide la seule adresse de la troisième ligne : seul son montant est accusé. Cas né de la mesure du 10/11/2026 sur 700 documents du pilot, où sans cette colonne la règle accusait des tableaux qui citaient page et date à chaque ligne.",
+   "provenance": "TF-2358 (RA-208, lot du produit marketing du 09/11/2026, seq 342) — mesure de bruit de la règle neuve, 10/11/2026."
+  },
+  {
+   "nom": "claims-grille-de-prix",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json",
+    "--grille",
+    "{skilldir}/fixtures/claims-grille.json"
+   ],
+   "red": "claims-grille-red.md",
+   "green": "claims-grille-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "G1 — montant « 3 400 € »",
+    "G2 — montant « 3 600 € »"
+   ],
+   "commentaire": "TF-2319 — la grille de prix est une donnée fournie par --grille (prix inventés). La VERTE ne porte que des prix de la grille, à leur unité, et des montants dérivés (« soit », « total ») : PASS. La ROUGE porte un tarif absent de la grille (G1) et un prix de la grille à la mauvaise taxe (G2) : avant TF-2319 elle rendait PASS, l'oracle acceptant tout montant sourcé sans lire de grille.",
+   "provenance": "TF-2319 (RA-10, lot du produit marketing du 09/11/2026, seq 511) — la spécification d'un produit disait un montant hors grille refusé par cet oracle, qui ne lisait aucune grille ; un tarif dicté rapproché de la grille à la main le 30/09/2026."
+  },
+  {
    "nom": "coherence",
    "cmd": [
     "node",
@@ -678,6 +819,296 @@
     "PASS"
    ],
    "provenance": "Mission formation — blocs annoncés ≠ sommes de séquences, contrôle rejoué 2× en scripts Python jetables dans le même fil, 23/07/2026 (note P1 §0, inventaire P2 §3 O1)"
+  },
+  {
+   "nom": "programme-formation-piece-formateur",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-programme-formation.mjs",
+    "{fixture}"
+   ],
+   "red": "formation-contenu-formateur-red.json",
+   "green": "formation-contenu-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "P1 — aucune pièce du formateur",
+    "et 1 note(s) de diapositive y renvoient",
+    "C8 — le kit du participant porte un corrigé"
+   ],
+   "commentaire": "TF-2315 — mode « contenu commun » (.json) : le fichier d'où se tirent support, notes, kit et fiche du formateur. La VERTE porte sa section « formateur » et un kit sans solution : PASS. La ROUGE, tirée de la verte, retire la section alors qu'une note y renvoie (P1) et imprime la solution de l'exercice 2 au kit sous une marque « Corrigé » (C8). Avant TF-2315, les deux rendaient SKIP (« extension non gérée »).",
+   "provenance": "TF-2315 (RA-06, lot du produit marketing du 09/11/2026, seq 703) — une note de diapositive renvoyait à un « kit formateur » jamais écrit, et les solutions des exercices 4 et 5 étaient imprimées dans le kit du participant, quatre jours avant la séance."
+  },
+  {
+   "nom": "programme-formation-coherence-pieces",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-programme-formation.mjs",
+    "{fixture}"
+   ],
+   "red": "formation-contenu-coherence-red.json",
+   "green": "formation-contenu-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "C6 — « Exercice 3 » : durées différentes",
+    "C7 — matin : 205 minutes de notes pour un créneau de 195",
+    "C8 — une ligne de la solution",
+    "C9 — la fiche « Fiche mémo : le compte rendu complet » omet l'élément « responsables »"
+   ],
+   "commentaire": "TF-2316 — les quatre contrôles de cohérence entre pièces, lus sur le contenu commun. La ROUGE, tirée de la verte, porte un défaut par contrôle : durée d'un exercice différente entre diapositive et kit (C6), notes du matin au-delà du créneau du déroulé (C7), ligne de solution recopiée sans marque dans le kit (C8), fiche mémo qui omet un élément de la grille enseignée (C9). Avant TF-2316, SKIP (« extension non gérée »).",
+   "provenance": "TF-2316 (RA-07, lot du produit marketing du 09/11/2026, seq 692) — le 26/10/2026, support, notes et kit ont passé tous leurs oracles avec 8 défauts de cohérence, trouvés par une revue humaine."
+  },
+  {
+   "nom": "pdf",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pdf.mjs",
+    "{fixture}",
+    "--titres",
+    "Profil|Expériences",
+    "--sans-courriel",
+    "--referentiel={skilldir}/fixtures/_noms-interdits.json",
+    "--produits={skilldir}/fixtures/_produits-pseudonymes.json"
+   ],
+   "red": "pdf-red.pdf",
+   "green": "pdf-green.pdf",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "P2 — page 1 de 612 × 792 points",
+    "P3 — police « Helvetica » (Type1) NON embarquée",
+    "P4 — titre attendu « Expériences »",
+    "P5 — 1 nom(s) interdit(s) de la table des noms",
+    "P6 — adresse de fichier (file://)",
+    "P6 — adresse électronique imprimée"
+   ],
+   "dependant_outil": "pypdf (Python) pour P1 à P3 ; PyMuPDF et pdftotext facultatifs ici, la lisibilité ayant sa propre paire",
+   "commentaire": "TF-2351 — rendu PDF d'un dossier tiré d'une page HTML, généré par reportlab 4.5.1 avec la police libre Vera (octets reproductibles, mode invariant). La VERTE est A4, police embarquée en sous-ensemble, titres attendus présents, aucune trace de rendu : PASS (la Helvetica que reportlab sélectionne sans dessiner de glyphe est dite, non jugée). La ROUGE porte un défaut par contrôle : format Letter (P2), polices standard non embarquées (P3), titre « Expériences » absent (P4), nom interdit de la table d'essai (P5), pied de navigateur avec l'adresse file:// de la page source et une adresse électronique (P6).",
+   "provenance": "TF-2351 (RA-201, lot du produit marketing du 09/11/2026, seq 78) — le 12/09/2026, aucune ligne PDF au registre ; le produit a écrit un contrôle ad hoc de six vérifications P1 à P6 pour le rendu PDF d'un dossier."
+  },
+  {
+   "nom": "pdf-lisibilite-plusieurs-lecteurs",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pdf.mjs",
+    "{fixture}",
+    "--titres",
+    "DATABRICKS",
+    "--lecteurs",
+    "pypdf,pymupdf,pdftotext",
+    "--referentiel={skilldir}/fixtures/_noms-interdits.json",
+    "--produits={skilldir}/fixtures/_produits-pseudonymes.json"
+   ],
+   "red": "pdf-lisibilite-red.pdf",
+   "green": "pdf-lisibilite-green.pdf",
+   "attendu_red": [
+    "FAIL",
+    "SKIP"
+   ],
+   "attendu_green": [
+    "PASS",
+    "SKIP"
+   ],
+   "attendu_messages_red": [
+    "P4 — titre attendu « DATABRICKS » : pypdf, pymupdf, pdftotext échoue(nt), soit tous les lecteurs disponibles"
+   ],
+   "attendu_messages_green": [
+    "P4 — titre attendu « DATABRICKS » : pymupdf échoue(nt), pypdf, pdftotext réussi(ssen)t — désaccord des lecteurs, pas un défaut du document"
+   ],
+   "dependant_outil": "les trois lecteurs exigés par --lecteurs : pypdf et PyMuPDF (Python), pdftotext (exécutable, livré avec Git pour Windows) ; un lecteur absent rend SKIP motivé",
+   "commentaire": "TF-2367 — la VERTE pose le titre avec un espacement de caractères : pypdf et pdftotext lisent « DATABRICKS », PyMuPDF « D A T A B R I C K S » — mesuré le 10/11/2026, le constat même du produit. Un contrôle à un seul lecteur PyMuPDF y écrivait un défaut de lisibilité ; l'oracle dit le désaccord en information et rend PASS. La ROUGE pose le titre lettre par lettre : aucun des trois lecteurs ne le lit d'un tenant, le défaut est réel et l'oracle rend FAIL.",
+   "provenance": "TF-2367 (RA-217, lot du produit marketing du 09/11/2026, seq 392) — suites de lettres isolées sur un CV mis en page : PyMuPDF 14, pypdf 0, pdftotext 0 ; un faux défaut de lisibilité évité de justesse."
+  },
+  {
+   "nom": "docx-retouche",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-docx-retouche.mjs",
+    "{fixture}",
+    "--origine",
+    "{skilldir}/fixtures/docx-retouche-origine.docx",
+    "--declaration",
+    "{skilldir}/fixtures/docx-retouche-declaration.json",
+    "--referentiel={skilldir}/fixtures/_noms-interdits.json",
+    "--produits={skilldir}/fixtures/_produits-pseudonymes.json"
+   ],
+   "red": "docx-retouche-red.docx",
+   "green": "docx-retouche-green.docx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "K1 — partie(s) modifiée(s) hors du corps : word/footer1.xml",
+    "K2 — paragraphe ajouté sans déclaration",
+    "K3 — tableau n° 1 modifié sans déclaration",
+    "K5 — 1 nom(s) interdit(s) de la table des noms",
+    "K6 — marqueur de travail ajouté",
+    "K8 — 1 identifiant(s) w14:paraId en double"
+   ],
+   "dependant_outil": "python (zipfile) pour lire les deux paquets",
+   "commentaire": "TF-2370 — un dossier inventé, sa version d'origine et une déclaration commune (un paragraphe retiré, un ajouté, le tableau 1 retouché pour la seule pagination). La VERTE applique exactement la déclaration : PASS. La ROUGE porte un défaut par contrôle : pied de page modifié (K1), paragraphe ajouté non déclaré (K2), cellule de tableau réécrite (K3), nom interdit de la table d'essai (K5), marqueur TODO (K6), identifiant de rangée en double (K8). Paquets écrits par zipfile, dates figées.",
+   "provenance": "TF-2370 (RA-220, lot du produit marketing du 09/11/2026, seq 424) — aucun oracle ne comparait une retouche de DOCX à sa version d'origine ; le produit a écrit un contrôle de huit vérifications pour un tour du 28/09/2026."
+  },
+  {
+   "nom": "fidelite-source",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-fidelite-source.mjs",
+    "{fixture}",
+    "--source",
+    "{skilldir}/fixtures/fidelite-source-programme.md",
+    "--faits",
+    "{skilldir}/fixtures/fidelite-source-faits.json"
+   ],
+   "red": "fidelite-source-red.md",
+   "green": "fidelite-source-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "F1 — fait F02 : son affirmation ne se lit pas au livrable",
+    "F2 — nombre orphelin « 15 »",
+    "F2 — nombre orphelin « 3 »",
+    "F4 — le temps « Pratiquer : écrire les décisions »"
+   ],
+   "commentaire": "TF-2376 — un livrable dérivé (texte d'un deck) d'un programme de formation inventé, et la table de ses faits : deux faits sourcés par un passage, une grandeur recomptée sur les titres d'étape de la source, deux temps de frise. La VERTE est fidèle : PASS. La ROUGE porte un effectif et un nombre d'étapes qui ne sont plus ceux de la table (F1), des nombres orphelins (F2) et un temps de frise réécrit (F4).",
+   "provenance": "TF-2376 (RA-226, lot du produit marketing du 09/11/2026, seq 479) — le 30/09/2026, un producteur a écrit son propre contrôle de fidélité (31 faits, 152 nombres, 20 grandeurs recomptées) faute de domaine au registre."
+  },
+  {
+   "nom": "fidelite-source-passage-et-epreuve",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-fidelite-source.mjs",
+    "{skilldir}/fixtures/fidelite-source-green.md",
+    "--source",
+    "{skilldir}/fixtures/fidelite-source-programme.md",
+    "--faits",
+    "{fixture}",
+    "--epreuve"
+   ],
+   "red": "fidelite-source-faits-red.json",
+   "green": "fidelite-source-faits.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "F1 — fait F02 : nombre(s) de l'affirmation absent(s) du passage de la source (c) : 12"
+   ],
+   "attendu_messages_green": [
+    "épreuve : 10 altération(s) détectée(s) sur 10"
+   ],
+   "commentaire": "TF-2320 — la fixture est ici la TABLE DES FAITS, le livrable étant fixe. La VERTE passe le jugement ET l'épreuve : ses 10 altérations, du livrable comme de la table (un nombre changé dans les deux à la fois, un passage altéré, une grandeur altérée, un nombre orphelin ajouté), font chacune échouer le jugement. La ROUGE écrit un fait comme le contrôle du 01/10/2026 : affirmation trouvée au livrable, « passage » trouvé dans la source, reformulation déclarée — ce que vérifiaient les deux motifs d'alors, et qui passait ; elle tombe sur la seule comparaison de l'affirmation au passage.",
+   "provenance": "TF-2320 (RA-11, lot du produit marketing du 09/11/2026, seq 525) — 3 faits non sourcés passés au vert le 01/10/2026, chaque fait cherché par deux motifs écrits par le producteur et jamais comparés."
+  },
+  {
+   "nom": "fidelite-source-html",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-fidelite-source.mjs",
+    "{fixture}",
+    "--source",
+    "{skilldir}/fixtures/fidelite-source-programme.md",
+    "--faits",
+    "{skilldir}/fixtures/fidelite-source-faits.json"
+   ],
+   "red": "fidelite-source-red.html",
+   "green": "fidelite-source-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "F1 — fait F02 : son affirmation ne se lit pas au livrable",
+    "F2 — nombre orphelin « 15 »"
+   ],
+   "commentaire": "TF-2376, même livrable en page HTML, ses apostrophes encodées en entités (« Jusqu&#39;à »). La VERTE passe : le texte se lit décodé, et « &#39; » n'est pas le nombre 39 — l'essai du 10/11/2026 l'accusait d'un nombre orphelin avant lib/entites.mjs. La ROUGE porte un autre effectif que la table : F1 et F2.",
+   "provenance": "TF-2376 (RA-226, lot du produit marketing du 09/11/2026, seq 479) — essai du chemin HTML de l'oracle, 10/11/2026."
+  },
+  {
+   "nom": "anonymisation-dossier",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-anonymisation-dossier.mjs",
+    "{fixture}",
+    "--nominatif",
+    "{skilldir}/fixtures/anonymisation-dossier-nominatif.md",
+    "--profil-source",
+    "{skilldir}/fixtures/anonymisation-profil-Lucien-Brasdefer.txt",
+    "--lieux",
+    "^- ",
+    "--referentiel={skilldir}/fixtures/_noms-interdits.json",
+    "--produits={skilldir}/fixtures/_produits-pseudonymes.json"
+   ],
+   "red": "anonymisation-dossier-red.md",
+   "green": "anonymisation-dossier-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "A1 — 1 terme(s) d'identité",
+    "A2 — 2 terme(s) d'employeur ou de lieu",
+    "A3 — 1 coordonnée(s)",
+    "A4 — ligne modifiée hors du périmètre d'anonymisation",
+    "A5 — 1 nom(s) interdit(s)"
+   ],
+   "commentaire": "TF-2361 — un dossier d'intervenant INVENTÉ, sa version nominative et le profil source dont le nom de fichier porte le nom de la personne. Les termes identifiants (nom, employeurs, lieux, coordonnées) sont tirés de ces deux pièces à l'exécution et jamais écrits dans l'oracle. La VERTE remplace chaque terme par une périphrase sans toucher au reste : PASS. La ROUGE garde un nom de famille (A1) et un employeur (A2), imprime le téléphone du profil (A3), réécrit une durée hors du périmètre (A4) et cite un nom de la table d'essai (A5).",
+   "provenance": "TF-2361 (RA-211, lot du produit marketing du 09/11/2026, seq 286, 324, 361, 370, 409) — sept oracles ad hoc pour le dossier d'intervenant anonymisé du 12 au 28/09/2026, sans domaine au registre ; scaffold obligatoire au sens de N1 dès la troisième occurrence."
+  },
+  {
+   "nom": "anonymisation-dossier-html",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-anonymisation-dossier.mjs",
+    "{fixture}",
+    "--nominatif",
+    "{skilldir}/fixtures/anonymisation-dossier-nominatif.html",
+    "--lieux",
+    "class=\"lieu\"",
+    "--referentiel={skilldir}/fixtures/_noms-interdits.json",
+    "--produits={skilldir}/fixtures/_produits-pseudonymes.json"
+   ],
+   "red": "anonymisation-dossier-red.html",
+   "green": "anonymisation-dossier-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "A1 — 2 terme(s) d'identité",
+    "A2 — 2 terme(s) d'employeur ou de lieu",
+    "A3 — 1 coordonnée(s)"
+   ],
+   "commentaire": "TF-2361, même dossier en HTML, la forme des dossiers du produit : les lignes d'employeur portent class=\"lieu\". La VERTE anonymise aussi le texte alternatif du portrait : PASS. La ROUGE laisse le nom dans le texte alternatif (A1) et un employeur dans une ligne de lieu (A2). Né d'un essai du 10/11/2026 : avant correction, un nom laissé dans un attribut alt passait en PASS, la valeur de l'attribut disparaissant avec sa balise.",
+   "provenance": "TF-2361 (RA-211, lot du produit marketing du 09/11/2026, seq 286) — les dossiers d'intervenant du produit sont des pages HTML rendues en PDF ; le contrôle du 24/09 lisait texte visible et attributs title, alt, aria-label et content."
   },
   {
    "nom": "charte-pptx-semantique",
@@ -1394,6 +1825,28 @@
    "provenance": "TF-1573, campagne D-55 (a) du 03/10/2026 — la fenetre fixe de 2 000 caracteres de lib/effectifs.mjs lisait TRONQUE un tableau plus long qu elle (« trois constats » face a 3 lignes lues a 2) et englobait la liste d une section voisine : 4 pages du parc en FAIL a tort. La verte rendait FAIL N1 deux fois avant la correction ; la rouge annonce quatre constats sur un tableau de trois, lu en entier."
   },
   {
+   "nom": "calculs-effectif-ensemble",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}"
+   ],
+   "red": "calculs-effectif-ensemble-red.md",
+   "green": "calculs-effectif-ensemble-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "N2",
+    "« 4 points »"
+   ],
+   "commentaire": "TF-2378 — N2 ne confronte un effectif et une liste que s'ils désignent le même ensemble. La VERTE emploie « points » pour les items d'une liste ET pour l'unité d'un curseur (« baisse de 10 points »), et « questions » pour deux ensembles qualifiés différemment (« de référence », « fermées de démarrage ») : FAIL deux fois en N2 avant TF-2378, PASS après. La ROUGE est la même page plus une mention du MÊME ensemble (« 4 points à trancher ») qui contredit la liste de 5 : N2 la refuse, et seule elle.",
+   "provenance": "TF-2378 (RA-228, lot du produit marketing du 09/11/2026, seq 349) — plan du 28/09/2026 : 2 passes FAIL puis PASS, une phrase juste réécrite pour lever une collision de mot."
+  },
+  {
    "nom": "calculs-date",
    "cmd": [
     "node",
@@ -1750,6 +2203,35 @@
    ],
    "dependant_outil": "aucun — TR3 par le FRONTMATTER (`genere: false`), sans drapeau en ligne de commande : le fichier n'a aucune mention et sortirait en FAIL sans sa déclaration.",
    "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-expression-normalisee",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-expression-mentions.json",
+    "--date",
+    "2026-11-10"
+   ],
+   "red": "transparence-expression-red.md",
+   "green": "transparence-expression-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR1",
+    "AUCUNE MENTION"
+   ],
+   "attendu_messages_green": [
+    "TR1 — mention d'assistance par IA présente"
+   ],
+   "commentaire": "TF-2360 — le fichier de formules ne porte QU'UNE EXPRESSION, écrite comme la formule de marque (accents, apostrophes typographiques). La VERTE porte la formule dans son corps : elle sortait en FAIL avant TF-2360, l'expression n'étant pas normalisée comme le texte jugé, et passe désormais. La ROUGE est la même publication sans la formule : FAIL TR1, l'expression normalisée ne trouve rien d'autre.",
+   "provenance": "TF-2360 (RA-210, lot du produit marketing du 09/11/2026, seq 268) — une expression écrite comme la formule de marque ne trouvait jamais rien ; fixture verte rejouée le 21/09/2026 : exit 1 avec l'expression accentuée."
   },
   {
    "nom": "completude-rendu-source",
