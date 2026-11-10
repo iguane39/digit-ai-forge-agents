@@ -1,0 +1,28 @@
+{
+ "source": "fabriquer_cv_synthetique.py 1.0.0 : CV fictif a 2 colonnes, proprietes posees par construction",
+ "valeurs": {
+  "document.colonnes_page_1": 2,
+  "experiences.nombre": 3,
+  "experiences.datees": 0,
+  "experiences.duree_seule": 3,
+  "experiences.postes_conseil": 1,
+  "experiences.cumul_mois_des_durees": 44,
+  "statut.dit": false,
+  "faits.nombre": 9,
+  "faits.avec_chiffre": 1,
+  "faits.repetition_max": 2,
+  "ia.faits_citant_ia": 0,
+  "resume.atouts": 4,
+  "donnees_personnelles.age": true,
+  "donnees_personnelles.permis": true,
+  "donnees_personnelles.photo_probable": true,
+  "contacts.courriel_lettres_doublees": 1,
+  "rubriques.doublons_bilingues": [["langues", "languages"]],
+  "outils.nombre": 6,
+  "outils.langues_parlees": 2,
+  "outils.cites_en_mission": 1,
+  "outils.non_cites": 5
+ },
+ "redites_attendues": 1,
+ "jamais_dans_le_rapport": ["JEANNE", "EXEMPLE", "Alpha", "Beta", "Gamma", "Lyon", "Nantes", "Rennes", "exemplle", "0612345678", "12 34 56 78"]
+}

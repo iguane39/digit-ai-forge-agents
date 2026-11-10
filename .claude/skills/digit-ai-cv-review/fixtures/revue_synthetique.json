@@ -1,0 +1,61 @@
+{
+ "grille": "references/grille.md 1.0.0",
+ "mesures": "mesures.json (analyser_cv.py 1.0.0)",
+ "registre": "tu",
+ "titre": "Ton parcours se lit : date-le, chiffre-le, relie tes outils aux missions",
+ "verdict": "À retravailler",
+ "points_solides": "ton parcours couvre la qualité de la donnée, de l'analyse à la conduite de projet, avec 3 postes dont 1 mission de conseil.",
+ "lignes": [
+  {
+   "rang": 1, "priorite": 1, "criteres": ["C1"], "action": "Ajouter",
+   "quoi": "Aucune de tes 3 expériences n'a de période, seulement des durées comme « 8 mois ».",
+   "pourquoi": "Le client lit d'abord la chronologie ; une durée seule ne dit ni la récence ni un trou.",
+   "comment": "Écris « mm/aaaa – mm/aaaa » pour chaque poste, « depuis mm/aaaa » pour le poste en cours.",
+   "preuves": [{"mesure": "experiences.nombre"}, {"mesure": "experiences.datees"}, {"extrait": "8 mois"}]
+  },
+  {
+   "rang": 2, "priorite": 1, "criteres": ["C2"], "action": "Ajouter",
+   "quoi": "Ton CV ne dit pas dans quel cadre tu as mené tes missions de conseil.",
+   "pourquoi": "Digit-AI doit savoir comment te proposer, et quel client a porté la mission.",
+   "comment": "Ajoute sous le titre « consultante indépendante » ou le nom du cabinet.",
+   "preuves": [{"mesure": "statut.dit"}, {"mesure": "experiences.postes_conseil"}]
+  },
+  {
+   "rang": 3, "priorite": 2, "criteres": ["C3"], "action": "Modifier",
+   "quoi": "Une seule de tes 9 lignes de mission porte un chiffre, et « Animation d'ateliers métiers » revient 2 fois.",
+   "pourquoi": "Le client retient un résultat, pas une activité répétée d'un poste à l'autre.",
+   "comment": "Écris action, périmètre, résultat : « [N] doublons en moins », « [X] % de délai gagné ».",
+   "preuves": [{"mesure": "faits.nombre"}, {"mesure": "faits.avec_chiffre"}, {"mesure": "faits.repetition_max"}]
+  },
+  {
+   "rang": 4, "priorite": 2, "criteres": ["C4"], "action": "Ajouter",
+   "quoi": "5 de tes 6 outils ne figurent dans aucune mission.",
+   "pourquoi": "Un outil sans mission se lit comme une notion, pas comme une pratique.",
+   "comment": "Ajoute à chaque poste une ligne « Environnement : [outils de la mission] ».",
+   "preuves": [{"mesure": "outils.non_cites"}, {"mesure": "outils.nombre"}]
+  },
+  {
+   "rang": 5, "priorite": 2, "criteres": ["C6"], "action": "Supprimer",
+   "quoi": "Ton résumé répète « projets de qualité à forte valeur ajoutée ».",
+   "pourquoi": "C'est la zone lue en premier : une redite y prend la place de ton expertise.",
+   "comment": "Garde 3 lignes : ton métier, tes secteurs, ce qui te distingue.",
+   "preuves": [{"mesure": "resume.redites"}]
+  },
+  {
+   "rang": 6, "priorite": 3, "criteres": ["C7"], "action": "Supprimer",
+   "quoi": "Ton CV donne ton âge, un permis et une photo.",
+   "pourquoi": "Ces critères n'ont aucun rapport avec la mission et peuvent écarter ton profil.",
+   "comment": "Retire-les et garde ta zone de mobilité.",
+   "preuves": [{"mesure": "donnees_personnelles.age"}, {"mesure": "donnees_personnelles.permis"}, {"mesure": "donnees_personnelles.photo_probable"}]
+  },
+  {
+   "rang": 7, "priorite": 3, "criteres": ["C8"], "action": "Modifier",
+   "quoi": "Le courriel de ton CV porte une lettre doublée, et « Langues » comme « Languages » ouvrent deux rubriques.",
+   "pourquoi": "Une coquille se remarque, surtout dans un métier de la qualité.",
+   "comment": "Vérifie l'adresse lettre à lettre et garde une seule rubrique, en français.",
+   "preuves": [{"mesure": "contacts.courriel_lettres_doublees"}, {"mesure": "rubriques.doublons_bilingues"}]
+  }
+ ],
+ "appel": "Renvoie-nous ta version corrigée : nous la relirons avant de te proposer.",
+ "pied": "Digit-AI · Retour sur ton CV · 10 novembre 2026"
+}
