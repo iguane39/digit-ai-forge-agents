@@ -12,7 +12,8 @@
 //   D2 [Content_Types].xml existe, déclare le document principal, et TOUTE partie a un type
 //      (par extension ou par surcharge) ;
 //   D3 toute relation interne (_rels/.rels, word/_rels/*.rels) désigne une partie PRÉSENTE ;
-//   D4 toute partie XML est bien formée (balises équilibrées, une seule racine) ;
+//   D4 toute partie XML est bien formée (balises équilibrées, une seule racine, et toute esperluette ouvre
+//      une référence valide : &amp; &lt; &gt; &quot; &apos; &#N; &#xH; — TF-2369) ;
 //   D5 l'ORDRE des enfants que Word exige et que rien ne signale à l'écriture : w:sectPr en
 //      DERNIER de w:body ; w:pPr en PREMIER de w:p ; w:rPr en PREMIER de w:r ; w:tcPr en PREMIER
 //      de w:tc ; w:tblPr puis w:tblGrid avant tout w:tr dans w:tbl ;
@@ -62,6 +63,16 @@ export const NON_JUGE_BASE = [
   'la CHARTE du document (polices, couleurs, grille) : le relevé se fait avant d\'écrire (`rendre-docx.mjs --relever`), sa fidélité se juge à l\'œil ou par un rendu',
 ];
 
+/**
+ * Première esperluette qui n'ouvre pas une référence valide (TF-2369) : &amp; &lt; &gt; &quot; &apos; &#N; &#xH;.
+ * Une partie OOXML n'a pas de DTD, donc aucune autre entité nommée n'y est définie. Le 28/09/2026, « Assurance & Retraite »
+ * dans un w:t rendait PASS pendant que Word refusait d'ouvrir le fichier (xmlParseEntityRef: no name).
+ */
+export function esperluetteInvalide(texte) {
+  const m = /&(?!(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9A-Fa-f]+);)/.exec(texte);
+  return m ? texte.slice(Math.max(0, m.index - 15), m.index + 20).replace(/\s+/g, ' ').trim() : null;
+}
+
 /** Arbre minimal d'une partie XML : {racine} ou {erreur}. Suffit à D4 et D5. */
 export function arbre(xml) {
   const s = xml.replace(/<\?[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '');
@@ -72,8 +83,12 @@ export function arbre(xml) {
   while ((m = re.exec(s))) {
     const entre = s.slice(dernier, m.index);
     if (entre.includes('<')) return { erreur: `balise mal formée près de « ${entre.trim().slice(0, 40)} »` };
+    const nu = esperluetteInvalide(entre);
+    if (nu) return { erreur: `esperluette qui n'ouvre pas une référence valide près de « ${nu} » (écrire &amp;)` };
     dernier = re.lastIndex;
-    const [, ferme, nom, , auto] = m;
+    const [, ferme, nom, attrs, auto] = m;
+    const nuAttr = esperluetteInvalide(attrs || '');
+    if (nuAttr) return { erreur: `esperluette qui n'ouvre pas une référence valide dans un attribut de <${nom}> près de « ${nuAttr} » (écrire &amp;)` };
     if (ferme) {
       const haut = pile.pop();
       if (!haut || haut.nom !== nom) return { erreur: `</${nom}> ferme <${haut ? haut.nom : '—'}>` };
@@ -84,6 +99,8 @@ export function arbre(xml) {
     }
   }
   if (s.slice(dernier).includes('<')) return { erreur: 'balise mal formée en fin de partie' };
+  const nuFin = esperluetteInvalide(s.slice(dernier));
+  if (nuFin) return { erreur: `esperluette qui n'ouvre pas une référence valide en fin de partie près de « ${nuFin} »` };
   if (pile.length !== 1) return { erreur: `<${pile[pile.length - 1].nom}> jamais fermé` };
   if (pile[0].enfants.length !== 1) return { erreur: `${pile[0].enfants.length} racine(s) — une partie XML en a exactement une` };
   return { racine: pile[0].enfants[0] };

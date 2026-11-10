@@ -86,6 +86,36 @@ for (const [nom, transfo, regle, motif] of rouges) {
   verif(`ROUGE — ${nom} → ${regle}`, regles(r).includes(regle) && motif.test(msgs), msgs || 'aucun constat');
 }
 
+// TF-2369 — D4 juge la FORME du XML, pas seulement l'équilibre des balises. Le 28/09/2026, une esperluette nue dans
+// un w:t (« Assurance & Retraite ») a rendu PASS pendant que Word refusait d'ouvrir le fichier et que lxml disait
+// « xmlParseEntityRef: no name ». Fixtures à double sens : chaque forme fautive tombe sur D4, chaque référence
+// valide (nommée, décimale, hexadécimale, esperluette en CDATA ou en commentaire) passe.
+const injecte = (texte) => surDoc((d) => d.replace('</w:t>', `${texte}</w:t>`));
+const jD4 = (transfo) => juger(abimer(transfo), 'esperluette.docx', { deleguer: false });
+for (const [nom, texte] of [
+  ['esperluette nue dans un w:t', ' Assurance & Retraite'],
+  ['référence sans point-virgule', ' &amp Retraite'],
+  ['référence numérique incomplète', ' &#; Retraite'],
+  ['référence hexadécimale non hexadécimale', ' &#xZZ; Retraite'],
+  ['entité nommée inconnue (aucune DTD ne la définit)', ' &nbsp; Retraite'],
+]) {
+  const r = jD4(injecte(texte));
+  verif(`ROUGE — ${nom} → D4`, regles(r).includes('D4') && /référence|esperluette/i.test(r.findings.map((f) => f.msg).join(' | ')), r.findings.map((f) => f.msg).join(' | ') || 'aucun constat');
+}
+{
+  const r = jD4(surDoc((d) => d.replace('<w:body>', '<w:body xml:lang="a & b">')));
+  verif('ROUGE — esperluette nue dans une valeur d\'attribut → D4', regles(r).includes('D4'), r.findings.map((f) => f.msg).join(' | ') || 'aucun constat');
+}
+{
+  const r = jD4(injecte(' Assurance &amp; Retraite &lt;&gt;&quot;&apos; &#233; &#xE9; &#xe9;<![CDATA[ a & b ]]><!-- c & d -->'));
+  verif('VERT — références valides, CDATA et commentaire avec esperluette : D4 passe', r.findings.length === 0, r.findings.map((f) => f.msg).join(' | '));
+}
+{
+  const planAmp = { ...plan, sections: [{ titre: 'Assurance & Retraite', niveau: 1, blocs: [{ type: 'paragraphe', texte: 'R&D <test> "cité"' }] }] };
+  const r = juger(rendreSurMarque(planAmp, lireMarque(path.join(F, 'marque'))).buffer, 'amp.docx', { deleguer: false });
+  verif('VERT — un plan qui porte « & », « < » et « " » rend un paquet que D4 accepte', r.findings.length === 0, r.findings.map((f) => f.msg).join(' | '));
+}
+
 let refus = null;
 try { lireMarque(path.join(F, 'marque-incomplete')); } catch (e) { refus = e.message; }
 verif('ROUGE — marque sans police de corps : le rendu REFUSE au lieu d\'inventer', refus && /--sans/.test(refus), refus || 'aucun refus');

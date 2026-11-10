@@ -11,7 +11,7 @@ description: >
   d'écrire. Ne pas déclencher pour un deck (→ digit-ai-pptx), rédiger ou chiffrer une propale
   (→ digit-ai-propale), ni une page HTML (→ digit-ai-page-html).
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Rendu DOCX — marque de l'émetteur ou trame imposée
@@ -57,7 +57,9 @@ l'utilisateur, jamais de lui (TF-1027, décision humaine du 11/09/2026).
    ```
 
    D1 archive lisible · D2 types de contenu · D3 relations vers des parties présentes · D4 parties
-   XML bien formées · D5 ordre des enfants WordprocessingML (`w:sectPr` en dernier, `w:pPr`,
+   XML bien formées (balises équilibrées, une racine, et toute esperluette ouvre une référence valide :
+   `&amp;` `&lt;` `&gt;` `&quot;` `&apos;` `&#N;` `&#xH;`, dans le texte comme dans les attributs ;
+   une esperluette nue fait refuser le fichier par Word, TF-2369) · D5 ordre des enfants WordprocessingML (`w:sectPr` en dernier, `w:pPr`,
    `w:rPr`, `w:tcPr` en premier, `w:tblPr` → `w:tblGrid` → `w:tr`) · D6 ordre DrawingML
    **délégué** au contrôle verifier-ooxml.py des scripts du pilot (introuvable → D6 déclarée non jugée, jamais
    un PASS). Un paquet mal ordonné s'ouvre avec une « réparation » qui perd du formatage en
@@ -77,7 +79,7 @@ l'utilisateur, jamais de lui (TF-1027, décision humaine du 11/09/2026).
 
 `node scripts/self-test.mjs` — double sens : un mémoire rendu sur une marque de fixture passe
 D1-D6 et se relit par une bibliothèque tierce (python-docx, quand elle est installée) ; quatre
-paquets abîmés tombent chacun sur SA règle ; une marque incomplète est refusée ; un rendu sur trame
+paquets abîmés tombent chacun sur SA règle ; cinq formes d'esperluette fautive (nue, sans point-virgule, numérique incomplète, hexadécimale invalide, entité nommée inconnue) et une dans un attribut tombent sur D4, les références valides passent (TF-2369) ; une marque incomplète est refusée ; un rendu sur trame
 reprend la partie styles.xml octet pour octet. Fixtures : `fixtures/plan-memoire.json`,
 `fixtures/plan-sur-trame.json`, `fixtures/marque/`, `fixtures/marque-incomplete/`.
 
