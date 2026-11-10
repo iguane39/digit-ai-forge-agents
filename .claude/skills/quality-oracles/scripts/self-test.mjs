@@ -363,6 +363,9 @@ if (reg) {
       verte: 'digit-ai-forge-design/oracles/fixtures/exploitabilite-verte.html' },
     { script: /oracle-ops\.mjs$/, rouge: 'digit-ai-forge-ops/fixtures/o18-revisions-actives/rouge.json',
       verte: 'digit-ai-forge-ops/fixtures/o18-revisions-actives/verte.json' },
+    // TF-2405 (10/11/2026, D-203 (a)) : oracle-clip de forge-design, même contrat ; l'entrée est un DOSSIER de clip.
+    { script: /oracle-clip\.mjs$/, rouge: 'digit-ai-forge-design/oracles/fixtures/clip/rouge',
+      verte: 'digit-ai-forge-design/oracles/fixtures/clip/verte' },
   ];
   for (const p of PAIRES_1687) {
     const e = reg.oracles.find((o) => (o.cmd || []).some((s) => p.script.test(s)));
