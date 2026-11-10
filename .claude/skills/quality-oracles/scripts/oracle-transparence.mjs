@@ -27,6 +27,16 @@
 //   node scripts/oracle-transparence.mjs <fichier.md|.html|.txt> [--mentions <mentions.json>]
 //        [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]
 //
+// Ce qui est normalisé (TF-2360, 10/11/2026) — LES TROIS ENTRÉES SUBISSENT LES MÊMES PLIS :
+//   · le TEXTE JUGÉ et les FORMULES LITTÉRALES (`mentions`) : accents retirés, minuscules,
+//     apostrophes (’ ‘ ʼ ' ` ´) changées en espaces, espaces insécables changées en espaces,
+//     blancs consécutifs réduits à un seul ;
+//   · les EXPRESSIONS (`expressions`, et les chaînes `re:` de `mentions`) : les mêmes plis, sauf
+//     les minuscules — l'expression est compilée insensible à la casse, et passer `\S` ou `\W` en
+//     minuscules en changerait le sens. Une expression s'écrit donc comme la formule de marque,
+//     accents et apostrophes compris. Avant TF-2360 elle ne se normalisait pas : une expression
+//     accentuée ne trouvait jamais rien, et une publication conforme sortait en FAIL.
+//
 // Provenance : TF-1030 (11/09/2026, décisions humaines D-3 (a) puis D-4) — l'obligation est en
 // vigueur depuis le 2026-08-02, la règle de marque est écrite, et le contrôle exécutable qu'elle
 // cite était appelé 17 fois dans 9 fichiers d'un produit sans exister nulle part (mesure du
@@ -105,6 +115,17 @@ const normaliser = s => s
   .replace(/\s+/g, ' ')
   .trim();
 
+// TF-2360 : une EXPRESSION subit les plis de `normaliser`, sauf les minuscules et le rognage. Le texte
+// jugé est normalisé ; une expression écrite comme la formule de marque (« rédigé avec l’aide d’une
+// IA ») ne le trouvait jamais. Les minuscules sont laissées au drapeau `i` de la compilation : appliquées
+// au source d'une expression, elles changeraient `\S` en `\s` ou `\W` en `\w`.
+const normaliserExpression = s => String(s)
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[‘’ʼ'`´]/g, ' ')
+  .replace(/[   ]/g, ' ')
+  .replace(/ {2,}/g, ' ');
+const NORMALISATION = 'texte jugé et formules littérales : accents retirés, minuscules, apostrophes et espaces insécables changées en espaces, blancs réduits ; expressions : les mêmes plis sauf les minuscules (compilées insensibles à la casse)';
+
 // Jeu GÉNÉRIQUE par défaut (français et anglais) — aucune formule propre à un émetteur.
 // Écrit sans accents ni apostrophes : il s'applique au texte NORMALISÉ.
 const EXPRESSIONS_DEFAUT = [
@@ -133,7 +154,7 @@ if (mentionsPath) {
   mentionsSource = `${path.basename(mentionsPath)} — ${litterales.length} formule(s) littérale(s), ${expressions.length} expression(s)`;
 }
 let regs = [];
-try { regs = expressions.map(e => new RegExp(e, 'i')); }
+try { regs = expressions.map(e => new RegExp(normaliserExpression(e), 'i')); }
 catch (e) { skip(`--mentions : expression invalide — ${e.message}`); }
 
 // ---- texte lisible par un humain ---------------------------------------------------------------
@@ -220,6 +241,7 @@ if (EXT === '.html' || EXT === '.htm') {
 const contexte = {
   date_reference: AUJ,
   mentions_lues: mentionsSource,
+  normalisation: NORMALISATION,
   echeance_lue: echeance ? `${CLE_ECHEANCE} → ${echeance.limite} (${echeance.source})` : (EXT === '.html' || EXT === '.htm' ? `aucune (${echeanceOrigine})` : 'sans objet (support non HTML)')
 };
 if (findings.some(f => f.sev === 'bloquant')) out('FAIL', 1, contexte);

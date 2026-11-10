@@ -40,6 +40,7 @@ const NON_JUGE_BASE = [
   'ambiguïté séparateur unique + 3 décimales (traité comme milliers)',
   'effectifs annoncés sans ancre immédiate (liste ou tableau juste dessous) — non rapprochables',
   'effectifs de 1 (« une question ») et noms hors liste des dénombrables de lib/effectifs.mjs',
+  'N2 (TF-2378) : un effectif et une liste du même nom ne sont confrontés que s\'ils désignent le même ensemble — une mention en contexte de mesure (« baisse de 10 points », « sur 20 points ») n\'est pas un compte, et deux qualificatifs sans mot commun (« questions de référence », « questions fermées ») sont deux ensembles ; deux qualifications sans mot commun d\'un MÊME ensemble ne sont donc pas confrontées',
   'listes imbriquées HTML : les <li> de sous-listes sont comptés avec les items de premier niveau',
   'I1 (même indicateur, deux valeurs) : deux tuiles entre elles, deux mentions en prose entre elles, la forme « libellé : nombre », un libellé d\'un seul mot — seule la valeur déclarée (tuile, dt/dd) est confrontée à la prose',
   ...NON_JUGE_MESURE

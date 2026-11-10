@@ -1,0 +1,9 @@
+{
+  "format": "quality-oracles/mentions-transparence@1",
+  "commentaire": "JEU D'ESSAI (TF-2360) — formule INVENTÉE, sans formule littérale : seule l'EXPRESSION peut reconnaître la mention. Elle est écrite comme un auteur écrit sa formule de marque, avec ses accents et ses apostrophes typographiques. Avant TF-2360, l'oracle normalisait le texte jugé et les formules littérales, pas les expressions : celle-ci ne trouvait jamais rien et la publication conforme sortait en FAIL.",
+  "date": "2026-11-10",
+  "mentions": [],
+  "expressions": [
+    "assembl[ée]+ à l’atelier outillé, vérifié par l’équipe"
+  ]
+}

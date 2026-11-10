@@ -1394,6 +1394,28 @@
    "provenance": "TF-1573, campagne D-55 (a) du 03/10/2026 — la fenetre fixe de 2 000 caracteres de lib/effectifs.mjs lisait TRONQUE un tableau plus long qu elle (« trois constats » face a 3 lignes lues a 2) et englobait la liste d une section voisine : 4 pages du parc en FAIL a tort. La verte rendait FAIL N1 deux fois avant la correction ; la rouge annonce quatre constats sur un tableau de trois, lu en entier."
   },
   {
+   "nom": "calculs-effectif-ensemble",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-calculs.mjs",
+    "{fixture}"
+   ],
+   "red": "calculs-effectif-ensemble-red.md",
+   "green": "calculs-effectif-ensemble-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "N2",
+    "« 4 points »"
+   ],
+   "commentaire": "TF-2378 — N2 ne confronte un effectif et une liste que s'ils désignent le même ensemble. La VERTE emploie « points » pour les items d'une liste ET pour l'unité d'un curseur (« baisse de 10 points »), et « questions » pour deux ensembles qualifiés différemment (« de référence », « fermées de démarrage ») : FAIL deux fois en N2 avant TF-2378, PASS après. La ROUGE est la même page plus une mention du MÊME ensemble (« 4 points à trancher ») qui contredit la liste de 5 : N2 la refuse, et seule elle.",
+   "provenance": "TF-2378 (RA-228, lot du produit marketing du 09/11/2026, seq 349) — plan du 28/09/2026 : 2 passes FAIL puis PASS, une phrase juste réécrite pour lever une collision de mot."
+  },
+  {
    "nom": "calculs-date",
    "cmd": [
     "node",
@@ -1750,6 +1772,35 @@
    ],
    "dependant_outil": "aucun — TR3 par le FRONTMATTER (`genere: false`), sans drapeau en ligne de commande : le fichier n'a aucune mention et sortirait en FAIL sans sa déclaration.",
    "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-expression-normalisee",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-expression-mentions.json",
+    "--date",
+    "2026-11-10"
+   ],
+   "red": "transparence-expression-red.md",
+   "green": "transparence-expression-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR1",
+    "AUCUNE MENTION"
+   ],
+   "attendu_messages_green": [
+    "TR1 — mention d'assistance par IA présente"
+   ],
+   "commentaire": "TF-2360 — le fichier de formules ne porte QU'UNE EXPRESSION, écrite comme la formule de marque (accents, apostrophes typographiques). La VERTE porte la formule dans son corps : elle sortait en FAIL avant TF-2360, l'expression n'étant pas normalisée comme le texte jugé, et passe désormais. La ROUGE est la même publication sans la formule : FAIL TR1, l'expression normalisée ne trouve rien d'autre.",
+   "provenance": "TF-2360 (RA-210, lot du produit marketing du 09/11/2026, seq 268) — une expression écrite comme la formule de marque ne trouvait jamais rien ; fixture verte rejouée le 21/09/2026 : exit 1 avec l'expression accentuée."
   },
   {
    "nom": "completude-rendu-source",
