@@ -93,6 +93,12 @@ Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
    mesure une densité, une proportion ou un ratio retire de sa mesure les charges imposées par une
    règle voisine. Et une règle neuve se joue contre un artefact qui applique DÉJÀ toutes les règles
    voisines, pas seulement contre sa propre fixture.
+8. **Un oracle qui lit le texte d'un PDF le lit par plusieurs lecteurs** (TF-2367, 10/11/2026) — pypdf,
+   PyMuPDF et pdftotext, par `scripts/lib/texte-pdf.mjs` ; il n'écrit un défaut de lisibilité que si TOUS
+   les lecteurs disponibles échouent, et un désaccord se dit en information. Le fait : sur un CV mis en
+   page, PyMuPDF lisait « D A T A B R I C K S » quand pypdf et pdftotext lisaient « DATABRICKS », et un
+   faux défaut a failli partir chez la personne sur la foi du seul PyMuPDF. Premier oracle à l'appliquer :
+   `oracle-pdf.mjs`, P4.
 
 ## 4. Règle de remontée (la liste grandit)
 Domaine sans oracle au registre → **définir** (scaffold en une commande : skill compagnon **`write-an-oracle`** —

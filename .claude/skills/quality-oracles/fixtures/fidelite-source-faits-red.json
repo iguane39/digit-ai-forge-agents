@@ -1,0 +1,14 @@
+{
+  "format": "quality-oracles/faits-source@1",
+  "commentaire": "Jeu d'essai TF-2320, cas ROUGE : la table verte, à un fait près, écrit comme le contrôle qui a laissé passer 3 faits non sourcés le 01/10/2026 — deux motifs du producteur, chacun trouvé, jamais comparés. L'affirmation de F02 se lit au livrable, son « passage » se lit dans la source, la reformulation est déclarée ; mais le nombre 12 n'est pas dans le passage : le fait n'est pas sourcé.",
+  "faits": [
+    { "id": "F01", "livrable": "2 jours consécutifs, de 9 h 00 à 17 h 30", "passage": "Durée : 2 jours consécutifs, de 9 h 00 à 17 h 30." },
+    { "id": "F02", "livrable": "12 participants au plus", "passage": "en présentiel", "litteral": false, "reformulation": "effectif résumé pour la diapositive" },
+    { "id": "F03", "livrable": "5 étapes", "calcul": { "valeur": 5, "compter": "^## Étape \\d" } }
+  ],
+  "structure": [],
+  "frise": [
+    { "livrable": "Cadrer : lire les comptes rendus existants", "etapes": "^## Étape [12] ", "mots": ["Cadrage"] },
+    { "livrable": "Pratiquer : écrire les décisions", "etapes": "^## Étape [34] ", "mots": ["Pratique"] }
+  ]
+}

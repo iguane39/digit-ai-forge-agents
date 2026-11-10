@@ -1,0 +1,14 @@
+{
+  "format": "quality-oracles/faits-source@1",
+  "commentaire": "Jeu d'essai TF-2376 et TF-2320 : table des faits du livrable dérivé de fidelite-source-programme.md. Chaque fait se juge contre le PASSAGE de sa source ; le fait F03 est une grandeur recomptée dans la structure de la source.",
+  "faits": [
+    { "id": "F01", "livrable": "2 jours consécutifs, de 9 h 00 à 17 h 30", "passage": "Durée : 2 jours consécutifs, de 9 h 00 à 17 h 30." },
+    { "id": "F02", "livrable": "12 participants au plus", "passage": "Effectif : 12 participants au plus, en présentiel." },
+    { "id": "F03", "livrable": "5 étapes", "calcul": { "valeur": 5, "compter": "^## Étape \\d" } }
+  ],
+  "structure": [],
+  "frise": [
+    { "livrable": "Cadrer : lire les comptes rendus existants", "etapes": "^## Étape [12] ", "mots": ["Cadrage"] },
+    { "livrable": "Pratiquer : écrire les décisions", "etapes": "^## Étape [34] ", "mots": ["Pratique"] }
+  ]
+}

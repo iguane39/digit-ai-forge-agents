@@ -1,0 +1,14 @@
+{
+  "commentaire": "Jeu d'essai TF-2370 : retouches DÉCLARÉES d'un dossier inventé — un paragraphe retiré, un ajouté, le tableau 1 retouché pour la seule pagination.",
+  "retires": [
+    "Ancienne mission sans rapport avec l'offre."
+  ],
+  "ajoutes": [
+    "Mission de cadrage d'un entrepôt de données, six mois."
+  ],
+  "tableaux": {
+    "pagination": [
+      1
+    ]
+  }
+}
