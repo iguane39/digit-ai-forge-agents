@@ -2,7 +2,7 @@
 name: oeil-critique
 description: Analyse les échanges du poste depuis la dernière exécution, refus de hook compris, et rend la liste des modifications à faire à la Factory, sans écrire de code ni de règle. Six missions — revue de code, intentions contre livraisons, réponse en une fois, architecture par palier, process attendus, existant et suppressions. Modifications automatiques exécutées ensuite par la session qui reçoit la liste ; majeures posées au format B, recommandation scellée avant l'affichage et dévoilée après le choix, cinq au plus par exécution. Repère par poste depuis le 20/10/2026. Use when / déclencher dès que l'utilisateur dit « œil critique », « /oeil-critique », demande l'analyse des échanges depuis la dernière fois, ou ce que la Factory devrait corriger d'après ses échanges récents. Ne pas déclencher pour une revue de code seule (→ code-review), pour juger un livrable fini (→ contre-expertise ou quality-oracles), ni pour relire un seul tour (→ relecture d'intention du pilot).
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # oeil-critique — analyser les échanges du poste et lister les modifications
@@ -32,6 +32,11 @@ porte l'empreinte du fichier visé à la liste et refuse de s'écrire si le fich
 ligne « effet attendu » relue à l'exécution suivante (`scripts/automatiques.mjs`).
 Version 1.4.1 du 10/11/2026, exécution sur Dell-XPS-16 : `extraire.mjs` prend une borne de fin `--jusqu`. La
 période de 11,6 jours (4,2 millions de caractères) avait dû se découper à la main pour tenir sous le plafond.
+Version 1.5.0 du 10/11/2026, demande humaine (« coupler avec simplify & code-review », A-1) : la mission 1
+demande aussi à `code-review` ses constats de simplification, et la mission 6 relève le code dupliqué du parc
+(`sources.mjs existant`, champ `doublons`). Premier relevé le 10/11/2026 : 1 339 fichiers lus en 18 s, 103
+paires dont 59 entre dépôts, par exemple un lecteur YAML recopié dans 3 forges. Ce relevé voit une copie
+d'un seul tenant de 12 lignes au moins ; une copie retouchée ligne à ligne lui échappe.
 
 **Limite déclarée, à lire avant tout usage.** Deux exécutions réelles complètes, une par poste : le
 26/10/2026 sur Dell-XPS-16 et le 29/10/2026 sur DESKTOP-ULTRA7. La seconde est la première à lire les
@@ -94,12 +99,12 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
 
    | Mission | Outil réemployé |
    |---|---|
-   | 1. Revue de code des modifications de la période ; pas de dépôt hébergé chez un client sans accord humain | skill `code-review` sur `git log --since <date de départ>` du pilot et des forges |
+   | 1. Revue de code des modifications de la période : bugs, et depuis la 1.5.0 réemploi, simplification et efficacité ; pas de dépôt hébergé chez un client sans accord humain | skill `code-review` sur `git log --since <date de départ>` du pilot et des forges, en lui demandant aussi ses constats de réemploi, de simplification et d'efficacité ; chacun entre dans la liste, classé comme toute modification. Le skill `simplify` n'est pas appelé : il corrige lui-même, et l'œil critique ne fait que lister |
    | 2. Intentions contre livraisons : pour chaque demande, l'intention, ce qui a été livré, l'écart | méthode de `scripts/relecture-intention.mjs` du pilot, sur toute la période |
    | 3. Répondre en une fois : demandes reprises, consignes répétées, reformulations demandées, refus de hook rattachés à la demande du tour qui les précède, et les indicateurs du §g de la proposition. Process silencieux : hooks les plus coûteux, avertissements d'ouverture qui reviennent, rapprochés des items clos qui devaient les éteindre, domaines d'oracle sans un échec | méthode du §g ; une correction de style passe par `references/ECRITURE.md` et `oracle-ecriture`, une règle retirée pour une ajoutée ; relevé `sources.mjs silencieux` |
    | 4. Architecture par palier : un palier quand `palier_du` le dit, ou dès qu'un indicateur sort de sa cible. Descente : pour chaque correction de la période, les produits qu'elle n'a pas atteints ; lots restés chez les produits ou jamais parvenus au pilot | `todo/observer-recidives.mjs` du pilot ; relevé `sources.mjs produits` (héritage du dernier relevé d'ouverture, lots par `oracles/lib-retours-produit.mjs`) ; dans les produits, lecture et proposition seulement |
    | 5. Enclenchement des process attendus : pour chaque demande, les process qui devaient s'enclencher et la trace qui le prouve | carte `references/CARTE-FORGES.json` du pilot ; verdicts motivés de `forge/mobilisation.jsonl` des produits, relevé `sources.mjs produits` ; ledgers `forge/ledger.jsonl` |
-   | 6. Existant : contrôles et scripts sans appelant, au pilot et dans chaque forge (une forge à 0 contrôle est dite aveugle) ; contrôles injoignables ; items clos sans gain constaté ; items en cours ou décidés sans mouvement depuis 14 jours ; lots de la période ; écarts de versions livrées ; copies de travail et branches supprimables ; ce qui peut être supprimé | relevé `sources.mjs existant` (`scripts/relever-appelants.mjs` avec et sans `--tous-scripts`, `oracles/oracle-controles-injoignables.mjs`, `scripts/nettoyer-copies.mjs` en essai, `maj-versions-livrees.mjs --constat` des forges, registre) |
+   | 6. Existant : contrôles et scripts sans appelant, au pilot et dans chaque forge (une forge à 0 contrôle est dite aveugle) ; contrôles injoignables ; items clos sans gain constaté ; items en cours ou décidés sans mouvement depuis 14 jours ; lots de la période ; écarts de versions livrées ; copies de travail et branches supprimables ; code dupliqué entre fichiers du pilot et des forges, à mettre en commun ou à supprimer (1.5.0) ; ce qui peut être supprimé | relevé `sources.mjs existant` (`scripts/relever-appelants.mjs` avec et sans `--tous-scripts`, `oracles/oracle-controles-injoignables.mjs`, `scripts/nettoyer-copies.mjs` en essai, `maj-versions-livrees.mjs --constat` des forges, registre ; champ `doublons` : les paires de fichiers suivis qui partagent un bloc de 12 lignes utiles, fixtures, dépendances et copies de travail écartées) |
 
 4. **Retenir, puis classer chaque modification.** Deux filtres d'abord :
    - **généralité** : le constat vaut-il dans un autre projet, pour une autre tâche du même skill,
@@ -188,7 +193,9 @@ Le dossier du skill se note `{skilldir}` ; la session tourne au pilot `digit-ai-
 - `node {skilldir}/scripts/repere.mjs --self-test` : 12 cas, dont un repère qui recule, une sortie
   de 11 lignes et des indicateurs incomplets, refusés ; l'évolution des indicateurs, sans NaN pour
   un indicateur ajouté depuis, le palier dû après 30 jours et sa date gardée d'une exécution à l'autre.
-- `node {skilldir}/scripts/sources.mjs --self-test` : 23 cas, dont un nom réel de produit qui ne
+- `node {skilldir}/scripts/sources.mjs --self-test` : 29 cas, dont (1.5.0) une copie réindentée entre 2
+  dépôts vue, une fixture, un `.md` et une répétition dans un même fichier non comptés, et une copie altérée
+  au milieu qui n'est plus vue (5 mutations du relevé à la main : le self-test passe au rouge) ; un nom réel de produit qui ne
   sort pas, un nom de répertoire du parc cité par un avertissement qui ne sort pas (avec son témoin sans
   correction, qui le laisse sortir), une exécution de hook antérieure au repère ignorée, une famille d'avertissements
   normalisée qui garde son numéro d'item, un avertissement qui survit à la correction de son item,

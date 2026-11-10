@@ -129,6 +129,68 @@ export function versionsLivrees(forges) {
   }).filter((v) => v.ecarts.length);
 }
 
+// 1.5.0 (10/11/2026, demande humaine « coupler avec simplify & code-review », A-1) : le code dupliqué.
+// `code-review` et `simplify` ne lisent que les modifications de la période ; une copie ancienne entre
+// deux forges ne s'y voit jamais. Le relevé compare des fenêtres de lignes utiles entre fichiers suivis.
+const EST_CODE = /\.(mjs|cjs|js|py|ps1|sh)$/i;
+// Écartés : dépendances, environnements, copies de travail, fixtures (une fixture copie exprès), sorties.
+const HORS_DOUBLONS = /(^|\/)(node_modules|\.venv|venv|worktrees|fixtures?|vendor|dist|build)\//i;
+export const FENETRE_DOUBLON = 12;
+/** Une ligne normalisée, ou null si elle ne porte rien : vide, commentaire, ponctuation seule. */
+export const ligneUtile = (l) => {
+  const t = String(l).trim().replace(/\s+/g, " ");
+  return t.length < 4 || /^(\/\/|\/\*|\*|#)/.test(t) || /^[\s{}()[\];,.]+$/.test(t) ? null : t;
+};
+// Empreinte non cryptographique (cyrb53, 53 bits) : une clé de regroupement, jamais une preuve d'intégrité.
+const cle = (s) => {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+};
+const fichiersSuivis = (depot) => {
+  const r = spawnSync("git", ["-C", depot, "ls-files", "-z"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  return r.status === 0 ? r.stdout.split("\0").filter(Boolean) : [];
+};
+/**
+ * Les paires de fichiers qui partagent au moins une fenêtre de `fenetre` lignes utiles consécutives,
+ * entre les dépôts donnés (le pilot et ses forges). Une répétition dans un même fichier ne compte pas.
+ * `fenetres_communes` + `fenetre` - 1 donne le nombre de lignes communes quand la copie est d'un seul tenant.
+ */
+export function doublons(depots, lister = fichiersSuivis, fenetre = FENETRE_DOUBLON) {
+  const vus = new Map();
+  let lus = 0;
+  for (const depot of depots) {
+    const nom = depot.split(/[\\/]/).pop();
+    for (const rel of lister(depot)) {
+      if (!EST_CODE.test(rel) || HORS_DOUBLONS.test(rel)) continue;
+      let texte; try { texte = readFileSync(join(depot, rel), "utf8"); } catch { continue; }
+      lus++;
+      const lignes = texte.split(/\r?\n/).map(ligneUtile).filter(Boolean);
+      const id = `${nom}:${rel}`, deja = new Set();
+      for (let i = 0; i + fenetre <= lignes.length; i++) {
+        const k = cle(lignes.slice(i, i + fenetre).join("\n"));
+        if (deja.has(k)) continue;
+        deja.add(k);
+        const ids = vus.get(k);
+        if (ids) ids.push(id); else vus.set(k, [id]);
+      }
+    }
+  }
+  const paires = new Map();
+  for (const ids of vus.values()) {
+    if (ids.length < 2) continue;
+    for (let a = 0; a < ids.length; a++) for (let b = a + 1; b < ids.length; b++) {
+      const p = ids[a] < ids[b] ? `${ids[a]}\t${ids[b]}` : `${ids[b]}\t${ids[a]}`;
+      paires.set(p, (paires.get(p) || 0) + 1);
+    }
+  }
+  const liste = [...paires].map(([p, n]) => { const [a, b] = p.split("\t"); return { a, b, fenetres_communes: n, entre_depots: a.split(":")[0] !== b.split(":")[0] }; })
+    .sort((x, y) => y.fenetres_communes - x.fenetres_communes);
+  return { fenetre, fichiers_lus: lus, paires: liste.length, paires_entre_depots: liste.filter((x) => x.entre_depots).length, liste: liste.slice(0, 30) };
+}
+
 export function existant(racine, depuis) {
   // D-97 (a) : le relevé du pilot exclut désormais les copies de travail ; il se joue aussi sur chaque forge.
   const jouerAppelants = (depot, tous) => jouer(racine, "scripts/relever-appelants.mjs", ["--racine", depot, "--json", ...(tous ? ["--tous-scripts"] : [])]);
@@ -144,6 +206,7 @@ export function existant(racine, depuis) {
     scripts_sans_appelant: scripts.illisible ? scripts : { scripts: scripts.controles, nombre: scripts.nombre_sans_appelant, liste: (scripts.sansAppelant || []).slice(0, 40) },
     forges: forges.map((f) => ({ forge: f.split(/[\\/]/).pop(), ...appelantsDe(f, jouerAppelants) })),
     versions_livrees: versionsLivrees(forges),
+    doublons: doublons([racine, ...forges]),
     items_dormants: itemsDormants(racine),
     copies_et_branches: copies.illisible ? copies : { copies: copies.copies.length, copies_supprimables: copies.supprimables.copies, branches_sans_copie: copies.branches.length, branches_supprimables: copies.supprimables.branches },
     injoignables: inj.illisible ? inj : { verdict: inj.verdict, en_defaut: (inj.findings || []).filter((f) => f.statut === "FAIL").map((f) => ({ regle: f.regle, message: String(f.message).slice(0, 300) })) },
@@ -375,13 +438,44 @@ async function selfTest() {
     if (!fams.some((f) => f.startsWith("- [avert] (produit hors table) — répertoire NON versionné")) || !fams.some((f) => f.startsWith("- [avert] Produit-N — répertoire NON versionné")) || !fams.some((f) => f.startsWith("- (produit hors table) : N absent(s)"))) casse.push(`répertoire hors table : « (produit hors table) », répertoire de la table : son pseudonyme, y compris en majuscules, ${JSON.stringify(fams)}`);
     const noms = nomsDuParc(racine, estPublic);
     if (!noms.includes("Repertoire-Fictif") || !noms.includes("Table-Fictive") || noms.includes("digit-ai-forge-fictive") || noms.includes("Fichier-Fictif.zip") || !fams.some((f) => f.includes("digit-ai-forge-fictive"))) casse.push(`noms du parc : répertoires du parc masqués, dépôt de l'écosystème et fichier laissés, ${JSON.stringify(noms)}`);
+
+    // 1.5.0 : le code dupliqué entre dépôts. Un bloc de 14 lignes copié d'une forge à l'autre, réindenté
+    // et commenté autrement, forme une paire ; sa copie dans une fixture et sa répétition dans un même
+    // fichier n'en forment pas.
+    const bloc = Array.from({ length: 14 }, (_, i) => `const v${i} = calcul(${i}, "x${i}");`);
+    const depA = join(tmp, "dep-a"), depB = join(tmp, "dep-b");
+    ecrire(join(depA, "lib", "a.mjs"), ["// tête", ...bloc, "", "export default 1;"].join("\n"));
+    ecrire(join(depB, "scripts", "b.mjs"), ["/* autre tête */", ...bloc.map((l) => `    ${l}   `), "# fin"].join("\r\n"));
+    ecrire(join(depB, "fixtures", "copie.mjs"), bloc.join("\n"));
+    ecrire(join(depB, "seul.mjs"), [...bloc, ...bloc].join("\n"));
+    ecrire(join(depB, "notes.md"), bloc.join("\n"));
+    // Un second bloc que 2 fichiers seulement partagent : la plus petite copie compte.
+    const bloc2 = bloc.map((l) => l.replace("calcul", "autre"));
+    ecrire(join(depA, "lib", "c.mjs"), bloc2.join("\n"));
+    ecrire(join(depB, "deux.mjs"), bloc2.join("\n"));
+    const lister = (d) => (d === depA ? ["lib/a.mjs", "lib/c.mjs"] : ["scripts/b.mjs", "fixtures/copie.mjs", "seul.mjs", "notes.md", "deux.mjs"]);
+    const dbl = doublons([depA, depB], lister);
+    if (!dbl.liste.some((x) => x.a === "dep-a:lib/c.mjs" && x.b === "dep-b:deux.mjs")) casse.push(`doublons : un bloc partagé par 2 fichiers seulement n'est pas vu, ${JSON.stringify(dbl.liste)}`);
+    const ab = dbl.liste.find((x) => x.a === "dep-a:lib/a.mjs" && x.b === "dep-b:scripts/b.mjs");
+    if (!ab || ab.fenetres_communes !== 3 || !ab.entre_depots) casse.push(`doublons : la copie réindentée entre 2 dépôts, 3 fenêtres de 12 sur 14 lignes attendues, ${JSON.stringify(dbl.liste)}`);
+    if (dbl.liste.some((x) => /fixtures\/|notes\.md/.test(x.a + x.b))) casse.push("doublons : une fixture ou un fichier .md est compté");
+    if (dbl.liste.some((x) => x.a === x.b)) casse.push("doublons : la répétition dans un même fichier forme une paire");
+    if (dbl.fichiers_lus !== 5) casse.push(`doublons : 5 fichiers de code lus attendus (fixture et .md écartés), ${dbl.fichiers_lus}`);
+    // Témoin rouge : une ligne changée au milieu du bloc coupe les fenêtres qui la contiennent.
+    ecrire(join(depB, "scripts", "b.mjs"), bloc.map((l, i) => (i === 7 ? "const change = 1;" : l)).join("\n"));
+    const t = doublons([depA, depB], (d) => (d === depA ? ["lib/a.mjs"] : ["scripts/b.mjs"]));
+    if (t.liste.some((x) => x.b === "dep-b:scripts/b.mjs")) casse.push("doublons témoin : une copie altérée au milieu est encore vue comme une fenêtre de 12 commune");
+    if (ligneUtile("   // commentaire") !== null || ligneUtile("});") !== null || ligneUtile("  const  a =  1;") !== "const a = 1;") casse.push("doublons : la normalisation d'une ligne ne retire pas commentaires et ponctuation seule, ou ne resserre pas les espaces");
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  console.log(JSON.stringify({ outil: "sources", self_test: casse.length ? "FAIL" : "PASS", cas: 23, casse }));
+  console.log(JSON.stringify({ outil: "sources", self_test: casse.length ? "FAIL" : "PASS", cas: 29, casse }));
   process.exit(casse.length ? 1 : 0);
 }
 
+// 1.5.0 : la ligne de commande ne se joue que si le module est lancé, pas s'il est importé.
+const lance = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 const args = process.argv.slice(2);
-if (args.includes("--self-test")) await selfTest();
+if (!lance) { /* importé : les fonctions exportées seules */ }
+else if (args.includes("--self-test")) await selfTest();
 else {
   const quoi = args[0], depuis = valeur(args, "--depuis");
   if (!["produits", "existant", "silencieux"].includes(quoi) || !Number.isFinite(Date.parse(depuis))) {
