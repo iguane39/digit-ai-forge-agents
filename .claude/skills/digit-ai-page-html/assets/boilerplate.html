@@ -53,6 +53,8 @@
 
   <style>
     :root {
+      /* SC4 de forge-design (TF-2384) : chaque thème déclare son color-scheme en CSS, la balise meta seule ne suffit pas. */
+      color-scheme: light;
       /* Couleurs — marque & surfaces */
       --blue: #2563EB;
       --bg: #FAFBFF;
@@ -126,6 +128,7 @@
        sémantique éclaircit sa teinte de base (lisible sur fond sombre) et assombrit
        son -fill/-line en griffe basse de la même teinte. */
     :root[data-theme="dark"] {
+      color-scheme: dark;
       --bg: #0B1220; --surface: #121B2E; --card: #121B2E;
       --ink: #EEF2F8; --muted: #A9B4C4; --faint: #7C8AA0; --line: #263248;
       --blue: #7DA2F5;
@@ -334,6 +337,7 @@
       /* S-G1 (2/4 suite, R-30.2) — impression toujours claire, quel que soit le
          thème affiché à l'écran au moment d'imprimer. */
       :root, :root[data-theme="dark"] {
+        color-scheme: light;
         --bg:#FFFFFF; --surface:#FFFFFF; --card:#FFFFFF; --ink:#0F172A;
         --muted:#64748B; --faint:#94A3B8; --line:#E6EAF2; --blue:#2563EB;
         --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;

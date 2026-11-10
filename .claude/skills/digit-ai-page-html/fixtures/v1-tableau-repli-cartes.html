@@ -58,8 +58,10 @@
 <!-- COMPOSANT-EMBARQUE:DEBUT boilerplate.css — copie du socle digit-ai-page-html/assets/boilerplate.css,
      posée par digit-ai-page-html/scripts/embarquer-composants.mjs. NE PAS ÉDITER ICI : la SOURCE fait foi.
      La copie se régénère (--ecrire) et sa dérive est refusée (--constat, oracle-parite-assets). -->
-<style data-composant="boilerplate.css" data-empreinte="sha256:749d804dd7c114a131dc631de66aa4fdac7909a90a3a2d96507b9b77809924e6">
+<style data-composant="boilerplate.css" data-empreinte="sha256:70f874ac4c9d82eb843df0aff8ab7fab2172843ad2565521f16dc85a30a6ead5">
     :root {
+      /* SC4 de forge-design (TF-2384) : chaque thème déclare son color-scheme en CSS, la balise meta seule ne suffit pas. */
+      color-scheme: light;
       /* Couleurs — marque & surfaces */
       --blue: #2563EB;
       --bg: #FAFBFF;
@@ -133,6 +135,7 @@
        sémantique éclaircit sa teinte de base (lisible sur fond sombre) et assombrit
        son -fill/-line en griffe basse de la même teinte. */
     :root[data-theme="dark"] {
+      color-scheme: dark;
       --bg: #0B1220; --surface: #121B2E; --card: #121B2E;
       --ink: #EEF2F8; --muted: #A9B4C4; --faint: #7C8AA0; --line: #263248;
       --blue: #7DA2F5;
@@ -341,6 +344,7 @@
       /* S-G1 (2/4 suite, R-30.2) — impression toujours claire, quel que soit le
          thème affiché à l'écran au moment d'imprimer. */
       :root, :root[data-theme="dark"] {
+        color-scheme: light;
         --bg:#FFFFFF; --surface:#FFFFFF; --card:#FFFFFF; --ink:#0F172A;
         --muted:#64748B; --faint:#94A3B8; --line:#E6EAF2; --blue:#2563EB;
         --amber:#D97706; --amber-fill:#FFFBEB; --amber-line:#FDE9C8;
