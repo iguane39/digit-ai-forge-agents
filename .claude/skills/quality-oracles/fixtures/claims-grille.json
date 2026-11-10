@@ -1,0 +1,10 @@
+{
+  "format": "quality-oracles/grille-prix@1",
+  "source": "grille tarifaire d'essai du banc (prix inventés, TF-2319)",
+  "prix": [
+    { "libelle": "Cadrage", "montant": 4800, "unite": "€ HT / forfait" },
+    { "libelle": "Atelier d'une demi-journée", "montant": 3200, "unite": "€ HT / atelier" },
+    { "libelle": "Restitution", "montant": 3600, "unite": "€ HT / forfait" },
+    { "libelle": "Journée d'accompagnement", "montant": 1150, "unite": "€ HT / jour" }
+  ]
+}

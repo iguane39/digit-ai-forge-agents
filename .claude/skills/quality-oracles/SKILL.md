@@ -189,8 +189,16 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   ligne) ; la première ligne non vide sous le titre doit COMMENCER par un libellé de source (source(s), d'après, selon, réf.,
   à vérifier, adresse) — un « cf. » en cours de phrase ou une source posée plus bas ne couvre pas la section. La portée va
   jusqu'au titre suivant de même rang ou supérieur : une sous-section hérite de la source de sa section, la source d'une
-  sous-section ne remonte pas. La source d'un tableau n'a pas à être recopiée : les lignes de tableau sont hors du périmètre
-  de cet oracle (totaux → `oracle-calculs`). Fixtures `claims-section-*` (md et html).
+  sous-section ne remonte pas. La source d'un tableau n'a pas à être recopiée à chaque ligne : il se source une fois (puce
+  suivante), et ses lignes de total restent à `oracle-calculs`. Fixtures `claims-section-*` (md et html).
+- **Tableaux, diapositives, grille de prix (TF-2358, TF-2318, TF-2359, TF-2319, TF-2357, 10/11/2026)** — `oracle-claims` juge
+  les montants et TJM des lignes de tableau hors lignes de total : un tableau est sourcé par son en-tête, sa légende, sa note ou
+  une colonne de source (adresse, citation, preuve, calcul) ; mesuré sur 700 documents du pilot, 4 FAIL neufs (0,6 %), tous des
+  montants de tableau sans marqueur. Dans un texte de diapositives (lignes-repères « Diapositive N », ou sauts de page avec
+  `--diapositives`), la source se cherche dans la diapositive entière ; en texte à plat, une cellule courte est couverte par la
+  cellule d'en-tête à marqueur posée au-dessus d'elle — le même tableau rend le même verdict extrait en lignes ou à plat.
+  `--grille <grille.json>` rapproche chaque montant non dérivé d'une grille de prix (G1, G2 bloquants ; G3 avertissement).
+  Les données `data:` sont écartées avant analyse : une page autoportante de 272 Ko, sans verdict en 150 s, rend en 1 à 2 s.
 - **Arbre jugé au pre-push (2.20.0, TF-1953)** — la porte des noms (`oracle-nom-client-publie`) juge, sous `--revs`, l'arbre des
   révisions ENVOYÉES, lu dans les objets de git, et non le disque. Mesuré le 20/10/2026 au pilot : un envoi de 5 révisions refusé
   par 2 constats C5 sur des lignes non enregistrées (HEAD 44 lignes, disque 49). Sans `--revs` le disque reste jugé et le verdict

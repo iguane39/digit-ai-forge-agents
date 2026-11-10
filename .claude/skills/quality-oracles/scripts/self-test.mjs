@@ -573,6 +573,35 @@ if (fs.existsSync(profDir)) for (const pf of fs.readdirSync(profDir).filter(f =>
   }
   fs.rmSync(tmp, { recursive: true, force: true });
 }
+// TF-2357 (lot du produit marketing du 09/11/2026, seq 215, 285, 302) — UNE PAGE AUTOPORTANTE JUGÉE SOUS
+// 30 SECONDES, DANS LES DEUX SENS. Le fait : oracle-claims ne rendait rien en 2 minutes sur une page de
+// 270 Ko aux polices et au logo en base64 ; mesuré le 10/11/2026, aucune sortie en 150 s sur une page de
+// 272 671 octets, puis environ 1 s après correction. La page est fabriquée ici, octets déterministes : une
+// police en `url(data:…)` dans le <style>, un logo en `src="data:…"`, un fond en `style="…url(data:…)"`,
+// la tête sur une seule ligne avec un chiffre avant le <style>, comme les pages générées du parc. La verte
+// source son montant : PASS ; la rouge ne le source pas : FAIL, et le constat nomme le montant.
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-claims-perf-'));
+  const b64 = n => Buffer.from(Array.from({ length: n }, (_, i) => (i * 37 + 11) % 256)).toString('base64');
+  const page = sourcee => '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Fiche d\'offre 2026</title>'
+    + `<style>@font-face{font-family:"Corps";src:url(data:font/woff2;base64,${b64(150000)}) format("woff2")}body{font-family:"Corps"}</style></head>\n`
+    + `<body><header><img alt="Logo" src="data:image/png;base64,${b64(45000)}"><span style="background:url(data:image/png;base64,${b64(3000)})">Fiche 2026</span></header>\n`
+    + `<main><h1>Fiche d'offre</h1>\n<p>Le forfait est de 12 400 € HT${sourcee ? ' (source : grille tarifaire du 03/11/2026)' : ''}.</p>\n</main></body></html>\n`;
+  for (const [sens, sourcee, attendu] of [['verte', true, 'PASS'], ['rouge', false, 'FAIL']]) {
+    const f = path.join(tmp, `autoportante-${sens}.html`);
+    fs.writeFileSync(f, page(sourcee), 'utf8');
+    const t0 = Date.now();
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-claims.mjs'), f, '--profil', path.join(SKILLDIR, 'profils', 'digit-ai.json')], { encoding: 'utf8', timeout: 30000 });
+    let j = null; try { j = JSON.parse(r.stdout); } catch {}
+    const ms = Date.now() - t0, taille = fs.statSync(f).size;
+    if (r.error || r.signal) ko(`TF-2357 : oracle-claims sans verdict après ${ms} ms sur une page autoportante de ${taille} octets (${sens}) — les données embarquées ne sont pas écartées, ou un motif recule sur une ligne blanchie`);
+    else if (!j) ko(`TF-2357 : oracle-claims, sortie illisible sur la page autoportante (${sens})`);
+    else if (j.verdict !== attendu) ko(`TF-2357 : page autoportante ${sens} jugée ${j.verdict}, attendu ${attendu}`);
+    else if (sens === 'rouge' && !j.findings.some(x => /12 400 €/.test(x.msg))) ko('TF-2357 : la rouge échoue sans nommer le montant non sourcé — le FAIL vient d\'ailleurs');
+    else ok(`TF-2357 : page autoportante de ${taille} octets (${sens}) jugée ${j.verdict} en ${ms} ms`);
+  }
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
 // TF-0428 (lot Produit-05 20260820a) : sous un arbre de LIVRAISON (output/, old/, dist/), run-oracles
 // n'écrit AUCUN sidecar à côté du livrable — journaux dans un dossier frère _oracles/.
 {

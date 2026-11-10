@@ -554,6 +554,147 @@
    ]
   },
   {
+   "nom": "claims-diapositives",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-diapositives-red.txt",
+   "green": "claims-diapositives-green.txt",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 4 800 € »"
+   ],
+   "commentaire": "TF-2318 — texte extrait d'un deck, formes dans leur ordre de création : la note de source de chaque diapositive est la dernière forme, à plusieurs lignes du montant du titre. La VERTE rendait FAIL deux fois avant TF-2318 (fenêtre de trois lignes) et passe désormais : la source se cherche dans la diapositive entière. La ROUGE retire la seule note de la diapositive 2 : son montant est accusé, et la source de la diapositive 1 ne s'y étend pas.",
+   "provenance": "TF-2318 (RA-09, lot du produit marketing du 09/11/2026, seq 510) — même diapositive à l'œil, PASS ou FAIL selon l'ordre de création des formes (30/09/2026) ; un générateur a forcé l'ordre de ses formes pour passer."
+  },
+  {
+   "nom": "claims-tableau-html",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-red.html",
+   "green": "claims-tableau-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 480 € » d'une ligne de tableau sans source"
+   ],
+   "commentaire": "TF-2358 — une grille de 5 prix en tableau HTML, SANS ligne de total. Avant TF-2358 les deux pages rendaient SKIP : cet oracle excluait les lignes de tableau au motif qu'elles relèvent d'oracle-calculs, qui ne juge que les totaux, et les 5 prix n'étaient jugés par personne. La VERTE source le tableau par sa légende (<caption>) : PASS. La ROUGE a la même grille sans source : 5 montants accusés.",
+   "provenance": "TF-2358 (RA-208, lot du produit marketing du 09/11/2026, seq 342) — livret du 25/09/2026 : grille de 5 prix PASS en HTML, 5 bloquants sur le texte extrait du PDF."
+  },
+  {
+   "nom": "claims-tableau-extraction-en-lignes",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-structure-red.txt",
+   "green": "claims-tableau-structure-green.txt",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 4 800 € » d'une ligne de tableau sans source"
+   ],
+   "commentaire": "TF-2359, première des deux extractions du MÊME tableau (en-tête « Montant HT [1] », renvoi [1] sous le tableau) : les rangées en lignes « | a | b | ». Avant TF-2359 les deux sens rendaient SKIP (lignes de tableau hors périmètre) ; l'extraction à plat de la même grille rendait FAIL. La VERTE est sourcée par sa cellule d'en-tête : PASS. La ROUGE retire le renvoi : FAIL. Jumelle de « claims-tableau-extraction-a-plat » : mêmes verdicts attendus.",
+   "provenance": "TF-2359 (RA-209, lot du produit marketing du 09/11/2026, seq 438) — grille de prix d'une propale : PASS extraite en lignes de tableau, 5 bloquants extraite à plat d'un PDF (29/09/2026)."
+  },
+  {
+   "nom": "claims-tableau-extraction-a-plat",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-a-plat-red.txt",
+   "green": "claims-tableau-a-plat-green.txt",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 4 800 € » sans source"
+   ],
+   "commentaire": "TF-2359, seconde extraction du MÊME tableau : une cellule par ligne, comme pdftotext la rend. La VERTE rendait 5 bloquants avant TF-2359 (fenêtre de trois lignes, l'en-tête à deux lignes du premier prix) et passe désormais : la cellule d'en-tête à marqueur couvre les cellules courtes posées sous elle. La ROUGE retire le renvoi : FAIL. Même verdict que la jumelle en lignes, dans les deux sens.",
+   "provenance": "TF-2359 (RA-209, lot du produit marketing du 09/11/2026, seq 438) — grille de prix d'une propale : PASS extraite en lignes de tableau, 5 bloquants extraite à plat d'un PDF (29/09/2026)."
+  },
+  {
+   "nom": "claims-tableau-colonne-source",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "claims-tableau-colonne-source-red.md",
+   "green": "claims-tableau-colonne-source-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "« 40 € » d'une ligne de tableau sans source"
+   ],
+   "commentaire": "TF-2358, colonne de source : un relevé dont chaque ligne porte son adresse (sans https://, ce qui n'est pas un marqueur) et sa date. La VERTE passe parce que chaque ligne remplit la colonne « Adresse ». La ROUGE vide la seule adresse de la troisième ligne : seul son montant est accusé. Cas né de la mesure du 10/11/2026 sur 700 documents du pilot, où sans cette colonne la règle accusait des tableaux qui citaient page et date à chaque ligne.",
+   "provenance": "TF-2358 (RA-208, lot du produit marketing du 09/11/2026, seq 342) — mesure de bruit de la règle neuve, 10/11/2026."
+  },
+  {
+   "nom": "claims-grille-de-prix",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-claims.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json",
+    "--grille",
+    "{skilldir}/fixtures/claims-grille.json"
+   ],
+   "red": "claims-grille-red.md",
+   "green": "claims-grille-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "G1 — montant « 3 400 € »",
+    "G2 — montant « 3 600 € »"
+   ],
+   "commentaire": "TF-2319 — la grille de prix est une donnée fournie par --grille (prix inventés). La VERTE ne porte que des prix de la grille, à leur unité, et des montants dérivés (« soit », « total ») : PASS. La ROUGE porte un tarif absent de la grille (G1) et un prix de la grille à la mauvaise taxe (G2) : avant TF-2319 elle rendait PASS, l'oracle acceptant tout montant sourcé sans lire de grille.",
+   "provenance": "TF-2319 (RA-10, lot du produit marketing du 09/11/2026, seq 511) — la spécification d'un produit disait un montant hors grille refusé par cet oracle, qui ne lisait aucune grille ; un tarif dicté rapproché de la grille à la main le 30/09/2026."
+  },
+  {
    "nom": "coherence",
    "cmd": [
     "node",

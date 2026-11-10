@@ -1,0 +1,16 @@
+Grille de prix de l'accompagnement
+Poste
+Montant HT
+Cadrage
+4 800 €
+Atelier 1
+3 200 €
+Atelier 2
+3 200 €
+Atelier 3
+3 200 €
+Restitution
+3 600 €
+Total
+18 000 €
+Tarifs de l'année.

@@ -36,6 +36,7 @@ const NON_JUGE_BASE = [
   'pourcentages croisés (part d\'une table rapportée au total d\'une autre)',
   'colonnes % sans ligne de total (répartition non totalisée)',
   'chiffres sans ligne de total de contrôle (à vérifier à la source)',
+  'tableaux (TF-2358) : seules les lignes Total, Sous-total et Total général sont jugées ici, par re-somme ; la SOURCE des montants des autres lignes (tableau avec ou sans total) est jugée par oracle-claims',
   'justesse métier des valeurs unitaires (seule la cohérence arithmétique est jugée)',
   'ambiguïté séparateur unique + 3 décimales (traité comme milliers)',
   'effectifs annoncés sans ancre immédiate (liste ou tableau juste dessous) — non rapprochables',

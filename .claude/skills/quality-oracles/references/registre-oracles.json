@@ -454,12 +454,13 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "montant € hors table sans source ni « à vérifier » = bloquant ; % et grands nombres non sourcés = avertissement ; libellé répété à valeurs divergentes = bloquant ; actif selon profil",
+   "checklist": "montant € hors table sans source ni « à vérifier » = bloquant ; % et grands nombres non sourcés = avertissement ; libellé répété à valeurs divergentes = bloquant ; actif selon profil · TF-2358 montant ou TJM d'une ligne de tableau (hors lignes de total) sans source = bloquant, le tableau étant sourcé par son en-tête, sa légende, sa note ou une colonne de source (adresse, citation, preuve, calcul…) · TF-2318 texte de diapositives (lignes-repères « Diapositive N », ou sauts de page avec --diapositives) : une source posée dans la diapositive couvre ses chiffres · TF-2359 texte à plat : une cellule courte est couverte par la cellule d'en-tête à marqueur posée au-dessus d'elle · TF-2319 --grille <grille.json> : G1 montant absent de la grille et G2 unité contraire = bloquant, G3 unité non dite = avertissement · TF-2357 données embarquées (url(data:…), attributs data:) écartées avant analyse : une page autoportante de 272 Ko jugée en 1 à 2 s",
    "statut": "partiel",
    "non_juge": [
     "véracité des sources citées",
     "affirmations non chiffrées",
-    "tables → oracle-calculs"
+    "lignes Total, Sous-total et Total général des tableaux → oracle-calculs (re-somme)",
+    "G1-G3 sans --grille ; pourcentages, grands nombres et jours-homme des lignes de tableau"
    ],
    "timeout_ms": 600000
   },
