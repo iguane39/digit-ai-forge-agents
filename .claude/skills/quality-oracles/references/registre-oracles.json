@@ -626,7 +626,9 @@
     "rendu visuel → digit-ai-pptx",
     "S5 : texte enfermé dans une image (capture, schéma embarqué) ; lexique absent du socle du projet → non jugé et dit, jamais PASS par silence",
     "S3 et S4 sous un profil qui ne les déclare pas (le profil générique) : NON jouées, et dites au non_juge (TF-1490)",
-    "S4 en zone de texte : le bandeau bas de la diapositive est lu, pas le sens de son texte ; une pagination est un texte de ce bandeau qui finit par un numéro"
+    "S4 en zone de texte : le bandeau bas de la diapositive est lu, pas le sens de son texte ; une pagination est un texte de ce bandeau qui finit par un numéro",
+    "S1 sur un deck sans AUCUN intercalaire (forme du gabarit B de digit-ai-propale) : la numérotation continue des entrées est jugée, la bijection sommaire↔intercalaires ne l'est pas, et c'est dit (TF-2325)",
+    "S5 (marque) : sans donnees/marque/MARQUE.md au-dessus du deck (ni --marque), ou sans tableau « On dit / On ne dit pas » : NON jouée, et dite ; le contexte d'un terme réservé par une parenthèse n'est pas jugé (avertissement, TF-2373)"
    ],
    "note": "TF-1490 (lot Produit-64 - RETOURS - 20260928c, RA-5, 01/10/2026) : sous --profil generique, le support d'un client au format de ce client rendait 69 constats (21 S3 sur des icônes de contenu, 48 S4 faute d'espace réservé), et seule une exemption par fichier ramenait le vert. La commande passe désormais --profil {profil} ; le profil digit-ai déclare logos couverture-interlocuteurs et pied_de_page espace-reserve (la charte d'avant, à l'identique, messages compris), le profil generique ne déclare rien (S3 et S4 non jouées, et dites), un profil client déclare sa forme. Appelé sans --profil, l'oracle juge à la charte Digit-AI, comme avant."
   },

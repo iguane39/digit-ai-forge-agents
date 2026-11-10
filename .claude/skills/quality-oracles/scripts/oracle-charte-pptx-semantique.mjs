@@ -64,7 +64,11 @@ const profilChemin = iProfil >= 0 ? argv[iProfil + 1] : null;
 const iMes = argv.indexOf('--mesures');
 const mesuresChemin = iMes >= 0 ? argv[iMes + 1] : null;
 const mesurer = argv.includes('--mesurer');
-const file = argv.find((a, i) => !a.startsWith('--') && !(iProfil >= 0 && i === iProfil + 1) && !(iMes >= 0 && i === iMes + 1));
+// TF-2373 : `--marque <MARQUE.md>` désigne le dossier de marque de l'émetteur quand il ne se trouve pas en remontant
+// depuis le deck (donnees/marque/MARQUE.md).
+const iMarque = argv.indexOf('--marque');
+const marqueChemin = iMarque >= 0 ? argv[iMarque + 1] : null;
+const file = argv.find((a, i) => !a.startsWith('--') && !(iProfil >= 0 && i === iProfil + 1) && !(iMes >= 0 && i === iMes + 1) && !(iMarque >= 0 && i === iMarque + 1));
 const DOM = 'Charte PPTX sémantique (sommaire, kicker, logos, footer)';
 const findings = [];
 const non_juge = [
@@ -83,7 +87,9 @@ if (!/\.pptx$/i.test(file)) skip('extension non gérée');
 let CHARTE = { logos: 'couverture-interlocuteurs', pied_de_page: 'espace-reserve', profil: null };
 if (profilChemin) {
   let prof = null;
-  try { prof = JSON.parse(fs.readFileSync(profilChemin, 'utf8')); } catch { /* dit ci-dessous */ }
+  // TF-2325 : `--profil` accepte le chemin d'un profil OU son nom (profils/<nom>.json), comme run-oracles et oracle-pptx.
+  const profilTrouve = [profilChemin, path.join(SKILLDIR, 'profils', profilChemin + '.json')].find(c => fs.existsSync(c) && fs.statSync(c).isFile()) || profilChemin;
+  try { prof = JSON.parse(fs.readFileSync(profilTrouve, 'utf8')); } catch { /* dit ci-dessous */ }
   if (!prof) skip('profil illisible : ' + profilChemin);
   const pol = prof.pptx || {};
   CHARTE = { logos: pol.logos ?? null, pied_de_page: pol.pied_de_page ?? null, profil: prof.nom || path.basename(profilChemin, '.json') };
@@ -92,11 +98,23 @@ const py = resolvePython(); // portable Windows/Unix, esquive l'alias Store (cf.
 if (!py) skip('python indisponible (lecture zip impossible)');
 
 const script = `
-import sys, zipfile, re, json
+import sys, zipfile, re, json, html
 z = zipfile.ZipFile(sys.argv[1])
 def read(n):
     try: return z.read(n).decode("utf-8", "replace")
     except KeyError: return ""
+# TF-2323 : le texte d'un <a:t> est du XML ; &gt; &amp; &lt; sont décodés AVANT toute règle de texte
+# (S1, S2, S5, S7, S8), sinon le « ; » de l'entité devient une liste en ligne.
+def textes(xml):
+    return [html.unescape(t) for t in re.findall(r"<a:t>([^<]*)</a:t>", xml)]
+# TF-2324 : le fond d'une diapositive, lu sur elle puis sur son gabarit puis sur son masque.
+def fond(rels_xml):
+    m = re.search(r'<p:bg>.*?</p:bg>', rels_xml, re.S)
+    c = re.search(r'<a:srgbClr val="([0-9A-Fa-f]{6})"', m.group(0)) if m else None
+    return c.group(1).upper() if c else None
+def cible(rels_xml, motif):
+    m = re.search(r'Target="([^"]*' + motif + r'[^"]*)"', rels_xml)
+    return "ppt/" + m.group(1).lstrip("/").replace("../", "") if m else None
 rels = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"', read("ppt/_rels/presentation.xml.rels")))
 order = [rels.get(rid, "") for rid in re.findall(r'<p:sldId[^>]*r:id="([^"]+)"', read("ppt/presentation.xml"))]
 slides = []
@@ -109,9 +127,17 @@ for idx, target in enumerate(order):
         ph = re.search(r'<p:ph\\b[^>]*?\\btype="([^"]+)"', sp)
         off = re.search(r'<a:off x="(-?\\d+)" y="(-?\\d+)"', sp)
         ext = re.search(r'<a:ext cx="(\\d+)" cy="(\\d+)"', sp)
-        txt = " ".join(t for t in re.findall(r"<a:t>([^<]*)</a:t>", sp)).strip()
-        paras = [" ".join(re.findall(r"<a:t>([^<]*)</a:t>", p)).strip() for p in re.findall(r"<a:p>.*?</a:p>", sp, re.S)]
+        txt = " ".join(textes(sp)).strip()
+        paras = [" ".join(textes(p)).strip() for p in re.findall(r"<a:p>.*?</a:p>", sp, re.S)]
         shapes.append({"ph": ph.group(1) if ph else None, "x": int(off.group(1)) if off else None, "y": int(off.group(2)) if off else None, "cx": int(ext.group(1)) if ext else None, "cy": int(ext.group(2)) if ext else None, "text": txt, "paras": [p for p in paras if p]})
+    bg = fond(xml)
+    if not bg:
+        lay = cible(srels, "slideLayout")
+        lrels = read(lay.rsplit("/", 1)[0] + "/_rels/" + lay.split("/")[-1] + ".rels") if lay else ""
+        bg = fond(read(lay)) if lay else None
+        if not bg and lrels:
+            mas = cible(lrels, "slideMaster")
+            bg = fond(read(mas)) if mas else None
     imgs = []
     for pic in re.findall(r"<p:pic>.*?</p:pic>", xml, re.S):
         ext = re.search(r'<a:ext cx="(\\d+)" cy="(\\d+)"', pic)
@@ -123,10 +149,10 @@ for idx, target in enumerate(order):
     mnotes = re.search(r'Target="([^"]*notesSlide[^"]*)"', srels)
     if mnotes:
         nname = "ppt/" + mnotes.group(1).lstrip("/").replace("../", "")
-        notes = " ".join(re.findall(r"<a:t>([^<]*)</a:t>", read(nname)))
+        notes = " ".join(textes(read(nname)))
     has_ftr = bool(re.search(r'<p:ph\\b[^>]*?\\btype="ftr"', xml))
     has_num = bool(re.search(r'<p:ph\\b[^>]*?\\btype="sldNum"', xml) or re.search(r'type="slidenum"', xml))
-    slides.append({"n": idx + 1, "file": name.split("/")[-1], "shapes": shapes, "imgs": imgs, "has_media": has_media, "has_ftr": has_ftr, "has_num": has_num, "notes": notes})
+    slides.append({"n": idx + 1, "file": name.split("/")[-1], "shapes": shapes, "imgs": imgs, "has_media": has_media, "has_ftr": has_ftr, "has_num": has_num, "notes": notes, "fond": bg})
 sz = re.search(r'<p:sldSz\\b[^>]*?cy="(\\d+)"', read("ppt/presentation.xml"))
 print(json.dumps({"hauteur": int(sz.group(1)) if sz else None, "slides": slides}))
 `;
@@ -139,15 +165,33 @@ if (!slides.length) { findings.push({ sev: 'bloquant', msg: 'aucun slide résolu
 
 const titleOf = s => { const t = s.shapes.find(x => x.ph === 'title' || x.ph === 'ctrTitle'); return t ? t.text : ''; };
 const norm = t => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-const ENTRY = /^(\d{1,2})\s*[.·—-]?\s+(.{2,})$/;
+// TF-2324 : l'intitulé d'une entrée porte au moins une lettre — « 03 / 15 », la pagination, n'est pas une entrée.
+const ENTRY = /^(\d{1,2})\s*[.·—-]?\s+(.{2,})$/u;
+const PORTE_UNE_LETTRE = /\p{L}/u;
+const PH_HORS_CONTENU = ['title', 'ctrTitle', 'ftr', 'sldNum', 'dt']; // comme S7 : ni titre, ni pied, ni numéro, ni date
+// TF-2324 : luminance relative WCAG d'un fond « RRGGBB » ; sombre sous 0,1 (le #0F172A de la charte : 0,009 ; l'accent #2563EB : 0,15).
+const luminance = hex => { const c = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+const fondSombre = s => !!s.fond && luminance(s.fond) < 0.1;
+const aTitreDeContenu = s => s.shapes.some(x => (x.ph === 'title' || x.ph === 'ctrTitle') && x.text);
 
 // S1 — sommaire ↔ intercalaires
 const sommaire = slides.find(s => /sommaire|agenda/i.test(titleOf(s)));
+let s1Etat = null;
 if (sommaire) {
-  const entries = sommaire.shapes.filter(x => x.ph !== 'title' && x.ph !== 'ctrTitle').flatMap(x => x.paras).map(p => p.match(ENTRY)).filter(Boolean).map(m => ({ num: m[1].padStart(2, '0'), titre: m[2].trim() }));
+  const entries = sommaire.shapes.filter(x => !PH_HORS_CONTENU.includes(x.ph)).flatMap(x => x.paras).map(p => p.match(ENTRY)).filter(m => m && PORTE_UNE_LETTRE.test(m[2])).map(m => ({ num: m[1].padStart(2, '0'), titre: m[2].trim() }));
   const libres = s => s.shapes.filter(x => !x.ph);
-  const inters = slides.filter(s => s !== sommaire && libres(s).some(x => x.paras.some(p => /^\d{1,2}$/.test(p))));
-  for (const e of entries) {
+  // TF-2324, TF-2356 : un intercalaire est une diapositive à fond sombre OU sans titre de contenu, qui porte un
+  // paragraphe réduit à un numéro. Une pastille « 1 » sur une diapositive de contenu (fond clair, titre) n'en est pas un.
+  const inters = slides.filter(s => s !== sommaire && (fondSombre(s) || !aTitreDeContenu(s)) && libres(s).some(x => x.paras.some(p => /^\d{1,2}$/.test(p))));
+  // TF-2325 : le gabarit B de digit-ai-propale prescrit un sommaire dont les sections ne s'ouvrent pas par un
+  // intercalaire. Un deck qui n'en porte AUCUN est de cette forme : la bijection n'a rien à joindre, et le dit.
+  // Un deck qui en porte au moins un reste soumis à la bijection entière (« soit toutes, soit aucune »).
+  if (entries.length && !inters.length) {
+    const manque = entries.filter((e, i) => e.num !== String(i + 1).padStart(2, '0'));
+    if (manque.length) findings.push({ sev: 'bloquant', msg: `S1 — sommaire sans intercalaires (forme du gabarit B) : numérotation des entrées non continue de 01 à ${String(entries.length).padStart(2, '0')} — « ${manque[0].num} ${manque[0].titre} » ne tient pas son rang`, where: sommaire.file });
+    s1Etat = 'forme du gabarit B, sans intercalaire : numérotation des entrées jugée, bijection non jugée';
+    non_juge.push('S1 : aucun intercalaire dans ce deck — sommaire de la forme du gabarit B de digit-ai-propale (sections non ouvertes par un intercalaire) ; seule la numérotation continue des entrées est jugée, la bijection sommaire ↔ intercalaires ne l\'est pas');
+  } else for (const e of entries) {
     const hit = inters.find(s => libres(s).some(x => x.paras.some(p => p.padStart(2, '0') === e.num)) && libres(s).some(x => x.paras.some(p => norm(p) === norm(e.titre))));
     if (!hit) findings.push({ sev: 'bloquant', msg: `S1 — entrée de sommaire sans intercalaire correspondant : « ${e.num} ${e.titre} »`, where: sommaire.file });
   }
@@ -160,6 +204,13 @@ if (sommaire) {
 } else non_juge.push('S1 : aucun slide « Sommaire/Agenda » détecté — bijection non jugée (deck sans sommaire ou convention de titre différente)');
 
 // S2 — kicker au-dessus du titre
+// TF-2375 : la charte de digit-ai-pptx (« le kicker de la couverture reste autorisé — couverture uniquement ») et
+// donnees/marque/MARQUE.md (« PROPOSITION COMMERCIALE · {année} », « couverture seulement, jamais au-dessus d'un
+// titre de slide ») admettent le sur-titre de la couverture. Il se reconnaît à son libellé : un texte court, écrit
+// en capitales, sur la diapositive 1. Toute autre diapositive, et tout texte de couverture qui n'est pas un libellé
+// en capitales, reste refusé.
+const estKickerDeCouverture = (s, texte) => s.n === 1 && texte.length <= 80 && /\p{L}/u.test(texte) && texte === texte.toLocaleUpperCase('fr');
+let kickersDeCouverture = 0;
 const sansTitre = [], titreSansPosition = [];
 for (const s of slides) {
   const t = s.shapes.find(x => x.ph === 'title' || x.ph === 'ctrTitle');
@@ -172,9 +223,13 @@ for (const s of slides) {
     // lues, repli sur le seul haut (comportement d'avant) : on ne relâche rien faute de mesure.
     const bas = x.cy != null ? x.y + x.cy : x.y;
     const recouvre = (x.x == null || x.cx == null || t.x == null || t.cx == null) || (x.x < t.x + t.cx && x.x + x.cx > t.x);
-    if (bas < t.y && recouvre) findings.push({ sev: 'bloquant', msg: `S2 — texte au-dessus du titre (kicker interdit) : « ${x.text.slice(0, 60)} »`, where: s.file });
+    if (bas < t.y && recouvre) {
+      if (estKickerDeCouverture(s, x.text)) { kickersDeCouverture++; continue; }
+      findings.push({ sev: 'bloquant', msg: `S2 — texte au-dessus du titre (kicker interdit) : « ${x.text.slice(0, 60)} »`, where: s.file });
+    }
   }
 }
+if (kickersDeCouverture) non_juge.push('S2 : le kicker de la couverture (libellé en capitales au-dessus du titre de la diapositive 1) est admis par la charte et la marque, et refusé partout ailleurs');
 if (sansTitre.length) non_juge.push(`S2 : aucun titre (espace réservé title ou ctrTitle) trouvé sur ${sansTitre.length} diapositive(s) — kicker non jugé sur : ${sansTitre.join(', ')}`);
 if (titreSansPosition.length) non_juge.push(`S2 : titre sans position propre (hérité du gabarit) sur ${titreSansPosition.length} diapositive(s) — kicker non jugé sur : ${titreSansPosition.join(', ')}`);
 
@@ -280,6 +335,7 @@ if (CHARTE.pied_de_page === 'espace-reserve' || CHARTE.pied_de_page === 'zone-te
 // qui crie sur l'usage légitime se fait désactiver dans la semaine. Absent, la règle le DIT au
 // non_juge : un deck n'est jamais déclaré conforme au vocabulaire par le silence du lexique.
 let s5Etat = null;
+const dejaProscrits = new Set(); // TF-2373 : les mots déjà relevés par le lexique du destinataire
 {
   const pilot = resolvePilot(SKILLDIR);
   let lexmod = null;
@@ -305,6 +361,7 @@ let s5Etat = null;
         const employes = lexmod.termesEmployes(texte, lex.termes);
         if (!employes.length) continue;
         employesTotal += employes.length;
+        employes.forEach(t => dejaProscrits.add(t.proscrit.trim().toLowerCase()));
         findings.push({
           sev: 'bloquant',
           msg: `S5 — ${employes.length} terme(s) proscrit(s) par le lexique du destinataire (${lex.chemin}) : `
@@ -316,6 +373,77 @@ let s5Etat = null;
       s5Etat = employesTotal
         ? `${employesTotal} emploi(s) proscrit(s)`
         : `aucun des ${lex.termes.length} terme(s) proscrit(s) de ${lex.chemin} employé, textes et notes lus`;
+    }
+  }
+}
+
+// S5 (marque) — le vocabulaire proscrit par la MARQUE de l'émetteur (TF-2373).
+// Le fait : le deck du 29/09/2026 portait « Limite » sur 3 pages et passait S5, parce que « point de vigilance »
+// et non « limite » vit dans le tableau « On dit / On ne dit pas » de donnees/marque/MARQUE.md, et que S5 ne
+// lisait que LEXIQUE.json et LEXIQUE-TRANSVERSE.json. La règle ne porte AUCUNE liste : elle lit le tableau de la
+// marque (colonnes « On dit », « On ne dit pas »), cherché en remontant depuis le deck ou donné par --marque.
+// Un terme proscrit qui porte une réserve entre parenthèses (« risque (dans une proposition) », « AO (hors usage
+// interne) ») dépend d'un contexte que l'oracle ne juge pas : avertissement, réserve citée. Un terme sans réserve,
+// ou réservé au livrable (« propale (dans un livrable) », un deck en est un), est bloquant. Un mot déjà relevé par
+// le lexique du destinataire n'est pas relevé deux fois.
+let s5MarqueEtat = null;
+{
+  const decoupeHorsParentheses = (t) => { const morceaux = []; let prof = 0, cur = ''; for (const c of t) { if (c === '(') prof++; if (c === ')') prof = Math.max(0, prof - 1); if (c === ',' && prof === 0) { morceaux.push(cur); cur = ''; } else cur += c; } morceaux.push(cur); return morceaux.map(m => m.trim()).filter(Boolean); };
+  const lireTableau = (texte) => {
+    const lignes = texte.split(/\r?\n/);
+    const i = lignes.findIndex(l => /^\s*\|\s*On dit\s*\|\s*On ne dit pas\s*\|/i.test(l));
+    if (i < 0) return null;
+    const termes = [];
+    for (let k = i + 1; k < lignes.length && /^\s*\|/.test(lignes[k]); k++) {
+      const cases = lignes[k].trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+      if (cases.length < 2 || /^[-:\s]*$/.test(cases[0])) continue;
+      for (const brut of decoupeHorsParentheses(cases[1])) {
+        const m = brut.match(/^(.*?)\s*(?:\(([^)]*)\))?$/);
+        const proscrit = (m && m[1] ? m[1] : brut).trim();
+        if (proscrit) termes.push({ proscrit, remplacer_par: cases[0], reserve: m && m[2] ? m[2].trim() : null });
+      }
+    }
+    return termes;
+  };
+  let chemin = null;
+  if (marqueChemin) chemin = fs.existsSync(marqueChemin) ? marqueChemin : null;
+  else {
+    let d = path.dirname(path.resolve(file));
+    for (let i = 0; i < 12 && !chemin; i++) {
+      const c = path.join(d, 'donnees', 'marque', 'MARQUE.md');
+      if (fs.existsSync(c)) chemin = c;
+      const parent = path.dirname(d);
+      if (parent === d) break;
+      d = parent;
+    }
+  }
+  if (!chemin) non_juge.push(marqueChemin
+    ? `S5 (marque) NON jouée : --marque ${marqueChemin} introuvable — vocabulaire de la marque non jugé`
+    : 'S5 (marque) NON jouée : aucun donnees/marque/MARQUE.md en remontant depuis le deck (ni --marque) — vocabulaire de la marque non jugé');
+  else {
+    let termes = null;
+    try { termes = lireTableau(fs.readFileSync(chemin, 'utf8')); } catch (e) { non_juge.push(`S5 (marque) NON jouée : ${chemin} illisible (${String(e.message).slice(0, 80)})`); }
+    if (termes === null) { if (fs.existsSync(chemin)) non_juge.push(`S5 (marque) NON jouée : ${chemin} ne porte pas de tableau « On dit / On ne dit pas »`); }
+    else if (!termes.length) non_juge.push(`S5 (marque) : le tableau « On dit / On ne dit pas » de ${chemin} est vide`);
+    else {
+      const echappe = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      let emplois = 0;
+      for (const s of slides) {
+        const texte = [...s.shapes.map(x => x.text || ''), s.notes || ''].join('\n');
+        const vus = [];
+        for (const t of termes) {
+          if (dejaProscrits.has(t.proscrit.toLowerCase())) continue;
+          const n = (texte.match(new RegExp(`(?<![\\p{L}\\p{N}_])${echappe(t.proscrit)}s?(?![\\p{L}\\p{N}_])`, 'giu')) || []).length;
+          if (n) vus.push({ ...t, occurrences: n });
+        }
+        if (!vus.length) continue;
+        const bloquants = vus.filter(t => !t.reserve || /livrable/i.test(t.reserve)), reserves = vus.filter(t => !bloquants.includes(t));
+        const dit = l => l.map(t => `« ${t.proscrit} » (${t.occurrences}) → « ${t.remplacer_par} »${t.reserve && !bloquants.includes(t) ? ` [réserve de la marque : ${t.reserve}]` : ''}`).join(' · ');
+        if (bloquants.length) findings.push({ sev: 'bloquant', msg: `S5 — ${bloquants.length} terme(s) proscrit(s) par la marque de l'émetteur (${chemin}, tableau « On dit / On ne dit pas ») : ${dit(bloquants)}`, where: s.file });
+        if (reserves.length) findings.push({ sev: 'avertissement', msg: `S5 — ${reserves.length} terme(s) proscrit(s) sous réserve par la marque de l'émetteur (${chemin}), contexte non jugé : ${dit(reserves)}`, where: s.file });
+        emplois += vus.length;
+      }
+      s5MarqueEtat = emplois ? `${emplois} emploi(s) proscrit(s) par la marque` : `aucun des ${termes.length} terme(s) proscrit(s) de ${path.basename(chemin)} employé`;
     }
   }
 }
@@ -372,7 +500,7 @@ if (findings.some(f => f.sev === 'bloquant')) out('FAIL', 1);
 const regles34 = (CHARTE.logos === 'couverture-interlocuteurs' && CHARTE.pied_de_page === 'espace-reserve') ? 'S1-S4 vérifiés'
   : `S1-S2 vérifiés, S3 ${CHARTE.logos === 'couverture-interlocuteurs' ? 'vérifiée' : CHARTE.logos === 'partout' ? 'sans zone à juger' : 'NON jouée'}, `
     + `S4 ${['espace-reserve', 'zone-texte'].includes(CHARTE.pied_de_page) ? 'vérifiée (' + CHARTE.pied_de_page + ')' : 'NON jouée'}${duProfil}`;
-findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), ${regles34}`
-  + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)')
+findings.push({ sev: 'info', msg: `conforme : ${slides.length} slide(s), ${regles34}` + (s1Etat ? ` ; S1 — ${s1Etat}` : '')
+  + (s5Etat ? ` ; S5 — ${s5Etat}` : ' ; S5 non jouée (motif au non_juge)') + (s5MarqueEtat ? ` ; S5 marque — ${s5MarqueEtat}` : '')
   + (s6Etat ? ` ; S6 — ${s6Etat}` : ' ; S6 non jouée (motif au non_juge)') + ' ; S7 (E-11) vérifiée ; S8 (typographie) jouée en avertissement', where: path.basename(file) });
 out('PASS', 0);

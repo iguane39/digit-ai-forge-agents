@@ -13,6 +13,7 @@
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[]} · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ecrivainDeContrat } from './lib/contrat.mjs';
 // TF-1447 : le motif d'un SKIP a une place fixe, le champ `motif` (lib/contrat.mjs) ; ici, son domicile.
 const contratJSON = ecrivainDeContrat({ dernier: true });
@@ -26,7 +27,11 @@ const out = (verdict, findings, nj, code) => { process.stdout.write(contratJSON(
 if (!file || !fs.existsSync(file)) out('SKIP', [], ['fichier absent'], 2);
 
 let nom = null;
-if (pArg) { try { nom = JSON.parse(fs.readFileSync(pArg, 'utf8')).nommage || null; } catch {} }
+// TF-2325 : `--profil` accepte le chemin d'un profil OU son nom (profils/<nom>.json), comme run-oracles et oracle-pptx.
+// Avant, `--profil digit-ai` ne lisait aucun fichier et l'oracle rendait SKIP « profil sans convention de nommage ».
+const SKILLDIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const profilTrouve = pArg ? ([pArg, path.join(SKILLDIR, 'profils', pArg + '.json')].find(c => fs.existsSync(c) && fs.statSync(c).isFile()) || pArg) : null;
+if (pArg) { try { nom = JSON.parse(fs.readFileSync(profilTrouve, 'utf8')).nommage || null; } catch {} }
 if (!nom || !nom.regex || !(nom.declencheur || nom.prefixe)) out('SKIP', [], [...NJ, 'profil sans convention de nommage'], 2);
 
 const base = path.basename(file);

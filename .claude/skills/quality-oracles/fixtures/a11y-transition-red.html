@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fixture rouge : le bouton ne reçoit jamais de libellé</title>
+<style>
+  /* TF-2313 : même page que la verte, même fondu, même spinner sans fin ; le bouton de fermeture n'a JAMAIS de
+     libellé accessible. L'oracle doit attendre la fin du fondu et refuser quand même, pour la bonne raison. */
+  .toast { opacity: 0; transition: opacity 1.2s linear; }
+  .toast.visible { opacity: 1; }
+  .spinner { width: 12px; height: 12px; border: 2px solid #475569; animation: tourne 1s linear infinite; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<h1>Tableau de bord</h1>
+<div class="spinner" role="presentation"></div>
+<div id="toast" class="toast">Enregistré<button id="fermer" type="button"></button></div>
+<script>
+  const toast = document.getElementById('toast');
+  requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('visible')));
+</script>
+</body>
+</html>

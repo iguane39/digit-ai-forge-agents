@@ -146,7 +146,7 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
 (un PASS de niveau inférieur n'est jamais recyclé plus haut) — sans jamais descendre sous §2 et §5.
 
 ## Outillage (scripts)
-- **Orchestrateur** — `node scripts/run-oracles.mjs <cible> [--profil <nom|chemin>] [--niveau note|diffuse|production] [--no-cache] [--versionne]` (`--versionne` : seul le contenu que git suit ou suivrait est jugé, TF-1702) : matching
+- **Orchestrateur** — `node scripts/run-oracles.mjs <cible> [--json] [--profil <nom|chemin>] [--niveau note|diffuse|production] [--no-cache] [--versionne]` (`--json` : le journal en JSON sur la sortie standard, rien d'autre, TF-2327 ; contrat de sortie §5) (`--versionne` : seul le contenu que git suit ou suivrait est jugé, TF-1702) : matching
   par **extension + `trigger_files` + contenu** (`content_patterns`, qui RESTREINT les extensions d'une entrée qui déclare les deux — intersection, TF-1539), bornés par **`chemins`** quand l'entrée en porte
   (dossiers où l'oracle s'applique, TF-1446) et par **`parties_paquet`** (préfixes de parties qu'un paquet zip doit
   porter, `ppt/fonts/` par exemple — TF-1501), **type réel** (magic bytes ≠ extension = FAIL), exécution
@@ -232,7 +232,8 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   j.h en contexte d'engagement** sans source ni « à vérifier » = FAIL ; dates d'échéance = warn ; incohérence intra-document, unités €/%/j/j.h) ·
   **coherence** (`oracle-coherence.mjs <dossier|fichier>` : divergences de grandeurs **entre livrables** d'un dossier, versions antérieures exclues par la convention de nommage ; et le **fond** — statut d'une ligne nié par son texte, affirmation absolue démentie, compte figé, préséance non déclarée : un « cohérent » ne se prononce jamais sur un grep de noms) ·
   **visual-diff** (`oracle-visual-diff.py` : rendu vs **goldens** versionnés `.oracles-goldens/`, masques de zones dynamiques,
-  entérinement **hors boucle uniquement** via `--accepter` — refusé après un FAIL non re-jugé, R5) ·
+  entérinement **hors boucle uniquement** via `--accepter` — refusé après un FAIL non re-jugé, R5 ; sous `output`, `old`, `dist` ou `build`, références et
+  historique vivent sous le `.oracles/` commun aux journaux, au-dessus du segment de livraison, jamais dans le dossier remis, TF-2363) ·
   **nommage** (convention du profil) · **pptx** ([Content_Types].xml 1re entrée, transitions/JPEG selon profil, smoke-test LibreOffice) ·
   **polices embarquées** (`oracle-polices-embarquees.mjs`, PPTX, DOCX, PDF et page HTML : E0 décodage, E1 contours = police
   installée, E2 boîte englobante ; Python + fontTools, pypdf pour le PDF, brotli pour le WOFF2, Windows pour le MTX d'un PPTX
