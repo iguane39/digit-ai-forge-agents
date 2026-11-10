@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture TF-2364 — rouge : le thème sombre sort à l'impression — 20261110a</title>
+<!-- TF-2364, sens ROUGE. La bascule pose data-theme="dark" sur la racine ; le bloc sombre n'est pas
+     borné à l'écran, donc la page imprimée après un passage en thème sombre sort en cartes sombres sur
+     papier blanc (cas du 25/09/2026 : 706 177 pixels sur 1 169 883 en écart). check_html et render_page
+     rendent PASS sur cette page : seule l'impression en thème sombre, comparée à l'impression par
+     défaut, le montre. -->
+<style>
+:root { --ink: #0F172A; --bg: #FFFFFF; --carte: #F1F5F9; --accent: #2563EB; }
+body { margin: 0; font-family: system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+main { max-width: 170mm; margin: 0 auto; padding: 12mm 0; }
+.carte { background: var(--carte); border: 1px solid #CBD5E1; border-radius: 8px; padding: 12mm; margin: 0 0 8mm; }
+[data-theme="dark"] body { background: #0B1220; color: #E8ECF5; }
+[data-theme="dark"] .carte { background: #16203A; border-color: #2B3A5E; }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Une page qui imprime sombre</h1>
+<div class="carte"><p>Première carte : en thème sombre, fond bleu nuit à l'impression.</p></div>
+<div class="carte"><p>Seconde carte, même défaut.</p></div>
+</main>
+</body>
+</html>

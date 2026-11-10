@@ -44,10 +44,24 @@ peut ajouter son propre titre de page ou son sommaire). Ce comptage n'est PAS co
 `--seuil` : contrairement aux mots, une dérogation de couverture ne rouvre jamais la structure —
 la perdre n'est jamais négociable au même geste qu'une simple pauvreté de contenu.
 
+EXTENSION TF-2362, 10/11/2026 (retour RA-212 du lot du produit marketing, seq 294). Le socle prescrit ce
+contrôle pour TOUTE page issue d'un générateur, mais il ne comparait qu'un HTML à une source Markdown. Le kit
+apporteurs sort d'un module Python de données et se livre en PDF : aucun oracle ne disait si le PDF portait tout
+le texte de sa source, et un contrôle ad hoc (K10) a dû s'écrire. La prescription n'était pas jouable sur cette
+cible. Elle l'est maintenant : une SOURCE DE DONNÉES (`--source-donnees`, JSON ou module Python lu SANS
+l'exécuter) et une CIBLE HTML ou PDF, comparées par CHAÎNES — chaque chaîne de la source doit se retrouver dans
+le texte de la cible, un compte de mots ne dit pas quelle phrase a disparu :
+
+    pour chaque chaîne de la source (feuille d'un JSON, littéral d'un module) :
+        retrouvée dans le texte visible de la cible (espaces, casse, apostrophes, traits d'union de fin de
+        ligne et balisage de la chaîne normalisés) ; sinon : CHAÎNE MANQUANTE, nommée avec son chemin
+
 Usage :
     python check_completude.py page.html --source source.md [--source autre.md ...]
     python check_completude.py page.html --source source.md --output json
     python check_completude.py page.html --source source.md --seuil 0.9   # DÉROGATION, déclarée
+    python check_completude.py kit.pdf --source-donnees contenu.json [--ignorer-cles id,href] [--min-chars 2]
+    python check_completude.py page.html --source-donnees module_de_contenu.py
 
 Verdict machine : exit 0 = PASS · 1 = FAIL (perte de texte) · 2 = indéterminé (SKIP motivé —
 fichier illisible, source absente). Un fichier qu'on ne peut pas lire ne rend JAMAIS un PASS.
@@ -55,10 +69,12 @@ fichier illisible, source absente). Un fichier qu'on ne peut pas lire ne rend JA
 from __future__ import annotations
 
 import argparse
+import ast
 import html as _html
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 # Windows : forcer stdout/stderr en UTF-8 pour ne pas planter (cp1252) à l'impression de
@@ -298,18 +314,258 @@ def verifier_completude(page: str, sources: list, seuil: float = SEUIL_DEFAUT) -
     }
 
 
+# --- TF-2362 : source de DONNÉES, cible HTML ou PDF, comparaison par CHAÎNES -----------------
+_APOSTROPHES = str.maketrans({"’": "'", "‘": "'", "ʼ": "'", "“": '"', "”": '"',
+                              "«": '"', "»": '"'})
+CLES_IGNOREES_DEFAUT = ()
+MIN_CHARS_DEFAUT = 2
+AFFICHAGE_MANQUANTES = 20
+
+
+def _forme(chaine: str) -> str:
+    """Une chaîne ramenée à ce que la comparaison peut tenir pour la même : balisage et entités retirés, NFKC,
+    apostrophes et guillemets droits, tiret conditionnel supprimé, casse et espaces ôtés (un PDF coupe les lignes
+    n'importe où et peut passer en capitales)."""
+    t = _html.unescape(_BALISE.sub(" ", chaine))
+    t = unicodedata.normalize("NFKC", t).replace("­", "").translate(_APOSTROPHES)
+    return re.sub(r"\s+", "", t).casefold()
+
+
+def _forme_sans_trait(forme: str) -> str:
+    """Seconde chance : un mot coupé en fin de ligne par une césure automatique a gagné un trait d'union."""
+    return forme.replace("-", "").replace("‐", "").replace("‑", "")
+
+
+def chaines_de_json(valeur, ignorer=(), chemin="$") -> list:
+    """Les feuilles TEXTE d'un JSON, avec leur chemin ; les clés d'objet ne sont pas du contenu."""
+    if isinstance(valeur, str):
+        return [(chemin, valeur)]
+    if isinstance(valeur, dict):
+        out = []
+        for k, v in valeur.items():
+            if k in ignorer:
+                continue
+            out += chaines_de_json(v, ignorer, f"{chemin}.{k}")
+        return out
+    if isinstance(valeur, (list, tuple)):
+        out = []
+        for i, v in enumerate(valeur):
+            out += chaines_de_json(v, ignorer, f"{chemin}[{i}]")
+        return out
+    return []
+
+
+def chaines_de_module(source: str, ignorer=()) -> tuple:
+    """Les littéraux texte des affectations de PREMIER NIVEAU d'un module Python, lus par `ast` : le module n'est
+    JAMAIS exécuté ni importé (une source de contenu est une donnée). Rend (chaînes, non_lues) — non_lues compte
+    ce qu'un littéral ne dit pas (f-string, calcul dont le texte se produit à l'exécution)."""
+    arbre = ast.parse(source)
+    chaines, non_lues = [], [0]
+
+    def visiter(noeud, chemin):
+        if isinstance(noeud, ast.Constant):
+            if isinstance(noeud.value, str):
+                chaines.append((chemin, noeud.value))
+        elif isinstance(noeud, ast.Dict):
+            for k, v in zip(noeud.keys, noeud.values):
+                nom = k.value if isinstance(k, ast.Constant) else None
+                if nom in ignorer:
+                    continue
+                visiter(v, f"{chemin}.{nom}" if nom is not None else chemin)
+        elif isinstance(noeud, (ast.List, ast.Tuple, ast.Set)):
+            for i, e in enumerate(noeud.elts):
+                visiter(e, f"{chemin}[{i}]")
+        elif isinstance(noeud, ast.JoinedStr):
+            non_lues[0] += 1
+        elif (isinstance(noeud, ast.BinOp) and isinstance(noeud.op, ast.Add)
+              and isinstance(noeud.left, ast.Constant) and isinstance(noeud.right, ast.Constant)
+              and isinstance(noeud.left.value, str) and isinstance(noeud.right.value, str)):
+            chaines.append((chemin, noeud.left.value + noeud.right.value))
+        elif isinstance(noeud, ast.Call):
+            for a in noeud.args:
+                visiter(a, chemin)
+            for kw in noeud.keywords:
+                if kw.arg not in ignorer:
+                    visiter(kw.value, f"{chemin}.{kw.arg}" if kw.arg else chemin)
+        elif not isinstance(noeud, ast.Name):
+            non_lues[0] += 1
+
+    for n in arbre.body:
+        if isinstance(n, ast.Assign) and n.value is not None:
+            cibles = [t.id for t in n.targets if isinstance(t, ast.Name)]
+            if cibles and not cibles[0].startswith("__"):
+                visiter(n.value, cibles[0])
+        elif isinstance(n, ast.AnnAssign) and n.value is not None and isinstance(n.target, ast.Name):
+            visiter(n.value, n.target.id)
+    return chaines, non_lues[0]
+
+
+def texte_de_cible(chemin: Path) -> tuple:
+    """(texte, motif_de_skip) : le texte visible d'une cible HTML ou PDF."""
+    if chemin.suffix.lower() == ".pdf":
+        try:
+            import pymupdf  # type: ignore
+            with pymupdf.open(str(chemin)) as doc:
+                return "\n".join(p.get_text() for p in doc), ""
+        except ImportError:
+            pass
+        except Exception as e:  # noqa: BLE001 — PDF illisible : SKIP motivé, jamais PASS
+            return "", f"PDF illisible ({type(e).__name__}) : {e}"
+        try:
+            from pypdf import PdfReader  # type: ignore
+            return "\n".join((p.extract_text() or "") for p in PdfReader(str(chemin)).pages), ""
+        except ImportError:
+            return "", "ni pymupdf ni pypdf : le texte d'un PDF ne se lit pas"
+        except Exception as e:  # noqa: BLE001
+            return "", f"PDF illisible ({type(e).__name__}) : {e}"
+    source = chemin.read_text(encoding="utf-8")
+    return _html.unescape(_BALISE.sub(" ", _corps_visible_html(source))), ""
+
+
+def non_juge_donnees(non_lues: int, ignorees: tuple) -> list:
+    notes = [
+        "LA PRÉSENCE N'EST NI L'ORDRE NI LA MULTIPLICITÉ : une chaîne est retrouvée si elle figure QUELQUE PART "
+        "dans la cible ; deux chaînes identiques en source et une seule en cible, ou une page dont les sections "
+        "sont permutées, passent",
+        "LA NORMALISATION RENFORCE LE PASS : espaces, casse, apostrophes, guillemets, tiret conditionnel, balisage "
+        "de la chaîne et trait d'union de fin de ligne sont ôtés des deux côtés ; une différence de casse ou de "
+        "ponctuation de fin de ligne ne se voit pas ici",
+        "TOUTE CHAÎNE DE LA SOURCE EST CRUE AFFICHÉE : un identifiant, une classe, une adresse, un code de couleur "
+        "ou une clé de traduction qui n'est pas du texte de page apparaît comme MANQUANT, et se déclare à ignorer "
+        "(--ignorer-cles) ; l'inverse (du texte de page qui ne vient pas de la source) n'est jamais jugé",
+        "LE TEXTE D'UN PDF EST CELUI QUE LIT LE PDF (couche texte) : un texte rendu en image ou en tracé, ou un PDF "
+        "scanné, n'a pas de chaîne à retrouver et sera compté manquant",
+        "LA COMPLÉTUDE N'EST PAS LA FIDÉLITÉ : ce contrôle dit que le texte de la source est dans la cible, pas "
+        "que la mise en page, les montants ou les nombres calculés par le générateur sont justes",
+    ]
+    if non_lues:
+        notes.append(f"{non_lues} expression(s) du module de contenu ne se lisent pas comme un littéral (f-string, "
+                     "appel, calcul) : le texte qu'elles produisent n'est pas dans la source jugée")
+    if ignorees:
+        notes.append("CLÉS IGNORÉES, déclarées par l'appelant : " + ", ".join(sorted(ignorees)))
+    return notes
+
+
+def verifier_donnees(texte_cible: str, chaines: list, non_lues: int = 0, ignorees: tuple = (),
+                     min_chars: int = MIN_CHARS_DEFAUT) -> dict:
+    """Le verdict par CHAÎNES : chaque chaîne de la source se retrouve-t-elle dans le texte de la cible ?"""
+    cible = _forme(texte_cible)
+    cible_sans_trait = _forme_sans_trait(cible)
+    jugees = [(c, t) for c, t in chaines if len(_forme(t)) >= min_chars]
+    manquantes, sans_trait = [], 0
+    for chemin, chaine in jugees:
+        f = _forme(chaine)
+        if f in cible:
+            continue
+        if _forme_sans_trait(f) in cible_sans_trait:
+            sans_trait += 1
+            continue
+        manquantes.append({"chemin": chemin, "chaine": chaine})
+    fails = []
+    if not jugees:
+        verdict = "SKIP"
+        fails.append("SOURCE VIDE : aucune chaîne jugeable dans la source de données — rien à comparer, et un PASS "
+                     "ici ne voudrait rien dire")
+    else:
+        for m in manquantes[:AFFICHAGE_MANQUANTES]:
+            coupe = "…" if len(m["chaine"]) > 90 else ""
+            fails.append(f"CHAÎNE MANQUANTE : {m['chemin']} = « {m['chaine'][:90]}{coupe} » ne se retrouve pas "
+                         "dans la cible. Remonter au générateur avant toute autre correction")
+        if len(manquantes) > AFFICHAGE_MANQUANTES:
+            fails.append(f"… et {len(manquantes) - AFFICHAGE_MANQUANTES} autre(s) chaîne(s) manquante(s) "
+                         f"({len(manquantes)} au total, toutes dans `chaines_manquantes` en JSON)")
+        verdict = "FAIL" if manquantes else "PASS"
+    return {
+        "verdict": verdict, "mode": "donnees",
+        "chaines_source": len(chaines), "chaines_jugees": len(jugees),
+        "chaines_retrouvees": len(jugees) - len(manquantes),
+        "retrouvees_a_un_trait_dunion_pres": sans_trait,
+        "chaines_manquantes": manquantes, "fails": fails,
+        "non_juge": non_juge_donnees(non_lues, ignorees),
+    }
+
+
+def lire_source_donnees(chemin: Path, ignorer: tuple) -> tuple:
+    """(chaines, non_lues) d'un JSON ou d'un module Python ; lève OSError/ValueError/SyntaxError si illisible."""
+    contenu = chemin.read_text(encoding="utf-8-sig")
+    if chemin.suffix.lower() == ".py":
+        chaines, non_lues = chaines_de_module(contenu, ignorer)
+        return [(f"{chemin.name}:{c}", t) for c, t in chaines], non_lues
+    if chemin.suffix.lower() == ".json":
+        return [(f"{chemin.name}:{c}", t) for c, t in chaines_de_json(json.loads(contenu), ignorer)], 0
+    raise ValueError(f"extension non gérée pour une source de données : {chemin.suffix} (.json ou .py)")
+
+
+def main_donnees(args) -> None:
+    ignorer = tuple(k.strip() for k in args.ignorer_cles.split(",") if k.strip())
+    chaines, non_lues = [], 0
+    for chemin in args.source_donnees:
+        try:
+            c, n = lire_source_donnees(Path(chemin), ignorer)
+        except (OSError, ValueError, SyntaxError) as e:
+            print(f"Erreur lecture de la source de données {chemin} : {e}", file=sys.stderr)
+            sys.exit(2)
+        chaines += c
+        non_lues += n
+    try:
+        texte, motif = texte_de_cible(Path(args.page))
+    except OSError as e:
+        print(f"Erreur lecture de la cible : {e}", file=sys.stderr)
+        sys.exit(2)
+    if motif:
+        print(f"SKIP : {motif}", file=sys.stderr)
+        sys.exit(2)
+    r = verifier_donnees(texte, chaines, non_lues, ignorer, args.min_chars)
+    r["page"] = args.page
+    r["sources"] = list(args.source_donnees)
+    if args.output == "json":
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    else:
+        print(f"Cible   : {args.page}")
+        for s in r["sources"]:
+            print(f"Source  : {s} (données)")
+        print(f"Verdict : {r['verdict']}")
+        print(f"Chaînes : {r['chaines_retrouvees']} retrouvée(s) sur {r['chaines_jugees']} jugée(s) "
+              f"({r['chaines_source']} dans la source, {r['retrouvees_a_un_trait_dunion_pres']} à un trait d'union près)")
+        for f in r["fails"]:
+            print(f"  x {f}")
+        print("\nPérimètre de NON-MESURE (ce verdict ne dit rien de ceci) :")
+        for note in r["non_juge"]:
+            print(f"  non jugé — {note}")
+    sys.exit({"PASS": 0, "FAIL": 1}.get(r["verdict"], 2))
+
+
 def main():
     ap = argparse.ArgumentParser(
-        description="Complétude : la page rendue porte-t-elle ce que sa source dit ? (TF-1174)")
+        description="Complétude : la page rendue porte-t-elle ce que sa source dit ? (TF-1174, TF-2362)")
     ap.add_argument("page", help="Chemin de la page HTML rendue.")
     ap.add_argument("--source", action="append", default=[], metavar="FICHIER.md",
                     help="Markdown dont la page sort ; répétable pour une page multi-sources.")
     ap.add_argument("--seuil", type=float, default=SEUIL_DEFAUT,
                     help=f"couverture minimale rendu/source (défaut {SEUIL_DEFAUT:g} — sous ce "
                          "seuil, la dérogation est DÉCLARÉE au verdict)")
+    ap.add_argument("--source-donnees", action="append", default=[], metavar="FICHIER.json|.py",
+                    dest="source_donnees",
+                    help="TF-2362 : source de DONNÉES (JSON, ou module Python lu sans l'exécuter) ; compare par "
+                         "chaînes, la cible peut être un HTML ou un PDF. Exclusif de --source.")
+    ap.add_argument("--ignorer-cles", default=",".join(CLES_IGNOREES_DEFAUT), dest="ignorer_cles",
+                    help="clés de la source de données qui ne sont pas du texte de page (id, href, classe…), "
+                         "séparées par des virgules")
+    ap.add_argument("--min-chars", type=int, default=MIN_CHARS_DEFAUT, dest="min_chars",
+                    help=f"longueur minimale d'une chaîne jugée, après normalisation (défaut {MIN_CHARS_DEFAUT})")
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
+    if args.source_donnees:
+        if args.source:
+            print("Erreur : --source (Markdown) et --source-donnees s'excluent — deux modes de comparaison.",
+                  file=sys.stderr)
+            sys.exit(2)
+        main_donnees(args)
+    if Path(args.page).suffix.lower() == ".pdf":
+        print("Erreur : une cible PDF se compare à une source de données (--source-donnees) ; la comparaison de "
+              "mots d'un Markdown et de sa structure ne porte que sur un HTML.", file=sys.stderr)
+        sys.exit(2)
     if args.seuil <= 0:
         print("Erreur : --seuil doit être strictement positif.", file=sys.stderr)
         sys.exit(2)

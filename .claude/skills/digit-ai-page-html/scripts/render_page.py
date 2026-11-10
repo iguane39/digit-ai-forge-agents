@@ -4575,6 +4575,13 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
            "la page, qu'un script de la page peut reecrire" if theme else "") + "). "
         "L'autre schema de couleurs n'est ni rendu ni mesure ici : le rejouer avec "
         f"--theme {'clair' if theme == 'sombre' else 'sombre'} si la page en porte un (TF-1674)")
+    # TF-2364, TF-2365 — render_page juge l'ECRAN. La page IMPRIMEE se mesure ailleurs, et la ligne le dit : sans elle,
+    # un PASS ici se lisait comme « imprime clair » et « pied dans la feuille » (25 et 28/09/2026, deux livrables verts).
+    report["non_juge"].append(
+        "IMPRESSION : la page IMPRIMEE n'est pas mesuree ici (render_page juge l'ecran). `check_impression.py` imprime "
+        "la page, la compare apres un passage en theme sombre (G1 « impression toujours claire », TF-2364) et mesure la "
+        "marge basse du dernier bloc de chaque page d'une feuille a @page de taille fixe (TF-2365) : a jouer sur toute "
+        "page qui s'imprime, d'office sur une page a @page fixe")
     if theme_tenu:
         report["non_juge"].append(
             f"THEME TENU CONTRE LA PAGE : --theme {theme} demande, la page a reecrit data-theme "
