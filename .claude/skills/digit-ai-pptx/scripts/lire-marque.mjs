@@ -23,11 +23,20 @@
 // CONTENU ; « sombre » = COUVERTURE et INTERCALAIRES. Ce n'est pas une bascule utilisateur,
 // c'est une navigation — le contraste signale le changement de partie.
 //
-// Sortie : JSON sur stdout. Exit 0 (lu) / 2 (dossier ou jeton manquant).
+//   4. (TF-2354) dit si les polices rendues sont INSTALLÉES au poste : champ `polices_poste`. Le skill exige
+//      la police sur le poste de rendu et ne le vérifiait pas : sans elle, PowerPoint substitue une autre
+//      face (Calibri, le 16/09/2026) et l'export PDF répète le dernier mot de chaque ligne coupée, défaut que
+//      ni oracle-pptx ni oracle-charte-pptx-semantique ne voient. Un avertissement sort sur stderr pour chaque
+//      police absente ; `--exiger-polices` en fait un exit 2. `--polices-installees=<fichier JSON ou liste>`
+//      remplace la détection du poste (poste de rendu distant, rejeu du self-test).
+//
+// Sortie : JSON sur stdout. Exit 0 (lu) / 2 (dossier ou jeton manquant, ou police absente avec --exiger-polices).
 // Usage : node scripts/lire-marque.mjs [--marque=<dossier>] [--format=auto|dtcg|css] [--compact]
+//           [--exiger-polices] [--polices-installees=<fichier.json | Nom1,Nom2,…>]
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -220,6 +229,59 @@ const usage = (theme, jeton) => ({
   pptx: themes[theme].couleurs[jeton].pptx,
 });
 
+// ------------------------------------------------------------------ 5 · polices installées au poste (TF-2354)
+const STYLES = new Set(['regular', 'bold', 'italic', 'oblique', 'light', 'medium', 'semibold', 'extrabold', 'black',
+  'thin', 'extralight', 'ultralight', 'heavy', 'condensed', 'semilight', 'demibold', 'book', 'normal', 'truetype', 'opentype']);
+const famille = (nom) => {
+  const mots = nom.toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[-_]/g, ' ').split(/\s+/).filter(Boolean);
+  while (mots.length > 1 && STYLES.has(mots[mots.length - 1])) mots.pop();
+  return mots.join(' ');
+};
+function famillesDuPoste() {
+  const donnee = opt('polices-installees');
+  if (donnee) {
+    let liste;
+    try {
+      liste = fs.existsSync(donnee) ? JSON.parse(fs.readFileSync(donnee, 'utf8')) : donnee.split(',');
+    } catch { liste = null; }
+    if (!Array.isArray(liste)) mourir([`ERREUR — --polices-installees illisible : ${donnee} (attendu : un fichier JSON qui porte un tableau de noms, ou « Nom1,Nom2 »)`]);
+    return { methode: 'liste donnée par --polices-installees', familles: new Set(liste.map((x) => famille(String(x)))) };
+  }
+  if (process.platform === 'win32') {
+    const familles = new Set();
+    let lu = false;
+    for (const ruche of ['HKLM', 'HKCU']) {
+      const r = spawnSync('reg', ['query', `${ruche}\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts`], { encoding: 'utf8', timeout: 20000 });
+      if (r.status !== 0) continue;
+      lu = true;
+      for (const ligne of String(r.stdout || '').split(/\r?\n/)) {
+        const m = ligne.match(/^\s+(.+?)\s+REG_SZ\s/);
+        if (m) familles.add(famille(m[1]));
+      }
+    }
+    return lu ? { methode: 'registre Windows des polices (HKLM et HKCU)', familles } : { methode: 'registre Windows illisible', familles: null };
+  }
+  const r = spawnSync('fc-list', [':', 'family'], { encoding: 'utf8', timeout: 20000 });
+  if (r.status !== 0) return { methode: 'fc-list absent', familles: null };
+  const familles = new Set();
+  for (const ligne of String(r.stdout || '').split(/\r?\n/)) for (const f of ligne.split(',')) if (f.trim()) familles.add(famille(f));
+  return { methode: 'fc-list', familles };
+}
+const poste = famillesDuPoste();
+const pilePoste = {};
+const manquantes = [];
+for (const [cle, nom] of [['police_titre', polices.head.pptx], ['police_corps', polices.sans.pptx], ['police_mono', polices.mono.pptx]]) {
+  const installee = poste.familles ? poste.familles.has(famille(nom)) : null;
+  pilePoste[cle] = { famille: nom, installee };
+  if (installee === false) manquantes.push(`${cle} (${nom})`);
+}
+if (manquantes.length) {
+  process.stderr.write(`AVERTISSEMENT — police(s) non installée(s) au poste (${poste.methode}) : ${manquantes.join(', ')}.\n`
+    + '  PowerPoint substituera une autre face en silence, et l\'export PDF peut répéter le dernier mot de chaque ligne coupée.\n'
+    + '  REMÈDE : installer la police au poste de rendu, ou passer --polices-installees=<liste> si le rendu se fait ailleurs.\n');
+  if (argv.includes('--exiger-polices')) process.exit(2);
+}
+
 const sortie = {
   outil: 'lire-marque',
   support: 'diapositives PowerPoint',
@@ -255,10 +317,16 @@ const sortie = {
     police_mono: polices.mono.pptx,
     filet_epaisseur_pouces: dimensions['filet-epaisseur'].pouces,
   },
+  polices_poste: {
+    methode: poste.methode,
+    polices: pilePoste,
+    manquantes,
+  },
   non_juge: [
     'ne juge pas la JUSTESSE des valeurs : il lit ce que l\'émetteur déclare, il ne l\'arbitre pas',
     'ne voit pas les mentions [à valider] portées par la documentation de marque — les lire dans MARQUE.md',
-    'ne contrôle ni contraste, ni accessibilité, ni disponibilité des polices sur le poste de rendu',
+    'ne contrôle ni contraste, ni accessibilité',
+    'polices_poste dit ce que CE poste installe : un deck rendu sur un autre poste (collègue, serveur) exige la liste de ce poste-là par --polices-installees ; une installée:null veut dire que la détection n\'a pas pu lire le poste',
     'ne rend que les jetons présents : un jeton non requis et absent passe en silence',
   ],
 };

@@ -80,7 +80,33 @@ l'autre. Nombre d'étapes supporté et géométrie : `[à valider]`.
   interlocuteurs / annexe) est fourni par `digit-ai-propale` : c'est lui qui rend le rythme
   d'illustration et les exclusions déterministes.
 
+## Une grille par famille de pages sœurs, et pas de barre latérale (TF-2374)
+
+Deux règles valables pour tous les layouts à cartes (5, 6, 10, 11 et leurs variantes).
+
+**Pages sœurs : une seule grille.** Des pages sœurs sont des pages d'une même famille qui se lisent l'une après
+l'autre : les pages d'évolution d'une proposition, les fiches de lot, les études de cas. La grille se décide
+**une fois**, pour la famille : largeur et hauteur des cartes, position haute de la première rangée, position
+du bandeau, gouttières. Chaque page la reprend à l'identique ; ce qui varie est le contenu des cartes, jamais
+la boîte. Une carte est à hauteur fixe : le texte s'ajuste à la carte (budget de caractères), la carte ne
+s'ajuste pas au texte. Une page qui change de hauteur de carte ou fait sauter le bandeau lit comme une autre
+famille. *Le fait* : le 29/09/2026, les 5 pages d'évolution d'une proposition suivaient deux grilles (cartes de
+1,98 po puis 1,62 po, bandeau qui saute de 0,36 po), sans qu'aucune règle ne le dise.
+
+**Barre latérale accolée à un bloc : proscrite.** Une fine barre colorée posée contre le bord d'une carte ou
+d'un encart (largeur d'au plus 0,15 po, hauteur d'au moins 0,3 po, contre un bloc plus large) ne s'emploie pas.
+La hiérarchie passe par le titre de carte, la surface `surface_carte` et le filet `trait_contenu`. Le même
+défaut côté HTML est jugé par S1 d'`oracle-slop` ; côté diapositives, cet oracle ne lit pas le PPTX, et
+`scripts/controler-grilles.py` joue la règle sur la géométrie du fichier : le *fait* du 29/09/2026 est 9 barres
+latérales sur ces 5 pages.
+
+```bash
+python scripts/controler-grilles.py <deck>.pptx --familles '{"evolution": [3, 4, 5, 6, 7]}'
+```
+
+`--familles` nomme les numéros de diapositive de chaque famille ; sans lui, seule la règle des barres latérales est jouée.
+
 ## Non jugé
 
-Grilles de construction, cotes, tailles de police par layout, comportement en débordement,
-variantes 4:3. La source n'en dit rien ; les faire trancher avec `tokens.css` (TF-1023).
+Grilles de construction **hors famille de pages sœurs**, cotes, tailles de police par layout, comportement en
+débordement, variantes 4:3. La source n'en dit rien ; les faire trancher avec `tokens.css` (TF-1023).

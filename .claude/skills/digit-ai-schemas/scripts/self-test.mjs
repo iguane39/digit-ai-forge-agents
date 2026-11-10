@@ -19,6 +19,11 @@
 //      ne la voit pas sur un groupe titré) — chacun doit ÉCHOUER pour sa raison ;
 //   4. `exemple-reference.html` passe `check_html.py`, le lanceur de forge-design et `render_page.py`.
 //
+//   6. (TF-2350, 10/11/2026) LA SIGNATURE DE L'ÉMETTEUR SE LIT : `lire-signature.mjs` rend le pied de page et l'année de
+//      l'émetteur (fictif en fixture, réel quand il est joignable), refuse avec exit 2 un dossier ou une ligne absents ;
+//      aucune adresse, aucun domaine, aucune signature de l'émetteur n'est écrite en dur dans SKILL.md, references/*.md et
+//      assets/template-*.html (`exemple-reference.html`, une instance datée, n'est pas jugée). Contrôle léger, joué sous --rapide.
+//
 //   5. (TF-2263, 06/11/2026) LES CINQ AUTRES GABARITS, instanciés tels quels, passent `run-oracles-design.mjs
 //      --rendu` : les quatre fragments (topologie, flux temporel, tableau de bord, schéma différentiel), insérés
 //      dans le squelette multi-bandes, et la page du modèle de données. Le fait : une page de schéma bâtie sur le
@@ -90,6 +95,7 @@ const VALEURS = {
   REF_INTEGRATIONS: 'Réf. intégrations 1', N: '1', NOM_INTEGRATION: "Registre d'images", DESCRIPTION_INTEG: 'Stocke les images construites',
   PIPELINES_REFERENTS: 'M1', NOM_INTEG: "Registre d'images", SOUSTITRE_INTEG: 'Images signées', PIPELINES_REF: 'M1',
   LEGENDE_FIGURE: 'Chaîne de livraison par couches, des entrées aux intégrations.', TYPE_FOOTER: "Brief d'architecture", AUDIENCE: 'Équipe produit',
+  MARQUE_FOOTER: 'ÉMETTEUR FICTIF · SERVICES', ANNEE_REF: '2030',
 };
 
 const ecrire = (nom, contenu) => { const p = path.join(tmp, nom); fs.writeFileSync(p, contenu, 'utf8'); return p; };
@@ -140,6 +146,78 @@ function jouerRendu(fichier, theme) {
 }
 
 try {
+// =====================================================================================================
+// TF-2350 — la signature de l'émetteur (pied de page d'un schéma) se LIT, elle ne s'écrit pas ; aucune donnée
+// d'instance textuelle en dur dans le skill. Contrôle léger, sans navigateur : il joue aussi sous --rapide.
+// Le fait (relevé du 11/09/2026) : « DIGIT-AI · CONSEIL ET STRATÉGIE IA » et l'année 2026 écrits dans SKILL.md,
+// dans conventions-communes.md § 13 et dans les gabarits HTML. L'extension, à ce skill, du contrôle « aucune
+// valeur de marque en dur » de digit-ai-pptx : adresse électronique, nom de domaine, et la signature de l'émetteur
+// lue chez lui au moment du test et retrouvée mot pour mot dans SKILL.md, references/*.md et assets/template-*.html.
+// =====================================================================================================
+{
+  const LECTEUR_SIG = path.join(ICI, 'lire-signature.mjs');
+  const FIX_SIG = path.join(SKILL, 'fixtures', 'signature');
+  const jouerSig = (marque) => {
+    const r = spawnSync(process.execPath, [LECTEUR_SIG, `--marque=${marque}`, '--compact'], { encoding: 'utf8', timeout: 30000 });
+    let j = null; try { j = JSON.parse(r.stdout); } catch { /* le code le dit */ }
+    return { code: r.status, j, out: r.stdout || '', err: r.stderr || '' };
+  };
+  const skillMd = fs.readFileSync(path.join(SKILL, 'SKILL.md'), 'utf8');
+  if (!fs.existsSync(LECTEUR_SIG) || !fs.existsSync(path.join(FIX_SIG, 'MARQUE.md'))) ko('signature : scripts/lire-signature.mjs ou fixtures/signature absent');
+  else {
+    skillMd.includes('scripts/lire-signature.mjs') ? ok('signature : SKILL.md prescrit scripts/lire-signature.mjs') : ko('signature : SKILL.md ne prescrit plus scripts/lire-signature.mjs');
+    // sens vert : l'émetteur fictif
+    const v = jouerSig(FIX_SIG);
+    (v.code === 0 && v.j && v.j.footer.marque === 'ÉMETTEUR FICTIF · SERVICES' && /Audience/.test(v.j.footer.droite_gabarit) && v.j.annee_reference === '2030')
+      ? ok('sens vert · lire-signature lit le pied de page et l\'année de l\'émetteur fictif')
+      : ko('sens vert · lire-signature ne lit pas la signature de l\'émetteur fictif (code ' + v.code + ')');
+    // sens rouge : dossier absent, ligne retirée
+    const a = jouerSig(path.join(FIX_SIG, 'dossier-qui-n-existe-pas'));
+    (a.code === 2 && !a.out.trim() && /introuvable/.test(a.err)) ? ok('sens rouge · un dossier de marque absent rend exit 2, un message, rien sur stdout') : ko('sens rouge · un dossier de marque absent ne rend pas la main (code ' + a.code + ')');
+    const sansLigne = path.join(tmp, 'signature-sans-footer'); fs.mkdirSync(sansLigne, { recursive: true });
+    fs.writeFileSync(path.join(sansLigne, 'MARQUE.md'), fs.readFileSync(path.join(FIX_SIG, 'MARQUE.md'), 'utf8').split('\n').filter((l) => !/^\| Footer de page/.test(l)).join('\n'));
+    const b = jouerSig(sansLigne);
+    (b.code === 2 && !b.out.trim() && /footer-de-page-de-schema/.test(b.err)) ? ok('sens rouge · un tableau sans la ligne « Footer de page de schéma » rend exit 2 en la nommant') : ko('sens rouge · une signature sans la ligne du footer ne rend pas la main (code ' + b.code + ')');
+
+    // données d'instance en dur
+    // domaines TECHNIQUES admis (espaces de noms, services d'outils) : ils ne décrivent aucun émetteur ; liste figée, dite au bilan
+    const TECHNIQUES = ['w3.org', 'googleapis.com', 'gstatic.com', 'google.com', 'claude.ai', 'anthropic.com', 'github.com', 'npmjs.com', 'nodejs.org', 'unsplash.com'];
+    const MOTIFS = [
+      [(l) => (l.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}/) || [])[0], 'adresse électronique'],
+      [(l) => (l.match(/\b(?:[A-Za-z0-9-]+\.)+(?:fr|com|io|ai|eu|net|org|dev)\b/g) || []).find((d) => !TECHNIQUES.some((t) => d.toLowerCase() === t || d.toLowerCase().endsWith('.' + t))), 'nom de domaine'],
+    ];
+    const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+    const enDur = (texte, valeurs, etiquette) => {
+      const f = [];
+      texte.split(/\r?\n/).forEach((l, i) => { for (const [m, nom] of MOTIFS) { const x = m(l); if (x) f.push(`${etiquette}:${i + 1} — ${nom} en dur : ${x}`); } });
+      const plat = norm(texte);
+      for (const val of valeurs) if (plat.includes(norm(val))) f.push(`${etiquette} — signature de l'émetteur écrite en dur : « ${val.slice(0, 50)} »`);
+      return f;
+    };
+    const valFict = v.j ? [v.j.footer.marque] : [];
+    (enDur('Pied : ÉMETTEUR FICTIF · SERVICES\n', valFict, 'fixture-rouge').length === 1)
+      ? ok('sens rouge · la signature de l\'émetteur fictif recopiée dans un gabarit est vue')
+      : ko('sens rouge · la signature de l\'émetteur fictif recopiée dans un gabarit n\'est PAS vue (C4 de ce skill est aveugle)');
+    (enDur('Contact bonjour@exemple.fr · exemple.fr\n', [], 'fixture-rouge').length === 2)
+      ? ok('sens rouge · une adresse électronique et un nom de domaine plantés sont vus')
+      : ko('sens rouge · une adresse et un domaine plantés ne rendent pas 2 constats');
+    enDur('Pied : {{MARQUE_FOOTER}} · {{ANNEE_REF}}\n', valFict, 'fixture-verte').length === 0 ? ok('sens vert · un pied écrit avec les emplacements passe') : ko('sens vert · un pied écrit avec les emplacements est refusé à tort');
+    // le skill réel
+    const reel = jouerSig(path.join(process.env.FORGE_ROOT || path.resolve(SKILL, '..', '..', '..', '..'), 'digit-ai-marketing', 'donnees', 'marque'));
+    const valReelles = reel.j ? [reel.j.footer.marque] : [];
+    if (!reel.j) skip('signature : l\'émetteur réel (digit-ai-marketing, donnees/marque) n\'est pas joignable : seuls les motifs (adresse, domaine) et l\'émetteur fictif sont joués ; la signature réelle n\'est pas comparée au texte du skill');
+    const fichiers = [path.join(SKILL, 'SKILL.md'), ...fs.readdirSync(path.join(SKILL, 'references')).filter((f) => f.endsWith('.md')).map((f) => path.join(SKILL, 'references', f)),
+      ...fs.readdirSync(path.join(SKILL, 'assets')).filter((f) => /^template-.*\.html$/.test(f)).map((f) => path.join(SKILL, 'assets', f))];
+    const fautes = fichiers.flatMap((f) => enDur(fs.readFileSync(f, 'utf8'), valReelles, path.relative(SKILL, f).replace(/\\/g, '/')));
+    fautes.length === 0
+      ? ok(`données d'instance : aucune adresse, aucun domaine${valReelles.length ? ', aucune signature de l\'émetteur' : ''} écrits en dur dans SKILL.md, references/*.md et assets/template-*.html (${fichiers.length} fichiers)`)
+      : fautes.slice(0, 6).forEach((x) => ko('données d\'instance en dur · ' + x));
+    // les emplacements existent dans les gabarits, et la recette leur donne une valeur
+    const mb = fs.readFileSync(GABARIT, 'utf8');
+    (mb.includes('{{MARQUE_FOOTER}}') && mb.includes('{{ANNEE_REF}}')) ? ok('gabarit multi-bandes : le pied porte {{MARQUE_FOOTER}} et {{ANNEE_REF}}') : ko('gabarit multi-bandes : le pied ne porte plus {{MARQUE_FOOTER}} et {{ANNEE_REF}}');
+  }
+}
+
   // (1) les faces de police
   const polices = lancer('node', [path.join(ICI, 'embarquer-polices.mjs'), '--constat'], 120000);
   polices.status === 0

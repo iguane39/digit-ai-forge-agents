@@ -22,7 +22,8 @@ Un ou plusieurs parmi :
 - [ ] Chiffrage : budget, enveloppe ou TJM disponible ? → cf. règles ci-dessous
 - [ ] Échéance ou contrainte calendaire
 - [ ] Contraintes techniques (stack imposée, outils en place à préserver, souveraineté)
-- [ ] Données sensibles transitant par un LLM ? → bloc UE / human-in-the-loop obligatoire
+- [ ] Données sensibles transitant par un LLM ? → bloc d'engagements sur les données et la validation humaine
+      (`{sections.engagements-affiches-dans-une-proposition}`) obligatoire
 
 ## Si des entrants critiques manquent
 
@@ -49,13 +50,14 @@ générer 14 slides sur du vide sans signaler les hypothèses.
    - BUDGET GLOBAL : gros chiffre € HT + libellé du périmètre
    - Ligne de décomposition (ex. « 4 lots × N € HT » ou « N j × TJM € HT »)
    - Tableau : Lot / Durée / Tarif forfait, avec ligne TOTAL
-   - Bloc MODALITÉS : forfait par lot, avenant après validation specs, pas de frais
-     de déplacement (Métropole Lilloise), garantie 3 mois (si dev applicatif),
-     coûts récurrents séparés (si hébergement/API), options chiffrées séparément
+   - Bloc MODALITÉS : celles de `{sections.modalites-de-facturation-et-de-perimetre}`, retenues selon
+     la mission (la garantie si développement applicatif, les coûts récurrents séparés si
+     hébergement ou API, les options chiffrées séparément)
 4. **Geste commercial** optionnel et explicite : « demi-journée de cadrage offerte si
    signature » — uniquement si l'utilisateur le valide.
-5. Ce qui est **hors périmètre est nommé et chiffré « séparément » ou « ultérieurement »**
-   (TMA, API tierces, alertes, lot N+1) — jamais passé sous silence.
+5. Ce qui est **hors périmètre se nomme et se chiffre à part**, comme le veut
+   `{sections.modalites-de-facturation-et-de-perimetre}` (TMA, API tierces, alertes, lot N+1) —
+   jamais passé sous silence.
 6. **Deux montants comparés disent ce que chacun comprend** : rubrique « Compris : … · Non compris : … ·
    Conséquence : … » (D-114 (a) du 02/11/2026). Le 19/10/2026, 224 € contre 320 € comptaient le pare-feu d'un seul côté,
    et 6 relectures ne l'ont pas relevé.

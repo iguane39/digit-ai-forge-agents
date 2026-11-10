@@ -14,7 +14,7 @@ description: >
   proposition commerciale (→ digit-ai-propale), pour l'auditer avant envoi
   (→ digit-ai-propale-review), ni pour un livrable hors charte Digit-AI (→ systeme-de-marque).
 metadata:
-  version: "2.7.0"
+  version: "2.8.0"
 ---
 
 # Digit-AI PowerPoint Skill
@@ -22,6 +22,15 @@ metadata:
 Encode les **règles de composition** des livrables PPTX Digit-AI (charte v2) et **consomme** les
 **valeurs** de marque là où elles vivent : chez l'émetteur.
 
+> **Journal du 2026-11-10 — v2.8.0 (campagne FA3, décisions R-58 du 10/11/2026 sur les retours du 09/11).**
+> Neuf sujets, chacun avec son contrôle au self-test (C12 à C20) : TF-2326 le prérequis pptxgenjs se vérifie
+> (`verifier-prerequis.mjs`) ; TF-2355 la sortie de `lire-marque.mjs` est documentée telle qu'elle est ;
+> TF-2354 les polices du poste sont vérifiées et le texte du PDF est lu pour les mots doublés ; TF-2328 les espaces
+> insécables se posent sur le fichier ; TF-2368 langue, en-tête de tableau et formes décoratives ;
+> TF-2371 le style de tableau tranché entre dans la charte ; TF-2374 une grille par famille de pages sœurs, pas de
+> barre latérale ; TF-2377 un SVG se rend avec ses dégradés ou se refuse ; TF-2379 le cadrage est exigé avant de
+> générer.
+>
 > **Journal du 2026-10-01 — v2.7.0 (TF-1502, décision humaine D-37 (a)).** L'export par
 > PowerPoint entre dans le skill (étape 7). Un produit le réécrivait en 9 scripts maison :
 > 8 appelaient `Quit()` sur l'instance que l'utilisateur avait ouverte, et aucun ne contrôlait
@@ -79,7 +88,7 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
 0. **Cadrer avant de générer** (TF-1383) — pour toute présentation remise à un commanditaire (enjeu
    fort au sens du § 6 de la fiche de conception), jamais pour un brouillon de travail interne. Une
    présentation remise conforme à ses oracles a été refusée à 9 demandes dont 5 sur le vocabulaire
-   du lecteur : la fiche, remplie après la remise, n'avait rien fixé. Trois gestes, avant toute
+   du lecteur : la fiche, remplie après la remise, n'avait rien fixé. Quatre gestes (a à c pour une présentation remise, d pour tout deck, brouillon compris), avant toute
    génération, avec les outils du pilot `digit-ai-factory` (chemin : `<racine des forges>/digit-ai-factory/`) :
 
    ```bash
@@ -96,10 +105,53 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    c. **Validation humaine** de la fiche quand l'enjeu est fort, avant l'étape 1. Le vocabulaire fixé
       par la fiche alimente le LEXIQUE.json que lira S5 à l'étape 8.
 
+   d. **Fichier de cadrage de la communication (TF-2379)** — audience, décision attendue, contexte, objection
+      attendue, écrit à l'étape 1 de `digit-ai-communication` (gabarit `../digit-ai-communication/references/gabarit-cadrage.md`),
+      **présent et complet avant de générer**, brouillon compris :
+
+      ```bash
+      node ../digit-ai-communication/scripts/verifier-cadrage.mjs <fichier de cadrage>.md
+      ```
+
+      Exit 0 ⇒ générer. Exit 1 ou 2 ⇒ **ne pas générer** : une session qui suppose l'audience produit un deck que
+      tous les oracles laissent passer et que l'humain refuse (deux retours de contenu en un jour sur un même deck,
+      le 17/09/2026). Pour un support de formation, le fichier porte aussi le public réel de chaque module.
+
    Sans pilot joignable : le dire à la restitution, ne pas déclarer le cadrage fait.
 1. **Charger le système de marque** — `node scripts/lire-marque.mjs` (options ci-dessus).
-   Sortie JSON : les jetons par thème, les polices et les cotes, déjà convertis pour
-   pptxgenjs (hexadécimal **sans dièse**, pouces depuis les px à 96 px/pouce, face de police).
+   Sortie JSON : les jetons par thème, les polices et les cotes, convertis pour pptxgenjs (hexadécimal
+   **sans dièse**, pouces depuis les px à 96 px/pouce, face de police). Chaque clé de **couleur** de
+   `usages_pptx` rend un **objet** `{theme, jeton, pptx}` : à pptxgenjs on passe `usages_pptx.<clé>.pptx`,
+   jamais l'objet (« colorStr.replace is not a function », constaté le 16/09/2026). Les clés de police
+   rendent la **face** (une chaîne), `filet_epaisseur_pouces` un **nombre** (TF-2355). Forme de la sortie,
+   tenue égale à la sortie réelle par le self-test (C12) :
+
+   ```json
+   {
+     "usages_pptx": {
+       "fond_contenu": { "theme": "clair", "jeton": "--bg", "pptx": "<hex sans dièse>" },
+       "encre_contenu": { "theme": "clair", "jeton": "--ink", "pptx": "<hex sans dièse>" },
+       "encre_faible_contenu": { "theme": "clair", "jeton": "--muted", "pptx": "<hex sans dièse>" },
+       "trait_contenu": { "theme": "clair", "jeton": "--line", "pptx": "<hex sans dièse>" },
+       "surface_carte": { "theme": "clair", "jeton": "--card", "pptx": "<hex sans dièse>" },
+       "accent_filets": { "theme": "clair", "jeton": "--blue", "pptx": "<hex sans dièse>" },
+       "fond_couverture": { "theme": "sombre", "jeton": "--bg", "pptx": "<hex sans dièse>" },
+       "encre_couverture": { "theme": "sombre", "jeton": "--ink", "pptx": "<hex sans dièse>" },
+       "encre_faible_couverture": { "theme": "sombre", "jeton": "--muted", "pptx": "<hex sans dièse>" },
+       "trait_couverture": { "theme": "sombre", "jeton": "--line", "pptx": "<hex sans dièse>" },
+       "accent_couverture": { "theme": "sombre", "jeton": "--blue", "pptx": "<hex sans dièse>" },
+       "police_titre": "<face de police>",
+       "police_corps": "<face de police>",
+       "police_mono": "<face de police>",
+       "filet_epaisseur_pouces": 0
+     }
+   }
+   ```
+
+   Le champ `polices_poste` dit, pour chaque police, si elle est **installée** au poste (TF-2354) :
+   `installee: false` ⇒ PowerPoint substituera une autre face en silence et l'export PDF peut répéter le
+   dernier mot de chaque ligne coupée ; installer la police avant de rendre, ou donner la liste du poste de
+   rendu par `--polices-installees=<liste>`. `--exiger-polices` fait de l'absence un exit 2.
    **Exit 2 ⇒ s'arrêter et rendre la main**, en citant le message du lecteur.
 2. Charger `references/charte.md` — table de correspondance **jeton → usage PowerPoint**,
    règles de composition, dimensions — **toujours**.
@@ -109,8 +161,19 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    + photo d'habillage), illustrations sur **≈ 1 slide de contenu sur 2** (jamais intercalaire,
    sommaire, prix). Sélection par tags, préparation via `prepare_images.py` (webp→PNG, coins
    arrondis sans cadre), placement **contain-fit** (ratio préservé, jamais d'étirement).
+5 bis. **Vérifier que pptxgenjs se résout** (TF-2326), dans le dossier du script de construction :
+
+   ```bash
+   node scripts/verifier-prerequis.mjs --dossier <dossier du script de construction>
+   ```
+
+   **Exit 2** : le module ne se résout pas depuis ce dossier, un script de construction y sortirait en code 1
+   sans rien dire. La sortie donne la commande (`npm install pptxgenjs@…`, à exécuter dans ce dossier). Une
+   installation globale ne suffit pas : un `import` ne consulte ni la racine globale de npm ni `NODE_PATH`.
 6. Construire le PPTX avec pptxgenjs, **en n'écrivant que des valeurs venues de l'étape 1** :
    aucune couleur ni police littérale dans le script de génération — les lire depuis le JSON.
+   **Poser la langue** : `lang: 'fr-FR'` dans les options de chaque `addText` et de chaque cellule d'`addTable` (TF-2368), sinon pptxgenjs
+   déclare `en-US` ; l'étape 6 quater le contrôle.
    **Nommer le pied de page et la pagination** avec l'option `objectName` de pptxgenjs, exactement
    « Pied de page » et « Pagination » : pptxgenjs ne sait pas écrire les espaces réservés `ftr` et
    `sldNum` que la règle S4 de l'étape 8 exige, et l'étape 6 bis les pose à partir de ces noms.
@@ -123,7 +186,35 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    Chaque forme nommée « Pied de page » ou « Pagination » devient l'espace réservé `ftr` ou `sldNum` ;
    sa position, son texte et sa mise en forme ne changent pas. Le deck d'entrée n'est jamais modifié et
    une sortie existante jamais écrasée. **Exit 1** : aucune forme ne porte ces noms, le script de
-   génération doit les nommer. L'étape 7 prend le deck avec pieds en entrée.
+   génération doit les nommer. Les étapes 6 ter et 7 prennent le deck avec pieds en entrée.
+6 ter. **Poser les espaces insécables** (TF-2328), sur le fichier produit :
+
+   ```bash
+   python scripts/poser-insecables.py <deck>.pptx --out <deck avec insécables>.pptx
+   ```
+
+   La règle S8 de l'étape 8 avertit sur chaque espace ordinaire devant `: ; ! ?`, dans `« »`, entre un nom
+   et son numéro (« chapitre 4 »), entre un mois et son année. Relevé le 09/11/2026 : le texte source portait
+   U+00A0, le PPTX brut une espace ordinaire. Mesure du 10/11/2026 : pptxgenjs 3.12.0 et 4.0.1 **conservent**
+   U+00A0 (texte simple, passages, tableau, forme, notes) ; la perte vient d'un traitement du texte avant
+   l'écriture (`\s`, `trim`, NFKC en JavaScript, lecture non UTF-8). Le script applique la table de S8 au
+   fichier, quelle que soit la cause : chaque espace trouvée devient U+00A0, un second passage ne change rien,
+   le deck d'entrée n'est jamais modifié, une sortie existante jamais écrasée. L'espace fine U+202F est aussi
+   admise par S8 si le texte source la porte. L'étape 7 prend le deck de sortie en entrée.
+6 quater. **Langue, en-tête de tableau, formes décoratives** (TF-2368), sur le fichier produit :
+
+   ```bash
+   python scripts/accessibilite-deck.py <deck>.pptx                    # contrôle seul : exit 1 si constat
+   python scripts/accessibilite-deck.py <deck>.pptx --out <deck conforme>.pptx   # corrige, puis recontrôle la sortie
+   ```
+
+   pptxgenjs déclare `lang="en-US"` sur chaque passage tant que le script de génération ne passe pas
+   `lang: 'fr-FR'` dans les options de chaque `addText` : un lecteur d'écran lit alors le français avec une voix
+   anglaise (« Toujours français », `references/charte.md` § 7). Le contrôle lit la langue de chaque passage, la
+   déclaration de la première ligne d'un tableau comme en-tête (`firstRow`) et le marquage décoratif des formes
+   sans texte (bandeaux, filets). `--out` pose fr-FR, `firstRow="1"` et la marque décorative, jamais sur le deck
+   d'entrée ; une **image sans texte alternatif** reste un constat : c'est un choix de l'auteur. Un passage
+   volontairement étranger se remet à la main après `--out`.
 7. **Exporter par PowerPoint**, jamais par un script maison : le PPTX ressort avec ses polices
    embarquées, et le PDF sert la passe QA et la remise.
 
@@ -143,11 +234,21 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    deck pptxgenjs part sans polices embarquées, et la restitution le dit.
    `--instance-neuve` refuse de travailler dans un PowerPoint déjà ouvert, pour un export sans
    surveillance ; `--deja-exporte` assainit seul un deck exporté ailleurs.
-8. **Passe QA finale (obligatoire)** — deux temps, l'oracle d'abord :
+
+   **Lire le texte du PDF** (TF-2354) : `python scripts/controler-mots-doubles.py <deck à livrer>.pdf`.
+   Sans la police exigée, l'export répète le dernier mot de chaque ligne coupée, ce que les oracles du
+   PPTX ne voient pas. **Exit 1** : des mots doublés ; vérifier `polices_poste` (étape 1), corriger,
+   ré-exporter, ne jamais livrer.
+8. **Passe QA finale (obligatoire)** — trois temps, la géométrie et l'oracle d'abord :
 
    ```bash
+   python scripts/controler-grilles.py <deck.pptx> --familles '{"<famille>": [<n° des diapositives sœurs>]}'
    node ../quality-oracles/scripts/oracle-charte-pptx-semantique.mjs <deck.pptx> --mesurer
    ```
+
+   `controler-grilles.py` (TF-2374) refuse une barre latérale accolée à un bloc, et une page sœur qui
+   suit une autre grille que sa famille (`references/layouts.md`) ; sans `--familles`, il ne joue que les
+   barres latérales et le dit.
 
    L'oracle vit dans le skill voisin quality-oracles, sous scripts/oracle-charte-pptx-semantique.mjs :
    S1 bijection sommaire ↔ intercalaires, S2 kicker, S3 logos, S4 footer + pagination, S5
@@ -205,8 +306,11 @@ Exemple : `Digit-AI - Propal Client-F - L0-L3 - 20260422h.pptx`
 
 ## Outillage
 
-Création from-scratch : **pptxgenjs (Node.js)**, installé globalement. Aucun outil de
-manipulation XML directe n'est livré avec ce skill (cf. « Non livré »).
+Création from-scratch : **pptxgenjs (Node.js)**, à installer dans le dossier de travail du deck : le
+module n'est ni livré avec ce skill ni présent globalement sur le poste (mesuré le 09/11/2026 :
+`npm root -g` ne le contient pas). `node scripts/verifier-prerequis.mjs` (étape 5 bis) dit s'il se
+résout et donne la commande d'installation. Aucun outil de manipulation XML directe n'est livré avec
+ce skill (cf. « Non livré »).
 
 **Dépendance Python** : les deux scripts d'images (`scripts/fetch_drive_assets.py`,
 `scripts/prepare_images.py`) importent **Pillow** (`PIL`) — validation d'image et dimensions
@@ -239,8 +343,19 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   du support « diapositives » en JSON, convertis pour pptxgenjs. Exit 2 avec message nommant le
   dossier exploré ou le jeton manquant. Fixtures : `fixtures/marque-valide` (verte, valeurs
   attendues dans `attendu.json`) et `fixtures/marque-sans-blue` (rouge, exit 2). Node, sans dépendance.
+  Rend aussi `polices_poste` (TF-2354) : la police est-elle installée au poste, par le registre de
+  Windows ou `fc-list`.
+- `scripts/verifier-prerequis.mjs` — **l'étape 5 bis** (TF-2326) : pptxgenjs se résout-il depuis le
+  dossier du script de construction ? Exit 0 résolu (version et chemin), exit 2 sinon, avec la commande
+  d'installation. N'installe rien. Node, sans dépendance.
+- `scripts/controler-mots-doubles.py` — **la lecture du PDF de l'étape 7** (TF-2354) : mots doublés dans
+  une ligne, ou fin de ligne répétée en tête de la suivante. Exit 0 propre, 1 doublons, 2 PDF illisible ou
+  aucun lecteur (PyMuPDF, pypdf, `pdftotext`). Fixtures : `fixtures/pdf/` (saine, doublée).
 - `scripts/fetch_drive_assets.py` — liste / cherche par tag / télécharge / valide des images d'un dossier Drive public (raccourcis `images`, `logos`, `profils` ; webp reconnu). **Requiert Pillow.**
-- `scripts/prepare_images.py` — prépare pour embarquement PPTX : transcodage webp/gif→PNG, coins arrondis (masque alpha, **sans cadre**), calcul contain-fit, manifest JSON. **Requiert Pillow.**
+- `scripts/prepare_images.py` — prépare pour embarquement PPTX : transcodage webp/gif→PNG, coins arrondis (masque alpha, **sans cadre**), calcul contain-fit, manifest JSON. **Requiert Pillow.** Rend un **SVG** par un navigateur (dégradés appliqués, facteur 3, rognage à la boîte non transparente ; Playwright et Chrome, Edge ou Chromium) et **refuse avec un message** (exit 2) tout format qu'il ne rend pas fidèlement : `references/drive-assets.md` § 4 (TF-2377). Fixtures : `fixtures/svg/`.
+- `scripts/poser-insecables.py` — **l'étape 6 ter** (TF-2328) : pose U+00A0 sur le fichier produit selon la table de S8 ; idempotent, le deck d'entrée n'est jamais modifié. Python standard, sans dépendance. Exit 0 traité, 2 usage ou sortie existante.
+- `scripts/accessibilite-deck.py` — **l'étape 6 quater** (TF-2368) : langue fr-FR de chaque passage, première ligne de tableau déclarée en-tête, formes sans texte marquées décoratives ; contrôle seul, ou `--out` pour corriger. Une image sans texte alternatif reste un constat. Python standard. Fixture : `fixtures/accessibilite/`.
+- `scripts/controler-grilles.py` — **la passe QA de l'étape 8** (TF-2374) : barre latérale accolée à un bloc, grille unique par famille de pages sœurs (`--familles`). Python standard. Fixtures : `fixtures/grilles/`.
 - `scripts/poser-pieds-de-page.py` — **l'étape 6 bis** : pose les espaces réservés `ftr` et `sldNum`
   que pptxgenjs n'émet pas, sur les formes nommées « Pied de page » et « Pagination ». Python
   standard, sans dépendance. Exit 0 posé, 1 aucune forme nommée, 2 usage ou sortie existante.
@@ -261,7 +376,10 @@ moment exact où le charger — charger tout d'avance coûte du contexte pour ri
   réel par PowerPoint sur demande (C8, `--essai-powerpoint`, jamais si PowerPoint tourne), pieds de
   page d'un vrai deck pptxgenjs, remède joué (C9), commandes de l'étape 0 rejouées sur une fiche
   remplie et une fiche vide (C10), aide des scripts Python sous console cp1252 et refus de `--png`
-  sur un dossier existant (C11). Les
+  sur un dossier existant (C11), documentation de `lire-marque.mjs` égale à sa sortie (C12), prérequis
+  pptxgenjs (C13), polices du poste et mots doublés du PDF (C14), espaces insécables (C15), langue, en-tête de
+  tableau et formes décoratives (C16), style de tableau de la charte (C17), grilles et barres latérales (C18),
+  rendu ou refus d'un SVG (C19), fichier de cadrage exigé avant de générer (C20). Les
   deux polices sources fausses de C7 sortent de `fixtures/export/gen-source-defectueuse.py`.
 
 ## Non livré (constat daté du 2026-09-11, TF-1022)
@@ -313,6 +431,8 @@ le renvoi est retiré du workflow, le manque est déclaré.
 - **Illustrations : ≈ 1 slide de contenu sur 2**, jamais sur intercalaire, sommaire, ni
   prix/investissement. La couverture porte logo Digit-AI + logo client + une photo d'habillage.
   La slide interlocuteurs porte ses photos de profil (hors de ce rythme).
+- **Jamais de barre latérale accolée à un bloc**, et **une seule grille par famille de pages sœurs**
+  (`references/layouts.md`, TF-2374) : la hiérarchie passe par le titre de carte, la surface et le filet.
 - **Passe QA finale non négociable** : l'oracle de charte sémantique d'abord (S1-S7, dont
   le **lexique du destinataire** sur textes et notes), puis rasteriser + inspecter chaque slide
   (image déformée / hors zone / encadrée, **texte qui déborde d'un encart ou de la slide**, zones

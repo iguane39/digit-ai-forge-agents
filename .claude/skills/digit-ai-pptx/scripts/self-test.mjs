@@ -54,6 +54,34 @@
 //   C11 — le skill sur un poste Windows sans LibreOffice (TF-1386) : l'aide des scripts Python sort sous une
 //        console cp1252 (un script qui imprime une flèche sans forcer l'UTF-8 y échoue : le détecteur voit le
 //        défaut), et `--png` de l'export refuse un dossier existant et la combinaison avec --deja-exporte.
+//   C12 — la documentation de la sortie de lire-marque.mjs égale sa sortie (TF-2355) : le bloc json de SKILL.md
+//        est confronté, par sa forme, à la sortie réelle sur la fixture verte ; une clé documentée comme une
+//        chaîne et rendue comme un objet, ou une clé non documentée, est vue.
+//   C13 — le prérequis pptxgenjs se vérifie (TF-2326) : `scripts/verifier-prerequis.mjs` rend exit 2 et la
+//        commande d'installation sur un dossier sans module ou avec le module seulement dans NODE_PATH, exit 0
+//        sur un dossier qui le porte ; SKILL.md ne déclare plus le module « installé globalement ».
+//   C14 — les polices du poste et les mots doublés du PDF (TF-2354) : `lire-marque.mjs` relève une police absente
+//        (`--polices-installees`, `--exiger-polices`), `scripts/controler-mots-doubles.py` refuse le PDF dont
+//        le dernier mot de chaque ligne coupée est répété et laisse passer le PDF sain.
+//   C15 — l'espace insécable se pose sur le fichier produit (TF-2328) : le deck de jeu de typographie fait avertir S8
+//        six fois ; `scripts/poser-insecables.py` joué, S8 n'avertit plus ; idempotent, entrée intacte, sortie
+//        existante jamais écrasée, deck déjà conforme inchangé.
+//   C16 — la langue, l'en-tête de tableau et les formes décoratives (TF-2368) : un vrai deck de pptxgenjs 4.0.1, écrit
+//        comme avant ce lot, rend 9 passages en en-US, 1 tableau sans firstRow et 2 formes non marquées ;
+//        `scripts/accessibilite-deck.py --out` les corrige et le recontrôle passe ; chaque altération du vert
+//        (langue, en-tête, marque) est refusée pour sa règle.
+//   C17 — le style d'un tableau de contenu, tranché par le porteur (D-44 (a)), est écrit en usage au § 9 de la
+//        charte (TF-2371) : la décision, les trois clés rendues qui la portent, aucune couleur littérale ; chaque
+//        altération du réel (clé retirée, valeur écrite, sous-titre retiré) est vue.
+//   C18 — une grille par famille de pages sœurs, aucune barre latérale accolée (TF-2374) : `scripts/controler-grilles.py`
+//        sur deux decks de pptxgenjs 4.0.1, le vert passe, le rouge est refusé pour 6 barres latérales et pour la
+//        page 2 qui suit une autre grille (cartes de 1,62 po, bandeau qui saute de 0,36 po) ; `references/layouts.md`
+//        porte les deux règles.
+//   C19 — un SVG se rend par un navigateur qui applique les dégradés, rogné à la boîte, ou se refuse (TF-2377) :
+//        le SVG de jeu à dégradé rend 960 x 360 px aux deux teintes du dégradé ; sans moteur, ressource externe,
+//        dimensions inconnues ou format ai, eps, pdf, emf : exit 2, message, rien d'écrit.
+//   C20 — le fichier de cadrage de la communication est exigé avant de générer (TF-2379) : SKILL.md prescrit
+//        `verifier-cadrage.mjs` du skill voisin à l'étape 0 ; l'exemple rempli passe, le gabarit vide est refusé.
 //   C8 — sur demande (--essai-powerpoint) : l'essai réel par PowerPoint, joué seulement si AUCUN
 //        processus PowerPoint ne tourne, et avec --instance-neuve. L'instance lancée doit être
 //        quittée, le PPTX et le PDF écrits. Sans l'option, ou si PowerPoint tourne : non joué, dit.
@@ -107,6 +135,15 @@ const NON_JUGE = [
   "C9 joue le remède sur un deck de jeu produit par pptxgenjs 4.0.1 : que PowerPoint ouvre sans réserve un espace réservé posé ainsi, sans correspondance dans un gabarit, n'est pas prouvé par ce contrôle",
   "C10 prouve que les commandes prescrites distinguent une fiche remplie d'une fiche vide ; que l'agent remplisse réellement la fiche avant de générer, et que le lecteur y soit juste défini, n'est jugé par aucun contrôle de ce self-test",
   "C11 ne tire aucune image : la capture par PowerPoint (--png) ne se prouve que par un essai réel, sur un poste où PowerPoint est installé, jamais par ce self-test sans PowerPoint",
+  "C12 compare la FORME (clés et types) du bloc documenté à la sortie : il ne dit rien des valeurs, ni de la prose qui entoure le bloc",
+  "C13 prouve la règle de résolution sur des dossiers neufs et un module factice : que la version éprouvée de pptxgenjs s'installe sans réseau n'est pas jugé ici",
+  "C14 : la détection des polices du poste (registre Windows, fc-list) n'est prouvée que par sa liste injectée ; que le poste réel soit lu juste n'est pas jugé. Les PDF de jeu sont synthétiques : un PDF réel de PowerPoint à police substituée n'est pas rejoué",
+  "C15 pose l'insécable selon la table de S8 : une espace ordinaire que la table ne couvre pas (guillemets droits, trait d'union) reste ordinaire, et le placement réel des coupures de ligne reste une mesure de rendu",
+  "C16 juge la déclaration de langue, de la première ligne d'un tableau et des formes sans texte : ni la justesse d'un texte alternatif, ni l'ordre de lecture, ni la langue d'un passage volontairement étranger",
+  "C17 juge le texte du § 9 de la charte : que le style de tableau prescrit soit celui que le porteur voulait relève de la décision D-44, pas de ce contrôle",
+  "C18 compare la géométrie des cartes et du bandeau entre les pages d'une famille DÉCLARÉE (--familles) et cherche les barres fines accolées ; une famille non déclarée, ou une barre posée autrement qu'en forme fine, n'est pas vue",
+  "C19 prouve le rendu du SVG de jeu à deux teintes ; un SVG réel plus riche (filtres, texte vivant dont la police manque au poste) n'est pas rejoué, et fetch_drive_assets.py ne télécharge toujours que des rasters",
+  "C20 prouve que la commande prescrite distingue un cadrage complet d'un gabarit vide ; que l'agent le remplisse avec les faits du cas, et qu'ils soient justes, n'est jugé par aucun contrôle",
   "C8 n'est joué que sur demande, et jamais quand PowerPoint tourne : sans lui, le chemin COM réel n'est prouvé par aucun contrôle de ce self-test",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
@@ -786,6 +823,444 @@ async function essaiPowerPoint() {
   }
 }
 
+// ------------------------------- C12 : la documentation de la sortie de lire-marque.mjs égale sa sortie (TF-2355)
+// Le fait (retour du 16/09/2026, seq 152) : SKILL.md annonçait l'hexadécimal sans dièse par clé `usages_pptx`,
+// l'outil rendait un objet {theme, jeton, pptx} ; le script qui passait la clé à pptxgenjs échouait. La
+// documentation et la sortie vivaient à deux endroits sans fixture qui les compare. Le bloc json de SKILL.md
+// est confronté, par la FORME (clés et types, jamais les valeurs), à la sortie réelle sur la fixture verte.
+function formeDe(v) {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return 'array';
+  if (typeof v === 'object') return Object.fromEntries(Object.keys(v).sort().map((k) => [k, formeDe(v[k])]));
+  return typeof v;
+}
+function ecartsDeForme(doc, reel, chemin = 'usages_pptx') {
+  const ecarts = [];
+  if (typeof doc === 'string' || typeof reel === 'string') {
+    if (doc !== reel) ecarts.push(`${chemin} : documenté ${JSON.stringify(doc)}, rendu ${JSON.stringify(reel)}`);
+    return ecarts;
+  }
+  for (const k of new Set([...Object.keys(doc), ...Object.keys(reel)])) {
+    if (!(k in doc)) ecarts.push(`${chemin}.${k} : rendu par l'outil, absent de la documentation`);
+    else if (!(k in reel)) ecarts.push(`${chemin}.${k} : documenté, non rendu par l'outil`);
+    else ecarts.push(...ecartsDeForme(doc[k], reel[k], `${chemin}.${k}`));
+  }
+  return ecarts;
+}
+function blocUsagesDoc(skillMd) {
+  const bloc = [...skillMd.matchAll(/```json\r?\n([\s\S]*?)```/g)].map((m) => m[1]).find((b) => b.includes('"usages_pptx"'));
+  if (!bloc) return null;
+  try { return JSON.parse(bloc); } catch { return undefined; }
+}
+function verifierDocSortie() {
+  const findings = [];
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  const doc = blocUsagesDoc(skillMd);
+  if (doc === null) return ["C12 : SKILL.md ne porte plus de bloc json « usages_pptx » : la sortie de lire-marque.mjs n'est plus documentée"];
+  if (doc === undefined) return ['C12 : le bloc json « usages_pptx » de SKILL.md est illisible'];
+  const v = jouerLecteur(path.join(FIX, 'marque-valide'), 'dtcg');
+  let lu;
+  try { lu = JSON.parse(v.out); } catch { return ['C12 : lire-marque.mjs sur la fixture verte rend une sortie illisible']; }
+  const formeReelle = formeDe(lu.usages_pptx);
+  const ecarts = ecartsDeForme(formeDe(doc.usages_pptx), formeReelle);
+  findings.push(...ecarts.map((e) => `C12 sens vert : ${e}`));
+  // sens ROUGE 1 : une clé de couleur documentée comme une chaîne (l'ancienne promesse) doit être vue
+  const ancienne = JSON.parse(JSON.stringify(doc));
+  ancienne.usages_pptx.fond_contenu = '<hex sans dièse>';
+  if (!ecartsDeForme(formeDe(ancienne.usages_pptx), formeReelle).some((e) => e.includes('fond_contenu'))) findings.push("fixture-rouge — C12 est AVEUGLE : une clé de couleur documentée comme une chaîne, rendue comme un objet, n'a pas été vue");
+  // sens ROUGE 2 : une clé retirée de la documentation doit être vue
+  const retiree = JSON.parse(JSON.stringify(doc));
+  delete retiree.usages_pptx.police_mono;
+  if (!ecartsDeForme(formeDe(retiree.usages_pptx), formeReelle).some((e) => e.includes('police_mono'))) findings.push('fixture-rouge — C12 est AVEUGLE : une clé rendue et non documentée n\'a pas été vue');
+  // la sortie réelle porte le champ des polices du poste que SKILL.md décrit
+  if (!lu.polices_poste || !lu.polices_poste.polices) findings.push('C12 : lire-marque.mjs ne rend plus `polices_poste`, que SKILL.md décrit');
+  if (!skillMd.includes('polices_poste')) findings.push('C12 : SKILL.md ne décrit plus `polices_poste`');
+  return findings;
+}
+
+// ----------------------------------------- C13 : le prérequis pptxgenjs se vérifie (TF-2326), sans installation
+// Le fait (09/11/2026) : SKILL.md déclarait pptxgenjs « installé globalement » ; `npm root -g` ne le contient pas,
+// et le script de construction sortait en 1 sans message. Trois cas joués sur des dossiers neufs : module absent
+// (exit 2, commande d'installation donnée), module présent localement (exit 0), module présent seulement
+// ailleurs, dans NODE_PATH (exit 2 : un import ne le voit pas).
+function verifierPrerequis() {
+  const findings = [];
+  const script = path.join(SKILL_DIR, 'scripts', 'verifier-prerequis.mjs');
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  if (!skillMd.includes('scripts/verifier-prerequis.mjs')) findings.push("C13 : SKILL.md ne prescrit plus `scripts/verifier-prerequis.mjs` (étape 5 bis)");
+  const declareInstalle = (t) => /\binstallée?s? globalement/i.test(t);
+  if (declareInstalle(skillMd)) findings.push('C13 : SKILL.md déclare de nouveau pptxgenjs « installé globalement », ce que `npm root -g` ne confirme pas');
+  if (!declareInstalle('pptxgenjs (Node.js), installé globalement.')) findings.push('fixture-rouge — C13 est AVEUGLE : la déclaration « installé globalement » plantée n\'a pas été détectée');
+  if (!fs.existsSync(script)) return { findings: [...findings, 'C13 : scripts/verifier-prerequis.mjs absent'], note: null };
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'prerequis-'));
+  try {
+    const jouer = (d, env = {}) => {
+      const r = spawnSync(process.execPath, [script, '--dossier', d, '--sans-global'], { encoding: 'utf8', timeout: 30000, env: { ...process.env, NODE_PATH: '', ...env } });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* le code le dit */ }
+      return { code: r.status, j, err: r.stderr || '' };
+    };
+    const faux = (racine) => {
+      const m = path.join(racine, 'node_modules', 'pptxgenjs');
+      fs.mkdirSync(m, { recursive: true });
+      fs.writeFileSync(path.join(m, 'package.json'), JSON.stringify({ name: 'pptxgenjs', version: '0.0.0-fixture', main: 'index.js' }));
+      fs.writeFileSync(path.join(m, 'index.js'), 'module.exports = {};\n');
+    };
+    const vide = path.join(dossier, 'vide'); fs.mkdirSync(vide);
+    const ailleurs = path.join(dossier, 'ailleurs'); fs.mkdirSync(ailleurs);
+    const pose = path.join(dossier, 'pose'); fs.mkdirSync(pose);
+    const modulesAilleurs = path.join(dossier, 'modules-ailleurs'); fs.mkdirSync(modulesAilleurs);
+    faux(pose);
+    faux(path.join(dossier, 'hors-chaine'));
+    fs.renameSync(path.join(dossier, 'hors-chaine', 'node_modules', 'pptxgenjs'), path.join(modulesAilleurs, 'pptxgenjs'));
+    // sens ROUGE : module absent
+    const r1 = jouer(vide);
+    if (r1.code !== 2 || !r1.j || r1.j.etat !== 'non-resolu') findings.push(`C13 sens rouge : un dossier sans module doit rendre exit 2 « non-resolu » (code ${r1.code})`);
+    else if (!/^npm install pptxgenjs@\d/.test(r1.j.commande_d_installation || '') || !r1.err.includes('npm install pptxgenjs')) findings.push("C13 sens rouge : l'échec ne donne pas la commande d'installation");
+    // sens ROUGE : module seulement dans NODE_PATH, hors de la chaîne de résolution du dossier
+    const r2 = jouer(ailleurs, { NODE_PATH: modulesAilleurs });
+    if (r2.code !== 2 || !r2.j || !(r2.j.ailleurs || []).some((a) => a.ou === 'NODE_PATH')) findings.push(`C13 sens rouge : un module présent seulement dans NODE_PATH ne doit pas compter comme résolu (code ${r2.code})`);
+    // sens VERT : module présent sous le dossier de travail
+    const r3 = jouer(pose);
+    if (r3.code !== 0 || !r3.j || r3.j.etat !== 'resolu' || r3.j.version !== '0.0.0-fixture') findings.push(`C13 sens vert : un module posé dans le dossier de travail doit être résolu avec sa version (code ${r3.code})`);
+  } finally {
+    try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  // l'état RÉEL de CE poste, dit au bilan : un poste sans le module n'est pas un skill défaillant, mais la commande est donnée
+  const live = spawnSync(process.execPath, [script, '--dossier', process.cwd(), '--sans-global'], { encoding: 'utf8', timeout: 30000 });
+  let lj = null; try { lj = JSON.parse(live.stdout); } catch { /* illisible */ }
+  const note = lj && lj.etat === 'resolu'
+    ? `C13 poste : pptxgenjs ${lj.version} se résout depuis ${process.cwd().split(path.sep).join('/')}`
+    : `C13 poste : pptxgenjs NE se résout PAS depuis ${process.cwd().split(path.sep).join('/')} — ${lj ? lj.commande_d_installation : 'état illisible'}, à exécuter dans le dossier de travail du deck`;
+  return { findings, note };
+}
+
+// ----------------------- C14 : polices du poste et mots doublés du PDF (TF-2354), sans PowerPoint
+// Le fait (16/09/2026) : sans la police exigée, PowerPoint substitue une autre face et l'export PDF répète le
+// dernier mot de chaque ligne coupée ; ni oracle-pptx ni oracle-charte-pptx-semantique ne le voyaient.
+function verifierPolicesEtDoublons() {
+  const findings = [];
+  const lire = (extra) => {
+    const r = spawnSync(process.execPath, [LECTEUR, `--marque=${path.join(FIX, 'marque-valide')}`, '--compact', ...extra], { encoding: 'utf8', timeout: 60000 });
+    let j = null; try { j = JSON.parse(r.stdout); } catch { /* le code le dit */ }
+    return { code: r.status, j, err: r.stderr || '' };
+  };
+  // sens ROUGE : le poste (liste donnée) n'installe aucune des trois polices de la fixture
+  const rouge = lire(['--polices-installees=Autre Police,Encore Une']);
+  const manq = rouge.j && rouge.j.polices_poste ? rouge.j.polices_poste.manquantes : null;
+  if (rouge.code !== 0 || !manq || manq.length !== 3) findings.push(`C14 sens rouge : trois polices absentes du poste doivent être relevées (code ${rouge.code}, manquantes ${manq ? manq.length : '?'})`);
+  if (!/non installée/.test(rouge.err)) findings.push("C14 sens rouge : l'absence d'une police n'est pas signalée sur stderr");
+  const strict = lire(['--polices-installees=Autre Police', '--exiger-polices']);
+  if (strict.code !== 2) findings.push(`C14 sens rouge : --exiger-polices doit rendre exit 2 quand une police manque (code ${strict.code})`);
+  // sens VERT : les trois polices installées (une graisse dans le nom du poste : la famille s'en déduit)
+  const vert = lire(['--polices-installees=Fixture Titre Bold,Fixture Corps Regular,Fixture Mono', '--exiger-polices']);
+  if (vert.code !== 0 || !vert.j || !vert.j.polices_poste || vert.j.polices_poste.manquantes.length !== 0) findings.push(`C14 sens vert : trois polices installées doivent passer, même avec --exiger-polices (code ${vert.code}, manquantes ${vert.j?.polices_poste?.manquantes?.length ?? '?'})`);
+  // détection réelle du poste : le champ existe, sa valeur dépend du poste (non_juge)
+  const reel = lire([]);
+  const pp = reel.j && reel.j.polices_poste;
+  if (!pp || !pp.methode || !Object.values(pp.polices || {}).every((x) => x.installee === null || typeof x.installee === 'boolean')) findings.push('C14 : la détection des polices du poste ne rend pas un booléen (ou null) par police');
+  // mots doublés
+  const py = pythonQuiRepond();
+  const script = path.join(SKILL_DIR, 'scripts', 'controler-mots-doubles.py');
+  const sain = path.join(FIX, 'pdf', 'export-sain.pdf');
+  const double = path.join(FIX, 'pdf', 'export-mots-doubles.pdf');
+  if (!py || !fs.existsSync(script) || !fs.existsSync(sain) || !fs.existsSync(double)) {
+    return { joue: false, findings, motif: 'C14 (mots doublés) NON JOUÉE : python, controler-mots-doubles.py ou les PDF de jeu introuvables' };
+  }
+  const jouer = (f, extra = []) => {
+    const r = spawnSync(py[0], [...py.slice(1), script, f, ...extra], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONUTF8: '1' } });
+    let j = null; try { j = JSON.parse(r.stdout); } catch { /* le code le dit */ }
+    return { code: r.status, j };
+  };
+  const s = jouer(sain);
+  if (s.code === 2 && /aucun lecteur/.test((s.j && s.j.motif) || '')) return { joue: false, findings, motif: 'C14 (mots doublés) NON JOUÉE : aucun lecteur de PDF (PyMuPDF, pypdf, pdftotext)' };
+  if (s.code !== 0) findings.push(`C14 sens vert : un PDF sans doublon (« nous nous » admis) doit passer (code ${s.code}, doublons ${s.j ? s.j.doublons : '?'})`);
+  const d = jouer(double);
+  if (d.code !== 1 || !d.j || d.j.doublons < 3) findings.push(`C14 sens rouge : le PDF où le dernier mot de chaque ligne coupée est répété doit être refusé (code ${d.code}, doublons ${d.j ? d.j.doublons : '?'})`);
+  else if (!d.j.constats.some((c) => c.type.startsWith('fin de ligne'))) findings.push('C14 sens rouge : la répétition de la fin de ligne en tête de la suivante (le défaut du 16/09) n\'est pas relevée');
+  const t = jouer(double, ['--tolerance', '99']);
+  if (t.code !== 0) findings.push(`C14 : --tolerance 99 doit admettre les doublons (code ${t.code})`);
+  const a = jouer(path.join(FIX, 'pdf', 'absent.pdf'));
+  if (a.code !== 2) findings.push(`C14 : un PDF absent doit rendre exit 2 (code ${a.code})`);
+  return { joue: true, findings };
+}
+
+// ------------------------------- C15 : l'espace insécable se pose sur le fichier produit (TF-2328), S8 le juge
+// Le fait (09/11/2026) : le texte source portait U+00A0, le PPTX brut une espace ordinaire, et S8 avertissait à
+// chaque deck. Sens ROUGE : le deck de jeu de typographie (quality-oracles) fait avertir S8 six fois ; sens VERT :
+// après `scripts/poser-insecables.py`, S8 n'avertit plus, un second passage ne change rien, le deck d'entrée reste
+// intact, une sortie existante n'est jamais écrasée, et un deck déjà conforme ne bouge pas.
+function verifierInsecables() {
+  const py = pythonQuiRepond();
+  const oracle = path.join(SKILL_DIR, '..', 'quality-oracles', 'scripts', 'oracle-charte-pptx-semantique.mjs');
+  const rouge = path.join(SKILL_DIR, '..', 'quality-oracles', 'fixtures', 'charte-pptx-typographie-red.pptx');
+  const vert = path.join(SKILL_DIR, '..', 'quality-oracles', 'fixtures', 'charte-pptx-typographie-green.pptx');
+  const script = path.join(SKILL_DIR, 'scripts', 'poser-insecables.py');
+  const absents = [['python', py], ['oracle-charte-pptx-semantique', fs.existsSync(oracle)], ['deck de typographie rouge', fs.existsSync(rouge)], ['deck de typographie vert', fs.existsSync(vert)], ['poser-insecables.py', fs.existsSync(script)]].filter(([, v]) => !v).map(([k]) => k);
+  const findings = [];
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  if (!skillMd.includes('scripts/poser-insecables.py')) findings.push('C15 : SKILL.md ne prescrit plus `scripts/poser-insecables.py` (étape 6 ter)');
+  if (absents.length) return { joue: false, findings, motif: `C15 NON JOUÉE (script rejoué) : ${absents.join(', ')} introuvable(s)` };
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'insecables-'));
+  try {
+    const poser = (...a) => {
+      const r = spawnSync(py[0], [...py.slice(1), script, ...a], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONUTF8: '1' } });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* le code le dit */ }
+      return { code: r.status, j };
+    };
+    const s8 = (f) => {
+      const r = spawnSync(process.execPath, [oracle, f], { encoding: 'utf8', timeout: 120000 });
+      try { return (JSON.parse(r.stdout).findings || []).filter((x) => /^S8 /.test(x.msg)); } catch { return null; }
+    };
+    const avant = s8(rouge);
+    if (!avant || avant.length !== 1) findings.push(`C15 sens rouge : le deck de jeu doit faire avertir S8 une fois (constat par diapositive), reçu ${avant ? avant.length : '?'}`);
+    else if (!/6 espace\(s\) ordinaire/.test(avant[0].msg)) findings.push(`C15 sens rouge : S8 doit compter 6 espaces ordinaires sur le deck de jeu — ${avant[0].msg.slice(0, 90)}`);
+    const octets = fs.readFileSync(rouge);
+    const sortie = path.join(dossier, 'pose.pptx');
+    const r1 = poser(rouge, '--out', sortie);
+    if (r1.code !== 0 || !r1.j || r1.j.espaces_insecables_posees !== 6) findings.push(`C15 sens vert : poser-insecables doit poser 6 espaces (code ${r1.code}, posées ${r1.j ? r1.j.espaces_insecables_posees : '?'})`);
+    else {
+      const apres = s8(sortie);
+      if (!apres || apres.length) findings.push(`C15 sens vert : après la post-passe, S8 avertit encore (${apres ? apres.length : '?'} constat(s))`);
+      const deuxieme = path.join(dossier, 'deuxieme.pptx');
+      const r2 = poser(sortie, '--out', deuxieme);
+      if (r2.code !== 0 || !r2.j || r2.j.espaces_insecables_posees !== 0) findings.push(`C15 : un second passage doit ne rien changer (posées ${r2.j ? r2.j.espaces_insecables_posees : '?'})`);
+    }
+    if (!octets.equals(fs.readFileSync(rouge))) findings.push("C15 : le deck d'entrée a été modifié — le script doit écrire ailleurs");
+    const r3 = poser(rouge, '--out', sortie);
+    if (r3.code !== 2) findings.push(`C15 : une sortie existante est écrasée ou mal refusée (code ${r3.code}, attendu 2)`);
+    const r4 = poser(vert, '--out', path.join(dossier, 'vert.pptx'));
+    if (r4.code !== 0 || !r4.j || r4.j.espaces_insecables_posees !== 0) findings.push(`C15 : un deck déjà conforme ne doit rien recevoir (posées ${r4.j ? r4.j.espaces_insecables_posees : '?'})`);
+  } finally {
+    try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return { joue: true, findings };
+}
+
+// ----------------- C16 : la langue, l'en-tête de tableau et les formes décoratives d'un deck (TF-2368)
+// Le fait (seq 393) : 154 passages en anglais, un tableau sans en-tête et trois formes non marquées avaient
+// passé oracle-pptx et oracle-charte-pptx-semantique. Le deck de jeu est un VRAI sortie de pptxgenjs 4.0.1,
+// écrit comme l'écrivait le workflow avant TF-2368 (fixtures/accessibilite/gen-deck.mjs). Sens ROUGE : 9
+// passages en en-US, 1 tableau sans firstRow, 2 formes sans marque. Sens VERT : `--out`, le remède prescrit à
+// l'étape 6 quater, JOUÉ, rend un deck que le contrôle laisse passer. Puis une altération du vert à la fois.
+function verifierAccessibilite() {
+  const py = pythonQuiRepond();
+  const script = path.join(SKILL_DIR, 'scripts', 'accessibilite-deck.py');
+  const brut = path.join(FIX, 'accessibilite', 'deck-brut.pptx');
+  const findings = [];
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  if (!skillMd.includes('scripts/accessibilite-deck.py')) findings.push("C16 : SKILL.md ne prescrit plus `scripts/accessibilite-deck.py` (étape 6 quater)");
+  if (!/lang: 'fr-FR'/.test(skillMd)) findings.push("C16 : SKILL.md ne prescrit plus `lang: 'fr-FR'` dans le script de génération (étape 6)");
+  const absents = [['python', py], ['accessibilite-deck.py', fs.existsSync(script)], ['deck-brut.pptx', fs.existsSync(brut)]].filter(([, v]) => !v).map(([k]) => k);
+  if (absents.length) return { joue: false, findings, motif: `C16 NON JOUÉE (script rejoué) : ${absents.join(', ')} introuvable(s)` };
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'accessibilite-'));
+  try {
+    const jouer = (...a) => {
+      const r = spawnSync(py[0], [...py.slice(1), script, ...a], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONUTF8: '1' } });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* le code le dit */ }
+      return { code: r.status, j };
+    };
+    const rouge = jouer(brut);
+    const c = rouge.j && rouge.j.constats_avant;
+    if (rouge.code !== 1 || !c || c.L !== 9 || c.T !== 1 || c.D !== 2) findings.push(`C16 sens rouge : le deck brut doit rendre 9 passages en anglais, 1 tableau sans en-tête, 2 formes sans marque (code ${rouge.code}, reçu ${JSON.stringify(c)})`);
+    const octets = fs.readFileSync(brut);
+    const vert = path.join(dossier, 'vert.pptx');
+    const r1 = jouer(brut, '--out', vert);
+    if (r1.code !== 0 || !r1.j || r1.j.verdict !== 'PASS') findings.push(`C16 sens vert : le remède --out doit rendre un deck conforme (code ${r1.code}, restants ${JSON.stringify(r1.j && r1.j.constats_restants)})`);
+    else {
+      const re = jouer(vert);
+      if (re.code !== 0) findings.push(`C16 sens vert : le deck corrigé, recontrôlé à part, doit passer (code ${re.code})`);
+      // une altération du vert à la fois, refaite avec python (zip) : chacune doit rougir pour sa raison
+      const altere = (nom, regexp, remplacement, attendu) => {
+        const sortie = path.join(dossier, `${nom}.pptx`);
+        const r = spawnSync(py[0], [...py.slice(1), '-c', [
+          'import re, sys, zipfile',
+          'src, dst, motif, rempl = sys.argv[1:5]',
+          'with zipfile.ZipFile(src) as zi, zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zo:',
+          '    for info in zi.infolist():',
+          '        d = zi.read(info.filename)',
+          '        if info.filename == "ppt/slides/slide1.xml":',
+          '            d, n = re.subn(motif, rempl, d.decode("utf-8"), count=1); d = d.encode("utf-8")',
+          '            assert n == 1, "altération sans effet"',
+          '        zo.writestr(info, d)',
+        ].join('\n'), vert, sortie, regexp, remplacement], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONUTF8: '1' } });
+        if (r.status !== 0) { findings.push(`C16 : l'altération « ${nom} » a échoué à s'écrire — ${(r.stderr || '').trim().split('\n').pop()}`); return; }
+        const x = jouer(sortie);
+        if (x.code !== 1 || !x.j || !(x.j.constats || []).some((k) => k.regle === attendu)) findings.push(`C16 sens rouge : « ${nom} » doit rougir pour la règle ${attendu} (code ${x.code}, reçu ${JSON.stringify(x.j && x.j.constats_avant)})`);
+      };
+      altere('langue-anglaise', 'lang="fr-FR"', 'lang="en-US"', 'L');
+      altere('sans-entete', 'firstRow="1"', 'firstRow="0"', 'T');
+      altere('forme-non-marquee', '<a:extLst><a:ext uri="\\{C183D7F6-B498-43B3-948B-1728B52AA6E4\\}">.*?</a:extLst>', '', 'D');
+    }
+    if (!octets.equals(fs.readFileSync(brut))) findings.push("C16 : le deck d'entrée a été modifié — le script doit écrire ailleurs");
+    const r2 = jouer(brut, '--out', vert);
+    if (r2.code !== 2) findings.push(`C16 : une sortie existante est écrasée ou mal refusée (code ${r2.code}, attendu 2)`);
+  } finally {
+    try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return { joue: true, findings };
+}
+
+// --------------------- C17 : le style de tableau tranché par le porteur est écrit en usage dans la charte (TF-2371)
+// Le fait (D-44 (a), 29/09/2026) : la charte demandait de faire trancher le style d'un tableau avant emploi ; la
+// décision tranchée (en-tête sur le fond et l'encre du thème sombre, formes à recopier en accent) n'est pas
+// redescendue dans la charte. Le contrôle exige, au § 9, la décision, les clés rendues qui la portent, et aucune
+// couleur littérale (la valeur vit chez l'émetteur).
+const CLES_TABLEAU = ['fond_couverture', 'encre_couverture', 'accent_filets'];
+function verifierCharteTableau(texte, etiquette) {
+  const m = texte.match(/^## 9 [^\n]*\n([\s\S]*)$/m);
+  if (!m) return [`${etiquette} — section « 9 » absente de la charte`];
+  const sec = m[1];
+  const t = sec.match(/### Style d'un tableau de contenu[^\n]*\n([\s\S]*?)(?=^### |(?![\s\S]))/m);
+  if (!t) return [`${etiquette} — § 9 : le sous-titre « Style d'un tableau de contenu » est absent : la décision tranchée n'est pas écrite`];
+  const findings = [];
+  if (!/D-44/.test(t[0])) findings.push(`${etiquette} — § 9 : la décision D-44 n'est pas citée`);
+  for (const cle of CLES_TABLEAU) if (!t[1].includes(`\`${cle}\``)) findings.push(`${etiquette} — § 9 : la clé \`${cle}\` n'est pas nommée dans le style de tableau`);
+  for (const h of t[1].matchAll(/#[0-9A-Fa-f]{6}\b/g)) findings.push(`${etiquette} — § 9 : couleur en dur ${h[0]} dans le style de tableau (écrire la clé, jamais la valeur)`);
+  const non = sec.split('### Ce que la charte ne fixe pas encore')[1] || '';
+  if (/style de tableau/i.test(non)) findings.push(`${etiquette} — § 9 : le style de tableau figure encore parmi ce que la charte ne fixe pas`);
+  return findings;
+}
+function verifierCharte() {
+  const f = path.join(SKILL_DIR, 'references', 'charte.md');
+  if (!fs.existsSync(f)) return ['C17 : references/charte.md absent'];
+  const texte = fs.readFileSync(f, 'utf8');
+  const findings = verifierCharteTableau(texte, 'references/charte.md').map((x) => 'C17 ' + x);
+  // sens ROUGE : trois altérations du réel, une à la fois
+  const sansClef = texte.replace('encre `accent_filets`', 'encre d\'accent');
+  if (!verifierCharteTableau(sansClef, 'fixture-rouge').some((x) => x.includes('accent_filets'))) findings.push('fixture-rouge — C17 est AVEUGLE : une clé retirée du style de tableau n\'a pas été vue');
+  const avecValeur = texte.replace('fond `fond_couverture`', 'fond #0F172A');
+  if (!verifierCharteTableau(avecValeur, 'fixture-rouge').some((x) => x.includes('couleur en dur'))) findings.push('fixture-rouge — C17 est AVEUGLE : une couleur littérale dans le style de tableau n\'a pas été vue');
+  const sansDecision = texte.replace(/### Style d'un tableau de contenu[^\n]*\n/, '### Autre sujet\n');
+  if (!verifierCharteTableau(sansDecision, 'fixture-rouge').some((x) => x.includes('absent'))) findings.push('fixture-rouge — C17 est AVEUGLE : la décision retirée de la charte n\'a pas été vue');
+  return findings;
+}
+
+// ------------------- C18 : une grille par famille de pages sœurs, aucune barre latérale accolée (TF-2374)
+// Le fait (seq 444, 29/09/2026) : 5 pages d'évolution sur 2 grilles (cartes de 1,98 puis 1,62 po, bandeau qui
+// saute de 0,36 po) et 9 barres latérales, sans règle ni oracle. Deux decks de jeu, VRAIS sortis de pptxgenjs
+// 4.0.1 (fixtures/grilles/gen-decks.mjs) : le vert (une grille, aucune barre) passe, le rouge (la page 2 sur
+// une autre grille, 6 barres sur les pages 2 et 3) est refusé pour chaque règle.
+function verifierGrilles() {
+  const py = pythonQuiRepond();
+  const script = path.join(SKILL_DIR, 'scripts', 'controler-grilles.py');
+  const vert = path.join(FIX, 'grilles', 'grille-verte.pptx');
+  const rouge = path.join(FIX, 'grilles', 'grille-rouge.pptx');
+  const findings = [];
+  const layouts = fs.readFileSync(path.join(SKILL_DIR, 'references', 'layouts.md'), 'utf8');
+  if (!/Une grille par famille de pages sœurs/.test(layouts)) findings.push('C18 : references/layouts.md ne fixe plus la grille unique par famille de pages sœurs');
+  if (!/Barre latérale accolée à un bloc : proscrite/.test(layouts)) findings.push('C18 : references/layouts.md ne proscrit plus la barre latérale accolée à un bloc');
+  const absents = [['python', py], ['controler-grilles.py', fs.existsSync(script)], ['grille-verte.pptx', fs.existsSync(vert)], ['grille-rouge.pptx', fs.existsSync(rouge)]].filter(([, v]) => !v).map(([k]) => k);
+  if (absents.length) return { joue: false, findings, motif: `C18 NON JOUÉE (script rejoué) : ${absents.join(', ')} introuvable(s)` };
+  const jouer = (deck, familles) => {
+    const r = spawnSync(py[0], [...py.slice(1), script, deck, ...(familles ? ['--familles', JSON.stringify(familles)] : [])], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONUTF8: '1' } });
+    let j = null; try { j = JSON.parse(r.stdout); } catch { /* le code le dit */ }
+    return { code: r.status, j };
+  };
+  const famille = { evolution: [1, 2, 3] };
+  const v = jouer(vert, famille);
+  if (v.code !== 0 || !v.j || v.j.nombre !== 0) findings.push(`C18 sens vert : trois pages sœurs sur une grille, sans barre, doivent passer (code ${v.code}, constats ${v.j ? v.j.nombre : '?'})`);
+  const r = jouer(rouge, famille);
+  const regles = r.j ? r.j.constats.map((c) => c.regle) : [];
+  if (r.code !== 1 || regles.filter((x) => x === 'B').length !== 6) findings.push(`C18 sens rouge : le deck rouge doit rendre 6 barres latérales (pages 2 et 3, trois cartes chacune) — code ${r.code}, B = ${regles.filter((x) => x === 'B').length}`);
+  const g = r.j ? r.j.constats.filter((c) => c.regle === 'G') : [];
+  if (g.length !== 1 || g[0].diapositive !== 2 || !/1\.62/.test(g[0].constat) || !/saut de 0\.36/.test(g[0].constat)) findings.push(`C18 sens rouge : la page 2 doit être refusée pour sa grille (cartes de 1,62 po, bandeau qui saute de 0,36 po) — ${g.length} constat(s) G, ${g[0] ? g[0].constat.slice(0, 100) : ''}`);
+  // sans --familles : seule la règle B joue, et le dit
+  const s = jouer(rouge, null);
+  if (s.code !== 1 || !s.j || s.j.constats.some((c) => c.regle === 'G') || !(s.j.non_juge || []).some((x) => /famille non d/.test(x))) findings.push('C18 : sans --familles, seule la règle des barres latérales doit jouer, et le non_juge doit le dire');
+  return { joue: true, findings };
+}
+
+// ------------------------- C19 : un SVG se rend par un moteur à dégradés, ou se refuse (TF-2377), jamais faux
+// Le fait (30/09/2026) : un logo à dégradé, rendu par un moteur qui ignore les dégradés, est sorti noir au lieu de
+// vert, sans erreur, et seul le regard sur le PNG l'a arrêté. Sens VERT : le SVG de jeu (dégradé de deux teintes
+// entre deux marges transparentes) rend un PNG rogné à la boîte (aucune marge) dont les deux extrémités portent
+// les deux teintes du dégradé. Sens ROUGE : sans moteur, une ressource externe, des dimensions inconnues, un
+// format ai : exit 2, message, rien d'écrit. Sans navigateur lançable au poste, le sens vert est dit NON JOUÉ.
+function verifierSvg() {
+  const py = pythonQuiRepond();
+  const script = path.join(SKILL_DIR, 'scripts', 'prepare_images.py');
+  const svg = path.join(FIX, 'svg', 'logo-degrade.svg');
+  const externe = path.join(FIX, 'svg', 'logo-ressource-externe.svg');
+  const findings = [];
+  const drive = fs.readFileSync(path.join(SKILL_DIR, 'references', 'drive-assets.md'), 'utf8');
+  if (!/Formats admis \(TF-2377\)/.test(drive)) findings.push('C19 : references/drive-assets.md ne dit plus les formats admis');
+  if (!/refusé avec un\s+message/.test(drive)) findings.push('C19 : references/drive-assets.md ne dit plus qu\'un autre format est refusé avec un message');
+  const absents = [['python', py], ['prepare_images.py', fs.existsSync(script)], ['logo-degrade.svg', fs.existsSync(svg)], ['logo-ressource-externe.svg', fs.existsSync(externe)]].filter(([, v]) => !v).map(([k]) => k);
+  if (absents.length) return { joue: false, findings, motif: `C19 NON JOUÉE : ${absents.join(', ')} introuvable(s)` };
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'svg-'));
+  try {
+    const jouer = (args, timeout = 240000) => spawnSync(py[0], [...py.slice(1), script, ...args], { encoding: 'utf8', timeout, env: { ...process.env, PYTHONUTF8: '1' } });
+    const sortie = (nom) => path.join(dossier, nom);
+    // refus : jouables sans navigateur
+    const r1 = jouer(['--to-png', svg, '-o', sortie('aucun.png'), '--moteur-svg', 'aucun']);
+    if (r1.status !== 2 || !/REFUS - aucun moteur/.test(r1.stderr) || fs.existsSync(sortie('aucun.png'))) findings.push(`C19 sens rouge : sans moteur, un SVG doit être refusé (exit 2, message, rien d'écrit) — code ${r1.status}, ${(r1.stderr || '').trim().slice(0, 100)}`);
+    const r2 = jouer(['--to-png', externe, '-o', sortie('externe.png')]);
+    if (r2.status !== 2 || !/ressource externe/.test(r2.stderr) || fs.existsSync(sortie('externe.png'))) findings.push(`C19 sens rouge : un SVG à ressource externe doit être refusé — code ${r2.status}, ${(r2.stderr || '').trim().slice(0, 100)}`);
+    const sansDim = path.join(dossier, 'sans-dimensions.svg');
+    fs.writeFileSync(sansDim, '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>\n', 'utf8');
+    const r3 = jouer(['--to-png', sansDim, '-o', sortie('sd.png')]);
+    if (r3.status !== 2 || !/dimensions sont inconnues/.test(r3.stderr)) findings.push(`C19 sens rouge : un SVG sans dimensions doit être refusé — code ${r3.status}, ${(r3.stderr || '').trim().slice(0, 100)}`);
+    for (const ext of ['.ai', '.eps', '.pdf', '.emf']) {
+      const f = path.join(dossier, `logo${ext}`);
+      fs.writeFileSync(f, 'x');
+      const r = jouer(['--to-png', f, '-o', sortie(`logo${ext}.png`)]);
+      if (r.status !== 2 || !/non rendu fidèlement|non rendu fidelement/.test(r.stderr) || !/Formats admis/.test(r.stderr)) findings.push(`C19 sens rouge : le format ${ext} doit être refusé avec la liste des formats admis — code ${r.status}`);
+    }
+    // sens vert : navigateur requis
+    const v = jouer(['--to-png', svg, '-o', sortie('rendu.png')]);
+    if (v.status === 2 && /aucun moteur de rendu SVG qui applique|aucun navigateur lançable|aucun navigateur lancable/.test(v.stderr)) {
+      return { joue: false, findings, motif: 'C19 (rendu du SVG) NON JOUÉ : aucun navigateur lançable par Playwright au poste ; les refus, eux, sont jugés' };
+    }
+    if (v.status !== 0 || !fs.existsSync(sortie('rendu.png'))) { findings.push(`C19 sens vert : le SVG de jeu doit être rendu (code ${v.status}) — ${(v.stderr || '').trim().slice(0, 140)}`); return { joue: true, findings }; }
+    const mesure = spawnSync(py[0], [...py.slice(1), '-c', [
+      'import json, sys',
+      'from PIL import Image',
+      'im = Image.open(sys.argv[1]).convert("RGBA")',
+      'w, h = im.size',
+      'print(json.dumps({"taille": [w, h], "boite": list(im.getchannel("A").getbbox() or []), "gauche": list(im.getpixel((int(w * 0.06), h // 2))), "droite": list(im.getpixel((int(w * 0.94), h // 2)))}))',
+    ].join('\n'), sortie('rendu.png')], { encoding: 'utf8', timeout: 60000, env: { ...process.env, PYTHONUTF8: '1' } });
+    let m = null; try { m = JSON.parse(mesure.stdout); } catch { /* le code le dit */ }
+    if (!m) { findings.push('C19 sens vert : le PNG rendu est illisible'); return { joue: true, findings }; }
+    if (m.taille[0] !== 960 || m.taille[1] !== 360) findings.push(`C19 sens vert : la boîte rognée du SVG de jeu (320 x 120 px, facteur 3) doit mesurer 960 x 360, reçu ${m.taille.join(' x ')}`);
+    if (m.boite[0] !== 0 || m.boite[1] !== 0 || m.boite[2] !== m.taille[0] || m.boite[3] !== m.taille[1]) findings.push(`C19 sens vert : le PNG n'est pas rogné à la boîte non transparente (boîte ${m.boite.join(',')})`);
+    const proche = (c, cible) => cible.every((v2, i) => Math.abs(c[i] - v2) <= 24);
+    if (!proche(m.gauche, [0, 136, 55])) findings.push(`C19 sens vert : l'extrémité gauche doit porter la teinte de départ du dégradé (0,136,55), reçu ${m.gauche.slice(0, 3).join(',')} — un moteur qui ignore le dégradé sort noir`);
+    if (!proche(m.droite, [113, 197, 158])) findings.push(`C19 sens vert : l'extrémité droite doit porter la teinte d'arrivée du dégradé (113,197,158), reçu ${m.droite.slice(0, 3).join(',')}`);
+  } finally {
+    try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
+  }
+  return { joue: true, findings };
+}
+
+// -------------------- C20 : le fichier de cadrage est exigé avant de générer (TF-2379), jugé par digit-ai-communication
+// Le fait (seq 224, 17/09/2026) : une session pouvait supposer l'audience, produire le deck et passer tous les
+// oracles ; deux retours humains de contenu en une journée sur le même deck. L'étape 0 exige désormais un fichier
+// de cadrage (audience, décision attendue, contexte, objection) jugé par `verifier-cadrage.mjs` du skill voisin.
+// Le contrôle joue la commande prescrite, telle qu'écrite dans SKILL.md : l'exemple rempli passe (exit 0), le gabarit
+// vide est refusé (exit 1), un fichier absent rend la main (exit 2).
+function verifierCadrageCommunication() {
+  const findings = [];
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  const commande = 'node ../digit-ai-communication/scripts/verifier-cadrage.mjs';
+  if (!skillMd.includes(commande)) findings.push(`C20 : l'étape 0 de SKILL.md ne prescrit plus « ${commande} » avant de générer`);
+  if (!/ne pas générer/i.test(skillMd)) findings.push("C20 : l'étape 0 de SKILL.md ne dit plus de ne pas générer sans cadrage complet");
+  const voisin = path.join(SKILL_DIR, '..', 'digit-ai-communication');
+  const verifieur = path.join(voisin, 'scripts', 'verifier-cadrage.mjs');
+  const exemple = path.join(voisin, 'references', 'exemple-cadrage.md');
+  const gabarit = path.join(voisin, 'references', 'gabarit-cadrage.md');
+  if (![verifieur, exemple, gabarit].every((f) => fs.existsSync(f))) {
+    return { joue: false, findings, motif: 'C20 jouée sur le texte seul, commande non rejouée : le skill voisin digit-ai-communication (verifier-cadrage.mjs, gabarit, exemple) est introuvable' };
+  }
+  const jouer = (f) => spawnSync(process.execPath, [verifieur, f], { encoding: 'utf8', timeout: 30000 }).status;
+  const v = jouer(exemple);
+  if (v !== 0) findings.push(`C20 sens vert : l'exemple de cadrage rempli doit autoriser la génération (exit ${v}, attendu 0)`);
+  const r = jouer(gabarit);
+  if (r !== 1) findings.push(`C20 sens rouge : le gabarit de cadrage vide ne doit pas autoriser la génération (exit ${r}, attendu 1)`);
+  const a = jouer(path.join(os.tmpdir(), 'cadrage-qui-n-existe-pas.md'));
+  if (a !== 2) findings.push(`C20 sens rouge : un fichier de cadrage absent doit rendre exit 2 (exit ${a})`);
+  return { joue: true, findings };
+}
+
 // ---------------------------------------------------------------- exécution
 const findings = [];
 const nonJuge = [...NON_JUGE];
@@ -883,6 +1358,29 @@ if (c11.joue) findings.push(...c11.findings); else nonJuge.push(c11.motif);
 const c10 = await verifierCadrage();
 findings.push(...c10.findings);
 if (!c10.joue) nonJuge.push(c10.motif);
+findings.push(...verifierDocSortie());
+const c13 = verifierPrerequis();
+findings.push(...c13.findings);
+if (c13.note) nonJuge.push(c13.note);
+const c14 = verifierPolicesEtDoublons();
+findings.push(...c14.findings);
+if (!c14.joue) nonJuge.push(c14.motif);
+const c15 = verifierInsecables();
+findings.push(...c15.findings);
+if (!c15.joue) nonJuge.push(c15.motif);
+const c16 = verifierAccessibilite();
+findings.push(...c16.findings);
+if (!c16.joue) nonJuge.push(c16.motif);
+findings.push(...verifierCharte());
+const c18 = verifierGrilles();
+findings.push(...c18.findings);
+if (!c18.joue) nonJuge.push(c18.motif);
+const c19 = verifierSvg();
+findings.push(...c19.findings);
+if (!c19.joue) nonJuge.push(c19.motif);
+const c20 = verifierCadrageCommunication();
+findings.push(...c20.findings);
+if (!c20.joue) nonJuge.push(c20.motif);
 // C8 — l'essai réel, sur demande seulement, et jamais quand PowerPoint tourne
 let c8 = { joue: false, motif: "C8 NON JOUÉE : l'essai réel par PowerPoint ne se joue que sur demande (--essai-powerpoint)" };
 if (args.includes('--essai-powerpoint')) c8 = await essaiPowerPoint();
@@ -908,6 +1406,15 @@ process.stdout.write(JSON.stringify({
     C9_pieds_de_page_pptxgenjs: c9.joue ? 'jouée' : 'NON jouée (oracle, deck de jeu ou python absents)',
     C11_poste_windows_sans_libreoffice: c11.joue ? 'jouée' : 'NON jouée (python absent)',
     C10_cadrage_amont: c10.joue ? 'jouée' : 'texte seul (pilot introuvable)',
+    C12_documentation_egale_sortie: 'jouée',
+    C13_prerequis_pptxgenjs: 'jouée',
+    C14_polices_poste_et_mots_doubles: c14.joue ? 'jouée' : 'polices jouées, mots doublés NON joués',
+    C15_espaces_insecables: c15.joue ? 'jouée' : 'texte seul (outils absents)',
+    C16_langue_entete_formes_decoratives: c16.joue ? 'jouée' : 'texte seul (python ou deck de jeu absents)',
+    C17_style_de_tableau_dans_la_charte: 'jouée',
+    C18_grilles_et_barres_laterales: c18.joue ? 'jouée' : 'texte seul (python ou decks de jeu absents)',
+    C19_svg_rendu_ou_refuse: c19.joue ? 'jouée' : 'refus joués, rendu du SVG NON joué (navigateur absent)',
+    C20_cadrage_exige_avant_de_generer: c20.joue ? 'jouée' : 'texte seul (skill voisin introuvable)',
     C8_essai_reel_powerpoint: c8.joue ? 'jouée' : 'NON jouée',
   },
   ...(c8.bilan ? { essai_powerpoint: c8.bilan } : {}),

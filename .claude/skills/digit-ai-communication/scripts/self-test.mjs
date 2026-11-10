@@ -36,7 +36,19 @@
 //        identifiant et ses bornes de longueur dans la prose, que chaque identifiant déclaré
 //        en prose existe au fichier, et que le plafond de hashtags soit le même.
 //
-// DOUBLE SENS. C1, C3 et C4 sont rejoués sur des FIXTURES ROUGES synthétiques : si une fixture
+//   C5 — le preset « Formation / atelier » porte ses deux exigences (TF-2315, TF-2317, 10/11/2026) : le cadrage
+//        par module (public réel, se suit-il seul, programme confronté à l'usage avant la lettre de la propale)
+//        et le contrat de trois pièces tirées d'un même fichier (support, kit du participant sans solution,
+//        fiche du formateur avec préparation, déroulé et durée par diapositive, solutions, questions orales,
+//        secours). Le fait : une formation d'une journée livrée en deux pièces, une note de support qui
+//        renvoie à un « kit formateur » inexistant, les solutions imprimées dans le kit du participant.
+//   C6 — le fichier de cadrage de l'étape 1 est jugé par `scripts/verifier-cadrage.mjs` (TF-2379, TF-2317) :
+//        l'exemple rempli passe, le gabarit vide est refusé, et chaque altération de l'exemple (une section
+//        retirée, un emplacement laissé entre accolades, un module sans réponse oui/non à « Se suit seul »,
+//        une formation sans tableau de public par module) est refusée pour sa raison. SKILL.md prescrit la
+//        commande à l'étape 1.
+//
+// DOUBLE SENS. C1, C3, C4, C5 et C6 sont rejoués sur des FIXTURES ROUGES synthétiques : si une fixture
 // rouge ne rougit pas, le contrôle correspondant est aveugle et le self-test échoue de
 // lui-même. La fixture VERTE est le skill réel.
 //
@@ -46,6 +58,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -184,6 +197,105 @@ function verifierContrats(prose, contratsTexte, etiquette) {
   }
   for (const id of declares) {
     if (!modeles[id]) findings.push(`${etiquette} — identifiant « ${id} » déclaré en prose, absent du fichier de contrats`);
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------- C5 : le preset formation (TF-2315, TF-2317)
+// Extrait la section « Formation / atelier — détail » et exige, clause par clause, ce que le contrat
+// de sortie dit : le cadrage par module et les trois pièces. Une clause est une expression que la
+// prose doit porter ; la retirer doit faire rougir le contrôle, pour cette clause.
+const CLAUSES_FORMATION = [
+  ['public réel', 'le cadrage ne demande plus le public réel de chaque module'],
+  ['se suit-il seul', 'le cadrage ne demande plus si un module se suit seul'],
+  ['lettre de la propale', "le programme n'est plus confronté à l'usage avant la lettre de la propale"],
+  ['trois pièces', 'le contrat ne fixe plus les trois pièces'],
+  ['même fichier de contenu', 'les pièces ne sortent plus du même fichier de contenu'],
+  ['kit du participant', 'le kit du participant a disparu du contrat'],
+  ['aucune solution', 'le kit du participant peut de nouveau porter les solutions'],
+  ['fiche du formateur', 'la fiche du formateur a disparu du contrat'],
+  ['préparation de la veille', 'la fiche du formateur ne porte plus la préparation de la veille'],
+  ['durée de chaque diapositive', 'la fiche du formateur ne porte plus le déroulé et la durée de chaque diapositive'],
+  ['solutions des exercices', 'la fiche du formateur ne porte plus les solutions des exercices'],
+  ['questions orales', 'la fiche du formateur ne porte plus les questions orales'],
+  ['plan de secours', 'la fiche du formateur ne porte plus le plan de secours'],
+];
+
+function sectionFormation(texte) {
+  const debut = texte.search(/^## Formation \/ atelier — détail/m);
+  if (debut < 0) return null;
+  const reste = texte.slice(debut);
+  const fin = reste.slice(3).search(/^## /m);
+  return fin < 0 ? reste : reste.slice(0, fin + 3);
+}
+
+function verifierFormation(texte, etiquette) {
+  const sec = sectionFormation(texte);
+  if (sec === null) return [`${etiquette} — section « Formation / atelier — détail » absente : le preset formation ne porte plus son contrat`];
+  const norm = sec.replace(/\s+/g, ' ');
+  return CLAUSES_FORMATION.filter(([clause]) => !norm.includes(clause)).map(([clause, sens]) => `${etiquette} — « ${clause} » absent de la section formation : ${sens}`);
+}
+
+// ---------------------------------------------------------------- C6 : le fichier de cadrage (TF-2379, TF-2317)
+const VERIFIEUR_CADRAGE = path.join(SKILL_DIR, 'scripts', 'verifier-cadrage.mjs');
+function jouerCadrage(fichier) {
+  const r = spawnSync(process.execPath, [VERIFIEUR_CADRAGE, fichier], { encoding: 'utf8', timeout: 30000 });
+  let j = null;
+  try { j = JSON.parse(r.stdout); } catch { /* rapport illisible : le code le dit */ }
+  return { code: r.status, verdict: j ? j.verdict : '?', findings: j ? j.findings : [] };
+}
+
+// Altérations de l'exemple rempli, une seule à la fois : [nom, fonction, fragment attendu au constat]
+const ALTERATIONS_CADRAGE = [
+  ['section « Objection attendue » retirée', (t) => t.replace(/## Objection attendue[\s\S]*?(?=## Public par module)/, ''), '« Objection attendue » absente'],
+  ['section « Audience » laissée vide', (t) => t.replace(/(## Audience\n\n)[\s\S]*?(?=\n## )/, '$1'), '« Audience » vide'],
+  ['emplacement laissé entre accolades', (t) => t.replace(/(## Contexte\n\n)[\s\S]*?(?=\n## )/, "$1{ce qui a précédé, l'enjeu, la contrainte}\n"), 'entre accolades'],
+  ['réponse tenue par « à définir »', (t) => t.replace(/(## Décision attendue\n\n)[\s\S]*?(?=\n## )/, '$1à définir\n'), 'tient lieu de réponse'],
+  ['formation sans tableau de public par module', (t) => t.replace(/## Public par module[\s\S]*$/, ''), 'section « Public par module » est exigée'],
+  ['« Se suit seul » sans oui ni non', (t) => t.replace('| oui |', '| peut-être |'), 'oui ou par non'],
+  ['ligne « livrable » retirée', (t) => t.replace(/^livrable : .*\n/m, ''), 'livrable'],
+];
+
+function verifierCadrageC6() {
+  const findings = [];
+  const prescrit = fs.existsSync(skillMdPath) ? fs.readFileSync(skillMdPath, 'utf8') : '';
+  if (!prescrit.includes('scripts/verifier-cadrage.mjs')) findings.push("C6 : SKILL.md ne prescrit plus `scripts/verifier-cadrage.mjs` à l'étape 1 (le cadrage n'est plus jugé)");
+  for (const mot of ['audience', 'décision attendue', 'contexte', 'objection attendue']) {
+    if (!prescrit.toLowerCase().includes(mot)) findings.push(`C6 : SKILL.md ne nomme plus « ${mot} » parmi les champs du cadrage`);
+  }
+  const exemple = path.join(SKILL_DIR, 'references', 'exemple-cadrage.md');
+  const gabarit = path.join(SKILL_DIR, 'references', 'gabarit-cadrage.md');
+  if (!fs.existsSync(VERIFIEUR_CADRAGE) || !fs.existsSync(exemple) || !fs.existsSync(gabarit)) {
+    findings.push("C6 : scripts/verifier-cadrage.mjs, references/exemple-cadrage.md ou references/gabarit-cadrage.md absent — le cadrage de l'étape 1 n'est plus jugé");
+    return findings;
+  }
+  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'cadrage-'));
+  try {
+    // sens VERT : l'exemple rempli passe ; le même cadrage d'un livrable qui n'est pas une formation passe sans tableau de public
+    const vert = jouerCadrage(exemple);
+    if (vert.code !== 0 || vert.verdict !== 'PASS') findings.push(`C6 sens vert : l'exemple rempli rend ${vert.verdict} (code ${vert.code}) — ${vert.findings.slice(0, 2).join(' · ')}`);
+    const texte = fs.readFileSync(exemple, 'utf8');
+    const copil = path.join(dossier, 'copil.md');
+    fs.writeFileSync(copil, texte.replace('livrable : formation', 'livrable : COPIL').replace(/## Public par module[\s\S]*$/, ''), 'utf8');
+    const v2 = jouerCadrage(copil);
+    if (v2.code !== 0) findings.push(`C6 sens vert : un cadrage de COPIL sans tableau de public par module doit passer (code ${v2.code}) — ${v2.findings.slice(0, 2).join(' · ')}`);
+    // sens ROUGE 1 : le gabarit vide est refusé
+    const g = jouerCadrage(gabarit);
+    if (g.code !== 1) findings.push(`C6 sens rouge : le gabarit vide doit être refusé (code ${g.code}, attendu 1)`);
+    // sens ROUGE 2 : chaque altération de l'exemple est refusée pour sa raison
+    ALTERATIONS_CADRAGE.forEach(([nom, alterer, attendu], i) => {
+      const f = path.join(dossier, `rouge-${i}.md`);
+      const alteree = alterer(texte);
+      if (alteree === texte) { findings.push(`C6 : l'altération « ${nom} » n'a rien changé à l'exemple — la fixture est cassée`); return; }
+      fs.writeFileSync(f, alteree, 'utf8');
+      const r = jouerCadrage(f);
+      if (r.code !== 1 || !r.findings.some((x) => x.includes(attendu))) findings.push(`C6 sens rouge : « ${nom} » n'est pas refusé pour sa raison (code ${r.code}, attendu 1 avec « ${attendu} ») — ${r.findings.slice(0, 2).join(' · ')}`);
+    });
+    // fichier absent : le script rend la main (exit 2), il ne conclut pas
+    const absent = jouerCadrage(path.join(dossier, 'inexistant.md'));
+    if (absent.code !== 2) findings.push(`C6 : un fichier de cadrage absent doit rendre exit 2 (code ${absent.code})`);
+  } finally {
+    try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
   }
   return findings;
 }
@@ -339,6 +451,32 @@ if (!fs.existsSync(contratsPath) || !fs.existsSync(presetsPath)) {
   }
 }
 
+// C5 — le preset formation : fixture VERTE (le preset réel), puis fixtures ROUGES (une clause retirée à la fois)
+let c5Jouee = false;
+if (!fs.existsSync(presetsPath)) {
+  nonJuge.push('C5 NON JOUÉE : references/presets-livrables.md introuvable.');
+} else {
+  c5Jouee = true;
+  const proseFormation = fs.readFileSync(presetsPath, 'utf8');
+  findings.push(...verifierFormation(proseFormation, 'digit-ai-communication/references/presets-livrables.md'));
+  const sec = sectionFormation(proseFormation);
+  if (sec !== null) {
+    for (const [clause] of CLAUSES_FORMATION) {
+      const mutant = proseFormation.replace(sec, () => sec.replace(/\s+/g, ' ').split(clause).join('XXX'));
+      const fr = verifierFormation(mutant, 'fixture-rouge-formation');
+      if (!(fr.length >= 1 && fr.some((x) => x.includes(`« ${clause} »`)))) {
+        findings.push(`fixture-rouge — C5 est AVEUGLE : la clause « ${clause} » retirée du preset formation n'a pas été détectée`);
+      }
+    }
+  }
+  if (!verifierFormation('# Fixture\n\n## Autre section\n\nrien\n', 'fixture-rouge-section').length) {
+    findings.push("fixture-rouge — C5 est AVEUGLE : un preset sans section « Formation / atelier — détail » n'a pas été détecté");
+  }
+}
+
+// C6 — le fichier de cadrage de l'étape 1
+findings.push(...verifierCadrageC6());
+
 // C2 — noms interdits
 const table = chargerTable();
 let c2Jouee = false;
@@ -372,7 +510,7 @@ if (!table) {
 }
 
 if (findings.length) verdict = 'FAIL';
-else if (!c2Jouee || !c3Jouee || !c4Jouee) verdict = 'SKIP';
+else if (!c2Jouee || !c3Jouee || !c4Jouee || !c5Jouee) verdict = 'SKIP';
 
 const code = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2;
 process.stdout.write(JSON.stringify({
@@ -384,6 +522,8 @@ process.stdout.write(JSON.stringify({
     C2_noms_interdits: c2Jouee ? 'jouée' : 'NON jouée (table absente)',
     C3_presets_reseau: c3Jouee ? 'jouée' : 'NON jouée (presets-livrables.md absent)',
     C4_contrats_publication: c4Jouee ? 'jouée' : 'NON jouée (contrats-publication.json ou presets-livrables.md absent)',
+    C5_preset_formation: c5Jouee ? 'jouée' : 'NON jouée (presets-livrables.md absent)',
+    C6_cadrage_etape_1: 'jouée',
   },
   verdict,
   findings,
