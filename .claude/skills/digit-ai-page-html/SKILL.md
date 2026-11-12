@@ -7,13 +7,19 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.46.0"
+  version: "1.46.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.46.1 (12/11/2026)** — **La recette du gabarit multi-bandes de `digit-ai-schemas` instancie le pied avec
+la signature de la fixture (TF-2458, campagne du 12/11/2026 dans la nuit, décision R-58 : exécutée).**
+`run_gabarit_multi_bandes` de `scripts/self_test.py` lit `{{ANNEE_REF}}` et `{{MARQUE_FOOTER}}` dans
+`digit-ai-schemas/fixtures/signature` par `lire-signature.mjs`, sans valeur de marque en dur ; recette 845/847
+avant, 847/847 après. Recette seule : le comportement du skill ne change pas.
 
 **1.46.0 (12/11/2026)** — **`render_page.py` reconnaît une mire de connexion à son action, plus à la seule présence d'un champ mot de passe
 (TF-2433, retour RT-21 du 10/11/2026 ; campagne du 12/11/2026, décision R-58 : exécutée).** L'écran connecté de changement de mot de passe (champs
