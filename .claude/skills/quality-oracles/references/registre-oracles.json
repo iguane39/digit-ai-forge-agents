@@ -1,5 +1,5 @@
 {
- "version": "2.58.0",
+ "version": "2.59.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {forges}=racine des forges soeurs (TF-1334, 26/09/2026 : FORGE_ROOT, sinon le parent du depot digit-ai-forge-agents, sinon — copie installee — le parent du pilot resolu ; racine introuvable ou script absent de ce poste → SKIP motive, jamais un FAIL muet — scripts/lib/forges.mjs ; plus aucun chemin absolu dans une commande, controle a double sens dans scripts/self-test.mjs), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste. | 2.36.0 (TF-1539, 12/10/2026) : content_patterns RESTREINT une entree qui declare aussi ext (intersection, plus union) — run-oracles.mjs. Sept entrees portaient les deux cles : cinq (slop, tokens, mobile, visuels, mouvement) ne jugent plus que les pages portant « Donnees de demonstration », une (filtres de colonne) que les pages portant <table, comme leur doc l'ecrit ; la septieme, Calculs / chiffres (plancher non desactivable), perd sa cle content_patterns, sans effet jusque-la puisque l'extension couvrait deja tout md/html, pour que son routage ne bouge pas. Un fichier dont le contenu n'a pas pu etre lu reste route. Fixture a double sens a la recette (self-test.mjs, TF-1539). | 2.37.0 (TF-1234, 12/10/2026) : injection du skill plan-d-amelioration (forge-agents) — son verbe juger, oracle-plan-d-amelioration.mjs (PA1-PA14), est inscrit au statut partiel : aucune mission reelle ne l'a encore exerce, fixtures fictives. Paire rouge/verte au manifeste. | 2.38.0 (TF-1392, TF-1394, 13/10/2026) : oracle-judge gagne la rubrique lecteur vise (--lecteur-vise) — 2 relecteurs jouent le lecteur de la fiche, constat retenu s ils s accordent, desaccord trace, question repetee remontee a l humain, motif changerait un fait sans fait cite signale ; SIGNALEMENT, exit 0 (decisions D-2 (a) et D-3 (a)). Paire judge-lecteur-vise au manifeste, lectures enregistrees, aucun appel de modele. | 2.39.0 (TF-1687, 14/10/2026) : deux oracles livres le 14/10 entrent au registre, en invocation explicite (ext vide, aucun declencheur) — oracle-exploitabilite de forge-design (X0-X5, ecran d application au volume reel, --etat-connexion) et la regle O18 d oracle-ops de forge-ops (--revisions-actives, revisions actives d une application Container Apps). La recette (self-test.mjs, TF-1687) joue la COMMANDE du registre, placeholders resolus, sur la paire rouge/verte de chaque forge (forge absente : SKIP motive) et verifie qu aucune page ni capture n est routee d office. | 2.43.0 (TF-1831, 16/10/2026) : oracle-boucle-l99 du skill prompt-analyzer-l99 (B1-B7) entre au registre en invocation explicite (ext vide) : il juge le journal du mode L99 boucle — arbitre fige, relecteur aveugle, defauts recomptes, garde de longueur, arret conforme, borne, score affiche mesure. Paire rouge/verte au manifeste ; la rouge est la forme d avant la regle, l auteur qui se renote et affiche un score projete.",
  "oracles": [
   {
@@ -71,6 +71,32 @@
    "note": "ext VIDE À DESSEIN : ce contrôle COMPARE deux fichiers, et rien dans une extension ne dit de quelle source une page sort — l invocation est explicite, l appelant nomme la source. Le seuil par défaut est 1.0 ; --seuil sous 1.0 reste possible mais la DÉROGATION est écrite au non_juge de chaque exécution, jamais silencieuse. Vaut pour toute chaîne qui transforme une source en page : un gabarit rendu, une synthèse publiée, un rapport d audit."
   },
   {
+   "domaine": "Complétude d'une cible HTML ou PDF par rapport à une source de données (chaînes perdues à la génération)",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skillsroot}/digit-ai-page-html/scripts/check_completude.py",
+    "{file}",
+    "--source-donnees",
+    "{source}",
+    "--output",
+    "json"
+   ],
+   "checklist": "Invocation explicite avec --source-donnees <source> (JSON, ou module Python lu SANS être exécuté) et une cible HTML ou PDF, comparées par CHAÎNES : chaque chaîne de la source (feuille d'un JSON, littéral d'un module) doit se retrouver dans le texte visible de la cible, espaces, casse, apostrophes, traits d'union de fin de ligne et balisage normalisés ; sinon CHAÎNE MANQUANTE, nommée avec son chemin dans la source. --ignorer-cles id,classe déclare les clés qui ne s'affichent pas (identifiant, classe, adresse) ; --min-chars N écarte les chaînes trop courtes. Aucune chaîne en source : SKIP motivé. --source et --source-donnees s'excluent.",
+   "statut": "ok",
+   "commande": "digit-ai-page-html/scripts/check_completude.py <page.html|kit.pdf> --source-donnees <contenu.json|module.py> [--ignorer-cles id,href] [--min-chars 2] [--output json]",
+   "non_juge": [
+    "la PRÉSENCE n'est ni l'ordre ni la multiplicité : une chaîne est retrouvée si elle figure quelque part dans la cible ; deux chaînes identiques en source et une seule en cible, ou des sections permutées, passent",
+    "la normalisation renforce le PASS : une différence de casse ou de ponctuation de fin de ligne ne se voit pas",
+    "toute chaîne de la source est crue affichée : un identifiant, une classe, une adresse ou une clé de traduction apparaît comme MANQUANTE tant qu'elle n'est pas déclarée à ignorer ; l'inverse (du texte de page qui ne vient pas de la source) n'est jamais jugé",
+    "le texte d'un PDF est celui de sa couche texte : un texte rendu en image ou en tracé, ou un PDF scanné, sera compté manquant",
+    "la complétude n'est pas la fidélité : le contrôle dit que le texte de la source est dans la cible, pas que la mise en page, les montants ou les nombres calculés par le générateur sont justes"
+   ],
+   "provenance": "TF-2362 (retour RA-212 du lot du produit marketing, seq 294, 10/11/2026) — le kit apporteurs sort d'un module Python de données et se livre en PDF ; aucun oracle ne disait si le PDF portait tout le texte de sa source, et un contrôle ad hoc (K10) a dû s'écrire. Fixtures : digit-ai-page-html/fixtures/completude-donnees-verte.html et completude-donnees-amputee.html, source completude-donnees.json (la rouge perd l'élément sections[1].items[2])",
+   "note": "TF-2399 (12/11/2026, décision R-58) : livré le 10/11/2026 par digit-ai-page-html 1.45.0, inscrit ici ; INVOCATION EXPLICITE (ext vide) comme le mode --source : la source de données ne se devine pas depuis la cible, aucun lanceur ne peut la fournir. Recette : bloc TF-2399 de scripts/self-test.mjs et entrée completude-source-donnees du manifest."
+  },
+  {
    "domaine": "Format imprimé demandé (nombre de pages dans les conditions du lecteur)",
    "ext": [],
    "type": "cli",
@@ -93,6 +119,39 @@
     "LA LISIBILITÉ d'une page qui tient en réduisant le corps du texte n'est pas jugée : tenir sur une page à 6 pt est un PASS ici"
    ],
    "note": "ext VIDE À DESSEIN : rien dans une extension ne dit qu'une page porte une demande de format ; l'appelant la déclare en invoquant l'oracle (une demande « une page A4 » du message humain, une exigence de format d'un cahier des charges). Un .html ordinaire n'a aucune raison d'être compté à une page."
+  },
+  {
+   "domaine": "Page imprimée : impression claire après le thème sombre, marge basse d'une feuille fixe",
+   "ext": [
+    ".html",
+    ".htm"
+   ],
+   "content_patterns": [
+    "data-theme",
+    "@page[^{}]*\\{[^{}]*\\bsize\\s*:"
+   ],
+   "type": "cli",
+   "cmd": [
+    "python",
+    "{skillsroot}/digit-ai-page-html/scripts/check_impression.py",
+    "{file}",
+    "--output",
+    "json"
+   ],
+   "checklist": "G1 impression toujours claire : la page est imprimée deux fois (thème par défaut, puis data-theme=\"dark\" posé sur la racine, ce que fait la bascule), chaque page est rendue en image et comparée ; plus de 0,05 % de pixels en écart (--ecart-g1), ou un autre nombre de pages, est un échec · marge basse : sur une page qui déclare un @page de taille fixe (size:), la distance du bas de la feuille au bas du dernier bloc de CHAQUE page du PDF, 5 mm au moins (--marge-mm, seuil choisi dans le script). Routé sur les pages qui portent data-theme ou un @page de taille fixe, seules à avoir quelque chose à imprimer en deux états ou à mesurer ; Chromium, pymupdf ou numpy absent : SKIP motivé, jamais un PASS.",
+   "statut": "ok",
+   "commande": "digit-ai-page-html/scripts/check_impression.py <page.html> [--marge-mm 5] [--ecart-g1 0.0005] [--output json]",
+   "non_juge": [
+    "seul Chromium est joué, au média print : un autre navigateur coupe et marge autrement",
+    "G1 pose data-theme=\"dark\" sur la racine ; un thème sombre porté par une classe, par prefers-color-scheme ou par un état mémorisé relu à l'ouverture n'est pas rejoué",
+    "G1 compare l'état initial de la page ; un état ouvert (panneau déplié, onglet) n'est pas imprimé",
+    "la marge basse est mesurée à la taille de la feuille que déclare @page ; les marges choisies par le lecteur à l'impression ne sont pas rejouées (check_format_a4.py compte les pages sous quatre d'entre elles)",
+    "le seuil de marge (5 mm) est un choix du script : la zone non imprimable d'une imprimante donnée n'est pas lue ; un décor volontairement posé au bord de la feuille se règle par --marge-mm 0",
+    "une page sans @page de taille fixe n'a pas de marge basse mesurée, et la sortie le dit"
+   ],
+   "provenance": "TF-2364 et TF-2365 (retours RA-214 et RA-215 du lot du produit marketing, 25 et 28/09/2026) — un one-pager PASS à render_page et à check_html, imprimé après un passage en thème sombre, sortait en cartes sombres sur papier blanc (706 177 pixels sur 1 169 883 différaient du PDF clair) ; le bandeau de la page 3 d'un dossier finissait à 0,1 mm du bord de la feuille. Fixtures : digit-ai-page-html/fixtures/impression-sombre-rouge.html (G1), impression-marge-rouge.html (marge basse 0,9 mm) et impression-fixe-verte.html",
+   "note": "TF-2399 (12/11/2026, décision R-58) : livré le 10/11/2026 par digit-ai-page-html 1.45.0, inscrit ici et routé par run-oracles. Recette : bloc TF-2399 de scripts/self-test.mjs (le motif de routage prend les deux rouges et la verte, laisse une page sans bascule ni @page) et entrée impression-page-imprimee du manifest.",
+   "timeout_ms": 180000
   },
   {
    "domaine": "Lisibilité d'un document (Markdown)",
@@ -2141,6 +2200,33 @@
    ],
    "provenance": "TF-1504, lot du 30/09/2026 (RP-04) — décision humaine : « à intégrer côté Factory pour chaque document généré afin de s'assurer que l'erreur ne se reproduise plus ». Fixtures FICTIVES (fixtures/gen-polices-embarquees-fixtures.py) : la police « Essai Fictif » saine et altérée (5 glyphes sur 17 aux contours déplacés hors de la boîte déclarée) ; ici en programme TrueType (FontFile2) compressé",
    "note": "TF-1504 (01/10/2026) : programmes de police lus par pypdf dans tous les descripteurs du fichier. Mesure du 01/10/2026 : 198 PDF du poste, lus en place : 844 programmes TrueType décodés, E2 jouée sur 840 et E1 sur 447, 0 constat E1 ni E2 ; 164 PASS dont 4 avec un avertissement E0 (table glyf plus courte que ne l'annonce loca, un même producteur), 34 SKIP sans objet, 0 FAIL ; de 0,6 à 7,3 s par fichier. La première passe rendait 4 faux constats E0 sur une table post de format inconnu, que ni un lecteur de PDF ni GDI ne lisent : la table est désormais ignorée et dite.",
+   "timeout_ms": 180000
+  },
+  {
+   "domaine": "Support imprimé ou projeté : PPTX et PDF",
+   "ext": [
+    ".pptx",
+    ".pdf"
+   ],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{forges}/digit-ai-forge-design/oracles/oracle-document-imprime.mjs",
+    "{file}",
+    "--json-only"
+   ],
+   "checklist": "DP1 forme pleine de moins de 0,1 po de large accolée au bord d'un bloc (le bandeau latéral du motif S1 d'oracle-slop, transposé aux supports sans CSS) · DP2 contraste d'un texte contre l'aplat qui le porte, 4.5:1, 3:1 pour un grand texte · DP3 débordement : texte ou image hors de la page, texte PDF hors du bloc qui le porte, hauteur estimée d'un texte PPTX hors de sa boîte (avertissement) · DP4 équilibre des colonnes d'un PDF, seuil de 10 mm (--seuil-mm) · DP5 vide sous le contenu d'un PDF, mêmes 10 mm, un saut de page voulu se déclare par --pages-libres. Routé sur tout .pptx et tout .pdf ; une page HTML s'imprime d'abord en PDF par Chromium (invocation explicite). Outillage absent (pymupdf, python-pptx) ou forge absente : SKIP motivé.",
+   "statut": "partiel",
+   "non_juge": [
+    "le rendu réel d'un PPTX : polices de remplacement, retours à la ligne, ordre de superposition ; la hauteur d'un texte PPTX est ESTIMÉE et dite telle",
+    "l'ordre de peinture d'un PDF entre texte et aplat : le texte est supposé au-dessus des aplats qui le contiennent ; un texte sur une image, un dégradé ou un aplat translucide n'a pas de fond mesurable et est compté à part",
+    "un vide voulu : seule la déclaration --pages-libres l'exempte, jamais la forme de la page ; le seuil de 10 mm est un réglage de la forge, à réviser sur les retours des produits",
+    "l'impression du navigateur du lecteur : le PDF d'une page HTML est celui de Chromium (2,2 mm d'écart mesurés entre l'émulation d'impression de Playwright et Chrome)",
+    "la lisibilité sémantique : ordre de lecture, balisage PDF/UA, texte alternatif, langue",
+    "les tableaux PPTX, dont les cellules ne sont pas lues, et les couleurs de thème à luminosité modifiée, approchées"
+   ],
+   "provenance": "TF-2386 (retour RV-206 du 29/09/2026) et TF-2385 (retour RV-205 du 28/09/2026) — tous les oracles de forge-design lisaient du HTML : le relecteur du deck d'une propale a mesuré à la main le motif S1 sur la géométrie du PPTX et écrit ses propres scripts de contraste et de débordement ; la page 1 d'un dossier imprimé laissait 19,8 mm de vide sous les cartes (5,3 mm sur la version du 25/09), vus par la seule sonde de la critique d'implémentation. Fixtures de forge-design : oracles/fixtures/document-imprime (deck-rouge/verte.pptx, livret-rouge/verte.pdf, colonnes-rouge/verte.pdf, filet-verte.pdf), générées par generer.py",
+   "note": "TF-2399 (12/11/2026, décision R-58) : livré le 10/11/2026 par forge-design (statut d'usage de la forge : candidat, aucun retour de production n'a encore exercé les seuils DP4 et DP5), inscrit ici au statut partiel, comme oracle-plan-d-amelioration au 12/10/2026, et routé par run-oracles sur tout PPTX et tout PDF. Recette : bloc TF-2399 de scripts/self-test.mjs, qui joue la commande du registre par le lanceur sur les fixtures de la forge (forge absente : SKIP motivé).",
    "timeout_ms": 180000
   },
   {

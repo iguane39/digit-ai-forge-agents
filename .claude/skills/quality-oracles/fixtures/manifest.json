@@ -2961,6 +2961,79 @@
    "provenance": "TF-2372 (retour du produit marketing du 09/11/2026 c, seq 442) : le profil digit-ai.json ne déclarait ni pptx.format, ni pptx.polices, ni pptx.palette, et P1 à P3 rendaient PASS sans rien comparer. Les decks sont ceux de pptx-format, jugés cette fois sous le profil RÉEL : la verte (16:9, Roboto et DM Sans, #0F172A) est dans la charte, la rouge cumule format 4:3, police et couleur étrangères."
   },
   {
+   "nom": "impression-g1-theme-sombre",
+   "cmd": [
+    "python3",
+    "{skillsroot}/digit-ai-page-html/scripts/check_impression.py",
+    "{fixture}",
+    "--output",
+    "json"
+   ],
+   "red": "../../digit-ai-page-html/fixtures/impression-sombre-rouge.html",
+   "green": "../../digit-ai-page-html/fixtures/impression-fixe-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "G1 : page 1 imprimée en thème sombre"
+   ],
+   "dependant_outil": "chromium (playwright), pymupdf et numpy : sans eux le script rend SKIP motivé (exit 2), jamais PASS.",
+   "provenance": "TF-2364 (retour RA-214 du lot du produit marketing, 25/09/2026) — la fixture rouge REPRODUIT le défaut réel : une page à bascule de thème dont l'impression après un passage en thème sombre sort en cartes sombres sur papier blanc (706 177 pixels sur 1 169 883 différaient du PDF clair) ; la verte est la même feuille avec le bloc [data-theme=dark] sous @media screen (0 pixel d'écart)."
+  },
+  {
+   "nom": "impression-marge-basse",
+   "cmd": [
+    "python3",
+    "{skillsroot}/digit-ai-page-html/scripts/check_impression.py",
+    "{fixture}",
+    "--output",
+    "json"
+   ],
+   "red": "../../digit-ai-page-html/fixtures/impression-marge-rouge.html",
+   "green": "../../digit-ai-page-html/fixtures/impression-fixe-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "marge basse : page 2"
+   ],
+   "dependant_outil": "chromium (playwright), pymupdf et numpy : sans eux le script rend SKIP motivé (exit 2), jamais PASS.",
+   "provenance": "TF-2365 (retour RA-215 du lot du produit marketing, 28/09/2026) — la fixture rouge REPRODUIT le défaut réel : deux feuilles A4 paysage à @page de taille fixe dont le pied de la seconde finit à 0,9 mm du bord (le dossier réel : un bandeau à 0,1 mm à la page 3), texte complet, verdicts verts de render_page et de check_html ; la première feuille est saine, la mesure doit nommer la page 2 seule."
+  },
+  {
+   "nom": "completude-source-donnees",
+   "cmd": [
+    "python3",
+    "{skillsroot}/digit-ai-page-html/scripts/check_completude.py",
+    "{fixture}",
+    "--source-donnees",
+    "{skillsroot}/digit-ai-page-html/fixtures/completude-donnees.json",
+    "--ignorer-cles",
+    "id,classe",
+    "--output",
+    "json"
+   ],
+   "red": "../../digit-ai-page-html/fixtures/completude-donnees-amputee.html",
+   "green": "../../digit-ai-page-html/fixtures/completude-donnees-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "CHAÎNE MANQUANTE",
+    "sections[1].items[2]"
+   ],
+   "provenance": "TF-2362 (retour RA-212 du lot du produit marketing, seq 294, 10/11/2026) — la fixture rouge REPRODUIT le défaut réel : une page générée depuis un module de données qui perd un élément de liste (sections[1].items[2]) ; la source est une donnée, jamais exécutée, et la verte porte toutes les chaînes."
+  },
+  {
      "nom": "reglages-corpus-absent",
      "cmd": [
         "node",

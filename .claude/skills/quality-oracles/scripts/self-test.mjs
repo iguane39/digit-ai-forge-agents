@@ -430,6 +430,145 @@ if (reg) {
   }
 }
 
+// (3c ter ter) TF-2399 (12/11/2026, décision R-58 du 12/11/2026) — trois contrôles livrés le 10/11/2026 se jouaient à
+// la demande seulement : `check_impression.py` et `check_completude.py --source-donnees` (digit-ai-page-html 1.45.0,
+// TF-2362, TF-2364, TF-2365) et `oracle-document-imprime.mjs` de forge-design (TF-2385, TF-2386). Aucun n'était au
+// registre, donc aucun lanceur ne les appelait, et la règle §4 n'était pas tenue. Quatre preuves :
+//   (A) la page imprimée est ROUTÉE par run-oracles : la page à bascule de thème et la page à @page fixe sont
+//       jugées (FAIL sur les deux rouges, PASS sur la verte), une page sans l'un ni l'autre n'est pas appelée ;
+//   (B) la complétude par chaînes est inscrite en INVOCATION EXPLICITE (la source ne se devine pas) et sa commande,
+//       placeholders résolus, rend PASS sur la page entière et FAIL sur la page amputée ;
+//   (C) le support imprimé est ROUTÉ sur tout .pptx et tout .pdf, par le lanceur, sur les fixtures de la forge ;
+//   (D) BARRIÈRE : tout script `oracle-*` ou `check_*` d'un skill du dépôt est au registre. Le défaut était de classe
+//       « contrôle écrit non câblé à son étape » : celui-ci aurait nommé check_impression.py le 10/11/2026.
+// Outillage absent (Chromium, pymupdf, python-pptx) ou forge absente de ce poste : SKIP motivé, jamais un vert inventé.
+if (reg) {
+  const entree = (re, aussi = () => true) => reg.oracles.find((o) => (o.cmd || []).some((s) => re.test(s)) && aussi(o));
+  const pyR = resolvePython();
+  const resoudre = (e, cible, source) => {
+    const cmd = e.cmd.map((s) => s.replace('{skillsroot}', SKILLSROOT).replace(MARQUEUR_FORGES, FORGES || MARQUEUR_FORGES)
+      .replace('{file}', cible).replace('{source}', source || '{source}'));
+    return cmd[0] === 'python' ? [...(pyR || ['python']), ...cmd.slice(1)] : cmd[0] === 'node' ? [process.execPath, ...cmd.slice(1)] : cmd;
+  };
+  const lanceur = (reJouet, dossier) => {
+    const regJ = path.join(dossier, '..', 'registre-' + path.basename(dossier) + '.json');
+    fs.writeFileSync(regJ, JSON.stringify({ version: 'jouet', oracles: reJouet }));
+    const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'run-oracles.mjs'), dossier, '--json', '--registre', regJ, '--no-cache'],
+      { encoding: 'utf8', timeout: 600000, env: process.env });
+    let j = null; try { j = JSON.parse((r.stdout || '').trim()); } catch { /* sortie illisible : dite par l'appelant */ }
+    return { j, err: (r.stderr || '').slice(0, 160) };
+  };
+  const verdicts = (j, domaine) => Object.fromEntries((j?.resultats || []).filter((x) => x.domaine === domaine).map((x) => [path.basename(x.file), x.verdict]));
+  const FXH = path.join(SKILLSROOT, 'digit-ai-page-html', 'fixtures');
+
+  // (A) check_impression.py
+  {
+    const e = entree(/check_impression\.py$/);
+    if (!e) ko('TF-2399 (A) : check_impression.py ABSENT du registre machine');
+    else if (!(e.ext || []).includes('.html') || !(e.content_patterns || []).length) {
+      ko(`TF-2399 (A) : check_impression.py n'est pas routé sur les pages imprimables — ext ${JSON.stringify(e.ext)}, content_patterns ${JSON.stringify(e.content_patterns)}`);
+    } else if (!['impression-sombre-rouge.html', 'impression-marge-rouge.html', 'impression-fixe-verte.html'].every((f) => fs.existsSync(path.join(FXH, f)))) {
+      ok('TF-2399 (A) : check_impression.py au registre, routé — commande non rejouée : fixtures de digit-ai-page-html absentes de ce poste');
+    } else {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2399a-'));
+      try {
+        const dossier = path.join(tmp, 'pages'); fs.mkdirSync(dossier);
+        for (const f of ['impression-sombre-rouge.html', 'impression-marge-rouge.html', 'impression-fixe-verte.html']) fs.copyFileSync(path.join(FXH, f), path.join(dossier, f));
+        fs.writeFileSync(path.join(dossier, 'neutre.html'), '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>t</title></head><body><h1>Une page sans bascule de thème ni feuille fixe</h1></body></html>\n');
+        const { j, err } = lanceur([e], dossier);
+        const v = verdicts(j, e.domaine);
+        if (!j) ko('TF-2399 (A) : sortie de run-oracles inexploitable — ' + err);
+        else if (Object.values(v).length && Object.values(v).every((x) => x === 'SKIP')) ok('TF-2399 (A) : check_impression.py au registre, routé — rend SKIP sur ce poste (Chromium, pymupdf ou numpy absent), commande non jugée');
+        else if ('neutre.html' in v) ko('TF-2399 (A) : une page sans data-theme ni @page de taille fixe est routée sur check_impression.py — le motif de routage est trop large');
+        else if (v['impression-sombre-rouge.html'] !== 'FAIL' || v['impression-marge-rouge.html'] !== 'FAIL' || v['impression-fixe-verte.html'] !== 'PASS') {
+          ko(`TF-2399 (A) : le lanceur ne tient pas les deux sens de check_impression.py — ${JSON.stringify(v)}`);
+        } else ok('TF-2399 (A) : check_impression.py est routé par run-oracles sur la page à bascule de thème et sur la page à @page fixe (FAIL sur les deux rouges, PASS sur la verte) et laisse une page sans l\'un ni l\'autre');
+      } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+    }
+  }
+
+  // (B) check_completude.py --source-donnees, invocation explicite
+  {
+    const e = entree(/check_completude\.py$/, (o) => o.cmd.includes('--source-donnees'));
+    const verte = path.join(FXH, 'completude-donnees-verte.html'), amputee = path.join(FXH, 'completude-donnees-amputee.html'), donnees = path.join(FXH, 'completude-donnees.json');
+    if (!e) ko('TF-2399 (B) : check_completude.py --source-donnees ABSENT du registre machine');
+    else if ([...(e.ext || []), ...(e.content_patterns || []), ...(e.trigger_files || [])].length) {
+      ko(`TF-2399 (B) : la complétude par source de données est routée d'office — la source ne se devine pas, l'entrée doit rester en invocation explicite`);
+    } else if (![verte, amputee, donnees].every((f) => fs.existsSync(f)) || !pyR) {
+      ok(`TF-2399 (B) : check_completude.py --source-donnees au registre, en invocation explicite — commande non rejouée : ${pyR ? 'fixtures de digit-ai-page-html absentes de ce poste' : 'aucun Python sur ce poste'}`);
+    } else {
+      const jouer = (cible) => {
+        const [bin, ...reste] = resoudre(e, cible, donnees);
+        const r = spawnSync(bin, [...reste, '--ignorer-cles', 'id,classe'], { encoding: 'utf8', timeout: 120000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+        let v = '?', texte = ''; try { const s = JSON.parse(r.stdout); v = s.verdict; texte = JSON.stringify(s.fails || []); } catch { /* verdict illisible */ }
+        return { v, code: r.status, texte };
+      };
+      const r = jouer(amputee), v = jouer(verte);
+      (r.v === 'FAIL' && r.code === 1 && /CHA.NE MANQUANTE/.test(r.texte) && v.v === 'PASS' && v.code === 0)
+        ? ok('TF-2399 (B) : check_completude.py --source-donnees au registre, en invocation explicite, et sa commande rend FAIL (CHAÎNE MANQUANTE) sur la page amputée, PASS sur la page entière')
+        : ko(`TF-2399 (B) : la commande du registre ne tient pas ses deux sens — amputée ${r.v} (exit ${r.code}), entière ${v.v} (exit ${v.code})`);
+    }
+  }
+
+  // (C) oracle-document-imprime.mjs de forge-design
+  {
+    const e = entree(/oracle-document-imprime\.mjs$/);
+    const FXD = FORGES && path.join(FORGES, 'digit-ai-forge-design', 'oracles', 'fixtures', 'document-imprime');
+    const noms = ['deck-rouge.pptx', 'deck-verte.pptx', 'livret-rouge.pdf', 'livret-verte.pdf'];
+    if (!e) ko('TF-2399 (C) : oracle-document-imprime.mjs ABSENT du registre machine');
+    else if (!['.pptx', '.pdf'].every((x) => (e.ext || []).includes(x))) ko(`TF-2399 (C) : oracle-document-imprime.mjs n'est pas routé sur .pptx et .pdf — ext ${JSON.stringify(e.ext)}`);
+    else if (!FORGES || !noms.every((f) => fs.existsSync(path.join(FXD, f)))) {
+      ok(`TF-2399 (C) : oracle-document-imprime.mjs au registre, routé sur .pptx et .pdf — commande non rejouée : ${FORGES ? 'fixtures de forge-design absentes de ce poste' : motifForgesAbsentes(SKILLDIR)}`);
+    } else {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2399c-'));
+      try {
+        const dossier = path.join(tmp, 'supports'); fs.mkdirSync(dossier);
+        for (const f of noms) fs.copyFileSync(path.join(FXD, f), path.join(dossier, f));
+        fs.writeFileSync(path.join(dossier, 'note.md'), '# Une note\n\nTexte.\n');
+        const { j, err } = lanceur([e], dossier);
+        const v = verdicts(j, e.domaine);
+        if (!j) ko('TF-2399 (C) : sortie de run-oracles inexploitable — ' + err);
+        else if (Object.values(v).length && Object.values(v).every((x) => x === 'SKIP')) ok('TF-2399 (C) : oracle-document-imprime.mjs au registre, routé — rend SKIP sur ce poste (pymupdf ou python-pptx absent), commande non jugée');
+        else if ('note.md' in v) ko('TF-2399 (C) : un fichier Markdown est routé sur oracle-document-imprime.mjs');
+        else if (v['deck-rouge.pptx'] !== 'FAIL' || v['deck-verte.pptx'] !== 'PASS' || v['livret-rouge.pdf'] !== 'FAIL' || v['livret-verte.pdf'] !== 'PASS') {
+          ko(`TF-2399 (C) : le lanceur ne tient pas les deux sens d'oracle-document-imprime.mjs — ${JSON.stringify(v)}`);
+        } else ok('TF-2399 (C) : oracle-document-imprime.mjs est routé par run-oracles sur tout .pptx et tout .pdf (FAIL sur le deck et le livret rouges, PASS sur les verts) et laisse un fichier Markdown');
+      } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+    }
+  }
+
+  // (D) barrière : aucun script de contrôle d'un skill du dépôt n'est hors registre
+  {
+    const depot = spawnSync('git', ['-C', SKILLSROOT, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+    if (depot.status !== 0) ok('TF-2399 (D) : les skills jugés ne sont pas dans un dépôt git (copie installée) — la barrière « tout contrôle de skill est au registre » est sans objet ici, et c\'est dit');
+    else {
+      // Un script hors registre se déclare ici avec son motif : la liste part VIDE (le 12/11/2026, 62 scripts, tous inscrits).
+      const HORS_REGISTRE = {};
+      const lire = (oracles) => {
+        const paille = oracles.map((o) => JSON.stringify([o.cmd || [], o.commande || '', o.cmd_ref || ''])).join('\n');
+        // le nom d'un script est cité entre deux frontières (début, barre, guillemet, espace) et (fin de nom) : un nom plus court contenu dans un plus long ne compte pas
+        const nomme = (f) => new RegExp('(?:^|[/\\\\"\\s`])' + f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w.-])').test(paille);
+        const orphelins = [];
+        for (const d of fs.readdirSync(SKILLSROOT, { withFileTypes: true })) {
+          const sd = path.join(SKILLSROOT, d.name, 'scripts');
+          if (!d.isDirectory() || !fs.existsSync(sd)) continue;
+          for (const f of fs.readdirSync(sd)) {
+            if (!/^(oracle-.*\.(mjs|py)|check_.*\.py)$/.test(f)) continue;
+            if (!nomme(f) && !HORS_REGISTRE[`${d.name}/${f}`]) orphelins.push(`${d.name}/${f}`);
+          }
+        }
+        return orphelins;
+      };
+      const reel = lire(reg.oracles);
+      const sansImpression = reg.oracles.filter((o) => !(o.cmd || []).some((s) => /check_impression\.py$/.test(s)));
+      const rouge = lire(sansImpression);
+      if (reel.length) ko(`TF-2399 (D) : ${reel.length} script(s) de contrôle hors registre — ${reel.join(', ')} (les inscrire, règle §4 ; ou les déclarer dans HORS_REGISTRE avec leur motif)`);
+      else if (!rouge.includes('digit-ai-page-html/check_impression.py')) ko('TF-2399 (D) sens rouge : un registre sans check_impression.py ne nomme pas le script orphelin — la barrière est aveugle');
+      else ok(`TF-2399 (D) : tout script oracle-* ou check_* des skills du dépôt est au registre (barrière) ; sans l'entrée de check_impression.py, la barrière le nomme, et l'inscription ramène le PASS`);
+    }
+  }
+}
+
 // (3c quater) TF-1877 (19/10/2026) — l'oracle de la famille « tableau de bord de pilotage » du pilot
 // (TF-1855) entre au registre machine, routé par le CONTENU seul (`ext` vide : une extension .html le
 // ferait jouer, et rendre SANS_OBJET, sur toutes les pages). Trois preuves : une page qui se déclare de
