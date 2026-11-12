@@ -46,7 +46,7 @@ Mots et faits se comptent sur le texte extrait. Le plafond d'un Word se compte s
 
 ## PowerPoint
 
-Un deck se rempaquette contre l'origine, avec `[Content_Types].xml` en première entrée : PowerPoint ne l'y met pas toujours, et `oracle-pptx` le refuse ailleurs. Toute partie autre que `slide<N>.xml` reste identique octet par octet à l'origine : masques, dispositions, médias, polices embarquées, notes, relations.
+Un deck se rempaquette contre l'origine, avec `[Content_Types].xml` en première entrée : PowerPoint ne l'y met pas toujours et ouvre sans réparation un deck qui l'a ailleurs ; `oracle-pptx` ne contrôle plus cet ordre depuis le 12/11/2026 (TF-2400, règle retirée comme faux positif, mesurée dans PowerPoint). La fabrique le remet en tête par prudence : certains lecteurs le veulent là. Toute partie autre que `slide<N>.xml` reste identique octet par octet à l'origine : masques, dispositions, médias, polices embarquées, notes, relations.
 
 `oracle-pptx.mjs` s'appelle avec `--profil` sur `profils/generique.json` de `quality-oracles`, qui lève ses règles JPEG et transitions : le deck d'un client n'est pas à la charte Digit-AI. Cet oracle ne parse pas le XML. Le lanceur juge donc lui-même qu'une diapositive est bien formée, car sans LibreOffice une balise cassée lui rendrait un exit 0. L'absence de LibreOffice s'écrit dans `oracle_pptx_non_juge` de `controle.json` et `non_juge_format` de `etat.json`, et se dit au lancement.
 
