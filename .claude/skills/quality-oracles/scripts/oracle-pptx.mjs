@@ -2,7 +2,11 @@
 // oracle-pptx — Domaine « Rendu PPTX (structure & compatibilité) » (v1, déterministe).
 // Vérifie l'artefact .pptx/.potx RÉEL (le zip livré, pas le code générateur) :
 //   1. intégrité ZIP (python zipfile testzip) ;
-//   2. [Content_Types].xml en PREMIÈRE entrée de l'archive (règle dure de la forge) ;
+//   2. (retiré le 12/11/2026, TF-2400) [Content_Types].xml en PREMIÈRE entrée de l'archive : faux positif, mesuré.
+//      PowerPoint 16.0 (build 20527) ouvre sans réparation le deck brut de pptxgenjs 4.0.1, dont [Content_Types].xml est
+//      la 20e entrée après 19 dossiers : 1 diapositive et 5 formes, comme le même contenu réordonné ; deux témoins
+//      endommagés (une diapositive tronquée, une mise en page retirée) sont refusés (0x80070570), donc l'ouverture
+//      d'un paquet à réparer se voit. L'ordre n'est plus jugé, et le non_juge le dit ;
 //   3. aucun <p:transition> dans les slides (interdit charte/compatibilité) ;
 //   4. aucun média JPEG (interdit charte — PNG pré-composité attendu) ;
 //   5. smoke-test de conversion `soffice --headless --convert-to pdf` (proxy déterministe
@@ -53,6 +57,8 @@ const findings = [], non_juge = [
   'charte sémantique (pas de kicker, logo couverture/interlocuteurs seulement, bijection sommaire↔intercalaires) → gate digit-ai-pptx',
   'rendu visuel slide par slide (débordements, contraste, chevauchements) → pipeline d\'inspection digit-ai-pptx',
   'contenu (textes, chiffres, images pertinentes)',
+  // TF-2400 (12/11/2026) : la règle « [Content_Types].xml en première entrée » est retirée, et le non_juge le dit au lieu de la taire.
+  'ordre des entrées du zip : [Content_Types].xml n\'a pas à être la première entrée. Mesuré le 12/11/2026 avec PowerPoint 16.0 (build 20527), ouvert par COM sans fenêtre : le deck brut de pptxgenjs 4.0.1, qui l\'écrit en 20e entrée, s\'ouvre sans réparation, et deux paquets endommagés sont refusés ; l\'invite de réparation d\'une ouverture au double-clic n\'est pas observée, et l\'ouverture dans un autre lecteur (Keynote, Google Slides, un lecteur strict) n\'est pas mesurée',
   // TF-1501 (01/10/2026) : cinq versions d'un deck sont sorties avec huit polices embarquées fausses,
   // PASS ici sur chacune, et ce non_juge n'en disait rien. Le trou se dit désormais, avec son juge.
   'polices embarquées (parties ppt/fonts/) : NON décodées par cet oracle — jugées par oracle-polices-embarquees.mjs (domaine « Polices embarquées d\'un PPTX », E0 décodage, E1 contours, E2 boîte englobante), que run-oracles route sur tout paquet qui en porte'
@@ -72,12 +78,11 @@ const script = `
 import sys, zipfile, json, re
 import xml.parsers.expat as ex
 p = sys.argv[1]
-r = {"ok": True, "first": None, "bad": None, "transitions": [], "jpegs": [], "sldsz": None, "polices": {}, "couleurs": {}, "xml": []}
+r = {"ok": True, "bad": None, "transitions": [], "jpegs": [], "sldsz": None, "polices": {}, "couleurs": {}, "xml": []}
 try:
     z = zipfile.ZipFile(p)
     r["bad"] = z.testzip()
     names = z.namelist()
-    r["first"] = names[0] if names else None
     for n in names:
         low = n.lower()
         if low.startswith("ppt/slides/") and low.endswith(".xml"):
@@ -118,7 +123,9 @@ const base = path.basename(file);
 if (!z.ok) findings.push({ sev: 'bloquant', msg: 'archive illisible : ' + (z.err || '?'), where: base });
 else {
   if (z.bad) findings.push({ sev: 'bloquant', msg: 'entrée corrompue dans le zip : ' + z.bad, where: base });
-  if (z.first !== '[Content_Types].xml') findings.push({ sev: 'bloquant', msg: '[Content_Types].xml n\'est pas la première entrée (trouvé : ' + z.first + ') — casse certains viewers', where: base });
+  // TF-2400 (12/11/2026) : l'ordre des entrées du zip n'est plus jugé (voir l'en-tête et le non_juge). Un deck brut de
+  // pptxgenjs 4.0.1 écrit ses dossiers d'abord et [Content_Types].xml en 20e entrée : il s'ouvrait en FAIL ici, alors
+  // que PowerPoint l'ouvre sans réparation.
   for (const t of z.transitions) findings.push({ sev: POL.transitions_interdites ? 'bloquant' : 'warn', msg: '<p:transition> présent' + (POL.transitions_interdites ? ' (interdit par le profil)' : ' (toléré par le profil — avertissement)'), where: base + ':' + t });
   for (const j of z.jpegs) findings.push({ sev: POL.jpeg_interdit ? 'bloquant' : 'warn', msg: 'média JPEG présent' + (POL.jpeg_interdit ? ' (interdit par le profil — PNG attendu)' : ' (toléré par le profil)'), where: base + ':' + j });
   // TF-2064 : bloquant sous TOUT profil — un XML mal formé n'est pas une affaire de charte, PowerPoint propose la réparation ou refuse d'ouvrir.

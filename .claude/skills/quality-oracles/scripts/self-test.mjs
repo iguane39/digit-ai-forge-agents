@@ -3108,6 +3108,46 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-2400 (12/11/2026, décision R-58 du 12/11/2026) — L'ORDRE DES ENTRÉES DU ZIP N'EST PLUS JUGÉ : c'était un faux positif.
+// LE FAIT. Sur un deck brut de pptxgenjs 4.0.1 (19 dossiers d'abord, [Content_Types].xml en 20e entrée), oracle-pptx rendait
+// FAIL « [Content_Types].xml n'est pas la première entrée — casse certains viewers ». Mesure du 12/11/2026 par PowerPoint 16.0
+// (build 20527), ouvert par COM sans fenêtre : le deck brut s'ouvre sans réparation (1 diapositive, 5 formes), comme le même
+// contenu réordonné ; deux témoins endommagés (une diapositive tronquée, une mise en page retirée) sont refusés (0x80070570).
+// Ce bloc joue les DEUX sens sur le deck brut de pptxgenjs déjà au dépôt (fixtures/charte-pptx-pptxgenjs-brut.pptx) :
+//   vert : PASS, aucun constat sur l'ordre, et le non_juge dit que la règle est retirée et ce qui a été mesuré ;
+//   rouge : un paquet réellement endommagé reste refusé (le même deck tronqué, un XML mal formé, une transition).
+{
+  const brut = path.join(SKILLDIR, 'fixtures', 'charte-pptx-pptxgenjs-brut.pptx');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2400-'));
+  try {
+    const jouerPptx = (f) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-pptx.mjs'), f], { encoding: 'utf8', timeout: 120000 });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* sortie illisible : dite ci-dessous */ }
+      return { j, code: r.status };
+    };
+    const octets = fs.readFileSync(brut);
+    // le deck de jeu est bien ce qu'on dit : [Content_Types].xml n'y est pas la première entrée (le répertoire central est à la fin du zip)
+    const noms = []; {
+      let fin = -1; for (let i = octets.length - 22; i >= 0; i--) if (octets.readUInt32LE(i) === 0x06054b50) { fin = i; break; }
+      let p = fin >= 0 ? octets.readUInt32LE(fin + 16) : 0; const n = fin >= 0 ? octets.readUInt16LE(fin + 10) : 0;
+      for (let k = 0; k < n; k++) { const ln = octets.readUInt16LE(p + 28); noms.push(octets.toString('utf8', p + 46, p + 46 + ln)); p += 46 + ln + octets.readUInt16LE(p + 30) + octets.readUInt16LE(p + 32); }
+    }
+    const vert = jouerPptx(brut);
+    const tronque = path.join(tmp, 'tronque.pptx'); fs.writeFileSync(tronque, octets.subarray(0, Math.floor(octets.length / 2)));
+    const rougeTronque = jouerPptx(tronque);
+    const rougeXml = jouerPptx(path.join(SKILLDIR, 'fixtures', 'pptx-xml-red.pptx'));
+    const rougeTransition = jouerPptx(path.join(SKILLDIR, 'fixtures', 'pptx-red.pptx'));
+    const parle = (j) => (j?.findings || []).map((f) => f.msg).join(' | ');
+    if (noms[0] === '[Content_Types].xml' || !noms.includes('[Content_Types].xml')) ko(`TF-2400 : le deck de jeu n'est plus un deck brut de pptxgenjs — première entrée « ${noms[0]} », [Content_Types].xml ${noms.includes('[Content_Types].xml') ? 'présent' : 'ABSENT'} : le cas ne mesure plus rien`);
+    else if (!vert.j || vert.j.verdict !== 'PASS' || vert.code !== 0 || /première entrée/.test(parle(vert.j))) ko(`TF-2400 sens vert : le deck brut de pptxgenjs (première entrée « ${noms[0]} ») doit passer sans constat sur l'ordre — ${vert.j ? vert.j.verdict : '?'} exit ${vert.code} ${parle(vert.j).slice(0, 160)}`);
+    else if (!(vert.j.non_juge || []).some((x) => /ordre des entrées du zip/.test(x) && /PowerPoint 16\.0/.test(x) && /sans réparation/.test(x))) ko("TF-2400 : le non_juge ne dit plus que l'ordre des entrées n'est pas jugé, ni ce qui l'a établi (PowerPoint 16.0, ouverture sans réparation)");
+    else if (!rougeTronque.j || rougeTronque.j.verdict === 'PASS' || rougeTronque.code === 0) ko(`TF-2400 sens rouge : le même deck tronqué (paquet illisible) doit rester refusé — ${rougeTronque.j ? rougeTronque.j.verdict : '?'} exit ${rougeTronque.code}`);
+    else if (!rougeXml.j || rougeXml.j.verdict !== 'FAIL' || !/XML mal formé/.test(parle(rougeXml.j))) ko("TF-2400 sens rouge : un XML mal formé doit rester refusé (X1)");
+    else if (!rougeTransition.j || rougeTransition.j.verdict !== 'FAIL' || !/transition/.test(parle(rougeTransition.j))) ko('TF-2400 sens rouge : une transition interdite doit rester refusée');
+    else ok(`TF-2400 : le deck brut de pptxgenjs ([Content_Types].xml en ${noms.indexOf('[Content_Types].xml') + 1}e entrée) passe oracle-pptx sans constat sur l'ordre, le non_juge dit la mesure de PowerPoint ; un paquet tronqué, un XML mal formé et une transition restent refusés`);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-2064 (03/11/2026) — UN `--profil` QUI NE SE LIT PAS EST UNE ERREUR D'USAGE, PAS UN JUGEMENT PAR DÉFAUT.
 // LE FAIT (mesuré le 02/11/2026). Un `--profil` illisible était avalé par un `catch {}` : l'oracle jugeait
 // sous ses règles par défaut (JPEG et transitions interdits) et ne le disait pas. Ce bloc joue :

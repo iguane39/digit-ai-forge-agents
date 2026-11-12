@@ -190,7 +190,7 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "intégrité zip, [Content_Types].xml en 1re entrée, zéro <p:transition>, zéro média JPEG, X1 XML bien formé de chaque partie du paquet (TF-2064, sans LibreOffice), smoke-test conversion LibreOffice",
+   "checklist": "intégrité zip (l'ordre des entrées n'est pas jugé : faux positif retiré, TF-2400), zéro <p:transition>, zéro média JPEG, X1 XML bien formé de chaque partie du paquet (TF-2064, sans LibreOffice), smoke-test conversion LibreOffice",
    "statut": "partiel",
    "non_juge": [
     "charte sémantique (kicker, logos, bijection sommaire↔intercalaires) → gate digit-ai-pptx",
@@ -653,7 +653,7 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "oracle-pptx piloté par la politique pptx du profil : P1 format (pptx.format, ex. 16:9), P2 polices ⊆ pptx.polices, P3 couleurs de texte explicites ⊆ pptx.palette — plus l'hygiène du paquet ([Content_Types].xml en 1re entrée, zéro transition, zéro JPEG). Chaque règle P n'est jouée que si le profil la déclare",
+   "checklist": "oracle-pptx piloté par la politique pptx du profil : P1 format (pptx.format, ex. 16:9), P2 polices ⊆ pptx.polices, P3 couleurs de texte explicites ⊆ pptx.palette — plus l'hygiène du paquet (zéro transition, zéro JPEG ; l'ordre des entrées du zip n'est pas jugé, TF-2400). Chaque règle P n'est jouée que si le profil la déclare",
    "statut": "partiel",
    "non_juge": [
     "débordement de texte hors cadre — le rendu PowerPoint le montre (TF-1130)",

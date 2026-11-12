@@ -248,7 +248,7 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   **visual-diff** (`oracle-visual-diff.py` : rendu vs **goldens** versionnés `.oracles-goldens/`, masques de zones dynamiques,
   entérinement **hors boucle uniquement** via `--accepter` — refusé après un FAIL non re-jugé, R5 ; sous `output`, `old`, `dist` ou `build`, références et
   historique vivent sous le `.oracles/` commun aux journaux, au-dessus du segment de livraison, jamais dans le dossier remis, TF-2363) ·
-  **nommage** (convention du profil) · **pptx** ([Content_Types].xml 1re entrée, transitions/JPEG selon profil, smoke-test LibreOffice) ·
+  **nommage** (convention du profil) · **pptx** (intégrité du zip, transitions/JPEG selon profil, smoke-test LibreOffice) ·
   **polices embarquées** (`oracle-polices-embarquees.mjs`, PPTX, DOCX, PDF et page HTML : E0 décodage, E1 contours = police
   installée, E2 boîte englobante ; Python + fontTools, pypdf pour le PDF, brotli pour le WOFF2, Windows pour le MTX d'un PPTX
   — TF-1501, TF-1504) ·
