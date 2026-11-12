@@ -5649,8 +5649,22 @@ def run_gabarit_multi_bandes():
                  "detail": str(gabarit)}]
     import tempfile
     brut = gabarit.read_text(encoding="utf-8")
+    # TF-2458 — le pied du gabarit (MARQUE_FOOTER, ANNEE_REF) n'est plus une valeur d'instance ecrite
+    # ici : TF-2350 l'a rendu a l'emetteur, que `lire-signature.mjs` lit. La recette l'instancie avec
+    # la signature de la FIXTURE de digit-ai-schemas (emetteur fictif), comme le fait le self-test du skill.
+    valeurs = dict(INSTANCE_MULTI_BANDES)
+    lecteur = gabarit.parents[1] / "scripts" / "lire-signature.mjs"
+    fixture_sig = gabarit.parents[1] / "fixtures" / "signature"
+    try:
+        lu = subprocess.run(["node", str(lecteur), "--marque=" + str(fixture_sig), "--compact"],
+                            capture_output=True, text=True, encoding="utf-8", timeout=30)
+        signature = json.loads(lu.stdout)
+        valeurs["MARQUE_FOOTER"] = signature["footer"]["marque"]
+        valeurs["ANNEE_REF"] = signature["annee_reference"]
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+        pass   # signature illisible : les deux trous restent, et le cas « instance complete » les dit
     instance = re.sub(r"\{\{([A-Z_0-9]+)\}\}",
-                      lambda m: INSTANCE_MULTI_BANDES.get(m.group(1), m.group(0)), brut)
+                      lambda m: valeurs.get(m.group(1), m.group(0)), brut)
     out = []
     restes = sorted(set(re.findall(r"\{\{[A-Z_0-9]+\}\}", instance)))
     out.append({"fixture": "gabarit multi-bandes · instance complete",
