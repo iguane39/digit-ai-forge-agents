@@ -24,6 +24,26 @@
 // sans outil, par OSV / les données figées. Les paquets hors registre (git, chemin, URL, projet lui-même) sont
 // nommés au non_juge, jamais audités. QO_SCA_PIP_AUDIT et QO_SCA_UVX désignent l'outil à la place de
 // `pip-audit` / `uvx` (la recette y met un outil simulé ; un chemin injouable simule l'absence de l'outil).
+//
+// TF-2450 (12/11/2026, reste de TF-2403) — LES MODES FIGÉ ET VIF JUGENT LES MÊMES SÉVÉRITÉS SUR LES MÊMES
+// VERSIONS, ET CHAQUE AVIS SE NOMME. Trois écarts mesurés le 12/11/2026 par l'agent du lot ft, sur le banc
+// vert de forge-tests (vite 5.4.21, react-router-dom 6.30.4) :
+//   · le message ne disait que des comptes (« npm audit : 0 crit / 1 high / 3 mod ») : aucun identifiant d'avis,
+//     aucune version. Chaque avis est désormais un constat à lui seul : identifiant, paquet, version, sévérité,
+//     en clair dans `msg` et en champs dans `avis` ;
+//   · le mode vif (npm audit) ne comptait que critical, high et moderate, et ignorait low ; le mode figé jugeait
+//     tout, sans sévérité aucune. Les deux jugent critical, high, moderate et low, plus la sévérité « inconnue »
+//     (pip-audit et un avis OSV sans fiche n'en disent pas : un avis qu'on ne sait pas comparer n'est jamais écarté) ;
+//     seule « info » est écartée, et nommée au non_juge. Les données figées portent la sévérité de chaque avis
+//     ({id, severite}) ; une simple chaîne vaut « inconnue » ;
+//   · le mode figé lisait les INTERVALLES de package.json (« ^5.4.0 » → 5.4.0), jamais le verrou, et interrogeait
+//     une version que personne n'a installée. Le verrou npm (package-lock.json, npm-shrinkwrap.json) se lit
+//     désormais : ses paquets de registre, transitifs compris, sont interrogés à leur version exacte, par npm audit
+//     quand il répond, sinon par OSV ou les données figées. Sans verrou, l'approximation par l'intervalle reste,
+//     et elle est dite au non_juge.
+// QO_SCA_NPM désigne l'outil à la place de `npm` (la recette y met un outil simulé qui rejoue une sortie RÉELLE de
+// `npm audit --json` ; un chemin injouable simule son absence) et QO_SCA_OSV_URL l'adresse d'OSV (la recette y
+// met un serveur local, jamais le réseau).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -35,8 +55,10 @@ const contratJSON = ecrivainDeContrat({ info: true });
 
 const target = process.argv[2];
 const optFige = (process.argv.find(a => a.startsWith('--osv-fige=')) || '').slice('--osv-fige='.length);
+const OSV = (process.env.QO_SCA_OSV_URL || 'https://api.osv.dev').replace(/\/+$/, '');
 const DOM = 'Sécurité : vulnérabilités de dépendances (SCA)';
-const NJ = ['dépendances transitives non épinglées (version inconnue → non interrogée)', 'vulnérabilités hors bases publiques'];
+const NJ = ['dépendances transitives non épinglées (version inconnue → non interrogée)', 'vulnérabilités hors bases publiques',
+  'sévérités jugées : critical, high, moderate, low et « inconnue » (jamais écartée) ; seule « info » est écartée, et nommée (TF-2450)'];
 const raisons = [];                                  // pourquoi une partie n'a PAS été vérifiée
 let courant = '';                                    // TF-1700 : le manifeste en cours, qui nomme ses non-vérifiés
 const nonVerifie = (m) => { const t = courant ? courant + ' : ' + m : m; raisons.push(t); NJ.push(t); };
@@ -89,6 +111,20 @@ if (locks.length) NJ.push('verrous uv.lock et poetry.lock : un paquet de registr
 
 const findings = []; let checked = false;
 
+// TF-2450 — LA SÉVÉRITÉ D'UN AVIS, ET CE QUI SE JUGE. Un seul filtre pour tous les modes et toutes les voies.
+const SEV_JUGEES = ['critical', 'high', 'moderate', 'low'];
+const SEV_ALIAS = { critical: 'critical', high: 'high', moderate: 'moderate', medium: 'moderate', low: 'low', info: 'info', informational: 'info', none: 'info' };
+const sevDe = (s) => SEV_ALIAS[String(s == null ? '' : s).trim().toLowerCase()] || 'inconnue';
+const jugee = (sev) => sev === 'inconnue' || SEV_JUGEES.includes(sev);
+const ecartes = [];                                  // avis de sévérité « info » : nommés au non_juge, jamais jugés
+const avisDe = (eco, nom, version, id, sev) => ({ eco, nom, version, id, sev });
+/** Un avis jugé devient UN constat qui le nomme (identifiant, paquet, version, sévérité) ; `where` se pose en fin de manifeste. */
+function poser(a) {
+  if (!jugee(a.sev)) { ecartes.push(`${a.eco} ${a.nom}@${a.version} : ${a.id}`); return; }
+  findings.push({ sev: 'bloquant', msg: `${a.eco} ${a.nom}@${a.version} : ${a.id} (sévérité ${a.sev})`,
+    avis: { id: a.id, paquet: a.nom, version: a.version, severite: a.sev, ecosysteme: a.eco } });
+}
+
 // TF-2281 — L'OUTIL D'AUDIT PYTHON : `pip-audit` du poste, sinon `uvx pip-audit` (uv le lance sans l'installer).
 const outil = (nom, variable) => {
   const force = process.env[variable];
@@ -96,6 +132,16 @@ const outil = (nom, variable) => {
   return /\.(mjs|cjs|js)$/i.test(force) ? { cmd: process.execPath, pre: [force] } : { cmd: force, pre: [] };
 };
 const dispo = (o) => { try { const r = spawnSync(o.cmd, [...o.pre, '--version'], { encoding: 'utf8', timeout: 10000 }); return r.error === undefined && r.status === 0; } catch { return false; } };
+// TF-2450 — L'OUTIL D'AUDIT NPM : `npm` du poste (un script `npm.cmd` sous Windows, TF-1348), ou l'outil que QO_SCA_NPM désigne.
+const voieNpm = () => {
+  if (process.env.QO_SCA_NPM) { const o = outil('npm', 'QO_SCA_NPM'); return dispo(o) ? o : null; }
+  return have('npm') ? { cmd: 'npm', pre: [] } : null;
+};
+const auditerNpm = (voie, dir) => voie.cmd === 'npm'
+  // Sous Windows, npm est un script `npm.cmd` : Node refuse de le lancer sans shell (status null,
+  // aucune sortie), et l'oracle rendait SKIP sur un poste où npm répond (TF-1348, 01/10/2026).
+  ? spawnSync('npm', ['audit', '--json'], { cwd: dir, encoding: 'utf8', shell: process.platform === 'win32' })
+  : spawnSync(voie.cmd, [...voie.pre, 'audit', '--json'], { cwd: dir, encoding: 'utf8', timeout: 120000 });
 let voieMemo;
 const voiePip = () => {
   if (voieMemo !== undefined) return voieMemo;
@@ -148,6 +194,64 @@ function lireVerrou(fichier, format) {
   return { paquets, ignores };
 }
 
+// TF-2450 — Lecture du verrou npm du dossier d'un package.json : package-lock.json, sinon npm-shrinkwrap.json. Les formats 2 et 3
+// (table `packages`, clé « node_modules/<nom> », imbriquée en « node_modules/a/node_modules/b ») et le format 1 (arbre `dependencies`)
+// se lisent ; la racine, les membres d'un espace de travail (hors node_modules) et les liens sont le projet lui-même, jamais une
+// dépendance. Un paquet qui ne vient pas d'un registre http(s) (git, fichier) ou dont la version n'est pas un nombre est compté dans
+// `ignores`. `parChemin` associe « node_modules/<nom> » à sa version installée : npm audit nomme ses nœuds par ce chemin.
+function lireVerrouNpm(dir) {
+  const fichier = ['package-lock.json', 'npm-shrinkwrap.json'].map(n => path.join(dir, n)).find(f => fs.existsSync(f));
+  if (!fichier) return null;
+  const res = { fichier, paquets: [], ignores: [], parChemin: new Map(), illisible: false };
+  let j; try { j = JSON.parse(fs.readFileSync(fichier, 'utf8')); } catch { res.illisible = true; return res; }
+  const vus = new Set();
+  const prendre = (nom, e, chemin) => {
+    if (!nom || !e || typeof e !== 'object' || e.link) return;
+    if (typeof e.version !== 'string' || !/^\d/.test(e.version) || (typeof e.resolved === 'string' && !/^https?:\/\//.test(e.resolved))) { res.ignores.push(nom); return; }
+    res.parChemin.set(chemin, e.version);
+    const cle = nom + '@' + e.version;
+    if (!vus.has(cle)) { vus.add(cle); res.paquets.push({ name: nom, version: e.version }); }
+  };
+  if (j && j.packages && typeof j.packages === 'object') {
+    for (const [k, e] of Object.entries(j.packages)) {
+      const i = k.lastIndexOf('node_modules/');
+      if (k === '' || i < 0) continue;
+      prendre(k.slice(i + 'node_modules/'.length), e, k);
+    }
+  } else if (j && j.dependencies && typeof j.dependencies === 'object') {
+    const marche = (deps, prefixe) => {
+      for (const [nom, e] of Object.entries(deps)) {
+        prendre(nom, e, prefixe + 'node_modules/' + nom);
+        if (e && typeof e === 'object' && e.dependencies) marche(e.dependencies, prefixe + 'node_modules/' + nom + '/');
+      }
+    };
+    marche(j.dependencies, '');
+  }
+  return res;
+}
+/** Les avis de la sortie de `npm audit --json` (format 2) : un avis par objet de `via`, sa version lue au verrou par les nœuds de l'entrée.
+ *  Un `via` en chaîne n'est que l'effet d'un avis nommé sur une dépendance : il a son propre objet ailleurs. */
+function avisNpmAudit(j, lock) {
+  const out = []; const vus = new Set();
+  for (const [nom, e] of Object.entries((j && j.vulnerabilities) || {})) {
+    for (const v of (e && Array.isArray(e.via) ? e.via : [])) {
+      if (!v || typeof v !== 'object') continue;
+      const paquet = v.name || nom;
+      const m = /GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}/i.exec(String(v.url || ''));
+      const id = m ? m[0] : (v.source != null ? 'npm:' + v.source : String(v.title || 'avis sans identifiant'));
+      const sev = sevDe(v.severity != null ? v.severity : e.severity);
+      const noeuds = paquet !== nom ? ['node_modules/' + paquet] : (Array.isArray(e.nodes) && e.nodes.length ? e.nodes : ['node_modules/' + paquet]);
+      const versions = [...new Set(noeuds.map(n => lock.parChemin.get(n)).filter(Boolean))];
+      for (const ver of (versions.length ? versions : ['version inconnue'])) {
+        const cle = id + '|' + paquet + '|' + ver;
+        if (vus.has(cle)) continue;
+        vus.add(cle); out.push(avisDe('npm', paquet, ver, id, sev));
+      }
+    }
+  }
+  return out;
+}
+
 // --- Python : pip-audit, sinon uvx pip-audit, sinon OSV (ou données figées) ---
 for (const req of reqs) {
   courant = nomM(req); const avant = findings.length;
@@ -156,7 +260,7 @@ for (const req of reqs) {
     const { deps, exit, motif } = auditerPip(voie, req, false);
     if (!deps) nonVerifie(voie.libelle + ' sans sortie exploitable (exit ' + exit + ' : ' + motif
       + ') → dépendances Python NON vérifiées — ressource distante (PyPI, base de vulnérabilités) injoignable ?');
-    else { checked = true; deps.forEach(d => (d.vulns || []).forEach(v => findings.push({ sev: 'bloquant', msg: 'PyPI ' + d.name + '@' + d.version + ' : ' + v.id }))); }
+    else { checked = true; deps.forEach(d => (d.vulns || []).forEach(v => poser(avisDe('PyPI', d.name, d.version, v.id, sevDe(v.severity))))); }
   } else {
     const deps = fs.readFileSync(req, 'utf8').split(/\r?\n/).map(l => l.trim())
       .filter(l => l && !l.startsWith('#') && !l.startsWith('-') && /==/.test(l))
@@ -166,7 +270,7 @@ for (const req of reqs) {
       const r = await interroger(deps.map(d => ({ ecosystem: 'PyPI', name: d.name, version: d.version })));
       if (r === null) nonVerifie(FIGE ? 'dépendances Python absentes des données figées → NON vérifiées'
         : 'pip-audit absent et OSV injoignable (https://api.osv.dev) → dépendances Python NON vérifiées');
-      else { checked = true; r.forEach((vulns, i) => (vulns || []).forEach(id => findings.push({ sev: 'bloquant', msg: 'PyPI ' + deps[i].name + '@' + deps[i].version + ' : ' + id }))); }
+      else { checked = true; r.forEach((avis, i) => avis.forEach(a => poser(avisDe('PyPI', deps[i].name, deps[i].version, a.id, a.sev)))); }
     }
   }
   findings.slice(avant).forEach(f => { f.where = courant; });
@@ -196,30 +300,49 @@ for (const lock of locks) {
         }
       } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
       if (echec !== null) nonVerifie(voie.libelle + ' sans sortie exploitable sur le verrou (' + echec + ') → dépendances Python NON vérifiées — ressource distante (PyPI, base de vulnérabilités) injoignable ?');
-      else { checked = true; deps.forEach(d => (d.vulns || []).forEach(x => findings.push({ sev: 'bloquant', msg: 'PyPI ' + d.name + '@' + d.version + ' : ' + x.id }))); }
+      else { checked = true; deps.forEach(d => (d.vulns || []).forEach(x => poser(avisDe('PyPI', d.name, d.version, x.id, sevDe(x.severity))))); }
     } else {
       const deps = v.paquets.map(p => ({ name: p.name.toLowerCase(), version: p.version })).slice(0, 1000);
       if (v.paquets.length > deps.length) nonVerifie((v.paquets.length - deps.length) + ' paquet(s) du verrou au-delà des 1000 premiers : non interrogés');
       const r = await interroger(deps.map(d => ({ ecosystem: 'PyPI', name: d.name, version: d.version })));
       if (r === null) nonVerifie(FIGE ? 'paquets du verrou absents des données figées → NON vérifiés'
         : 'pip-audit et uvx absents et OSV injoignable (https://api.osv.dev) → dépendances Python du verrou NON vérifiées');
-      else { checked = true; r.forEach((vulns, i) => (vulns || []).forEach(id => findings.push({ sev: 'bloquant', msg: 'PyPI ' + deps[i].name + '@' + deps[i].version + ' : ' + id }))); }
+      else { checked = true; r.forEach((avis, i) => avis.forEach(a => poser(avisDe('PyPI', deps[i].name, deps[i].version, a.id, a.sev)))); }
     }
   }
   findings.slice(avant).forEach(f => { f.where = courant; });
 }
-// --- npm : npm audit sinon OSV (ou données figées) ---
+// --- npm : npm audit sinon OSV (ou données figées) ; le VERROU fixe les versions interrogées (TF-2450) ---
 for (const pkg of pkgs) {
-  courant = nomM(pkg); const avant = findings.length;
+  courant = nomM(pkg); const avant = findings.length; const ecartesAvant = ecartes.length;
   const dir = path.dirname(pkg);
-  if (!FIGE && have('npm') && (fs.existsSync(path.join(dir, 'package-lock.json')) || fs.existsSync(path.join(dir, 'npm-shrinkwrap.json')))) {
-    // Sous Windows, npm est un script `npm.cmd` : Node refuse de le lancer sans shell (status null,
-    // aucune sortie), et l'oracle rendait SKIP sur un poste où npm répond (TF-1348, 01/10/2026).
-    const r = spawnSync('npm', ['audit', '--json'], { cwd: dir, encoding: 'utf8', shell: process.platform === 'win32' });
+  const lock = lireVerrouNpm(dir);
+  const voie = (FIGE || !lock || lock.illisible) ? null : voieNpm();
+  if (lock && lock.illisible) NJ.push(courant + ' : ' + path.basename(lock.fichier) + ' illisible (JSON invalide) → les versions installées sont inconnues, package.json seul est lu (TF-2450)');
+  if (voie) {
+    const r = auditerNpm(voie, dir);
     let j = null; try { j = JSON.parse(r.stdout || ''); } catch { /* sortie inexploitable : non vérifié */ }
     const v = j && j.metadata && j.metadata.vulnerabilities;
     if (!v) nonVerifie('npm audit sans sortie exploitable (exit ' + r.status + ') → dépendances npm NON vérifiées — registre npm injoignable ?');
-    else { checked = true; const tot = (v.critical || 0) + (v.high || 0) + (v.moderate || 0); if (tot) findings.push({ sev: 'bloquant', msg: 'npm audit : ' + v.critical + ' crit / ' + v.high + ' high / ' + v.moderate + ' mod' }); }
+    else {
+      checked = true;
+      avisNpmAudit(j, lock).forEach(poser);
+      // Les comptes de npm sont la preuve que des avis existent : une sortie qui n'en nomme aucun (npm ancien) ne vaut jamais PASS.
+      const jugesNpm = SEV_JUGEES.reduce((n, s) => n + (v[s] || 0), 0);
+      if (findings.length === avant && ecartes.length === ecartesAvant && jugesNpm) {
+        findings.push({ sev: 'bloquant', msg: 'npm audit : ' + (v.critical || 0) + ' critical / ' + (v.high || 0) + ' high / ' + (v.moderate || 0) + ' moderate / ' + (v.low || 0)
+          + ' low — la sortie ne nomme aucun avis exploitable (format ancien de npm ?) ; la liste se lit avec `npm audit`' });
+      }
+    }
+  } else if (lock && !lock.illisible && lock.paquets.length) {
+    if (lock.ignores.length) nonVerifie(lock.ignores.length + ' paquet(s) du verrou hors registre ou sans version numérique non audité(s) (git, fichier, lien) : '
+      + lock.ignores.slice(0, 10).join(', ') + (lock.ignores.length > 10 ? ', …' : ''));
+    const deps = lock.paquets.slice(0, 1000);
+    if (lock.paquets.length > deps.length) nonVerifie((lock.paquets.length - deps.length) + ' paquet(s) du verrou au-delà des 1000 premiers : non interrogés');
+    const r = await interroger(deps.map(d => ({ ecosystem: 'npm', name: d.name, version: d.version })));
+    if (r === null) nonVerifie(FIGE ? 'paquets npm du verrou absents des données figées → NON vérifiés'
+      : 'npm audit indisponible et OSV injoignable (https://api.osv.dev) → dépendances npm du verrou NON vérifiées');
+    else { checked = true; r.forEach((avis, i) => avis.forEach(a => poser(avisDe('npm', deps[i].name, deps[i].version, a.id, a.sev)))); }
   } else {
     try {
       const j = JSON.parse(fs.readFileSync(pkg, 'utf8'));
@@ -227,31 +350,38 @@ for (const pkg of pkgs) {
         .map(([name, r]) => ({ name, version: String(r).match(/\d[\w.]*/)?.[0] })).filter(d => d.version).slice(0, 50);
       if (!deps.length) nonVerifie('aucune dépendance npm versionnée : rien d\'interrogeable');
       else {
+        if (!lock) NJ.push(courant + ' : package.json sans verrou npm — la version interrogée est le premier nombre de l\'intervalle déclaré, pas la version installée (TF-2450)');
         const r = await interroger(deps.map(d => ({ ecosystem: 'npm', name: d.name, version: d.version })));
         if (r === null) nonVerifie(FIGE ? 'dépendances npm absentes des données figées → NON vérifiées'
           : 'npm audit indisponible et OSV injoignable (https://api.osv.dev) → dépendances npm NON vérifiées');
-        else { checked = true; r.forEach((vulns, i) => (vulns || []).forEach(id => findings.push({ sev: 'bloquant', msg: 'npm ' + deps[i].name + '@' + deps[i].version + ' : ' + id }))); }
+        else { checked = true; r.forEach((avis, i) => avis.forEach(a => poser(avisDe('npm', deps[i].name, deps[i].version, a.id, a.sev)))); }
       }
     } catch { nonVerifie('package.json illisible → dépendances npm NON vérifiées'); }
   }
   findings.slice(avant).forEach(f => { f.where = courant; });
 }
 courant = '';
+// TF-2450 — ce qui n'a pas été jugé, ou l'a été sans sévérité connue, se dit : les comptes ne se déduisent pas du message.
+const sansSev = findings.filter(f => f.avis && f.avis.severite === 'inconnue').length;
+if (sansSev) NJ.push(sansSev + ' avis sans sévérité connue (pip-audit ne la donne pas, ou fiche OSV sans sévérité) : jugés « inconnue », jamais écartés (TF-2450)');
+if (ecartes.length) NJ.push(ecartes.length + ' avis de sévérité info non jugé(s) : ' + ecartes.slice(0, 10).join(', ') + (ecartes.length > 10 ? ', …' : '') + ' (TF-2450)');
 
-/** Les vulnérabilités de chaque requête — depuis les données figées si désignées, sinon OSV.
+/** Les avis de chaque requête, `{id, sev}` — depuis les données figées si désignées, sinon OSV (puis sa fiche, pour la sévérité).
  *  `null` = non vérifiable (réseau injoignable, ou requête absente des données figées). */
 async function interroger(queries) {
   if (FIGE) {
     const rep = FIGE.reponses || {};
     const cle = q => `${q.ecosystem}:${q.name}@${q.version}`;
-    return queries.every(q => Array.isArray(rep[cle(q)])) ? queries.map(q => rep[cle(q)]) : null;
+    const lu = x => (x && typeof x === 'object') ? { id: String(x.id), sev: sevDe(x.severite != null ? x.severite : x.severity) } : { id: String(x), sev: 'inconnue' };
+    return queries.every(q => Array.isArray(rep[cle(q)])) ? queries.map(q => rep[cle(q)].map(lu)) : null;
   }
-  return osvBatch(queries);
+  const ids = await osvBatch(queries);
+  return ids === null ? null : qualifier(ids);
 }
 
 async function osvBatch(queries) {
   try {
-    const res = await fetch('https://api.osv.dev/v1/querybatch', {
+    const res = await fetch(OSV + '/v1/querybatch', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ queries: queries.map(q => ({ package: { ecosystem: q.ecosystem, name: q.name }, version: q.version })) }),
       signal: AbortSignal.timeout(15000)
@@ -260,6 +390,25 @@ async function osvBatch(queries) {
     const j = await res.json();
     return (j.results || []).map(r => (r.vulns || []).map(v => v.id));
   } catch { return null; }
+}
+
+/** TF-2450 — la réponse par lot d'OSV ne dit que des identifiants : la sévérité se lit sur la fiche de chaque avis
+ *  (`database_specific.severity`, présente pour les GHSA). Une fiche illisible, sans sévérité ou au-delà du plafond
+ *  laisse « inconnue » : l'avis reste jugé. */
+async function qualifier(parRequete) {
+  const PLAFOND = 100;
+  const distincts = [...new Set(parRequete.flat())];
+  const sev = new Map();
+  await Promise.all(distincts.slice(0, PLAFOND).map(async (id) => {
+    try {
+      const res = await fetch(OSV + '/v1/vulns/' + encodeURIComponent(id), { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) return;
+      const j = await res.json();
+      sev.set(id, sevDe(j && j.database_specific && j.database_specific.severity));
+    } catch { /* fiche injoignable : « inconnue » */ }
+  }));
+  if (distincts.length > PLAFOND) NJ.push((distincts.length - PLAFOND) + ' avis au-delà des ' + PLAFOND + ' premiers : fiche OSV non lue, sévérité « inconnue » (TF-2450)');
+  return parRequete.map(ids => ids.map(id => ({ id, sev: sev.get(id) || 'inconnue' })));
 }
 
 if (!checked) emit('SKIP', findings.length ? findings : [{ sev: 'info', msg: 'SCA non vérifiable — ' + (raisons.join(' ; ') || 'outils absents et OSV injoignable') }]);

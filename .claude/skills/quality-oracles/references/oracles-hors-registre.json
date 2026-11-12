@@ -1,0 +1,934 @@
+{
+ "version": 1,
+ "date": "2026-11-12",
+ "provenance": "TF-2452 (décision R-58 du 12/11/2026) — la barrière « tout script de contrôle est au registre » de TF-2399 ne lisait que les skills de forge-agents ; elle lit aussi les oracles du pilot et des forges (oracle-*.mjs|py et check_*.py suivis par git, hors fixtures, node_modules, vendor, old, output, input et recettes *.test.mjs).",
+ "lecture": "Un script absent du registre machine (references/registre-oracles.json) est déclaré ici avec un motif, ou la barrière du self-test échoue. Une ligne dont le fichier n'existe plus, ou dont le script est entré au registre depuis, fait échouer la barrière aussi : la liste ne garde pas de morts. Les appelants sont un relevé daté, non une garantie.",
+ "motifs": {
+  "pilot-appele": "Oracle du pilot, appelé par ses hameçons, ses générateurs, son accueil ou sa recette (appelants nommés, relevés le 12/11/2026). Il juge un état, une règle ou un document propre au pilot, que son appelant lui désigne par un chemin : aucun livrable de produit ne le déclenche par son extension ou son contenu, le routeur de run-oracles n'a rien à lui router. Il est découvert par oracles/decouvrir-oracles.mjs (contrat digit-ai/decouverte-oracles@1) et rejoué par la recette du pilot.",
+  "forge-appele": "Oracle de forge, appelé par le lanceur ou les scripts de sa propre forge (appelants nommés, relevés le 12/11/2026) : la forge le choisit selon son profil ou son étape, et le registre n'inscrit que les oracles qu'un livrable déclenche par son extension ou son contenu, ou qu'un humain invoque en cible explicite. À inscrire si un livrable de produit doit pouvoir le déclencher.",
+  "sans-appelant": "Aucun appelant relevé le 12/11/2026 : le nom du script ne figure dans aucun fichier suivi de son dépôt ni du pilot, hors tests, self-tests, Markdown et registres. Publié mais non câblé : à inscrire au registre (règle §4) ou à retirer. Cette déclaration le rend visible, elle ne le justifie pas."
+ },
+ "oracles": [
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "gabarits/oracle-demande-produit.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/scripts/detecter-demandes-recues.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "gabarits/oracle-demande-tierce.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "gabarits/oracle-demande.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/HERITAGE.json",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/oracle-ecriture.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "gabarits/oracle-lot-relais.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/HERITAGE.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "gabarits/oracle-lot-retours.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/HERITAGE.json",
+    "digit-ai-factory/gabarits/oracle-demande.mjs",
+    "digit-ai-factory/gabarits/oracle-lot-relais.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "gabarits/oracle-revue-deck.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "gabarits/oracle-travaux-pilot.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/HERITAGE.json",
+    "digit-ai-factory/gabarits/oracle-demande-produit.mjs",
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-adoption-tests.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-amorcage-poste.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-amorcage.mjs",
+    "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-banc-double-sens.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-boite-entree.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ouverture.mjs",
+    "digit-ai-factory/scripts/detecter-demandes-recues.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-cadence.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-caracteres-controle.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/oracle-controles-injoignables.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-cascade-isto.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/CASCADE-ISTO.json",
+    "digit-ai-factory/gabarits/documents/cascade-produit/generateur/generer-vue-cascade.mjs",
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-catalogues.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-chemin-ancre.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-chemin-prescrit.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ouverture.mjs",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-claude-md.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/pre-commit-quantificateurs.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-coherence-restitution.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-conformite-projet.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/NOMMAGE-PRODUIT.json",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-constantes-externes.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-controle-maison.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ecriture.mjs",
+    "digit-ai-factory/oracles/oracle-chemin-ancre.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-controles-injoignables.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-couverture-exigences.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/oracle-fiche-produit.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-depense-voie-par-defaut.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-domaines-declares.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-ecart-normal.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-ecosysteme.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/oracles/oracle-conformite-projet.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-empreintes.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-enclenchement.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/decouvrir-oracles.mjs",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-etude-opportunite.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/references/RELECTURE-INTENTION-REGLES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-fiche-constat-precos.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-decision-lue.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-fiche-produit.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-fraicheur-doc.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/references/generer-compte-produits.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-gabarits-documents.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/HERITAGE.json",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ecriture.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-glossaire.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/scripts/verifier-sonde-glossaire.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-insatisfactions.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-integrations.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-invariant-mesure.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-modeles-en-service.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ouverture.mjs",
+    "digit-ai-factory/references/MODELES-EN-SERVICE.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-modeles-tiers.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/references/MODELES-TIERS.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-parite-configuration.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-pieges-regex.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-portee-doctrine.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-promesses.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-propagation.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/scripts/lib-extensions-jugees.mjs",
+    "digit-ai-factory/todo/ingerer-lot.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-readme-dossiers.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-recette-rejouable.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-recouvrement-controles.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-reglages-surs.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/scripts/ouvrir-retour-reglage.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-regle-sans-juge.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-repere-externe.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-reprise.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/HERITAGE.json",
+    "digit-ai-factory/gabarits/REPRISE.json",
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-run-reseau.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/VOIX-EMETTEUR.json",
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-secrets-hors-perimetre.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/.claude/settings.json",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-skills.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/bootstrap.mjs",
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/consommateurs-skills.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-sollicitations.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-source-contenu.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-synthese.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/gabarits/HERITAGE.json",
+    "digit-ai-factory/gabarits/LEXIQUE-PRODUIT.json",
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-trace-mutation-mep.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/todo/CLASSES.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-unicite.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/scripts/lib-extensions-jugees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-verdict-visuel.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "oracles/oracle-verrou-unique.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-factory",
+   "chemin": "todo/oracle-todo.mjs",
+   "motif": "pilot-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/resoudre-pilot.mjs",
+    "digit-ai-factory/todo/CLASSES.json",
+    "digit-ai-factory/todo/appliquer-export.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-agents-security",
+   "chemin": "oracles/oracle-arret-en-course.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-agents-security",
+   "chemin": "oracles/oracle-corpus-injection.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-agents-security",
+   "chemin": "oracles/oracle-scan-agentdef.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-agents-security",
+   "chemin": "oracles/oracle-scan-mcp-supabase.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-agents-security",
+   "chemin": "oracles/oracle-scan-toolcalls.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-agents-security",
+   "chemin": "oracles/oracle-scan-workflow-agent.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-cadrage-metier.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json",
+    "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-constitution.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json",
+    "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-delta.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json",
+    "digit-ai-forge-conception/oracles/run-oracles-conception.mjs",
+    "digit-ai-forge-conception/scripts/delta.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-ears.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-etat.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json",
+    "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-exigences-md.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json",
+    "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-retro-modele.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json",
+    "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-conception",
+   "chemin": "oracles/oracle-vues-profil.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-conception/oracles/manifeste.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-data",
+   "chemin": "oracles/oracle-anonymiser.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-data/oracles/oracle-jeu-fictif.mjs",
+    "digit-ai-forge-data/scripts/anonymiser.mjs",
+    "digit-ai-forge-data/scripts/exercer-anonymiser-postgres.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-data",
+   "chemin": "oracles/oracle-jeu-fictif.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-data/references/definition-jeu-fictif.json"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-barre-externe.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-bascule.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-factory/todo/CLASSES.json",
+    "digit-ai-factory/todo/generateurs-defauts.json",
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-baseline.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-factory/todo/CLASSES.json",
+    "digit-ai-forge-design/corpus/grille-viewports.json",
+    "digit-ai-forge-design/oracles/lib/grille.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-caracteres-controle.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/baseline-recettes.json",
+    "digit-ai-factory/oracles/oracle-caracteres-controle.mjs",
+    "digit-ai-factory/oracles/oracle-controles-injoignables.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-coherence-promesse.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-declencheurs.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/lib/selecteurs.mjs",
+    "digit-ai-forge-design/oracles/oracle-surcouche.mjs",
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-dtcg.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs",
+    "digit-ai-forge-design/scripts/generer-tokens-css.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-erreurs-formulaire.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/corpus/composants/saisie-erreurs.js",
+    "digit-ai-forge-design/oracles/lib/jouer_erreurs_formulaire.py",
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-liste-demande.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-logo-petit.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-factory/todo/CLASSES.json",
+    "digit-ai-forge-design/oracles/lib/rendre_logo.py"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-panneau-tache.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-perceptibilite.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-saisie.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-factory/todo/CLASSES.json",
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-slop.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-surcouche.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/lib/selecteurs.mjs",
+    "digit-ai-forge-design/oracles/oracle-declencheurs.mjs",
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-taste.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-textes-application.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-theme-powerbi.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/scripts/generer-theme-powerbi.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-tokens.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs",
+    "digit-ai-forge-design/skills/systeme-de-marque/scripts/generer-design-md.mjs",
+    "digit-ai-forge-design/skills/systeme-de-marque/scripts/lib/color.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "skills/ameliore-le-design/scripts/check_maquette.py",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/oracle-motion.mjs",
+    "digit-ai-forge-design/oracles/oracle-panneau-tache.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-organization",
+   "chemin": "oracles/oracle-conventions.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/oracle-conformite-projet.mjs",
+    "digit-ai-factory/oracles/oracle-ecosysteme.mjs",
+    "digit-ai-forge-organization/oracles/decouvrir-oracles.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-websec",
+   "chemin": "oracles/oracle-dast.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-websec/scripts/preuve-dast-actif.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-websec",
+   "chemin": "oracles/oracle-exposition.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-factory/oracles/oracle-chemin-prescrit.mjs",
+    "digit-ai-forge-websec/oracles/oracle-exposition-statique.mjs",
+    "digit-ai-forge-websec/scripts/capturer.mjs"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-websec",
+   "chemin": "oracles/oracle-sca.mjs",
+   "motif": "sans-appelant",
+   "appelants": []
+  }
+ ]
+}

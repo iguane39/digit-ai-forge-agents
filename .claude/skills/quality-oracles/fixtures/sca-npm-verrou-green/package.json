@@ -1,0 +1,9 @@
+{
+  "name": "sca-npm-verrou-vert",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "is-number": "^7.0.0",
+    "ms": "^2.1.3"
+  }
+}

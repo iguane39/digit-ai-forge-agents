@@ -325,6 +325,30 @@
    "provenance": "TF-2281 (09/11/2026) — même défaut côté poetry.lock. La rouge porte flask 0.12 et une table [package.dependencies] (name et version) qui ne doit pas être lue comme un paquet : lue comme tel, elle rendrait SKIP faute de réponse figée pour ne-doit-pas-etre-lu@9.9.9. La verte porte packaging 24.1 et la même table."
   },
   {
+   "nom": "sca-npm-verrou",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-sca.mjs",
+    "{fixture}",
+    "--osv-fige={skilldir}/fixtures/sca-osv-fige.json"
+   ],
+   "red": "sca-npm-verrou-red",
+   "green": "sca-npm-verrou-green",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "npm vite@5.4.21 : GHSA-9jrq-w75r-8gcw (sévérité low)",
+    "npm vite@5.4.21 : GHSA-587h-7wmj-h5pm (sévérité high)",
+    "npm react-router-dom@6.30.4 : GHSA-jjmj-jmhj-qwj2"
+   ],
+   "dependant_outil": "aucun sous --osv-fige (TF-1107 : données figées datées) ; en usage réel npm audit ou OSV (réseau)",
+   "provenance": "TF-2450 (12/11/2026, reste de TF-2403) — oracle-sca lisait les intervalles de package.json (« ^5.4.0 » → 5.4.0), jamais le verrou npm, et son message ne nommait aucun avis. Le package.json de la rouge déclare vite ^5.4.0 et react-router-dom ^6.30.0 ; son package-lock.json, réduit aux quatre paquets mis en cause, installe vite 5.4.21, react-router-dom 6.30.4, react-router 6.30.4 et esbuild 0.21.5. Avant la correction, la rouge rendait SKIP (vite@5.4.0 absent des données figées) ; après, 12 avis nommés avec leur sévérité, dont un high et un low que le décompte critical/high/moderate de npm audit n'aurait pas nommés un à un. La verte (is-number 7.0.0, ms 2.1.3, sans avis) PASS. Avis et sévérités relevés sur api.osv.dev le 12/11/2026."
+  },
+  {
    "nom": "a11y",
    "cmd": [
     "python3",
@@ -3034,76 +3058,76 @@
    "provenance": "TF-2362 (retour RA-212 du lot du produit marketing, seq 294, 10/11/2026) — la fixture rouge REPRODUIT le défaut réel : une page générée depuis un module de données qui perd un élément de liste (sections[1].items[2]) ; la source est une donnée, jamais exécutée, et la verte porte toutes les chaînes."
   },
   {
-     "nom": "reglages-corpus-absent",
-     "cmd": [
-        "node",
-        "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
-        "{fixture}",
-        "--registre",
-        "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
-        "--plateforme",
-        "Supabase"
-     ],
-     "red": "reglages-corpus-rouge-absent.md",
-     "green": "reglages-corpus-vert.md",
-     "attendu_red": [
-        "FAIL"
-     ],
-     "attendu_messages_red": [
-        "G5 — le réglage « Double vérification imposée"
-     ],
-     "attendu_green": [
-        "PASS"
-     ],
-     "provenance": "TF-2227, étude « Sécurité par défaut de bout en bout » du 06/11/2026 — la MFA d'organisation Supabase n'apparaissait dans aucun corpus d'expert ; la rouge est le corpus Supabase sans cette puce."
+   "nom": "reglages-corpus-absent",
+   "cmd": [
+    "node",
+    "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
+    "{fixture}",
+    "--registre",
+    "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
+    "--plateforme",
+    "Supabase"
+   ],
+   "red": "reglages-corpus-rouge-absent.md",
+   "green": "reglages-corpus-vert.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "G5 — le réglage « Double vérification imposée"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2227, étude « Sécurité par défaut de bout en bout » du 06/11/2026 — la MFA d'organisation Supabase n'apparaissait dans aucun corpus d'expert ; la rouge est le corpus Supabase sans cette puce."
   },
   {
-     "nom": "reglages-corpus-classe-faux",
-     "cmd": [
-        "node",
-        "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
-        "{fixture}",
-        "--registre",
-        "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
-        "--plateforme",
-        "Supabase"
-     ],
-     "red": "reglages-corpus-rouge-classe-faux.md",
-     "green": "reglages-corpus-vert.md",
-     "attendu_red": [
-        "FAIL"
-     ],
-     "attendu_messages_red": [
-        "G6 — le réglage « TLS imposé"
-     ],
-     "attendu_green": [
-        "PASS"
-     ],
-     "provenance": "TF-2227, 06/11/2026 — le TLS imposé, défaut au registre, classé décision enseignerait l'inverse de ce que la création applique ; la rouge change ce seul mot."
+   "nom": "reglages-corpus-classe-faux",
+   "cmd": [
+    "node",
+    "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
+    "{fixture}",
+    "--registre",
+    "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
+    "--plateforme",
+    "Supabase"
+   ],
+   "red": "reglages-corpus-rouge-classe-faux.md",
+   "green": "reglages-corpus-vert.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "G6 — le réglage « TLS imposé"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2227, 06/11/2026 — le TLS imposé, défaut au registre, classé décision enseignerait l'inverse de ce que la création applique ; la rouge change ce seul mot."
   },
   {
-     "nom": "reglages-corpus-sans-renvoi",
-     "cmd": [
-        "node",
-        "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
-        "{fixture}",
-        "--registre",
-        "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
-        "--plateforme",
-        "Supabase"
-     ],
-     "red": "reglages-corpus-rouge-sans-renvoi.md",
-     "green": "reglages-corpus-vert.md",
-     "attendu_red": [
-        "FAIL"
-     ],
-     "attendu_messages_red": [
-        "G2 — le point"
-     ],
-     "attendu_green": [
-        "PASS"
-     ],
-     "provenance": "TF-2227, 06/11/2026 — un classement qui ne cite pas le registre du pilot est une affirmation du corpus, pas une lecture ; la rouge retire le renvoi seul."
+   "nom": "reglages-corpus-sans-renvoi",
+   "cmd": [
+    "node",
+    "{skillsroot}/experts-forge/scripts/oracle-reglages-corpus.mjs",
+    "{fixture}",
+    "--registre",
+    "{skillsroot}/experts-forge/fixtures/reglages-registre.json",
+    "--plateforme",
+    "Supabase"
+   ],
+   "red": "reglages-corpus-rouge-sans-renvoi.md",
+   "green": "reglages-corpus-vert.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "G2 — le point"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2227, 06/11/2026 — un classement qui ne cite pas le registre du pilot est une affirmation du corpus, pas une lecture ; la rouge retire le renvoi seul."
   }
  ]
 }

@@ -1,10 +1,16 @@
 {
-  "commentaire": "TF-1107 — réponses OSV FIGÉES pour les fixtures d'oracle-sca : le verdict des fixtures ne dépend plus ni du réseau, ni d'un outil installé, ni de l'état du jour de la base. Relevé par POST https://api.osv.dev/v1/querybatch le 2026-09-14. Une clé absente = dépendance NON vérifiée (jamais « sans vulnérabilité »).",
+  "commentaire": "TF-1107 — réponses OSV FIGÉES pour les fixtures d'oracle-sca : le verdict des fixtures ne dépend plus ni du réseau, ni d'un outil installé, ni de l'état du jour de la base. Relevé par POST https://api.osv.dev/v1/querybatch le 2026-09-14. Une clé absente = dépendance NON vérifiée (jamais « sans vulnérabilité »). TF-2450 (12/11/2026) : les clés npm (verrous des fixtures sca-npm-verrou-*) sont relevées le 2026-11-12, avis par POST https://api.osv.dev/v1/querybatch et sévérité de chaque avis par GET https://api.osv.dev/v1/vulns/<id> (database_specific.severity) ; une entrée est une chaîne (sévérité inconnue) ou {id, severite}.",
   "source": "https://api.osv.dev/v1/querybatch",
-  "date": "2026-09-14",
+  "date": "2026-09-14 (PyPI) et 2026-11-12 (npm)",
   "reponses": {
     "PyPI:requests@2.19.0": ["GHSA-9hjg-9r4m-mvj7", "GHSA-9wx4-h78v-vm56", "GHSA-gc5v-m9x4-r6x2", "GHSA-j8r2-6x86-q33q", "GHSA-x84v-xcm2-53pg", "PYSEC-2018-28", "PYSEC-2023-74", "PYSEC-2026-1872", "PYSEC-2026-1873", "PYSEC-2026-2275"],
     "PyPI:flask@0.12": ["GHSA-562c-5r94-xh97", "GHSA-5wv5-4vpf-pj6m", "GHSA-68rp-wp8r-4726", "GHSA-m2qf-hxjv-5gpq", "PYSEC-2018-66", "PYSEC-2019-179", "PYSEC-2023-62", "PYSEC-2026-2151"],
-    "PyPI:packaging@24.1": []
+    "PyPI:packaging@24.1": [],
+    "npm:vite@5.4.21": [{"id": "GHSA-4w7w-66w2-5vf9", "severite": "MODERATE"}, {"id": "GHSA-587h-7wmj-h5pm", "severite": "HIGH"}, {"id": "GHSA-698v-4r3x-3vcv", "severite": "MODERATE"}, {"id": "GHSA-9jrq-w75r-8gcw", "severite": "LOW"}, {"id": "GHSA-fx2h-pf6j-xcff", "severite": "MODERATE"}, {"id": "GHSA-r825-w8mm-5pxw", "severite": "MODERATE"}, {"id": "GHSA-rq7h-c2jc-7f22", "severite": "MODERATE"}, {"id": "GHSA-v6wh-96g9-6wx3", "severite": "MODERATE"}],
+    "npm:react-router-dom@6.30.4": [{"id": "GHSA-jjmj-jmhj-qwj2", "severite": "MODERATE"}],
+    "npm:react-router@6.30.4": [{"id": "GHSA-337j-9hxr-rhxg", "severite": "MODERATE"}, {"id": "GHSA-wrjc-x8rr-h8h6", "severite": "MODERATE"}],
+    "npm:esbuild@0.21.5": [{"id": "GHSA-67mh-4wv8-2f99", "severite": "MODERATE"}],
+    "npm:is-number@7.0.0": [],
+    "npm:ms@2.1.3": []
   }
 }

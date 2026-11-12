@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolvePython } from './lib/python.mjs';
 import { frontmatter } from './lib/frontmatter.mjs';
@@ -565,6 +565,84 @@ if (reg) {
       if (reel.length) ko(`TF-2399 (D) : ${reel.length} script(s) de contrôle hors registre — ${reel.join(', ')} (les inscrire, règle §4 ; ou les déclarer dans HORS_REGISTRE avec leur motif)`);
       else if (!rouge.includes('digit-ai-page-html/check_impression.py')) ko('TF-2399 (D) sens rouge : un registre sans check_impression.py ne nomme pas le script orphelin — la barrière est aveugle');
       else ok(`TF-2399 (D) : tout script oracle-* ou check_* des skills du dépôt est au registre (barrière) ; sans l'entrée de check_impression.py, la barrière le nomme, et l'inscription ramène le PASS`);
+    }
+  }
+
+  // (E) TF-2452 (12/11/2026, décision R-58 du 12/11/2026) — LA BARRIÈRE (D) NE LISAIT QUE LES SKILLS DE forge-agents. Les oracles publiés
+  // par le pilot (oracles/, gabarits/, todo/) et par les forges (oracles/, skills/) restaient hors de son regard : oracle-engagements,
+  // oracle-document-imprime et oracle-clip se sont publiés sans que rien ne dise s'ils devaient entrer au registre. Elle lit désormais
+  // tout `oracle-*.mjs|py` et tout `check_*.py` que git suit dans le pilot et dans chaque forge (hors fixtures, node_modules, vendor, old,
+  // output, input, .claude/skills — déjà couvert par (D) — et recettes *.test.mjs) : chacun est au registre machine (repéré par son
+  // chemin `{pilot}/…` ou `{forges}/<dépôt>/…`, jamais par son seul nom, deux dépôts portant un oracle-caracteres-controle.mjs), OU déclaré
+  // dans references/oracles-hors-registre.json avec un motif. La liste ne garde ni mort (fichier disparu), ni doublon, ni contradiction
+  // (déclaré ET inscrit), ni ligne sans motif connu. Sens rouge joué sur le parc réel : sans une déclaration, la barrière nomme le script.
+  {
+    const FICHIER = path.join(SKILLDIR, 'references', 'oracles-hors-registre.json');
+    let liste = null; try { liste = JSON.parse(fs.readFileSync(FICHIER, 'utf8')); } catch (e) { ko('TF-2452 : references/oracles-hors-registre.json illisible — ' + e.message); }
+    if (liste && !FORGES) ok('TF-2452 : barrière des oracles du pilot et des forges non rejouée — ' + motifForgesAbsentes(SKILLDIR));
+    else if (liste) {
+      const DEPOT_JUGE = /^(digit-ai-factory|digit-ai-forge-[a-z-]+)$/;
+      const enumerer = () => {
+        const out = [], sautes = [], vus = [];
+        for (const n of fs.readdirSync(FORGES)) {
+          const dir = path.join(FORGES, n);
+          if (!DEPOT_JUGE.test(n) || !fs.existsSync(path.join(dir, '.git'))) continue;
+          const r = spawnSync('git', ['-C', dir, 'ls-files'], { encoding: 'utf8', maxBuffer: 1e8 });
+          if (r.status !== 0) { sautes.push(n); continue; }
+          vus.push(n);
+          for (const f of r.stdout.split(/\r?\n/)) {
+            const b = path.posix.basename(f);
+            if (!/^(oracle-.*\.(mjs|py)|check_.*\.py)$/.test(b) || /\.test\.mjs$/.test(b)) continue;
+            if (/(^|\/)(fixtures|node_modules|vendor|old|output|input)\//.test(f) || f.startsWith('.claude/skills/') || !fs.existsSync(path.join(dir, f))) continue;
+            out.push(n + '/' + f);
+          }
+        }
+        return { fichiers: out, sautes, vus };
+      };
+      const inscrits = (oracles) => {
+        const paille = oracles.map((o) => JSON.stringify([o.cmd || [], o.commande || '', o.cmd_ref || ''])).join('\n');
+        const s = new Set();
+        for (const m of paille.matchAll(/\{(pilot|forges)\}\/((?:\.\.\/)?digit-ai-[\w-]+\/)?([^\s"'`\\,\]]+)/g)) {
+          s.add((m[2] ? m[2].replace(/^\.\.\//, '').replace(/\/$/, '') : 'digit-ai-factory') + '/' + m[3]);
+        }
+        return s;
+      };
+      const probleme = (fichiers, au_registre, declares, motifs) => {
+        const pb = [], dec = new Map(), present = new Set(fichiers);
+        for (const d of declares) {
+          const k = d.depot + '/' + d.chemin;
+          if (dec.has(k)) pb.push(`${k} : déclaré deux fois`);
+          dec.set(k, d);
+          if (!d.motif || !motifs[d.motif]) pb.push(`${k} : motif absent ou inconnu (${d.motif})`);
+        }
+        for (const k of fichiers) if (!au_registre.has(k) && !dec.has(k)) pb.push(`${k} : ni au registre ni déclaré hors registre`);
+        for (const k of dec.keys()) {
+          if (!present.has(k)) pb.push(`${k} : déclaré hors registre mais introuvable (supprimé, renommé, ou hors du périmètre lu)`);
+          else if (au_registre.has(k)) pb.push(`${k} : déclaré hors registre alors qu'il est au registre`);
+        }
+        return pb;
+      };
+      const { fichiers, sautes, vus } = enumerer();
+      const reg_ = inscrits(reg.oracles);
+      const declares = Array.isArray(liste.oracles) ? liste.oracles : [], motifs = liste.motifs || {};
+      const nommes = ['digit-ai-factory/oracles/oracle-engagements.mjs', 'digit-ai-forge-design/oracles/oracle-document-imprime.mjs', 'digit-ai-forge-design/oracles/oracle-clip.mjs'];
+      if (!vus.includes('digit-ai-factory')) ok('TF-2452 : le pilot n\'est pas lisible par git depuis ' + FORGES + ' — barrière des oracles du pilot et des forges non rejouée' + (sautes.length ? ' (dépôts illisibles : ' + sautes.join(', ') + ')' : ''));
+      else {
+        const reel = probleme(fichiers, reg_, declares, motifs);
+        const premier = declares.find((d) => !reg_.has(d.depot + '/' + d.chemin));
+        const sansUne = premier ? probleme(fichiers, reg_, declares.filter((d) => d !== premier), motifs) : [];
+        const avecMort = probleme(fichiers, reg_, [...declares, { depot: 'digit-ai-factory', chemin: 'oracles/oracle-qui-n-existe-pas.mjs', motif: 'pilot-appele' }], motifs);
+        const avecDouble = probleme(fichiers, reg_, [...declares, { depot: 'digit-ai-factory', chemin: 'oracles/oracle-engagements.mjs', motif: 'pilot-appele' }], motifs);
+        const sansMotif = premier ? probleme(fichiers, reg_, declares.map((d) => d === premier ? { ...d, motif: '' } : d), motifs) : [];
+        const absentsNommes = nommes.filter((k) => !fichiers.includes(k) || !reg_.has(k));
+        if (reel.length) ko(`TF-2452 : ${reel.length} anomalie(s) entre les oracles du pilot et des forges, le registre et references/oracles-hors-registre.json — ${reel.slice(0, 12).join(' · ')}${reel.length > 12 ? ' · … (' + (reel.length - 12) + ' de plus)' : ''}. Les inscrire au registre (règle §4) ou les déclarer avec un motif.`);
+        else if (absentsNommes.length) ko('TF-2452 : les trois oracles qui ont fait naître la barrière doivent être vus ET inscrits au registre par leur chemin — manque : ' + absentsNommes.join(', '));
+        else if (!premier || !sansUne.some((p) => p.startsWith(premier.depot + '/' + premier.chemin + ' : ni au registre'))) ko('TF-2452 sens rouge : retirer une déclaration ne fait pas nommer son script — la barrière est aveugle');
+        else if (!avecMort.some((p) => /oracle-qui-n-existe-pas\.mjs : déclaré hors registre mais introuvable/.test(p))) ko('TF-2452 sens rouge : une déclaration dont le fichier n\'existe pas n\'est pas nommée — la liste garderait ses morts');
+        else if (!avecDouble.some((p) => /oracle-engagements\.mjs : déclaré hors registre alors qu'il est au registre/.test(p))) ko('TF-2452 sens rouge : un script déclaré hors registre ET inscrit n\'est pas nommé — la contradiction passerait');
+        else if (!sansMotif.some((p) => /motif absent ou inconnu/.test(p))) ko('TF-2452 sens rouge : une déclaration sans motif n\'est pas nommée');
+        else ok(`TF-2452 : les ${fichiers.length} oracle-*/check_* du pilot et des ${vus.length - 1} forges lues sont tous au registre (${fichiers.length - declares.length}) ou déclarés hors registre avec un motif (${declares.length}) ; sans une déclaration, un déclaré mort, un double ou un motif absent, la barrière nomme l'écart${sautes.length ? ' (dépôts illisibles, non lus : ' + sautes.join(', ') + ')' : ''}`);
+      }
     }
   }
 }
@@ -3713,6 +3791,123 @@ else {
     !j || j.verdict !== 'FAIL' || rq.length !== 1 || rq[0].mode !== 'uvx' || rq[0].argv.includes('--no-deps')
       ? ko(`TF-2281 requirements.txt, pip-audit absent et uvx présent : attendu FAIL via uvx, sans --no-deps (résolution normale), obtenu ${j && j.verdict} ${JSON.stringify(rq)}`)
       : ok('TF-2281 requirements.txt avec django 1.4, pip-audit absent et uvx présent : FAIL via « uvx pip-audit », résolution normale');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-2450 (12/11/2026, décision R-58 du 12/11/2026, reste de TF-2403) — oracle-sca NOMME CHAQUE AVIS, ET SES MODES FIGÉ ET VIF
+// JUGENT LES MÊMES SÉVÉRITÉS SUR LES MÊMES VERSIONS, VERROU NPM COMPRIS. Avant : le message ne disait que des comptes, npm audit
+// ne comptait que critical, high et moderate (low ignoré), le mode figé jugeait tout sans sévérité et lisait les intervalles
+// de package.json au lieu du verrou. Un même projet npm (package.json « vite ^5.4.0 », verrou réduit à vite 5.4.21, react-router-dom
+// 6.30.4, react-router 6.30.4, esbuild 0.21.5 : 12 avis réels dont un high et un low, relevés le 12/11/2026) est jugé par TROIS voies
+// sans réseau : les données figées, un npm SIMULÉ qui rejoue une sortie RÉELLE de `npm audit --json`, et un serveur OSV LOCAL
+// (npm absent). Les trois doivent rendre FAIL et nommer les MÊMES 12 avis (identifiant, paquet, version, sévérité). Puis :
+// low seul est jugé, info seul est écarté et nommé, une sortie npm qui ne nomme rien mais compte des avis n'est jamais un PASS, une
+// sévérité absente se dit « inconnue » sans écarter l'avis, un package.json sans verrou le dit, un verrou de format 1 se lit.
+{
+  const ORA = path.join(SKILLDIR, 'scripts', 'oracle-sca.mjs');
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const SIM = path.join(FX, 'sca-npm-simule.mjs'), SERVEUR = path.join(FX, 'sca-osv-local.mjs');
+  const ABSENT = path.join(os.tmpdir(), 'qo-sca-npm-absent');
+  const FIGEES = path.join(FX, 'sca-osv-fige.json');
+  const ROUGE = path.join(FX, 'sca-npm-verrou-red');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-sca-2450-'));
+  const juger = (cible, args = [], env = {}) => {
+    const r = spawnSync(process.execPath, [ORA, cible, ...args], { encoding: 'utf8', timeout: 120000, env: { ...process.env, QO_PERIMETRE: '', ...env } });
+    try { return JSON.parse(r.stdout); } catch { return null; }
+  };
+  const cles = (j) => ((j && j.findings) || []).filter(f => f.avis).map(f => [f.avis.id, f.avis.paquet, f.avis.version, f.avis.severite].join('|')).sort();
+  const projet = (nom, lock, deps = { x: '^1.0.0' }) => {
+    const d = path.join(tmp, nom); fs.mkdirSync(d);
+    fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify({ name: nom, version: '1.0.0', dependencies: deps }));
+    if (lock) fs.writeFileSync(path.join(d, 'package-lock.json'), typeof lock === 'string' ? lock : JSON.stringify(lock));
+    return d;
+  };
+  const verrou3 = (paquets) => ({ name: 'p', lockfileVersion: 3, requires: true, packages: { '': { name: 'p', version: '1.0.0' },
+    ...Object.fromEntries(paquets.map(([n, v]) => ['node_modules/' + n, { version: v, resolved: `https://registry.npmjs.org/${n}/-/${n}-${v}.tgz` }])) } });
+  const figee = (nom, reponses) => { const f = path.join(tmp, nom + '.json'); fs.writeFileSync(f, JSON.stringify({ source: 'banc TF-2450', date: '2026-11-12', reponses })); return '--osv-fige=' + f; };
+  const servir = (env = {}) => new Promise((resolve) => {
+    const enfant = spawn(process.execPath, [SERVEUR, FIGEES], { env: { ...process.env, ...env }, stdio: ['pipe', 'pipe', 'ignore'] });
+    let vu = false;
+    enfant.stdout.on('data', (d) => { const m = /PORT (\d+)/.exec(String(d)); if (m && !vu) { vu = true; resolve({ url: 'http://127.0.0.1:' + m[1], fin: () => enfant.kill() }); } });
+    setTimeout(() => { if (!vu) { enfant.kill(); resolve(null); } }, 15000);
+  });
+  try {
+    // (A) données figées : 12 avis nommés, sévérités lues, low et high compris
+    const fige = juger(ROUGE, ['--osv-fige=' + FIGEES]);
+    const ref = cles(fige);
+    !fige || fige.verdict !== 'FAIL' || ref.length !== 12 || !ref.includes('GHSA-9jrq-w75r-8gcw|vite|5.4.21|low') || !ref.includes('GHSA-587h-7wmj-h5pm|vite|5.4.21|high')
+      || !fige.findings.every(f => !f.avis || (f.msg.includes(f.avis.id) && f.msg.includes(f.avis.paquet + '@' + f.avis.version) && f.msg.includes('(sévérité ' + f.avis.severite + ')') && f.where === 'package.json'))
+      ? ko(`TF-2450 (A) mode figé sur le verrou npm : attendu FAIL avec 12 avis nommés (identifiant, paquet, version, sévérité) dont un high et un low, obtenu ${fige && fige.verdict} ${ref.length} avis ${JSON.stringify(ref.slice(0, 3))}`)
+      : ok('TF-2450 (A) mode figé : le verrou npm est lu (vite 5.4.21 et non l\'intervalle ^5.4.0), 12 avis sont nommés avec identifiant, paquet, version et sévérité, dont un high et un low');
+    // (B) mode vif : npm audit (simulé, sortie réelle) nomme les MÊMES avis
+    const vif = juger(ROUGE, [], { QO_SCA_NPM: SIM });
+    ref.length !== 12 || JSON.stringify(cles(vif)) !== JSON.stringify(ref)
+      ? ko(`TF-2450 (B) mode vif (npm audit) : les avis nommés doivent être les 12 du mode figé, obtenu ${vif && vif.verdict} ${JSON.stringify(cles(vif).filter(x => !ref.includes(x)))} en trop, ${JSON.stringify(ref.filter(x => !cles(vif).includes(x)))} en moins`)
+      : ok('TF-2450 (B) mode vif (npm audit, sortie réelle rejouée) : les mêmes 12 avis, mêmes versions, mêmes sévérités que le mode figé');
+    // (C) OSV vif (npm absent) : serveur local, sévérité lue sur la fiche de chaque avis
+    const srv = await servir();
+    if (!srv) ko('TF-2450 (C) : le serveur OSV local n\'a pas démarré');
+    else {
+      try {
+        const osv = juger(ROUGE, [], { QO_SCA_NPM: ABSENT, QO_SCA_OSV_URL: srv.url });
+        ref.length !== 12 || JSON.stringify(cles(osv)) !== JSON.stringify(ref)
+          ? ko(`TF-2450 (C) mode vif par OSV (npm absent) : les avis nommés doivent être les 12 du mode figé, obtenu ${osv && osv.verdict} ${JSON.stringify(cles(osv).filter(x => !ref.includes(x)))} en trop, ${JSON.stringify(ref.filter(x => !cles(osv).includes(x)))} en moins`)
+          : ok('TF-2450 (C) mode vif par OSV (npm absent, serveur local) : les mêmes 12 avis, sévérité lue sur la fiche de chaque avis');
+      } finally { srv.fin(); }
+    }
+    const srvSans = await servir({ QO_SIM_OSV_SANS_FICHE: '1' });
+    if (!srvSans) ko('TF-2450 (C bis) : le serveur OSV local n\'a pas démarré');
+    else {
+      try {
+        const sans = juger(ROUGE, [], { QO_SCA_NPM: ABSENT, QO_SCA_OSV_URL: srvSans.url });
+        !sans || sans.verdict !== 'FAIL' || cles(sans).length !== 12 || !cles(sans).every(x => x.endsWith('|inconnue')) || !sans.non_juge.some(x => /12 avis sans sévérité connue/.test(x))
+          ? ko(`TF-2450 (C bis) fiches OSV injoignables : les 12 avis restent jugés, en sévérité « inconnue » et dits au non_juge — obtenu ${sans && sans.verdict} ${cles(sans).length} avis`)
+          : ok('TF-2450 (C bis) fiches OSV injoignables : les 12 avis restent jugés (FAIL) en sévérité « inconnue », jamais écartés, et le non_juge le dit');
+      } finally { srvSans.fin(); }
+    }
+    // (D) low seul est jugé (le décompte critical/high/moderate l'ignorait) ; info seul est écarté et nommé
+    const dBas = projet('bas', verrou3([['paquet-bas', '1.0.0']]));
+    const bas = juger(dBas, [], { QO_SCA_NPM: SIM, QO_SIM_NPM: 'bas' });
+    !bas || bas.verdict !== 'FAIL' || JSON.stringify(cles(bas)) !== JSON.stringify(['GHSA-sim0-bas0-0001|paquet-bas|1.0.0|low'])
+      ? ko(`TF-2450 (D) un avis low seul : attendu FAIL qui le nomme avec sa version lue au verrou (paquet-bas 1.0.0), obtenu ${bas && bas.verdict} ${JSON.stringify(cles(bas))}`)
+      : ok('TF-2450 (D) un avis low seul fait échouer (npm audit comptait critical, high, moderate et l\'ignorait) et se nomme avec sa version lue au verrou');
+    const dInfo = projet('info', verrou3([['paquet-info', '1.0.0']]));
+    const info = juger(dInfo, [], { QO_SCA_NPM: SIM, QO_SIM_NPM: 'info' });
+    !info || info.verdict !== 'PASS' || !info.non_juge.some(x => /1 avis de sévérité info non jugé.*GHSA-sim0-inf0-0001/.test(x))
+      ? ko(`TF-2450 (D) un avis info seul : attendu PASS avec l'avis nommé au non_juge, obtenu ${info && info.verdict}`)
+      : ok('TF-2450 (D) un avis info seul n\'est pas jugé (PASS) et il est nommé au non_juge');
+    // (E) une sortie qui compte des avis sans en nommer un n'est jamais un PASS ; une sortie propre PASS ; un échec SKIP
+    const comptes = juger(projet('comptes', verrou3([['x', '1.0.0']])), [], { QO_SCA_NPM: SIM, QO_SIM_NPM: 'comptes' });
+    !comptes || comptes.verdict !== 'FAIL' || !comptes.findings.some(f => /ne nomme aucun avis exploitable/.test(f.msg))
+      ? ko(`TF-2450 (E) npm audit qui compte un avis sans le nommer : attendu FAIL, jamais PASS, obtenu ${comptes && comptes.verdict}`)
+      : ok('TF-2450 (E) npm audit qui compte un avis sans le nommer (format ancien) : FAIL qui le dit, jamais un PASS');
+    const propre = juger(projet('propre', verrou3([['x', '1.0.0']])), [], { QO_SCA_NPM: SIM, QO_SIM_NPM: 'propre' });
+    const panne = juger(projet('panne', verrou3([['x', '1.0.0']])), [], { QO_SCA_NPM: SIM, QO_SIM_NPM: 'echec' });
+    !propre || propre.verdict !== 'PASS' || !panne || panne.verdict !== 'SKIP' || !/sans sortie exploitable/.test(String(panne.motif))
+      ? ko(`TF-2450 (E) sens vert : npm audit propre attendu PASS (obtenu ${propre && propre.verdict}), npm audit en panne attendu SKIP motivé (obtenu ${panne && panne.verdict})`)
+      : ok('TF-2450 (E) sens vert : npm audit sans avis PASS ; npm audit en panne SKIP motivé, jamais un PASS');
+    // (F) le filtre du mode figé : low jugé, info écarté, chaîne = sévérité inconnue jugée
+    const fInfo = juger(projet('filtre-info', verrou3([['a', '1.0.0']])), [figee('f-info', { 'npm:a@1.0.0': [{ id: 'GHSA-sim0-inf0-0002', severite: 'INFO' }] })]);
+    const fLow = juger(projet('filtre-low', verrou3([['b', '2.0.0']])), [figee('f-low', { 'npm:b@2.0.0': [{ id: 'GHSA-sim0-low0-0002', severite: 'LOW' }] })]);
+    const fChaine = juger(projet('filtre-chaine', verrou3([['c', '3.0.0']])), [figee('f-chaine', { 'npm:c@3.0.0': ['GHSA-sim0-ch00-0002'] })]);
+    !fInfo || fInfo.verdict !== 'PASS' || !fInfo.non_juge.some(x => /GHSA-sim0-inf0-0002/.test(x)) || !fLow || fLow.verdict !== 'FAIL' || JSON.stringify(cles(fLow)) !== JSON.stringify(['GHSA-sim0-low0-0002|b|2.0.0|low'])
+      || !fChaine || fChaine.verdict !== 'FAIL' || JSON.stringify(cles(fChaine)) !== JSON.stringify(['GHSA-sim0-ch00-0002|c|3.0.0|inconnue']) || !fChaine.non_juge.some(x => /1 avis sans sévérité connue/.test(x))
+      ? ko(`TF-2450 (F) filtre du mode figé : info attendu PASS nommé (${fInfo && fInfo.verdict}), low attendu FAIL (${fLow && fLow.verdict}), simple chaîne attendue FAIL en sévérité inconnue (${fChaine && fChaine.verdict} ${JSON.stringify(cles(fChaine))})`)
+      : ok('TF-2450 (F) mode figé : info écarté et nommé (PASS), low jugé (FAIL), une entrée sans sévérité jugée en « inconnue » (FAIL) et dite au non_juge');
+    // (G) sans verrou : l'approximation par l'intervalle reste, et elle est dite ; verrou de format 1 lu ; verrou illisible dit
+    const sansV = juger(projet('sans-verrou', null, { vite: '^5.4.21' }), [figee('g-vite', { 'npm:vite@5.4.21': [{ id: 'GHSA-sim0-sv00-0002', severite: 'HIGH' }] })]);
+    !sansV || sansV.verdict !== 'FAIL' || !sansV.non_juge.some(x => /sans verrou npm.*intervalle déclaré/.test(x))
+      ? ko(`TF-2450 (G) package.json sans verrou : attendu FAIL (version lue de l'intervalle) et la limite dite au non_juge, obtenu ${sansV && sansV.verdict}`)
+      : ok('TF-2450 (G) package.json sans verrou : la version est lue de l\'intervalle déclaré, et le non_juge le dit');
+    const v1 = JSON.stringify({ name: 'p', lockfileVersion: 1, requires: true, dependencies: { vite: { version: '5.4.21', resolved: 'https://registry.npmjs.org/vite/-/vite-5.4.21.tgz', dependencies: { esbuild: { version: '0.21.5', resolved: 'https://registry.npmjs.org/esbuild/-/esbuild-0.21.5.tgz' } } }, local: { version: 'file:../local' } } });
+    const g1 = juger(projet('verrou-v1', v1, { vite: '^5.0.0' }), [figee('g-v1', { 'npm:vite@5.4.21': [{ id: 'GHSA-sim0-v100-0002', severite: 'MODERATE' }], 'npm:esbuild@0.21.5': [] })]);
+    !g1 || g1.verdict !== 'FAIL' || JSON.stringify(cles(g1)) !== JSON.stringify(['GHSA-sim0-v100-0002|vite|5.4.21|moderate']) || !g1.non_juge.some(x => /1 paquet\(s\) du verrou hors registre.*local/.test(x))
+      ? ko(`TF-2450 (G) verrou de format 1 : attendu FAIL sur vite 5.4.21 (esbuild imbriqué lu, paquet « file: » nommé hors registre), obtenu ${g1 && g1.verdict} ${JSON.stringify(cles(g1))}`)
+      : ok('TF-2450 (G) verrou de format 1 : l\'arbre imbriqué est lu (vite et esbuild), le paquet « file: » est nommé au non_juge, non audité');
+    const illisible = juger(projet('verrou-casse', '{ pas du json', { vite: '^5.4.21' }), [figee('g-casse', { 'npm:vite@5.4.21': [] })]);
+    !illisible || illisible.verdict !== 'PASS' || !illisible.non_juge.some(x => /package-lock\.json illisible/.test(x))
+      ? ko(`TF-2450 (G) verrou illisible : attendu la limite dite au non_juge (package.json seul lu), obtenu ${illisible && illisible.verdict}`)
+      : ok('TF-2450 (G) verrou illisible : dit au non_juge, package.json seul est lu');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
