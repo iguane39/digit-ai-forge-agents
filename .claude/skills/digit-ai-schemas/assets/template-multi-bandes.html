@@ -117,6 +117,8 @@
 /* POLICES-EMBARQUEES:FIN */
 
   :root {
+    /* SC4 de forge-design (TF-2384, TF-2459) : chaque theme declare son color-scheme en CSS, la balise meta seule ne suffit pas. */
+    color-scheme: light;
     --bg: #ffffff;
     --bg-soft: #f7f8fa;
     --bg-softer: #fbfbfc;
@@ -161,6 +163,7 @@
    Sous @media screen : l'impression reste CLAIRE, quel que soit le theme affiche au moment d'imprimer. */
 @media screen {
   :root[data-theme="dark"] {
+    color-scheme: dark;
     --bg: #0b1220;
     --bg-soft: #121b2e;
     --bg-softer: #0f1727;
