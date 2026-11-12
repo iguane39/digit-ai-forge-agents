@@ -14,7 +14,7 @@ description: >
   proposition commerciale (→ digit-ai-propale), pour l'auditer avant envoi
   (→ digit-ai-propale-review), ni pour un livrable hors charte Digit-AI (→ systeme-de-marque).
 metadata:
-  version: "2.8.0"
+  version: "2.9.0"
 ---
 
 # Digit-AI PowerPoint Skill
@@ -22,6 +22,11 @@ metadata:
 Encode les **règles de composition** des livrables PPTX Digit-AI (charte v2) et **consomme** les
 **valeurs** de marque là où elles vivent : chez l'émetteur.
 
+> **Journal du 2026-11-12 — v2.9.0 (TF-2401, décision R-58 du 12/11/2026).** La règle des intercalaires
+> dit ce que S1 juge : deux formes admises, toutes les parties ont leur intercalaire, ou aucune (sommaire du
+> gabarit B de `digit-ai-propale`) ; le deck mixte reste refusé. La phrase « un intercalaire par partie, sans
+> exception » est retirée de ce fichier et de `references/charte.md` § 6. Self-test : contrôle C21.
+>
 > **Journal du 2026-11-10 — v2.8.0 (campagne FA3, décisions R-58 du 10/11/2026 sur les retours du 09/11).**
 > Neuf sujets, chacun avec son contrôle au self-test (C12 à C20) : TF-2326 le prérequis pptxgenjs se vérifie
 > (`verifier-prerequis.mjs`) ; TF-2355 la sortie de `lire-marque.mjs` est documentée telle qu'elle est ;
@@ -416,11 +421,13 @@ le renvoi est retiré du workflow, le manque est déclaré.
   le titre-message ouvre seul la slide. Les étiquettes en majuscules à l'INTÉRIEUR
   des cartes (labels de carte) restent autorisées. Le kicker de la couverture
   (« PROPOSITION COMMERCIALE ») reste autorisé — couverture uniquement.
-- **Sommaire ⇒ un intercalaire par partie, sans exception.** Si le deck contient une
-  slide sommaire, CHAQUE entrée du sommaire ouvre sa section par un intercalaire sombre
-  « {NN} · {Titre} » — numérotation et intitulés strictement identiques au sommaire.
-  Interdit d'en poser pour certaines parties seulement : soit toutes, soit aucune
-  (deck sans sommaire). Vérifier la bijection sommaire ↔ intercalaires au QA final.
+- **Sommaire : deux formes admises.** Si le deck contient une slide sommaire, soit CHAQUE
+  entrée ouvre sa section par un intercalaire sombre « {NN} · {Titre} » (numérotation et
+  intitulés strictement identiques au sommaire), soit AUCUNE n'en ouvre : c'est la forme du
+  gabarit B de `digit-ai-propale`, dont les entrées restent numérotées de 01 à 0N sans trou.
+  Un deck mixte, où certaines parties seulement ont leur intercalaire, est refusé par S1.
+  Vérifier au QA final la bijection sommaire ↔ intercalaires dans la première forme, la
+  numérotation continue dans la seconde.
 - **Charte v2 par défaut** : couverture et intercalaires sur le fond du thème **sombre**
   (`fond_couverture`), contenu sur le fond du thème **clair** (`fond_contenu`) — le contraste
   signale la navigation. Variante claire de bout en bout (v1) : sur demande explicite, en

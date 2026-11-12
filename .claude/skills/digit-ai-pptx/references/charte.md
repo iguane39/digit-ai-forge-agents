@@ -113,10 +113,17 @@ skill (cf. `SKILL.md`, section « Non livré ») : repli texte dans le panneau b
 
 ## 6 · Navigation — sommaire et intercalaires
 
-Règle de **bijection**, sans exception : si le deck contient une slide sommaire, **chaque**
-entrée du sommaire ouvre sa section par un intercalaire sombre `{NN} · {Titre}`, numérotation
-et intitulés **strictement identiques** au sommaire. Soit tous, soit aucun (deck sans sommaire).
-La bijection se vérifie à la passe QA finale.
+Si le deck contient une slide sommaire, deux formes sont admises, et S1
+(`oracle-charte-pptx-semantique`) juge les deux :
+
+1. **Toutes les parties ont leur intercalaire.** Chaque entrée du sommaire ouvre sa section par un
+   intercalaire sombre `{NN} · {Titre}`, numérotation et intitulés **strictement identiques** au
+   sommaire : c'est la **bijection**, vérifiée à la passe QA finale.
+2. **Aucune partie n'a d'intercalaire** (forme du gabarit B de `digit-ai-propale`). Les entrées du
+   sommaire restent numérotées de `01` à `0N` sans trou, et c'est cette numérotation que la passe
+   QA vérifie.
+
+Un deck mixte, où certaines parties seulement ont leur intercalaire, est refusé.
 
 ## 7 · Langue et année
 

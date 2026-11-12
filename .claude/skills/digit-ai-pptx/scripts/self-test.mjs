@@ -82,6 +82,10 @@
 //        dimensions inconnues ou format ai, eps, pdf, emf : exit 2, message, rien d'écrit.
 //   C20 — le fichier de cadrage de la communication est exigé avant de générer (TF-2379) : SKILL.md prescrit
 //        `verifier-cadrage.mjs` du skill voisin à l'étape 0 ; l'exemple rempli passe, le gabarit vide est refusé.
+//   C21 — la règle des intercalaires dit ce que S1 juge (TF-2401) : SKILL.md et references/charte.md § 6 écrivent
+//        les deux formes admises, toutes les parties ont leur intercalaire ou aucune (gabarit B de digit-ai-propale),
+//        et refusent le deck mixte ; l'oracle S1 laisse passer le deck du gabarit B et refuse le deck mixte ; la
+//        phrase d'avant le lot, rejouée, est refusée aux deux endroits.
 //   C8 — sur demande (--essai-powerpoint) : l'essai réel par PowerPoint, joué seulement si AUCUN
 //        processus PowerPoint ne tourne, et avec --instance-neuve. L'instance lancée doit être
 //        quittée, le PPTX et le PDF écrits. Sans l'option, ou si PowerPoint tourne : non joué, dit.
@@ -144,6 +148,7 @@ const NON_JUGE = [
   "C18 compare la géométrie des cartes et du bandeau entre les pages d'une famille DÉCLARÉE (--familles) et cherche les barres fines accolées ; une famille non déclarée, ou une barre posée autrement qu'en forme fine, n'est pas vue",
   "C19 prouve le rendu du SVG de jeu à deux teintes ; un SVG réel plus riche (filtres, texte vivant dont la police manque au poste) n'est pas rejoué, et fetch_drive_assets.py ne télécharge toujours que des rasters",
   "C20 prouve que la commande prescrite distingue un cadrage complet d'un gabarit vide ; que l'agent le remplisse avec les faits du cas, et qu'ils soient justes, n'est jugé par aucun contrôle",
+  "C21 juge la phrase des deux fichiers et le comportement de S1 sur deux decks de jeu ; que le gabarit B de digit-ai-propale prescrive bien un sommaire sans intercalaire se lit chez ce skill, pas ici",
   "C8 n'est joué que sur demande, et jamais quand PowerPoint tourne : sans lui, le chemin COM réel n'est prouvé par aucun contrôle de ce self-test",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
@@ -1261,6 +1266,83 @@ function verifierCadrageCommunication() {
   return { joue: true, findings };
 }
 
+// ------------- C21 : la règle des intercalaires dit ce que S1 juge (TF-2401)
+// Le fait (10/11/2026, TF-2325) : S1 d'oracle-charte-pptx-semantique admet deux formes, toutes les parties ont leur
+// intercalaire, ou aucune (le sommaire du gabarit B de digit-ai-propale) ; un deck mixte reste refusé. SKILL.md disait
+// « un intercalaire par partie, sans exception » et charte.md § 6 « soit tous, soit aucun (deck sans sommaire) » : le
+// skill de rendu et son juge disaient deux règles. Le contrôle exige aux deux endroits les deux formes, le gabarit B
+// et le refus du deck mixte, puis joue S1 sur un deck du gabarit B et sur un deck mixte. Sens rouge : la phrase d'avant
+// le lot (constantes ci-dessous, recopiées de l'état de départ) doit être refusée à chaque endroit.
+const AVANT_SKILL_INTERCALAIRES = [
+  '- **Sommaire ⇒ un intercalaire par partie, sans exception.** Si le deck contient une',
+  '  slide sommaire, CHAQUE entrée du sommaire ouvre sa section par un intercalaire sombre',
+  '  « {NN} · {Titre} » — numérotation et intitulés strictement identiques au sommaire.',
+  "  Interdit d'en poser pour certaines parties seulement : soit toutes, soit aucune",
+  '  (deck sans sommaire). Vérifier la bijection sommaire ↔ intercalaires au QA final.',
+].join('\n');
+const AVANT_CHARTE_INTERCALAIRES = [
+  '## 6 · Navigation — sommaire et intercalaires',
+  '',
+  'Règle de **bijection**, sans exception : si le deck contient une slide sommaire, **chaque**',
+  'entrée du sommaire ouvre sa section par un intercalaire sombre `{NN} · {Titre}`, numérotation',
+  'et intitulés **strictement identiques** au sommaire. Soit tous, soit aucun (deck sans sommaire).',
+  'La bijection se vérifie à la passe QA finale.',
+].join('\n');
+function blocIntercalairesSkill(texte) {
+  const m = texte.match(/^- \*\*Sommaire[^\n]*\n(?: {2}[^\n]*\n?)*/m);
+  return m ? m[0] : null;
+}
+function blocIntercalairesCharte(texte) {
+  const m = texte.match(/^## 6 · Navigation[^\n]*\n[\s\S]*?(?=^## 7 |(?![\s\S]))/m);
+  return m ? m[0] : null;
+}
+function ecartsIntercalaires(bloc, etiquette) {
+  if (!bloc) return [`${etiquette} — la règle des intercalaires est introuvable`];
+  const plat = bloc.replace(/\s+/g, ' ');
+  const f = [];
+  if (/sans exception/i.test(plat)) f.push(`${etiquette} — « sans exception » : S1 admet deux formes, la règle n'en dit qu'une`);
+  if (!/gabarit B/.test(plat)) f.push(`${etiquette} — la forme sans intercalaire n'est pas rattachée au gabarit B de digit-ai-propale`);
+  if (!/(toutes|chaque)[^.]*intercalaire/i.test(plat)) f.push(`${etiquette} — la forme « toutes les parties ont leur intercalaire » n'est pas écrite`);
+  if (!/aucune? (?:partie )?(?:n'a|n'en|d'intercalaire)|sans intercalaire/i.test(plat)) f.push(`${etiquette} — la forme « aucune partie n'a d'intercalaire » n'est pas écrite`);
+  if (!/mixte|certaines parties seulement/i.test(plat)) f.push(`${etiquette} — le refus du deck mixte n'est pas écrit`);
+  return f;
+}
+function verifierIntercalaires() {
+  const findings = [];
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  const charteF = path.join(SKILL_DIR, 'references', 'charte.md');
+  if (!fs.existsSync(charteF)) return { joue: false, findings: ['C21 : references/charte.md absent'], motif: 'C21 NON JOUÉE : charte.md absent' };
+  const charte = fs.readFileSync(charteF, 'utf8');
+  findings.push(...ecartsIntercalaires(blocIntercalairesSkill(skillMd), 'C21 SKILL.md'));
+  findings.push(...ecartsIntercalaires(blocIntercalairesCharte(charte), 'C21 references/charte.md § 6'));
+  // sens ROUGE : la phrase d'avant le lot est refusée à chaque endroit, par plusieurs règles
+  const rS = ecartsIntercalaires(AVANT_SKILL_INTERCALAIRES, 'fixture-rouge SKILL.md');
+  const rC = ecartsIntercalaires(AVANT_CHARTE_INTERCALAIRES, 'fixture-rouge charte.md');
+  if (!rS.some((x) => x.includes('sans exception')) || !rS.some((x) => x.includes('gabarit B'))) findings.push("fixture-rouge — C21 est AVEUGLE : la phrase d'avant le lot, dans SKILL.md, n'est pas refusée pour « sans exception » et pour le gabarit B absent");
+  if (!rC.some((x) => x.includes('sans exception')) || !rC.some((x) => x.includes('gabarit B'))) findings.push("fixture-rouge — C21 est AVEUGLE : la phrase d'avant le lot, dans charte.md, n'est pas refusée pour « sans exception » et pour le gabarit B absent");
+  // sens ROUGE encore : une règle retirée du texte est vue (un extracteur qui ne trouve rien ne juge rien)
+  if (ecartsIntercalaires(blocIntercalairesSkill(skillMd.replace(/^- \*\*Sommaire[^\n]*\n(?: {2}[^\n]*\n?)*/m, '')), 'fixture-rouge').length !== 1) findings.push('fixture-rouge — C21 est AVEUGLE : un SKILL.md sans la règle des intercalaires n\'est pas refusé comme « introuvable »');
+  // S1 joue les deux formes : le deck du gabarit B passe, le deck mixte est refusé
+  const oracle = path.join(SKILL_DIR, '..', 'quality-oracles', 'scripts', 'oracle-charte-pptx-semantique.mjs');
+  const fx = path.join(SKILL_DIR, '..', 'quality-oracles', 'fixtures');
+  const gabaritB = path.join(fx, 'charte-pptx-gabarit-b-green.pptx');
+  const mixte = path.join(fx, 'charte-pptx-semantique-red.pptx');
+  if (![oracle, gabaritB, mixte].every((f) => fs.existsSync(f))) {
+    return { joue: false, findings, motif: 'C21 jouée sur le texte seul, S1 non rejouée : oracle-charte-pptx-semantique ou ses decks de jeu (quality-oracles) introuvables' };
+  }
+  const juger = (f) => {
+    const r = spawnSync(process.execPath, [oracle, f], { encoding: 'utf8', timeout: 120000 });
+    try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [] }; }
+  };
+  const s1 = (j) => (j.findings || []).filter((x) => /^S1 /.test(x.msg) && x.sev !== 'info');
+  const vert = juger(gabaritB);
+  if (s1(vert).length) findings.push(`C21 sens vert : le deck du gabarit B (sommaire sans aucun intercalaire) reçoit ${s1(vert).length} constat(s) S1 — ${s1(vert)[0].msg}`);
+  if (!(vert.findings || []).some((x) => /^conforme/.test(x.msg) && /gabarit B/.test(x.msg))) findings.push("C21 sens vert : S1 ne dit plus « forme du gabarit B » sur le deck sans intercalaire : la forme admise n'est plus nommée par le juge");
+  const rouge = juger(mixte);
+  if (!s1(rouge).some((x) => /sans intercalaire correspondant/.test(x.msg))) findings.push('C21 sens rouge : le deck mixte (une entrée de sommaire sans intercalaire alors que d\'autres en ont) n\'est plus refusé par S1');
+  return { joue: true, findings };
+}
+
 // ---------------------------------------------------------------- exécution
 const findings = [];
 const nonJuge = [...NON_JUGE];
@@ -1381,6 +1463,9 @@ if (!c19.joue) nonJuge.push(c19.motif);
 const c20 = verifierCadrageCommunication();
 findings.push(...c20.findings);
 if (!c20.joue) nonJuge.push(c20.motif);
+const c21 = verifierIntercalaires();
+findings.push(...c21.findings);
+if (!c21.joue) nonJuge.push(c21.motif);
 // C8 — l'essai réel, sur demande seulement, et jamais quand PowerPoint tourne
 let c8 = { joue: false, motif: "C8 NON JOUÉE : l'essai réel par PowerPoint ne se joue que sur demande (--essai-powerpoint)" };
 if (args.includes('--essai-powerpoint')) c8 = await essaiPowerPoint();
@@ -1415,6 +1500,7 @@ process.stdout.write(JSON.stringify({
     C18_grilles_et_barres_laterales: c18.joue ? 'jouée' : 'texte seul (python ou decks de jeu absents)',
     C19_svg_rendu_ou_refuse: c19.joue ? 'jouée' : 'refus joués, rendu du SVG NON joué (navigateur absent)',
     C20_cadrage_exige_avant_de_generer: c20.joue ? 'jouée' : 'texte seul (skill voisin introuvable)',
+    C21_regle_des_intercalaires_egale_s1: c21.joue ? 'jouée' : 'texte seul (oracle ou decks de jeu introuvables)',
     C8_essai_reel_powerpoint: c8.joue ? 'jouée' : 'NON jouée',
   },
   ...(c8.bilan ? { essai_powerpoint: c8.bilan } : {}),
