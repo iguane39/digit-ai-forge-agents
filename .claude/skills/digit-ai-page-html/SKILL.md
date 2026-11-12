@@ -7,13 +7,26 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.45.1"
+  version: "1.46.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.46.0 (12/11/2026)** — **`render_page.py` reconnaît une mire de connexion à son action, plus à la seule présence d'un champ mot de passe
+(TF-2433, retour RT-21 du 10/11/2026 ; campagne du 12/11/2026, décision R-58 : exécutée).** L'écran connecté de changement de mot de passe (champs
+actuel, nouveau, confirmation, action `/espace/mot-de-passe`) était pris pour une mire : la ligne « MIRE DE CONNEXION RENDUE » disait que le verdict portait
+sur la mire, alors que l'écran était bien l'application. La sonde `MIRE_JS` juge désormais le formulaire qui porte chaque champ mot de passe visible.
+**Changement, donc pas une mire** : un champ `autocomplete="new-password"`, ou deux champs mot de passe visibles (confirmation, création de compte), ou une
+action dont le chemin nomme le mot de passe sans nommer la connexion. **Connexion, donc une mire** : une action dont le chemin nomme la connexion, ou un
+bouton « Se connecter », ou un champ `autocomplete="current-password"`, ou un identifiant (champ `username`, e-mail) à côté d'un seul mot de passe. Sans
+attribut `action`, le formulaire part vers l'adresse de la page : sur une instance servie, c'est elle qui se lit (sur un fichier, aucune adresse ne
+compte, seuls le bouton et les champs parlent). **Un champ mot de passe seul, sans aucun de ces indices, se juge comme un écran connecté** : l'écart avec
+la lettre de TF-1788 (tout champ mot de passe visible) est voulu, et la ligne ne se dit plus que d'un formulaire qui ouvre une session. Fixtures :
+`session-changement-mdp.html` (le défaut d'origine, jugé sans ligne MIRE) et `session-connexion-sans-action.html` (la mire sans `action`, toujours dite) ;
+8 sondes en ligne au self-test (`run_mire_a_son_action`) dont 4 rouges sur l'ancienne sonde, et 2 cas en mode fichier dans `run_session_et_theme`.
 
 **1.45.0 (10/11/2026)** — **six retours du produit marketing (RA-202, RA-203, RA-212, RA-214, RA-215 et un reste de TF-2299) : l'export PDF aux
 polices de la charte, la page imprimée mesurée, la complétude d'une source de données, deux contrôles qui cessent de se tromper (TF-2352, TF-2353,
@@ -875,11 +888,14 @@ toujours déclaré, et une page à thème sombre se juge deux fois. Les noms d'`
 quels : `--etat-connexion` pour `--etat-session`, `--theme dark|light` pour `sombre|clair`.
 **Une mire se reconnaît (TF-1788, lot Produit-83 20261015b, RA-4).** Sans `--etat-session`, une
 application derrière connexion se rend en mire, et le verdict portait sur la mire sans le dire. Dès
-qu'un champ mot de passe **visible** est rendu, `render_page.py` le dit à la largeur (non mesurable)
+qu'un formulaire de connexion est rendu (**un formulaire qui ouvre une session**, reconnu à son action
+depuis TF-2433 ; l'écran de changement de mot de passe n'en est pas un et se juge comme écran connecté),
+`render_page.py` le dit à la largeur (non mesurable)
 et au non jugé (« MIRE DE CONNEXION RENDUE »), avec le geste : sur une instance servie, enregistrer
 l'état de session par le script de connexion du produit puis rejouer avec `--etat-session` ; avec
 une session chargée qui ne passe pas la mire, la régénérer ; sur un fichier, servir l'application.
-Fixtures du banc : `session-connexion.html` (porte la mire), `session-application.html`,
+Fixtures du banc : `session-connexion.html` (porte la mire), `session-connexion-sans-action.html`,
+`session-changement-mdp.html` (TF-2433, jamais une mire), `session-application.html`,
 `theme-sombre-deborde.html`, `theme-attribut-sombre.html`, `theme-choix-stocke-sombre.html`,
 `theme-force-clair.html`, `theme-cle-propre-clair.html`.
 

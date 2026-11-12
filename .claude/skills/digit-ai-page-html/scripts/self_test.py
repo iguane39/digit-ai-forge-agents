@@ -3378,6 +3378,65 @@ def run_instance_servie():
     return out
 
 
+def run_mire_a_son_action():
+    """TF-2433 (retour Produit-82 20261110a, RT-21) — UNE MIRE SE RECONNAIT A SON ACTION.
+
+    `MIRE_JS` ne prend plus pour une mire tout ecran qui porte un champ mot de passe visible :
+    il juge le formulaire qui le porte. Ce banc joue la sonde sur des formulaires courts, un
+    cas par signal, chacun avec la reponse attendue ; les deux premiers sont le sens rouge
+    (une connexion, reconnue) et le defaut d'origine (un changement de mot de passe, refuse).
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import render_page as rp  # noqa: PLC0415
+    ID = '<input name="id" type="text" autocomplete="username">'
+    cas_ = [
+        ("connexion · action /connexion, identifiant et mot de passe", True,
+         f'<form action="/connexion">{ID}<input type="password" autocomplete="current-password">'
+         '<button>Se connecter</button></form>'),
+        ("changement · trois champs, action /espace/mot-de-passe (le defaut d'origine)", False,
+         '<form action="/espace/mot-de-passe"><input type="password" autocomplete="current-password">'
+         '<input type="password" autocomplete="new-password"><input type="password" '
+         'autocomplete="new-password"><button>Enregistrer</button></form>'),
+        ("creation de compte · deux champs mot de passe, action /inscription", False,
+         f'<form action="/inscription">{ID}<input type="password"><input type="password">'
+         '<button>Creer le compte</button></form>'),
+        ("reinitialisation · un seul champ new-password, action /reinitialiser-mot-de-passe", False,
+         '<form action="/reinitialiser-mot-de-passe"><input type="password" autocomplete="new-password">'
+         '<button>Valider</button></form>'),
+        ("un champ mot de passe seul, aucun indice d'ouverture de session", False,
+         '<form action="/profil"><input type="password"><button>Valider</button></form>'),
+        ("page a formulaire sans balise form · bouton Connexion et identifiant", True,
+         '<div><input name="email" type="email"><input type="password"><button>Connexion</button></div>'),
+        ("champ mot de passe masque (display:none) dans une connexion", False,
+         '<form action="/connexion"><input type="password" style="display:none"></form>'),
+        ("action /connexion/mot-de-passe : la connexion prime sur le mot de passe", True,
+         '<form action="/connexion/mot-de-passe"><input type="password" autocomplete="current-password">'
+         '<button>Entrer</button></form>'),
+    ]
+    out = []
+    with sync_playwright() as pw:
+        navigateur = pw.chromium.launch()
+        try:
+            page = navigateur.new_page(viewport={"width": 1280, "height": 900})
+            for nom, attendu, corps in cas_:
+                page.set_content(f"<!DOCTYPE html><html lang='fr'><body>{corps}</body></html>")
+                obtenu = bool(page.evaluate(rp.MIRE_JS))
+                out.append({"fixture": f"mire · {nom}", "verdict": "OK" if obtenu == attendu else "ECHEC",
+                            "attendu": "mire" if attendu else "pas une mire",
+                            "obtenu": "mire" if obtenu else "pas une mire", "regle": "TF-2433",
+                            "detail": "" if obtenu == attendu else
+                            "la sonde de mire ne suit pas l'action du formulaire (TF-2433)"})
+        finally:
+            navigateur.close()
+    return out
+
+
 def run_session_et_theme():
     """TF-1674 (lot Produit-80 20261012b, RD-1) — UNE APPLICATION CONNECTEE, ET SON THEME SOMBRE.
 
@@ -3489,6 +3548,25 @@ def run_session_et_theme():
             bool(mire_f) and all("INSTANCE SERVIE" in x and "--etat-session" in x for x in mire_f),
             "non_juge MIRE + instance servie + --etat-session", f"{len(mire_f)} ligne(s)",
             (rf.stderr or "")[:160] if fichier is None else "mire non dite en mode fichier")
+        # TF-2433 (retour Produit-82 20261110a, RT-21) — UNE MIRE SE RECONNAIT A SON ACTION. Sens
+        # rouge : `session-connexion.html` (action /connexion) reste une mire. Sens vert : l'ecran
+        # connecte de changement de mot de passe (trois champs, action /espace/mot-de-passe) se
+        # juge comme ecran connecte, sans ligne MIRE. Avant TF-2433, un champ mot de passe visible
+        # suffisait et l'ecran de changement etait pris pour une mire.
+        chg, rchg = juger(str(FIXTURES / "session-changement-mdp.html"), [])
+        mire_chg = [] if chg is None else [x for x in chg.get("non_juge", []) if "MIRE DE CONNEXION" in x]
+        cas("session · l'ecran de changement de mot de passe n'est pas une mire (TF-2433)",
+            chg is not None and not mire_chg and chg.get("verdict") == "PASS",
+            "0 ligne MIRE, ecran juge (PASS)",
+            (rchg.stderr or "")[:160] if chg is None else f"{len(mire_chg)} ligne(s) MIRE, {chg.get('verdict')}",
+            "l'ecran connecte de changement de mot de passe est pris pour une mire de connexion")
+        sa, rsa = juger(str(FIXTURES / "session-connexion-sans-action.html"), [])
+        mire_sa = [] if sa is None else [x for x in sa.get("non_juge", []) if "MIRE DE CONNEXION" in x]
+        cas("session · une mire sans attribut action reste une mire (TF-2433)",
+            sa is not None and len(mire_sa) == 1,
+            "1 ligne MIRE (bouton Se connecter, identifiant + mot de passe courant)",
+            (rsa.stderr or "")[:160] if sa is None else f"{len(mire_sa)} ligne(s) MIRE",
+            "le resserrement par l'action a fait perdre la mire d'une application a page unique")
         # L'etat « tout-deplie » recharge la page puis ouvre son <details> : il n'est JOUE que si
         # le rechargement est reste dans l'application (l'ecran de connexion n'en porte pas), et
         # ce sont les constats de CET etat qui se comptent, pas ceux de l'etat initial.
@@ -6620,6 +6698,10 @@ def main():
     session = run_session_et_theme()
     if session:
         res += session
+    # TF-2433 — une mire se reconnait a son action, pas au seul champ mot de passe.
+    mire_action = run_mire_a_son_action()
+    if mire_action:
+        res += mire_action
     # TF-0768/0769/0781/0782 — le composant de filtres joue DANS un navigateur : ses defauts
     # sont des defauts d'execution, qu'aucun oracle de marquage ne peut voir.
     filtres = run_filtres_runtime()

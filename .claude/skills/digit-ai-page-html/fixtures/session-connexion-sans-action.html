@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Connexion sans action declaree — 20261112a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+main{max-width:420px;margin:80px auto;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2433 (retour Produit-82 20261110a, RT-21). La MIRE sans attribut `action` : le formulaire
+  est envoye par le script de l'application, comme dans une application a page unique. Aucun
+  chemin ne dit « connexion » : ce sont le bouton « Se connecter » et la paire identifiant /
+  mot de passe courant qui disent que le geste ouvre une session. render_page doit la reconnaitre
+  comme mire malgre l'absence d'action.
+-->
+<body><main>
+<h1>Bienvenue</h1>
+<form>
+<p><label for="id">Identifiant</label><br><input id="id" name="id" type="text" autocomplete="username"></p>
+<p><label for="mdp">Mot de passe</label><br><input id="mdp" name="mdp" type="password" autocomplete="current-password"></p>
+<p><button type="button">Se connecter</button></p>
+</form>
+</main></body></html>

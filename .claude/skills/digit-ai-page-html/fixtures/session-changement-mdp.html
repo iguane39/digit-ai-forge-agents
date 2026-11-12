@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Changement de mot de passe — 20261112a</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+main{max-width:420px;margin:80px auto;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+h1{font-family:var(--head);font-size:1.4rem;margin:0 0 12px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2433 (retour Produit-82 20261110a, RT-21). L'ECRAN CONNECTE de changement de mot de passe :
+  trois champs mot de passe (actuel, nouveau, confirmation), une action qui n'ouvre aucune session.
+  Il n'est PAS une mire de connexion : render_page doit le juger comme un ecran connecte, sans la
+  ligne « MIRE DE CONNEXION RENDUE ». Avant TF-2433, un champ mot de passe visible suffisait a le
+  prendre pour une mire.
+-->
+<body><main data-colonne-ok>
+<h1>Changer mon mot de passe</h1>
+<p>Saisissez votre mot de passe actuel, puis le nouveau deux fois.</p>
+<form action="/espace/mot-de-passe" method="post">
+<p><label for="actuel">Mot de passe actuel</label><br><input id="actuel" name="actuel" type="password" autocomplete="current-password"></p>
+<p><label for="nouveau">Nouveau mot de passe</label><br><input id="nouveau" name="nouveau" type="password" autocomplete="new-password"></p>
+<p><label for="confirmation">Confirmation</label><br><input id="confirmation" name="confirmation" type="password" autocomplete="new-password"></p>
+<p><button type="submit">Enregistrer</button></p>
+</form>
+</main></body></html>

@@ -2562,11 +2562,54 @@ MEASURE_JS = r"""
 #      une AUTRE boite de defilement que la fenetre — un ancetre a `overflow` non `visible`
 #      (TF-0900). CONSTAT : la cause est reelle, le geste correctif appartient a la page.
 # La mesure n'a besoin d'aucun jeton : elle compare le `top` RENDU au `top` DECLARE.
-# TF-1788 — une mire de connexion : un champ mot de passe VISIBLE dans la page rendue.
-MIRE_JS = r"""() => [...document.querySelectorAll('input[type="password"]')].some((el) => {
-  const s = getComputedStyle(el), r = el.getBoundingClientRect();
-  return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 1 && r.height > 1;
-})"""
+# TF-1788 — une mire de connexion : un formulaire VISIBLE dans la page rendue qui ouvre une session.
+# TF-2433 (retour Produit-82 20261110a, RT-21) — UNE MIRE SE RECONNAIT A SON ACTION, pas a la seule
+# presence d'un champ mot de passe : l'ecran connecte de changement de mot de passe (actuel,
+# nouveau, confirmation) en porte trois et etait pris pour une mire, donc non juge comme ecran
+# connecte. Pour chaque champ mot de passe visible, le formulaire qui le porte (a defaut la page)
+# se juge ainsi :
+#   · CHANGEMENT, donc pas une mire : un champ autocomplete="new-password", ou deux champs mot de
+#     passe visibles (confirmation), ou une action dont le chemin nomme le mot de passe sans nommer
+#     la connexion ;
+#   · CONNEXION, donc une mire : une action dont le chemin nomme la connexion, ou un bouton
+#     « Se connecter », ou un champ autocomplete="current-password", ou un identifiant (champ
+#     username / e-mail) a cote d'un seul mot de passe ;
+#   · sinon : aucun indice d'ouverture de session, l'ecran se juge comme un ecran connecte.
+# Sans attribut `action`, le formulaire part vers l'adresse de la page : c'est elle qui se lit.
+MIRE_JS = r"""() => {
+  const vu = (el) => {
+    const s = getComputedStyle(el), r = el.getBoundingClientRect();
+    return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 1 && r.height > 1;
+  };
+  const CONNEXION = /connexion|connecter|identif|login|log-?in|sign-?in|session|auth|connect/i;
+  const CHANGEMENT = /mot-?de-?passe|motdepasse|password|passwd|mdp|pwd|reset|renouvel|changer|change|modifier|update/i;
+  const BOUTON = /se connecter|connexion|s.identifier|login|log ?in|sign ?in/i;
+  const chemin = (brut) => {
+    if (!brut && !/^https?:$/.test(location.protocol)) return '';
+    try { return new URL(brut || '', location.href).pathname; } catch (e) { return brut || ''; }
+  };
+  const champs = [...document.querySelectorAll('input[type="password"]')].filter(vu);
+  const portees = new Set(champs.map((el) => el.closest('form') || document.body));
+  for (const portee of portees) {
+    const mdp = champs.filter((el) => portee.contains(el));
+    const action = chemin(portee.getAttribute && portee.getAttribute('action'));
+    const parle_connexion = CONNEXION.test(action);
+    if (mdp.some((el) => /new-password/i.test(el.getAttribute('autocomplete') || ''))) continue;
+    if (mdp.length >= 2) continue;
+    if (CHANGEMENT.test(action) && !parle_connexion) continue;
+    const boutons = [...portee.querySelectorAll('button, input[type="submit"], input[type="button"]')]
+      .filter(vu).map((b) => (b.value || b.textContent || '').trim());
+    const identifiant = [...portee.querySelectorAll('input')].some((el) => {
+      const t = (el.getAttribute('type') || 'text').toLowerCase();
+      if (t === 'password' || !vu(el)) return false;
+      return /username/i.test(el.getAttribute('autocomplete') || '') || t === 'email'
+        || /^(id|login|user|username|identifiant|email|mail)$/i.test(el.getAttribute('name') || el.id || '');
+    });
+    if (parle_connexion || boutons.some((b) => BOUTON.test(b)) || identifiant
+        || /current-password/i.test(mdp[0].getAttribute('autocomplete') || '')) return true;
+  }
+  return false;
+}"""
 
 MESURE_ENTETE_JS = r"""
 () => {
@@ -4219,7 +4262,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             # TF-1788 (lot Produit-83 20261015b, RA-4) — UNE MIRE DE CONNEXION SE RECONNAIT. Sans
             # --etat-session, une application derriere connexion se rend en mire, et le verdict
             # portait sur la mire sans le dire : la consigne de l'etape ne nommait pas l'option.
-            # Un champ mot de passe VISIBLE suffit a la reconnaitre ; elle se dit a la largeur
+            # Un formulaire VISIBLE qui ouvre une session (MIRE_JS, TF-2433) suffit a la reconnaitre ; elle se dit a la largeur
             # (non mesurable) et au non_juge, avec le geste qui juge l'application connectee.
             try:
                 mire = page.evaluate(MIRE_JS)
@@ -4228,7 +4271,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             if mire:
                 mires_vues.append(width)
                 issues["unmeasured"].append({
-                    "what": "mire de connexion (champ mot de passe visible)",
+                    "what": "mire de connexion (formulaire qui ouvre une session)",
                     "detail": "seule la mire est jugee a cette largeur, pas l'application qu'elle "
                               "garde : rejouer avec --etat-session <etat de session> (TF-1788)"})
             # TF-1718 — LE THEME DEMANDE EST-IL CELUI QUI EST RENDU ? Un script de la page peut
@@ -4563,7 +4606,8 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                      "connectee se juge sur l'INSTANCE SERVIE (URL locale) avec --etat-session "
                      "<fichier> — refusee sur un fichier")
         report["non_juge"].append(
-            f"MIRE DE CONNEXION RENDUE ({largeurs}) : un champ mot de passe visible, le verdict porte "
+            f"MIRE DE CONNEXION RENDUE ({largeurs}) : un formulaire qui ouvre une session (TF-2433 : "
+            f"l'ecran de changement de mot de passe n'en est pas un), le verdict porte "
             f"sur la mire ; {geste} (TF-1788)")
 
     # TF-1674 — LE THEME RENDU SE DIT. Sans --theme, le navigateur rend le schema clair : une page
