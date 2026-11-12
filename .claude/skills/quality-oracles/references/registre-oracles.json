@@ -2530,6 +2530,29 @@
     "rendu PDF du dossier (→ oracle-pdf) ; qualité de la périphrase qui remplace un nom"
    ],
    "timeout_ms": 300000
+  },
+  {
+   "domaine": "Engagements d'un document remis : chaque pièce, temps ou outil promis a son livrable ou son action nommée",
+   "ext": [],
+   "type": "cli",
+   "cmd": [
+    "node",
+    "{pilot}/oracles/oracle-engagements.mjs",
+    "{file}"
+   ],
+   "checklist": "Invocation explicite avec la RACINE d'un produit en cible ({file}) : le registre forge/ENGAGEMENTS.md (forme : gabarits/ENGAGEMENTS-PRODUIT.md du pilot) puis, avec --documents <fichier|dossier> (répétable), les documents remis · EN1 forme du registre : en-tête daté et sourcé, tableau « Engagement | Nature | Pris dans | Tenu par », nature pièce, temps ou outil, tenue sous l'une des trois formes (livrable : `chemin` · action : quoi, porteur qui, échéance AAAA-MM-JJ · sans objet — motif d'au moins 3 mots) · EN2 chaque engagement est TENU : son livrable existe (et son repère s'y lit, quand le format se lit : Markdown, HTML, texte, Word, PowerPoint, Excel), ou son action est ouverte, c'est-à-dire que son échéance n'est pas passée (--aujourd-hui AAAA-MM-JJ fixe le jour) · EN3 chaque document passé par --documents qui PROMET une pièce ou un outil figure au registre. Ni registre ni document à juger : SANS_OBJET, exit 2, lu comme un SKIP motivé et jamais comme un PASS.",
+   "statut": "ok",
+   "commande": "{pilot}/oracles/oracle-engagements.mjs <racine du produit> [--documents <fichier|dossier>]… [--aujourd-hui AAAA-MM-JJ]",
+   "non_juge": [
+    "la complétude des engagements déclarés : un document cité au registre n'est plus relu phrase par phrase, ses lignes font foi",
+    "la promesse écrite en d'autres mots que le vocabulaire fermé d'EN3, ou qui ne nomme ni destinataire ni séance, ou qui se lit comme un récit daté au passé ; un temps réservé au déroulé ne se relève pas seul, il se déclare",
+    "le texte d'un PDF ou d'une image : un tel document se juge par sa source (Markdown, Word, PowerPoint), et ses engagements se déclarent",
+    "qu'une action ouverte soit réellement en cours : son porteur et son échéance sont lus, pas son avancement",
+    "que le livrable présent tienne l'engagement sur le fond : sa présence est jugée, et son repère quand il en porte un"
+   ],
+   "provenance": "TF-2333, D-193 (a) du 10/11/2026, R-67 de REGLES-PROJET.md — lot du produit marketing du 09/11/2026 (RP-10, ledger seq 694) : les documents d'une formation, écrits les 27 et 28/10/2026, ont promis un QCM et un questionnaire de satisfaction en formulaires en ligne, une skill installée par le formateur et un temps de bilan au déroulé ; le support de la séance n'a pas été repris, aucune de ces pièces n'a été produite, et l'humain l'a vu quatre jours avant la séance (trois pièces faites dans l'urgence). Mesure du 10/11/2026, rapportée par l'oracle et non rejouée ici : sur 607 livrables de 11 produits, le resserrement d'EN3 fait passer les livrables relevés de 233 à 7. Le pilot joue sa propre recette (--self-test) ; fixtures de la recette ici : produits fictifs fabriqués à la volée",
+   "note": "TF-2428 (12/11/2026, décision R-58) : livré le 10/11/2026 par le pilot (oracles/oracle-engagements.mjs, commit dae05828), qui l'appelle déjà par le hook d'écriture et le hook d'ouverture ; inscrit ici en INVOCATION EXPLICITE (ext vide, aucun déclencheur : la cible est la racine d'un produit, pas un fichier). Pilot introuvable : SKIP motivé. Recette : bloc TF-2428 de scripts/self-test.mjs.",
+   "timeout_ms": 120000
   }
  ]
 }

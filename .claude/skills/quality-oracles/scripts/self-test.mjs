@@ -569,6 +569,58 @@ if (reg) {
   }
 }
 
+// (3c ter quater) TF-2428 (12/11/2026, décision R-58 du 12/11/2026) — le domaine « engagements d'un document remis »
+// était jugé depuis le 10/11/2026 par `oracles/oracle-engagements.mjs` du pilot (D-193 (a), R-67), appelé par ses hooks,
+// mais ni le registre ni la règle §4 ne le connaissaient. Il y entre en INVOCATION EXPLICITE : sa cible est la racine
+// d'un produit, aucun fichier ne le déclenche. Deux preuves : aucun déclencheur ne le route d'office, et la COMMANDE du
+// registre, `{pilot}` résolu, rend FAIL sur un produit dont un engagement n'est pas tenu (EN2) et sur un document qui
+// promet sans figurer au registre (EN3), PASS sur leurs pendants tenus, et SANS_OBJET (exit 2) sans registre.
+// Produits FICTIFS fabriqués à la volée. Pilot absent de ce poste : SKIP motivé, jamais un vert inventé.
+if (reg) {
+  const e = reg.oracles.find((o) => (o.cmd || []).some((s) => /oracle-engagements\.mjs$/.test(s)));
+  if (!e) ko('TF-2428 : oracle-engagements ABSENT du registre machine');
+  else if ([...(e.ext || []), ...(e.content_patterns || []), ...(e.trigger_files || [])].length) {
+    ko(`TF-2428 : oracle-engagements est routé d'office (${JSON.stringify([...(e.ext || []), ...(e.content_patterns || [])])}) — sa cible est la racine d'un produit, l'entrée doit rester en invocation explicite`);
+  } else if (!PILOT || !fs.existsSync(path.join(PILOT, 'oracles', 'oracle-engagements.mjs'))) {
+    ok(`TF-2428 : oracle-engagements au registre, en invocation explicite — commande non rejouée : ${PILOT ? 'oracle absent du pilot de ce poste' : motifPilotAbsent(SKILLDIR)}`);
+  } else {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2428-'));
+    try {
+      const entete = ['---', 'date: 2026-11-12', 'source: produit fictif de la recette de quality-oracles', 'verifie_le: 2026-11-12', '---', '',
+        '# Engagements des documents remis', '', '## Engagements', '', '| Engagement | Nature | Pris dans | Tenu par |', '|---|---|---|---|'];
+      const ligne = '| Questionnaire de satisfaction en ligne | pièce | `output/programme.md` | livrable : `output/questionnaire.md` |';
+      const produit = (nom, livrable, registre = true) => {
+        const racine = path.join(tmp, nom);
+        fs.mkdirSync(path.join(racine, 'output'), { recursive: true });
+        if (registre) { fs.mkdirSync(path.join(racine, 'forge')); fs.writeFileSync(path.join(racine, 'forge', 'ENGAGEMENTS.md'), [...entete, ligne, ''].join('\n'), 'utf8'); }
+        fs.writeFileSync(path.join(racine, 'output', 'programme.md'), '# Programme\n\nUne journée de formation.\n', 'utf8');
+        fs.writeFileSync(path.join(racine, 'output', 'autre.md'), '# Autre programme\n\nUn questionnaire de satisfaction est complété en fin de séance.\n', 'utf8');
+        if (livrable) fs.writeFileSync(path.join(racine, 'output', 'questionnaire.md'), '# Questionnaire\n', 'utf8');
+        return racine;
+      };
+      const jouer = (racine, ...extra) => {
+        const [bin, ...reste] = e.cmd.map((s) => s.replace(MARQUEUR_PILOT, PILOT).replace('{file}', racine));
+        const r = spawnSync(bin === 'node' ? process.execPath : bin, [...reste, '--aujourd-hui', '2026-11-12', ...extra], { encoding: 'utf8', timeout: 120000 });
+        let j = null; try { j = JSON.parse(r.stdout); } catch { /* sortie illisible : dite ci-dessous */ }
+        const regles = (j?.findings || []).filter((f) => f.statut === 'FAIL').map((f) => f.regle).join(',');
+        return { v: j?.verdict || '?', code: r.status, regles };
+      };
+      const rouge = jouer(produit('rouge', false));
+      const verte = jouer(produit('verte', true));
+      const doc = produit('doc', true);
+      const rougeDoc = jouer(doc, '--documents', 'output/autre.md');
+      const verteDoc = jouer(doc, '--documents', 'output/programme.md');
+      const vide = jouer(produit('vide', true, false));
+      if (rouge.v !== 'FAIL' || rouge.code !== 1 || rouge.regles !== 'EN2') ko(`TF-2428 : un livrable déclaré et absent doit être refusé par EN2 (exit 1) — ${rouge.v} exit ${rouge.code} règles ${rouge.regles || 'aucune'}`);
+      else if (verte.v !== 'PASS' || verte.code !== 0) ko(`TF-2428 : le remède (produire le livrable) doit ramener le PASS — ${verte.v} exit ${verte.code}`);
+      else if (rougeDoc.v !== 'FAIL' || rougeDoc.code !== 1 || rougeDoc.regles !== 'EN3') ko(`TF-2428 : un document qui promet un questionnaire sans figurer au registre doit être refusé par EN3 — ${rougeDoc.v} exit ${rougeDoc.code} règles ${rougeDoc.regles || 'aucune'}`);
+      else if (verteDoc.v !== 'PASS' || verteDoc.code !== 0) ko(`TF-2428 : le document cité au registre ne doit pas être accusé — ${verteDoc.v} exit ${verteDoc.code}`);
+      else if (vide.v !== 'SANS_OBJET' || vide.code !== 2) ko(`TF-2428 : un produit sans registre doit rendre SANS_OBJET, exit 2, jamais un PASS — ${vide.v} exit ${vide.code}`);
+      else ok('TF-2428 : oracle-engagements au registre, en invocation explicite, et sa commande rend FAIL sur un engagement non tenu (EN2) et sur un document qui promet sans figurer au registre (EN3), PASS sur leurs remèdes, SANS_OBJET (exit 2) sans registre');
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
+}
+
 // (3c quater) TF-1877 (19/10/2026) — l'oracle de la famille « tableau de bord de pilotage » du pilot
 // (TF-1855) entre au registre machine, routé par le CONTENU seul (`ext` vide : une extension .html le
 // ferait jouer, et rendre SANS_OBJET, sur toutes les pages). Trois preuves : une page qui se déclare de
