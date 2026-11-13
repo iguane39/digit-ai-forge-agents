@@ -85,6 +85,41 @@ for (const d of fs.readdirSync(SKILLSROOT, { withFileTypes: true })) {
   else ok(`${d.name} : frontmatter OK (description ${fm.description.length}/1024)`);
 }
 
+// (1-bis) TF-2493 (13/11/2026, décision R-58 du 13/11/2026) — LA RECETTE QUI LIVRE UN SKILL JUGE LE MANIFESTE DE LIVRAISON. Le 13/11/2026,
+// `versions-livrees.json` de forge-agents portait 7 écarts au constat de `maj-versions-livrees.mjs --constat` (experts-forge, forge-agents,
+// oeil-critique, plan-d-amelioration, prompt-analyzer-l99, deux registres dont celui de quality-oracles à 2.60.0 pour 2.61.0) : le constat
+// existait depuis TF-0336 mais aucune recette ne le lisait, donc personne ne le voyait avant qu'une session ne le mesure en passant. Il est
+// désormais un ROUGE de cette recette, celle que les agents jouent avant chaque commit sous `.claude/skills/` : un skill livré dont la version
+// (ou celle de son registre) n'est pas portée au manifeste dans le même commit fait échouer la recette, `--livrer` en est le remède. Sens
+// rouge/vert joué sur un dépôt jetable (un skill, un manifeste aligné puis un manifeste en retard) ; sur le dépôt réel, le constat est lu.
+// Une copie installée ou un dépôt qui n'est pas forge-agents n'a pas ce script : SKIP motivé, jamais un vert inventé.
+{
+  const RACINE_FORGE = path.resolve(SKILLDIR, '..', '..', '..');
+  const MAJ = path.join(RACINE_FORGE, 'maj-versions-livrees.mjs');
+  if (!fs.existsSync(MAJ) || !fs.existsSync(path.join(RACINE_FORGE, 'versions-livrees.json'))) {
+    ok('TF-2493 : pas de maj-versions-livrees.mjs ni de versions-livrees.json à la racine de ce dépôt (copie installée ou autre dépôt) — le constat de livraison est sans objet ici, et c\'est dit');
+  } else {
+    const constat = (racine) => spawnSync(process.execPath, [path.join(racine, 'maj-versions-livrees.mjs'), '--constat'], { cwd: racine, encoding: 'utf8' });
+    const jetable = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2493-'));
+    try {
+      fs.copyFileSync(MAJ, path.join(jetable, 'maj-versions-livrees.mjs'));
+      fs.mkdirSync(path.join(jetable, '.claude', 'skills', 'jouet'), { recursive: true });
+      const skillMd = (v) => `---\nname: jouet\ndescription: skill jetable de la recette\nmetadata:\n  version: "${v}"\n---\n# jouet\n`;
+      fs.writeFileSync(path.join(jetable, '.claude', 'skills', 'jouet', 'SKILL.md'), skillMd('1.0.0'));
+      const manifeste = (v) => JSON.stringify({ skills: { jouet: { version: v, source: 'frontmatter SKILL.md' } } });
+      fs.writeFileSync(path.join(jetable, 'versions-livrees.json'), manifeste('1.0.0'));
+      const aligne = constat(jetable);
+      fs.writeFileSync(path.join(jetable, '.claude', 'skills', 'jouet', 'SKILL.md'), skillMd('1.1.0'));
+      const enRetard = constat(jetable);
+      const sensOk = aligne.status === 0 && enRetard.status === 1 && /jouet : livré 1\.0\.0, dépôt 1\.1\.0/.test(enRetard.stdout);
+      const reel = constat(RACINE_FORGE);
+      if (!sensOk) ko(`TF-2493 sens rouge/vert : le constat de livraison ne se joue pas dans les deux sens (aligné exit ${aligne.status}, en retard exit ${enRetard.status} : ${(enRetard.stdout || enRetard.stderr || '').trim().slice(0, 160)})`);
+      else if (reel.status !== 0) ko(`TF-2493 : versions-livrees.json diverge des skills montés — ${(reel.stdout || reel.stderr || '').trim().split(/\r?\n/).filter((l) => l.startsWith('  ·')).join(' ') || 'sortie illisible'} ; node maj-versions-livrees.mjs --livrer, dans le commit qui livre le skill`);
+      else ok('TF-2493 : versions-livrees.json aligné sur les skills montés (constat exit 0) ; le constat échoue sur un manifeste en retard (jouet 1.0.0 contre 1.1.0) et passe sur un manifeste aligné');
+    } finally { fs.rmSync(jetable, { recursive: true, force: true }); }
+  }
+}
+
 // (1-ter) TF-1337 (26/09/2026) — LE CONTRÔLE RAPIDE JUGE COMME LA RECETTE. `accueil-factory` est
 // entré au dépôt le 22/09 avec une description de 1 244 caractères, faute d'un contrôle joué AVANT
 // l'enregistrement. `frontmatter-skills-index.mjs` le joue sur les seuls skills de l'index, avec le

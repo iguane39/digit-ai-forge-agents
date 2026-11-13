@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.32.0"
+  version: "2.33.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -309,6 +309,7 @@ le cas réel, lui, prouve que la règle est **branchée sur ce qui existe**. Le 
 ## Gouvernance du registre
 - Registre **versionné**, double vue JSON (machine) ↔ MD (humaine) ; domaine ❌ rencontré → **§4**. Les priorités se lisent dans `report-couverture`, pas à l'intuition.
 - **Barrière des scripts de contrôle (TF-2399, étendue par TF-2452 le 12/11/2026)** : tout `oracle-*.mjs|py` et tout `check_*.py` d'un skill de ce dépôt, du pilot ou d'une forge est inscrit au registre, ou déclaré hors registre avec un motif dans [`references/oracles-hors-registre.json`](references/oracles-hors-registre.json) ; le self-test échoue sinon, sur une déclaration morte, doublée ou contredite par le registre. Un oracle neuf d'une forge ou du pilot entre donc à l'un ou à l'autre le jour de sa publication. **Depuis le 13/11/2026 (TF-2466, 2.31.0), un oracle sans appelant n'a plus de motif qui le justifie** : sa ligne se câble (`appelants` nommés), ou porte le motif `manuel` avec `manuel.motif` (20 caractères au moins) et `manuel.commande` (la commande qui le joue, elle nomme le script) ; sans l'un ou l'autre, le self-test nomme la ligne. Un retrait se propose au rapport d'une campagne, jamais d'office.
+- **Manifeste de livraison (TF-2493, 2.33.0, 13/11/2026)** : la recette du dépôt forge-agents joue `node maj-versions-livrees.mjs --constat` et échoue si `versions-livrees.json` n'est pas aligné sur les versions réelles des skills et de leurs registres. Le 13/11/2026, le manifeste portait 7 écarts (dont le registre de quality-oracles à 2.60.0 pour 2.61.0) que le constat de TF-0336 relevait déjà, sans qu'aucune recette ne le lise. Le remède est `node maj-versions-livrees.mjs --livrer`, joué dans le commit qui livre le skill. Sens rouge et vert joués sur un dépôt jetable (manifeste en retard, puis aligné) ; une copie installée, qui n'a pas ce script, déclare un SKIP motivé.
 - **Application forcée** (recommandé) : hook PreToolUse bloquant toute livraison sans run PASS — snippet : [`references/hook-pretooluse.md`](references/hook-pretooluse.md).
 
 ## Workflow
