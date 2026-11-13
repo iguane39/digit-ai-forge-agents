@@ -1,0 +1,10 @@
+{
+  "manifeste": "versions-livrees",
+  "note": "fixture verte de F1-ter, seconde voie : la version nulle est une dette NOMMÉE dans sans_version_toleres ; le verdict tient, l'avertissement sort (le self-test vérifie qu'il sort)",
+  "skills_root": "etat-forge-tree-nulle-red/skills",
+  "sans_version_toleres": ["skill-sans-version"],
+  "skills": {
+    "experts-forge": { "version": "1.3.0" },
+    "skill-sans-version": { "version": null, "source": "frontmatter sans champ version (constat, rien d inventé)" }
+  }
+}

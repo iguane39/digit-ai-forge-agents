@@ -1,0 +1,9 @@
+{
+  "manifeste": "versions-livrees",
+  "note": "fixture rouge de F1-ter (TF-2475, 13/11/2026) — cas réel du 12/11/2026 : digit-ai-schemas livré, frontmatter sans champ version, manifeste à version nulle ; une campagne ne pouvait pas l'incrémenter, et F1 ne regardait que les skills à version déclarée",
+  "skills_root": "etat-forge-tree-nulle-red/skills",
+  "skills": {
+    "experts-forge": { "version": "1.3.0" },
+    "skill-sans-version": { "version": null, "source": "frontmatter sans champ version (constat, rien d inventé)" }
+  }
+}

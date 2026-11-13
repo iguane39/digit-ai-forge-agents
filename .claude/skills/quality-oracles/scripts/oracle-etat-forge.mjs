@@ -5,6 +5,8 @@
 // Checklist canonique :
 //   F1 versions montées = versions du manifeste — pour chaque skill à version déclarée, le
 //      frontmatter du SKILL.md monté doit porter la même version ; skill absent = FAIL localisant ;
+//      F1-ter (TF-2475) un skill du manifeste à version nulle est refusé, sauf dette nommée dans
+//      `sans_version_toleres` du manifeste (avertissement) ;
 //   F2 fixtures du manifest de quality-oracles présentes sur disque (red + green) ;
 //   F3 corpus des fiches experts résolus — chaque chemin `…` du §3 des fiches doit exister
 //      (relatif à la racine du montage) ;
@@ -82,6 +84,34 @@ for (const [name, info] of Object.entries(man.skills)) {
   if (info && info.version) {
     const v = fmVersion(sf);
     if (v !== info.version) findings.push({ sev: 'bloquant', msg: `F1 — retard d'installation : ${name} livré ${info.version}, monté ${v ?? 'sans version'}`, where: name + '/SKILL.md' });
+  }
+}
+
+// F1-ter — un skill LIVRÉ porte une version (TF-2475, 13/11/2026). F1 ne regarde que les skills « à version
+// déclarée » : `if (info && info.version)` fait passer en silence un skill dont le manifeste dit `version: null`,
+// et un skill sans version ne peut être ni comparé au montage ni incrémenté par une campagne. Cas réel : le
+// 12/11/2026, l'agent d'une campagne à qui l'on demandait d'incrémenter `digit-ai-schemas` n'a rien pu faire,
+// son frontmatter n'ayant aucun champ `version` et le manifeste le portant à null.
+// BLOQUANT pour tout skill du manifeste à version nulle, SAUF ceux que le manifeste déclare lui-même dans
+// `sans_version_toleres` (liste de noms, la dette connue à la date du manifeste) : ceux-là sortent en
+// AVERTISSEMENT nommé, jamais tus. Une tolérance périmée (le skill a désormais une version) est aussi signalée,
+// pour que la liste ne fasse que se vider. Le remède que le message propose — `metadata.version` au
+// frontmatter, le manifeste qui le reprend — est joué par la fixture verte (etat-forge-version-nulle-green).
+{
+  const toleres = new Set(Array.isArray(man.sans_version_toleres) ? man.sans_version_toleres.map(String) : []);
+  for (const [name, info] of Object.entries(man.skills)) {
+    const nulle = !info || info.version === null || info.version === undefined || String(info.version).trim() === '';
+    if (nulle && !toleres.has(name)) {
+      findings.push({ sev: 'bloquant', msg: `F1-ter — skill livré SANS VERSION : ${name} (manifeste : version nulle) — une campagne ne peut pas l'incrémenter et F1 ne le compare à rien. `
+        + `Déclarer \`metadata.version\` au frontmatter de son SKILL.md, puis reporter cette version au manifeste ; ou, dette connue à tenir, le nommer dans \`sans_version_toleres\``, where: base });
+    } else if (nulle) {
+      findings.push({ sev: 'avertissement', msg: `F1-ter — version nulle tolérée (dette déclarée dans sans_version_toleres) : ${name}`, where: base });
+    } else if (toleres.has(name)) {
+      findings.push({ sev: 'avertissement', msg: `F1-ter — tolérance périmée : ${name} porte une version (${info.version}) et figure encore dans sans_version_toleres — la retirer de la liste`, where: base });
+    }
+  }
+  for (const name of toleres) {
+    if (!(name in man.skills)) findings.push({ sev: 'avertissement', msg: `F1-ter — tolérance orpheline : ${name} figure dans sans_version_toleres et pas parmi les skills du manifeste`, where: base });
   }
 }
 

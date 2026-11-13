@@ -1920,6 +1920,51 @@
    "provenance": "TF-0777, Produit-02 - RETOURS - 20260902d du 02/09/2026 — aucun en-tete defini, et une hypothese exprimee EN EUROS PAR AN consommee par « sejours × valeur ». oracle-calculs rendait SKIP. La source de donnees declaree (fixtures/calculs-unites-sources/data.mjs, donnees INVENTEES) rend la valeur d une nuit calculable : l hypothese n avait pas lieu d etre."
   },
   {
+   "nom": "etat-forge-version-nulle",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{fixture}"
+   ],
+   "red": "etat-forge-version-nulle-red.json",
+   "green": "etat-forge-version-nulle-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "F1-ter",
+    "SANS VERSION"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2475, 13/11/2026 — F1-ter : un skill du manifeste à version nulle est refusé. Cas réel du 12/11/2026 : digit-ai-schemas, livré sans champ version à son frontmatter, versions-livrees.json le portait à null, et l'agent d'une campagne à qui l'on demandait de l'incrémenter n'a rien pu faire ; F1 ne regardait que les skills à version déclarée (`if (info && info.version)`). La rouge est ce cas ; la verte joue le remède du message (metadata.version au frontmatter, reprise au manifeste)."
+  },
+  {
+   "nom": "etat-forge-version-toleree",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{fixture}"
+   ],
+   "red": "etat-forge-version-nulle-red.json",
+   "green": "etat-forge-version-nulle-toleree.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "F1-ter"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "F1-ter — version nulle tolérée",
+    "sans_version_toleres"
+   ],
+   "provenance": "TF-2475, 13/11/2026 — seconde voie de F1-ter : une dette de version nulle connue se NOMME dans `sans_version_toleres` du manifeste (6 skills du dépôt de forge-agents au 13/11/2026 : ameliore-un-skill, data-quality-auditor, digit-ai-communication, digit-ai-propale-review, la-barre, write-an-expert) ; le verdict tient mais l'avertissement sort, et la même version nulle, non nommée, reste refusée (la rouge est celle de etat-forge-version-nulle). Écart à la lettre de la décision du pilot (« refuse toute version null ») : sans cette liste, six skills hors du lot rougiraient le manifeste réel."
+  },
+  {
    "nom": "etat-forge-ledger",
    "cmd": [
     "node",
