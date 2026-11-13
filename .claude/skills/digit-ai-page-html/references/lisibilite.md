@@ -1222,7 +1222,7 @@ liste n'attrape que ce qui a réellement coûté un aller-retour, et elle grossi
   <p class="ch-apprend">Vous repartez d'ici en sachant ….</p>
 ```
 
-**Contrôle mécanique.** `L30` (`check_html.py`) — les deux moitiés, jugées **par cible du
+**Contrôle mécanique.** `L30 (chapitre)` (`check_html.py`, identifiant émis tel quel en tête de ses messages) — les deux moitiés, jugées **par cible du
 sommaire** et sur les descendants **directs** : ce qui vit sous un sous-chapitre lui-même ciblé
 appartient à ce sous-chapitre, jamais à son parent (même partage que L7 depuis TF-0931).
 
@@ -1490,7 +1490,7 @@ ne portait aucun marquage, et c'est exactement ce qui l'a laissé passer :
   (« voir le rapport », « voir le fichier », « voir l'annexe ») — *un chiffre clé porte son
   chiffre ; renvoyer ailleurs, c'est occuper la place de la réponse sans la donner*.
 
-**Contrôle mécanique.** `L30` dans `check_html.py`. Fixtures à double sens :
+**Contrôle mécanique.** `L30 (couverture)` dans `check_html.py` (identifiant émis tel quel en tête de ses messages). Fixtures à double sens :
 `l30-couverture-declaree.html` (0 constat), `l30-couverture-muette.html` (**3 bloquants** — 342
 déclarés pour 4 rendus, dénominateur jamais affiché, aucun compte de manquants) et
 `l30-mapping-non-declare.html` (**2 avertissements** — la forme du cas payé, qui ne déclarait
@@ -1710,7 +1710,7 @@ Fixtures : `style-annonce-nominalisee.html` (rouge), `style-nomme.html` (verte).
 ## Classes d'artefact — une page lue par une machine (TF-1589, RT-115, 13/10/2026)
 
 **Le fait.** Le 22/09/2026, cinq pages engendrées comme source pour l'assistant d'ingestion d'une
-plateforme tierce rendaient FAIL sur 9 occurrences de L7, avec 9 avertissements L30. Chaque
+plateforme tierce rendaient FAIL sur 9 occurrences de L7, avec 9 avertissements L30 (chapitre). Chaque
 paragraphe y est repris tel quel comme contenu du livret remis au voyageur. Les satisfaire aurait
 injecté 9 phrases de méta-discours dans ce livret. Les 33 autres règles étaient vertes et utiles.
 
@@ -1722,10 +1722,10 @@ Sous `source-machine`, trois mesures écrites pour un humain qui parcourt la pag
 jouées :
 - L7, le chapeau `.ch-apprend` de chaque chapitre ;
 - L25, le sommaire exigé au-delà de trois chapitres ;
-- la partie de L30 qui exige un `.contenu` par chapitre.
+- la partie de L30 (chapitre) qui exige un `.contenu` par chapitre.
 
 Elles sont nommées au périmètre de non-mesure (`non_juge`) de chaque exécution. Tout le reste est
-jugé, dont la glose du jargon et le dénominateur de couverture de L30 : une donnée lue par une
+jugé, dont la glose du jargon (L30 (chapitre)) et le dénominateur de couverture (L30 (couverture)) : une donnée lue par une
 machine dit encore « sur combien ». Une valeur de `classe-artefact` inconnue est signalée en
 avertissement, et la page est jugée en `page-lue`. Si un humain lit aussi la page, la classe est
 fausse : la retirer.

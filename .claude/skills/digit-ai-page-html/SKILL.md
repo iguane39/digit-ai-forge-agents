@@ -7,13 +7,25 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.47.1"
+  version: "1.48.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.48.0 (13/11/2026)** — **`check_html.py` émet un identifiant distinct pour chacune des deux règles L30 (TF-2492, campagne du
+13/11/2026, décision R-58 : exécutée).** Il émettait « L30 » pour deux règles que `references/lisibilite.md` distingue depuis la
+1.47.0 : un chapitre qui dit ce qu'il contient et glose son jargon, et une page de couverture qui affiche son dénominateur. Le
+numéro seul ne disait pas laquelle avait mordu. Les messages ouvrent désormais par `L30 (chapitre)` (le `.contenu` attendu, le
+terme technique non glosé) et `L30 (couverture)` (le dénominateur, les manquants, la carte de chiffre clé qui renvoie hors page),
+tels que les sections du référentiel s'appellent ; les renvois des messages, les attendus des fixtures et les préfixes retirés par
+`--classe=source-machine` suivent. Le banc compare désormais aussi les identifiants émis aux sections publiées
+(`ecarts_identifiants_partages`) : quand toutes les sections d'un numéro portent un qualificatif, l'identifiant nu est refusé et
+chaque section doit être émise sous son propre identifiant, avec des textes jouets rouges et verts avant le référentiel réel. Un
+consommateur qui lit le premier mot d'un message lit encore « L30 » ; celui qui lit le préfixe entier lit le qualificatif.
+Les numéros qui gardent une section nue (« L12 » et ses volets, « L29 » et ses suites) ne changent pas.
 
 **1.47.1 (13/11/2026)** — **La recette du socle rejoue le self-test de `digit-ai-schemas`, et n'imprime plus d'exception de fil
 de lecture (TF-2474 et TF-2478, campagne du 13/11/2026, décision R-58 : exécutée).** Recette seule : le comportement du skill ne
@@ -352,9 +364,9 @@ gabarit multi-bandes de `digit-ai-schemas`, **instancié**, passe `check_html.py
 
 **1.28.1 (13/10/2026)** — **une page lue par une machine se déclare, au lieu d'être exemptée à la
 main.** · `check_html.py --classe=source-machine`, ou `<meta name="classe-artefact"
-content="source-machine">` dans la page : L7, L25 et le `.contenu` de L30 ne sont pas mesurés, et
+content="source-machine">` dans la page : L7, L25 et le `.contenu` de L30 (chapitre) ne sont pas mesurés, et
 sont nommés au périmètre de non-mesure ; tout le reste est jugé, dont le dénominateur de couverture
-de L30 (TF-1589, RT-115 ; `references/lisibilite.md`, classes d'artefact).
+de L30 (couverture) (TF-1589, RT-115 ; `references/lisibilite.md`, classes d'artefact).
 
 **1.28.0 (13/10/2026)** — **six retours humains sur des pages rendues corrigés à la cause, et leurs
 règles neuves entrent en avertissement.** · **L25 / L6 / `sommaire_perdu`** reconnaissent une barre

@@ -215,11 +215,11 @@ CAS = {
     # La verte est jugee DEUX FOIS : ici sur les echecs, et dans CAS_AVERT sur les
     # avertissements — un chapitre annonce ne doit declencher ni l'un ni l'autre.
     "l30-chapitre-annonce.html": set(),
-    "l30-terme-non-glose.html": {"L30"},
+    "l30-terme-non-glose.html": {"L30 (chapitre)"},
     # TF-0969 (08/09) — le terme se cherche entre deux frontieres de mot Unicode : « gate »
     # dans `aggregate_type` ne compte pas, « la gate du mandat » reste rouge.
     "l30-identifiant-technique.html": set(),
-    "l30-terme-employe-comme-mot.html": {"L30"},
+    "l30-terme-employe-comme-mot.html": {"L30 (chapitre)"},
     "l25-chapitres-sans-sommaire.html": {"L25"},
     "l25-sommaire-lateral.html": set(),
     # TF-1626 (RA-6, 13/10/2026) — « un menu vertical en plus des onglets n'a aucun intérêt ».
@@ -373,7 +373,7 @@ CAS_AVERT = {
     # une obligation redactionnelle neuve ; la rendre bloquante d'un commit ferait rougir tout
     # le parc sans migration. L'avertissement propose le geste d'office et se decline en
     # l'ecrivant. La seconde moitie (le jargon) reste un echec, et a sa fixture dans CAS.
-    "l30-chapitre-sans-contenu.html": {"L30"},
+    "l30-chapitre-sans-contenu.html": {"L30 (chapitre)"},
     "l30-chapitre-annonce.html": set(),
     # RT-119 (lot Produit-02 20261003b, D-55 (a) du 03/10) — L34 : un graphique qui declare deux
     # series dans sa donnee source (data-series-source="2") et n'en trace qu'une (data-serie).
@@ -383,7 +383,7 @@ CAS_AVERT = {
     "l34-series-tracees.html": set(),
 }
 
-RE_CODE = re.compile(r"^(L\d+)\b")
+RE_CODE = re.compile(r"^(L\d+(?: \((?:chapitre|couverture)\))?)(?!\w)")
 
 # A1 (autonomie réseau, D-10) vit dans la famille « charte » : ses fixtures se
 # jugent avec regles="charte" et on n'extrait que les codes A — les deux pages
@@ -985,7 +985,7 @@ def run():
         # L30 — plutôt que d'être écrite en dur : une famille en dur a valu, en ajoutant L30,
         # une fixture verte par défaut d'extraction.
         famille = {re.match(r"^(l\d+)", nom).group(1).upper()}
-        obtenu = codes(warns) & famille
+        obtenu = {c for c in codes(warns) if c.split()[0] in famille}
         # un avertissement ne doit jamais s'accompagner d'un ÉCHEC L parasite : la fixture est
         # verte par ailleurs, seul le glyphe la distingue de sa jumelle.
         ok = obtenu == attendu and not codes(fails)
@@ -2440,25 +2440,42 @@ RE_TITRE_REGLE = re.compile(r"^#{2,3} (L\d+\b[^—\n]*?) +— ", re.M)
 RE_COMPTE_CAS_L = re.compile(r"(\d+) cas de lisibilité, (\d+) rouges")
 
 
-def regles_jugees_par_check_html():
-    """Les numéros de règle L que `check_html.py` émet : toute chaîne littérale qui ouvre par « Lnn ».
+def debuts_de_chaines_de_check_html():
+    """Le début de chaque chaîne littérale (ou f-string) de `check_html.py`, lu dans l'arbre syntaxique.
 
-    Lue dans l'arbre syntaxique, pas dans le texte : un commentaire qui nomme une règle ne la juge pas.
+    Un commentaire qui nomme une règle ne la juge pas : seul un message émis compte.
     """
     source = (Path(__file__).resolve().parent / "check_html.py").read_text(encoding="utf-8")
-    jugees = set()
     for noeud in ast.walk(ast.parse(source)):
         if isinstance(noeud, ast.Constant) and isinstance(noeud.value, str):
-            debut = noeud.value
+            yield noeud.value
         elif isinstance(noeud, ast.JoinedStr) and noeud.values \
                 and isinstance(noeud.values[0], ast.Constant):
-            debut = noeud.values[0].value
-        else:
-            continue
+            yield noeud.values[0].value
+
+
+def regles_jugees_par_check_html():
+    """Les numéros de règle L que `check_html.py` émet : toute chaîne littérale qui ouvre par « Lnn »."""
+    jugees = set()
+    for debut in debuts_de_chaines_de_check_html():
         m = re.match(r"L(\d+)\b", debut)
         if m:
             jugees.add(int(m.group(1)))
     return jugees
+
+
+# Un identifiant de règle émis : « L30 », ou « L30 (chapitre) » quand le numéro porte plusieurs règles.
+RE_IDENTIFIANT_EMIS = re.compile(r"^(L\d+(?: \([^)]+\))?)(?!\w)")
+
+
+def identifiants_emis_par_check_html():
+    """Les identifiants que `check_html.py` met en tête de ses messages, qualificatif compris (TF-2492)."""
+    emis = set()
+    for debut in debuts_de_chaines_de_check_html():
+        m = RE_IDENTIFIANT_EMIS.match(debut)
+        if m:
+            emis.add(m.group(1))
+    return emis
 
 
 def ecarts_sections_lisibilite(texte, jugees):
@@ -2474,6 +2491,30 @@ def ecarts_sections_lisibilite(texte, jugees):
     ecarts = [f"règle L{n} jugée par check_html, aucune section" for n in sorted(jugees - publiees)]
     ecarts += [f"section « {s} » publiée {sections.count(s)} fois"
                for s in sorted(set(sections)) if sections.count(s) > 1]
+    return ecarts
+
+
+def ecarts_identifiants_partages(texte, emis):
+    """TF-2492 — un identifiant émis ne désigne qu'UNE règle de `lisibilite.md`.
+
+    Quand toutes les sections d'un numéro portent un qualificatif (« L30 (chapitre) », « L30 (couverture) »),
+    aucune ne porte l'identifiant nu : `check_html` ne peut pas émettre « L30 », qui désignerait les deux, et
+    chaque section doit être émise sous son propre identifiant. Un numéro qui garde une section sans
+    qualificatif (« L12 » et « L12 (virgules) ») n'est pas jugé ici : sa règle nue est l'ancienne.
+    """
+    sections = [p.strip() for t in RE_TITRE_REGLE.findall(texte) for p in t.split("/")]
+    par_numero = {}
+    for s in sections:
+        par_numero.setdefault(int(re.match(r"L(\d+)", s).group(1)), []).append(s)
+    ecarts = []
+    for n, noms in sorted(par_numero.items()):
+        if len(noms) < 2 or not all(re.match(r"L\d+ \(", s) for s in noms):
+            continue
+        if f"L{n}" in emis:
+            ecarts.append(f"identifiant « L{n} » émis alors que ses sections sont {', '.join(noms)} : "
+                          "deux règles le partagent")
+        ecarts += [f"section « {s} » : aucun message de check_html n'ouvre par cet identifiant"
+                   for s in noms if s not in emis]
     return ecarts
 
 
@@ -2526,11 +2567,30 @@ def run_sections_lisibilite_publiees():
     cas("jouet : compte de cas juste (VERT)", not vert, "0 écart", f"{len(vert)} écart(s)",
         " | ".join(vert))
 
+    # TF-2492 — le 13/11/2026, check_html émettait « L30 » pour deux règles que lisibilite.md distingue
+    # (« L30 (chapitre) », « L30 (couverture) ») : le numéro seul ne dit pas laquelle a mordu.
+    sections_l30 = "## L30 (chapitre) — a\n## L30 (couverture) — b\n## L12 — c\n## L12 (virgules) — d\n"
+    rouge = ecarts_identifiants_partages(sections_l30, {"L30", "L12"})
+    cas("jouet : « L30 » émis pour deux sections qualifiées (ROUGE)",
+        len(rouge) == 3 and "identifiant « L30 » émis" in rouge[0],
+        "3 écarts : l'identifiant nu, puis les deux sections sans émission", f"{len(rouge)} écart(s)",
+        " | ".join(rouge))
+    rouge = ecarts_identifiants_partages(sections_l30, {"L30 (chapitre)", "L12"})
+    cas("jouet : une section qualifiée jamais émise (ROUGE)",
+        rouge == ["section « L30 (couverture) » : aucun message de check_html n'ouvre par cet identifiant"],
+        "1 écart nommant L30 (couverture)", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    vert = ecarts_identifiants_partages(sections_l30, {"L30 (chapitre)", "L30 (couverture)", "L12"})
+    cas("jouet : un identifiant par section, « L12 » nu partagé par ses volets (VERT)", not vert,
+        "0 écart", f"{len(vert)} écart(s)", " | ".join(vert))
+
     ref = (FIXTURES.parent / "references" / "lisibilite.md").read_text(encoding="utf-8")
     jugees = regles_jugees_par_check_html()
-    reel = ecarts_sections_lisibilite(ref, jugees) + ecarts_compte_cas(ref, attendu_cas)
+    emis = identifiants_emis_par_check_html()
+    reel = (ecarts_sections_lisibilite(ref, jugees) + ecarts_compte_cas(ref, attendu_cas)
+            + ecarts_identifiants_partages(ref, emis))
     cas("references/lisibilite.md contre check_html.py", not reel and len(jugees) > 0,
-        f"0 écart sur {len(jugees)} règles jugées", f"{len(reel)} écart(s)", " | ".join(reel))
+        f"0 écart sur {len(jugees)} règles jugées, {len(emis)} identifiants émis", f"{len(reel)} écart(s)",
+        " | ".join(reel))
     return out
 
 
@@ -2962,7 +3022,7 @@ def run_classe_source_machine():
     couverture de L30 reste jugé. Le périmètre de non-mesure NOMME les règles retirées.
     """
     out = []
-    PREF = ("L7 ", "L25 ", "L30 chapitre #")
+    PREF = ("L7 ", "L25 ", "L30 (chapitre) #")
 
     def lire(nom):
         return (FIXTURES / nom).read_text(encoding="utf-8")
@@ -2973,7 +3033,7 @@ def run_classe_source_machine():
 
     f, w = check(lire("source-machine-livret.html"))
     vus = sorted(codes(f) & {"L7", "L25"})
-    w30 = [x for x in w if x.startswith("L30 chapitre #")]
+    w30 = [x for x in w if x.startswith("L30 (chapitre) #")]
     cas("source-machine-livret.html (page-lue, défaut)", vus == ["L25", "L7"] and len(w30) == 4,
         "ROUGE : L7 + L25 en échec, 4 avertissements L30 .contenu", f"{vus}, {len(w30)} L30")
 
@@ -2997,8 +3057,8 @@ def run_classe_source_machine():
         "ROUGE : A2 + G1 en échec, et rien d'autre", str(obtenu))
 
     f, w = check(lire("l30-couverture-muette.html"), regles="L", classe="source-machine")
-    f30 = [x for x in f if x.startswith("L30")]
-    w30 = [x for x in w if x.startswith("L30")]
+    f30 = [x for x in f if x.startswith("L30 (couverture)")]
+    w30 = [x for x in w if x.startswith("L30 (couverture)")]
     cas("l30-couverture-muette.html (--classe=source-machine)", len(f30) == 3 and len(w30) == 1,
         "ROUGE : dénominateur de couverture L30 toujours jugé (3 FAIL / 1 WARN)",
         f"{len(f30)} FAIL / {len(w30)} WARN")
@@ -4176,8 +4236,8 @@ def run_couverture():
                               "obtenu": "absente", "regle": "L30", "detail": "fixture manquante"})
             continue
         fails, warns = check(chemin.read_text(encoding="utf-8"), regles="L")
-        f30 = [x for x in fails if x.startswith("L30")]
-        w30 = [x for x in warns if x.startswith("L30")]
+        f30 = [x for x in fails if x.startswith("L30 (couverture)")]
+        w30 = [x for x in warns if x.startswith("L30 (couverture)")]
         ok = len(f30) == attendu["fails"] and len(w30) == attendu["warns"]
         resultats.append({
             "fixture": nom,

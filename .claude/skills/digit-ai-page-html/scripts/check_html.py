@@ -57,7 +57,7 @@ from pathlib import Path
 #
 # `references/jargon-a-gloser.json` est daté, sourcé, et grossit par les retours humains :
 # chaque terme qu'un lecteur a dû faire expliquer y entre. Le mettre en dur ici obligerait à
-# publier une version de l'oracle pour ajouter un mot. Le fichier absent n'éteint pas L30 en
+# publier une version de l'oracle pour ajouter un mot. Le fichier absent n'éteint pas L30 (chapitre) en
 # silence : sa moitié « ce que le chapitre contient » continue de juger, et l'absence est dite.
 _JARGON_CACHE = None
 
@@ -3404,7 +3404,7 @@ def check_lisibilite(html: str, a: Arbre):
                              "le second est du remplissage ; un exemple par tableau, "
                              "chacun disant ce qu'il faut voir dans LE sien.")
 
-    # --- L30 : un chapitre dit CE QU'IL CONTIENT, et glose son jargon (TF-0932, 08/09) ---
+    # --- L30 (chapitre) : un chapitre dit CE QU'IL CONTIENT, et glose son jargon (TF-0932, 08/09) ---
     #
     # LE FAIT. Retour humain sur une page servie : « explique chaque chapitre, avec ce qu'il
     # contient ou decrit, et si un terme technique est utilise, comme DAX, explique-le en debut
@@ -3445,7 +3445,7 @@ def check_lisibilite(html: str, a: Arbre):
             # La seconde moitie (le jargon), elle, reste bloquante : liste fermee, zero faux
             # positif par construction.
             warns.append(
-                f"L30 chapitre #{ident} ne dit pas CE QU'IL CONTIENT — un element .contenu "
+                f"L30 (chapitre) #{ident} ne dit pas CE QU'IL CONTIENT — un element .contenu "
                 f"d'au moins {L30_MIN_CONTENU} caracteres est attendu"
                 + (" AVANT son premier tableau ou sa premiere liste : place apres, ce n'est "
                    "plus une entree en matiere." if tardif else
@@ -3475,7 +3475,7 @@ def check_lisibilite(html: str, a: Arbre):
             if terme.lower() in gloses.lower():
                 continue
             fails.append(
-                f"L30 terme technique non glose dans #{ident} : « {terme} » — un terme du "
+                f"L30 (chapitre) terme technique non glose dans #{ident} : « {terme} » — un terme du "
                 "referentiel employe dans un chapitre y porte sa glose : un <dfn> qui le "
                 "nomme, ou une entree de glossaire (.termes, .glossaire) dans CE chapitre. "
                 "Un lecteur entre par le sommaire : il n'a pas lu le chapitre precedent. "
@@ -4354,7 +4354,7 @@ def check_lisibilite(html: str, a: Arbre):
                 "poser que si la position CALCULÉE vaut `static` (TF-0899). Vérifier au rendu : "
                 "`render_page.py` mesure V15 après défilement.")
 
-    # --- L30 : une page de COUVERTURE affiche son DÉNOMINATEUR (TF-0909, 08/09/2026) -----
+    # --- L30 (couverture) : une page de COUVERTURE affiche son DÉNOMINATEUR (TF-0909, 08/09/2026) -----
     #
     # LE FAIT PAYÉ. Une page de mapping remise le 07/09 portait 47 lignes de correspondances,
     # des cartes « chiffres clés » qui renvoyaient HORS PAGE (« voir le rapport Markdown »),
@@ -4384,22 +4384,22 @@ def check_lisibilite(html: str, a: Arbre):
         chiffres = re.sub(r"[\s  ]", "", brut)
         if not chiffres.isdigit():
             fails.append(
-                f"L30 `data-population=\"{brut[:24]}\"` illisible sur le tableau "
+                f"L30 (couverture) `data-population=\"{brut[:24]}\"` illisible sur le tableau "
                 f"« {(table.texte_propre() or '')[:32]} » : le dénominateur d'une couverture est "
                 "un nombre entier d'éléments SOURCE. Sans lui, aucune ligne affichée ne dit "
-                "« sur combien » (lisibilite.md L30).")
+                "« sur combien » (lisibilite.md, section L30 (couverture)).")
             continue
         population = int(chiffres)
         lignes = _lignes_tbody(table)
         if lignes < population:
             fails.append(
-                f"L30 couverture PARTIELLE présentée comme entière : le tableau déclare "
+                f"L30 (couverture) PARTIELLE présentée comme entière : le tableau déclare "
                 f"`data-population=\"{population}\"` et ne rend que {lignes} ligne(s) — "
                 f"{population - lignes} élément(s) source n'apparaissent nulle part. Une page de "
                 "couverture porte un tableau EXHAUSTIF au grain de l'élément source, les "
                 "manquants EN TÊTE ; un extrait se déclare comme extrait. Le cas fondateur "
                 "affichait 47 lignes pour 342 colonnes et 160 mesures, et trois oracles "
-                "rendaient PASS (lisibilite.md L30).")
+                "rendaient PASS (lisibilite.md, section L30 (couverture)).")
         # Le dénominateur doit être LISIBLE avant le tableau : un attribut que personne ne voit
         # ne répond pas à « 47 sur combien ? ». On accepte ses écritures usuelles (« 342 »,
         # « 1 000 », « 1 000 » insécable) dans le texte qui PRÉCÈDE le tableau.
@@ -4408,18 +4408,18 @@ def check_lisibilite(html: str, a: Arbre):
         avant_nu = re.sub(r"[\s  ]", "", avant)
         if str(population) not in avant_nu:
             fails.append(
-                f"L30 dénominateur {population} JAMAIS AFFICHÉ avant le tableau de couverture : "
+                f"L30 (couverture) dénominateur {population} JAMAIS AFFICHÉ avant le tableau de couverture : "
                 "il n'existe que dans `data-population`, donc pour personne. Le lecteur doit "
                 "lire « n sur N » avant d'entrer dans le tableau — une carte de population, une "
-                "phrase de chapeau, un compteur (lisibilite.md L30).")
+                "phrase de chapeau, un compteur (lisibilite.md, section L30 (couverture)).")
         manquants = [n for n in ordre if n.att("data-couverture-manquants") is not None]
         if not manquants:
             fails.append(
-                "L30 aucun compte d'éléments SANS CORRESPONDANCE sur une page de couverture "
+                "L30 (couverture) aucun compte d'éléments SANS CORRESPONDANCE sur une page de couverture "
                 "(`data-couverture-manquants` attendu sur l'élément qui l'affiche). « Combien "
                 "manquent ? » est la première question du lecteur, et elle est restée sans "
                 "réponse sur le cas fondateur : 38 colonnes et 22 mesures orphelines découvertes "
-                "en recette, après trois PASS (lisibilite.md L30).")
+                "en recette, après trois PASS (lisibilite.md, section L30 (couverture)).")
 
     if not tables_pop:
         # Le `<h1>` prime sur le `<title>` : c'est ce que le lecteur a sous les yeux. À défaut,
@@ -4428,10 +4428,10 @@ def check_lisibilite(html: str, a: Arbre):
                      next((n.texte_propre() for n in ordre if n.tag == "title"), ""))
         if any(mot in titre.lower() for mot in MOTS_COUVERTURE):
             warns.append(
-                f"L30 la page s'annonce comme une couverture (« {titre[:48]} ») et aucun tableau "
+                f"L30 (couverture) la page s'annonce comme une couverture (« {titre[:48]} ») et aucun tableau "
                 "ne déclare son dénominateur (`data-population=\"N\"` sur la table). Un tableau "
                 "de correspondances sans « sur combien » se lit comme complet, quel que soit son "
-                "taux réel — 89 % présenté comme 100 % sur le cas fondateur (lisibilite.md L30).")
+                "taux réel — 89 % présenté comme 100 % sur le cas fondateur (lisibilite.md, section L30 (couverture)).")
 
     # --- L31 : une HIERARCHIE longue rendue en tableau se PLIE (TF-0952, 08/09/2026) ------
     #
@@ -4487,10 +4487,10 @@ def check_lisibilite(html: str, a: Arbre):
         if RE_KPI_AILLEURS.search(n.texte_propre()):
             signales.append(n)
             warns.append(
-                f"L30 carte de chiffre clé qui renvoie HORS PAGE — « "
+                f"L30 (couverture) carte de chiffre clé qui renvoie HORS PAGE — « "
                 f"{n.texte_propre()[:56]} ». Un chiffre clé porte son chiffre : renvoyer à un "
                 "autre document, c'est occuper la place de la réponse sans la donner "
-                "(lisibilite.md L30).")
+                "(lisibilite.md, section L30 (couverture)).")
 
     # --- L34 : la SÉRIE UNIQUE quand la donnée en porte plusieurs (AVERTISSEMENT) -----------
     #     (RT-119 du lot Produit-02 20261003b, D-55 (a) du 03/10/2026)
@@ -5137,7 +5137,7 @@ def exemption_declaree(source, hors=()):
 # jargon : une donnée lue par une machine doit encore dire « sur combien ».
 CLASSES_ARTEFACT = ("page-lue", "source-machine")
 CLASSE_PAR_DEFAUT = "page-lue"
-PREFIXES_HORS_SOURCE_MACHINE = ("L7 ", "L25 ", "L30 chapitre #")
+PREFIXES_HORS_SOURCE_MACHINE = ("L7 ", "L25 ", "L30 (chapitre) #")
 
 
 def classe_artefact(html: str, demandee=None):
@@ -5458,8 +5458,8 @@ def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
             f"CLASSE D'ARTEFACT source-machine ({origine or 'demandée'}) — la page est lue par "
             "une machine, pas parcourue par un humain (TF-1589). NE SONT PAS MESURÉES : L7 "
             "(chapeau .ch-apprend de chaque chapitre), L25 (sommaire au-delà de trois chapitres) "
-            "et la partie de L30 qui exige un .contenu par chapitre. Restent jugés : tout le "
-            "reste, dont la glose du jargon et le dénominateur de couverture de L30. Si un "
+            "et la partie de L30 (chapitre) qui exige un .contenu par chapitre. Restent jugés : tout le "
+            "reste, dont la glose du jargon et le dénominateur de couverture (L30 (couverture)). Si un "
             "humain lit aussi cette page, la classe est fausse : la retirer"]
     return classe_notes + [
         "LA REVUE DE LECTURE N'A PAS ÉTÉ JOUÉE ICI. Elle est OBLIGATOIRE avant toute livraison "
@@ -5628,7 +5628,7 @@ def main():
     ap.add_argument("--classe", choices=list(CLASSES_ARTEFACT), default=None,
                     help="classe d'artefact (défaut : page-lue, ou celle que la page déclare par "
                          "<meta name=\"classe-artefact\">). source-machine : page lue par une "
-                         "machine — L7, L25 et le .contenu de L30 ne sont pas mesurés (TF-1589)")
+                         "machine — L7, L25 et le .contenu de L30 (chapitre) ne sont pas mesurés (TF-1589)")
     args = ap.parse_args()
     if args.version_regles:
         print(json.dumps(jeu_de_regles(), ensure_ascii=False))
