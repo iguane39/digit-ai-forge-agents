@@ -614,6 +614,14 @@ if (reg) {
           if (dec.has(k)) pb.push(`${k} : déclaré deux fois`);
           dec.set(k, d);
           if (!d.motif || !motifs[d.motif]) pb.push(`${k} : motif absent ou inconnu (${d.motif})`);
+          // TF-2466 (13/11/2026, décision R-58 du 12/11/2026) — un oracle SANS APPELANT n'a pas de motif qui le justifie : il se câble
+          // (appelants nommés), ou se déclare « manuel » avec son motif (20 caractères au moins) et la commande qui le joue, laquelle
+          // nomme le script. Loi n° 1 : un contrôle qu'aucune étape n'appelle est câblé, déclaré joué à la main, ou proposé au retrait.
+          const sansAppelant = !Array.isArray(d.appelants) || d.appelants.length === 0 || d.motif === 'sans-appelant';
+          const m = d.manuel || {}, nom = path.posix.basename(d.chemin || '');
+          const manuelOk = typeof m.motif === 'string' && m.motif.trim().length >= 20 && typeof m.commande === 'string' && m.commande.includes(nom) && nom !== '';
+          if (d.motif === 'manuel') { if (!manuelOk) pb.push(`${k} : déclaré « manuel » sans motif (20 caractères au moins) ou sans commande qui nomme ${nom}`); }
+          else if (sansAppelant) pb.push(`${k} : sans appelant et sans déclaration « manuel » (motif et commande qui le joue) — le câbler à l'étape qui le consomme, ou le déclarer « manuel »`);
         }
         for (const k of fichiers) if (!au_registre.has(k) && !dec.has(k)) pb.push(`${k} : ni au registre ni déclaré hors registre`);
         for (const k of dec.keys()) {
@@ -635,7 +643,29 @@ if (reg) {
         const avecDouble = probleme(fichiers, reg_, [...declares, { depot: 'digit-ai-factory', chemin: 'oracles/oracle-engagements.mjs', motif: 'pilot-appele' }], motifs);
         const sansMotif = premier ? probleme(fichiers, reg_, declares.map((d) => d === premier ? { ...d, motif: '' } : d), motifs) : [];
         const absentsNommes = nommes.filter((k) => !fichiers.includes(k) || !reg_.has(k));
-        if (reel.length) ko(`TF-2452 : ${reel.length} anomalie(s) entre les oracles du pilot et des forges, le registre et references/oracles-hors-registre.json — ${reel.slice(0, 12).join(' · ')}${reel.length > 12 ? ' · … (' + (reel.length - 12) + ' de plus)' : ''}. Les inscrire au registre (règle §4) ou les déclarer avec un motif.`);
+        // TF-2466 — la barrière des sans-appelant, jouée dans les deux sens sur une déclaration témoin du parc réel (indépendamment de
+        // l'état des autres lignes) : rouge, une ligne sans appelant sans « manuel », un « manuel » au motif court ou à la commande
+        // qui ne nomme pas le script ; vert, la même ligne câblée, ou déclarée « manuel » complète.
+        const temoin = declares.find((d) => d.motif !== 'sans-appelant' && d.motif !== 'manuel' && Array.isArray(d.appelants) && d.appelants.length && fichiers.includes(d.depot + '/' + d.chemin));
+        if (!temoin) ko('TF-2466 : aucune déclaration câblée témoin dans la liste — la barrière des sans-appelant ne peut pas être jouée');
+        else {
+          const cle = temoin.depot + '/' + temoin.chemin, nom = path.posix.basename(temoin.chemin);
+          const variante = (patch) => probleme(fichiers, reg_, declares.map((d) => d === temoin ? { ...d, ...patch } : d), motifs).filter((p) => p.startsWith(cle + ' :'));
+          const complet = { motif: 'Joué à la main avant chaque publication : aucune étape ne le consomme.', commande: `node ${temoin.chemin} <cible>` };
+          const rouges = [
+            ['une ligne sans appelant et sans « manuel »', variante({ appelants: [] }), /sans appelant et sans déclaration « manuel »/],
+            ['un motif « sans-appelant »', variante({ motif: 'sans-appelant' }), /sans appelant et sans déclaration « manuel »/],
+            ['un « manuel » au motif trop court', variante({ motif: 'manuel', appelants: [], manuel: { motif: 'x', commande: complet.commande } }), /déclaré « manuel » sans motif/],
+            ['un « manuel » dont la commande ne nomme pas le script', variante({ motif: 'manuel', appelants: [], manuel: { motif: complet.motif, commande: 'node autre-script.mjs' } }), /déclaré « manuel » sans motif/],
+          ];
+          const muets = rouges.filter(([, pb, re]) => !pb.some((p) => re.test(p))).map(([nomCas]) => nomCas);
+          const vert = variante({ appelants: [], motif: 'manuel', manuel: complet });
+          const cable = variante({});
+          if (muets.length) ko('TF-2466 sens rouge : la barrière des sans-appelant ne nomme pas — ' + muets.join(' ; '));
+          else if (vert.length || cable.length) ko('TF-2466 sens vert : ' + [...vert, ...cable].join(' · '));
+          else ok(`TF-2466 : une ligne sans appelant est nommée tant qu'elle ne porte pas de déclaration « manuel » (motif de 20 caractères au moins, commande qui nomme ${nom}) ; câblée ou déclarée « manuel » complète, elle passe`);
+        }
+        if (reel.length) ko(`TF-2452 : ${reel.length} anomalie(s) entre les oracles du pilot et des forges, le registre et references/oracles-hors-registre.json — ${reel.slice(0, 20).join(' · ')}${reel.length > 20 ? ' · … (' + (reel.length - 20) + ' de plus)' : ''}. Les inscrire au registre (règle §4), les câbler à l'étape qui les consomme, ou les déclarer avec un motif (« manuel » : motif et commande).`);
         else if (absentsNommes.length) ko('TF-2452 : les trois oracles qui ont fait naître la barrière doivent être vus ET inscrits au registre par leur chemin — manque : ' + absentsNommes.join(', '));
         else if (!premier || !sansUne.some((p) => p.startsWith(premier.depot + '/' + premier.chemin + ' : ni au registre'))) ko('TF-2452 sens rouge : retirer une déclaration ne fait pas nommer son script — la barrière est aveugle');
         else if (!avecMort.some((p) => /oracle-qui-n-existe-pas\.mjs : déclaré hors registre mais introuvable/.test(p))) ko('TF-2452 sens rouge : une déclaration dont le fichier n\'existe pas n\'est pas nommée — la liste garderait ses morts');
