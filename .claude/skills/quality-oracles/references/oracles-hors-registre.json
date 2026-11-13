@@ -1,12 +1,11 @@
 {
- "version": 2,
+ "version": 3,
  "date": "2026-11-13",
- "provenance": "TF-2452 (décision R-58 du 12/11/2026) — la barrière « tout script de contrôle est au registre » de TF-2399 ne lisait que les skills de forge-agents ; elle lit aussi les oracles du pilot et des forges (oracle-*.mjs|py et check_*.py suivis par git, hors fixtures, node_modules, vendor, old, output, input et recettes *.test.mjs). TF-2466 (décision R-58 du 12/11/2026, campagne du 13/11/2026) : un oracle sans appelant ne se justifie plus par un motif ; il est câblé (appelants nommés) ou déclaré « manuel » avec son motif et la commande qui le joue, sinon la barrière le nomme.",
+ "provenance": "TF-2452 (décision R-58 du 12/11/2026) — la barrière « tout script de contrôle est au registre » de TF-2399 ne lisait que les skills de forge-agents ; elle lit aussi les oracles du pilot et des forges (oracle-*.mjs|py et check_*.py suivis par git, hors fixtures, node_modules, vendor, old, output, input et recettes *.test.mjs). TF-2466 (décision R-58 du 12/11/2026, campagne du 13/11/2026) : un oracle sans appelant ne se justifie plus par un motif ; il est câblé (appelants nommés) ou déclaré « manuel » avec son motif et la commande qui le joue, sinon la barrière le nomme. Phase 2 de TF-2466 (13/11/2026) : les 12 lignes sans appelant sont résolues, 9 « manuel » avec leur motif et leur commande, 3 câblées à oracles/run-oracles-design.mjs de forge-design (lot dh, commit dc39050) ; le motif « sans-appelant » est retiré de la liste.",
  "lecture": "Un script absent du registre machine (references/registre-oracles.json) est déclaré ici avec un motif, ou la barrière du self-test échoue. Une ligne dont le fichier n'existe plus, ou dont le script est entré au registre depuis, fait échouer la barrière aussi : la liste ne garde pas de morts. Les appelants sont un relevé daté, non une garantie. Une ligne sans appelant (appelants vide) est refusée tant qu'elle ne porte pas le motif « manuel » avec sa déclaration {\"manuel\": {\"motif\": ..., \"commande\": ...}} : le motif compte 20 caractères au moins, la commande nomme le script.",
  "motifs": {
   "pilot-appele": "Oracle du pilot, appelé par ses hameçons, ses générateurs, son accueil ou sa recette (appelants nommés, relevés le 12/11/2026). Il juge un état, une règle ou un document propre au pilot, que son appelant lui désigne par un chemin : aucun livrable de produit ne le déclenche par son extension ou son contenu, le routeur de run-oracles n'a rien à lui router. Il est découvert par oracles/decouvrir-oracles.mjs (contrat digit-ai/decouverte-oracles@1) et rejoué par la recette du pilot.",
   "forge-appele": "Oracle de forge, appelé par le lanceur ou les scripts de sa propre forge (appelants nommés, relevés le 12/11/2026) : la forge le choisit selon son profil ou son étape, et le registre n'inscrit que les oracles qu'un livrable déclenche par son extension ou son contenu, ou qu'un humain invoque en cible explicite. À inscrire si un livrable de produit doit pouvoir le déclencher.",
-  "sans-appelant": "Aucun appelant relevé le 12/11/2026 : le nom du script ne figure dans aucun fichier suivi de son dépôt ni du pilot, hors tests, self-tests, Markdown et registres. Refusé par la barrière depuis TF-2466 (13/11/2026) : la ligne se câble (appelants), se déclare « manuel » (motif et commande), ou se propose au retrait. Ce motif ne reste que le temps d'un relevé.",
   "manuel": "Oracle joué à la main, sans étape qui l'appelle, déclaré comme tel (TF-2466, 13/11/2026). La ligne porte `manuel.motif` (pourquoi aucune étape ne le consomme : sa cible est choisie par un humain, il juge une pièce rare, il demande un réseau ou un outil absent de la recette) et `manuel.commande` (la commande exacte qui le joue, qui nomme le script, rejouée par l'agent qui la déclare). Ce n'est pas une justification de l'absence de câblage : c'est la trace que le geste existe et où le lancer."
  },
  "oracles": [
@@ -448,8 +447,12 @@
   {
    "depot": "digit-ai-factory",
    "chemin": "oracles/oracle-recette-rejouable.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Prescrit à l'étape 5 (tests) de references/ETAPES-RUN.md du pilot, joué par la session du run sur la racine du produit ; second appelant (audit de recette de forge-tests) ouvert sous TF-2438.",
+    "commande": "node oracles\\oracle-recette-rejouable.mjs <racine-produit>  (exit 0, 1, 2)"
+   }
   },
   {
    "depot": "digit-ai-factory",
@@ -605,38 +608,62 @@
   {
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-arret-en-course.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
+    "commande": "node oracles/oracle-arret-en-course.mjs <journal.jsonl> --json-only"
+   }
   },
   {
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-corpus-injection.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
+    "commande": "node oracles/oracle-corpus-injection.mjs <agent.md|journal.jsonl> --json-only"
+   }
   },
   {
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-agentdef.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
+    "commande": "node oracles/oracle-scan-agentdef.mjs <agent.yaml|.claude/agents/x.md> --json-only"
+   }
   },
   {
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-mcp-supabase.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
+    "commande": "node oracles/oracle-scan-mcp-supabase.mjs <fichier|dossier> --production <ref> --json-only"
+   }
   },
   {
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-toolcalls.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
+    "commande": "node oracles/oracle-scan-toolcalls.mjs <journal.jsonl> --perimetre <dossier> --json-only"
+   }
   },
   {
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-workflow-agent.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
+    "commande": "node oracles/oracle-scan-workflow-agent.mjs <dépôt|workflows|fichier.yml> --json-only"
+   }
   },
   {
    "depot": "digit-ai-forge-conception",
@@ -730,8 +757,10 @@
   {
    "depot": "digit-ai-forge-design",
    "chemin": "oracles/oracle-barre-externe.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
   },
   {
    "depot": "digit-ai-forge-design",
@@ -766,8 +795,12 @@
   {
    "depot": "digit-ai-forge-design",
    "chemin": "oracles/oracle-coherence-promesse.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Aucun skill ni document ne prescrit encore de confronter une page à un CONSTITUTION.md ; consommateur d'origine : la section Promesse du cadrage ratifié de forge-conception (TF-0577) ; prouvé par son --self-test (7 PASS).",
+    "commande": "node oracles/oracle-coherence-promesse.mjs <page.html> --cadrage <cadrage.md> --json"
+   }
   },
   {
    "depot": "digit-ai-forge-design",
@@ -801,8 +834,10 @@
   {
    "depot": "digit-ai-forge-design",
    "chemin": "oracles/oracle-liste-demande.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
   },
   {
    "depot": "digit-ai-forge-design",
@@ -867,8 +902,10 @@
   {
    "depot": "digit-ai-forge-design",
    "chemin": "oracles/oracle-textes-application.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ]
   },
   {
    "depot": "digit-ai-forge-design",
@@ -928,8 +965,12 @@
   {
    "depot": "digit-ai-forge-websec",
    "chemin": "oracles/oracle-sca.mjs",
-   "motif": "sans-appelant",
-   "appelants": []
+   "motif": "manuel",
+   "appelants": [],
+   "manuel": {
+    "motif": "Audit des dépendances d'un produit livré, joué par la session du run au gate MEP websec (references/ETAPES-RUN.md, R-33) ou sur mandat humain, cible la racine du produit ; appelé par oracles/self-test.mjs et listé par oracles/decouvrir-oracles.mjs ; distinct de l'oracle-sca de quality-oracles.",
+    "commande": "node oracles/oracle-sca.mjs <racine-produit> [--seuils f.json]"
+   }
   }
  ]
 }
