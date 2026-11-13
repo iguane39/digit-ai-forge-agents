@@ -2575,6 +2575,125 @@ def run_console_cp1252():
     return res
 
 
+def run_jonction_sortie_oem():
+    """TF-2478 — la création d'une jonction n'imprime plus d'exception de fil de lecture.
+
+    Le fait (12/11/2026, lot fb) : lancée avec `PYTHONUTF8=1`, la recette imprimait en tête de sortie une
+    `UnicodeDecodeError` (octet 0x82, position 11) venue d'un `_readerthread`, sans effet sur le compte ni sur
+    l'exit. La cause : `cmd /c mklink /J` écrit « Jonction créée » en cp850 (« é » = 0x82), et `text=True` lisait
+    ces octets comme de l'UTF-8. Le défaut n'existe QU'en mode UTF-8 : sans `PYTHONUTF8`, cp1252 décode 0x82
+    en « ‚ » sans rien dire, et rien ne signalait l'erreur. Les sous-processus ci-dessous forcent donc `-X utf8`
+    (le rouge, et le vert dans la condition qui l'exposait) puis `-X utf8=0` (le vert sans UTF-8 forcé).
+      · rouge : la forme d'avant (`text=True`, sans encodage) lève UnicodeDecodeError sur 0x82 ;
+      · vert  : `_creer_jonction`, jouée dans les deux modes, rend vrai et laisse stderr vide.
+    Sans Windows, pas de `cmd` : le cas est déclaré non joué.
+    """
+    if os.name != "nt":
+        return [{"fixture": "jonction · sortie OEM de cmd — cas NON JOUÉ hors Windows, et dit (TF-2478)",
+                 "verdict": "OK", "attendu": "non joué", "obtenu": "non joué", "regle": "TF-2478", "detail": ""}]
+    dossier = str(Path(__file__).resolve().parent)
+    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONUTF8", "PYTHONIOENCODING")}
+    prologue = ("import os, subprocess, sys, tempfile; sys.path.insert(0, %r); import self_test as s; "
+                "d = tempfile.mkdtemp(prefix='self-test-oem-'); lien = os.path.join(d, 'lien'); ") % dossier
+    nettoyage = "os.rmdir(lien) if ok else None; os.rmdir(d)"
+    code_ancien = (prologue + "r = subprocess.run(['cmd', '/c', 'mklink', '/J', lien, d], capture_output=True, text=True); "
+                   "ok = r.returncode == 0; print('JONCTION', ok); " + nettoyage)
+    code_actuel = prologue + "ok = s._creer_jonction(lien, d); print('JONCTION', ok); " + nettoyage
+    res = []
+
+    def jouer(code, mode):
+        r = subprocess.run([sys.executable, "-X", mode, "-c", code], capture_output=True, env=env, timeout=120)
+        return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        res.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu, "obtenu": obtenu,
+                    "regle": "TF-2478 sortie OEM", "detail": "" if ok else detail[:300]})
+
+    code, sortie, err = jouer(code_ancien, "utf8")
+    cas("jonction · forme d'avant (text=True) sous -X utf8 : UnicodeDecodeError sur l'octet 0x82 (ROUGE)",
+        "UnicodeDecodeError" in err and "0x82" in err, "UnicodeDecodeError, octet 0x82",
+        "exception" if "UnicodeDecodeError" in err else "aucune exception", err[-250:])
+    for mode, nom in (("utf8", "-X utf8, la condition qui exposait le défaut"), ("utf8=0", "-X utf8=0, sans UTF-8 forcé")):
+        code, sortie, err = jouer(code_actuel, mode)
+        cas(f"jonction · _creer_jonction sous {nom} : jonction créée, stderr vide",
+            code == 0 and "JONCTION True" in sortie and err.strip() == "", "exit 0, JONCTION True, stderr vide",
+            f"exit {code}, stderr {len(err.strip())} car.", err[-250:] or sortie[-250:])
+    return res
+
+
+# Skills qui tirent leurs gabarits du socle : une régression du socle y rougit sans que le socle le voie.
+# TF-2474 : le 3e rouge SC4 en trois jours (TF-2406 le socle, TF-2448 forge-tests, TF-2459 les schémas) était
+# visible au self-test de digit-ai-schemas depuis TF-2384, mais aucune recette ne le jouait à la livraison du socle.
+CONSOMMATEURS_DU_SOCLE = ("digit-ai-schemas",)
+DELAI_CONSOMMATEUR = 1800
+
+
+def rejouer_consommateur(racine_skills, nom, delai=DELAI_CONSOMMATEUR):
+    """Rejoue `<racine_skills>/<nom>/scripts/self-test.mjs` ; rend (verdict, detail).
+
+    verdict : "OK" (exit 0), "ECHEC" (exit non nul, ou délai dépassé), "NON_JOUE" (node ou le script absents :
+    dit, jamais pris pour un vert). Le détail porte les lignes rouges du consommateur, pour qu'un rouge nomme sa cause.
+    """
+    script = Path(racine_skills) / nom / "scripts" / "self-test.mjs"
+    if not shutil.which("node"):
+        return "NON_JOUE", "node absent de ce poste"
+    if not script.is_file():
+        return "NON_JOUE", f"{nom}/scripts/self-test.mjs introuvable à côté du socle"
+    try:
+        r = subprocess.run(["node", str(script)], cwd=str(script.parent.parent), capture_output=True, timeout=delai)
+    except subprocess.TimeoutExpired:
+        return "ECHEC", f"{nom} : self-test non terminé après {delai} s"
+    lignes = (r.stdout + r.stderr).decode("utf-8", "replace").splitlines()
+    rouges = [ligne.strip() for ligne in lignes if "❌" in ligne]
+    bilan = next((ligne.strip() for ligne in reversed(lignes) if ligne.strip()), "")
+    return ("OK" if r.returncode == 0 else "ECHEC"), f"exit {r.returncode} · {len(rouges)} rouge(s) · " + " | ".join(rouges[:3] or [bilan])
+
+
+def run_consommateurs_du_socle():
+    """TF-2474 — la recette du socle rejoue le self-test de ses consommateurs ; un rouge bloque la livraison.
+
+    Quatre cas : les deux sens de la barrière sur des consommateurs jetables (un self-test qui sort 1 doit
+    rendre ECHEC, un qui sort 0 doit rendre OK, un consommateur absent doit rendre NON_JOUE et non un vert),
+    puis le VRAI consommateur, `digit-ai-schemas`, dont le verdict est celui de la recette. Un `ECHEC` du
+    consommateur réel fait échouer ce cas, donc la recette du socle, donc son exit.
+    """
+    res = []
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        res.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu, "obtenu": obtenu,
+                    "regle": "TF-2474 consommateur du socle", "detail": "" if ok else detail[:300]})
+
+    import tempfile
+    if not shutil.which("node"):
+        cas("consommateurs du socle — cas NON JOUÉ sans node, et dit (TF-2474)", True, "non joué", "non joué")
+        return res
+    atelier = tempfile.mkdtemp(prefix="self-test-consommateurs-")
+    try:
+        for nom, sortie in (("jouet-rouge", 1), ("jouet-vert", 0)):
+            scripts = Path(atelier) / nom / "scripts"
+            scripts.mkdir(parents=True)
+            (scripts / "self-test.mjs").write_text(
+                f"console.log('  \\u274c un rouge du consommateur'); process.exit({sortie});\n", encoding="utf-8")
+        for nom, attendu in (("jouet-rouge", "ECHEC"), ("jouet-vert", "OK"), ("jouet-absent", "NON_JOUE")):
+            verdict, detail = rejouer_consommateur(atelier, nom, delai=120)
+            cas(f"consommateur du socle · {nom} : le self-test rejoué rend {attendu}",
+                verdict == attendu, attendu, verdict, detail)
+        verdict, detail = rejouer_consommateur(atelier, "jouet-rouge", delai=120)
+        cas("consommateur du socle · un rouge est NOMMÉ dans le détail (la cause se lit sans rejouer)",
+            "un rouge du consommateur" in detail, "ligne rouge citée", detail[:80], detail)
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    racine = FIXTURES.parent.parent
+    for nom in CONSOMMATEURS_DU_SOCLE:
+        verdict, detail = rejouer_consommateur(racine, nom)
+        if verdict == "NON_JOUE":
+            cas(f"{nom} introuvable ou node absent — cas NON JOUÉ, et dit (TF-2474) : {detail}", True, "non joué", "non joué")
+        else:
+            cas(f"consommateur du socle · le self-test de {nom} est VERT (un rouge bloque la livraison du socle)",
+                verdict == "OK", "exit 0", verdict, detail)
+    return res
+
+
 def run_graphiques_tf1875():
     """TF-1875 (retour du constructeur de TF-1855, 18/10/2026) — quatre défauts de rendu des composants de
     graphique et un composant d'entonnoir, chacun ROUGE AVANT, VERT APRÈS.
@@ -4602,6 +4721,22 @@ def run_fins_de_ligne_declarees():
     return out
 
 
+def _creer_jonction(lien, cible):
+    """Crée `lien` vers `cible` (jonction sous Windows, lien symbolique ailleurs) ; vrai si elle existe.
+
+    TF-2478 : `cmd /c mklink` écrit « Jonction créée pour … » dans la page de code OEM de la console
+    (cp850, où « é » vaut l'octet 0x82). Lire cette sortie avec `text=True` la décode dans l'encodage
+    par défaut de Python : sous `PYTHONUTF8=1`, le fil de lecture lève UnicodeDecodeError (octet 0x82 en
+    position 11) et l'imprime en tête de la recette. Un décodage explicite en UTF-8 lèverait la même
+    erreur, l'octet n'étant pas de l'UTF-8 ; on ne lit donc que le code de retour, la sortie reste en octets.
+    """
+    if os.name == "nt":
+        return subprocess.run(["cmd", "/c", "mklink", "/J", str(lien), str(cible)],
+                              capture_output=True).returncode == 0
+    os.symlink(cible, lien)
+    return True
+
+
 def run_poseur_composants():
     """TF-0890 — LE POSEUR DE COMPOSANTS S'IMPORTE, ET POSE HORS DU DEPOT DES SKILLS.
 
@@ -4662,12 +4797,7 @@ def run_poseur_composants():
     lien = Path(lien_dir) / "skill"
     skill = Path(poseur).resolve().parent.parent
     try:
-        if os.name == "nt":
-            cree = subprocess.run(["cmd", "/c", "mklink", "/J", str(lien), str(skill)],
-                                  capture_output=True, text=True).returncode == 0
-        else:
-            os.symlink(skill, lien)
-            cree = True
+        cree = _creer_jonction(lien, skill)
         if cree:
             page_j = Path(lien_dir) / "page-jonction.html"
             page_j.write_text('<!DOCTYPE html>\n<html lang="fr">\n<head>\n<title>Essai</title>\n'
@@ -6755,6 +6885,8 @@ def main():
     console = run_console_cp1252()
     if console:
         res += console
+    # TF-2478 — la création d'une jonction ne lit plus la sortie OEM de `cmd` comme de l'UTF-8.
+    res += run_jonction_sortie_oem()
     # TF-1875 — quatre defauts de rendu des composants de graphique, rouge avant / vert apres, et le composant
     # d entonnoir.
     graphiques = run_graphiques_tf1875()
@@ -6900,6 +7032,9 @@ def main():
     dominante = run_v9_surface_dominante()
     if dominante:
         res += dominante
+    # TF-2474 — le socle ne se livre pas sur un rouge de ses consommateurs : le self-test de
+    # digit-ai-schemas est rejoué en dernier (le plus long), et son rouge fait échouer cette recette.
+    res += run_consommateurs_du_socle()
     rates = [r for r in res if r["verdict"] != "OK"]
 
     if args.output == "json":

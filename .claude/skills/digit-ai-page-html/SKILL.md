@@ -7,13 +7,26 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.47.0"
+  version: "1.47.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.47.1 (13/11/2026)** — **La recette du socle rejoue le self-test de `digit-ai-schemas`, et n'imprime plus d'exception de fil
+de lecture (TF-2474 et TF-2478, campagne du 13/11/2026, décision R-58 : exécutée).** Recette seule : le comportement du skill ne
+change pas. **(1) TF-2474.** Le 3e rouge SC4 de forge-design en trois jours (TF-2406 le socle, TF-2448 forge-tests, TF-2459 les
+schémas) était visible au self-test de `digit-ai-schemas` depuis TF-2384, mais aucune recette ne le jouait quand le socle changeait.
+`scripts/self_test.py` rejoue en dernier (`run_consommateurs_du_socle`, `rejouer_consommateur`) `digit-ai-schemas/scripts/self-test.mjs`
+et échoue sur son exit non nul : un rouge du consommateur bloque la livraison du socle. Trois consommateurs jetables prouvent les deux
+sens (exit 1 rend ECHEC, exit 0 rend OK, script absent rend NON_JOUE, jamais un vert). Les consommateurs à rejouer se déclarent dans
+`CONSOMMATEURS_DU_SOCLE`. **(2) TF-2478.** L'exception `UnicodeDecodeError` (octet 0x82, position 11) venait de
+`cmd /c mklink /J`, qui écrit « Jonction créée » en cp850 (« é » = 0x82), lu par `text=True` comme de l'UTF-8 sous `PYTHONUTF8=1` ;
+sans cette variable cp1252 décode 0x82 sans rien dire. La création de la jonction (`_creer_jonction`) ne lit plus que le code de retour,
+la sortie restant en octets ; `run_jonction_sortie_oem` joue l'ancienne forme (rouge) et la nouvelle sous `-X utf8` et `-X utf8=0` (verts).
+Recette : 853/853 avant, 861/861 après (3 cas pour la jonction, 5 pour les consommateurs).
 
 **1.47.0 (13/11/2026)** — **`references/lisibilite.md` publie une section par règle que `check_html.py` juge, sans doublon
 (TF-2469, campagne du 13/11/2026, décision R-58 : exécutée).** La règle `L23` (attribut `hidden`, TF-0733) était jugée
@@ -980,7 +993,7 @@ Enfin, contrôler la **lisibilité** — ce que le lecteur peut effectivement li
 
 ```bash
 python scripts/check_html.py page.html --regles L     # L1-L39 seules
-python scripts/self_test.py                           # prouve que chaque règle échoue
+python scripts/self_test.py                           # prouve que chaque règle échoue ; rejoue en dernier le self-test de digit-ai-schemas (5 min 44 s mesurées)
 ```
 
 Une page exacte, chartée et sans défaut visuel peut rester **illisible** : textes coupés,
