@@ -1033,6 +1033,33 @@ sans signature rendait **un constat vrai sur huit**, et un contrôle bruyant s'a
 Il a trouvé sa première vraie promesse chez `source-reader.js` du socle lui-même — `data-src-format`
 était documenté dans son exemple d'usage et **lu par personne** ; il est désormais lu.
 
+## L23 — L'attribut `hidden` reste SOUVERAIN face au CSS (TF-0733, 31/08/2026)
+
+*Le fait, mesuré chez un produit dont seize oracles étaient au vert.* Un panneau modal masqué par
+l'attribut `hidden` était aussi stylé par un `display: flex` explicite. La règle de la page l'emporte
+sur le `display: none` que l'attribut tient de la feuille de l'agent utilisateur : le panneau restait
+là, **transparent**, et couvrait l'écran entier en interceptant chaque clic, bouton de connexion
+compris. Invisible en capture (transparent), invisible à la lecture (le code est correct), trouvé
+seulement par `document.elementFromPoint` sur le centre du bouton.
+
+**Le geste sûr.** Une page qui emploie l'attribut `hidden` porte la garde du boilerplate, qui rend à
+l'attribut sa souveraineté sur tout `display` posé par une classe :
+
+```css
+[hidden] { display: none !important; }
+```
+
+**Contrôle mécanique.** `L23` — une page qui porte au moins un élément `hidden` sans règle
+`[hidden] { display: none !important }` dans sa feuille échoue, et le message compte les éléments
+concernés. Une page sans `hidden` n'a rien à garder : l'exiger partout ferait crier sur tout
+l'existant pour un mécanisme qu'il n'emploie pas. Fixtures à double sens : rouge
+`l23-voile-sans-garde.html` (1 échec L23), verte `l23-garde-posee.html` (0), qui ne diffèrent que
+par la garde.
+
+**Ce que la règle ne juge pas.** Le recouvrement ACCIDENTEL, deux éléments visibles superposés dont
+l'un intercepte les clics de l'autre, ne se voit qu'au rendu : c'est la moitié exécutable de
+TF-0733, qui relève de `render_page.py` (mesure `elementFromPoint`).
+
 ## L24 — Un badge de statut ENGAGEANT est résolvant (TF-0719, 31/08/2026)
 
 *Le fait, payé par un client.* Le socle fournit un vocabulaire de statut juste — `acte`,
@@ -1156,7 +1183,7 @@ celui du parent. Un sous-chapitre qui recopie le chapeau de son parent échoue t
 (fixture `l7-sommaire-deux-niveaux-chapeau-repete.html`) : la correction change ce que la règle
 regarde, elle n'éteint rien.
 
-## L30 — Un chapitre dit ce qu'il CONTIENT, et glose son jargon (TF-0932, 08/09/2026)
+## L30 (chapitre) — Un chapitre dit ce qu'il CONTIENT, et glose son jargon (TF-0932, 08/09/2026)
 
 **Le fait payé.** Retour humain sur une page servie : « explique chaque chapitre, avec ce qu'il
 contient ou décrit, et si un terme technique est utilisé, comme DAX, explique-le en début de
@@ -1338,7 +1365,7 @@ lui-même collant ; **et** `top: var(--hh)` consommé sans que `--hh` soit décl
 qui vaut 0 par défaut ramène exactement la collision qu'il devait éviter (loi transverse n° 1 :
 une affordance est câblée ou n'existe pas).
 
-### L29 ter — un décalage de collant est une MESURE, pas un token (TF-0929, 08/09/2026)
+### L29 quater — un décalage de collant est une MESURE, pas un token (TF-0929, 08/09/2026)
 
 **Troisième retour humain sur l'en-tête collant en deux jours** (TF-0899, TF-0900, celui-ci) —
 et c'est le token posé par L29 ci-dessus qui est en cause. `--hh` vaut **64 px**, une constante.
@@ -1431,7 +1458,7 @@ de la fenêtre et exige que le th vaille `--hh` ± 4 px. Fixtures à double sens
 hors écran alors que son tableau est à l'écran) — elles ne diffèrent que par la ligne
 `.table-hote { overflow-x: … }`.
 
-## L30 — Une page de couverture affiche son DÉNOMINATEUR (TF-0909, 08/09/2026)
+## L30 (couverture) — Une page de couverture affiche son DÉNOMINATEUR (TF-0909, 08/09/2026)
 
 **Le fait payé.** Une page de mapping remise le 07/09 portait 47 lignes de correspondances, des
 cartes « chiffres clés » qui renvoyaient **hors page** (« voir le rapport Markdown »), aucun
@@ -1811,6 +1838,6 @@ texte coupé, largeur bridée, tooltip vide, barème absent, colonne calculée s
 valeur opaque, table non filtrable, surlignage à padding, collision de nom de classe,
 ancre morte, entrée de sommaire muette, chapitre sans chapeau, lien muet, détail vide,
 table sans mode d'emploi, littéral `null`, promesse de commentaire non tenue — plus une fixture verte qui les passe toutes.
-Une règle sans fixture rouge n'est pas un contrôle. **70 cas de lisibilité, 50 rouges** (comptés sur `fixtures/` le 23/08 — le chiffre précédent, « 26 cas », datait de dix règles plus tôt) — dont quatre
-mesurés au rendu (`l2r-*`, `l2g-*`), rejoués par `self_test.py` quand playwright est
-disponible.
+Une règle sans fixture rouge n'est pas un contrôle. **130 cas de lisibilité, 75 rouges** (comptés le 13/11/2026 dans les tables `CAS` et `CAS_AVERT` de `self_test.py`, que le banc compare à ce chiffre : un cas ajouté sans mettre le compte à jour rend le self-test rouge), auxquels s'ajoutent
+neuf fixtures mesurées au rendu (quatre `l2r-*`, cinq `l2g-*`), rejouées par `self_test.py` quand
+playwright est disponible.

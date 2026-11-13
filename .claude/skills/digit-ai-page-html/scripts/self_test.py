@@ -16,6 +16,7 @@ Usage :
 Code de sortie : 0 si tous les cas passent, 1 sinon.
 """
 import argparse
+import ast
 import json
 import os
 import re
@@ -2433,6 +2434,104 @@ def run_compte_regles_en_prose():
              "obtenu": f"{vues} annonce(s), {len(perimees)} périmée(s), rouge {len(rouge)}, "
                        f"vert {len(vert)}",
              "regle": "TF-1689 compte en prose", "detail": " | ".join(perimees)[:200]}]
+
+
+RE_TITRE_REGLE = re.compile(r"^#{2,3} (L\d+\b[^—\n]*?) +— ", re.M)
+RE_COMPTE_CAS_L = re.compile(r"(\d+) cas de lisibilité, (\d+) rouges")
+
+
+def regles_jugees_par_check_html():
+    """Les numéros de règle L que `check_html.py` émet : toute chaîne littérale qui ouvre par « Lnn ».
+
+    Lue dans l'arbre syntaxique, pas dans le texte : un commentaire qui nomme une règle ne la juge pas.
+    """
+    source = (Path(__file__).resolve().parent / "check_html.py").read_text(encoding="utf-8")
+    jugees = set()
+    for noeud in ast.walk(ast.parse(source)):
+        if isinstance(noeud, ast.Constant) and isinstance(noeud.value, str):
+            debut = noeud.value
+        elif isinstance(noeud, ast.JoinedStr) and noeud.values \
+                and isinstance(noeud.values[0], ast.Constant):
+            debut = noeud.values[0].value
+        else:
+            continue
+        m = re.match(r"L(\d+)\b", debut)
+        if m:
+            jugees.add(int(m.group(1)))
+    return jugees
+
+
+def ecarts_sections_lisibilite(texte, jugees):
+    """TF-2469 — les sections publiées d'un référentiel de lisibilité contre les règles jugées.
+
+    Deux écarts : une règle jugée sans aucune section (L23 jugée par `check_html`, jamais publiée),
+    et un identifiant de section porté deux fois (deux « L30 », deux « L29 ter »). Une règle à
+    plusieurs volets se distingue par un qualificatif (« L12 (virgules) », « L29 quater »), jamais
+    par une répétition.
+    """
+    sections = [p.strip() for t in RE_TITRE_REGLE.findall(texte) for p in t.split("/")]
+    publiees = {int(re.match(r"L(\d+)", s).group(1)) for s in sections}
+    ecarts = [f"règle L{n} jugée par check_html, aucune section" for n in sorted(jugees - publiees)]
+    ecarts += [f"section « {s} » publiée {sections.count(s)} fois"
+               for s in sorted(set(sections)) if sections.count(s) > 1]
+    return ecarts
+
+
+def ecarts_compte_cas(texte, attendu):
+    """TF-2469 — le compte « N cas de lisibilité, M rouges » du référentiel contre les tables du banc."""
+    annonces = RE_COMPTE_CAS_L.findall(texte)
+    if not annonces:
+        return ["aucun compte « N cas de lisibilité, M rouges » dans le texte"]
+    return [f"compte annoncé {n} cas dont {r} rouges, mesuré {attendu[0]} dont {attendu[1]}"
+            for n, r in annonces if (int(n), int(r)) != attendu]
+
+
+def run_sections_lisibilite_publiees():
+    """TF-2469 — `lisibilite.md` publie une section par règle que `check_html` juge, sans doublon.
+
+    Le 12/11/2026, l'agent du lot org mesure : L23 jugée (attribut `hidden`, TF-0733) et sans
+    section, deux sections « L30 », deux « L29 ter », et un compte de cas daté du 23/08. Les deux
+    sens sont joués sur des textes jouets (rouge : une règle jugée sans section, un identifiant
+    répété, un compte périmé ; vert : les mêmes textes corrigés), puis sur le référentiel réel.
+    """
+    out = []
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": "TF-2469 sections de lisibilité",
+                    "detail": "" if ok else detail[:300]})
+
+    jouet_sans_section = "## L1 — a\n## L2 — b\n## L4 — d\n"
+    rouge = ecarts_sections_lisibilite(jouet_sans_section, {1, 2, 3, 4})
+    cas("jouet : règle jugée sans section (ROUGE)",
+        rouge == ["règle L3 jugée par check_html, aucune section"],
+        "1 écart nommant L3", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    jouet_doublon = "## L1 — a\n## L2 — b\n### L2 — c\n## L3 / L4 — d\n"
+    rouge = ecarts_sections_lisibilite(jouet_doublon, {1, 2, 3, 4})
+    cas("jouet : identifiant de section répété (ROUGE)",
+        rouge == ["section « L2 » publiée 2 fois"], "1 écart nommant L2", f"{len(rouge)} écart(s)",
+        " | ".join(rouge))
+    jouet_vert = ("## L1 — a\n### L1 bis — a2\n## L2 (virgules) — b\n## L2 (cellules) — c\n"
+                  "## L3 / L4 — d\n")
+    vert = ecarts_sections_lisibilite(jouet_vert, {1, 2, 3, 4})
+    cas("jouet : qualificatifs distincts, plage « L3 / L4 » (VERT)", not vert, "0 écart",
+        f"{len(vert)} écart(s)", " | ".join(vert))
+
+    attendu_cas = (len(CAS) + len(CAS_AVERT),
+                   sum(1 for v in list(CAS.values()) + list(CAS_AVERT.values()) if v))
+    rouge = ecarts_compte_cas("**70 cas de lisibilité, 50 rouges** (comptés le 23/08)", attendu_cas)
+    cas("jouet : compte de cas périmé (ROUGE)", len(rouge) == 1, "1 écart", f"{len(rouge)} écart(s)",
+        " | ".join(rouge))
+    vert = ecarts_compte_cas(f"**{attendu_cas[0]} cas de lisibilité, {attendu_cas[1]} rouges**", attendu_cas)
+    cas("jouet : compte de cas juste (VERT)", not vert, "0 écart", f"{len(vert)} écart(s)",
+        " | ".join(vert))
+
+    ref = (FIXTURES.parent / "references" / "lisibilite.md").read_text(encoding="utf-8")
+    jugees = regles_jugees_par_check_html()
+    reel = ecarts_sections_lisibilite(ref, jugees) + ecarts_compte_cas(ref, attendu_cas)
+    cas("references/lisibilite.md contre check_html.py", not reel and len(jugees) > 0,
+        f"0 écart sur {len(jugees)} règles jugées", f"{len(reel)} écart(s)", " | ".join(reel))
+    return out
 
 
 def run_console_cp1252():
@@ -6625,6 +6724,7 @@ def main():
            + run_avertissements_13_10() + run_avertissements_14_10()
            + run_accolade_dans_une_valeur() + run_compte_regles_en_prose()
            + run_classe_source_machine() + run_avertissements_15_10()
+           + run_sections_lisibilite_publiees()
            + run_l39_graphique_maison() + run_dates_jjmm()
            + run_kpi_hors_page_conteneur() + run_lot_a_check_html()
            + run_lot_fa4())

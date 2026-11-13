@@ -7,13 +7,22 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.46.1"
+  version: "1.47.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.47.0 (13/11/2026)** — **`references/lisibilite.md` publie une section par règle que `check_html.py` juge, sans doublon
+(TF-2469, campagne du 13/11/2026, décision R-58 : exécutée).** La règle `L23` (attribut `hidden`, TF-0733) était jugée
+sans section ; deux sections s'appelaient `L30` et deux `L29 ter` ; le compte des cas datait du 23/08. La section `L23` est
+écrite, les deux `L30` deviennent `L30 (chapitre)` et `L30 (couverture)` (usage de `L12 (virgules)`), la section de TF-0929
+devient `L29 quater` (ses fixtures s'appellent déjà `l29q-*`), le compte est mesuré le 13/11 (130 cas, 75 rouges). Le banc
+joue désormais `run_sections_lisibilite_publiees` de `scripts/self_test.py` : les numéros de règle émis par `check_html.py`
+(lus à l'arbre syntaxique) sont comparés aux sections publiées, un identifiant répété et un compte périmé sont refusés, avec
+des textes jouets rouges et verts avant le référentiel réel. Aucune règle de `check_html.py` ne change.
 
 **1.46.1 (12/11/2026)** — **La recette du gabarit multi-bandes de `digit-ai-schemas` instancie le pied avec
 la signature de la fixture (TF-2458, campagne du 12/11/2026 dans la nuit, décision R-58 : exécutée).**
