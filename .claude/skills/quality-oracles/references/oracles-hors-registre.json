@@ -1,8 +1,8 @@
 {
- "version": 3,
+ "version": 4,
  "date": "2026-11-13",
- "provenance": "TF-2452 (décision R-58 du 12/11/2026) — la barrière « tout script de contrôle est au registre » de TF-2399 ne lisait que les skills de forge-agents ; elle lit aussi les oracles du pilot et des forges (oracle-*.mjs|py et check_*.py suivis par git, hors fixtures, node_modules, vendor, old, output, input et recettes *.test.mjs). TF-2466 (décision R-58 du 12/11/2026, campagne du 13/11/2026) : un oracle sans appelant ne se justifie plus par un motif ; il est câblé (appelants nommés) ou déclaré « manuel » avec son motif et la commande qui le joue, sinon la barrière le nomme. Phase 2 de TF-2466 (13/11/2026) : les 12 lignes sans appelant sont résolues, 9 « manuel » avec leur motif et leur commande, 3 câblées à oracles/run-oracles-design.mjs de forge-design (lot dh, commit dc39050) ; le motif « sans-appelant » est retiré de la liste.",
- "lecture": "Un script absent du registre machine (references/registre-oracles.json) est déclaré ici avec un motif, ou la barrière du self-test échoue. Une ligne dont le fichier n'existe plus, ou dont le script est entré au registre depuis, fait échouer la barrière aussi : la liste ne garde pas de morts. Les appelants sont un relevé daté, non une garantie. Une ligne sans appelant (appelants vide) est refusée tant qu'elle ne porte pas le motif « manuel » avec sa déclaration {\"manuel\": {\"motif\": ..., \"commande\": ...}} : le motif compte 20 caractères au moins, la commande nomme le script.",
+ "provenance": "TF-2452 (décision R-58 du 12/11/2026) — la barrière « tout script de contrôle est au registre » de TF-2399 ne lisait que les skills de forge-agents ; elle lit aussi les oracles du pilot et des forges (oracle-*.mjs|py et check_*.py suivis par git, hors fixtures, node_modules, vendor, old, output, input et recettes *.test.mjs). TF-2466 (décision R-58 du 12/11/2026, campagne du 13/11/2026) : un oracle sans appelant ne se justifie plus par un motif ; il est câblé (appelants nommés) ou déclaré « manuel » avec son motif et la commande qui le joue, sinon la barrière le nomme. Phase 2 de TF-2466 (13/11/2026) : les 12 lignes sans appelant sont résolues, 9 « manuel » avec leur motif et leur commande, 3 câblées à oracles/run-oracles-design.mjs de forge-design (lot dh, commit dc39050) ; le motif « sans-appelant » est retiré de la liste. TF-2488 (décision R-58 du 13/11/2026, campagne du 13/11/2026) : le relevé d'appelants distinguait mal ce qui appelle un oracle. Chaque ligne nomme désormais la nature de ses appelants dans `natures` (executable, recette, document), et les neuf lignes « manuel » de TF-2466 qui étaient jouées par le self-test de leur forge ou prescrites par un document nomment ces appelants.",
+ "lecture": "Un script absent du registre machine (references/registre-oracles.json) est déclaré ici avec un motif, ou la barrière du self-test échoue. Une ligne dont le fichier n'existe plus, ou dont le script est entré au registre depuis, fait échouer la barrière aussi : la liste ne garde pas de morts. Les appelants sont un relevé daté, non une garantie. Une ligne sans appelant (appelants vide) est refusée tant qu'elle ne porte pas le motif « manuel » avec sa déclaration {\"manuel\": {\"motif\": ..., \"commande\": ...}} : le motif compte 20 caractères au moins, la commande nomme le script. Nature de l'appel (TF-2488) : chaque ligne porte `natures`, la liste des natures de ses appelants, lues à leur chemin par la barrière du self-test — `executable` (un script, un hameçon, un lanceur, ou le fichier de configuration que ce lanceur lit), `recette` (un self-test, un *.test.mjs, un cliquet ou un manifeste de recette), `document` (un .md qui prescrit l'étape). Une ligne sans appelant porte `natures: []` et le motif « manuel » ; une ligne « manuel » peut aussi nommer ses appelants de recette ou de document, le motif disant alors qui choisit la cible. La barrière refuse une ligne qui n'a pas `natures`, en nomme une inconnue, ou en nomme une autre que celle de ses appelants.",
  "motifs": {
   "pilot-appele": "Oracle du pilot, appelé par ses hameçons, ses générateurs, son accueil ou sa recette (appelants nommés, relevés le 12/11/2026). Il juge un état, une règle ou un document propre au pilot, que son appelant lui désigne par un chemin : aucun livrable de produit ne le déclenche par son extension ou son contenu, le routeur de run-oracles n'a rien à lui router. Il est découvert par oracles/decouvrir-oracles.mjs (contrat digit-ai/decouverte-oracles@1) et rejoué par la recette du pilot.",
   "forge-appele": "Oracle de forge, appelé par le lanceur ou les scripts de sa propre forge (appelants nommés, relevés le 12/11/2026) : la forge le choisit selon son profil ou son étape, et le registre n'inscrit que les oracles qu'un livrable déclenche par son extension ou son contenu, ou qu'un humain invoque en cible explicite. À inscrire si un livrable de produit doit pouvoir le déclencher.",
@@ -15,6 +15,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/scripts/detecter-demandes-recues.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -23,6 +26,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -33,6 +39,10 @@
     "digit-ai-factory/gabarits/HERITAGE.json",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/oracle-ecriture.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -41,6 +51,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/gabarits/HERITAGE.json"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -51,6 +64,9 @@
     "digit-ai-factory/gabarits/HERITAGE.json",
     "digit-ai-factory/gabarits/oracle-demande.mjs",
     "digit-ai-factory/gabarits/oracle-lot-relais.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -59,6 +75,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -69,6 +88,10 @@
     "digit-ai-factory/gabarits/HERITAGE.json",
     "digit-ai-factory/gabarits/oracle-demande-produit.mjs",
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -77,6 +100,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -87,6 +113,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-amorcage.mjs",
     "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -97,6 +127,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -107,6 +141,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ouverture.mjs",
     "digit-ai-factory/scripts/detecter-demandes-recues.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -115,6 +153,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -125,6 +166,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/oracle-controles-injoignables.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -135,6 +180,10 @@
     "digit-ai-factory/gabarits/CASCADE-ISTO.json",
     "digit-ai-factory/gabarits/documents/cascade-produit/generateur/generer-vue-cascade.mjs",
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -143,6 +192,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -153,6 +205,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -163,6 +219,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ouverture.mjs",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -172,6 +232,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/pre-commit-quantificateurs.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -180,6 +244,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -190,6 +257,10 @@
     "digit-ai-factory/gabarits/NOMMAGE-PRODUIT.json",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -199,6 +270,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -209,6 +284,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ecriture.mjs",
     "digit-ai-factory/oracles/oracle-chemin-ancre.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -219,6 +298,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -228,6 +311,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/oracle-fiche-produit.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -237,6 +324,9 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -245,6 +335,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -255,6 +348,9 @@
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -265,6 +361,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/oracles/oracle-conformite-projet.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -274,6 +374,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -284,6 +388,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/decouvrir-oracles.mjs",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -294,6 +402,10 @@
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/references/RELECTURE-INTENTION-REGLES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -304,6 +416,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-decision-lue.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -313,6 +429,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -323,6 +443,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/references/generer-compte-produits.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -333,6 +457,10 @@
     "digit-ai-factory/gabarits/HERITAGE.json",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ecriture.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -343,6 +471,10 @@
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/scripts/verifier-sonde-glossaire.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -351,6 +483,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -360,6 +495,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -370,6 +509,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -380,6 +523,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ouverture.mjs",
     "digit-ai-factory/references/MODELES-EN-SERVICE.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -390,6 +537,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/references/MODELES-TIERS.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -399,6 +550,9 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -407,6 +561,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -416,6 +573,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -424,6 +585,9 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -434,6 +598,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/scripts/lib-extensions-jugees.mjs",
     "digit-ai-factory/todo/ingerer-lot.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -442,13 +610,23 @@
    "motif": "pilot-appele",
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
    "depot": "digit-ai-factory",
    "chemin": "oracles/oracle-recette-rejouable.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-factory/references/ETAPES-RUN.md",
+    "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Prescrit à l'étape 5 (tests) de references/ETAPES-RUN.md du pilot, joué par la session du run sur la racine du produit ; second appelant (audit de recette de forge-tests) ouvert sous TF-2438.",
     "commande": "node oracles\\oracle-recette-rejouable.mjs <racine-produit>  (exit 0, 1, 2)"
@@ -461,6 +639,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -470,6 +652,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/scripts/ouvrir-retour-reglage.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -480,6 +666,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -490,6 +680,10 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -500,6 +694,10 @@
     "digit-ai-factory/gabarits/HERITAGE.json",
     "digit-ai-factory/gabarits/REPRISE.json",
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -509,6 +707,10 @@
    "appelants": [
     "digit-ai-factory/gabarits/VOIX-EMETTEUR.json",
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -519,6 +721,10 @@
     "digit-ai-factory/.claude/settings.json",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/hook-ouverture.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -529,6 +735,10 @@
     "digit-ai-factory/bootstrap.mjs",
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/consommateurs-skills.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -538,6 +748,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/references/EXIGENCES-PROJET.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -547,6 +761,9 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -557,6 +774,10 @@
     "digit-ai-factory/gabarits/HERITAGE.json",
     "digit-ai-factory/gabarits/LEXIQUE-PRODUIT.json",
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -566,6 +787,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/todo/CLASSES.json"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -575,6 +800,10 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/scripts/lib-extensions-jugees.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
@@ -584,6 +813,9 @@
    "appelants": [
     "digit-ai-factory/oracles/banc-mutation/manifeste-mutation.json",
     "digit-ai-factory/oracles/baseline-recettes.json"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -593,6 +825,9 @@
    "appelants": [
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/lib-recettes-dediees.mjs"
+   ],
+   "natures": [
+    "recette"
    ]
   },
   {
@@ -603,13 +838,25 @@
     "digit-ai-factory/oracles/resoudre-pilot.mjs",
     "digit-ai-factory/todo/CLASSES.json",
     "digit-ai-factory/todo/appliquer-export.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-arret-en-course.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-agents-security/CLAUDE.md",
+    "digit-ai-forge-agents-security/oracles/self-test.mjs",
+    "digit-ai-factory/oracles/oracle-enclenchement.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
     "commande": "node oracles/oracle-arret-en-course.mjs <journal.jsonl> --json-only"
@@ -619,7 +866,16 @@
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-corpus-injection.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-agents-security/CLAUDE.md",
+    "digit-ai-forge-agents-security/oracles/self-test.mjs",
+    "digit-ai-factory/oracles/oracle-enclenchement.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
     "commande": "node oracles/oracle-corpus-injection.mjs <agent.md|journal.jsonl> --json-only"
@@ -629,7 +885,16 @@
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-agentdef.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-agents-security/CLAUDE.md",
+    "digit-ai-forge-agents-security/oracles/self-test.mjs",
+    "digit-ai-factory/oracles/oracle-enclenchement.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
     "commande": "node oracles/oracle-scan-agentdef.mjs <agent.yaml|.claude/agents/x.md> --json-only"
@@ -639,7 +904,16 @@
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-mcp-supabase.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-agents-security/CLAUDE.md",
+    "digit-ai-forge-agents-security/oracles/self-test.mjs",
+    "digit-ai-factory/oracles/oracle-enclenchement.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
     "commande": "node oracles/oracle-scan-mcp-supabase.mjs <fichier|dossier> --production <ref> --json-only"
@@ -649,7 +923,16 @@
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-toolcalls.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-agents-security/CLAUDE.md",
+    "digit-ai-forge-agents-security/oracles/self-test.mjs",
+    "digit-ai-factory/oracles/oracle-enclenchement.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
     "commande": "node oracles/oracle-scan-toolcalls.mjs <journal.jsonl> --perimetre <dossier> --json-only"
@@ -659,7 +942,16 @@
    "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-workflow-agent.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-agents-security/CLAUDE.md",
+    "digit-ai-forge-agents-security/oracles/self-test.mjs",
+    "digit-ai-factory/oracles/oracle-enclenchement.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat (CLAUDE.md de la forge, garde-fou 1) ; prouvé par oracles/self-test.mjs ; seul consommateur mécanique : la règle EN1 d'oracles/oracle-enclenchement.mjs du pilot, qui exige son verdict au ledger de tout run mobilisant la forge.",
     "commande": "node oracles/oracle-scan-workflow-agent.mjs <dépôt|workflows|fichier.yml> --json-only"
@@ -672,6 +964,9 @@
    "appelants": [
     "digit-ai-forge-conception/oracles/manifeste.json",
     "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -681,6 +976,9 @@
    "appelants": [
     "digit-ai-forge-conception/oracles/manifeste.json",
     "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -691,6 +989,9 @@
     "digit-ai-forge-conception/oracles/manifeste.json",
     "digit-ai-forge-conception/oracles/run-oracles-conception.mjs",
     "digit-ai-forge-conception/scripts/delta.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -699,6 +1000,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-conception/oracles/manifeste.json"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -708,6 +1012,9 @@
    "appelants": [
     "digit-ai-forge-conception/oracles/manifeste.json",
     "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -717,6 +1024,9 @@
    "appelants": [
     "digit-ai-forge-conception/oracles/manifeste.json",
     "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -726,6 +1036,9 @@
    "appelants": [
     "digit-ai-forge-conception/oracles/manifeste.json",
     "digit-ai-forge-conception/oracles/run-oracles-conception.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -734,6 +1047,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-conception/oracles/manifeste.json"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -744,6 +1060,9 @@
     "digit-ai-forge-data/oracles/oracle-jeu-fictif.mjs",
     "digit-ai-forge-data/scripts/anonymiser.mjs",
     "digit-ai-forge-data/scripts/exercer-anonymiser-postgres.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -752,6 +1071,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-data/references/definition-jeu-fictif.json"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -760,6 +1082,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -770,6 +1095,9 @@
     "digit-ai-factory/todo/CLASSES.json",
     "digit-ai-factory/todo/generateurs-defauts.json",
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -780,6 +1108,9 @@
     "digit-ai-factory/todo/CLASSES.json",
     "digit-ai-forge-design/corpus/grille-viewports.json",
     "digit-ai-forge-design/oracles/lib/grille.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -790,13 +1121,22 @@
     "digit-ai-factory/oracles/baseline-recettes.json",
     "digit-ai-factory/oracles/oracle-caracteres-controle.mjs",
     "digit-ai-factory/oracles/oracle-controles-injoignables.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {
    "depot": "digit-ai-forge-design",
    "chemin": "oracles/oracle-coherence-promesse.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-design/oracles/self-test.mjs"
+   ],
+   "natures": [
+    "recette"
+   ],
    "manuel": {
     "motif": "Aucun skill ni document ne prescrit encore de confronter une page à un CONSTITUTION.md ; consommateur d'origine : la section Promesse du cadrage ratifié de forge-conception (TF-0577) ; prouvé par son --self-test (7 PASS).",
     "commande": "node oracles/oracle-coherence-promesse.mjs <page.html> --cadrage <cadrage.md> --json"
@@ -810,6 +1150,9 @@
     "digit-ai-forge-design/oracles/lib/selecteurs.mjs",
     "digit-ai-forge-design/oracles/oracle-surcouche.mjs",
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -819,6 +1162,9 @@
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs",
     "digit-ai-forge-design/scripts/generer-tokens-css.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -829,6 +1175,9 @@
     "digit-ai-forge-design/corpus/composants/saisie-erreurs.js",
     "digit-ai-forge-design/oracles/lib/jouer_erreurs_formulaire.py",
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -837,6 +1186,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -846,6 +1198,9 @@
    "appelants": [
     "digit-ai-factory/todo/CLASSES.json",
     "digit-ai-forge-design/oracles/lib/rendre_logo.py"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -854,6 +1209,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -862,6 +1220,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -871,6 +1232,9 @@
    "appelants": [
     "digit-ai-factory/todo/CLASSES.json",
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -879,6 +1243,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -889,6 +1256,9 @@
     "digit-ai-forge-design/oracles/lib/selecteurs.mjs",
     "digit-ai-forge-design/oracles/oracle-declencheurs.mjs",
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -897,6 +1267,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -905,6 +1278,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/oracles/run-oracles-design.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -913,6 +1289,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-design/scripts/generer-theme-powerbi.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -923,6 +1302,9 @@
     "digit-ai-forge-design/oracles/run-oracles-design.mjs",
     "digit-ai-forge-design/skills/systeme-de-marque/scripts/generer-design-md.mjs",
     "digit-ai-forge-design/skills/systeme-de-marque/scripts/lib/color.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -932,6 +1314,9 @@
    "appelants": [
     "digit-ai-forge-design/oracles/oracle-motion.mjs",
     "digit-ai-forge-design/oracles/oracle-panneau-tache.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -942,6 +1327,9 @@
     "digit-ai-factory/oracles/oracle-conformite-projet.mjs",
     "digit-ai-factory/oracles/oracle-ecosysteme.mjs",
     "digit-ai-forge-organization/oracles/decouvrir-oracles.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -950,6 +1338,9 @@
    "motif": "forge-appele",
    "appelants": [
     "digit-ai-forge-websec/scripts/preuve-dast-actif.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
@@ -960,13 +1351,23 @@
     "digit-ai-factory/oracles/oracle-chemin-prescrit.mjs",
     "digit-ai-forge-websec/oracles/oracle-exposition-statique.mjs",
     "digit-ai-forge-websec/scripts/capturer.mjs"
+   ],
+   "natures": [
+    "executable"
    ]
   },
   {
    "depot": "digit-ai-forge-websec",
    "chemin": "oracles/oracle-sca.mjs",
    "motif": "manuel",
-   "appelants": [],
+   "appelants": [
+    "digit-ai-forge-websec/CLAUDE.md",
+    "digit-ai-forge-websec/oracles/self-test.mjs"
+   ],
+   "natures": [
+    "recette",
+    "document"
+   ],
    "manuel": {
     "motif": "Audit des dépendances d'un produit livré, joué par la session du run au gate MEP websec (references/ETAPES-RUN.md, R-33) ou sur mandat humain, cible la racine du produit ; appelé par oracles/self-test.mjs et listé par oracles/decouvrir-oracles.mjs ; distinct de l'oracle-sca de quality-oracles.",
     "commande": "node oracles/oracle-sca.mjs <racine-produit> [--seuils f.json]"

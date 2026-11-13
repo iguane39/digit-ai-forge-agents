@@ -642,6 +642,20 @@ if (reg) {
         }
         return s;
       };
+      // TF-2488 (13/11/2026, décision R-58 du 13/11/2026) — le relevé d'appelants ne voyait ni un self-test, ni la règle EN1
+      // d'oracle-enclenchement, ni une étape prescrite par un document : 9 des 12 oracles « sans appelant » de TF-2466 étaient joués en
+      // recette ou prescrits par un document. Un appelant a donc une NATURE, lue à son chemin, et chaque déclaration NOMME les natures de
+      // ses appelants : `executable` (script, hameçon, lanceur, ou fichier de configuration que ce lanceur lit), `recette` (self-test,
+      // *.test.mjs, cliquet ou manifeste de recette), `document` (un .md qui prescrit l'étape). La barrière recalcule les natures des
+      // appelants et refuse une déclaration qui n'en nomme pas, en nomme une inconnue, ou en nomme une autre que celle de ses appelants.
+      const NATURES_APPEL = ['executable', 'recette', 'document'];
+      const natureAppel = (appelant) => {
+        const p = String(appelant).split('/').slice(1).join('/');
+        if (/\.md$/i.test(p)) return 'document';
+        if (/(^|\/)(self-test[^/]*|[^/]*\.test\.mjs|baseline-recettes\.json|manifeste-mutation\.json|lib-recettes-dediees\.mjs)$/.test(p)) return 'recette';
+        return 'executable';
+      };
+      const naturesDe = (appelants) => NATURES_APPEL.filter((n) => (appelants || []).some((a) => natureAppel(a) === n));
       const probleme = (fichiers, au_registre, declares, motifs) => {
         const pb = [], dec = new Map(), present = new Set(fichiers);
         for (const d of declares) {
@@ -655,6 +669,11 @@ if (reg) {
           const sansAppelant = !Array.isArray(d.appelants) || d.appelants.length === 0 || d.motif === 'sans-appelant';
           const m = d.manuel || {}, nom = path.posix.basename(d.chemin || '');
           const manuelOk = typeof m.motif === 'string' && m.motif.trim().length >= 20 && typeof m.commande === 'string' && m.commande.includes(nom) && nom !== '';
+          if (!Array.isArray(d.natures) || d.natures.some((n) => !NATURES_APPEL.includes(n)) || new Set(d.natures).size !== d.natures.length) {
+            pb.push(`${k} : natures d'appel absentes ou inconnues (${JSON.stringify(d.natures)}) — une liste, de ${NATURES_APPEL.join(', ')}, vide pour un oracle sans appelant`);
+          } else if (JSON.stringify(d.natures) !== JSON.stringify(naturesDe(d.appelants))) {
+            pb.push(`${k} : natures d'appel déclarées ${JSON.stringify(d.natures)} contre ${JSON.stringify(naturesDe(d.appelants))} lues aux appelants`);
+          }
           if (d.motif === 'manuel') { if (!manuelOk) pb.push(`${k} : déclaré « manuel » sans motif (20 caractères au moins) ou sans commande qui nomme ${nom}`); }
           else if (sansAppelant) pb.push(`${k} : sans appelant et sans déclaration « manuel » (motif et commande qui le joue) — le câbler à l'étape qui le consomme, ou le déclarer « manuel »`);
         }
@@ -694,11 +713,47 @@ if (reg) {
             ['un « manuel » dont la commande ne nomme pas le script', variante({ motif: 'manuel', appelants: [], manuel: { motif: complet.motif, commande: 'node autre-script.mjs' } }), /déclaré « manuel » sans motif/],
           ];
           const muets = rouges.filter(([, pb, re]) => !pb.some((p) => re.test(p))).map(([nomCas]) => nomCas);
-          const vert = variante({ appelants: [], motif: 'manuel', manuel: complet });
+          const vert = variante({ appelants: [], natures: [], motif: 'manuel', manuel: complet });
           const cable = variante({});
           if (muets.length) ko('TF-2466 sens rouge : la barrière des sans-appelant ne nomme pas — ' + muets.join(' ; '));
           else if (vert.length || cable.length) ko('TF-2466 sens vert : ' + [...vert, ...cable].join(' · '));
           else ok(`TF-2466 : une ligne sans appelant est nommée tant qu'elle ne porte pas de déclaration « manuel » (motif de 20 caractères au moins, commande qui nomme ${nom}) ; câblée ou déclarée « manuel » complète, elle passe`);
+        }
+        // TF-2488 — la nature de l'appel, jouée dans les deux sens sur une ligne jouet ajoutée à la liste réelle (son fichier est ajouté aux
+        // fichiers lus, donc seules ses propres anomalies sont lues). Rouge : natures absentes, nature inconnue, un .md déclaré exécutable,
+        // un self-test déclaré exécutable, des appelants mixtes dont une nature est omise. Vert : un document, une recette, les trois natures.
+        {
+          const JOUET = 'digit-ai-factory/oracles/oracle-jouet-natures.mjs';
+          const jouet = (patch) => probleme([...fichiers, JOUET], reg_,
+            [...declares, { depot: 'digit-ai-factory', chemin: 'oracles/oracle-jouet-natures.mjs', motif: 'pilot-appele', appelants: [], natures: [], ...patch }], motifs)
+            .filter((p) => p.startsWith(JOUET + ' :'));
+          const DOC = 'digit-ai-factory/references/ETAPES-RUN.md', REC = 'digit-ai-forge-design/oracles/self-test.mjs', EXE = 'digit-ai-factory/scripts/hook-ouverture.mjs';
+          const rougesN = [
+            ['natures absentes', jouet({ appelants: [DOC], natures: undefined }), /natures d'appel absentes ou inconnues/],
+            ['une nature inconnue', jouet({ appelants: [DOC], natures: ['hameçon'] }), /natures d'appel absentes ou inconnues/],
+            ['un document déclaré exécutable', jouet({ appelants: [DOC], natures: ['executable'] }), /natures d'appel déclarées/],
+            ['un self-test déclaré exécutable', jouet({ appelants: [REC], natures: ['executable'] }), /natures d'appel déclarées/],
+            ['des appelants mixtes dont deux natures sont omises', jouet({ appelants: [EXE, REC, DOC], natures: ['executable'] }), /natures d'appel déclarées/],
+          ];
+          const muetsN = rougesN.filter(([, pb, re]) => !pb.some((p) => re.test(p))).map(([nomCas]) => nomCas);
+          const vertsN = [
+            ['un document', jouet({ appelants: [DOC], natures: ['document'] })],
+            ['une recette', jouet({ appelants: [REC], natures: ['recette'] })],
+            ['les trois natures', jouet({ appelants: [DOC, REC, EXE], natures: ['executable', 'recette', 'document'] })],
+          ];
+          const rougesVertes = vertsN.filter(([, pb]) => pb.length).map(([nomCas, pb]) => nomCas + ' : ' + pb.join(' ; '));
+          // Les deux familles que TF-2488 nomme sont lues dans la liste réelle : une prescription par un document (oracle-recette-rejouable,
+          // ETAPES-RUN.md) et un appel de recette (les six oracles de forge-agents-security, leur self-test).
+          const reelDoc = declares.find((d) => d.chemin === 'oracles/oracle-recette-rejouable.mjs');
+          const reelRec = declares.find((d) => d.chemin === 'oracles/oracle-arret-en-course.mjs');
+          if (muetsN.length) ko('TF-2488 sens rouge : la barrière des natures d\'appel ne nomme pas — ' + muetsN.join(' ; '));
+          else if (rougesVertes.length) ko('TF-2488 sens vert : ' + rougesVertes.join(' · '));
+          else if (!reelDoc || !(reelDoc.natures || []).includes('document')) ko('TF-2488 : oracle-recette-rejouable, prescrit par ETAPES-RUN.md, ne nomme pas la nature « document »');
+          else if (!reelRec || !(reelRec.natures || []).includes('recette')) ko('TF-2488 : oracle-arret-en-course, joué par le self-test de sa forge, ne nomme pas la nature « recette »');
+          else {
+            const compte = Object.fromEntries(NATURES_APPEL.map((n) => [n, declares.filter((d) => (d.natures || []).includes(n)).length]));
+            ok(`TF-2488 : chacune des ${declares.length} déclarations nomme la nature de ses appelants (${NATURES_APPEL.map((n) => compte[n] + ' ' + n).join(', ')}, ${declares.filter((d) => !(d.natures || []).length).length} sans appel) ; ${rougesN.length} sens rouges nommés, ${vertsN.length} sens verts muets`);
+          }
         }
         if (reel.length) ko(`TF-2452 : ${reel.length} anomalie(s) entre les oracles du pilot et des forges, le registre et references/oracles-hors-registre.json — ${reel.slice(0, 20).join(' · ')}${reel.length > 20 ? ' · … (' + (reel.length - 20) + ' de plus)' : ''}. Les inscrire au registre (règle §4), les câbler à l'étape qui les consomme, ou les déclarer avec un motif (« manuel » : motif et commande).`);
         else if (absentsNommes.length) ko('TF-2452 : les trois oracles qui ont fait naître la barrière doivent être vus ET inscrits au registre par leur chemin — manque : ' + absentsNommes.join(', '));
