@@ -7,6 +7,9 @@
 //      frontmatter du SKILL.md monté doit porter la même version ; skill absent = FAIL localisant ;
 //      F1-ter (TF-2475) un skill du manifeste à version nulle est refusé, sauf dette nommée dans
 //      `sans_version_toleres` du manifeste (avertissement) ;
+//      F1 nommé (TF-2501) un retard d'installation qui reste se NOMME dans `retards_installation_toleres`
+//      du manifeste — `{ "<skill>": { "installee": "<version montée visée>", "motif": "<≥ 20 caractères>" } }` —
+//      et sort en avertissement ; un retard non nommé, de motif trop court ou d'une autre version reste refusé ;
 //   F2 fixtures du manifest de quality-oracles présentes sur disque (red + green) ;
 //   F3 corpus des fiches experts résolus — chaque chemin `…` du §3 des fiches doit exister
 //      (relatif à la racine du montage) ;
@@ -78,13 +81,43 @@ const fmVersion = sf => {
 // F1 — versions montées vs manifeste
 // (SKILL.fixture.md : nom alternatif utilisé par les arbres de fixtures — l'import claude.ai
 // exige exactement un SKILL.md par archive de skill, 24/07/2026)
+// TF-2501 (14/11/2026) — UN RETARD D'INSTALLATION QUI RESTE SE NOMME AVEC SON MOTIF. Le 13/11/2026, F1 rendait FAIL sur le
+// manifeste réel pour 5 skills installés en retard sur leur source (experts-forge, forge-agents, oeil-critique,
+// plan-d-amelioration, prompt-analyzer-l99), et la seule issue était de propager (`oracle-skills` du pilot, sur décision humaine) :
+// un retard qu'on choisit de garder, ou que la propagation ne peut pas encore résorber, n'avait aucune forme DITE. Même modèle
+// que F1-ter : le manifeste nomme la dette dans `retards_installation_toleres`, `{ "<skill>": { "installee": "<version montée visée>",
+// "motif": "<≥ 20 caractères>" } }`, et le retard sort en AVERTISSEMENT nommé, jamais tu. Ce qui reste refusé : un retard non nommé ;
+// une tolérance sans motif d'au moins 20 caractères (elle ne couvre rien) ; un retard d'une AUTRE version que celle nommée (la dette
+// nommée ne couvre pas un retard qui a bougé). Une tolérance périmée (le montage a rattrapé le livré) ou orpheline est signalée,
+// pour que la liste ne fasse que se vider. NON JUGÉ : que le motif soit vrai.
+const retardsToleres = man.retards_installation_toleres && typeof man.retards_installation_toleres === 'object' && !Array.isArray(man.retards_installation_toleres)
+  ? man.retards_installation_toleres : {};
+const MOTIF_RETARD_MIN = 20;
 for (const [name, info] of Object.entries(man.skills)) {
   const sf = ['SKILL.md', 'SKILL.fixture.md'].map(n => path.join(root, name, n)).find(p => fs.existsSync(p));
   if (!sf) { findings.push({ sev: 'bloquant', msg: `F1 — skill du manifeste absent du montage : ${name}`, where: base }); continue; }
   if (info && info.version) {
     const v = fmVersion(sf);
-    if (v !== info.version) findings.push({ sev: 'bloquant', msg: `F1 — retard d'installation : ${name} livré ${info.version}, monté ${v ?? 'sans version'}`, where: name + '/SKILL.md' });
+    const tol = retardsToleres[name];
+    if (v !== info.version) {
+      const motifOk = tol && typeof tol.motif === 'string' && tol.motif.trim().length >= MOTIF_RETARD_MIN;
+      const base1 = `F1 — retard d'installation : ${name} livré ${info.version}, monté ${v ?? 'sans version'}`;
+      if (motifOk && String(tol.installee) === String(v)) {
+        findings.push({ sev: 'avertissement', msg: `${base1} — retard NOMMÉ (dette déclarée dans retards_installation_toleres) : ${tol.motif.trim()}`, where: name + '/SKILL.md' });
+      } else if (tol && !motifOk) {
+        findings.push({ sev: 'bloquant', msg: `${base1} — la tolérance nommée n'a pas de motif d'au moins ${MOTIF_RETARD_MIN} caractères : une tolérance sans motif ne couvre rien`, where: name + '/SKILL.md' });
+      } else if (tol) {
+        findings.push({ sev: 'bloquant', msg: `${base1} — la tolérance nommée vise la version montée ${tol.installee}, pas ${v ?? 'sans version'} : un retard autre que celui nommé reste refusé`, where: name + '/SKILL.md' });
+      } else {
+        findings.push({ sev: 'bloquant', msg: `${base1} — pour le propager : \`oracle-skills\` du pilot (--appliquer, sur décision humaine) ; pour le garder, le nommer dans \`retards_installation_toleres\` du manifeste avec la version montée (\`installee\`) et son \`motif\``, where: name + '/SKILL.md' });
+      }
+    } else if (tol) {
+      findings.push({ sev: 'avertissement', msg: `F1 — tolérance de retard périmée : ${name} est monté en ${v}, la version livrée, et figure encore dans retards_installation_toleres — la retirer de la liste`, where: base });
+    }
   }
+}
+for (const name of Object.keys(retardsToleres)) {
+  if (!(name in man.skills)) findings.push({ sev: 'avertissement', msg: `F1 — tolérance de retard orpheline : ${name} figure dans retards_installation_toleres et pas parmi les skills du manifeste`, where: base });
 }
 
 // F1-ter — un skill LIVRÉ porte une version (TF-2475, 13/11/2026). F1 ne regarde que les skills « à version
