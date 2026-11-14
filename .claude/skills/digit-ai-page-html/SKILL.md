@@ -7,13 +7,31 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.49.0"
+  version: "1.50.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.50.0 (14/11/2026)** — **Lot fa de la seconde campagne du 14/11/2026 : `L18` et `L27` qualifiés, les renvois `L30` nus soldés, une classe
+`page-servie`, les quatre cas de scènes indépendants de la police du poste (TF-2531, TF-2533, TF-2543 ; décision R-58 : exécutée).**
+· **TF-2531.** `check_html.py` émet `L18 (jeton)` (identifiant muet, code de règle sans glose), `L18 bis` (système d'identifiants non expliqué),
+`L27 (colonne)` (colonne sans définition) et `L27 bis` (en-têtes de ligne) ; le contrôle de TF-2492 les juge, et ne nomme plus que `L15` parmi les
+numéros à section nue. Les renvois `L30` nus de `check_html.py`, de `jargon-a-gloser.json` et d'une fixture disent `L30 (chapitre)` ou
+`L30 (couverture)` ; `composant-filtres-tableau.md` documente la liste d'exceptions par chemin de TF-2296. Rouge avant : le référentiel qualifié contre
+l'ancien `check_html` donne 6 écarts ; vert après : 0. Un consommateur qui lit le premier mot d'un message lit encore « L18 » ou « L27 » ; celui qui
+lit le préfixe entier lit le qualificatif. · **TF-2533.** Les quatre cas de scènes (TF-2299, TF-2391) rouges sur HEAD intact dépendaient de la police
+à chasse fixe du poste : l'adresse insécable de `scenes-rouge.html` (126 caractères) ne débordait à 1 280 px que sous Courier New (scrollWidth 1 290),
+pas sous Consolas, Cascadia Mono ni le `monospace` du Chromium de ce poste (1 280). Elle compte 222 caractères dans les deux fixtures (1 951 px sous
+Consolas) et trois cas statiques gardent le seuil. Le rouge S6 du self-test de `digit-ai-schemas` (1.0.2) est un écart étroit déclaré avec son motif,
+refus de forge-design rapporté au pilot. · **TF-2543.** **Une page servie avec ses fichiers se déclare `page-servie`** (`--classe=page-servie`, ou
+`<meta name="classe-artefact" content="page-servie">`, avec `--racine-servie` pour les chemins absolus) : les feuilles liées locales sont **lues** et leur
+CSS jugé comme s'il était en ligne ; A2 « favicon non embarqué », « `@media print` absent » et « `:root` absent » (quand une feuille liée n'a pas pu
+être lue) ne s'appliquent pas, et le verdict le dit, avec les feuilles lues et non lues. Tout le reste est jugé, A4 et L25 compris. Rouge avant : 3
+échecs sous `page-lue` sur `page-servie-accueil.html` ; vert après : 0 sous `page-servie`. Recette : 890 cas (872 au départ du lot, +18), `references/lisibilite.md`,
+section « Classes d'artefact ».
 
 **1.49.0 (14/11/2026)** — **`check_html.py` qualifie chaque règle émise sous L12 et L29, et le banc refuse l'identifiant nu (TF-2508,
 campagne du 14/11/2026, décision R-58 : exécutée).** La 1.48.0 avait distingué les deux règles L30 ; « L12 » restait émis pour quatre règles
