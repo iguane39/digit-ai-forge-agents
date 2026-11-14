@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- A3 (TF-0303, 17/08) — charset PUIS viewport en TOUTE PREMIÈRE position : la
+     déclaration d'encodage doit tomber dans les 1024 premiers octets, sinon l'analyseur
+     devine. Le commentaire S-G1 ci-dessous et son script la repoussaient au 1613e octet :
+     mesuré par check_html.py, sur ce gabarit même. L'ordre compte, la position aussi. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- S-G1 (1/4, R-30 amendé TF-0158 le 13/08) — initialisation AVANT la balise de style : pose
+     data-theme avant la première peinture (zéro flash). CLAIR PAR DÉFAUT, STRICTEMENT :
+     un livrable circule et s'ouvre identique chez tous ses lecteurs — l'auto-sombre
+     hérité de l'OS (prefers-color-scheme) est retiré (il a valu un retour humain réel
+     le 13/08 : « thème sombre par défaut »). Le sombre reste un CHOIX du lecteur,
+     persisté. Volontairement SANS defer/async : un script différé peindrait d'abord le
+     thème par défaut du CSS puis re-peindrait, c'est le flash que ce script évite
+     (déclenche le WARN générique « script bloquant en head » de check_html.py —
+     exception assumée, documentée ici). -->
+<script>
+(function () {
+  var stocke = null;
+  try { stocke = localStorage.getItem('digitai-theme'); } catch (e) {}
+  var theme = stocke === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  /* RV-9 (14/08) : `color-scheme` SUIT le thème effectif. Laissé à « light dark », le
+     navigateur peignait ses propres surfaces (ascenseurs, contrôles de formulaire) en
+     sombre dès que le poste l'était — un corps clair bordé de chrome sombre, alors même
+     que la règle dit « clair par défaut ». Le figer à « light » aurait produit l'inverse
+     après bascule. Il suit donc, et reste juste dans les deux états. */
+  var meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) { meta.setAttribute('content', theme); }
+})();
+</script>
+  <!-- A4 : marque — objet · client — indice de version DATÉ ({YYYYMMDD}{a,b,c…}, le même
+       que le nom de fichier). Sans lui, deux révisions du même jour portent le même nom à
+       l'écran ; « V1 » ne les distingue pas (défaut du 17/08, lot Produit-01). -->
+  <title>Digit-AI — {Objet} · {Client} — 20260817a</title>
+  <meta name="description" content="{Résumé clair du livrable en une phrase.}">
+  <meta name="theme-color" content="#2563EB">
+  <!-- « light » à l'écriture : le script d'initialisation ci-dessus le passe à « dark » si,
+       et seulement si, le lecteur a explicitement choisi le sombre (RV-9, 14/08). -->
+  <meta name="color-scheme" content="light">
+  <!-- Favicon-lettre (systématisation du 13/08, loi transverse n°3 : la surface implicite
+       se propose d'office) : remplacer {L} par la PREMIÈRE LETTRE du client ou du projet. -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Polices : AUCUN chargement réseau (A1/D-10 — confidentialité, durabilité,
+       lecture hors ligne). La charte est celle des PRÉSENTATIONS de l'émetteur (décision
+       humaine D-5 (a) du 22/09/2026, exécutée par D-11 (a) le 23/09 ; source : dossier de
+       marque, tokens-diapositives) : Montserrat en titres, Inter en corps. Elles s'affichent
+       si installées localement ; Roboto et DM Sans, la charte d'avant, restent en premier
+       repli, puis les replis système des tokens --head/--sans/--mono prennent le relais. -->
+
+  <link rel="stylesheet" href="page-servie-accueil.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+      <div>
+        <p class="eyebrow">Digit-AI · {TypeDoc}</p>
+        <h1>{Titre du livrable}</h1>
+      </div>
+      <!-- S-G1 (3/4, R-30) — bouton de bascule thème sombre -->
+      <button id="theme-toggle" class="theme-toggle" type="button"
+              aria-label="Bascule thème sombre" aria-pressed="false">
+        <svg class="icon-moon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+        </svg>
+        <svg class="icon-sun" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="4.5"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"
+                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <main>
+      <section>
+        <h2>{Section}</h2>
+        <!-- TF-0932 (retour humain du 08/09) — L30 (chapitre) : un chapitre dit CE QU'IL CONTIENT, et
+             glose son jargon. `.ch-apprend` dit ce que le chapitre APPREND (la promesse) ;
+             `.contenu` dit ce qu'il PORTE (l'inventaire) et ce qui le distingue du chapitre
+             voisin — c'est ce qu'un lecteur entré par le sommaire vient chercher. `.termes`
+             glose sur place les termes techniques employés ICI : un lecteur entré par le
+             sommaire n'a pas lu le chapitre précédent. Référentiel des termes qui ont coûté
+             un aller-retour : references/jargon-a-gloser.json (daté, sourcé, éditable). -->
+        <p class="contenu">Ce chapitre contient {l'inventaire de ce qui suit}, et se distingue
+           de {le chapitre voisin} en ce qu'il {la différence, en une proposition}.</p>
+        <p class="termes">Termes employés — <dfn>{Terme}</dfn>&nbsp;: {la glose, en une phrase}.</p>
+        <p>{Contenu en balises sémantiques. Décliner les couleurs via les tokens
+           <code>la feuille de jetons</code> uniquement, jamais en dur.}</p>
+
+        <div class="card">
+          <h3>{Sous-élément}</h3>
+          <p>{Carte de contenu — solidaire en PDF grâce à <code>break-inside: avoid</code>.}</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="doc">
+      Digit-AI — {Client} · {Scope} · 2026
+    </footer>
+  </div>
+
+  <!-- S-G1 (4/4, R-30) — câblage : persistance + aria-pressed, aucune bascule muette -->
+  <script>
+  (function () {
+    var bouton = document.getElementById('theme-toggle');
+    var racine = document.documentElement;
+    function appliquer(theme) {
+      racine.setAttribute('data-theme', theme);
+      localStorage.setItem('digitai-theme', theme);
+      bouton.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+    bouton.setAttribute('aria-pressed', racine.getAttribute('data-theme') === 'dark' ? 'true' : 'false');
+    bouton.addEventListener('click', function () {
+      appliquer(racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  })();
+  </script>
+  <!-- TF-0929 — LES HAUTEURS DE COLLAGE SE MESURENT, ELLES NE SE DECLARENT PAS.
+       Le token de la feuille de jetons reste le repli ; ce script le remplace par la hauteur REELLE de ce
+       qui colle, a chaque evenement qui peut la changer : chargement, redimensionnement, et
+       POLICES CHARGEES — une police de titre qui arrive apres coup fait passer un en-tete de
+       une a deux lignes, et c'est exactement le cas qui a produit le defaut.
+       Controle : famille `entete_masque_par_collants` de render_page.py, qui mesure le `th`
+       colle contre le bas du dernier collant au-dessus de lui, a chaque largeur. -->
+  <script>
+  (function () {
+    function poserHauteurs() {
+      var racine = document.documentElement;
+      var enTete = document.querySelector('header.doc.colle');
+      var hh = enTete ? Math.ceil(enTete.getBoundingClientRect().height) : 0;
+      if (hh > 0) racine.style.setProperty('--hh', hh + 'px');
+      /* Ce qui colle SOUS l'en-tete et surplombe les tableaux : la bande de sommaire, quand
+         elle est effectivement collante a cette largeur (sous 900 px elle repasse `static`,
+         et elle ne masque alors plus rien). */
+      var bas = hh;
+      var toc = document.querySelector('nav.toc.colle');
+      if (toc && getComputedStyle(toc).position === 'sticky') {
+        var r = toc.getBoundingClientRect();
+        if (r.height > 0 && r.width > 0) bas = Math.max(bas, hh + Math.ceil(r.height));
+      }
+      racine.style.setProperty('--hh-tab', bas + 'px');
+    }
+    window.addEventListener('resize', poserHauteurs);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(poserHauteurs);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', poserHauteurs);
+    } else {
+      poserHauteurs();
+    }
+    window.addEventListener('load', poserHauteurs);
+    window.poserHauteurs = poserHauteurs;
+  })();
+  </script>
+</body>
+</html>

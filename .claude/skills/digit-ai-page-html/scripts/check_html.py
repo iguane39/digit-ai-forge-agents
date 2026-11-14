@@ -5135,9 +5135,83 @@ def exemption_declaree(source, hors=()):
 # non-mesure : L7 (chapeau), L25 (sommaire), et la moitié de L30 (chapitre) qui exige un `.contenu` par
 # chapitre. Tout le reste est jugé, dont le dénominateur de couverture de L30 (couverture) et la glose du
 # jargon : une donnée lue par une machine doit encore dire « sur combien ».
-CLASSES_ARTEFACT = ("page-lue", "source-machine")
+CLASSES_ARTEFACT = ("page-lue", "source-machine", "page-servie")
 CLASSE_PAR_DEFAUT = "page-lue"
 PREFIXES_HORS_SOURCE_MACHINE = ("L7 ", "L25 ", "L30 (chapitre) #")
+
+# TF-2543 (14/11/2026) — LA CLASSE D'ARTEFACT « page-servie ». Constat de l'étape 0 du run forge-digit-ai-fr-20261114a
+# (mesure 7) : l'accueil d'un produit web, rendu par son serveur local, échouait à six contrôles bloquants — « :root absent »
+# (les jetons vivent dans une feuille liée), « A4 titre sans indice », « A2 favicon non embarqué », « @media print absent »,
+# « L21 classe stylée par une feuille liée non lue », « L25 sommaire » — et le produit consignait une dérogation à chaque run,
+# l'oracle de forme n'y jugeait plus rien. Trois de ces règles sont celles du livrable AUTONOME, un fichier qui voyage seul :
+# favicon en `data:`, jetons en ligne, feuille d'impression en ligne. Une page SERVIE reçoit son icône, ses jetons et sa
+# feuille d'impression de fichiers que le serveur livre avec elle. La page se DÉCLARE (`--classe=page-servie`, ou
+# `<meta name="classe-artefact" content="page-servie">`), et sous cette classe : (1) les feuilles liées locales
+# (`<link rel="stylesheet" href="…">`) sont LUES, leur CSS jugé comme s'il était en ligne — `:root`, L21, la police Syne… ;
+# (2) trois mesures du livrable autonome ne s'appliquent pas, et sont NOMMÉES au périmètre de non-mesure : A2 « favicon non
+# embarqué » (un favicon reste exigé : un lien suffit), « @media print absent », et « :root absent » quand une feuille liée n'a
+# pas pu être lue (sinon `:root` reste exigé, sur le CSS lu). Tout le reste est jugé, A4 et L25 compris.
+PREFIXES_HORS_PAGE_SERVIE = ("A2 favicon non embarqué", "@media print absent")
+PREFIXE_ROOT_ABSENT = ":root absent"
+TAILLE_MAX_FEUILLE = 2_000_000
+
+
+def _lire_feuille(href: str, source=None, racine_servie=None):
+    """(css, motif) — le CSS d'une feuille liée, ou (None, pourquoi elle n'a pas été lue). Jamais d'exception."""
+    h = re.split(r"[?#]", href, maxsplit=1)[0].strip()
+    if not h:
+        return None, "href vide"
+    if RE_RESEAU.match(h):
+        return None, "adresse réseau, non lue (A1 la juge)"
+    if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", h):
+        return None, "adresse qui n'est pas un chemin local"
+    if not h.lower().endswith(".css"):
+        return None, "ce n'est pas un fichier .css"
+    if h.startswith("/"):
+        if not racine_servie:
+            return None, "chemin absolu sans --racine-servie : la racine du serveur est inconnue"
+        candidat = Path(racine_servie) / h.lstrip("/")
+    else:
+        if not source:
+            return None, "page sans chemin : un chemin relatif ne se résout pas"
+        candidat = Path(source).resolve().parent / h
+    try:
+        if not candidat.is_file():
+            return None, f"fichier introuvable ({candidat})"
+        if candidat.stat().st_size > TAILLE_MAX_FEUILLE:
+            return None, f"feuille de plus de {TAILLE_MAX_FEUILLE // 1_000_000} Mo, non lue"
+        css = candidat.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        return None, f"illisible ({e})"
+    if re.search(r"</style", css, re.I):
+        return None, "contient « </style » : insérable en ligne sans fausser la page"
+    return css, None
+
+
+def lire_feuilles_liees(html: str, source=None, racine_servie=None):
+    """(html_enrichi, lues, non_lues) — chaque feuille liée locale lue est insérée en bloc `<style>` après son `<link>`.
+
+    Les règles voient alors le CSS de la feuille comme s'il était en ligne ; le `<link>` reste (A1 juge toujours une
+    adresse réseau). `lues` : les `href` lus ; `non_lues` : des couples (`href`, motif). Un `<link>` en commentaire n'est pas lu.
+    """
+    commentaires = [(m.start(), m.end()) for m in re.finditer(r"<!--.*?-->", html, re.S)]
+    morceaux, dernier, lues, non_lues = [], 0, [], []
+    for m in RE_A2_LINK.finditer(html):
+        if any(a <= m.start() < b for a, b in commentaires):
+            continue
+        if "stylesheet" not in set(_val(RE_A2_REL.search(m.group(0))).lower().split()):
+            continue
+        href = _val(RE_A2_HREF.search(m.group(0))).strip()
+        css, motif = _lire_feuille(href, source, racine_servie)
+        if css is None:
+            non_lues.append((href, motif))
+            continue
+        lues.append(href)
+        morceaux.append(html[dernier:m.end()])
+        morceaux.append('<style data-feuille-liee="' + href.replace('"', "&quot;") + '">\n' + css + "\n</style>")
+        dernier = m.end()
+    morceaux.append(html[dernier:])
+    return "".join(morceaux), lues, non_lues
 
 
 def classe_artefact(html: str, demandee=None):
@@ -5158,18 +5232,29 @@ def classe_artefact(html: str, demandee=None):
     return CLASSE_PAR_DEFAUT, "défaut", None
 
 
-def check(html: str, regles: str = "tout", source=None, classe=None):
+def check(html: str, regles: str = "tout", source=None, classe=None, racine_servie=None):
     """Retourne (fails, warns) — deux listes de messages.
 
     `source` (chemin du fichier) n'est lu que pour confronter le registre
     d'exemptions déclarées ci-dessus : sans lui, aucune exemption ne s'applique.
     `classe` (TF-1589) : classe d'artefact demandée ; sans elle, celle que la page déclare.
+    `racine_servie` (TF-2543) : dossier que le serveur expose à la racine « / » ; sous la classe page-servie, il résout
+    les feuilles liées à chemin absolu (`/static/app.css`) ; un chemin relatif se résout depuis le dossier de la page.
     """
     fails, warns = [], []
     classe, _, classe_inconnue = classe_artefact(html, classe)
+    non_lues_servie = []
+    if classe == "page-servie":
+        # TF-2543 — les feuilles liées sont lues et insérées : toutes les règles voient le CSS que la page reçoit du serveur.
+        html, _, non_lues_servie = lire_feuilles_liees(html, source, racine_servie)
     familles, motif = exemption_declaree(source, hors=(FAMILLE_AUTOPORTANCE, FAMILLE_A4_VERSION))
     if regles in ("tout", "charte"):
         f, w = check_charte(html)
+        if classe == "page-servie":
+            # TF-2543 — mesures du livrable autonome non applicables à une page servie, nommées par non_juge().
+            f = [x for x in f if not x.startswith(PREFIXES_HORS_PAGE_SERVIE)]
+            if non_lues_servie:      # une feuille liée n'a pas pu être lue : les jetons y vivent peut-être, rien ne le prouve
+                f = [x for x in f if not x.startswith(PREFIXE_ROOT_ABSENT)]
         if familles:
             gardes = [x for x in f if not x.startswith(familles)]
             ecartes = len(f) - len(gardes)
@@ -5446,10 +5531,12 @@ def manques_du_renvoi_forge_design(texte: str) -> list:
     return manques
 
 
-def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
+def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "", feuilles=None) -> list:
     """Ce que check_html.py ne mesure pas — publié à chaque exécution, PASS ou FAIL.
 
-    TF-1589 : sous la classe `source-machine`, les règles retirées s'y ajoutent, en tête."""
+    TF-1589 : sous la classe `source-machine`, les règles retirées s'y ajoutent, en tête.
+    TF-2543 : sous la classe `page-servie`, les mesures du livrable autonome non applicables et les feuilles liées
+    lues ou non (`feuilles` = (lues, non_lues) de `lire_feuilles_liees`) s'y ajoutent, en tête."""
     gabarit = Path(__file__).resolve().parent.parent / "references" / "gabarit-revue-de-lecture.md"
     ou = str(gabarit) if gabarit.is_file() else f"{GABARIT_REVUE} (INTROUVABLE depuis ce script)"
     classe_notes = []
@@ -5461,6 +5548,17 @@ def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
             "et la partie de L30 (chapitre) qui exige un .contenu par chapitre. Restent jugés : tout le "
             "reste, dont la glose du jargon et le dénominateur de couverture (L30 (couverture)). Si un "
             "humain lit aussi cette page, la classe est fausse : la retirer"]
+    if classe == "page-servie":
+        lues, non_lues = feuilles or ([], [])
+        classe_notes = [
+            f"CLASSE D'ARTEFACT page-servie ({origine or 'demandée'}) — la page est servie avec ses fichiers, pas remise seule "
+            "(TF-2543). NE S'APPLIQUENT PAS : les mesures du livrable autonome, A2 « favicon non embarqué » (un lien suffit, "
+            "le favicon reste exigé), « @media print absent » (une feuille d'impression, si elle existe, vit dans une feuille "
+            "liée), et « :root absent » quand une feuille liée n'a pas pu être lue. Restent jugés : tout le reste, A4 et L25 compris. "
+            "Si cette page voyage seule, la classe est fausse : la retirer",
+            "FEUILLES LIÉES LUES (leur CSS est jugé comme s'il était en ligne) : "
+            + (", ".join(lues) if lues else "aucune")
+            + (" — NON LUES, donc non jugées : " + " ; ".join(f"{h or '(href vide)'} ({m})" for h, m in non_lues) if non_lues else "")]
     return classe_notes + [
         "LA REVUE DE LECTURE N'A PAS ÉTÉ JOUÉE ICI. Elle est OBLIGATOIRE avant toute livraison "
         "(TF-0422) et ce script ne la remplace pas : il lit un fichier, elle regarde des "
@@ -5628,7 +5726,14 @@ def main():
     ap.add_argument("--classe", choices=list(CLASSES_ARTEFACT), default=None,
                     help="classe d'artefact (défaut : page-lue, ou celle que la page déclare par "
                          "<meta name=\"classe-artefact\">). source-machine : page lue par une "
-                         "machine — L7, L25 et le .contenu de L30 (chapitre) ne sont pas mesurés (TF-1589)")
+                         "machine — L7, L25 et le .contenu de L30 (chapitre) ne sont pas mesurés (TF-1589). "
+                         "page-servie : page rendue par un serveur avec ses fichiers — les feuilles liées sont lues, "
+                         "et les mesures du livrable autonome (favicon embarqué, :root en ligne, @media print) "
+                         "ne s'appliquent pas, dites au verdict (TF-2543)")
+    ap.add_argument("--racine-servie", default=None, dest="racine_servie", metavar="DOSSIER",
+                    help="classe page-servie : le dossier que le serveur expose à la racine « / » — résout les "
+                         "feuilles liées à chemin absolu (/static/app.css) ; un chemin relatif se résout depuis "
+                         "le dossier de la page (TF-2543)")
     args = ap.parse_args()
     if args.version_regles:
         print(json.dumps(jeu_de_regles(), ensure_ascii=False))
@@ -5646,7 +5751,11 @@ def main():
         html, source = SAMPLE, "(échantillon intégré)"
 
     classe, origine, _ = classe_artefact(html, args.classe)
-    fails, warns = check(html, args.regles, source=args.path, classe=classe)
+    fails, warns = check(html, args.regles, source=args.path, classe=classe, racine_servie=args.racine_servie)
+    feuilles = None
+    if classe == "page-servie":
+        _, lues, non_lues = lire_feuilles_liees(html, args.path, args.racine_servie)
+        feuilles = (lues, non_lues)
     if args.path and not args.sans_style and args.regles != "charte":
         warns = warns + juger_style_html(html)
     verdict = "PASS" if not fails else "FAIL"
@@ -5655,7 +5764,7 @@ def main():
         print(json.dumps(
             {"source": source, "regles": args.regles, "classe": classe, "verdict": verdict,
              "version_regles": jeu_de_regles(), "fails": fails, "warns": warns,
-             "non_juge": non_juge(classe, origine)},
+             "non_juge": non_juge(classe, origine, feuilles)},
             ensure_ascii=False, indent=2))
     else:
         print(f"Source  : {source}")
@@ -5678,7 +5787,7 @@ def main():
         # Le périmètre de non-mesure sort TOUJOURS, et il sort en dernier : c'est là que le
         # lecteur s'arrête. Un « aucun problème détecté » sans lui se lit comme un travail fini.
         print("\nPérimètre de NON-MESURE (ce verdict ne dit rien de ceci) :")
-        for note in non_juge(classe, origine):
+        for note in non_juge(classe, origine, feuilles):
             print(f"  non jugé — {note}")
 
     sys.exit(0 if not fails else 1)

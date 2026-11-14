@@ -1734,6 +1734,34 @@ Fixtures : `source-machine-livret.html` (rouge sans la classe, verte avec),
 `source-machine-declaree.html` (verte par sa balise `meta`), `source-machine-vrai-defaut.html`
 (rouge sur A2 et G1 malgré la classe).
 
+### Une page SERVIE avec ses fichiers : `page-servie` (TF-2543, 14/11/2026)
+
+**Le fait.** Le 14/11/2026, à l'étape 0 d'un run, l'accueil d'un produit web rendu par son serveur local échouait à
+six contrôles bloquants : `:root` absent (les jetons vivent dans une feuille liée), A4 titre sans indice, A2 favicon
+non embarqué, `@media print` absent, L21 (une classe stylée par une feuille liée que le script ne lisait pas), L25
+sommaire. Le produit consignait une dérogation à chaque run, et l'oracle de forme n'y jugeait plus rien. Trois de ces
+règles sont celles du livrable **autonome**, un fichier qui voyage seul ; une page servie reçoit son icône, ses jetons
+et sa feuille d'impression de fichiers que le serveur livre avec elle.
+
+**La règle.** Une page rendue par un serveur avec ses fichiers se déclare `page-servie` : `check_html.py page.html
+--classe=page-servie [--racine-servie <dossier>]`, ou `<meta name="classe-artefact" content="page-servie">`. Sous cette
+classe :
+- les **feuilles liées** (`<link rel="stylesheet" href="…">` locales, `.css`, 2 Mo au plus) sont **lues**, et leur CSS est
+  jugé comme s'il était en ligne : `:root`, L21, la police Syne, `--hh`… Un chemin relatif se résout depuis le dossier de
+  la page ; un chemin absolu (`/static/app.css`) par `--racine-servie`, le dossier que le serveur expose à la racine, et
+  reste non lu sans lui. Une adresse réseau n'est pas lue (A1 la juge toujours) ;
+- trois mesures du livrable autonome ne s'appliquent pas : A2 « favicon non embarqué » (un lien vers un fichier suffit ;
+  **un favicon reste exigé**), « `@media print` absent », et « `:root` absent » **quand une feuille liée n'a pas pu être
+  lue** (sinon `:root` reste exigé, sur le CSS lu : une feuille lue sans jetons laisse l'échec).
+
+Le verdict **dit** les mesures non applicables, les feuilles lues, et celles qui n'ont pas pu l'être (`non_juge`), à chaque
+exécution. Tout le reste est jugé, A4 et L25 compris : ce que le produit doit encore corriger ou déclarer n'est pas masqué.
+Si la page voyage seule, la classe est fausse : la retirer.
+
+Fixtures : `page-servie-accueil.html` et `page-servie-accueil.css` (le gabarit du socle, son `<style>` devenu feuille liée
+sans `@media print`, son favicon devenu un fichier : 3 échecs sous `page-lue`, PASS sous `page-servie`). Le banc rejoue aussi
+la police Syne dans la feuille, la feuille sans `:root`, la feuille introuvable, le chemin absolu et la déclaration par `meta`.
+
 ## L38 — Un listing porte son détail, il ne le renvoie pas à un autre chapitre (TF-1742, RA-41, 15/10/2026)
 
 **Le fait.** Un mode opératoire listait neuf actions dans un tableau du chapitre 2 ; le chapitre 3
@@ -1829,6 +1857,7 @@ python scripts/check_html.py page.html                 # charte + a11y + print +
 python scripts/check_html.py page.html --regles L      # lisibilité seule (L1-L39)
 python scripts/check_html.py page.html --output json
 python scripts/check_html.py page.html --classe=source-machine   # page lue par une machine (TF-1589)
+python scripts/check_html.py page.html --classe=page-servie      # page servie avec ses fichiers : feuilles liées lues (TF-2543)
 python scripts/render_page.py page.html                # V1-V14 + L2 mesuré au rendu
 python scripts/self_test.py                            # fixtures rouges et vertes du skill
 ```

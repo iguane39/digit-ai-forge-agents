@@ -7051,6 +7051,131 @@ def run_scenes_adresse_independante_de_la_police():
     ]
 
 
+def run_page_servie():
+    """TF-2543 — la classe `page-servie` : les feuilles liées sont LUES, trois mesures du livrable autonome ne s'appliquent pas.
+
+    LE FAIT. Le 14/11/2026, l'accueil d'un produit web rendu par son serveur local échouait à six contrôles bloquants de
+    `check_html.py` (jetons en feuille liée, favicon en fichier, pas de @media print en ligne…) : le produit consignait une
+    dérogation à chaque run et l'oracle de forme n'y jugeait plus rien. `fixtures/page-servie-accueil.html` est le gabarit du
+    socle dont le `<style>` est devenu `page-servie-accueil.css` (sans @media print) et dont le favicon est un fichier.
+
+    Les deux sens, sur des pages jetables : ROUGE sous `page-lue` (3 échecs : `:root`, favicon non embarqué, @media print) ;
+    VERT sous `page-servie` (0 échec, les feuilles lues et les mesures non applicables dites au verdict) ; et la classe n'est
+    pas un passe-droit : un défaut DANS la feuille liée (police Syne) est jugé, une feuille sans `:root` laisse `:root absent`,
+    une feuille introuvable est NOMMÉE non lue (et `:root` n'est alors pas jugé), le favicon reste exigé.
+    """
+    import tempfile
+    from check_html import lire_feuilles_liees, non_juge as non_juge_check
+    out = []
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu, "obtenu": obtenu,
+                    "regle": "TF-2543 page servie", "detail": "" if ok else str(detail)[:300]})
+
+    page = FIXTURES / "page-servie-accueil.html"
+    feuille = FIXTURES / "page-servie-accueil.css"
+    if not (page.is_file() and feuille.is_file()):
+        return [{"fixture": "page-servie-accueil", "verdict": "ABSENTE", "attendu": "fixtures présentes", "obtenu": "absentes",
+                 "regle": "TF-2543 page servie", "detail": ""}]
+    html = page.read_text(encoding="utf-8")
+    css = feuille.read_text(encoding="utf-8")
+    atelier = Path(tempfile.mkdtemp(prefix="self-test-page-servie-"))
+    try:
+        def poser(sous, page_html=html, css_texte=css, nom_css="page-servie-accueil.css"):
+            dossier = atelier / sous
+            dossier.mkdir()
+            (dossier / "accueil.html").write_text(page_html, encoding="utf-8")
+            if css_texte is not None:
+                (dossier / nom_css).write_text(css_texte, encoding="utf-8")
+            return dossier / "accueil.html"
+
+        def tete(messages, debut):
+            return [m for m in messages if m.startswith(debut)]
+
+        # ROUGE : sous page-lue, les trois mesures du livrable autonome échouent.
+        p = poser("lue")
+        f, _ = check(html, source=str(p), classe="page-lue")
+        vus = [d for d in (":root absent", "A2 favicon non embarqué", "@media print absent") if tete(f, d)]
+        cas("page-servie-accueil sous page-lue : :root, favicon non embarqué et @media print échouent (SENS ROUGE)",
+            len(vus) == 3 and len(f) == 3, "3 échecs", f"{len(f)} échec(s) : {[x[:30] for x in f]}", " | ".join(f))
+
+        # VERT : sous page-servie, 0 échec, feuilles lues et mesures non applicables dites.
+        f, _ = check(html, source=str(p), classe="page-servie")
+        _, lues, non_lues = lire_feuilles_liees(html, str(p))
+        notes = " ".join(non_juge_check("page-servie", "ligne de commande", (lues, non_lues)))
+        cas("page-servie-accueil sous page-servie : 0 échec, la feuille liée lue (SENS VERT)",
+            not f and lues == ["page-servie-accueil.css"] and not non_lues, "0 échec, 1 feuille lue",
+            f"{len(f)} échec(s), lues {lues}, non lues {non_lues}", " | ".join(f))
+        cas("page-servie : le verdict DIT les trois mesures non applicables et la feuille lue",
+            all(m in notes for m in ("A2 « favicon non embarqué »", "@media print absent", ":root absent", "page-servie-accueil.css", "CLASSE D'ARTEFACT page-servie")),
+            "classe, trois mesures, feuille lue nommées", notes[:160], notes)
+
+        # La classe se déclare aussi par la page.
+        declaree = html.replace("<head>", '<head>\n  <meta name="classe-artefact" content="page-servie">', 1)
+        pd = poser("declaree", declaree)
+        f, w = check(declaree, source=str(pd))
+        cas("page-servie déclarée par <meta name=\"classe-artefact\"> : même verdict qu'en ligne de commande",
+            not f and not tete(w, "classe d'artefact inconnue"), "0 échec, classe reconnue", f"{len(f)} échec(s)", " | ".join(f))
+
+        # Pas un passe-droit (1) : un défaut dans la feuille liée est jugé.
+        pasyne = poser("syne", html, css + "\nh1 { font-family: Syne, sans-serif; }\n")
+        f, _ = check(html, source=str(pasyne), classe="page-servie")
+        cas("page-servie : la police Syne posée DANS la feuille liée est refusée (la feuille est lue)",
+            len(tete(f, "Police Syne")) == 1, "1 échec « Police Syne »", f"{len(f)} échec(s)", " | ".join(f))
+        f, _ = check(html, source=str(pasyne), classe="page-lue")
+        cas("page-lue : la même feuille n'est pas lue (SENS ROUGE de la lecture)", not tete(f, "Police Syne"),
+            "aucun échec « Police Syne » : la feuille liée n'est pas lue", f"{len(f)} échec(s)", " | ".join(f))
+
+        # Pas un passe-droit (2) : :root reste exigé quand toutes les feuilles sont lues et aucune ne le porte.
+        sans_root = poser("sans-root", html, css.replace(":root", ":host"))
+        f, _ = check(html, source=str(sans_root), classe="page-servie")
+        cas("page-servie : une feuille lue sans :root laisse « :root absent » (la mesure n'est pas supprimée en bloc)",
+            len(tete(f, ":root absent")) == 1, "1 échec « :root absent »", f"{len(f)} échec(s)", " | ".join(f))
+
+        # Pas un passe-droit (3) : le favicon reste exigé.
+        html_sans_icone = re.sub(r'<link rel="icon"[^>]*>', "", html, count=1)
+        f, _ = check(html_sans_icone, source=str(poser("sans-icone", html_sans_icone)), classe="page-servie")
+        cas("page-servie : une page sans favicon échoue encore (A2 favicon absent)", len(tete(f, "A2 favicon absent")) == 1,
+            "1 échec « A2 favicon absent »", f"{len(f)} échec(s)", " | ".join(f))
+
+        # Une feuille introuvable se NOMME, et `:root` n'est alors pas jugé.
+        sans_feuille = poser("sans-feuille", html, None)
+        f, _ = check(html, source=str(sans_feuille), classe="page-servie")
+        _, lues, non_lues = lire_feuilles_liees(html, str(sans_feuille))
+        notes = " ".join(non_juge_check("page-servie", "ligne de commande", (lues, non_lues)))
+        cas("page-servie : une feuille introuvable est nommée non lue et « :root absent » n'est pas jugé",
+            not tete(f, ":root absent") and not lues and len(non_lues) == 1 and "NON LUES" in notes and "page-servie-accueil.css" in notes,
+            "0 « :root absent », 1 feuille non lue nommée", f"{len(f)} échec(s), non lues {non_lues}", notes)
+
+        # Un chemin absolu se résout par --racine-servie, et ne se devine pas sans elle.
+        absolu = html.replace('href="page-servie-accueil.css"', 'href="/static/css/page-servie-accueil.css"')
+        racine = atelier / "racine"
+        (racine / "static" / "css").mkdir(parents=True)
+        (racine / "static" / "css" / "page-servie-accueil.css").write_text(css, encoding="utf-8")
+        pa = poser("absolu", absolu, None)
+        f, _ = check(absolu, source=str(pa), classe="page-servie", racine_servie=str(racine))
+        _, lues_a, _ = lire_feuilles_liees(absolu, str(pa), str(racine))
+        _, lues_sans, non_lues_sans = lire_feuilles_liees(absolu, str(pa))
+        cas("page-servie : « /static/css/… » se résout par la racine servie, et reste non lue sans elle",
+            not f and len(lues_a) == 1 and not lues_sans and "racine" in (non_lues_sans[0][1] if non_lues_sans else ""),
+            "lue avec --racine-servie, non lue sans (motif : racine inconnue)", f"lues {lues_a}, sans racine {non_lues_sans}", " | ".join(f))
+
+        # La ligne de commande : classe, feuilles et mesures non applicables au JSON.
+        r = subprocess.run([sys.executable, "-X", "utf8", str(Path(__file__).resolve().parent / "check_html.py"), str(p),
+                            "--classe=page-servie", "--output", "json", "--sans-style"], capture_output=True, text=True, encoding="utf-8")
+        try:
+            j = json.loads(r.stdout)
+        except Exception:  # noqa: BLE001
+            j = {}
+        notes = " ".join(j.get("non_juge", []))
+        cas("check_html.py --classe=page-servie --output json : PASS, classe, feuille lue et mesures non applicables au verdict",
+            j.get("verdict") == "PASS" and j.get("classe") == "page-servie" and "page-servie-accueil.css" in notes and "@media print absent" in notes,
+            "PASS, classe page-servie, feuille lue nommée", f"{j.get('verdict')}, {j.get('classe')}", r.stderr[-200:])
+    finally:
+        shutil.rmtree(atelier, ignore_errors=True)
+    return out
+
+
 def run_lot_fa4():
     """Lot FA4 de la campagne du 10/11/2026 : TF-2353, TF-2352, TF-2362, TF-2364, TF-2365, TF-2391."""
     return run_fa4_tf2353() + run_fa4_tf2391() + run_fa4_impression() + run_fa4_tf2362() + run_fa4_tf2352()
@@ -7074,7 +7199,7 @@ def main():
            + run_sections_lisibilite_publiees()
            + run_l39_graphique_maison() + run_dates_jjmm()
            + run_kpi_hors_page_conteneur() + run_lot_a_check_html()
-           + run_lot_fa4() + run_scenes_adresse_independante_de_la_police())
+           + run_lot_fa4() + run_scenes_adresse_independante_de_la_police() + run_page_servie())
     # TF-1964 — le composant embarque lit des jetons que l'hote ne declare pas : repli et alerte.
     composants_jetons = run_lot_a_composants()
     if composants_jetons:
