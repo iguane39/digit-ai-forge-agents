@@ -1531,7 +1531,7 @@ const TYPES_ATTENDUS = ["run_open", "etape_open", "invocation", "oracles_verdict
   "reponse_humain", "etape_close", "retour", "relais_arme", "run_close", "rectification_versions_forges",
   "rectification_run_open", "rectification_horodatage", "rectification_forges_mobilisees", "go_publication",
   "conflit_regles", "demande_emise", "demande_recue", "deplacement_effectue", "deplacement_en_attente",
-  "demande_humain", "qualification_enclenchement", "anteriorite_ledger", "secret_range"];
+  "demande_humain", "qualification_enclenchement", "anteriorite_ledger", "rectification_doublon", "secret_range"];
 check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'écriture, le message nomme le vocabulaire, rien n'est écrit", () => {
   const lf = join(out, "t2245-vocabulaire.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
@@ -1544,7 +1544,7 @@ check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'�
   const annonce = (err.match(/attendus ([a-z_, ]+) \(/) || [])[1];
   if (!annonce || annonce !== [...TYPES_ATTENDUS].sort().join(", ")) throw new Error("le vocabulaire annoncé diverge de la liste attendue : " + annonce);
 });
-check("ledger TF-2245 : les 25 types du vocabulaire sont acceptés à l'écriture (sauf contraintes propres de chaque type)", () => {
+check("ledger TF-2245 : les 26 types du vocabulaire sont acceptés à l'écriture (sauf `rectification_doublon`, qui exige un doublon réel : test dédié, TF-2424)", () => {
   const lf = join(out, "t2245-24-types.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
   const payload = {
@@ -1555,11 +1555,11 @@ check("ledger TF-2245 : les 25 types du vocabulaire sont acceptés à l'écritur
     anteriorite_ledger: { avant: "2026-01-01T00:00:00Z", cause: "lacune antérieure à la session qui la révèle" },
     secret_range: { nom: "X", remplace: false },
   };
-  for (const t of TYPES_ATTENDUS.filter((x) => x !== "run_open")) {
+  for (const t of TYPES_ATTENDUS.filter((x) => x !== "run_open" && x !== "rectification_doublon")) {
     run(ledger, ["append", lf, JSON.stringify({ type: t, detail: "t2245", ...(payload[t] || {}) })]);
   }
   const n = lignesDe(lf).length;
-  if (n !== TYPES_ATTENDUS.length) throw new Error(`${TYPES_ATTENDUS.length} entrées attendues, ${n}`);
+  if (n !== TYPES_ATTENDUS.length - 1) throw new Error(`${TYPES_ATTENDUS.length - 1} entrées attendues, ${n}`);
 });
 {
   const gabarit = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "gabarits", "ledger.py");
@@ -1692,6 +1692,106 @@ check("ledger TF-2494 : `anteriorite_ledger` est écrite par `append` (le remèd
     }
   });
 }
+
+// --- TF-2424 (14/11/2026) : LE DOUBLON. Un script de clôture rejoué a écrit 6 entrées en double (seq 835 à 840 pour 830 à 834)
+// chez un produit ; `append` ne bronchait pas, et aucun type ne désignait un doublon. Sens rouge : l'ancien écrivain écrit le second
+// exemplaire (les trois premiers cas ci-dessous rendent FAIL contre lui) ; sens vert : le refus nomme la première, et le remède écrit.
+const CLOTURE = { type: "etape_close", etape: "cloture", resume: "clôture du lot A" };
+check("ledger TF-2424 (rouge) : le même `append` rejoué est REFUSÉ — le message nomme le seq de la première, rien n'est écrit, hors seq, ts et ordre des champs", () => {
+  const lf = join(out, "t2424-rejeu.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);
+  run(ledger, ["append", lf, JSON.stringify(CLOTURE)]);
+  const err = refuse(lf, CLOTURE);
+  if (!err.includes("IDENTIQUE") || !err.includes("seq 2") || !err.includes("rectification_doublon") || !err.includes("ts_action")) throw new Error("le refus doit nommer la première (seq 2) et les deux gestes : " + err.slice(0, 400));
+  refuse(lf, { resume: CLOTURE.resume, etape: CLOTURE.etape, type: CLOTURE.type });                       // autre ordre des champs
+  refuse(lf, { ...CLOTURE, ts: new Date(Date.now() + 60000).toISOString() });                             // autre ts imposé
+  if (lignesDe(lf).length !== 2) throw new Error("un refus est sans écriture : 2 entrées attendues, " + lignesDe(lf).length);
+});
+check("ledger TF-2424 (vert) : un second événement DISTINCT (champ de contenu), un run_open neuf et deux entrées de runs différents s'écrivent — le doublon est celui du même run", () => {
+  const lf = join(out, "t2424-distincts.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);
+  run(ledger, ["append", lf, JSON.stringify(CLOTURE)]);
+  run(ledger, ["append", lf, JSON.stringify({ ...CLOTURE, ts_action: "2026-11-14T09:00:00+01:00" })]);       // distingué par ts_action
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);                       // run neuf, même contenu que le premier
+  run(ledger, ["append", lf, JSON.stringify(CLOTURE)]);                                                        // même contenu qu'au run précédent, run différent
+  if (lignesDe(lf).length !== 5) throw new Error("5 entrées attendues, " + lignesDe(lf).length);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre");
+});
+check("ledger TF-2424 : `consigner` rejoué écrit deux lots — un verdict rejoué est une preuve neuve, pas un doublon", () => {
+  const lf = join(out, "t2424-consigner.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);
+  const rapport = join(out, "t2424-rapport.json");
+  writeFileSync(rapport, JSON.stringify({ oracles: [{ oracle: "oracle-x", verdict: "PASS" }] }));
+  run(ledger, ["consigner", lf, "--rapport", rapport]);
+  run(ledger, ["consigner", lf, "--rapport", rapport]);
+  if (lignesDe(lf).length !== 3) throw new Error("3 entrées attendues (run_open + 2 verdicts), " + lignesDe(lf).length);
+});
+check("ledger TF-2424 : le journal hors run refuse aussi un retour rejoué", () => {
+  const dossier = join(out, "t2424-forge");
+  mkdirSync(dossier, { recursive: true });
+  const hr = join(dossier, "hors-run.jsonl");
+  const retour = { type: "retour", source: "produit", detail: "t2424" };
+  run(ledger, ["append", hr, JSON.stringify(retour)]);
+  if (!refuse(hr, retour).includes("IDENTIQUE")) throw new Error("le retour rejoué doit être refusé comme doublon");
+  if (lignesDe(hr).length !== 1) throw new Error("un refus est sans écriture");
+});
+/** Le cas du produit : 5 entrées (seq 2 à 4 puis un rejeu, seq 5 à 7 = copies de 2 à 4), écrites par un autre outil, sans verrou. */
+const AVEC_DOUBLONS = [
+  { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "t2424" },
+  { seq: 2, ts: "2026-01-01T10:01:00Z", type: "etape_close", etape: "a", resume: "clôture a" },
+  { seq: 3, ts: "2026-01-01T10:02:00Z", type: "etape_close", etape: "b", resume: "clôture b" },
+  { seq: 4, ts: "2026-01-01T11:01:00Z", type: "etape_close", etape: "a", resume: "clôture a" },
+  { seq: 5, ts: "2026-01-01T11:02:00Z", type: "etape_close", etape: "b", resume: "clôture b" },
+];
+const RECTIF_DOUBLON = (seq, entrees) => ({ seq, ts: "2026-01-01T12:00:00Z", type: "rectification_doublon", entrees });
+check("ledger TF-2424 (vert) : verify DÉCLARE les doublons déjà écrits ([DOUBLON], non bloquant, compté, premiers seq nommés) et leur rectification les désigne ([RECTIFIÉ], vérifiée)", () => {
+  const lf = join(out, "t2424-verify.jsonl");
+  ecrireBrut(lf, AVEC_DOUBLONS);
+  const nu = run(ledger, ["verify", lf]);
+  if (!nu.includes("[PASS]") || !/\[DOUBLON\] 2 entrée\(s\)[^\n]*seq 4 = 2, 5 = 3/.test(nu) || !nu.includes("2 doublon(s) non déclaré(s)")) throw new Error("deux doublons non déclarés, non bloquants, nommés : " + nu);
+  ecrireBrut(lf, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [
+    { seq: 4, doublon_de: 2, cause: "script de clôture rejoué" }, { seq: 5, doublon_de: 3, cause: "script de clôture rejoué" }])]);
+  const rect = run(ledger, ["verify", lf]);
+  if (!rect.includes("[PASS]") || !rect.includes("[RECTIFIÉ] doublon — le seq 4 est identique au seq 2") || !rect.includes("2 doublon(s) DÉCLARÉ(S)") || rect.includes("[DOUBLON]")) throw new Error("deux doublons désignés, plus rien de non déclaré : " + rect);
+  ecrireBrut(lf, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 4, doublon_de: 2, cause: "script de clôture rejoué" }])]);
+  const part = run(ledger, ["verify", lf]);
+  if (!/\[DOUBLON\] 1 entrée\(s\)[^\n]*seq 5 = 3/.test(part) || !part.includes("1 doublon(s) DÉCLARÉ(S)")) throw new Error("un seul désigné : l'autre reste déclaré non désigné : " + part);
+});
+check("ledger TF-2424 (rouge) : une rectification qui désigne comme doublon une entrée DISTINCTE, un seq absent ou incomplète → FAIL à verify, la raison nommée", () => {
+  const faux = join(out, "t2424-faux-doublon.jsonl");
+  ecrireBrut(faux, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 3, doublon_de: 2, cause: "ce ne sont pas des copies" }])]);
+  if (!verifyRouge(faux).sortie.includes("DIFFÈRENT")) throw new Error("une entrée distincte ne se désigne pas comme doublon");
+  const absent = join(out, "t2424-doublon-absent.jsonl");
+  ecrireBrut(absent, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 9, doublon_de: 2, cause: "seq inexistant" }])]);
+  if (!verifyRouge(absent).sortie.includes("n'existe pas")) throw new Error("un seq absent doit être nommé");
+  const incomplet = join(out, "t2424-doublon-incomplet.jsonl");
+  ecrireBrut(incomplet, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 4, doublon_de: 2 }])]);
+  if (!verifyRouge(incomplet).sortie.includes("déclaration incomplète")) throw new Error("une déclaration sans cause est incomplète");
+  const vide = join(out, "t2424-doublon-vide.jsonl");
+  ecrireBrut(vide, [...AVEC_DOUBLONS, { seq: 6, ts: "2026-01-01T12:00:00Z", type: "rectification_doublon", detail: "sans entrees" }]);
+  if (!verifyRouge(vide).sortie.includes("`entrees` absent ou vide")) throw new Error("une rectification sans entrees ne rectifie rien");
+});
+check("ledger TF-2424 : `append` écrit une `rectification_doublon` juste (le remède du message de refus, joué) et refuse celle qui désigne une entrée distincte, un seq hors ordre, une cause absente, ou rien", () => {
+  const lf = join(out, "t2424-remede.jsonl");
+  ecrireBrut(lf, AVEC_DOUBLONS);
+  const avant = readFileSync(lf, "utf8");
+  for (const [entrees, motif] of [
+    [[{ seq: 3, doublon_de: 2, cause: "pas des copies" }], "n'est PAS identique"],
+    [[{ seq: 9, doublon_de: 2, cause: "postérieur à la rectification" }], "la rectification elle-même"],
+    [[{ seq: 4, doublon_de: 2 }], "`cause`"],
+    [[{ seq: 2, doublon_de: 4, cause: "à l'envers" }], "doublon_de (4) < seq (2)"],
+    [[], "`entrees` absent ou vide"],
+  ]) {
+    const err = refuse(lf, { type: "rectification_doublon", entrees });
+    if (!err.includes(motif) || !err.includes("TF-2424")) throw new Error(`le refus doit dire « ${motif} » : ` + err.slice(0, 300));
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("un refus est sans écriture");
+  const o = run(ledger, ["append", lf, JSON.stringify({ type: "rectification_doublon", entrees: [
+    { seq: 4, doublon_de: 2, cause: "script de clôture rejoué" }, { seq: 5, doublon_de: 3, cause: "script de clôture rejoué" }] })]);
+  if (!o.includes("[OK] entrée 6 ajoutée")) throw new Error("la rectification juste doit s'écrire : " + o);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]") || !v.includes("2 doublon(s) DÉCLARÉ(S)") || v.includes("[DOUBLON]")) throw new Error("le remède joué solde les deux doublons : " + v);
+});
 
 rmSync(out, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 console.log(`\nSelf-test forge-agents : ${pass} PASS, ${failCount} FAIL`);

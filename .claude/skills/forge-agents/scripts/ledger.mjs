@@ -124,6 +124,17 @@
  * de 20 caractères : une déclaration que R-42 ignorerait resterait pour toujours dans un journal en
  * ajout seul (même garde que TF-1722).
  *
+ * LE DOUBLON (TF-2424, 14/11/2026). Un script de clôture rejoué a écrit 6 entrées en double chez un produit
+ * (seq 835 à 840 pour 830 à 834) : ni `append` ni `verify` ne bronchaient, et aucun type ne désignait un doublon.
+ * Désormais (a) `append` et `consigner` REFUSENT une entrée identique, hors `seq`, `ts` et marque hors run, à une
+ * autre du MÊME run (le run du dernier `run_open`) : le message nomme le seq de la première, et dit comment écrire
+ * un second événement réellement distinct (un champ de contenu : `ts_action`, `detail`…) ; (b) le type
+ * `rectification_doublon` (`entrees: [{seq, doublon_de, cause}]`) DÉSIGNE un doublon déjà écrit, par ajout : refusé
+ * à l'écriture si la copie et sa source ne sont pas identiques (une entrée distincte ne se désigne pas comme
+ * doublon) ; (c) `verify` imprime `[RECTIFIÉ] doublon` pour un doublon désigné (déclaration vérifiée : une
+ * déclaration fausse est un écart bloquant) et `[DOUBLON]`, non bloquant, pour un doublon non désigné (on ne met
+ * jamais en échec un ledger existant, comme pour le vocabulaire).
+ *
  * DES INSTANTS, JAMAIS DES CHAÎNES (TF-1422, 28/09/2026). Le fait mesuré chez un produit le
  * 25/09 : `append` horodate en UTC (`toISOString`, suffixe `Z`), et ce produit écrit l'heure de
  * Paris avec son décalage (`+02:00`) ; la monotonie se jugeait en comparant des CHAÎNES. Sur deux
@@ -443,6 +454,48 @@ const CHAMPS_ANTERIORITE = [
     (v) => (typeof v === "string" && v.trim().length >= CAUSE_ANTERIORITE_MIN ? null : `doit etre une CHAINE d'au moins ${CAUSE_ANTERIORITE_MIN} caracteres (recu ${JSON.stringify(v)})`)],
 ];
 
+//: TF-2424 (14/11/2026) — LE DOUBLON : une entrée IDENTIQUE à une autre du même run, hors `seq`, `ts` et marque hors run. Le fait :
+//: un script de clôture rejoué a écrit 6 entrées en double (seq 835 à 840 pour 830 à 834) chez un produit, et le ledger, en ajout
+//: seul, les garde pour toujours. Refusé À L'ÉCRITURE (même cœur partagé par `append` et `consigner`) ; un doublon DÉJÀ écrit se
+//: DÉSIGNE par une `rectification_doublon` ultérieure, jamais se supprime. Le run est celui du dernier `run_open` (un `run_open` ouvre
+//: un run neuf) ; le journal hors run n'en a qu'un. `ts_action` ou tout champ de contenu distingue deux événements réellement distincts.
+const TYPE_RECTIFICATION_DOUBLON = "rectification_doublon";
+/** Sérialisation à clés triées, à tous les niveaux : deux entrées de même contenu ont la même chaîne, quel que soit l'ordre des champs. */
+function stable(v) {
+  if (Array.isArray(v)) return `[${v.map(stable).join(",")}]`;
+  if (v && typeof v === "object") return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable(v[k])}`).join(",")}}`;
+  return JSON.stringify(v);
+}
+/** L'identité d'une entrée à ses numéro, horodatage et marque hors run près. */
+function empreinteDEntree(e) {
+  const { seq: _seq, ts: _ts, hors_run: _horsRun, ...corps } = e;
+  return stable(corps);
+}
+/**
+ * Le défaut d'une `rectification_doublon` à l'écriture, ou null. `entrees: [{seq, doublon_de, cause}]` : `seq` est le doublon,
+ * `doublon_de` l'entrée dont il est la copie (donc antérieure), et les deux DOIVENT exister au ledger avec la même identité — une
+ * déclaration qui désignerait comme doublon une entrée distincte effacerait une preuve au lieu de la désigner.
+ * `empreintes` : seq -> [identités des entrées de ce seq] ; `seqPropre` : le seq que la rectification va recevoir.
+ */
+function problemeRectificationDoublon(obj, empreintes, seqPropre) {
+  if (!Array.isArray(obj.entrees) || obj.entrees.length === 0) {
+    return "`entrees` absent ou vide — une rectification qui ne désigne aucun doublon ne rectifie rien (les seq visés se DISENT : `entrees: [{seq, doublon_de, cause}]`)";
+  }
+  const fautes = [];
+  obj.entrees.forEach((d, i) => {
+    const ou = `entrees[${i}]`;
+    if (!d || typeof d !== "object") { fautes.push(`${ou} : n'est pas un objet`); return; }
+    const manquants = ["seq", "doublon_de", "cause"].filter((c) => d[c] === undefined || d[c] === null || String(d[c]).trim() === "");
+    if (manquants.length) { fautes.push(`${ou} : champ(s) ${manquants.map((c) => `\`${c}\``).join(", ")} manquant(s)`); return; }
+    if (!Number.isInteger(d.seq) || d.seq < 1 || !Number.isInteger(d.doublon_de) || d.doublon_de < 1) { fautes.push(`${ou} : \`seq\` et \`doublon_de\` doivent être des entiers ≥ 1`); return; }
+    if (!(d.doublon_de < d.seq && d.seq < seqPropre)) { fautes.push(`${ou} : il faut doublon_de (${d.doublon_de}) < seq (${d.seq}) < la rectification elle-même (${seqPropre}) — le doublon suit sa source, et on ne se dédouane pas d'avance`); return; }
+    const copie = empreintes.get(d.seq), source = empreintes.get(d.doublon_de);
+    if (!copie || !source) { fautes.push(`${ou} : ${!copie ? `le seq ${d.seq}` : `le seq ${d.doublon_de}`} n'existe pas au ledger`); return; }
+    if (!copie.some((e) => source.includes(e))) fautes.push(`${ou} : le seq ${d.seq} n'est PAS identique au seq ${d.doublon_de} (hors seq et ts) — une entrée distincte ne se désigne pas comme doublon`);
+  });
+  return fautes.length ? fautes.join(" ; ") : null;
+}
+
 //: TF-2245 (06/11/2026) — LE VOCABULAIRE DES TYPES, LE REMPLACEMENT ET LE JOURNAL HORS RUN : trois choses que
 //: `gabarits/ledger.py` du pilot tenait déjà et que ce script ignorait, de sorte que les deux écrivains d'un même ledger
 //: divergeaient (ledger.py refusait ce que ledger.mjs écrivait). Le vocabulaire est celui du CONTRAT-INTERFACE.md §3 du
@@ -455,7 +508,7 @@ const TYPES_VOCABULAIRE = ["run_open", "etape_open", "invocation", "oracles_verd
   "rectification_versions_forges", "rectification_run_open", "rectification_horodatage",
   "rectification_forges_mobilisees", "go_publication", "conflit_regles", "demande_emise", "demande_recue",
   "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement",
-  "anteriorite_ledger", "secret_range"];
+  "anteriorite_ledger", "rectification_doublon", "secret_range"];
 //: TF-2223 du pilot — sans ledger de run, ces types s'écrivent au journal `forge/hors-run.jsonl` (même discipline de
 //: `seq` et de `ts`, champ `hors_run: true`), pas au ledger du run, dont R-42 exige qu'il s'ouvre par `run_open`.
 //: Le journal hors run se reconnaît à son NOM : c'est le chemin de doctrine, et il ne s'ouvre pas par `run_open`.
@@ -544,6 +597,14 @@ function ecrireSousVerrou(file, objs) {
   const seqs = [];
   try {
     let tsMax = "", tsMaxMs = -Infinity;
+    // TF-2424 : l'identité des entrées DU RUN COURANT (identité -> seq de la première), et celle de toutes (seq -> identités).
+    let identitesDuRun = new Map();
+    const identitesParSeq = new Map();
+    const noterIdentite = (e, seqE) => {
+      const id = empreinteDEntree(e);
+      if (!identitesDuRun.has(id)) identitesDuRun.set(id, seqE);
+      identitesParSeq.set(seqE, [...(identitesParSeq.get(seqE) || []), id]);
+    };
     const fichierExiste = existsSync(file);
     if (fichierExiste) {
       const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
@@ -557,6 +618,8 @@ function ecrireSousVerrou(file, objs) {
           const t = parsed.ts;
           const ms = instant(t);
           if (ms > tsMaxMs) { tsMaxMs = ms; tsMax = t; }
+          if (parsed.type === "run_open") identitesDuRun = new Map(); // TF-2424 : un run_open ouvre un run neuf
+          if (Number.isInteger(parsed.seq)) noterIdentite(parsed, parsed.seq);
           // Schéma ACTIF pour juger CETTE entrée (TF-1366 c) : celui du DERNIER run_open qui en
           // déclare un dans le fichier — même lecture que verify (schemaDeclare), au sens d'un
           // seul journal (un run de version ne change pas ce choix, pour rester simple).
@@ -631,11 +694,25 @@ function ecrireSousVerrou(file, objs) {
           throw new Error(`entrée refusée (schéma ${schemaActif}, type \`${obj.type}\`) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
         }
       }
+      // TF-2424 : une rectification de doublon désigne des doublons RÉELS, et une entrée identique à une autre du même run est refusée.
+      if (obj.type === TYPE_RECTIFICATION_DOUBLON) {
+        const defaut = problemeRectificationDoublon(obj, identitesParSeq, seq);
+        if (defaut) throw new Error(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-2424) — ${defaut}`);
+      }
       const { ts: _tsPayload, ...corps } = obj;
+      if (obj.type === "run_open") identitesDuRun = new Map(); // un run_open ouvre un run neuf : aucune entrée à répéter
+      const identite = empreinteDEntree(corps);
+      if (identitesDuRun.has(identite)) {
+        throw new Error(`entrée refusée : IDENTIQUE (hors seq et ts) à l'entrée seq ${identitesDuRun.get(identite)} du même run — un script rejoué écrit deux fois la même ` +
+          `entrée, et le ledger en ajout seul la garderait pour toujours (TF-2424 : 6 doublons, seq 835 à 840 pour 830 à 834). Si c'est bien un second événement, ` +
+          `le distinguer par un champ de contenu (\`ts_action\`, \`detail\`…) ; un doublon DÉJÀ écrit se désigne par une entrée \`${TYPE_RECTIFICATION_DOUBLON}\` ` +
+          `(\`entrees: [{seq, doublon_de, cause}]\`), jamais en réécrivant le ledger — rien n'est écrit`);
+      }
       const tsEntree = tsFourni || maintenant;
       lignes.push(JSON.stringify(horsRun
         ? { seq, ts: tsEntree, type: corps.type, ...corps, hors_run: true }   // TF-2245 : la marque du journal hors run (ledger.py)
         : { seq, ts: tsEntree, ...corps }));
+      noterIdentite(corps, seq);
       seqs.push(seq);
       seq++;
       const ms = instant(tsEntree);
@@ -1165,6 +1242,50 @@ if (cmd === "append") {
     if (lignesDup.slice(1).every((n) => collisionsRectifiees.has(n))) console.log(`[RECTIFIÉ] ${doublon}, collision déclarée`);
     else ecartsDoublons.push(doublon);
   }
+  // TF-2424 : les DOUBLONS — une entrée identique (hors seq, ts et marque hors run) à une autre du MÊME run. `append` les refuse
+  // désormais ; ceux DÉJÀ écrits se désignent par une `rectification_doublon` ultérieure ([RECTIFIÉ], vérifiée : la copie et sa source
+  // doivent être identiques), sinon ils se DÉCLARENT ([DOUBLON], non bloquant : on ne met jamais en échec un ledger existant).
+  const identites = entrees.map((e) => empreinteDEntree(e));
+  const ligneDuSeq = (s) => entrees.findIndex((e) => e.seq === s);
+  const doublonsDeclares = new Set(); // n° de ligne des copies désignées
+  entrees.forEach((e, i) => {
+    if (e.type !== TYPE_RECTIFICATION_DOUBLON) return;
+    const ou = `ligne ${i + 1} (${TYPE_RECTIFICATION_DOUBLON}, seq ${e.seq})`;
+    if (!Array.isArray(e.entrees) || e.entrees.length === 0) {
+      ecartsRectif.push(`${ou} : \`entrees\` absent ou vide — une rectification qui ne désigne aucun doublon ne rectifie rien`);
+      return;
+    }
+    for (const d of e.entrees) {
+      const incomplet = d === null || typeof d !== "object" || ["seq", "doublon_de", "cause"].some((c) => d[c] === undefined || d[c] === null || String(d[c]).trim() === "");
+      if (incomplet) { ecartsRectif.push(`${ou} : déclaration incomplète — \`seq\`, \`doublon_de\` et \`cause\` sont dus dans ${JSON.stringify(d)}`); continue; }
+      const copie = ligneDuSeq(d.seq), source = ligneDuSeq(d.doublon_de);
+      if (!(d.doublon_de < d.seq && copie > -1 && source > -1 && copie < i && source < copie)) {
+        ecartsRectif.push(`${ou} : déclare le seq ${d.seq} doublon du seq ${d.doublon_de}, mais l'un n'existe pas ou n'est pas ANTÉRIEUR à la rectification (la source précède la copie, la copie précède la rectification)`);
+        continue;
+      }
+      if (identites[copie] !== identites[source]) {
+        ecartsRectif.push(`${ou} : déclare le seq ${d.seq} doublon du seq ${d.doublon_de}, mais les deux entrées DIFFÈRENT (hors seq et ts) — une entrée distincte ne se désigne pas comme doublon`);
+        continue;
+      }
+      doublonsDeclares.add(copie + 1);
+      console.log(`[RECTIFIÉ] doublon — le seq ${d.seq} est identique au seq ${d.doublon_de} (hors seq et ts), déclaré par la rectification du seq ${e.seq} : ${d.cause}`);
+    }
+  });
+  const doublonsNonDeclares = [];
+  {
+    let vus = new Map(); // identité -> seq de la première entrée du run
+    entrees.forEach((e, i) => {
+      if (e.type === "run_open") vus = new Map();
+      if (vus.has(identites[i])) { if (!doublonsDeclares.has(i + 1)) doublonsNonDeclares.push({ seq: e.seq, de: vus.get(identites[i]) }); }
+      else vus.set(identites[i], e.seq);
+    });
+  }
+  if (doublonsNonDeclares.length) {
+    const lesPremiers = doublonsNonDeclares.slice(0, 5).map((x) => `${x.seq} = ${x.de}`).join(", ");
+    console.log(`[DOUBLON] ${doublonsNonDeclares.length} entrée(s) identique(s) (hors seq et ts) à une autre du même run, non désignée(s) : seq ${lesPremiers}` +
+      `${doublonsNonDeclares.length > 5 ? `, … ${doublonsNonDeclares.length - 5} autre(s)` : ""} — déjà écrite(s), non réécrite(s) : les désigner par une entrée \`${TYPE_RECTIFICATION_DOUBLON}\` ` +
+      "(`entrees: [{seq, doublon_de, cause}]`) (TF-2424)");
+  }
   const ecarts = [...ecartsDoublons, ...ecartsRectif, ...ecartsIntegrite];
 
   // TF-2245 : ce que `append` refuse désormais, `verify` le DÉCLARE sur l'existant sans le mettre en échec — le contrat du
@@ -1292,10 +1413,12 @@ if (cmd === "append") {
   const sauts = sautsCouverts.size
     ? ` · ${sautsCouverts.size} saut(s) de seq en avant DÉCLARÉ(S) et couvert(s) (seq ${[...sautsCouverts].join(", ")})`
     : "";
+  const doublons = (doublonsDeclares.size ? ` · ${doublonsDeclares.size} doublon(s) DÉCLARÉ(S) par rectification_doublon` : "") +
+    (doublonsNonDeclares.length ? ` · ${doublonsNonDeclares.length} doublon(s) non déclaré(s) (non bloquant)` : "");
   const sansContenuDit = !sansContenuBloquant && sansContenu.length
     ? ` · ${sansContenu.length} entrée(s) SANS CONTENU (non bloquant, schéma ${schemaDeclare || "absent"})`
     : "";
-  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sauts}${sansContenuDit}${declaresDit}`);
+  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sauts}${doublons}${sansContenuDit}${declaresDit}`);
 } else {
   fail("commande inconnue (append | consigner | verify)");
 }
