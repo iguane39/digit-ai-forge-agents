@@ -2969,6 +2969,80 @@
    "provenance": "TF-2163, Produit-86 lot 20261104a RA-2, 05/11/2026 — la rouge porte les trois formes (écriture par un helper du fichier, écriture et appel dans un with sqlite3.connect, exemption sans raison) ; la verte joue les gestes du message (commit avant l'appel, appel avant l'écriture, lecture seule, sortie de with) et une exemption déclarée avec sa raison."
   },
   {
+   "nom": "serveur-de-banc-mjs",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-serveur-de-banc.mjs",
+    "{fixture}"
+   ],
+   "red": "serveur-de-banc-red.mjs",
+   "green": "serveur-de-banc-green.mjs",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "serveur local (wrangler dev) lancé en arrière-plan",
+    "sans AUCUN arrêt plus bas dans ce fichier",
+    "l'exemption « serveur-banc-ok » n'a pas de raison d'au moins 8 caractères"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "EXEMPTÉ par déclaration"
+   ],
+   "provenance": "TF-2414, Produit-84 lot 20261110a RU-17, 14/11/2026 — la rouge est le banc du 09/11/2026 (wrangler pages dev en arrière-plan par spawn, jamais arrêté ; un second serveur à exemption sans raison) ; la verte joue les gestes du message : l'arrêt dans un try … finally, et l'exemption déclarée avec sa raison."
+  },
+  {
+   "nom": "serveur-de-banc-sh",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-serveur-de-banc.mjs",
+    "{fixture}"
+   ],
+   "red": "serveur-de-banc-red.sh",
+   "green": "serveur-de-banc-green.sh",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "serveur local (wrangler dev) lancé en arrière-plan",
+    "serveur local (python -m http.server) lancé en arrière-plan",
+    "sans AUCUN arrêt plus bas dans ce fichier"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "EXEMPTÉ par déclaration"
+   ],
+   "provenance": "TF-2414, 14/11/2026 — la rouge lance deux serveurs par `&` et rend la main sans les arrêter ; la verte joue `trap 'kill $PID' EXIT` pour le premier et l'exemption déclarée pour le second."
+  },
+  {
+   "nom": "serveur-de-banc-ps1",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-serveur-de-banc.mjs",
+    "{fixture}"
+   ],
+   "red": "serveur-de-banc-red.ps1",
+   "green": "serveur-de-banc-green.ps1",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "serveur local (wrangler dev) lancé en arrière-plan",
+    "sans AUCUN arrêt plus bas dans ce fichier"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "1 serveur(s) lancé(s) en arrière-plan"
+   ],
+   "provenance": "TF-2414, 14/11/2026 — le cas du 09/11/2026 sous PowerShell : wrangler pages dev lancé par Start-Process, jamais arrêté ; la verte l'arrête par Stop-Process dans un finally."
+  },
+  {
    "nom": "a11y-transition",
    "cmd": [
     "python3",
