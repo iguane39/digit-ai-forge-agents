@@ -4,7 +4,8 @@
 // TF-1975 (29/10/2026) : le type du rapport d'analyse est « Revue », au registre des types ; le
 // SKILL.md et couches.md le prescrivent tous deux, et un type « Analyse » prescrit serait vu.
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -63,6 +64,38 @@ cas.push(
   ['TF-2202 vert — SKILL.md nomme la règle (note recomptée, reprise unique)', /TF-2202/.test(skill) && /passe de reprise unique/.test(skill)],
   ['TF-2202 rouge — le paragraphe retiré de boucle.md est vu', !reglesNotes(boucle.replace(/\*\*Deux clés de plus[\s\S]*?(?=\*\*Extension jusqu'à 5 passes\*\*)/, ''))],
   ['TF-2202 vert — l oracle joue B11 et B12', /B11/.test(oracleNotes) && /B12/.test(oracleNotes)],
+);
+// TF-2550 (14/11/2026) : le relevé des boucles n'imprime la règle de revue que si elle se déclenche (gain médian sous 3
+// points) ; imprimée sans condition sous « gain médian : 7 », elle se lisait comme un verdict. Jetables : un journal de
+// gain 7 (la fixture à deux passes, 84 → 91), le même ramené à un gain de 1, et un dossier sans journal.
+const NON_DECLENCHEE = 'règle de revue non déclenchée';
+const REGLE = 'le mode redevient optionnel';
+const releve = (journaux, ...options) => {
+  const dossier = mkdtempSync(path.join(tmpdir(), 'l99-releve-'));
+  try {
+    journaux.forEach((j, i) => writeFileSync(path.join(dossier, `analyse-${i}.md.boucle.json`), JSON.stringify(j)));
+    const rr = spawnSync(process.execPath, [path.join(ICI, 'releve-boucles.mjs'), dossier, ...options], { encoding: 'utf8' });
+    return rr.stdout || '';
+  } finally { rmSync(dossier, { recursive: true, force: true }); }
+};
+const gain7 = JSON.parse(readFileSync(path.join(ICI, '..', 'fixtures', 'boucle-vert-deux-passes.json'), 'utf8'));
+const gain1 = JSON.parse(JSON.stringify(gain7));
+gain1.passes[1].score_mesure = gain1.passes[0].score_mesure + 1;
+const texte7 = releve([gain7]), texte1 = releve([gain1]), texteVide = releve([]);
+const json7 = JSON.parse(releve([gain7], '--json')), json1 = JSON.parse(releve([gain1], '--json'));
+cas.push(
+  ['TF-2550 vert — gain médian 7 : le relevé dit « règle de revue non déclenchée » et n imprime pas la règle', /gain médian : 7/.test(texte7) && texte7.includes(NON_DECLENCHEE) && !texte7.includes(REGLE)],
+  ['TF-2550 vert — gain médian 1 : la règle se déclenche et s imprime, sans la mention « non déclenchée »', /gain médian : 1/.test(texte1) && texte1.includes(REGLE) && !texte1.includes(NON_DECLENCHEE)],
+  ['TF-2550 vert — sans journal, rien ne se déclenche et le relevé le dit (gain nul : « null < 3 » vaudrait vrai en JavaScript)', texteVide.includes(NON_DECLENCHEE) && !texteVide.includes(REGLE)],
+  ['TF-2550 vert — en --json, `regle_de_revue` suit le même déclenchement', json7.regle_de_revue === NON_DECLENCHEE && json1.regle_de_revue.includes(REGLE)],
+);
+// TF-2551 (14/11/2026) : dans un projet de la Factory, la revue L99 s'écrit dans un fichier et se préjuge avant d'être affichée ;
+// le SKILL.md le rappelle (point 12), et le retrait du point se voit.
+const rappelRestitution = (texte) => /TF-2551/.test(texte) && /s'\*\*écrit d'abord dans un\s+fichier\*\*/.test(texte)
+  && /--prejuger/.test(texte) && /ne s'\*\*affiche qu'après\*\*/.test(texte) && /projet de la Factory/.test(texte);
+cas.push(
+  ['TF-2551 vert — SKILL.md rappelle d ecrire la restitution dans un fichier et de la préjuger avant affichage', rappelRestitution(skill)],
+  ['TF-2551 rouge — le point retiré de SKILL.md est vu', !rappelRestitution(skill.replace(/12\. \*\*Restitution dans un projet de la Factory[\s\S]*?(?=\n## Les 8 couches)/, ''))],
 );
 for (const [libelle, tenu] of cas) console.log(`${tenu ? 'ok  ' : 'FAIL'} ${libelle}`);
 const echecs = cas.filter(([, tenu]) => !tenu).length;

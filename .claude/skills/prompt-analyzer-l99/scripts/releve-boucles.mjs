@@ -46,9 +46,15 @@ for (const f of journaux) {
     graves_clos: graves(p1) - graves(fin), arret: j.arret ? j.arret.raison : null });
 }
 const valides = lignes.filter((l) => !l.illisible);
+// TF-2550 : la règle de revue ne s'imprime que si elle se DÉCLENCHE (gain médian sous 3 points). Imprimée sans condition sous
+// « gain médian : 7 », elle se lisait comme un verdict (14/11/2026). Sans journal mesurable (gain médian nul : `null < 3` vaudrait
+// vrai en JavaScript), rien ne se déclenche, et le relevé le dit.
+const REGLE_DE_REVUE = 'gain médian < 3 points → le mode redevient optionnel et le seul score mesuré devient le défaut (étude 20261016e)';
+const gainMedian = mediane(valides.map((l) => l.gain));
+const regleDeclenchee = typeof gainMedian === 'number' && gainMedian < 3;
 const synthese = { outil: 'releve-boucles', racine: path.resolve(racine), journaux: valides.length, illisibles: lignes.length - valides.length,
-  gain_median: mediane(valides.map((l) => l.gain)), graves_clos_median: mediane(valides.map((l) => l.graves_clos)),
-  regle_de_revue: 'gain médian < 3 points → le mode redevient optionnel et le seul score mesuré devient le défaut (étude 20261016e)', lignes };
+  gain_median: gainMedian, graves_clos_median: mediane(valides.map((l) => l.graves_clos)),
+  regle_de_revue: regleDeclenchee ? REGLE_DE_REVUE : 'règle de revue non déclenchée' + (gainMedian === null ? ' (aucun journal mesurable)' : ''), lignes };
 if (JSON_SEUL) process.stdout.write(JSON.stringify(synthese, null, 1) + '\n');
 else {
   process.stdout.write(`${valides.length} journal(aux) de boucle sous ${synthese.racine}` + (synthese.illisibles ? `, ${synthese.illisibles} illisible(s)` : '') + '\n');
