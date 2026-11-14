@@ -14,7 +14,7 @@ forge-ops : déployer (sans bascule aveugle), exploiter (healthcheck, journal), 
 (rollback prouvé). Jamais l'architecture data, jamais le choix multi-cloud lui-même.
 
 ## 2. declencheurs
-- `content_patterns` : `App Runner|apprunner|ECR|update-service|AWSAppRunnerServicePolicy`
+- `content_patterns` : `App Runner|apprunner|\bECR\b|update-service|AWSAppRunnerServicePolicy`
 - Types de demandes : plan de déploiement MEP vers AWS, revue d'un plan `ops.mjs plan aws`, cadrage staging/rollback sur AWS App Runner
 - Ne pas router : plateformes data (→ data-platform-cloud), conformité (→ conformite-rgpd-ia), autres cibles cloud (→ fiche ops-<cible> concernée).
 

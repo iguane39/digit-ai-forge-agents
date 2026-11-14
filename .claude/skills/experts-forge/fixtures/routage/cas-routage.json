@@ -11,5 +11,7 @@
   {"id":"R10","demande":"Audit de pentest d'une application web : périmètre, règles d'engagement, niveau ASVS visé et qualification CVSS des vulnérabilités","routees_attendues":[],"matchees_attendues":["securite-offensive"]},
   {"id":"R11","demande":"Revoir la sécurité du circuit de validation des factures : l'attaque possible par un fournisseur, la vulnérabilité de la procédure et l'audit interne du service comptable","routees_attendues":[],"matchees_exclues":["securite-offensive"]},
   {"id":"R12","demande":"Plan de mise en service du dépôt de carnet-web : protection de la branche principale par ruleset, GITHUB_TOKEN des workflows de déploiement et alertes Dependabot avant le GO humain","routees_attendues":["ops-github"]},
-  {"id":"R13","demande":"Pousser le code du portail sur GitHub, puis ouvrir une pull request pour relire les changements du formulaire de contact","routees_attendues":[],"matchees_exclues":["ops-github"]}
+  {"id":"R13","demande":"Pousser le code du portail sur GitHub, puis ouvrir une pull request pour relire les changements du formulaire de contact","routees_attendues":[],"matchees_exclues":["ops-github"]},
+  {"id":"R14","demande":"Les secrets de la démo sont stockés dans GitHub Actions : comment les protéger et les faire tourner avant la mise en service ?","routees_attendues":["ops-github"],"matchees_exclues":["ops-aws"]},
+  {"id":"R15","demande":"Pousser l'image du service sur ECR avec un tag immuable puis vérifier le déploiement","routees_attendues":["ops-aws"],"matchees_attendues":["ops-aws"]}
 ]
