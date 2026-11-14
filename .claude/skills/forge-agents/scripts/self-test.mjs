@@ -5,7 +5,7 @@
  * version servie.
  * Exit 0 si tous les contrôles passent, 1 sinon. À rejouer après toute modification du skill.
  */
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync, rmSync, mkdtempSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -389,16 +389,89 @@ check("ledger TF-0410 : déclaration incomplète (cause absente) → écart, jam
   if (sortie.includes("[RECTIFIÉ] seq 3")) throw new Error("une déclaration incomplète ne couvre rien");
 });
 
-check("ledger TF-0410 : un seq SAUTÉ (saut en avant) reste FAIL, même nommé par une rectification", () => {
-  const lf = join(out, "ts-rectif-hors-perimetre.jsonl");
+// --- TF-2494 (14/11/2026) : LE SAUT DE SEQ EN AVANT A SES DEUX VOIES, comme R-42 du pilot (a86f397d). Jusqu'ici ce
+// test-ci, écrit sous TF-0410, FIGEAIT le contraire : « un seq SAUTÉ reste FAIL, même nommé par une rectification ». La
+// décision de TF-2494 renverse cette règle pour le seul saut en avant — la fixture de ce vieux test (la rectification qui
+// nomme le seq 3 avec son ts) devient le cas VERT ci-dessous, et le FAIL reste dû à tout saut que rien ne couvre.
+const SAUT_ENTREES = [
+  { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-saut" },
+  { seq: 2, ts: "2026-01-01T10:30:00Z", type: "note", detail: "avant la lacune" },
+  { seq: 6, ts: "2026-01-01T11:00:00Z", type: "note", detail: "seq 3 à 5 jamais écrits" },
+];
+const RECTIF_SAUT = (seq, tsConsigne, cause = "trois entrées écrites par une session dont le dépôt a été perdu") => ({
+  seq, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage", entrees: [{ seq: 6, ts_consigne: tsConsigne, ts_reel_estime: tsConsigne, cause }],
+});
+check("ledger TF-2494 (rouge) : un saut en avant que rien ne déclare reste FAIL, il nomme la lacune (seq 3 à 5) et dit le remède", () => {
+  const lf = join(out, "t2494-saut-nu.jsonl");
+  ecrireBrut(lf, SAUT_ENTREES);
+  const { sortie, code } = verifyRouge(lf);
+  if (code !== 1) throw new Error(`exit 1 attendu, ${code}`);
+  if (!sortie.includes("seq 6 attendu 3") || !sortie.includes("saut en avant, seq 3 à 5 jamais écrits")) throw new Error("la lacune doit être nommée : " + sortie.slice(0, 400));
+  if (!sortie.includes("rectification_horodatage") || !sortie.includes("anteriorite_ledger")) throw new Error("les deux voies du remède doivent être dites : " + sortie.slice(0, 500));
+});
+check("ledger TF-2494 (vert) : une rectification ultérieure qui nomme le seq qui SUIT la lacune, avec son ts, couvre le saut → exit 0, [RECTIFIÉ] saut en avant imprimé et compté", () => {
+  const lf = join(out, "t2494-saut-rectifie.jsonl");
+  ecrireBrut(lf, [...SAUT_ENTREES, RECTIF_SAUT(7, "2026-01-01T11:00:00Z")]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("le saut rectifié doit passer : " + v);
+  if (!/\[RECTIFIÉ\][^\n]*seq 6 attendu 3[^\n]*saut en avant, seq 3 à 5 jamais écrits/.test(v)) throw new Error("le saut doit s'imprimer [RECTIFIÉ], jamais disparaître : " + v);
+  if (!v.includes("1 saut(s) de seq en avant DÉCLARÉ(S)") || v.includes("[SANS OBJET]")) throw new Error("le saut couvert doit être compté au verdict, la déclaration appliquée : " + v);
+});
+check("ledger TF-2494 (rouge) : une rectification dont `ts_consigne` ne colle pas à l'entrée qui suit la lacune ne couvre rien → FAIL, la divergence nommée", () => {
+  const lf = join(out, "t2494-saut-ts-diverge.jsonl");
+  ecrireBrut(lf, [...SAUT_ENTREES, RECTIF_SAUT(7, "2026-01-01T11:30:00Z")]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("saut en avant") || !sortie.includes("une déclaration qui ne correspond pas à l'histoire ne couvre rien")) throw new Error("la divergence doit être nommée : " + sortie.slice(0, 500));
+});
+check("ledger TF-2494 (rouge) : une rectification de saut incomplète (cause absente) reste un écart, et le saut reste FAIL", () => {
+  const lf = join(out, "t2494-saut-incomplet.jsonl");
+  const r = RECTIF_SAUT(7, "2026-01-01T11:00:00Z");
+  delete r.entrees[0].cause;
+  ecrireBrut(lf, [...SAUT_ENTREES, r]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("déclaration incomplète") || !sortie.includes("saut en avant")) throw new Error("déclaration incomplète ET saut non couvert attendus : " + sortie.slice(0, 500));
+});
+check("ledger TF-2494 (vert) : une antériorité bornée (`avant` après le ts de l'entrée qui suit la lacune, cause ≥ 20) couvre le saut → exit 0, [ANTÉRIORITÉ] saut en avant imprimé", () => {
+  const lf = join(out, "t2494-saut-anteriorite.jsonl");
+  ecrireBrut(lf, [...SAUT_ENTREES,
+    { seq: 7, ts: "2026-01-02T09:00:00Z", type: "anteriorite_ledger", avant: "2026-01-01T12:00:00Z", cause: "lacune de seq du 01/01, antérieure à la session qui la révèle" }]);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]")) throw new Error("le saut antérieur déclaré doit passer : " + v);
+  if (!/\[ANTÉRIORITÉ\][^\n]*seq 6 attendu 3[^\n]*saut en avant, seq 3 à 5 jamais écrits/.test(v)) throw new Error("le saut doit s'imprimer [ANTÉRIORITÉ] : " + v);
+  if (!v.includes("1 saut(s) de seq en avant DÉCLARÉ(S)")) throw new Error("le saut couvert doit être compté au verdict : " + v);
+});
+check("ledger TF-2494 (rouge) : une antériorité qui ne couvre pas — `avant` au plus tôt que le saut, ou cause de 19 caractères — laisse le saut FAIL", () => {
+  const tropTot = join(out, "t2494-anteriorite-trop-tot.jsonl");
+  ecrireBrut(tropTot, [...SAUT_ENTREES,
+    { seq: 7, ts: "2026-01-02T09:00:00Z", type: "anteriorite_ledger", avant: "2026-01-01T11:00:00Z", cause: "lacune de seq du 01/01, antérieure à la session qui la révèle" }]);
+  if (!verifyRouge(tropTot).sortie.includes("saut en avant")) throw new Error("`avant` égal au ts du saut (strictement antérieur exigé) ne couvre pas");
+  const courte = join(out, "t2494-anteriorite-cause-courte.jsonl");
+  ecrireBrut(courte, [...SAUT_ENTREES,
+    { seq: 7, ts: "2026-01-02T09:00:00Z", type: "anteriorite_ledger", avant: "2026-01-01T12:00:00Z", cause: "x".repeat(19) }]);
+  if (!verifyRouge(courte).sortie.includes("saut en avant")) throw new Error("une cause de 19 caractères ne couvre pas (R-42 en demande 20)");
+});
+check("ledger TF-2494 (anti-fail-fast) : deux sauts, un seul couvert → FAIL qui ne nomme que le second, le premier [RECTIFIÉ]", () => {
+  const lf = join(out, "t2494-deux-sauts.jsonl");
   ecrireBrut(lf, [
-    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-ts" },
-    { seq: 3, ts: "2026-01-01T11:00:00Z", type: "note", detail: "seq 2 sauté" },
-    { seq: 4, ts: "2026-01-01T12:00:00Z", type: "rectification_horodatage", entrees: [
-      { seq: 3, ts_consigne: "2026-01-01T11:00:00Z", ts_reel_estime: "2026-01-01T11:00:00Z", cause: "tentative de couvrir un seq rompu" }] },
+    ...SAUT_ENTREES,
+    { seq: 7, ts: "2026-01-01T12:00:00Z", type: "note", detail: "en ordre" },
+    { seq: 10, ts: "2026-01-01T13:00:00Z", type: "note", detail: "seq 8 et 9 jamais écrits, personne ne les déclare" },
+    RECTIF_SAUT(11, "2026-01-01T11:00:00Z"),
   ]);
   const { sortie } = verifyRouge(lf);
-  if (!sortie.includes("append-only rompu")) throw new Error("un seq rompu doit rester un FAIL : rien ne le déclare rectifiable");
+  if (!sortie.includes("seq 10 attendu 8") || !sortie.includes("seq 8 à 9 jamais écrits")) throw new Error("le second saut doit être nommé : " + sortie.slice(0, 500));
+  if (!sortie.includes("[RECTIFIÉ]") || !sortie.includes("1 écart(s) non rectifié(s)")) throw new Error("le premier saut est couvert et le compte dit 1 écart : " + sortie.slice(0, 500));
+});
+check("ledger TF-2494 (rouge) : un seq EN RECUL ou en double nommé par rien reste FAIL — l'antériorité ne couvre ici que le saut en avant", () => {
+  const lf = join(out, "t2494-recul-hors-anteriorite.jsonl");
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-saut" },
+    { seq: 2, ts: "2026-01-01T10:30:00Z", type: "note", detail: "en ordre" },
+    { seq: 2, ts: "2026-01-01T10:45:00Z", type: "note", detail: "seq 2 en double, deuxième écrivain" },
+    { seq: 3, ts: "2026-01-02T09:00:00Z", type: "anteriorite_ledger", avant: "2026-01-01T12:00:00Z", cause: "lacune de seq du 01/01, antérieure à la session qui la révèle" },
+  ]);
+  const { sortie } = verifyRouge(lf);
+  if (!sortie.includes("append-only rompu") || sortie.includes("[ANTÉRIORITÉ]")) throw new Error("une collision reste hors de portée de l'antériorité : " + sortie.slice(0, 400));
 });
 
 check("ledger TF-0410 : append refuse un `ts` de payload ANTÉRIEUR au maximum, sans rien écrire", () => {
@@ -1458,7 +1531,7 @@ const TYPES_ATTENDUS = ["run_open", "etape_open", "invocation", "oracles_verdict
   "reponse_humain", "etape_close", "retour", "relais_arme", "run_close", "rectification_versions_forges",
   "rectification_run_open", "rectification_horodatage", "rectification_forges_mobilisees", "go_publication",
   "conflit_regles", "demande_emise", "demande_recue", "deplacement_effectue", "deplacement_en_attente",
-  "demande_humain", "qualification_enclenchement", "secret_range"];
+  "demande_humain", "qualification_enclenchement", "anteriorite_ledger", "rectification_doublon", "secret_range"];
 check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'écriture, le message nomme le vocabulaire, rien n'est écrit", () => {
   const lf = join(out, "t2245-vocabulaire.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
@@ -1471,7 +1544,7 @@ check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'�
   const annonce = (err.match(/attendus ([a-z_, ]+) \(/) || [])[1];
   if (!annonce || annonce !== [...TYPES_ATTENDUS].sort().join(", ")) throw new Error("le vocabulaire annoncé diverge de la liste attendue : " + annonce);
 });
-check("ledger TF-2245 : les 24 types du vocabulaire sont acceptés à l'écriture (sauf contraintes propres de chaque type)", () => {
+check("ledger TF-2245 : les 26 types du vocabulaire sont acceptés à l'écriture (sauf `rectification_doublon`, qui exige un doublon réel : test dédié, TF-2424)", () => {
   const lf = join(out, "t2245-24-types.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
   const payload = {
@@ -1479,13 +1552,14 @@ check("ledger TF-2245 : les 24 types du vocabulaire sont acceptés à l'écritur
     rectification_forges_mobilisees: { forges_mobilisees: ["agents"], cause: "x" },
     qualification_enclenchement: { qualification: "fonde", cause: "x" },
     rectification_horodatage: { entrees: [{ seq: 1, ts_consigne: "x", ts_reel_estime: "x", cause: "x" }] },
+    anteriorite_ledger: { avant: "2026-01-01T00:00:00Z", cause: "lacune antérieure à la session qui la révèle" },
     secret_range: { nom: "X", remplace: false },
   };
-  for (const t of TYPES_ATTENDUS.filter((x) => x !== "run_open")) {
+  for (const t of TYPES_ATTENDUS.filter((x) => x !== "run_open" && x !== "rectification_doublon")) {
     run(ledger, ["append", lf, JSON.stringify({ type: t, detail: "t2245", ...(payload[t] || {}) })]);
   }
   const n = lignesDe(lf).length;
-  if (n !== TYPES_ATTENDUS.length) throw new Error(`${TYPES_ATTENDUS.length} entrées attendues, ${n}`);
+  if (n !== TYPES_ATTENDUS.length - 1) throw new Error(`${TYPES_ATTENDUS.length - 1} entrées attendues, ${n}`);
 });
 {
   const gabarit = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "gabarits", "ledger.py");
@@ -1562,6 +1636,196 @@ check("ledger TF-2245 (rouge/vert) : journal hors run — un retour s'écrit com
   const lf = join(dossier, "ledger-sans-run-open.jsonl");
   ecrireBrut(lf, [{ seq: 1, ts: "2026-01-01T10:00:00Z", type: "retour", detail: "x" }]);
   if (!verifyRouge(lf).sortie.includes("run_open")) throw new Error("un ledger de run sans run_open doit rester un FAIL");
+});
+
+// TF-2494 : le remède écrit par `append` (après la définition de `refuse`, section TF-2245 ci-dessus).
+check("ledger TF-2494 : `anteriorite_ledger` est écrite par `append` (le remède prescrit par R-42, joué de bout en bout) et un saut ancien devient intègre ; sans `avant` lisible ou cause de 20 caractères → refus, rien d'écrit", () => {
+  const lf = join(out, "t2494-remede-joue.jsonl");
+  ecrireBrut(lf, SAUT_ENTREES);
+  verifyRouge(lf);
+  const avant = readFileSync(lf, "utf8");
+  for (const [payload, motif] of [
+    [{ type: "anteriorite_ledger", cause: "lacune de seq du 01/01, antérieure à la session" }, "`avant` absent"],
+    [{ type: "anteriorite_ledger", avant: "pas une date", cause: "lacune de seq du 01/01, antérieure à la session" }, "date ISO lisible"],
+    [{ type: "anteriorite_ledger", avant: "2026-01-01T12:00:00Z" }, "`cause` absent"],
+    [{ type: "anteriorite_ledger", avant: "2026-01-01T12:00:00Z", cause: "trop courte" }, "au moins 20"],
+  ]) {
+    const err = refuse(lf, payload);
+    if (!err.includes(motif) || !err.includes("TF-2494")) throw new Error(`le refus doit dire « ${motif} » : ` + err.slice(0, 300));
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("un refus est sans écriture");
+  const o = run(ledger, ["append", lf, JSON.stringify({ type: "anteriorite_ledger", avant: "2099-01-01T00:00:00Z", cause: "lacune de seq du 01/01, antérieure à la session qui la révèle" })]);
+  if (!o.includes("[OK]") || !o.includes("anteriorite_ledger")) throw new Error("la forme juste doit s'écrire : " + o);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]") || !v.includes("[ANTÉRIORITÉ]")) throw new Error("le saut ancien déclaré par le remède doit passer, imprimé [ANTÉRIORITÉ] : " + v);
+});
+
+// TF-2494 : ACCORD avec le juge du pilot — le même fichier est intègre ou rompu pour R-42 (oracle-conformite-projet) comme pour
+// `verify` (le défaut de TF-1425 : deux juges, deux verdicts). Quatre fixtures, mêmes verdicts ; pilot absent : non joué, et dit.
+{
+  const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
+  if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2494 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
+  else check("ledger TF-2494 : accord avec R-42 du pilot — le saut nu est rompu, le saut rectifié ou antérieur déclaré est intègre, chez les DEUX juges", () => {
+    const anteriorite = { seq: 7, ts: "2026-01-02T09:00:00Z", type: "anteriorite_ledger", avant: "2026-01-01T12:00:00Z", cause: "lacune de seq du 01/01, antérieure à la session qui la révèle" };
+    const cas = [
+      ["nu", SAUT_ENTREES, false],
+      ["rectifié", [...SAUT_ENTREES, RECTIF_SAUT(7, "2026-01-01T11:00:00Z")], true],
+      ["antériorité", [...SAUT_ENTREES, anteriorite], true],
+      ["antériorité trop tôt (`avant` égal au ts du saut)", [...SAUT_ENTREES, { ...anteriorite, avant: "2026-01-01T11:00:00Z" }], false],
+    ];
+    // DIVERGENCE CONNUE, volontairement hors de ce test : une rectification dont `ts_consigne` ne colle PAS à l'entrée visée
+    // (ici 11:30 au lieu de 11:00) est un écart pour `verify` (TF-1425 : « ts_consigne doit correspondre EXACTEMENT »), que R-42
+    // laisse passer — il ne contrôle que l'antériorité de la rectification sur le ts cité (TF-1466). Mesuré le 14/11/2026 pour le
+    // saut comme pour la collision ; R-42 est au pilot, hors de ce lot : rapporté, non aligné à la baisse ici.
+    for (const [nom, entrees, integre] of cas) {
+      const racine = mkdtempSync(join(out, "r42-"));
+      mkdirSync(join(racine, "forge"));
+      const lf = join(racine, "forge", "ledger.jsonl");
+      ecrireBrut(lf, entrees);
+      let verifyPasse = true;
+      try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); } catch { verifyPasse = false; }
+      const r = spawnSync(process.execPath, [juge, racine], { encoding: "utf8" });
+      const r42 = (JSON.parse(r.stdout || "{}").findings || []).filter((f) => f.regle === "R-42");
+      if (!r42.length) throw new Error(`${nom} : R-42 n'a rendu aucun constat : ${(r.stdout || r.stderr || "").slice(0, 200)}`);
+      const r42Passe = !r42.some((f) => f.statut === "FAIL");
+      if (verifyPasse !== integre || r42Passe !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}, R-42 ${r42Passe} (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
+    }
+  });
+}
+
+// --- TF-2424 (14/11/2026) : LE DOUBLON. Un script de clôture rejoué a écrit 6 entrées en double (seq 835 à 840 pour 830 à 834)
+// chez un produit ; `append` ne bronchait pas, et aucun type ne désignait un doublon. Sens rouge : l'ancien écrivain écrit le second
+// exemplaire (les trois premiers cas ci-dessous rendent FAIL contre lui) ; sens vert : le refus nomme la première, et le remède écrit.
+const CLOTURE = { type: "etape_close", etape: "cloture", resume: "clôture du lot A" };
+check("ledger TF-2424 (rouge) : le même `append` rejoué est REFUSÉ — le message nomme le seq de la première, rien n'est écrit, hors seq, ts et ordre des champs", () => {
+  const lf = join(out, "t2424-rejeu.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);
+  run(ledger, ["append", lf, JSON.stringify(CLOTURE)]);
+  const err = refuse(lf, CLOTURE);
+  if (!err.includes("IDENTIQUE") || !err.includes("seq 2") || !err.includes("rectification_doublon") || !err.includes("ts_action")) throw new Error("le refus doit nommer la première (seq 2) et les deux gestes : " + err.slice(0, 400));
+  refuse(lf, { resume: CLOTURE.resume, etape: CLOTURE.etape, type: CLOTURE.type });                       // autre ordre des champs
+  refuse(lf, { ...CLOTURE, ts: new Date(Date.now() + 60000).toISOString() });                             // autre ts imposé
+  if (lignesDe(lf).length !== 2) throw new Error("un refus est sans écriture : 2 entrées attendues, " + lignesDe(lf).length);
+});
+check("ledger TF-2424 (vert) : un second événement DISTINCT (champ de contenu), un run_open neuf et deux entrées de runs différents s'écrivent — le doublon est celui du même run", () => {
+  const lf = join(out, "t2424-distincts.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);
+  run(ledger, ["append", lf, JSON.stringify(CLOTURE)]);
+  run(ledger, ["append", lf, JSON.stringify({ ...CLOTURE, ts_action: "2026-11-14T09:00:00+01:00" })]);       // distingué par ts_action
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);                       // run neuf, même contenu que le premier
+  run(ledger, ["append", lf, JSON.stringify(CLOTURE)]);                                                        // même contenu qu'au run précédent, run différent
+  if (lignesDe(lf).length !== 5) throw new Error("5 entrées attendues, " + lignesDe(lf).length);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre");
+});
+check("ledger TF-2424 : `consigner` rejoué écrit deux lots — un verdict rejoué est une preuve neuve, pas un doublon", () => {
+  const lf = join(out, "t2424-consigner.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2424" })]);
+  const rapport = join(out, "t2424-rapport.json");
+  writeFileSync(rapport, JSON.stringify({ oracles: [{ oracle: "oracle-x", verdict: "PASS" }] }));
+  run(ledger, ["consigner", lf, "--rapport", rapport]);
+  run(ledger, ["consigner", lf, "--rapport", rapport]);
+  if (lignesDe(lf).length !== 3) throw new Error("3 entrées attendues (run_open + 2 verdicts), " + lignesDe(lf).length);
+});
+check("ledger TF-2424 : le journal hors run refuse aussi un retour rejoué", () => {
+  const dossier = join(out, "t2424-forge");
+  mkdirSync(dossier, { recursive: true });
+  const hr = join(dossier, "hors-run.jsonl");
+  const retour = { type: "retour", source: "produit", detail: "t2424" };
+  run(ledger, ["append", hr, JSON.stringify(retour)]);
+  if (!refuse(hr, retour).includes("IDENTIQUE")) throw new Error("le retour rejoué doit être refusé comme doublon");
+  if (lignesDe(hr).length !== 1) throw new Error("un refus est sans écriture");
+});
+/** Le cas du produit : 5 entrées (seq 2 à 4 puis un rejeu, seq 5 à 7 = copies de 2 à 4), écrites par un autre outil, sans verrou. */
+const AVEC_DOUBLONS = [
+  { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "t2424" },
+  { seq: 2, ts: "2026-01-01T10:01:00Z", type: "etape_close", etape: "a", resume: "clôture a" },
+  { seq: 3, ts: "2026-01-01T10:02:00Z", type: "etape_close", etape: "b", resume: "clôture b" },
+  { seq: 4, ts: "2026-01-01T11:01:00Z", type: "etape_close", etape: "a", resume: "clôture a" },
+  { seq: 5, ts: "2026-01-01T11:02:00Z", type: "etape_close", etape: "b", resume: "clôture b" },
+];
+const RECTIF_DOUBLON = (seq, entrees) => ({ seq, ts: "2026-01-01T12:00:00Z", type: "rectification_doublon", entrees });
+check("ledger TF-2424 (vert) : verify DÉCLARE les doublons déjà écrits ([DOUBLON], non bloquant, compté, premiers seq nommés) et leur rectification les désigne ([RECTIFIÉ], vérifiée)", () => {
+  const lf = join(out, "t2424-verify.jsonl");
+  ecrireBrut(lf, AVEC_DOUBLONS);
+  const nu = run(ledger, ["verify", lf]);
+  if (!nu.includes("[PASS]") || !/\[DOUBLON\] 2 entrée\(s\)[^\n]*seq 4 = 2, 5 = 3/.test(nu) || !nu.includes("2 doublon(s) non déclaré(s)")) throw new Error("deux doublons non déclarés, non bloquants, nommés : " + nu);
+  ecrireBrut(lf, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [
+    { seq: 4, doublon_de: 2, cause: "script de clôture rejoué" }, { seq: 5, doublon_de: 3, cause: "script de clôture rejoué" }])]);
+  const rect = run(ledger, ["verify", lf]);
+  if (!rect.includes("[PASS]") || !rect.includes("[RECTIFIÉ] doublon — le seq 4 est identique au seq 2") || !rect.includes("2 doublon(s) DÉCLARÉ(S)") || rect.includes("[DOUBLON]")) throw new Error("deux doublons désignés, plus rien de non déclaré : " + rect);
+  ecrireBrut(lf, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 4, doublon_de: 2, cause: "script de clôture rejoué" }])]);
+  const part = run(ledger, ["verify", lf]);
+  if (!/\[DOUBLON\] 1 entrée\(s\)[^\n]*seq 5 = 3/.test(part) || !part.includes("1 doublon(s) DÉCLARÉ(S)")) throw new Error("un seul désigné : l'autre reste déclaré non désigné : " + part);
+});
+check("ledger TF-2424 (rouge) : une rectification qui désigne comme doublon une entrée DISTINCTE, un seq absent ou incomplète → FAIL à verify, la raison nommée", () => {
+  const faux = join(out, "t2424-faux-doublon.jsonl");
+  ecrireBrut(faux, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 3, doublon_de: 2, cause: "ce ne sont pas des copies" }])]);
+  if (!verifyRouge(faux).sortie.includes("DIFFÈRENT")) throw new Error("une entrée distincte ne se désigne pas comme doublon");
+  const absent = join(out, "t2424-doublon-absent.jsonl");
+  ecrireBrut(absent, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 9, doublon_de: 2, cause: "seq inexistant" }])]);
+  if (!verifyRouge(absent).sortie.includes("n'existe pas")) throw new Error("un seq absent doit être nommé");
+  const incomplet = join(out, "t2424-doublon-incomplet.jsonl");
+  ecrireBrut(incomplet, [...AVEC_DOUBLONS, RECTIF_DOUBLON(6, [{ seq: 4, doublon_de: 2 }])]);
+  if (!verifyRouge(incomplet).sortie.includes("déclaration incomplète")) throw new Error("une déclaration sans cause est incomplète");
+  const vide = join(out, "t2424-doublon-vide.jsonl");
+  ecrireBrut(vide, [...AVEC_DOUBLONS, { seq: 6, ts: "2026-01-01T12:00:00Z", type: "rectification_doublon", detail: "sans entrees" }]);
+  if (!verifyRouge(vide).sortie.includes("`entrees` absent ou vide")) throw new Error("une rectification sans entrees ne rectifie rien");
+});
+check("ledger TF-2424 : `append` écrit une `rectification_doublon` juste (le remède du message de refus, joué) et refuse celle qui désigne une entrée distincte, un seq hors ordre, une cause absente, ou rien", () => {
+  const lf = join(out, "t2424-remede.jsonl");
+  ecrireBrut(lf, AVEC_DOUBLONS);
+  const avant = readFileSync(lf, "utf8");
+  for (const [entrees, motif] of [
+    [[{ seq: 3, doublon_de: 2, cause: "pas des copies" }], "n'est PAS identique"],
+    [[{ seq: 9, doublon_de: 2, cause: "postérieur à la rectification" }], "la rectification elle-même"],
+    [[{ seq: 4, doublon_de: 2 }], "`cause`"],
+    [[{ seq: 2, doublon_de: 4, cause: "à l'envers" }], "doublon_de (4) < seq (2)"],
+    [[], "`entrees` absent ou vide"],
+  ]) {
+    const err = refuse(lf, { type: "rectification_doublon", entrees });
+    if (!err.includes(motif) || !err.includes("TF-2424")) throw new Error(`le refus doit dire « ${motif} » : ` + err.slice(0, 300));
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("un refus est sans écriture");
+  const o = run(ledger, ["append", lf, JSON.stringify({ type: "rectification_doublon", entrees: [
+    { seq: 4, doublon_de: 2, cause: "script de clôture rejoué" }, { seq: 5, doublon_de: 3, cause: "script de clôture rejoué" }] })]);
+  if (!o.includes("[OK] entrée 6 ajoutée")) throw new Error("la rectification juste doit s'écrire : " + o);
+  const v = run(ledger, ["verify", lf]);
+  if (!v.includes("[PASS]") || !v.includes("2 doublon(s) DÉCLARÉ(S)") || v.includes("[DOUBLON]")) throw new Error("le remède joué solde les deux doublons : " + v);
+});
+
+// --- TF-2425 (14/11/2026) : S90 RAPPELÉE À L'ÉCRITURE. Une session a consigné « 12 demandes, 7 autorisées et 12 jobs » d'après une liste
+// tronquée (recompte par requête : 11, 6 et 6) ; S90 ne juge que la restitution. Sens rouge : l'ancien écrivain n'imprime aucun rappel.
+check("ledger TF-2425 (rouge) : un compte écrit sans provenance est RAPPELÉ [RAPPEL S90] (chiffre, nature, champ nommés), l'entrée est écrite et la sortie reste exit 0", () => {
+  const lf = join(out, "t2425-rappel.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2425" })]);
+  const o = run(ledger, ["append", lf, JSON.stringify({ type: "etape_close", etape: "cloture", resume: "12 demandes consignées, 7 autorisées et 12 jobs, 34 minutes de campagne" })]);
+  if (!o.includes("[RAPPEL S90]") || !o.includes("« 12 demandes » (compte, champ `resume`)") || !o.includes("« 34 minutes » (durée, champ `resume`)")) throw new Error("le rappel doit nommer les chiffres, leur nature et leur champ : " + o);
+  if (!o.includes("[OK] entrée 2 ajoutée") || lignesDe(lf).length !== 2) throw new Error("le rappel n'empêche pas l'écriture (S90 est avertissante) : " + o);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger reste intègre");
+});
+check("ledger TF-2425 (vert) : un chiffre qui dit sa provenance, ou non mesuré, estimé, rapporté — ou en code en ligne, dans `commande`, dans une date — n'est pas rappelé", () => {
+  const lf = join(out, "t2425-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2425" })]);
+  const sans = (payload) => {
+    const o = run(ledger, ["append", lf, JSON.stringify({ type: "etape_close", etape: "x", ...payload })]);
+    if (o.includes("[RAPPEL S90]")) throw new Error(`aucun rappel attendu pour ${JSON.stringify(payload)} : ${o}`);
+  };
+  sans({ resume: "11 demandes recomptées par requête SELECT count(*)" });
+  sans({ resume: "6 jobs autorisés, 12 fichiers mesurés par wc -l" });
+  sans({ resume: "environ 40 minutes, non mesurées" });
+  sans({ resume: "12 demandes (rapporté par l'agent, non recompté)" });
+  sans({ resume: "le script `lancer 12 tests` a rendu exit 0" });
+  sans({ resume: "clôture du 14/11/2026 à 12:45, sans compte" });
+  sans({ commande: "node cible.mjs --max 12 tests", resume: "commande jouée" });
+  if (lignesDe(lf).length !== 8) throw new Error("toutes les entrées sont écrites : 8 attendues, " + lignesDe(lf).length);
+});
+check("ledger TF-2425 : `consigner` ne rappelle rien (ses verdicts viennent d'oracles, pas d'un compte écrit par l'agent)", () => {
+  const lf = join(out, "t2425-consigner.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2425" })]);
+  const rapport = join(out, "t2425-rapport.json");
+  writeFileSync(rapport, JSON.stringify({ oracles: [{ oracle: "oracle-x", verdict: "FAIL", message: "12 fichiers en défaut sur 40" }] }));
+  const o = run(ledger, ["consigner", lf, "--rapport", rapport]);
+  if (o.includes("[RAPPEL S90]")) throw new Error("consigner ne rappelle pas S90 : " + o);
 });
 
 rmSync(out, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

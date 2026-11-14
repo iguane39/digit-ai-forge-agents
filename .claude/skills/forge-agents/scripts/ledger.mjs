@@ -85,9 +85,9 @@
  *   · `ts_consigne` doit correspondre EXACTEMENT au ts de l'entrée visée : une déclaration
  *     qui ne colle pas à l'histoire ne couvre rien (et le dit) ;
  *   · les quatre champs sont dus — une déclaration incomplète est un écart, pas une couverture ;
- *   · elle agit sur l'horodatage et, depuis TF-1425, sur un seq en double ou en recul : un seq
- *     SAUTÉ (saut en avant), JSON invalide, run_open absent, forme du payload restent des FAIL —
- *     rien ne les déclare rectifiables ;
+ *   · elle agit sur l'horodatage et, depuis TF-1425, sur un seq en double ou en recul, et, depuis
+ *     TF-2494 (voir plus bas), sur un seq SAUTÉ (saut en avant) : JSON invalide, run_open absent,
+ *     forme du payload restent des FAIL — rien ne les déclare rectifiables ;
  *   · un écart rectifié s'IMPRIME `[RECTIFIÉ]`, toujours, à chaque verify. Il ne disparaît
  *     pas : il cesse seulement de bloquer. Un écart NON déclaré reste FAIL.
  *
@@ -103,6 +103,46 @@
  * l'entrée dont le ts est `ts_consigne` (c'est lui qui dit LAQUELLE des entrées au même seq est
  * visée), et seulement si elle est écrite après elle. Le doublon de seq (TF-1367) dont chaque
  * occurrence après la première est ainsi couverte s'imprime [RECTIFIÉ], en tête.
+ *
+ * LE SAUT DE SEQ EN AVANT A SES DEUX VOIES (TF-2494, 14/11/2026). Le message de R-42 d'
+ * `oracle-conformite-projet` du pilot prescrit `type: anteriorite_ledger` et couvre, depuis l'héritage
+ * 1.63.0 (a86f397d), un saut en avant — des seq jamais écrits — par deux voies ; ce script refusait
+ * le type (vocabulaire) et fait encore FAIL un saut que R-42 couvre : le même fichier était intègre
+ * pour un juge et rompu pour l'autre (le défaut de TF-1425). Mesuré le 13/11/2026 chez un produit :
+ * 15 sauts sans entrée qui les couvre. Désormais `verify` couvre un saut en avant par :
+ *   (1) une `rectification_horodatage` ULTÉRIEURE dont `entrees[]` nomme le seq qui SUIT la lacune,
+ *       avec son `ts_consigne` EXACT (mêmes bornes que la collision : quatre champs dus, seq antérieur
+ *       à la rectification, écrite après l'entrée visée) ;
+ *   (2) une `anteriorite_ledger` portant `avant` (date ISO lisible) et `cause` (≥ 20 caractères),
+ *       qui couvre tout saut dont l'entrée qui suit la lacune est horodatée STRICTEMENT avant `avant`
+ *       (la plus récente des déclarations valides fait foi, comme R-42).
+ * Le saut s'IMPRIME toujours (`[RECTIFIÉ]` ou `[ANTÉRIORITÉ]`, « saut en avant ») : il cesse de bloquer,
+ * il ne disparaît pas. Un saut que ni l'une ni l'autre ne couvre reste FAIL. L'antériorité ne couvre ICI
+ * que le saut en avant (la demande de TF-2494) : R-42 l'étend aussi à une collision et à un recul
+ * d'horodatage, ce que ce script ne fait pas encore.
+ * À l'écriture, `anteriorite_ledger` est au vocabulaire et refusée sans `avant` lisible ou sans `cause`
+ * de 20 caractères : une déclaration que R-42 ignorerait resterait pour toujours dans un journal en
+ * ajout seul (même garde que TF-1722).
+ *
+ * LE DOUBLON (TF-2424, 14/11/2026). Un script de clôture rejoué a écrit 6 entrées en double chez un produit
+ * (seq 835 à 840 pour 830 à 834) : ni `append` ni `verify` ne bronchaient, et aucun type ne désignait un doublon.
+ * Désormais (a) `append` et `consigner` REFUSENT une entrée identique, hors `seq`, `ts` et marque hors run, à une
+ * autre du MÊME run (le run du dernier `run_open`) : le message nomme le seq de la première, et dit comment écrire
+ * un second événement réellement distinct (un champ de contenu : `ts_action`, `detail`…) ; (b) le type
+ * `rectification_doublon` (`entrees: [{seq, doublon_de, cause}]`) DÉSIGNE un doublon déjà écrit, par ajout : refusé
+ * à l'écriture si la copie et sa source ne sont pas identiques (une entrée distincte ne se désigne pas comme
+ * doublon) ; (c) `verify` imprime `[RECTIFIÉ] doublon` pour un doublon désigné (déclaration vérifiée : une
+ * déclaration fausse est un écart bloquant) et `[DOUBLON]`, non bloquant, pour un doublon non désigné (on ne met
+ * jamais en échec un ledger existant, comme pour le vocabulaire).
+ *
+ * S90 RAPPELÉE À L'ÉCRITURE (TF-2425, 14/11/2026). Un compte consigné d'après un affichage borné (12 demandes,
+ * 7 autorisées, 12 jobs ; 11, 6 et 6 au recompte par requête) échappait à S90 d'`oracle-synthese` du pilot, qui ne
+ * juge que la restitution. `append` rejoue la détection de S90 sur le texte de l'entrée et RAPPELLE (`[RAPPEL S90]`,
+ * chaque chiffre nommé avec son champ) sans refuser ni changer le code de sortie : S90 est avertissante. Ne sont
+ * pas accusés un texte qui dit le chiffre non mesuré, estimé ou projeté, ni un texte qui nomme sa provenance
+ * (recompté, mesuré, relevé, requête, wc, git, rapporté). `consigner` ne rappelle rien : ses verdicts viennent
+ * des sorties d'oracles, pas d'un compte écrit par l'agent. NON JUGÉ : que le chiffre soit le bon, un champ
+ * numérique (`demandes: 12`), un chiffre écrit en lettres.
  *
  * DES INSTANTS, JAMAIS DES CHAÎNES (TF-1422, 28/09/2026). Le fait mesuré chez un produit le
  * 25/09 : `append` horodate en UTC (`toISOString`, suffixe `Z`), et ce produit écrit l'heure de
@@ -411,6 +451,98 @@ const CHAMPS_QUALIFICATION_ENCLENCHEMENT = [
     (v) => (typeof v === "string" ? null : `doit etre une CHAINE (recu ${typeof v})`)],
 ];
 
+//: TF-2494 (14/11/2026) — l'ANTÉRIORITÉ BORNÉE que le message de R-42 du pilot prescrit (TF-1203) : `avant` (date ISO) et
+//: `cause` (≥ 20 caractères, comme R-42 la lit). Une déclaration sans l'un ou l'autre est ignorée par R-42 : refusée À L'ÉCRITURE,
+//: quel que soit le schéma, comme la rectification de forges (TF-1722) — elle resterait pour toujours dans un journal en ajout seul.
+const TYPE_ANTERIORITE = "anteriorite_ledger";
+const CAUSE_ANTERIORITE_MIN = 20;
+const CHAMPS_ANTERIORITE = [
+  ["avant", "la DATE ISO avant laquelle les écarts sont déclarés antérieurs — sans elle, R-42 du pilot ignore la déclaration",
+    (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? null : `doit etre une date ISO lisible (recu ${JSON.stringify(v)})`)],
+  ["cause", `pourquoi ces écarts sont antérieurs (au moins ${CAUSE_ANTERIORITE_MIN} caracteres) — sans elle, R-42 du pilot ignore la déclaration`,
+    (v) => (typeof v === "string" && v.trim().length >= CAUSE_ANTERIORITE_MIN ? null : `doit etre une CHAINE d'au moins ${CAUSE_ANTERIORITE_MIN} caracteres (recu ${JSON.stringify(v)})`)],
+];
+
+//: TF-2425 (14/11/2026) — LE RAPPEL DE S90 À L'ÉCRITURE. S90 d'`oracle-synthese` (pilot, D-100 (a)) veut qu'un chiffre — durée, coût, score,
+//: volume, compte d'objets — se relève dans le tour ou se dise non mesuré ; elle ne juge que la restitution. Le fait : une session a consigné
+//: « 12 demandes, 7 autorisées et 12 jobs » lus sur une liste tronquée et une liste de jobs bornée qui mêlait des jobs antérieurs ; le recompte
+//: par requête donnait 11, 6 et 6, et l'entrée fausse est restée au ledger jusqu'à sa rectification. `append` rejoue donc la détection de S90
+//: sur le TEXTE de l'entrée qu'il écrit et RAPPELLE, sans refuser (S90 est avertissante) : l'entrée est écrite, le rappel nomme chaque chiffre.
+//: Les cinq natures et la liste des objets comptés sont celles de `lib-chiffres-releves.mjs` du pilot (recopiées : ce script n'importe rien
+//: du pilot). Ce qui n'est pas accusé : un texte qui dit le chiffre non mesuré, estimé, projeté ou visé (DECLARE_NON_MESURE de S90) ou qui
+//: nomme sa PROVENANCE (recompté, mesuré, relevé, requête, wc, git, à la source) — un compte qui dit d'où il vient se relit. NON JUGÉ : que le
+//: chiffre soit le bon ; un chiffre en lettres ; un champ numérique (`demandes: 12`) ; ce que ce script ne connaît pas : « relevé dans le tour »
+//: est un fait de la session (S90 le lit aux sorties d'outils du tour), le rappel ne peut que demander à l'agent de le vérifier.
+const NOMBRE_S90 = String.raw`\d(?:[\d   ]*\d)?(?:[.,]\d+)?`;
+const FIGURES_S90 = [
+  ["durée", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:minutes?|min\b|secondes?|heures?|jours?|semaines?)`, "giu")],
+  ["coût", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:\$|€|euros?\b|dollars?\b)`, "giu")],
+  ["score", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:sur\s*100\b|/\s*100\b|%)`, "giu")],
+  ["volume", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:jetons?\b|tokens?\b|Ko\b|Mo\b|Go\b)`, "gu")],
+  ["compte", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s+(?:fichiers?|lignes?|tests?|cas\b|commits?|sessions?|demandes?|refus\b|erreurs?|d[ée]fauts?|produits?|scripts?|contr[ôo]les?|entr[ée]es\b|items?\b|occurrences?)`, "giu")],
+];
+const DECLARE_NON_MESURE_S90 = /non mesur|non recompt|non v[ée]rifi|projet[ée]|estim|environ|hypoth|à mesurer|\bcible\b|objectif|attendue?s?\b|(?<![A-Za-zÀ-ÿ])vis[ée]e?s?(?![A-Za-zÀ-ÿ])|d'ici|plafond|seuil|au plus|au moins/i;
+const PROVENANCE_DITE = /recompt|mesur[ée]|relev[ée]|requ[êe]te|count\(|\bwc\b|\bgit (?:diff|log|ls-files|rev-list)|à la source|rapport[ée]/i;
+//: Les champs techniques dont le texte n'est pas une affirmation : la commande lancée, un chemin, un nom d'oracle, un horodatage.
+const CHAMPS_HORS_S90 = new Set(["type", "ts", "commande", "cible", "chemin", "fichier", "journal", "oracle", "lanceur", "forge", "etape", "consigne_par", "ts_action", "ts_consigne", "ts_reel_estime", "avant"]);
+/** Les chiffres qu'un texte d'entrée affirme sans dire qu'ils sont non mesurés ni d'où ils viennent : [{ nature, chiffre, champ }]. */
+function chiffresAffirmes(valeur, champ = "", sortie = []) {
+  if (typeof valeur === "string") {
+    for (const ligne of valeur.split(/\r?\n/)) {
+      if (DECLARE_NON_MESURE_S90.test(ligne) || PROVENANCE_DITE.test(ligne)) continue;
+      // Le code en ligne (chemins, commandes) n'est pas un chiffre affirmé, comme pour S90.
+      const lue = ligne.replace(/`[^`]*`/g, " ");
+      for (const [nature, re] of FIGURES_S90) for (const m of lue.matchAll(re)) sortie.push({ nature, chiffre: m[0].trim(), champ });
+    }
+  } else if (Array.isArray(valeur)) valeur.forEach((v) => chiffresAffirmes(v, champ, sortie));
+  else if (valeur && typeof valeur === "object") {
+    for (const [k, v] of Object.entries(valeur)) if (!CHAMPS_HORS_S90.has(k)) chiffresAffirmes(v, k, sortie);
+  }
+  return sortie;
+}
+
+//: TF-2424 (14/11/2026) — LE DOUBLON : une entrée IDENTIQUE à une autre du même run, hors `seq`, `ts` et marque hors run. Le fait :
+//: un script de clôture rejoué a écrit 6 entrées en double (seq 835 à 840 pour 830 à 834) chez un produit, et le ledger, en ajout
+//: seul, les garde pour toujours. Refusé À L'ÉCRITURE (même cœur partagé par `append` et `consigner`) ; un doublon DÉJÀ écrit se
+//: DÉSIGNE par une `rectification_doublon` ultérieure, jamais se supprime. Le run est celui du dernier `run_open` (un `run_open` ouvre
+//: un run neuf) ; le journal hors run n'en a qu'un. `ts_action` ou tout champ de contenu distingue deux événements réellement distincts.
+const TYPE_RECTIFICATION_DOUBLON = "rectification_doublon";
+/** Sérialisation à clés triées, à tous les niveaux : deux entrées de même contenu ont la même chaîne, quel que soit l'ordre des champs. */
+function stable(v) {
+  if (Array.isArray(v)) return `[${v.map(stable).join(",")}]`;
+  if (v && typeof v === "object") return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable(v[k])}`).join(",")}}`;
+  return JSON.stringify(v);
+}
+/** L'identité d'une entrée à ses numéro, horodatage et marque hors run près. */
+function empreinteDEntree(e) {
+  const { seq: _seq, ts: _ts, hors_run: _horsRun, ...corps } = e;
+  return stable(corps);
+}
+/**
+ * Le défaut d'une `rectification_doublon` à l'écriture, ou null. `entrees: [{seq, doublon_de, cause}]` : `seq` est le doublon,
+ * `doublon_de` l'entrée dont il est la copie (donc antérieure), et les deux DOIVENT exister au ledger avec la même identité — une
+ * déclaration qui désignerait comme doublon une entrée distincte effacerait une preuve au lieu de la désigner.
+ * `empreintes` : seq -> [identités des entrées de ce seq] ; `seqPropre` : le seq que la rectification va recevoir.
+ */
+function problemeRectificationDoublon(obj, empreintes, seqPropre) {
+  if (!Array.isArray(obj.entrees) || obj.entrees.length === 0) {
+    return "`entrees` absent ou vide — une rectification qui ne désigne aucun doublon ne rectifie rien (les seq visés se DISENT : `entrees: [{seq, doublon_de, cause}]`)";
+  }
+  const fautes = [];
+  obj.entrees.forEach((d, i) => {
+    const ou = `entrees[${i}]`;
+    if (!d || typeof d !== "object") { fautes.push(`${ou} : n'est pas un objet`); return; }
+    const manquants = ["seq", "doublon_de", "cause"].filter((c) => d[c] === undefined || d[c] === null || String(d[c]).trim() === "");
+    if (manquants.length) { fautes.push(`${ou} : champ(s) ${manquants.map((c) => `\`${c}\``).join(", ")} manquant(s)`); return; }
+    if (!Number.isInteger(d.seq) || d.seq < 1 || !Number.isInteger(d.doublon_de) || d.doublon_de < 1) { fautes.push(`${ou} : \`seq\` et \`doublon_de\` doivent être des entiers ≥ 1`); return; }
+    if (!(d.doublon_de < d.seq && d.seq < seqPropre)) { fautes.push(`${ou} : il faut doublon_de (${d.doublon_de}) < seq (${d.seq}) < la rectification elle-même (${seqPropre}) — le doublon suit sa source, et on ne se dédouane pas d'avance`); return; }
+    const copie = empreintes.get(d.seq), source = empreintes.get(d.doublon_de);
+    if (!copie || !source) { fautes.push(`${ou} : ${!copie ? `le seq ${d.seq}` : `le seq ${d.doublon_de}`} n'existe pas au ledger`); return; }
+    if (!copie.some((e) => source.includes(e))) fautes.push(`${ou} : le seq ${d.seq} n'est PAS identique au seq ${d.doublon_de} (hors seq et ts) — une entrée distincte ne se désigne pas comme doublon`);
+  });
+  return fautes.length ? fautes.join(" ; ") : null;
+}
+
 //: TF-2245 (06/11/2026) — LE VOCABULAIRE DES TYPES, LE REMPLACEMENT ET LE JOURNAL HORS RUN : trois choses que
 //: `gabarits/ledger.py` du pilot tenait déjà et que ce script ignorait, de sorte que les deux écrivains d'un même ledger
 //: divergeaient (ledger.py refusait ce que ledger.mjs écrivait). Le vocabulaire est celui du CONTRAT-INTERFACE.md §3 du
@@ -422,7 +554,8 @@ const TYPES_VOCABULAIRE = ["run_open", "etape_open", "invocation", "oracles_verd
   "question_humain", "reponse_humain", "etape_close", "retour", "relais_arme", "run_close",
   "rectification_versions_forges", "rectification_run_open", "rectification_horodatage",
   "rectification_forges_mobilisees", "go_publication", "conflit_regles", "demande_emise", "demande_recue",
-  "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement", "secret_range"];
+  "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement",
+  "anteriorite_ledger", "rectification_doublon", "secret_range"];
 //: TF-2223 du pilot — sans ledger de run, ces types s'écrivent au journal `forge/hors-run.jsonl` (même discipline de
 //: `seq` et de `ts`, champ `hors_run: true`), pas au ledger du run, dont R-42 exige qu'il s'ouvre par `run_open`.
 //: Le journal hors run se reconnaît à son NOM : c'est le chemin de doctrine, et il ne s'ouvre pas par `run_open`.
@@ -511,6 +644,14 @@ function ecrireSousVerrou(file, objs) {
   const seqs = [];
   try {
     let tsMax = "", tsMaxMs = -Infinity;
+    // TF-2424 : l'identité des entrées DU RUN COURANT (identité -> seq de la première), et celle de toutes (seq -> identités).
+    let identitesDuRun = new Map();
+    const identitesParSeq = new Map();
+    const noterIdentite = (e, seqE) => {
+      const id = empreinteDEntree(e);
+      if (!identitesDuRun.has(id)) identitesDuRun.set(id, seqE);
+      identitesParSeq.set(seqE, [...(identitesParSeq.get(seqE) || []), id]);
+    };
     const fichierExiste = existsSync(file);
     if (fichierExiste) {
       const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
@@ -524,6 +665,8 @@ function ecrireSousVerrou(file, objs) {
           const t = parsed.ts;
           const ms = instant(t);
           if (ms > tsMaxMs) { tsMaxMs = ms; tsMax = t; }
+          if (parsed.type === "run_open") identitesDuRun = new Map(); // TF-2424 : un run_open ouvre un run neuf
+          if (Number.isInteger(parsed.seq)) noterIdentite(parsed, parsed.seq);
           // Schéma ACTIF pour juger CETTE entrée (TF-1366 c) : celui du DERNIER run_open qui en
           // déclare un dans le fichier — même lecture que verify (schemaDeclare), au sens d'un
           // seul journal (un run de version ne change pas ce choix, pour rester simple).
@@ -598,11 +741,25 @@ function ecrireSousVerrou(file, objs) {
           throw new Error(`entrée refusée (schéma ${schemaActif}, type \`${obj.type}\`) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
         }
       }
+      // TF-2424 : une rectification de doublon désigne des doublons RÉELS, et une entrée identique à une autre du même run est refusée.
+      if (obj.type === TYPE_RECTIFICATION_DOUBLON) {
+        const defaut = problemeRectificationDoublon(obj, identitesParSeq, seq);
+        if (defaut) throw new Error(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-2424) — ${defaut}`);
+      }
       const { ts: _tsPayload, ...corps } = obj;
+      if (obj.type === "run_open") identitesDuRun = new Map(); // un run_open ouvre un run neuf : aucune entrée à répéter
+      const identite = empreinteDEntree(corps);
+      if (identitesDuRun.has(identite)) {
+        throw new Error(`entrée refusée : IDENTIQUE (hors seq et ts) à l'entrée seq ${identitesDuRun.get(identite)} du même run — un script rejoué écrit deux fois la même ` +
+          `entrée, et le ledger en ajout seul la garderait pour toujours (TF-2424 : 6 doublons, seq 835 à 840 pour 830 à 834). Si c'est bien un second événement, ` +
+          `le distinguer par un champ de contenu (\`ts_action\`, \`detail\`…) ; un doublon DÉJÀ écrit se désigne par une entrée \`${TYPE_RECTIFICATION_DOUBLON}\` ` +
+          `(\`entrees: [{seq, doublon_de, cause}]\`), jamais en réécrivant le ledger — rien n'est écrit`);
+      }
       const tsEntree = tsFourni || maintenant;
       lignes.push(JSON.stringify(horsRun
         ? { seq, ts: tsEntree, type: corps.type, ...corps, hors_run: true }   // TF-2245 : la marque du journal hors run (ledger.py)
         : { seq, ts: tsEntree, ...corps }));
+      noterIdentite(corps, seq);
       seqs.push(seq);
       seq++;
       const ms = instant(tsEntree);
@@ -816,8 +973,10 @@ if (cmd === "append") {
   // TF-1722 : une rectification de `forges_mobilisees` sans liste non vide ou sans `cause` est
   // refusée avant le verrou, quel que soit le schéma — le juge du pilot l'ignorerait.
   // TF-1319 (D-5 b) : même garde pour la qualification d'un refus du juge d'enclenchement.
+  // TF-2494 : même garde pour l'antériorité bornée que le message de R-42 prescrit.
   const champsTypeLibre = obj.type === TYPE_RECTIFICATION_FORGES ? CHAMPS_RECTIFICATION_FORGES
-    : obj.type === TYPE_QUALIFICATION_ENCLENCHEMENT ? CHAMPS_QUALIFICATION_ENCLENCHEMENT : null;
+    : obj.type === TYPE_QUALIFICATION_ENCLENCHEMENT ? CHAMPS_QUALIFICATION_ENCLENCHEMENT
+      : obj.type === TYPE_ANTERIORITE ? CHAMPS_ANTERIORITE : null;
   if (champsTypeLibre) {
     const manquants = [];
     for (const [champ, pourquoi, valider] of champsTypeLibre) {
@@ -827,7 +986,7 @@ if (cmd === "append") {
       if (probleme) manquants.push(`\`${champ}\` ${probleme} — ${pourquoi}`);
     }
     if (manquants.length) {
-      fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, ${obj.type === TYPE_RECTIFICATION_FORGES ? "TF-1722" : "TF-1319"}) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
+      fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, ${obj.type === TYPE_RECTIFICATION_FORGES ? "TF-1722" : obj.type === TYPE_ANTERIORITE ? "TF-2494" : "TF-1319"}) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
     }
   }
   // TF-1841 du pilot : `parties_mobilisees`, facultatif, est refusé s'il est présent et mal formé.
@@ -845,6 +1004,16 @@ if (cmd === "append") {
   // TF-1366 (d) : l'écho NOMME le type et les champs écrits — un « [OK] » muet sur le contenu ne
   // permet pas de relire, depuis la seule sortie de la commande, ce qui vient d'être ajouté.
   console.log(`[OK] entrée ${seq} ajoutée (type ${obj.type} ; champs : ${clesUtiles.join(", ")})`);
+  // TF-2425 : S90 rappelée À L'ÉCRITURE — un chiffre affirmé sans provenance ni mention « non mesuré » se relève à la source avant de rester
+  // pour toujours dans un journal en ajout seul. Rappel seul : l'entrée est écrite (S90 est avertissante), la sortie reste exit 0.
+  const sansReleve = chiffresAffirmes(obj);
+  if (sansReleve.length) {
+    const cites = sansReleve.slice(0, 5).map((x) => `« ${x.chiffre} » (${x.nature}, champ \`${x.champ || "?"}\`)`).join(", ");
+    console.log(`[RAPPEL S90] ${sansReleve.length} chiffre(s) affirmé(s) sans provenance : ${cites}${sansReleve.length > 5 ? `, … ${sansReleve.length - 5} autre(s)` : ""} — ` +
+      "un compte écrit au ledger se RELÈVE à la source (requête, `wc -l`, `git`, compte du script), jamais d'un affichage borné ni d'un souvenir ; " +
+      "à défaut, le dire « non recompté », « estimé » ou « rapporté ». Le 10/11/2026, 12 demandes, 7 autorisées et 12 jobs consignés d'après une liste tronquée " +
+      "valaient 11, 6 et 6 au recompte par requête : l'entrée fausse est restée au ledger (TF-2425, S90 d'oracle-synthese du pilot). L'entrée est écrite telle quelle.");
+  }
   // TF-2206, TF-2245 : une décision qui en remplace une autre dit ce que la première avait créé, et son sort.
   if (remplaceSansArtefacts(obj)) {
     console.log("[À PORTER] remplace sans artefacts_remplaces : lister ce que la décision remplacée avait créé (ressources, exigences, " +
@@ -997,6 +1166,19 @@ if (cmd === "append") {
     return { r: enAval.find((d) => d.ts_consigne === e.ts) || null, divergente: enAval[0] || null };
   };
 
+  // TF-2494 : l'ANTÉRIORITÉ BORNÉE déclarée — la plus récente des `anteriorite_ledger` valides (`avant` lisible,
+  // `cause` ≥ 20 caractères) fait foi, comme R-42 du pilot (TF-1203). Elle ne couvre ici que le saut de seq en avant.
+  let anterioriteBorneMs = NaN, anterioriteBorneAvant = "", anterioriteBorneCause = "";
+  for (const e of entrees) {
+    if (e.type !== TYPE_ANTERIORITE) continue;
+    const ms = instant(e.avant);
+    const cause = typeof e.cause === "string" ? e.cause.trim() : "";
+    if (!Number.isNaN(ms) && cause.length >= CAUSE_ANTERIORITE_MIN && (Number.isNaN(anterioriteBorneMs) || ms > anterioriteBorneMs)) {
+      anterioriteBorneMs = ms; anterioriteBorneAvant = e.avant; anterioriteBorneCause = cause;
+    }
+  }
+  const avantBorne = (ms) => !Number.isNaN(ms) && !Number.isNaN(anterioriteBorneMs) && ms < anterioriteBorneMs;
+
   // --- PASSE 1 bis : NUMÉROS PORTÉS PAR PLUSIEURS ENTRÉES (TF-1367, 21/09/2026). Fait mesuré :
   // deux sessions simultanées ont écrit dans le même journal d'un produit ; les seq 262, 263,
   // 265 et 266 y désignaient chacun deux entrées, noyées dans 57 ruptures anciennes par le seul
@@ -1023,14 +1205,38 @@ if (cmd === "append") {
   const rectifiesAppliques = new Set();
   const collisionsAppliquees = new Set(); // seq dont une collision est rectifiée
   const collisionsRectifiees = new Set(); // n° de ligne des entrées en collision rectifiées
+  const sautsCouverts = new Set();        // TF-2494 : seq qui suivent une lacune couverte (rectification ou antériorité)
   entrees.forEach((e, i) => {
     if (e.seq !== seqAttendu) {
       const quoi = `ligne ${i + 1} : seq ${e.seq} attendu ${seqAttendu}`;
       // Un seq en double ou en recul (sous le plus haut seq vu) nommé par une rectification en
-      // aval est [RECTIFIÉ] (TF-0794 du pilot) ; un saut en avant ou un seq non nommé reste FAIL.
+      // aval est [RECTIFIÉ] (TF-0794 du pilot) ; un seq non nommé reste FAIL. TF-2494 : un saut en
+      // avant (des seq jamais écrits) a ses deux voies — la rectification qui nomme le seq qui suit
+      // la lacune, ou l'antériorité bornée (`anteriorite_ledger`) — comme R-42 du pilot.
       const enCollision = Number.isInteger(e.seq) && e.seq < seqAttendu;
-      const { r, divergente } = enCollision ? couverture(e, i + 1) : { r: null, divergente: null };
-      if (r) {
+      const enSaut = Number.isInteger(e.seq) && e.seq > seqAttendu;
+      const { r, divergente } = enCollision || enSaut ? couverture(e, i + 1) : { r: null, divergente: null };
+      if (enSaut) {
+        const lacune = `seq ${seqAttendu}${e.seq - 1 > seqAttendu ? ` à ${e.seq - 1}` : ""} jamais écrit${e.seq - 1 > seqAttendu ? "s" : ""}`;
+        const nature = `saut en avant, ${lacune}`;
+        if (r) {
+          r.applique = true;
+          sautsCouverts.add(e.seq);
+          console.log(`[RECTIFIÉ] ${quoi} (${nature}) — déclaré par la rectification du seq ${r.parSeq}, ` +
+            `heure réelle estimée ${r.ts_reel_estime} : ${r.cause}`);
+        } else if (avantBorne(instant(e.ts))) {
+          sautsCouverts.add(e.seq);
+          console.log(`[ANTÉRIORITÉ] ${quoi} (${nature}) — antérieur au ${new Date(anterioriteBorneMs).toISOString()} ` +
+            `déclaré (${TYPE_ANTERIORITE}, avant ${anterioriteBorneAvant}) : ${anterioriteBorneCause.slice(0, 90)}`);
+        } else if (divergente) {
+          ecartsIntegrite.push(`${quoi} (${nature}, append-only rompu) — la rectification du seq ${divergente.parSeq} ` +
+            `déclare \`ts_consigne\` ${divergente.ts_consigne}, l'entrée porte ${e.ts} : une déclaration ` +
+            `qui ne correspond pas à l'histoire ne couvre rien`);
+        } else {
+          ecartsIntegrite.push(`${quoi} (${nature}, append-only rompu) — remède : une \`${TYPE_RECTIFICATION}\` ultérieure ` +
+            `dont \`entrees[]\` nomme le seq ${e.seq} avec son \`ts_consigne\`, ou une \`${TYPE_ANTERIORITE}\` (\`avant\`, \`cause\` ≥ ${CAUSE_ANTERIORITE_MIN} caractères) (TF-2494)`);
+        }
+      } else if (r) {
         r.applique = true;
         collisionsAppliquees.add(e.seq);
         collisionsRectifiees.add(i + 1);
@@ -1092,6 +1298,50 @@ if (cmd === "append") {
       lignesDup.join(", ")} — deux écrivains sans verrou commun`;
     if (lignesDup.slice(1).every((n) => collisionsRectifiees.has(n))) console.log(`[RECTIFIÉ] ${doublon}, collision déclarée`);
     else ecartsDoublons.push(doublon);
+  }
+  // TF-2424 : les DOUBLONS — une entrée identique (hors seq, ts et marque hors run) à une autre du MÊME run. `append` les refuse
+  // désormais ; ceux DÉJÀ écrits se désignent par une `rectification_doublon` ultérieure ([RECTIFIÉ], vérifiée : la copie et sa source
+  // doivent être identiques), sinon ils se DÉCLARENT ([DOUBLON], non bloquant : on ne met jamais en échec un ledger existant).
+  const identites = entrees.map((e) => empreinteDEntree(e));
+  const ligneDuSeq = (s) => entrees.findIndex((e) => e.seq === s);
+  const doublonsDeclares = new Set(); // n° de ligne des copies désignées
+  entrees.forEach((e, i) => {
+    if (e.type !== TYPE_RECTIFICATION_DOUBLON) return;
+    const ou = `ligne ${i + 1} (${TYPE_RECTIFICATION_DOUBLON}, seq ${e.seq})`;
+    if (!Array.isArray(e.entrees) || e.entrees.length === 0) {
+      ecartsRectif.push(`${ou} : \`entrees\` absent ou vide — une rectification qui ne désigne aucun doublon ne rectifie rien`);
+      return;
+    }
+    for (const d of e.entrees) {
+      const incomplet = d === null || typeof d !== "object" || ["seq", "doublon_de", "cause"].some((c) => d[c] === undefined || d[c] === null || String(d[c]).trim() === "");
+      if (incomplet) { ecartsRectif.push(`${ou} : déclaration incomplète — \`seq\`, \`doublon_de\` et \`cause\` sont dus dans ${JSON.stringify(d)}`); continue; }
+      const copie = ligneDuSeq(d.seq), source = ligneDuSeq(d.doublon_de);
+      if (!(d.doublon_de < d.seq && copie > -1 && source > -1 && copie < i && source < copie)) {
+        ecartsRectif.push(`${ou} : déclare le seq ${d.seq} doublon du seq ${d.doublon_de}, mais l'un n'existe pas ou n'est pas ANTÉRIEUR à la rectification (la source précède la copie, la copie précède la rectification)`);
+        continue;
+      }
+      if (identites[copie] !== identites[source]) {
+        ecartsRectif.push(`${ou} : déclare le seq ${d.seq} doublon du seq ${d.doublon_de}, mais les deux entrées DIFFÈRENT (hors seq et ts) — une entrée distincte ne se désigne pas comme doublon`);
+        continue;
+      }
+      doublonsDeclares.add(copie + 1);
+      console.log(`[RECTIFIÉ] doublon — le seq ${d.seq} est identique au seq ${d.doublon_de} (hors seq et ts), déclaré par la rectification du seq ${e.seq} : ${d.cause}`);
+    }
+  });
+  const doublonsNonDeclares = [];
+  {
+    let vus = new Map(); // identité -> seq de la première entrée du run
+    entrees.forEach((e, i) => {
+      if (e.type === "run_open") vus = new Map();
+      if (vus.has(identites[i])) { if (!doublonsDeclares.has(i + 1)) doublonsNonDeclares.push({ seq: e.seq, de: vus.get(identites[i]) }); }
+      else vus.set(identites[i], e.seq);
+    });
+  }
+  if (doublonsNonDeclares.length) {
+    const lesPremiers = doublonsNonDeclares.slice(0, 5).map((x) => `${x.seq} = ${x.de}`).join(", ");
+    console.log(`[DOUBLON] ${doublonsNonDeclares.length} entrée(s) identique(s) (hors seq et ts) à une autre du même run, non désignée(s) : seq ${lesPremiers}` +
+      `${doublonsNonDeclares.length > 5 ? `, … ${doublonsNonDeclares.length - 5} autre(s)` : ""} — déjà écrite(s), non réécrite(s) : les désigner par une entrée \`${TYPE_RECTIFICATION_DOUBLON}\` ` +
+      "(`entrees: [{seq, doublon_de, cause}]`) (TF-2424)");
   }
   const ecarts = [...ecartsDoublons, ...ecartsRectif, ...ecartsIntegrite];
 
@@ -1217,10 +1467,15 @@ if (cmd === "append") {
     ? ` · ${collisionsRectifiees.size} collision(s) de seq DÉCLARÉE(S) et rectifiée(s) (seq ${
       [...collisionsAppliquees].join(", ")})`
     : "";
+  const sauts = sautsCouverts.size
+    ? ` · ${sautsCouverts.size} saut(s) de seq en avant DÉCLARÉ(S) et couvert(s) (seq ${[...sautsCouverts].join(", ")})`
+    : "";
+  const doublons = (doublonsDeclares.size ? ` · ${doublonsDeclares.size} doublon(s) DÉCLARÉ(S) par rectification_doublon` : "") +
+    (doublonsNonDeclares.length ? ` · ${doublonsNonDeclares.length} doublon(s) non déclaré(s) (non bloquant)` : "");
   const sansContenuDit = !sansContenuBloquant && sansContenu.length
     ? ` · ${sansContenu.length} entrée(s) SANS CONTENU (non bloquant, schéma ${schemaDeclare || "absent"})`
     : "";
-  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sansContenuDit}${declaresDit}`);
+  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sauts}${doublons}${sansContenuDit}${declaresDit}`);
 } else {
   fail("commande inconnue (append | consigner | verify)");
 }

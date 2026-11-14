@@ -1,0 +1,9 @@
+{
+  "manifeste": "versions-livrees",
+  "note": "fixture rouge de F1 nommé (TF-2501) — la tolérance nomme la version montée 1.1.0 alors que le montage porte 1.2.0 : le retard a bougé, la dette nommée ne le couvre plus",
+  "skills_root": "etat-forge-tree-red/skills",
+  "retards_installation_toleres": {
+    "experts-forge": { "installee": "1.1.0", "motif": "propagation vers l'installation du poste suspendue jusqu'à la décision humaine d'oracle-skills --appliquer" }
+  },
+  "skills": { "experts-forge": { "version": "1.3.0" } }
+}

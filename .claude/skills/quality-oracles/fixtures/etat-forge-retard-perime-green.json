@@ -1,0 +1,9 @@
+{
+  "manifeste": "versions-livrees",
+  "note": "fixture verte de F1 nommé (TF-2501), tolérance périmée — le montage a rattrapé la version livrée (1.3.0) et la dette y figure encore : PASS, avertissement qui demande de la retirer",
+  "skills_root": "etat-forge-tree-green/skills",
+  "retards_installation_toleres": {
+    "experts-forge": { "installee": "1.2.0", "motif": "propagation vers l'installation du poste suspendue jusqu'à la décision humaine d'oracle-skills --appliquer" }
+  },
+  "skills": { "experts-forge": { "version": "1.3.0" } }
+}

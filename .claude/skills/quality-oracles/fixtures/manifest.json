@@ -1965,6 +1965,94 @@
    "provenance": "TF-2475, 13/11/2026 — seconde voie de F1-ter : une dette de version nulle connue se NOMME dans `sans_version_toleres` du manifeste (6 skills du dépôt de forge-agents au 13/11/2026 : ameliore-un-skill, data-quality-auditor, digit-ai-communication, digit-ai-propale-review, la-barre, write-an-expert) ; le verdict tient mais l'avertissement sort, et la même version nulle, non nommée, reste refusée (la rouge est celle de etat-forge-version-nulle). Écart à la lettre de la décision du pilot (« refuse toute version null ») : sans cette liste, six skills hors du lot rougiraient le manifeste réel."
   },
   {
+   "nom": "etat-forge-retard-nomme",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{fixture}"
+   ],
+   "red": "etat-forge-red.json",
+   "green": "etat-forge-retard-nomme-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "F1 — retard d'installation",
+    "retards_installation_toleres"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "retard NOMMÉ",
+    "retards_installation_toleres"
+   ],
+   "provenance": "TF-2501, 14/11/2026 — le 13/11/2026 F1 rendait FAIL sur le manifeste réel pour 5 skills installés en retard sur leur source (experts-forge, forge-agents, oeil-critique, plan-d-amelioration, prompt-analyzer-l99), et la seule issue était de propager par oracle-skills du pilot. Un retard qui reste se NOMME dans `retards_installation_toleres` du manifeste, avec la version montée visée et un motif de 20 caractères au moins : le verdict tient, l'avertissement sort. La rouge est le cas du 23/07/2026 (etat-forge-red.json) : le même retard, non nommé, reste refusé, et le message dit les deux issues."
+  },
+  {
+   "nom": "etat-forge-retard-nomme-autre-version",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{fixture}"
+   ],
+   "red": "etat-forge-retard-nomme-autre-red.json",
+   "green": "etat-forge-retard-nomme-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "la tolérance nommée vise la version montée 1.1.0",
+    "un retard autre que celui nommé reste refusé"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2501, 14/11/2026 — la dette nommée ne couvre que le retard qu'elle nomme : la rouge nomme la version montée 1.1.0 alors que le montage porte 1.2.0 (le retard a bougé), la verte nomme la version réellement montée."
+  },
+  {
+   "nom": "etat-forge-retard-nomme-sans-motif",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{fixture}"
+   ],
+   "red": "etat-forge-retard-nomme-sans-motif-red.json",
+   "green": "etat-forge-retard-nomme-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "pas de motif d'au moins 20 caractères",
+    "une tolérance sans motif ne couvre rien"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2501, 14/11/2026 — une tolérance sans motif est un mot qui éteint un contrôle : la rouge nomme le retard avec un motif de 9 caractères, la verte avec un motif qui dit pourquoi le retard reste."
+  },
+  {
+   "nom": "etat-forge-retard-perime",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-etat-forge.mjs",
+    "{fixture}"
+   ],
+   "red": "etat-forge-red.json",
+   "green": "etat-forge-retard-perime-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "tolérance de retard périmée",
+    "la retirer de la liste"
+   ],
+   "provenance": "TF-2501, 14/11/2026 — une tolérance dont le montage a rattrapé le livré sort en avertissement (la liste ne fait que se vider) : la verte porte la tolérance de experts-forge sur un montage aligné (etat-forge-tree-green, 1.3.0 livré et monté) ; la rouge est le retard non nommé de etat-forge-red.json."
+  },
+  {
    "nom": "etat-forge-ledger",
    "cmd": [
     "node",
@@ -2879,6 +2967,80 @@
     "PASS"
    ],
    "provenance": "TF-2163, Produit-86 lot 20261104a RA-2, 05/11/2026 — la rouge porte les trois formes (écriture par un helper du fichier, écriture et appel dans un with sqlite3.connect, exemption sans raison) ; la verte joue les gestes du message (commit avant l'appel, appel avant l'écriture, lecture seule, sortie de with) et une exemption déclarée avec sa raison."
+  },
+  {
+   "nom": "serveur-de-banc-mjs",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-serveur-de-banc.mjs",
+    "{fixture}"
+   ],
+   "red": "serveur-de-banc-red.mjs",
+   "green": "serveur-de-banc-green.mjs",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "serveur local (wrangler dev) lancé en arrière-plan",
+    "sans AUCUN arrêt plus bas dans ce fichier",
+    "l'exemption « serveur-banc-ok » n'a pas de raison d'au moins 8 caractères"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "EXEMPTÉ par déclaration"
+   ],
+   "provenance": "TF-2414, Produit-84 lot 20261110a RU-17, 14/11/2026 — la rouge est le banc du 09/11/2026 (wrangler pages dev en arrière-plan par spawn, jamais arrêté ; un second serveur à exemption sans raison) ; la verte joue les gestes du message : l'arrêt dans un try … finally, et l'exemption déclarée avec sa raison."
+  },
+  {
+   "nom": "serveur-de-banc-sh",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-serveur-de-banc.mjs",
+    "{fixture}"
+   ],
+   "red": "serveur-de-banc-red.sh",
+   "green": "serveur-de-banc-green.sh",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "serveur local (wrangler dev) lancé en arrière-plan",
+    "serveur local (python -m http.server) lancé en arrière-plan",
+    "sans AUCUN arrêt plus bas dans ce fichier"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "EXEMPTÉ par déclaration"
+   ],
+   "provenance": "TF-2414, 14/11/2026 — la rouge lance deux serveurs par `&` et rend la main sans les arrêter ; la verte joue `trap 'kill $PID' EXIT` pour le premier et l'exemption déclarée pour le second."
+  },
+  {
+   "nom": "serveur-de-banc-ps1",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-serveur-de-banc.mjs",
+    "{fixture}"
+   ],
+   "red": "serveur-de-banc-red.ps1",
+   "green": "serveur-de-banc-green.ps1",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "serveur local (wrangler dev) lancé en arrière-plan",
+    "sans AUCUN arrêt plus bas dans ce fichier"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_green": [
+    "1 serveur(s) lancé(s) en arrière-plan"
+   ],
+   "provenance": "TF-2414, 14/11/2026 — le cas du 09/11/2026 sous PowerShell : wrangler pages dev lancé par Start-Process, jamais arrêté ; la verte l'arrête par Stop-Process dans un finally."
   },
   {
    "nom": "a11y-transition",
