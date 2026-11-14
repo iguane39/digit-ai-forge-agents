@@ -2,7 +2,7 @@
 name: experts-forge
 description: Analyse la demande et complète la réponse en cours par des contributions d'experts de domaine (data, interop-archi…) — annotations ancrées dans un corpus résolu, pool symétrique amont du pool de juges quality-oracles. Chaque expert est un artefact déclaratif (fiche 6 champs : domaine, déclencheurs, corpus, rubrique, frontière, fixture), admis au registre seulement si sa contribution a été jugée matériellement différente d'une baseline (loi : « un expert qui ne change pas matériellement une réponse n'est pas un expert »). Use when / déclencher quand une demande matche les declencheurs d'une fiche en statut ok du registre (analyse de flux de données, import/export, intégration, synchronisation entre systèmes, interopérabilité, dépendance éditeur), ou pour consulter, rejouer ou faire admettre une fiche expert. Ne pas déclencher pour juger un livrable fini (→ quality-oracles), exécuter un workflow multi-agents (→ skill méta), dessiner un schéma (→ digit-ai-schemas), ou auditer un dataset (→ data-quality-auditor).
 metadata:
-  version: "1.8.1"
+  version: "1.8.2"
 ---
 
 # experts-forge — pool de contributeurs par domaine
