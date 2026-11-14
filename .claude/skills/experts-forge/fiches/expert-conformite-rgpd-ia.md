@@ -11,7 +11,7 @@ Version 1.0.0 — 24/07/2026 — Statut registre : **ok** — admise le 24/07/20
 `conformite-rgpd-ia` — conformité des traitements IA sur données personnelles : bases légales, DPA et chaîne de sous-traitance LLM, localisation/transferts, minimisation et conservation, qualification AI Act, droits des personnes, points RSSI/PSSI. Niveau : vigilances et questions à instruire — jamais un avis juridique.
 
 ## 2. declencheurs
-- `content_patterns` : `RGPD|AI Act|données personnelles|DPA|CNIL|sous-traitant ultérieur|hébergement UE|souveraineté|conformité IA|PSSI|RSSI|base légale|DPIA`
+- `content_patterns` : `RGPD|AI Act|données personnelles|\bDPA\b|CNIL|sous-traitant ultérieur|hébergement UE|souveraineté|conformité IA|PSSI|RSSI|base légale|DPIA`
 - Types de demandes : cadrage conformité d'un traitement IA sur données personnelles, vigilances DPA/localisation/AI Act d'une architecture
 - Ne pas router : architecture data/plateforme (→ data-platform-cloud, data) ; gouvernance de l'écosystème Microsoft (→ copilot-m365) ; accessibilité (→ accessibilite) ; contrôle WCAG outillé (→ oracle a11y).
 

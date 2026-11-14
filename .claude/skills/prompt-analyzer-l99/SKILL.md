@@ -5,8 +5,8 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.10.0"
-  updated: "2026-11-06"
+  version: "2.11.0"
+  updated: "2026-11-14"
 ---
 
 # Prompt Analyzer L99
@@ -93,6 +93,15 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    contrat qui ne nommait que `check_html.py` a laissé sortir un Markdown à 9 défauts de forme,
    poussé et promu avant que l'oracle ne le voie. Détail : `references/couches.md`, section
    « Contrat de sortie : l'oracle de forme de chaque format produit ».
+12. **Restitution dans un projet de la Factory : un fichier, préjugé avant affichage** (TF-2551) : dans
+   un tel projet (même détection qu'au point 9), la revue L99 en 8 chapitres est une fin de tour que
+   le hook de fin de tour juge (blocs de restitution, préjugement). Elle s'**écrit d'abord dans un
+   fichier** (le type « Revue » du point 9), se **préjuge** avec `node oracles/hook-restitution.mjs
+   --prejuger <fichier>` (chez un produit : `node forge/hooks/factory.mjs restitution --prejuger
+   <fichier>`), se corrige jusqu'à l'exit 0, et ne s'**affiche qu'après**, telle quelle. Le fait : le
+   14/11/2026, chez un produit, une revue L99 en 8 chapitres affichée sans fichier ni préjugement a été
+   refusée par le hook de fin de tour (S1, S4) faute de blocs de restitution, et ce SKILL.md ne le
+   rappelait pas. Hors de la Factory, aucune restitution n'est prescrite ici.
 
 ## Les 8 couches (vue d'ensemble)
 

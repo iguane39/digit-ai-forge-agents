@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.37.0"
+  version: "2.38.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -164,6 +164,11 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   la version de l'en-tête de `registre-oracles.md` est celle du JSON (V1), le script de chaque entrée du JSON est nommé
   dans la vue (V2), chaque ligne de tableau de la vue a les colonnes de son en-tête (V3, une barre verticale s'écrit `\|`).
   Jouée par la recette, dans les deux sens ; ce n'est pas un oracle de livrable, il n'a pas d'entrée au registre.
+- **Alertes de dépendances** — `node scripts/releve-alertes-dependances.mjs (--alertes <relevé gh api> | --depot <propriétaire/nom>) [--declaration <fichier>] [--json]`
+  (TF-2539) : sépare les alertes que l'hébergeur signale sur les **fixtures volontairement vulnérables** déclarées à `references/fixtures-vulnerables.json`
+  (chemin, date, motif ; les fixtures rouges de l'oracle SCA, qui ne se « corrigent » pas) de celles qui visent une **dépendance réelle**, à mettre à jour
+  sous recette verte. Exit 0 aucune dépendance réelle, 1 au moins une, 2 source ou déclaration illisible (jamais un « zéro » sur ce qu'on n'a pas lu).
+  Le 14/11/2026 : 35 alertes sur ce dépôt, les 35 sur les cinq fixtures déclarées. Jouée par la recette, dans les deux sens ; pas d'entrée au registre.
 - **Où vivent les journaux** — sous un segment de livraison (`output/`, `old/`, `dist/`, `build/`), les journaux
   sortent AU-DESSUS du premier segment rencontré, dans un `.oracles/` qui rejoue l'arborescence relative.
   Corrigé le 22/08/2026 (TF-0501) : l'intention « ce que le client reçoit ne contient pas les traces de son audit »

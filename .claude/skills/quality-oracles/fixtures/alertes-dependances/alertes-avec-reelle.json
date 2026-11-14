@@ -1,0 +1,30 @@
+[
+  {
+    "number": 1,
+    "state": "open",
+    "dependency": { "package": { "ecosystem": "pip", "name": "requests" }, "manifest_path": ".claude/skills/quality-oracles/fixtures/sca-red/requirements.txt", "scope": "runtime" },
+    "security_advisory": { "ghsa_id": "GHSA-fixt-0001-aaaa", "severity": "high" },
+    "security_vulnerability": { "severity": "high", "first_patched_version": { "identifier": "2.31.0" } }
+  },
+  {
+    "number": 4,
+    "state": "open",
+    "dependency": { "package": { "ecosystem": "pip", "name": "pillow" }, "manifest_path": ".claude/skills/digit-ai-schemas/scripts/pyproject.toml", "scope": "runtime" },
+    "security_advisory": { "ghsa_id": "GHSA-reel-0004-dddd", "severity": "critical" },
+    "security_vulnerability": { "severity": "critical", "first_patched_version": { "identifier": "10.3.0" } }
+  },
+  {
+    "number": 5,
+    "state": "open",
+    "dependency": { "package": { "ecosystem": "pip", "name": "requests" }, "manifest_path": ".claude/skills/quality-oracles/fixtures/sca-red-bis/requirements.txt", "scope": "runtime" },
+    "security_advisory": { "ghsa_id": "GHSA-fixt-0005-eeee", "severity": "medium" },
+    "security_vulnerability": { "severity": "medium", "first_patched_version": null }
+  },
+  {
+    "number": 6,
+    "state": "dismissed",
+    "dependency": { "package": { "ecosystem": "npm", "name": "lodash" }, "manifest_path": "package.json", "scope": "runtime" },
+    "security_advisory": { "ghsa_id": "GHSA-reel-0006-ffff", "severity": "high" },
+    "security_vulnerability": { "severity": "high", "first_patched_version": { "identifier": "4.17.21" } }
+  }
+]

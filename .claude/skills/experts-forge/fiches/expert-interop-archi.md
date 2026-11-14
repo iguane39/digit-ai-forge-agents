@@ -8,7 +8,7 @@ Version 1.0.0 — 21/07/2026 — Statut registre : **ok** (verdict MATERIEL, Sé
 
 ## 2. declencheurs
 
-- `content_patterns` : `API|connecteur|webhook|intégration|interfaçage|interopérabilité|EDI|batch|RPA|synchronisation|passerelle|automatis`
+- `content_patterns` : `\bAPIs?\b|connecteur|webhook|intégration|interfaçage|interopérabilité|\bEDI\b|batch|\bRPA\b|synchronisation|passerelle|automatis`
 - Types de demandes : choix ou évaluation d'un canal d'intégration ; analyse des capacités d'échange d'une solution du marché ; architecture d'un pont entre applications ; évaluation d'une dépendance éditeur.
 - Ne pas router : dessin du schéma d'architecture (→ `digit-ai-schemas`), qualité des données transportées (→ `data`).
 

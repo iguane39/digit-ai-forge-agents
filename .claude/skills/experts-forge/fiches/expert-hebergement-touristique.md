@@ -11,7 +11,7 @@ Version 1.0.0 — 24/07/2026 — Statut registre : **ok** — admise le 24/07/20
 `hebergement-touristique` — exploitation de meublés de tourisme : régimes d'exploitation (LMNP réel, para-hôtellerie, TVA), classement et taxe de séjour, distribution (channel managers, OTA, commissions, transfert des comptes et avis), obligations d'accueil et de déclaration, politique tarifaire. Vigilances et questions — jamais de conseil fiscal individualisé.
 
 ## 2. declencheurs
-- `content_patterns` : `meublé de tourisme|gîte|chambre d'hôtes|channel manager|Airbnb|Booking|LMNP|para-hôtellerie|taxe de séjour|location saisonnière|OTA`
+- `content_patterns` : `meublé de tourisme|gîte|chambre d'hôtes|channel manager|Airbnb|Booking|LMNP|para-hôtellerie|taxe de séjour|location saisonnière|\bOTA\b`
 - Types de demandes : choix d'outillage de distribution, cadrage d'exploitation ou de reprise de meublés, arbitrages de régime
 - Ne pas router : acquisition du bien ou du fonds (promesses, ventilation du prix → acquisition-fonds-immobilier, V3), simulateurs chiffrés (→ oracle simulateur-js), production du site de réservation (→ digit-ai-page-html).
 

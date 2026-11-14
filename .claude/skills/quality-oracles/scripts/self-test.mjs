@@ -2004,6 +2004,180 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-2340 (décision du 10/11/2026) — LA PORTE NE JUGE PAS UN DÉPÔT SUR SON PROPRE NOM.
+//
+// LE FAIT PAYÉ : le 16/09, le nom du dépôt d'un produit est entré à la table des produits, et C5 a
+// rendu 200 constats bloquants sur les fichiers de ce produit alors qu'il rendait PASS le matin même ;
+// le hameçon pre-push aurait refusé tout envoi. Un dépôt écrit son propre nom partout. La clé de la
+// table qui est le nom du dépôt jugé est exemptée pour ses fichiers, noms de fichiers et messages ;
+// la même clé reste jugée dans un autre dépôt. Nom INVENTÉ, dépôts jetables (même raison que TF-0820).
+//   VERT  : le dépôt dont le dossier porte le nom, qui l'écrit partout → PASS, exemption dite au non_juge ;
+//   VERT  : un dépôt à dossier d'un autre nom mais dont le distant porte le nom (arbre lié) → PASS ;
+//   ROUGE : le même contenu dans un dépôt d'un autre nom → FAIL C5 (l'exemption ne fuit pas) ;
+//   ROUGE : dans le dépôt éponyme, une autre clé de la table, y compris `<nom>-suite` → FAIL C5 sur elle
+//           seule (l'exemption est celle de SON nom, comparé entier, pas d'un préfixe).
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-emet-'));
+  try {
+    const NOM = 'PortailBidule-Machin';
+    const AUTRE = 'ElementTiers-Quelconque';
+    const SUITE = 'PortailBidule-Machin-Suite';
+    const tables = path.join(tmp, 'tables');
+    fs.mkdirSync(tables);
+    const tProduits = path.join(tables, '_produits-pseudonymes.json');
+    const tClients = path.join(tables, '_noms-interdits.json');
+    fs.writeFileSync(tProduits, JSON.stringify({ produits: { [NOM]: 'Produit-97', [AUTRE]: 'Produit-96', [SUITE]: 'Produit-95' } }), 'utf8');
+    fs.writeFileSync(tClients, JSON.stringify({ noms: ['Zorglub'], identifiants: [], sigles: [] }), 'utf8');
+    const depots = path.join(tmp, 'depots');
+    fs.mkdirSync(depots);
+    const batir = (dossier, lignes, message, distant) => {
+      const r = path.join(depots, dossier);
+      fs.mkdirSync(r);
+      fs.writeFileSync(path.join(r, 'README.md'), lignes.join('\n') + '\n', 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', r, ...a], { encoding: 'utf8' });
+      g('init', '-q');
+      g('config', 'user.email', 'banc@local');
+      g('config', 'user.name', 'banc');
+      if (distant) g('remote', 'add', 'origin', distant);
+      g('add', '-A');
+      g('commit', '-q', '-m', message);
+      return r;
+    };
+    const SES_LIGNES = [`# ${NOM}`, '', '« portail bidule machin » en toutes lettres, comme un dépôt parle de lui-même.'];
+    const MESSAGE = `${NOM} : première version`;
+    const eponyme = batir(NOM, SES_LIGNES, MESSAGE);
+    const etranger = batir('autre-depot', SES_LIGNES, MESSAGE);
+    const lie = batir('copie-de-travail', SES_LIGNES, MESSAGE, `https://exemple.invalid/banc/${NOM.toLowerCase()}.git`);
+    // Dépôt éponyme (dossier = NOM) qui cite en plus deux AUTRES clés de la table.
+    const melangeEponyme = (() => {
+      const r = path.join(depots, 'melange-hote');
+      fs.mkdirSync(r);
+      const sous = path.join(r, NOM);
+      fs.mkdirSync(sous);
+      fs.writeFileSync(path.join(sous, 'README.md'), [`# ${NOM}`, `cite ${AUTRE} ici`, `et ${SUITE} là`].join('\n') + '\n', 'utf8');
+      const g = (...a) => spawnSync('git', ['-C', sous, ...a], { encoding: 'utf8' });
+      g('init', '-q'); g('config', 'user.email', 'banc@local'); g('config', 'user.name', 'banc');
+      g('add', '-A'); g('commit', '-q', '-m', MESSAGE);
+      return sous;
+    })();
+
+    const envNu = { ...process.env };
+    delete envNu.FORGE_PRODUITS_PSEUDO;
+    delete envNu.FORGE_NOMS_INTERDITS;
+    envNu.FORGE_ROOT = tmp;
+    const jouer = (repo) => {
+      const a = [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits];
+      const r = spawnSync(process.execPath, a, { encoding: 'utf8', timeout: 180000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const resume = (j) => (j.findings || []).map((f) => f.regle + ' ' + f.where + ' ' + f.msg).join(' | ');
+
+    const je = jouer(eponyme);
+    if (!je) ko('TF-2340 éponyme : sortie de l oracle inexploitable');
+    else if (je.verdict !== 'PASS') ko(`TF-2340 éponyme : le dépôt accusé de son propre nom (${je.verdict}) — ${resume(je)}`);
+    else if (!/C5 : exemption TF-2340/.test((je.non_juge || []).join(' '))) ko('TF-2340 éponyme : PASS sans que l exemption soit DITE au non_juge — un angle réduit en silence se lit comme vert');
+    else ok('TF-2340 éponyme : le dépôt dont le dossier porte le nom, qui l écrit en fichier, en variante et en message → PASS, exemption dite au non_juge');
+
+    // Le hameçon commit-msg juge le SEUL message (`--message`) : même exemption, même limite.
+    const fichierMessage = path.join(tmp, 'message.txt');
+    fs.writeFileSync(fichierMessage, `${NOM} : correctif du connecteur\n`, 'utf8');
+    const jouerMessage = (repo) => {
+      const a = [path.join(SKILLDIR, 'scripts', 'oracle-nom-client-publie.mjs'), repo,
+        '--referentiel=' + tClients, '--produits=' + tProduits, '--message=' + fichierMessage];
+      const r = spawnSync(process.execPath, a, { encoding: 'utf8', timeout: 180000, env: envNu });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const jme = jouerMessage(eponyme), jmx = jouerMessage(etranger);
+    if (!jme || !jmx) ko('TF-2340 --message : sortie de l oracle inexploitable');
+    else if (jme.verdict !== 'PASS') ko(`TF-2340 --message : le dépôt éponyme est accusé de son nom dans son message de commit (${jme.verdict})`);
+    else if (jmx.verdict !== 'FAIL') ko(`TF-2340 --message : le même message dans un dépôt d un autre nom doit échouer (${jmx.verdict})`);
+    else ok('TF-2340 --message : le nom du dépôt dans son propre message de commit → PASS, le même message dans un autre dépôt → FAIL');
+
+    const jl = jouer(lie);
+    if (!jl) ko('TF-2340 arbre lié : sortie de l oracle inexploitable');
+    else if (jl.verdict !== 'PASS') ko(`TF-2340 arbre lié : un dossier d un autre nom, au distant éponyme, est accusé (${jl.verdict}) — ${resume(jl)}`);
+    else ok('TF-2340 arbre lié : dossier d un autre nom mais distant au nom du dépôt → PASS (l identité se lit aussi au distant)');
+
+    const jx = jouer(etranger);
+    const c5x = jx ? (jx.findings || []).filter((f) => f.regle === 'C5') : [];
+    if (!jx) ko('TF-2340 étranger : sortie de l oracle inexploitable');
+    else if (jx.verdict !== 'FAIL' || c5x.length < 2) ko(`TF-2340 étranger : le même contenu dans un dépôt d un autre nom doit échouer (verdict ${jx.verdict}, ${c5x.length} constat(s) C5) — l exemption fuit`);
+    else ok(`TF-2340 étranger : le même contenu, dépôt d un autre nom → FAIL, ${c5x.length} constat(s) C5 (l exemption est celle du seul dépôt éponyme)`);
+
+    const jm = jouer(melangeEponyme);
+    const c5m = jm ? (jm.findings || []).filter((f) => f.regle === 'C5') : [];
+    if (!jm) ko('TF-2340 autres clés : sortie de l oracle inexploitable');
+    else if (jm.verdict !== 'FAIL') ko(`TF-2340 autres clés : dans le dépôt éponyme, une autre clé de la table ne fait plus échouer la porte (${jm.verdict})`);
+    else if (!c5m.some((f) => f.msg.includes(AUTRE)) || !c5m.some((f) => f.msg.includes(SUITE)))
+      ko(`TF-2340 autres clés : les clés « ${AUTRE} » et « ${SUITE} » devaient être jugées toutes les deux — ${resume(jm)}`);
+    else if (c5m.some((f) => f.msg.includes('« ' + NOM + ' »')))
+      ko('TF-2340 autres clés : le NOM du dépôt est encore accusé dans son propre dépôt — ' + resume(jm));
+    else ok(`TF-2340 autres clés : dans le dépôt éponyme, « ${AUTRE} » et « ${SUITE} » restent jugées (${c5m.length} constat(s) C5), le nom du dépôt non`);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-2539 (14/11/2026) — LES ALERTES DE DÉPENDANCES SE LISENT, ET LES FIXTURES VOLONTAIREMENT VULNÉRABLES SE DÉCLARENT.
+//
+// LE FAIT : l'hébergeur signale 35 alertes sur la branche par défaut de ce dépôt, à chaque envoi, et aucun contrôle ne les lisait. Relevées
+// en lecture (`gh api`, 14/11/2026), les 35 visaient les cinq fixtures rouges de l'oracle SCA, qui portent des versions vulnérables EXPRÈS.
+// `references/fixtures-vulnerables.json` les déclare, `scripts/releve-alertes-dependances.mjs` les distingue des dépendances réelles.
+// Deux sens, hors ligne (des relevés d'API figés sous fixtures/alertes-dependances/, jamais le réseau) :
+//   VERT  : des alertes qui ne visent que des fixtures déclarées → exit 0, la distinction dite ;
+//   ROUGE : une alerte sur une dépendance réelle, une alerte sur un dossier VOISIN d'une fixture déclarée (`sca-red-bis`), une déclaration
+//           sans motif, une source illisible ou absente → exit 1 (réelles nommées) ou 2 (INCONCLUSIF), jamais un « zéro » qui n'a rien lu.
+{
+  const racineDepot = path.resolve(SKILLDIR, '..', '..', '..');
+  const releve = path.join(SKILLDIR, 'scripts', 'releve-alertes-dependances.mjs');
+  const dossierAlertes = path.join(SKILLDIR, 'fixtures', 'alertes-dependances');
+  const jouer = (...a) => spawnSync(process.execPath, [releve, ...a], { encoding: 'utf8', timeout: 60000 });
+  const declaration = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'fixtures-vulnerables.json'), 'utf8'));
+  const declarees = (declaration.fixtures || []).map((f) => String(f.chemin).replace(/\/+$/, ''));
+  const dossiersRouges = fs.readdirSync(path.join(SKILLDIR, 'fixtures')).filter((n) => /^sca(-.*)?-red$/.test(n))
+    .map((n) => '.claude/skills/quality-oracles/fixtures/' + n);
+  const nonDeclarees = (liste, dossiers) => dossiers.filter((d) => !liste.includes(d));
+
+  const incompletes = (declaration.fixtures || []).filter((f) => !f.chemin || !f.motif || !/^\d{4}-\d{2}-\d{2}$/.test(f.date || ''));
+  const absentes = declarees.filter((d) => !fs.existsSync(path.join(racineDepot, d)));
+  if (!declarees.length || incompletes.length || absentes.length) ko(`TF-2539 déclaration : liste vide ou incomplète (${incompletes.length} entrée(s) sans chemin, motif ou date) ou chemin inexistant (${absentes.join(', ') || 'aucun'})`);
+  else if (nonDeclarees(declarees, dossiersRouges).length) ko('TF-2539 déclaration : fixture(s) rouge(s) de l oracle SCA non déclarée(s) volontairement vulnérable(s) : ' + nonDeclarees(declarees, dossiersRouges).join(', '));
+  else if (nonDeclarees(declarees.slice(1), dossiersRouges).length !== 1) ko('TF-2539 déclaration (rouge) : une fixture rouge retirée de la liste doit se voir, une seule fois');
+  else ok(`TF-2539 déclaration : les ${dossiersRouges.length} fixtures rouges de l oracle SCA sont déclarées (chemin, date, motif), tous les chemins existent, et le retrait d une seule se voit`);
+
+  const vert = jouer('--alertes', path.join(dossierAlertes, 'alertes-sur-fixtures.json'));
+  if (vert.status !== 0 || !/3 alerte\(s\) ouverte\(s\)[^\n]*3 sur des fixtures volontairement vulnérables déclarées, 0 sur des dépendances réelles/.test(vert.stdout) || !vert.stdout.includes('PASS'))
+    ko('TF-2539 vert : des alertes qui ne visent que des fixtures déclarées doivent rendre exit 0 et dire la distinction — ' + vert.status + ' ' + (vert.stdout + vert.stderr).slice(0, 300));
+  else ok('TF-2539 vert : 3 alertes sur des fixtures déclarées → exit 0, « 3 sur des fixtures volontairement vulnérables déclarées, 0 sur des dépendances réelles »');
+
+  const rouge = jouer('--alertes', path.join(dossierAlertes, 'alertes-avec-reelle.json'));
+  if (rouge.status !== 1 || !/RÉELLE n° 4 : pillow[^\n]*critical[^\n]*pyproject\.toml/.test(rouge.stdout) || !/RÉELLE n° 5 : requests[^\n]*sca-red-bis/.test(rouge.stdout))
+    ko('TF-2539 rouge : une dépendance réelle et un dossier voisin d une fixture déclarée (`sca-red-bis`) doivent être nommées et rendre exit 1 — ' + rouge.status + ' ' + rouge.stdout.slice(0, 500));
+  else if (/RÉELLE n° (1|6) :/.test(rouge.stdout) || !/3 alerte\(s\) ouverte\(s\)[^\n]*1 sur des fixtures volontairement vulnérables déclarées, 2 sur des dépendances réelles/.test(rouge.stdout))
+    ko('TF-2539 rouge : l alerte de la fixture déclarée (n° 1) et l alerte rejetée (n° 6) ne doivent pas compter parmi les réelles — ' + rouge.stdout.slice(0, 500));
+  else ok('TF-2539 rouge : une dépendance réelle (critique) et un dossier voisin de fixture sont nommés, exit 1 ; la fixture déclarée et l alerte rejetée n y sont pas');
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2539-'));
+  try {
+    const sansMotif = path.join(tmp, 'declaration-sans-motif.json');
+    fs.writeFileSync(sansMotif, JSON.stringify({ fixtures: [{ chemin: '.claude/skills/quality-oracles/fixtures/sca-red', date: '2026-11-14' }] }), 'utf8');
+    const illisible = path.join(tmp, 'alertes-illisibles.json');
+    fs.writeFileSync(illisible, '{ pas du json', 'utf8');
+    const refus = [
+      ['déclaration sans motif', jouer('--alertes', path.join(dossierAlertes, 'alertes-sur-fixtures.json'), '--declaration', sansMotif), /n'a pas ses trois champs/],
+      ['alertes illisibles', jouer('--alertes', illisible), /alertes non lisibles/],
+      ['alertes absentes', jouer('--alertes', path.join(tmp, 'absent.json')), /alertes illisibles/],
+      ['aucune source', jouer(), /une source d'alertes, et une seule/],
+    ];
+    const faux = refus.filter(([, r, motif]) => r.status !== 2 || !r.stdout.includes('INCONCLUSIF') || !motif.test(r.stdout));
+    if (faux.length) ko('TF-2539 refus : doivent rendre exit 2 INCONCLUSIF avec leur motif, jamais un zéro : ' + faux.map(([n, r]) => `${n} (exit ${r.status} : ${(r.stdout + r.stderr).slice(0, 120)})`).join(' · '));
+    else ok('TF-2539 refus : une déclaration sans motif, des alertes illisibles ou absentes, aucune source → exit 2 INCONCLUSIF avec le motif, jamais « aucune alerte réelle » sur ce qu on n a pas lu');
+    const js = jouer('--alertes', path.join(dossierAlertes, 'alertes-sur-fixtures.json'), '--json');
+    let o = null; try { o = JSON.parse(js.stdout); } catch { /* ko ci-dessous */ }
+    if (!o || o.verdict !== 'PASS' || o.alertes_ouvertes !== 3 || o.dependances_reelles !== 0 || js.status !== 0) ko('TF-2539 --json : verdict, alertes_ouvertes et dependances_reelles doivent être des champs — ' + js.stdout.slice(0, 200));
+    else ok('TF-2539 --json : verdict PASS, alertes_ouvertes 3 et dependances_reelles 0 se lisent en champs, sans prose');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0824 (06/09/2026) — LE CONTRAT DE SORTIE DU LANCEUR EST ÉPROUVÉ, PAS SEULEMENT ÉCRIT.
 //
 // LE FAIT PAYÉ : le champ `detail` d'une ligne de résultat a changé DEUX FOIS en dix jours — sa

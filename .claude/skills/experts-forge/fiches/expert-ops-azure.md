@@ -14,7 +14,7 @@ forge-ops : déployer (sans bascule aveugle), exploiter (healthcheck, journal), 
 (rollback prouvé). Jamais l'architecture data, jamais le choix multi-cloud lui-même.
 
 ## 2. declencheurs
-- `content_patterns` : `Container Apps|az containerapp|revision-weight|ACA|AcrPull`
+- `content_patterns` : `Container Apps|az containerapp|revision-weight|\bACA\b|AcrPull`
 - Types de demandes : plan de déploiement MEP vers Azure, revue d'un plan `ops.mjs plan azure`, cadrage staging/rollback sur Azure Container Apps
 - Ne pas router : plateformes data (→ data-platform-cloud), conformité (→ conformite-rgpd-ia), autres cibles cloud (→ fiche ops-<cible> concernée).
 

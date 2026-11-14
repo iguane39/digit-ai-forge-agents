@@ -1,6 +1,6 @@
 {
- "version": 4,
- "date": "2026-11-13",
+ "version": 5,
+ "date": "2026-11-14",
  "provenance": "TF-2452 (décision R-58 du 12/11/2026) — la barrière « tout script de contrôle est au registre » de TF-2399 ne lisait que les skills de forge-agents ; elle lit aussi les oracles du pilot et des forges (oracle-*.mjs|py et check_*.py suivis par git, hors fixtures, node_modules, vendor, old, output, input et recettes *.test.mjs). TF-2466 (décision R-58 du 12/11/2026, campagne du 13/11/2026) : un oracle sans appelant ne se justifie plus par un motif ; il est câblé (appelants nommés) ou déclaré « manuel » avec son motif et la commande qui le joue, sinon la barrière le nomme. Phase 2 de TF-2466 (13/11/2026) : les 12 lignes sans appelant sont résolues, 9 « manuel » avec leur motif et leur commande, 3 câblées à oracles/run-oracles-design.mjs de forge-design (lot dh, commit dc39050) ; le motif « sans-appelant » est retiré de la liste. TF-2488 (décision R-58 du 13/11/2026, campagne du 13/11/2026) : le relevé d'appelants distinguait mal ce qui appelle un oracle. Chaque ligne nomme désormais la nature de ses appelants dans `natures` (executable, recette, document), et les neuf lignes « manuel » de TF-2466 qui étaient jouées par le self-test de leur forge ou prescrites par un document nomment ces appelants.",
  "lecture": "Un script absent du registre machine (references/registre-oracles.json) est déclaré ici avec un motif, ou la barrière du self-test échoue. Une ligne dont le fichier n'existe plus, ou dont le script est entré au registre depuis, fait échouer la barrière aussi : la liste ne garde pas de morts. Les appelants sont un relevé daté, non une garantie. Une ligne sans appelant (appelants vide) est refusée tant qu'elle ne porte pas le motif « manuel » avec sa déclaration {\"manuel\": {\"motif\": ..., \"commande\": ...}} : le motif compte 20 caractères au moins, la commande nomme le script. Nature de l'appel (TF-2488) : chaque ligne porte `natures`, la liste des natures de ses appelants, lues à leur chemin par la barrière du self-test — `executable` (un script, un hameçon, un lanceur, ou le fichier de configuration que ce lanceur lit), `recette` (un self-test, un *.test.mjs, un cliquet ou un manifeste de recette), `document` (un .md qui prescrit l'étape). Une ligne sans appelant porte `natures: []` et le motif « manuel » ; une ligne « manuel » peut aussi nommer ses appelants de recette ou de document, le motif disant alors qui choisit la cible. La barrière refuse une ligne qui n'a pas `natures`, en nomme une inconnue, ou en nomme une autre que celle de ses appelants.",
  "motifs": {
@@ -883,6 +883,23 @@
   },
   {
    "depot": "digit-ai-forge-agents-security",
+   "chemin": "oracles/oracle-pep-impact.mjs",
+   "motif": "manuel",
+   "appelants": [
+    "digit-ai-forge-agents-security/oracles/self-test.mjs",
+    "digit-ai-forge-agents-security/README.md"
+   ],
+   "natures": [
+    "recette",
+    "document"
+   ],
+   "manuel": {
+    "motif": "Invoqué sur mandat humain via le pilot, cible explicite fournie par le mandat : le journal des décisions d'un PEP et le catalogue des niveaux de risque du produit (TF-2422, 14/11/2026) ; prouvé par oracles/self-test.mjs (25 cas) ; aucun livrable ne le déclenche par son extension.",
+    "commande": "node oracles/oracle-pep-impact.mjs <journal-pep.jsonl> --catalogue <catalogue.json> --json-only"
+   }
+  },
+  {
+   "depot": "digit-ai-forge-agents-security",
    "chemin": "oracles/oracle-scan-agentdef.mjs",
    "motif": "manuel",
    "appelants": [
@@ -1178,6 +1195,19 @@
    ],
    "natures": [
     "executable"
+   ]
+  },
+  {
+   "depot": "digit-ai-forge-design",
+   "chemin": "oracles/oracle-fluidite.mjs",
+   "motif": "forge-appele",
+   "appelants": [
+    "digit-ai-forge-design/oracles/run-oracles-design.mjs",
+    "digit-ai-forge-design/oracles/self-test.mjs"
+   ],
+   "natures": [
+    "executable",
+    "recette"
    ]
   },
   {

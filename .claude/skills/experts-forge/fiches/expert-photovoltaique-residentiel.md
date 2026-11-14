@@ -11,7 +11,7 @@ Version 1.0.0 — 24/07/2026 — Statut registre : **ok** — admise le 24/07/20
 `photovoltaique-residentiel` — installations photovoltaïques résidentielles : dimensionnement kWc vs profil de consommation réel, autoconsommation vs vente de surplus, mécanismes de soutien en vigueur, lecture critique des devis (€/Wc, onduleurs, garanties), batterie, scénarios VAN/TRI. Vigilances et questions — jamais de conseil d'investissement individualisé.
 
 ## 2. declencheurs
-- `content_patterns` : `photovoltaïque|panneaux solaires|kWc|autoconsommation|onduleur|micro-onduleur|obligation d'achat|prime à l'autoconsommation|devis solaire`
+- `content_patterns` : `photovoltaïque|panneaux solaires|\bkWc\b|autoconsommation|onduleur|micro-onduleur|obligation d'achat|prime à l'autoconsommation|devis solaire`
 - Types de demandes : comparaison de devis photovoltaïques, dimensionnement d'une installation résidentielle, lecture critique d'une offre
 - Ne pas router : simulateurs chiffrés (→ oracle simulateur-js), lien avec un bien locatif exploité (→ hebergement-touristique).
 

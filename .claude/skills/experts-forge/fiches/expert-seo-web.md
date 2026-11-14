@@ -11,7 +11,7 @@ Version 1.0.0 — 24/07/2026 — Statut registre : **ok** — admise le 24/07/20
 `seo-web` — indexabilité et référencement : canonicals et og, indexabilité des environnements, plans de redirections, sitemap/robots, diagnostic Search Console, duplicate content, hygiène et mesure des migrations SEO.
 
 ## 2. declencheurs
-- `content_patterns` : `SEO|référencement|indexation|canonical|sitemap|robots.txt|Search Console|migration de site|redirection 301|duplicate content|noindex`
+- `content_patterns` : `\bSEO\b|référencement|indexation|canonical|sitemap|robots.txt|Search Console|migration de site|redirection 301|duplicate content|noindex`
 - Types de demandes : recette SEO d'une migration, diagnostic d'indexation, hygiène canonical/sitemap/robots d'un site
 - Ne pas router : parité mécanique route par route (→ oracle parite-migration), rendu et charte des pages (→ digit-ai-page-html), contenu éditorial (hors périmètre).
 

@@ -117,9 +117,11 @@
  *       qui couvre tout saut dont l'entrée qui suit la lacune est horodatée STRICTEMENT avant `avant`
  *       (la plus récente des déclarations valides fait foi, comme R-42).
  * Le saut s'IMPRIME toujours (`[RECTIFIÉ]` ou `[ANTÉRIORITÉ]`, « saut en avant ») : il cesse de bloquer,
- * il ne disparaît pas. Un saut que ni l'une ni l'autre ne couvre reste FAIL. L'antériorité ne couvre ICI
- * que le saut en avant (la demande de TF-2494) : R-42 l'étend aussi à une collision et à un recul
- * d'horodatage, ce que ce script ne fait pas encore.
+ * il ne disparaît pas. Un saut que ni l'une ni l'autre ne couvre reste FAIL. TF-2540 (14/11/2026) : l'antériorité
+ * couvre AUSSI une collision de seq et un recul d'horodatage dont l'entrée est horodatée STRICTEMENT avant `avant`
+ * (`[ANTÉRIORITÉ]`, comptée au verdict), l'étendue que R-42 lui donnait déjà : après une rectification qui nomme
+ * l'entrée avec son `ts_consigne` exact, avant une rectification dont le `ts_consigne` diverge (qui ne couvre rien),
+ * et jamais pour un `ts` illisible, sans instant à comparer. Le même fichier rend le même verdict aux deux juges.
  * À l'écriture, `anteriorite_ledger` est au vocabulaire et refusée sans `avant` lisible ou sans `cause`
  * de 20 caractères : une déclaration que R-42 ignorerait resterait pour toujours dans un journal en
  * ajout seul (même garde que TF-1722).
@@ -248,8 +250,15 @@ const [cmd, file] = rest;
 //: un produit — un script de journal réécrit ignorait tout argument sans « -- », onze entrées
 //: écrites amputées de ce qu'il ignorait, citées ensuite comme preuves dans 7 restitutions. Ici,
 //: un argument NON RECONNU est REFUSÉ (sortie 1, nommé), jamais silencieusement ignoré.
-const argsRestants = rest.slice(2);
-const USAGE_APPEND = "usage : append <ledger.jsonl> ('<json>' | --fichier <payload.json>)";
+//: TF-2549 (14/11/2026) : `--essai` est un DRAPEAU de `append` et de `consigner`, retiré d'ici avant la lecture des autres arguments
+//: (pour `consigner`, seulement avant `--` : ce qui suit est la commande du lanceur, transmise telle quelle). Un second `--essai`
+//: reste un argument non reconnu.
+const argsBruts = rest.slice(2);
+const finOptions = cmd === "consigner" && argsBruts.includes("--") ? argsBruts.indexOf("--") : argsBruts.length;
+const iEssai = cmd === "append" || cmd === "consigner" ? argsBruts.slice(0, finOptions).indexOf("--essai") : -1;
+const essai = iEssai >= 0;
+const argsRestants = essai ? [...argsBruts.slice(0, iEssai), ...argsBruts.slice(iEssai + 1)] : argsBruts;
+const USAGE_APPEND = "usage : append <ledger.jsonl> ('<json>' | --fichier <payload.json>) [--essai]";
 const USAGE_VERIFY = "usage : verify <ledger.jsonl>";
 // ---- VERSION SERVIE (D-1 (a) du pilot, 25/09/2026) -------------------------------------------
 const FAMILLES_MODELE = ["haiku", "sonnet", "opus", "fable"];
@@ -555,7 +564,7 @@ const TYPES_VOCABULAIRE = ["run_open", "etape_open", "invocation", "oracles_verd
   "rectification_versions_forges", "rectification_run_open", "rectification_horodatage",
   "rectification_forges_mobilisees", "go_publication", "conflit_regles", "demande_emise", "demande_recue",
   "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement",
-  "anteriorite_ledger", "rectification_doublon", "secret_range"];
+  "anteriorite_ledger", "rectification_doublon", "decision_retiree", "secret_range"];
 //: TF-2223 du pilot — sans ledger de run, ces types s'écrivent au journal `forge/hors-run.jsonl` (même discipline de
 //: `seq` et de `ts`, champ `hors_run: true`), pas au ledger du run, dont R-42 exige qu'il s'ouvre par `run_open`.
 //: Le journal hors run se reconnaît à son NOM : c'est le chemin de doctrine, et il ne s'ouvre pas par `run_open`.
@@ -586,6 +595,27 @@ function problemeRemplacement(obj) {
 //: L'oubli que l'écriture n'a pas refusé : `remplace` sans `artefacts_remplaces` (onze ressources, deux exigences et leurs
 //: contrôles restés après le remplacement de D-46 par D-49, chez un produit).
 const remplaceSansArtefacts = (e) => e.type !== "secret_range" && Boolean(e.remplace) && !e.artefacts_remplaces;
+
+//: TF-2527 (14/11/2026) — `decision_retiree` : une décision posée qui est retirée, sans réponse ni décision de remplacement.
+//: `oracles/lib-decisions.mjs` du pilot (`decisionsRetirees`, TF-2415) la lit comme une sortie de la décision, et ni `ledger.py` ni
+//: ce script ne l'acceptaient : une retraite s'écrivait en `reponse_humain --decision D-M --remplace D-N`. Elle nomme la ou les
+//: décisions retirées, au format « D-12 », dans `decision`, `decisions` ou `decisions_retirees` (chaîne ou liste), et sa `cause`
+//: (20 caractères au moins) : une décision qui disparaît sans motif ne se relit pas. Même forme que `controler_retrait` de
+//: `gabarits/ledger.py` du pilot ; refusée AVANT d'écrire, quel que soit le schéma.
+const TYPE_DECISION_RETIREE = "decision_retiree";
+const CHAMPS_DECISION_RETIREE = ["decision", "decisions", "decisions_retirees"];
+const CAUSE_RETRAIT_MIN = 20;
+function problemeDecisionRetiree(obj) {
+  if (obj.type !== TYPE_DECISION_RETIREE) return null;
+  const nommees = CHAMPS_DECISION_RETIREE.flatMap((c) => (obj[c] === undefined || obj[c] === null ? [] : [].concat(obj[c])));
+  if (!nommees.length || !nommees.every((x) => typeof x === "string" && /^D-?\s*\d{1,4}$/i.test(x.trim()))) {
+    return `\`${TYPE_DECISION_RETIREE}\` doit nommer la ou les décisions retirées au format « D-12 » (champ \`decision\`, \`decisions\` ou \`decisions_retirees\`, chaîne ou liste) : sans elle, \`lib-decisions\` du pilot ne sort rien`;
+  }
+  if (typeof obj.cause !== "string" || obj.cause.trim().length < CAUSE_RETRAIT_MIN) {
+    return `\`${TYPE_DECISION_RETIREE}\` doit dire pourquoi : \`cause\` d'au moins ${CAUSE_RETRAIT_MIN} caractères (reçu ${JSON.stringify(obj.cause)}) — une décision retirée sans motif ne se relit pas`;
+  }
+  return null;
+}
 
 //: TF-1422 (28/09/2026) : l'INSTANT que désigne un `ts`, en millisecondes, ou NaN s'il n'en
 //: désigne aucun (absent, vide, illisible). Deux écritures d'une même heure (`…T09:30:00+02:00`
@@ -631,11 +661,15 @@ function releaseLock(lockFile) {
  * dernier seq, du maximum d'horodatage et du schéma actif, contrôle de CHAQUE entrée, puis UNE seule
  * écriture pour tout le lot — une entrée refusée n'en laisse écrire aucune (tout le lot ou rien).
  * Rend les seq attribués. Toute sortie en erreur libère le verrou puis appelle fail().
+ *
+ * `essai` (TF-2549, 14/11/2026) : MODE D'ESSAI. Tous les contrôles sont joués, rien n'est écrit — ni le journal, ni le verrou (un
+ * essai ne prend pas le verrou et, surtout, ne libère jamais celui d'un autre processus). Les entrées qui seraient écrites se lisent
+ * sur la propriété `lignes` du résultat ; leur `seq` est celui que prendrait l'écriture à cet instant, à titre indicatif.
  */
-function ecrireSousVerrou(file, objs) {
+function ecrireSousVerrou(file, objs, essai = false) {
   const lockFile = `${file}.lock`;
   const horsRun = estJournalHorsRun(file);
-  acquireLock(lockFile);
+  if (!essai) acquireLock(lockFile);
   // Note : process.exit() (dans fail()) ne déroule pas les blocs finally — toute sortie en
   // erreur pendant la section verrouillée doit donc libérer le verrou explicitement avant
   // d'appeler fail(), plutôt que de compter sur un try/finally autour de process.exit().
@@ -697,6 +731,8 @@ function ecrireSousVerrou(file, objs) {
       }
       const defautRemplacement = problemeRemplacement(obj);
       if (defautRemplacement) throw new Error(`${defautRemplacement} (TF-2206, TF-2245) — rien n'est écrit`);
+      const defautRetrait = problemeDecisionRetiree(obj);
+      if (defautRetrait) throw new Error(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-2527) — ${defautRetrait} — rien n'est écrit`);
       // L'entrée elle-même, si c'est un run_open qui déclare (ou redéclare) un schéma, DEVIENT le
       // schéma actif — pour SE juger elle-même (cas du tout premier run_open d'un ledger neuf).
       if (obj.type === "run_open" && typeof obj.schema_ledger === "string" && obj.schema_ledger.trim()) {
@@ -765,12 +801,13 @@ function ecrireSousVerrou(file, objs) {
       const ms = instant(tsEntree);
       if (ms > tsMaxMs) { tsMaxMs = ms; tsMax = tsEntree; }
     }
-    appendFileSync(file, lignes.join("\n") + "\n");
+    if (!essai) appendFileSync(file, lignes.join("\n") + "\n");
+    seqs.lignes = lignes;
   } catch (e) {
-    releaseLock(lockFile);
+    if (!essai) releaseLock(lockFile);
     fail(e.message);
   }
-  releaseLock(lockFile);
+  if (!essai) releaseLock(lockFile);
   return seqs;
 }
 
@@ -787,7 +824,7 @@ const VERDICTS_EQUIVALENTS = {
   INDETERMINE: "SKIP", "INDÉTERMINÉ": "SKIP", SANS_OBJET: "NA", "SANS OBJET": "NA", "N/A": "NA",
 };
 const USAGE_CONSIGNER = "usage : consigner <ledger.jsonl> (--rapport <rapport.json|-> | -- <commande> [args…]) " +
-  "[--forge <nom>] [--cible <chemin>] [--etape <nom>]";
+  "[--forge <nom>] [--cible <chemin>] [--etape <nom>] [--essai]";
 
 /** Le texte d'un rapport lu en octets : UTF-8 (BOM retiré) ou UTF-16 à BOM (`>` de PowerShell 5.1). */
 function texteDuRapport(octets) {
@@ -996,7 +1033,14 @@ if (cmd === "append") {
   }
   // TF-2152 : un run_close « prêt » joue R-61 bis AVANT d'être écrit (refus sur FAIL, avant le verrou).
   const annoncesPret = obj.type === "run_close" && STATUT_PRET.test(String(obj.statut ?? "")) ? jouerR61bis(file, obj) : [];
-  const [seq] = ecrireSousVerrou(file, [obj]);
+  const seqsEcrits = ecrireSousVerrou(file, [obj], essai);
+  const [seq] = seqsEcrits;
+  if (essai) {
+    // TF-2549 : tous les contrôles ont été joués (un refus est sorti plus haut, exit 1) ; rien n'a été écrit.
+    console.log(`[ESSAI] rien n'est écrit : cette entrée serait écrite à ${basename(file)} (seq ${seq}, indicatif : une autre session peut le prendre)`);
+    console.log(seqsEcrits.lignes[0]);
+    process.exit(0);
+  }
   for (const a of annoncesPret) console.log(a);
   const tsFourni = typeof obj.ts === "string" && obj.ts.trim() ? obj.ts.trim() : null;
   if (tsFourni) console.log(`[ATTENTION] \`ts\` imposé par le payload (${tsFourni}) au lieu de l'horodatage machine`);
@@ -1097,7 +1141,13 @@ if (cmd === "append") {
       lot: { id: lot, rang: i + 1, total: elements.length },
     };
   });
-  const seqs = ecrireSousVerrou(file, entrees);
+  const seqs = ecrireSousVerrou(file, entrees, essai);
+  if (essai) {
+    // TF-2549 : le lot a passé tous les contrôles ; rien n'est écrit. La commande du lanceur, elle, a été jouée (c'est elle qu'on essaie).
+    console.log(`[ESSAI] rien n'est écrit : ${entrees.length} entrée(s) oracles_verdict seraient écrites à ${basename(file)}, seq ${seqs[0]}${seqs.length > 1 ? ` à ${seqs[seqs.length - 1]}` : ""} (lot ${lot}, indicatif : une autre session peut prendre ces seq)`);
+    seqs.lignes.forEach((l) => console.log(l));
+    process.exit(0);
+  }
   const compte = VERDICTS_CANONIQUES.map((v) => [v, entrees.filter((e) => e.verdict === v).length]).filter(([, n]) => n)
     .map(([v, n]) => `${v} ${n}`).join(" · ");
   console.log(`[OK] ${entrees.length} entrée(s) oracles_verdict ajoutée(s), une par oracle, seq ${seqs[0]}` +
@@ -1206,6 +1256,8 @@ if (cmd === "append") {
   const collisionsAppliquees = new Set(); // seq dont une collision est rectifiée
   const collisionsRectifiees = new Set(); // n° de ligne des entrées en collision rectifiées
   const sautsCouverts = new Set();        // TF-2494 : seq qui suivent une lacune couverte (rectification ou antériorité)
+  const collisionsAnterieures = new Set(); // TF-2540 : n° de ligne des collisions de seq couvertes par une antériorité déclarée
+  const reculsAnterieurs = new Set();      // TF-2540 : seq dont le recul d'horodatage est couvert par une antériorité déclarée
   entrees.forEach((e, i) => {
     if (e.seq !== seqAttendu) {
       const quoi = `ligne ${i + 1} : seq ${e.seq} attendu ${seqAttendu}`;
@@ -1242,6 +1294,11 @@ if (cmd === "append") {
         collisionsRectifiees.add(i + 1);
         console.log(`[RECTIFIÉ] ${quoi} (seq en collision) — déclaré par la rectification du seq ${r.parSeq}, ` +
           `heure réelle estimée ${r.ts_reel_estime} : ${r.cause}`);
+      } else if (avantBorne(instant(e.ts))) {
+        // TF-2540 : l'antériorité couvre aussi une collision de seq, comme R-42 du pilot (TF-1203).
+        collisionsAnterieures.add(i + 1);
+        console.log(`[ANTÉRIORITÉ] ${quoi} (seq en collision) — antérieur au ${new Date(anterioriteBorneMs).toISOString()} ` +
+          `déclaré (${TYPE_ANTERIORITE}, avant ${anterioriteBorneAvant}) : ${anterioriteBorneCause.slice(0, 90)}`);
       } else if (divergente) {
         ecartsIntegrite.push(`${quoi} (append-only rompu) — la rectification du seq ${divergente.parSeq} ` +
           `déclare \`ts_consigne\` ${divergente.ts_consigne}, l'entrée porte ${e.ts} : une déclaration ` +
@@ -1262,7 +1319,13 @@ if (cmd === "append") {
         ? `seq ${e.seq} : horodatage ${e.ts === undefined ? "absent" : `illisible (${JSON.stringify(e.ts)})`}, aucun instant à ordonner`
         : `seq ${e.seq} : horodatage décroissant (${e.ts} après ${tsMax})`;
       const { r, divergente } = couverture(e, i + 1);
-      if (divergente && !r) {
+      if (!r && avantBorne(tsMs)) {
+        // TF-2540 : l'antériorité couvre aussi un recul d'horodatage, comme R-42 du pilot (TF-1203). Un `ts` illisible n'a pas d'instant
+        // à comparer à `avant` : il reste un écart.
+        reculsAnterieurs.add(e.seq);
+        console.log(`[ANTÉRIORITÉ] ${quoi} — antérieur au ${new Date(anterioriteBorneMs).toISOString()} ` +
+          `déclaré (${TYPE_ANTERIORITE}, avant ${anterioriteBorneAvant}) : ${anterioriteBorneCause.slice(0, 90)}`);
+      } else if (divergente && !r) {
         ecartsIntegrite.push(`${quoi} — la rectification du seq ${divergente.parSeq} déclare \`ts_consigne\` ` +
           `${divergente.ts_consigne}, l'entrée porte ${e.ts} : une déclaration qui ne correspond pas à ` +
           `l'histoire ne couvre rien`);
@@ -1297,6 +1360,7 @@ if (cmd === "append") {
     const doublon = `seq ${seqPorte} porté par ${lignesDup.length} entrées, lignes ${
       lignesDup.join(", ")} — deux écrivains sans verrou commun`;
     if (lignesDup.slice(1).every((n) => collisionsRectifiees.has(n))) console.log(`[RECTIFIÉ] ${doublon}, collision déclarée`);
+    else if (lignesDup.slice(1).every((n) => collisionsRectifiees.has(n) || collisionsAnterieures.has(n))) console.log(`[ANTÉRIORITÉ] ${doublon}, collision antérieure déclarée`);
     else ecartsDoublons.push(doublon);
   }
   // TF-2424 : les DOUBLONS — une entrée identique (hors seq, ts et marque hors run) à une autre du MÊME run. `append` les refuse
@@ -1470,12 +1534,15 @@ if (cmd === "append") {
   const sauts = sautsCouverts.size
     ? ` · ${sautsCouverts.size} saut(s) de seq en avant DÉCLARÉ(S) et couvert(s) (seq ${[...sautsCouverts].join(", ")})`
     : "";
+  const couvertsParAnteriorite = collisionsAnterieures.size + reculsAnterieurs.size
+    ? ` · ${collisionsAnterieures.size + reculsAnterieurs.size} écart(s) de seq en collision ou d'horodatage ANTÉRIEUR(S) à une antériorité déclarée`
+    : "";
   const doublons = (doublonsDeclares.size ? ` · ${doublonsDeclares.size} doublon(s) DÉCLARÉ(S) par rectification_doublon` : "") +
     (doublonsNonDeclares.length ? ` · ${doublonsNonDeclares.length} doublon(s) non déclaré(s) (non bloquant)` : "");
   const sansContenuDit = !sansContenuBloquant && sansContenu.length
     ? ` · ${sansContenu.length} entrée(s) SANS CONTENU (non bloquant, schéma ${schemaDeclare || "absent"})`
     : "";
-  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sauts}${doublons}${sansContenuDit}${declaresDit}`);
+  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sauts}${couvertsParAnteriorite}${doublons}${sansContenuDit}${declaresDit}`);
 } else {
   fail("commande inconnue (append | consigner | verify)");
 }
