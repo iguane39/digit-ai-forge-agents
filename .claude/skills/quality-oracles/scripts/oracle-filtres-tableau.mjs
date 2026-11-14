@@ -14,15 +14,75 @@
    (donc sans script inline ni nonce disponible) n'a plus a dupliquer l'init ou la regle
    print dans le document : la reference suffit, a condition que le fichier reference
    existe et porte reellement le motif — la seule presence d'un src/href ne suffit jamais
-   (voir fixtures/filtres-rouge-cspexterne.html). */
+   (voir fixtures/filtres-rouge-cspexterne.html).
+
+   TF-2296 (14/11/2026) — UNE PAGE SCELLEE N'A PLUS QU'UNE SORTIE : SON CHEMIN. La seule exemption d'avant,
+   data-filterable="off" sur le tableau, MODIFIE la page, et une page scellee ne se modifie pas : son sceau de
+   jugement (.jugement.json) voyage avec elle, un octet change la detache (cas du 09/11 : la maquette remise le
+   15/08 garde G12 en FAIL sur « Gain /5 », 7 cellules composites sur 10). `references/exceptions-filtres-tableau.json`
+   liste, par CHEMIN, les regles que l'oracle ne retient pas sur une page. Chaque entree porte `chemin`, `regles`,
+   `date` et `motif` : une entree sans l'un des quatre est refusee (constat EX, bloquant sur la page qu'elle vise),
+   pas appliquee. Sans entree pour le chemin, le refus reste ; une entree ne couvre que les regles qu'elle nomme ;
+   chaque constat non retenu est DIT en non_juge (regle, date, motif, lieux), jamais tu, et une entree qui ne
+   retient plus rien le dit aussi (elle est perimee). Le chemin d'une entree s'ecrit depuis la racine du depot qui
+   garde la page (« output/... ») : il vaut pour tout chemin d'artefact qui se TERMINE par lui, a une frontiere de
+   dossier. `--exceptions <fichier>` lit une autre liste (la recette). */
 
 import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const LISTE_EXCEPTIONS = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'references', 'exceptions-filtres-tableau.json');
 const SEUIL_LIGNES = 8;
 const OUT = { oracle: 'filtres-tableau', domaine: 'Composant filtres de tableau', artefact: null, verdict: 'INCONCLUSIF', findings: [], non_juge: [] };
 
 const add = (regle, severite, message, ou) => OUT.findings.push({ regle, severite, message, ou });
+
+/* ---------- exceptions par chemin (TF-2296) ---------- */
+
+let EXCEPTIONS = [];
+
+/* La liste absente est une liste vide ; illisible, elle ne se devine pas : l'oracle ne conclut pas (exit 2). */
+function lireExceptions(fichier, explicite) {
+  let brut;
+  try { brut = readFileSync(fichier, 'utf8'); }
+  catch (e) { if (e.code === 'ENOENT' && !explicite) return []; throw new Error(`liste d'exceptions illisible (${fichier}) : ${e.message}`); }
+  let liste;
+  try { liste = JSON.parse(brut); } catch (e) { throw new Error(`liste d'exceptions illisible (${fichier}) : ${e.message}`); }
+  if (!liste || !Array.isArray(liste.exceptions)) throw new Error(`liste d'exceptions sans tableau « exceptions » (${fichier})`);
+  return liste.exceptions;
+}
+
+const enMinuscules = (s) => (process.platform === 'win32' ? s.toLowerCase() : s);
+const cheminArtefact = (p) => enMinuscules(resolve(p).split(sep).join('/'));
+const cheminEntree = (p) => enMinuscules(String(p).replace(/\\/g, '/').replace(/^\.?\//, ''));
+const avecChemin = (e) => e && typeof e === 'object' && typeof e.chemin === 'string' && e.chemin.trim() !== '';
+const vise = (e, artefact) => avecChemin(e) && (artefact === cheminEntree(e.chemin) || artefact.endsWith('/' + cheminEntree(e.chemin)));
+/* Ce qui manque a une entree pour valoir : les regles (G<n>), la date (AAAA-MM-JJ), le motif. */
+const manquesDEntree = (e) => [
+  !(Array.isArray(e.regles) && e.regles.length && e.regles.every(r => /^G\d+$/.test(r))) && 'regles (une liste de G<n>)',
+  !(typeof e.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.date)) && 'date (AAAA-MM-JJ)',
+  !(typeof e.motif === 'string' && e.motif.trim() !== '') && 'motif',
+].filter(Boolean);
+
+/* Retire des constats ceux que les entrees valides visant ce chemin ne retiennent pas, et le DIT. */
+function appliquerExceptions(chemin) {
+  const artefact = cheminArtefact(chemin);
+  for (const e of EXCEPTIONS.filter(x => vise(x, artefact))) {
+    const manques = manquesDEntree(e);
+    if (manques.length) {
+      add('EX', 'bloquant', `Exception de "${e.chemin}" sans ${manques.join(' ni ')} : une exception sans regles, sans date ou sans motif est un echec, pas une exception — elle se complete dans references/exceptions-filtres-tableau.json.`, 'exceptions-filtres-tableau.json');
+      continue;
+    }
+    const retenus = OUT.findings.filter(f => e.regles.includes(f.regle));
+    const identite = `Exception du ${e.date} sur ${e.chemin} (${e.regles.join(', ')})`;
+    if (!retenus.length) { OUT.non_juge.push(`${identite} : aucun constat a ne pas retenir — l'entree est perimee, a retirer de references/exceptions-filtres-tableau.json.`); continue; }
+    OUT.findings = OUT.findings.filter(f => !e.regles.includes(f.regle));
+    OUT.non_juge.push(`${identite} — motif : ${e.motif} — ${retenus.length} constat(s) non retenu(s) : ${retenus.map(f => `${f.regle} (${f.ou})`).join(' ; ')}.`);
+  }
+  const sansChemin = EXCEPTIONS.filter(x => !avecChemin(x)).length;
+  if (sansChemin) OUT.non_juge.push(`${sansChemin} entree(s) de la liste d'exceptions sans chemin : non appliquee(s).`);
+}
 
 /* ---------- extraction ---------- */
 
@@ -311,6 +371,9 @@ function controler(html, chemin) {
   if (lues.length) OUT.non_juge.push(`Assets externes lus pour G3/G6 (RS-1) : ${lues.join(', ')}.`);
   if (manquantes.length) OUT.non_juge.push(`Assets externes references mais illisibles depuis le dossier de la page — G3/G6 juges sans leur contenu : ${manquantes.join(', ')}.`);
 
+  /* TF-2296 : une page scellee ne se modifie pas — ses exceptions se lisent par chemin, avant le verdict. */
+  appliquerExceptions(chemin);
+
   /* Un bloquant prime sur tout : un PASS portant un finding bloquant serait un oracle qui ment
      (cas des exemptions non motivees, qui sortent de la boucle avant les compteurs). */
   const bloquants = OUT.findings.filter(f => f.severite === 'bloquant').length;
@@ -323,11 +386,14 @@ function controler(html, chemin) {
 
 /* ---------- entree ---------- */
 
-const chemin = process.argv[2];
-if (!chemin) { OUT.verdict = 'INCONCLUSIF'; add('—', 'bloquant', 'Usage : node oracle-filtres-tableau.mjs <page.html>', 'cli'); console.log(JSON.stringify(OUT, null, 2)); process.exit(2); }
+const argv = process.argv.slice(2);
+const ie = argv.indexOf('--exceptions');
+const listeExplicite = ie >= 0 ? argv.splice(ie, 2)[1] : null;
+const chemin = argv[0];
+if (!chemin) { OUT.verdict = 'INCONCLUSIF'; add('—', 'bloquant', 'Usage : node oracle-filtres-tableau.mjs <page.html> [--exceptions <liste.json>]', 'cli'); console.log(JSON.stringify(OUT, null, 2)); process.exit(2); }
 
 let code = 2;
-try { code = controler(readFileSync(chemin, 'utf8'), chemin); }
+try { EXCEPTIONS = lireExceptions(listeExplicite ? resolve(listeExplicite) : LISTE_EXCEPTIONS, listeExplicite !== null); code = controler(readFileSync(chemin, 'utf8'), chemin); }
 catch (e) { OUT.verdict = 'INCONCLUSIF'; add('—', 'bloquant', `Lecture impossible : ${e.message}`, chemin); code = 2; }
 
 console.log(JSON.stringify(OUT, null, 2));

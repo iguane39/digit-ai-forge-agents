@@ -4326,6 +4326,87 @@ else {
     : ok('TF-2196 G12 : la moitié de la colonne est le seuil — 2 cellules composites sur 8 sans valeur déclarée passent, 6 sur 8 sont refusées (FAIL)');
 }
 
+// TF-2296 (14/11/2026) — oracle-filtres-tableau lit une liste d'exceptions PAR CHEMIN pour une page SCELLÉE.
+// Le fait (09/11) : la maquette remise le 15/08 garde G12 en FAIL sur « Gain /5 » (7 cellules composites sur 10), et sa
+// seule sortie, data-filterable="off", modifie la page donc rompt son sceau. Les deux sens, sur la fixture rouge de
+// TF-2196 posée sous un chemin propre : (rouge) sans entrée le refus reste, une entrée pour un autre chemin, pour une
+// fin de nom, pour une autre règle, ou à qui manque la date, le motif ou les règles, ne retient rien ; (vert) l'entrée
+// du chemin, datée et motivée, retient G12 et le DIT au non_juge ; une entrée qui ne retient plus rien se dit périmée ;
+// une liste illisible ne conclut pas. Puis la liste livrée, sur la vraie maquette quand le pilot la porte.
+{
+  const FILTRES = path.join(SKILLDIR, 'scripts', 'oracle-filtres-tableau.mjs');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2296-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'pages'));
+    const page = path.join(tmp, 'pages', 'maquette-scellee.html');
+    fs.writeFileSync(page, fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'filtres-composite-rouge.html'), 'utf8'));
+    const pageVerte = path.join(tmp, 'pages', 'maquette-verte.html');
+    fs.writeFileSync(pageVerte, fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'filtres-composite-verte.html'), 'utf8'));
+    let n = 0;
+    const jouer = (fichier, liste) => {
+      const f = path.join(tmp, 'liste-' + (++n) + '.json');
+      fs.writeFileSync(f, typeof liste === 'string' ? liste : JSON.stringify({ exceptions: liste }));
+      const r = spawnSync(process.execPath, [FILTRES, fichier, '--exceptions', f], { encoding: 'utf8', timeout: 60000 });
+      let j = null; try { j = JSON.parse(r.stdout); } catch { /* sortie illisible : verdict inconnu */ }
+      return { j, code: r.status };
+    };
+    const entree = (s = {}) => ({ chemin: 'pages/maquette-scellee.html', regles: ['G12'], date: '2026-11-14', motif: 'page scellée du 15/08, rangée à old/', ...s });
+    const g12 = (r) => (r.j ? r.j.findings.filter(f => f.regle === 'G12').length : -1);
+    const sans = jouer(page, []);
+    const base = g12(sans);
+    !sans.j || sans.j.verdict !== 'FAIL' || sans.code !== 1 || base < 1
+      ? ko('TF-2296 rouge : sans entrée pour son chemin, la page composite doit rester en FAIL (exit 1) avec G12 — obtenu ' + (sans.j && sans.j.verdict) + ' exit ' + sans.code + ', G12 ×' + base)
+      : ok('TF-2296 rouge : sans entrée pour son chemin la page garde son refus (FAIL, exit 1, G12 ×' + base + ')');
+    const avec = jouer(page, [entree()]);
+    const dit = avec.j && avec.j.non_juge.find(x => /^Exception du 2026-11-14 sur pages\/maquette-scellee\.html \(G12\) — motif : page scellée du 15\/08, rangée à old\/ — \d+ constat\(s\) non retenu\(s\) : G12 \(/.test(x));
+    !avec.j || avec.j.verdict !== 'PASS' || avec.code !== 0 || g12(avec) !== 0 || !dit
+      ? ko('TF-2296 vert : l\'entrée du chemin (G12, datée, motivée) doit retenir G12 (PASS, exit 0) et le dire au non_juge — obtenu ' + (avec.j && avec.j.verdict) + ' exit ' + avec.code + ', G12 ×' + g12(avec) + ', ligne dite : ' + Boolean(dit))
+      : ok('TF-2296 vert : l\'entrée du chemin retient G12 (PASS, exit 0) et le dit au non_juge, avec sa date et son motif');
+    const autres = [
+      ['un autre chemin', entree({ chemin: 'pages/autre.html' })],
+      ['une fin de nom qui ne tombe pas sur une frontière de dossier', entree({ chemin: 'ette-scellee.html' })],
+      ['une autre règle que G12', entree({ regles: ['G11'] })],
+    ];
+    const retenus = autres.filter(([, e]) => { const r = jouer(page, [e]); return !r.j || r.j.verdict !== 'FAIL' || g12(r) !== base; });
+    retenus.length
+      ? ko('TF-2296 rouge : une entrée qui ne vise pas ce chemin et cette règle ne doit rien retenir — retenu à tort : ' + retenus.map(([nom]) => nom).join(' ; '))
+      : ok('TF-2296 rouge : une entrée pour un autre chemin, pour une fin de nom ou pour une autre règle ne retient rien (G12 reste, FAIL)');
+    const incompletes = [
+      ['sans motif', entree({ motif: '' })], ['sans date', entree({ date: undefined })],
+      ['avec une date mal formée', entree({ date: '14/11/2026' })], ['sans règles', entree({ regles: [] })],
+      ['avec une règle qui n\'est pas G<n>', entree({ regles: ['G12', 'tout'] })],
+    ];
+    const appliquees = incompletes.filter(([, e]) => { const r = jouer(page, [e]); return !r.j || r.j.verdict !== 'FAIL' || g12(r) !== base || !r.j.findings.some(f => f.regle === 'EX' && f.severite === 'bloquant'); });
+    appliquees.length
+      ? ko('TF-2296 rouge : une entrée incomplète est refusée (constat EX bloquant) et ne retient rien — appliquée ou muette à tort : ' + appliquees.map(([nom]) => nom).join(' ; '))
+      : ok('TF-2296 rouge : une entrée sans motif, sans date (ou mal formée), sans règles (ou hors G<n>) est refusée (EX bloquant) et ne retient rien');
+    const perimee = jouer(pageVerte, [entree({ chemin: 'pages/maquette-verte.html' })]);
+    !perimee.j || perimee.j.verdict !== 'PASS' || !perimee.j.non_juge.some(x => /aucun constat a ne pas retenir — l'entree est perimee/.test(x))
+      ? ko('TF-2296 : une entrée qui ne retient plus rien doit se dire périmée au non_juge — obtenu ' + (perimee.j && perimee.j.verdict) + ' ' + JSON.stringify(perimee.j && perimee.j.non_juge.filter(x => /^Exception/.test(x))))
+      : ok('TF-2296 : une entrée qui ne retient plus rien (page corrigée) le dit au non_juge — elle se retire, elle ne reste pas muette');
+    const cassee = jouer(page, '{"exceptions": [');
+    !cassee.j || cassee.j.verdict !== 'INCONCLUSIF' || cassee.code !== 2
+      ? ko('TF-2296 : une liste illisible ne doit pas conclure (INCONCLUSIF, exit 2) — obtenu ' + (cassee.j && cassee.j.verdict) + ' exit ' + cassee.code)
+      : ok('TF-2296 : une liste d\'exceptions illisible ne conclut pas (INCONCLUSIF, exit 2), elle ne se lit pas comme une liste vide');
+    // La liste livrée : chaque entrée complète, et la vraie maquette du cas fondateur quand le pilot la porte.
+    const livree = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'exceptions-filtres-tableau.json'), 'utf8'));
+    const mal = (livree.exceptions || []).filter(e => !(e.chemin && Array.isArray(e.regles) && e.regles.length && e.regles.every(r => /^G\d+$/.test(r)) && /^\d{4}-\d{2}-\d{2}$/.test(e.date || '') && String(e.motif || '').trim()));
+    !Array.isArray(livree.exceptions) || mal.length
+      ? ko('TF-2296 : la liste livrée references/exceptions-filtres-tableau.json doit porter un tableau « exceptions » d\'entrées complètes — entrées incomplètes : ' + mal.length)
+      : ok('TF-2296 : la liste livrée porte ' + livree.exceptions.length + ' entrée(s), chacune avec chemin, règles, date et motif');
+    const maquette = PILOT && path.join(PILOT, 'output', '01-revues-et-propositions', 'old', 'Produit-02 - Maquette Vue d\'ensemble - Rapport SEO - 20260815a.html');
+    if (!maquette || !fs.existsSync(maquette)) ok('TF-2296 : NON JOUÉ — la maquette scellée du 15/08 n\'est pas lisible depuis ce poste (' + (PILOT ? 'absente du pilot' : motifPilotAbsent(SKILLDIR)) + '), et c\'est dit');
+    else {
+      const livreeSurMaquette = spawnSync(process.execPath, [FILTRES, maquette], { encoding: 'utf8', timeout: 60000 });
+      let lj = null; try { lj = JSON.parse(livreeSurMaquette.stdout); } catch { /* illisible */ }
+      const sansListe = jouer(maquette, []);
+      !lj || lj.verdict !== 'PASS' || lj.findings.some(f => f.regle === 'G12') || !sansListe.j || sansListe.j.verdict !== 'FAIL' || !sansListe.j.findings.some(f => f.regle === 'G12')
+        ? ko('TF-2296 : la maquette scellée du 15/08 doit passer avec la liste livrée (G12 retenu) et rester en FAIL (G12) sans entrée — obtenu ' + (lj && lj.verdict) + ' / ' + (sansListe.j && sansListe.j.verdict))
+        : ok('TF-2296 : la maquette scellée du 15/08 (G12 sur « Gain /5 ») passe avec la liste livrée, sans toucher la page, et reste en FAIL sans entrée');
+    }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // LOT DU 10/11/2026 (retours du produit marketing des 09/11 b et c, et d'un produit de la chaîne de dev) — OUTILS DE
 // DIAPOSITIVES ET DE RENDU DE quality-oracles. Chaque bloc rejoue le défaut dans les deux sens ; les paires de decks vivent
 // au manifest (a11y-transition, charte-pptx-pastille-numerotee, charte-pptx-gabarit-b, charte-pptx-entites-xml,

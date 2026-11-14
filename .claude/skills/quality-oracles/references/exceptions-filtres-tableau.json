@@ -1,0 +1,11 @@
+{
+  "note": "Exceptions PAR CHEMIN de scripts/oracle-filtres-tableau.mjs (TF-2296, 14/11/2026). Une page scellée ne se modifie pas : son sceau de jugement (.jugement.json) la suit, et l'exemption du tableau (data-filterable=\"off\") la modifierait. Une entrée porte `chemin` (écrit depuis la racine du dépôt qui garde la page), `regles` (une liste de G<n>), `date` (AAAA-MM-JJ) et `motif` ; sans l'un des quatre, l'oracle la refuse sur la page qu'elle vise. Sans entrée pour un chemin, le refus reste ; une entrée ne couvre que les règles qu'elle nomme ; l'oracle dit chaque constat non retenu, et une entrée qui ne retient plus rien. Donnée périssable, donc éditable, datée et motivée (loi transverse n° 4).",
+  "exceptions": [
+    {
+      "chemin": "output/01-revues-et-propositions/old/Produit-02 - Maquette Vue d'ensemble - Rapport SEO - 20260815a.html",
+      "regles": ["G12"],
+      "date": "2026-11-14",
+      "motif": "Maquette d'étude remise le 15/08/2026 et rangée à old/ (TF-0562) : sa page est scellée avec son jugement et ne se corrige pas (R-5). Sa colonne « Gain /5 » porte 7 cellules composites sur 10 (jauge et chiffre), que G12 refuse ; l'exemption data-filterable=\"off\" modifierait la page et romprait son sceau (TF-2296)."
+    }
+  ]
+}
