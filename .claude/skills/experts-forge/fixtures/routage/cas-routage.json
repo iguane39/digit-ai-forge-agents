@@ -13,5 +13,19 @@
   {"id":"R12","demande":"Plan de mise en service du dépôt de carnet-web : protection de la branche principale par ruleset, GITHUB_TOKEN des workflows de déploiement et alertes Dependabot avant le GO humain","routees_attendues":["ops-github"]},
   {"id":"R13","demande":"Pousser le code du portail sur GitHub, puis ouvrir une pull request pour relire les changements du formulaire de contact","routees_attendues":[],"matchees_exclues":["ops-github"]},
   {"id":"R14","demande":"Les secrets de la démo sont stockés dans GitHub Actions : comment les protéger et les faire tourner avant la mise en service ?","routees_attendues":["ops-github"],"matchees_exclues":["ops-aws"]},
-  {"id":"R15","demande":"Pousser l'image du service sur ECR avec un tag immuable puis vérifier le déploiement","routees_attendues":["ops-aws"],"matchees_attendues":["ops-aws"]}
+  {"id":"R15","demande":"Pousser l'image du service sur ECR avec un tag immuable puis vérifier le déploiement","routees_attendues":["ops-aws"],"matchees_attendues":["ops-aws"]},
+  {"id":"R16","demande":"Préparer les vacances d'été de l'équipe et le calendrier des congés","routees_attendues":[],"matchees_exclues":["ops-azure"]},
+  {"id":"R17","demande":"Une réponse rapide sur nos capacités de production et l'état des stocks","routees_attendues":[],"matchees_exclues":["interop-archi"]},
+  {"id":"R18","demande":"Un atelier de handpan pour l'équipe à la rentrée","routees_attendues":[],"matchees_exclues":["conformite-rgpd-ia"]},
+  {"id":"R19","demande":"Notre plan social media pour la rentrée","routees_attendues":[],"matchees_exclues":["interop-archi"]},
+  {"id":"R20","demande":"Un voyage d'équipe à Seoul pour la convention de rentrée","routees_attendues":[],"matchees_exclues":["seo-web"]},
+  {"id":"R21","demande":"Un menu carpaccio pour le repas de l'équipe","routees_attendues":[],"matchees_exclues":["interop-archi"]},
+  {"id":"R22","demande":"Mettre à jour le total des notariaux inscrits à la formation","routees_attendues":[],"matchees_exclues":["hebergement-touristique"]},
+  {"id":"R23","demande":"Récupérer les comptes OTA et les avis de nos hôtes avant la reprise","routees_attendues":["hebergement-touristique"],"matchees_attendues":["hebergement-touristique"]},
+  {"id":"R24","demande":"Signer le DPA avec l'hébergeur avant la mise en service","routees_attendues":["conformite-rgpd-ia"],"matchees_attendues":["conformite-rgpd-ia"]},
+  {"id":"R25","demande":"Brancher les APIs du fournisseur pour un échange EDI et un robot RPA","routees_attendues":["interop-archi"],"matchees_attendues":["interop-archi"]},
+  {"id":"R26","demande":"Déployer le service sur ACA avec une révision en shadow","routees_attendues":["ops-azure"],"matchees_attendues":["ops-azure"]},
+  {"id":"R27","demande":"Faire un audit SEO du site vitrine","routees_attendues":["seo-web"],"matchees_attendues":["seo-web"]},
+  {"id":"R28","demande":"Joindre le DCE et le BPU au dossier de consultation","routees_attendues":["marches-publics-ao"],"matchees_attendues":["marches-publics-ao"]},
+  {"id":"R29","demande":"Dimensionner une installation de 9 kWc avec l'onduleur","routees_attendues":["photovoltaique-residentiel"],"matchees_attendues":["photovoltaique-residentiel"]}
 ]

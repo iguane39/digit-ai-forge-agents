@@ -11,7 +11,7 @@ Version 1.0.0 — 24/07/2026 — Statut registre : **ok** — admise le 24/07/20
 `marches-publics-ao` — mécanique des consultations publiques : primauté du cadre de réponse, exigences de recevabilité, BPU et unités d'œuvre, pondération et stratégie de notation, accords-cadres multi-attributaires et remise en concurrence, complétude des pièces du DCE, questions à l'acheteur.
 
 ## 2. declencheurs
-- `content_patterns` : `appel d'offres|marché public|CCTP|règlement de consultation|DCE|BPU|mémoire technique|consultation publique|acheteur public|accord-cadre|attributaire|DUME`
+- `content_patterns` : `appel d'offres|marché public|CCTP|règlement de consultation|\bDCE\b|\bBPU\b|mémoire technique|consultation publique|acheteur public|accord-cadre|attributaire|DUME`
 - Types de demandes : relecture ou cadrage d'une réponse à consultation publique, stratégie de réponse à un accord-cadre, analyse de recevabilité
 - Ne pas router : rédaction/chiffrage du contenu commercial (→ digit-ai-propale) ; audit qualité d'une propale finie (→ digit-ai-propale-review) ; traçabilité mécanique exigences→réponse (→ oracle exigences-ao, quality-oracles).
 
