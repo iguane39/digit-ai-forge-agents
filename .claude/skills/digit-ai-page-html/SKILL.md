@@ -7,13 +7,25 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.48.0"
+  version: "1.48.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.48.1 (14/11/2026)** — **Le cas de jonction de TF-2478 ne dépend plus de la console qui lance la recette (TF-2510, campagne du
+14/11/2026, décision R-58 : exécutée).** Recette seule : le comportement du skill ne change pas. Le pilot avait mesuré 863/864 au
+rejeu de la recette puis 3/3 OK au rejeu du cas seul, et l'attribuait à la charge du poste. Mesuré le 14/11/2026, la cause est
+ailleurs : `cmd /c mklink` écrit dans la page de code de la console qui lance la recette. Lancée depuis Git Bash (page 850), il écrit
+`cr\x82\x82e` et l'ancienne forme (`text=True`) lève l'exception que le rouge attend ; lancée depuis PowerShell (page 65001), il écrit
+de l'UTF-8, rien ne se lève et le rouge rend « aucune exception ». Quarante processus occupés sur vingt cœurs n'ont rien changé
+(10 cas sur 10 OK). `run_jonction_sortie_oem` rejoue donc la forme d'avant et `_creer_jonction` sur un flux d'octets imposé, celui que
+`cmd` écrit en page 850, que `subprocess.run` rend à la place de `cmd` dans le sous-processus : le rouge (UnicodeDecodeError sur
+0x82) et le vert (flux lu sans exception, sous `-X utf8` et `-X utf8=0`) tiennent dans toute console. Le cas avec le vrai `cmd`
+reste, comme vert. Contre-épreuve : `_creer_jonction` remise à `text=True` rend ECHEC sur le flux imposé depuis PowerShell, là où le
+vert réel rendait OK.
 
 **1.48.0 (13/11/2026)** — **`check_html.py` émet un identifiant distinct pour chacune des deux règles L30 (TF-2492, campagne du
 13/11/2026, décision R-58 : exécutée).** Il émettait « L30 » pour deux règles que `references/lisibilite.md` distingue depuis la

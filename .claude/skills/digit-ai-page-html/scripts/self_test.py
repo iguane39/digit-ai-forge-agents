@@ -2647,6 +2647,20 @@ def run_jonction_sortie_oem():
       · rouge : la forme d'avant (`text=True`, sans encodage) lève UnicodeDecodeError sur 0x82 ;
       · vert  : `_creer_jonction`, jouée dans les deux modes, rend vrai et laisse stderr vide.
     Sans Windows, pas de `cmd` : le cas est déclaré non joué.
+
+    TF-2510 (13/11/2026) — le rouge ne dépend plus de ce que `cmd` écrit ce jour-là. Le pilot a mesuré 863/864
+    au rejeu de la recette, puis 3/3 OK au rejeu du cas seul, et l'a attribué à la charge du poste. Mesuré le
+    14/11/2026 : la cause n'est pas la charge. `cmd /c mklink` écrit dans la page de code de la CONSOLE qui
+    lance la recette : sous un lancement depuis Git Bash (page 850) il écrit « Jonction cr\\x82\\x82e », sous un
+    lancement depuis PowerShell (page 65001) il écrit de l'UTF-8 (« cr\\xc3\\xa9\\xc3\\xa9e »), que `text=True`
+    décode sans erreur : l'ancienne forme ne lève plus rien, le rouge rend « aucune exception », et le même
+    cas rend ECHEC ou OK selon le shell. Quarante processus occupés sur vingt cœurs n'ont rien changé (10 cas
+    sur 10 OK) : la charge n'y est pour rien. Le défaut est donc rejoué sur un flux d'octets IMPOSÉ, celui que
+    `cmd` écrit en page 850, que `subprocess.run` rend à la place de `cmd` dans le sous-processus (substitution) ;
+    la forme d'avant et `_creer_jonction` lisent ce flux, quelle que soit la console :
+      · rouge : la forme d'avant lève UnicodeDecodeError sur 0x82, dans toute console ;
+      · vert  : `_creer_jonction` lit le même flux sans exception, dans les deux modes ;
+      · vert réel : `_creer_jonction` crée une vraie jonction avec le vrai `cmd`, dans les deux modes (inchangé).
     """
     if os.name != "nt":
         return [{"fixture": "jonction · sortie OEM de cmd — cas NON JOUÉ hors Windows, et dit (TF-2478)",
@@ -2659,20 +2673,38 @@ def run_jonction_sortie_oem():
     code_ancien = (prologue + "r = subprocess.run(['cmd', '/c', 'mklink', '/J', lien, d], capture_output=True, text=True); "
                    "ok = r.returncode == 0; print('JONCTION', ok); " + nettoyage)
     code_actuel = prologue + "ok = s._creer_jonction(lien, d); print('JONCTION', ok); " + nettoyage
+    # TF-2510 : `cmd` remplacé, dans le sous-processus, par un émetteur des octets qu'il écrit en page 850.
+    emetteur = "import sys; sys.stdout.buffer.write(%r); sys.stdout.flush()" % b"Jonction cr\x82\x82e pour lien"
+    substitution = ("\nreel = subprocess.run\n"
+                    "def cmd_page_850(args, **kw):\n"
+                    "    return reel([sys.executable, '-c', %r] if args[0] == 'cmd' else args, **kw)\n"
+                    "subprocess.run = cmd_page_850\n") % emetteur
+    code_ancien_flux = (prologue + substitution + "r = subprocess.run(['cmd', '/c', 'mklink', '/J', lien, d], "
+                        "capture_output=True, text=True); ok = r.returncode == 0; print('JONCTION', ok); os.rmdir(d)")
+    code_actuel_flux = (prologue + substitution + "ok = s._creer_jonction(lien, d); print('JONCTION', ok); "
+                        "os.rmdir(d)")
     res = []
 
     def jouer(code, mode):
         r = subprocess.run([sys.executable, "-X", mode, "-c", code], capture_output=True, env=env, timeout=120)
         return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
 
-    def cas(nom, ok, attendu, obtenu, detail=""):
+    def cas(nom, ok, attendu, obtenu, detail="", regle="TF-2478 sortie OEM"):
         res.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu, "obtenu": obtenu,
-                    "regle": "TF-2478 sortie OEM", "detail": "" if ok else detail[:300]})
+                    "regle": regle, "detail": "" if ok else detail[:300]})
 
-    code, sortie, err = jouer(code_ancien, "utf8")
-    cas("jonction · forme d'avant (text=True) sous -X utf8 : UnicodeDecodeError sur l'octet 0x82 (ROUGE)",
+    code, sortie, err = jouer(code_ancien_flux, "utf8")
+    cas("jonction · forme d'avant (text=True) sous -X utf8, flux de cmd en page 850 imposé : "
+        "UnicodeDecodeError sur l'octet 0x82 (ROUGE)",
         "UnicodeDecodeError" in err and "0x82" in err, "UnicodeDecodeError, octet 0x82",
-        "exception" if "UnicodeDecodeError" in err else "aucune exception", err[-250:])
+        "exception" if "UnicodeDecodeError" in err else "aucune exception", err[-250:],
+        regle="TF-2510 flux OEM imposé")
+    for mode, nom in (("utf8", "-X utf8, la condition qui exposait le défaut"), ("utf8=0", "-X utf8=0, sans UTF-8 forcé")):
+        code, sortie, err = jouer(code_actuel_flux, mode)
+        cas(f"jonction · _creer_jonction sous {nom}, flux de cmd en page 850 imposé : lu sans exception, stderr vide",
+            code == 0 and "JONCTION True" in sortie and err.strip() == "", "exit 0, JONCTION True, stderr vide",
+            f"exit {code}, stderr {len(err.strip())} car.", err[-250:] or sortie[-250:],
+            regle="TF-2510 flux OEM imposé")
     for mode, nom in (("utf8", "-X utf8, la condition qui exposait le défaut"), ("utf8=0", "-X utf8=0, sans UTF-8 forcé")):
         code, sortie, err = jouer(code_actuel, mode)
         cas(f"jonction · _creer_jonction sous {nom} : jonction créée, stderr vide",
