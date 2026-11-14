@@ -6986,6 +6986,50 @@ def run_fa4_tf2352():
     return out
 
 
+def run_scenes_adresse_independante_de_la_police():
+    """TF-2533 — l'adresse insécable de `scenes-rouge.html` déborde à 1 280 px QUELLE QUE SOIT la police à chasse fixe.
+
+    LE FAIT. Le 14/11/2026, quatre cas de scènes (TF-2299, TF-2391) rendaient rouge sur HEAD intact. La cause, mesurée :
+    la fixture portait une adresse de 126 caractères en `white-space: nowrap`, et son débordement à 1 280 px (le seul qui
+    sépare la scène 4 de l'état initial à cette largeur) dépendait de la police que le Chromium du poste donne à
+    `monospace` : scrollWidth 1 290 px sous Courier New, 1 280 (aucun débordement) sous Consolas, Cascadia Mono ou la
+    police `monospace` du poste. L'adresse compte désormais 222 caractères : même à 0,5 em par caractère (la chasse
+    fixe la plus étroite en usage), 14,4 px de corps, elle dépasse ce que l'écran laisse à droite de son départ.
+
+    Les deux sens sont joués sur la mesure du texte : l'ANCIENNE adresse (126 caractères) ne tient pas la barre et fait
+    échouer le contrôle ; l'adresse de la fixture la tient. La jumelle verte porte la MÊME adresse (elle ne diffère que
+    par la règle de coupure) : sinon sa verdure ne prouverait rien.
+    """
+    ancienne = ("https://documentation-interne.exemple-fixture.test/espaces/qualite/referentiels/"
+                "lignage-des-donnees/fiche-de-controle-2026.html")
+    corps, chasse_min, fenetre = 14.4, 0.5, 1280
+    depart = (fenetre - 960) / 2 + 20 + 32           # marge de .wrap (960 px centrés), son remplissage, celui de la scène
+    place = fenetre - depart
+
+    def tient_la_barre(adresse):
+        return len(adresse) * chasse_min * corps > place
+
+    def adresse_de(nom):
+        m = re.search(r'<code class="adresse">([^<]+)</code>', (FIXTURES / nom).read_text(encoding="utf-8"))
+        return m.group(1) if m else ""
+
+    rouge, verte = adresse_de("scenes-rouge.html"), adresse_de("scenes-verte.html")
+    return [
+        {"fixture": "scenes-rouge · l'ancienne adresse (126 caractères) ne tient pas la barre (SENS ROUGE)",
+         "verdict": "OK" if not tient_la_barre(ancienne) else "ECHEC",
+         "attendu": f"{len(ancienne)} car. × {chasse_min} em × {corps} px ≤ {place:.0f} px : débordement non garanti",
+         "obtenu": f"{len(ancienne) * chasse_min * corps:.0f} px", "regle": "TF-2533 adresse", "detail": ""},
+        {"fixture": "scenes-rouge · l'adresse déborde à 1 280 px sous toute police à chasse fixe (SENS VERT)",
+         "verdict": "OK" if rouge and tient_la_barre(rouge) else "ECHEC",
+         "attendu": f"> {place:.0f} px à 0,5 em par caractère", "obtenu": f"{len(rouge)} car., {len(rouge) * chasse_min * corps:.0f} px",
+         "regle": "TF-2533 adresse", "detail": ""},
+        {"fixture": "scenes-verte · même adresse que la rouge (elle ne diffère que par la règle de coupure)",
+         "verdict": "OK" if rouge and rouge == verte else "ECHEC",
+         "attendu": "adresses identiques", "obtenu": "identiques" if rouge == verte else "différentes",
+         "regle": "TF-2533 adresse", "detail": ""},
+    ]
+
+
 def run_lot_fa4():
     """Lot FA4 de la campagne du 10/11/2026 : TF-2353, TF-2352, TF-2362, TF-2364, TF-2365, TF-2391."""
     return run_fa4_tf2353() + run_fa4_tf2391() + run_fa4_impression() + run_fa4_tf2362() + run_fa4_tf2352()
@@ -7009,7 +7053,7 @@ def main():
            + run_sections_lisibilite_publiees()
            + run_l39_graphique_maison() + run_dates_jjmm()
            + run_kpi_hors_page_conteneur() + run_lot_a_check_html()
-           + run_lot_fa4())
+           + run_lot_fa4() + run_scenes_adresse_independante_de_la_police())
     # TF-1964 — le composant embarque lit des jetons que l'hote ne declare pas : repli et alerte.
     composants_jetons = run_lot_a_composants()
     if composants_jetons:

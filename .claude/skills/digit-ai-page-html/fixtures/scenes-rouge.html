@@ -9,8 +9,13 @@
      SCENES, des sections `section.scene[data-scene]` dont une seule est visible, le clavier
      (flèche droite et flèche gauche) et un sommaire (`data-aller`) pour changer de scène. Le
      corps porte lui aussi `data-scene` (la scène courante) : ce n'est pas une scène. Seule
-     la scène 4 est fautive : son adresse longue est insécable et déborde de la page (1 150 px de
-     large pour une fenêtre de 390 px, 1 290 pour 1 280). La scène 1, seule visible au chargement, est saine : l'état initial rend PASS, et
+     la scène 4 est fautive : son adresse longue est insécable et déborde de la page, à 390 comme à
+     1 280 px, QUELLE QUE SOIT la police à chasse fixe du poste (TF-2533). Avec l'adresse d'origine de
+     126 caractères, le débordement à 1 280 px dépendait de cette police : scrollWidth mesuré le
+     14/11/2026 à 1 280 px, 1 290 sous Courier New, 1 280 (aucun débordement) sous Consolas, Cascadia
+     Mono et la police `monospace` du Chromium de ce poste ; à 390 px, 1 150, 1 058 et 1 125. Avec
+     l'adresse de 222 caractères : 1 951 px sous Consolas, 2 066 sous Cascadia Mono, 2 111 sous Courier
+     New à 1 280 px, donc un débordement partout. La scène 1, seule visible au chargement, est saine : l'état initial rend PASS, et
      c'est ce silence que TF-2299 ferme. Sa jumelle verte `scenes-verte.html` coupe l'adresse. -->
 <style>
 :root {
@@ -63,7 +68,7 @@ h1 { font-family: var(--head); font-weight: 800; font-size: 1.8rem; line-height:
         <section class="scene" data-scene="3" aria-labelledby="titre-scene-3" hidden>
           <h3 id="titre-scene-3">Scène 4, les adresses vérifiables</h3>
           <p>L'adresse ne se coupe pas quand la ligne manque de place :</p>
-          <code class="adresse">https://documentation-interne.exemple-fixture.test/espaces/qualite/referentiels/lignage-des-donnees/fiche-de-controle-2026.html</code>
+          <code class="adresse">https://documentation-interne.exemple-fixture.test/espaces/qualite/referentiels/lignage-des-donnees/controles-de-coherence-entre-systemes-sources/rapprochements-mensuels-des-referentiels-clients/fiche-de-controle-2026.html</code>
         </section>
         <section class="scene" data-scene="4" aria-labelledby="titre-scene-4" hidden>
           <h3 id="titre-scene-4">Scène 5, la cinquième étape</h3>

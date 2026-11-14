@@ -121,6 +121,38 @@ function pastillesSurCouloir(html) {
   return { pastilles: pastilles.length, fleches: fleches.length, fautes };
 }
 
+// --- TF-2533 : un refus d'oracle jugé faux se RAPPORTE, et se DÉCLARE ici avec son motif (TF-1912) ---
+// Le 14/11/2026, le gabarit « schema-differentiel » rendait FAIL à oracle-slop S6 (forge-design) : la légende du gabarit
+// et ses colonnes corrigées portent « ✎ » (U+270E, LOWER RIGHT PENCIL). S6 lit `\p{Extended_Pictographic}`, une classe de
+// SEGMENTATION de texte qui couvre des pictogrammes sans présentation emoji ; U+270E n'a ni variante emoji ni rendu en
+// couleur, et le gabarit le dit (« Les glyphes de COLONNE (＋ ✎ ●) restent des caractères », assets/template-schema-
+// differentiel.html). Mesuré : la règle est inchangée depuis août, et run-oracles-design refuse le gabarit brut de la même façon
+// sur forge-design au 06/11 (1f43109), au 13/11 (dc39050) et à HEAD (8bd5d1a) : ce n'est pas une régression de cette forge,
+// et pourquoi le même gabarit rendait vert le 13/11 n'est PAS établi (cause inconnue, déclarée). Le gabarit n'est pas altéré pour faire taire l'oracle : remplacer le
+// glyphe changerait le contrat de lecture sans couleur du canevas (page-html : self_test.py, glyphes des colonnes) et cacher
+// le refus. L'écart est ÉTROIT : seul oracle-slop S6, seul le glyphe nommé ; tout autre échec, tout autre emoji reste un
+// échec. Le refus est remonté à forge-design (rapport du lot fa, restes) ; cette déclaration se retire quand S6 ne le
+// refuse plus : le gabarit rend alors PASS, et la recette DIT que l'écart déclaré est périmé.
+const ECARTS_DECLARES = {
+  'schema-differentiel': {
+    oracle: 'oracle-slop', regle: 'S6', glyphes: ['✎'],
+    motif: "oracle-slop S6 lit « ✎ » (U+270E, caractère de légende sans présentation emoji) comme un emoji : classe Extended_Pictographic, "
+      + 'plus large que les emoji (TF-2533, refus remonté à forge-design)',
+  },
+};
+const SEVERITES_BLOQUANTES = ['majeur', 'bloquant', 'critique'];
+/** Le motif de l'écart déclaré qui couvre ce verdict, ou null : seul l'oracle, la règle et les glyphes déclarés sont excusés. */
+function ecartDeclare(canevas, verdict, oracles) {
+  const decl = ECARTS_DECLARES[canevas];
+  if (!decl || verdict !== 'FAIL') return null;
+  const echoues = (oracles || []).filter((o) => o.verdict === 'FAIL');
+  if (echoues.length !== 1 || echoues[0].oracle !== decl.oracle) return null;
+  const bloquants = (echoues[0].findings || []).filter((f) => SEVERITES_BLOQUANTES.includes(f.sev || f.severite));
+  if (!bloquants.length) return null;
+  const couvert = bloquants.every((f) => f.regle === decl.regle && decl.glyphes.includes((/« (.+?) »/.exec(f.msg || f.message || '') || [])[1]));
+  return couvert ? decl.motif : null;
+}
+
 // --- les trois oracles, chacun rendu sous une forme que la recette sait lire ---
 function jouerCheckHtml(fichier) {
   const r = lancer(PYTHON, [checkHtml, fichier]);
@@ -361,6 +393,24 @@ try {
         c.stderr.on('data', (d) => { err += d; });
         c.on('close', (code) => { clearTimeout(t); resolve({ status: code, stdout: out, stderr: err }); });
       });
+      // l'écart déclaré (TF-2533), jugé sur des verdicts écrits à la main : un sens vert, six sens rouges, sans rendu
+      {
+        const slop = (...glyphes) => ({ oracle: 'oracle-slop', verdict: 'FAIL', findings: glyphes.map((g) => ({ sev: 'majeur', regle: 'S6', msg: `emoji « ${g} » dans l'interface : utiliser une icône SVG dessinée` })) });
+        const D = 'schema-differentiel', crayon = '✎', visage = '\u{1F642}';
+        const cas = [
+          ['« ✎ » seul est couvert', ecartDeclare(D, 'FAIL', [slop(crayon)]) !== null],
+          ['un autre emoji n\'est pas couvert', ecartDeclare(D, 'FAIL', [slop(visage)]) === null],
+          ['« ✎ » plus un autre emoji n\'est pas couvert', ecartDeclare(D, 'FAIL', [slop(crayon, visage)]) === null],
+          ['un second oracle en échec n\'est pas couvert', ecartDeclare(D, 'FAIL', [slop(crayon), { oracle: 'oracle-tokens', verdict: 'FAIL', findings: [] }]) === null],
+          ['une autre règle d\'oracle-slop n\'est pas couverte', ecartDeclare(D, 'FAIL', [{ oracle: 'oracle-slop', verdict: 'FAIL', findings: [{ sev: 'majeur', regle: 'S3', msg: `police « ${crayon} »` }] }]) === null],
+          ['un autre canevas n\'est pas couvert', ecartDeclare('flux-temporel', 'FAIL', [slop(crayon)]) === null],
+          ['un PASS n\'est pas un écart', ecartDeclare(D, 'PASS', []) === null],
+        ];
+        const fautes = cas.filter(([, vrai]) => !vrai).map(([nom]) => nom);
+        fautes.length
+          ? ko('écart déclaré (TF-2533) : ' + fautes.join(' | '))
+          : ok('écart déclaré (TF-2533) · sens vert : « ✎ » seul sous oracle-slop S6 est couvert ; sens rouges : un autre emoji, « ✎ » avec un autre emoji, un second oracle en échec, une autre règle, un autre canevas et un PASS ne le sont pas');
+      }
       const canevas = ['flux-temporel', 'topologie', 'tableau-de-bord', 'schema-differentiel', 'modele-donnees'];
       const travaux = canevas.map((c) => ({ nom: c, attendu: 'PASS', fichier: ecrire('rendu-' + c + '.html', instancier(c)) }));
       // sens rouge : le flux temporel sans ses déclarations par paire (data-overlap-ok) échoue pour V4
@@ -368,6 +418,11 @@ try {
       const sansPaires = flux.replace(/ data-overlap-ok="[^"]*"/g, '');
       if (sansPaires === flux) ko('sens rouge · le flux temporel ne porte plus de data-overlap-ok : la mutation ne s\'applique plus');
       else travaux.push({ nom: 'flux-temporel sans data-overlap-ok', attendu: 'FAIL', regle: 'V4', fichier: ecrire('rouge-flux-sans-paires.html', sansPaires) });
+      // sens rouge (TF-2533) : l'écart déclaré ne couvre QUE « ✎ » — le même gabarit avec un vrai emoji en plus reste refusé
+      const differentiel = instancier('schema-differentiel');
+      const avecEmoji = differentiel.replace('colonne corrigée</span>', 'colonne corrigée \u{1F642}</span>');
+      if (avecEmoji === differentiel) ko('sens rouge · le gabarit différentiel ne porte plus « colonne corrigée</span> » : la mutation ne s\'applique plus');
+      else travaux.push({ nom: 'schema-differentiel avec un emoji non déclaré', attendu: 'EMOJI', fichier: ecrire('rouge-differentiel-emoji.html', avecEmoji) });
       const resultats = new Array(travaux.length);
       let suivant = 0;
       await Promise.all([0, 1, 2].map(async () => {
@@ -384,9 +439,20 @@ try {
         const echoues = j ? j.oracles.filter((o) => o.verdict === 'FAIL') : [];
         const resume = echoues.map((o) => o.oracle + ' ' + [...new Set((o.findings || []).filter((f) => ['majeur', 'bloquant', 'critique'].includes(f.sev || f.severite)).map((f) => f.regle))].join('/')).join(' · ');
         if (t.attendu === 'PASS') {
-          verdict === 'PASS'
-            ? ok('gabarit ' + t.nom + ' · instance tel quel : run-oracles-design --rendu PASS sur ' + j.oracles.length + ' oracle(s), dont render_page aux deux thèmes')
-            : ko('gabarit ' + t.nom + ' · instance tel quel : run-oracles-design --rendu ' + verdict + ' — ' + resume);
+          const ecart = ecartDeclare(t.nom, verdict, j && j.oracles);
+          if (verdict === 'PASS') {
+            ok('gabarit ' + t.nom + ' · instance tel quel : run-oracles-design --rendu PASS sur ' + j.oracles.length + ' oracle(s), dont render_page aux deux thèmes'
+              + (ECARTS_DECLARES[t.nom] ? ' — ÉCART DÉCLARÉ PÉRIMÉ : l\'oracle ne refuse plus ce gabarit, retirer ECARTS_DECLARES[\'' + t.nom + '\']' : ''));
+          } else if (ecart) {
+            ok('gabarit ' + t.nom + ' · instance tel quel : run-oracles-design --rendu ' + verdict + ' — ÉCART DÉCLARÉ (TF-2533) : ' + resume + ' ; ' + ecart + ' ; tout autre échec resterait refusé');
+          } else ko('gabarit ' + t.nom + ' · instance tel quel : run-oracles-design --rendu ' + verdict + ' — ' + resume);
+        } else if (t.attendu === 'EMOJI') {
+          const slop = j ? j.oracles.find((o) => o.oracle === 'oracle-slop') : null;
+          const vu = !!slop && (slop.findings || []).some((f) => f.regle === 'S6' && /\u{1F642}/u.test(f.msg || f.message || ''));
+          const couvert = !!j && !!ecartDeclare('schema-differentiel', verdict, j.oracles);
+          (verdict === 'FAIL' && vu && !couvert)
+            ? ok('sens rouge · ' + t.nom + ' : oracle-slop S6 refuse l\'emoji ajouté et l\'écart déclaré de « ✎ » ne le couvre pas')
+            : ko('sens rouge · ' + t.nom + ' : l\'emoji ajouté n\'est pas refusé comme attendu (verdict ' + verdict + ', S6 vu ' + vu + ', couvert par l\'écart déclaré ' + couvert + ')');
         } else {
           const rp = j ? j.oracles.find((o) => o.oracle.startsWith('render_page')) : null;
           (verdict === 'FAIL' && rp && (rp.findings || []).some((f) => f.regle === t.regle))
