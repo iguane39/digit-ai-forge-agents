@@ -255,7 +255,7 @@ Retour humain : « les tooltips doivent expliquer le champ, pas recopier la cell
 
 Exigence : le `title` / `aria-label` d'une cellule, **son libellé de colonne et sa ponctuation
 retirés**, ne doit pas égaler le texte de la cellule. Le partage du travail est celui du
-dictionnaire de colonnes (L27) : *le `th` porte la définition du CHAMP, l'infobulle de cellule
+dictionnaire de colonnes (L27 (colonne)) : *le `th` porte la définition du CHAMP, l'infobulle de cellule
 porte l'explication de la VALEUR* — d'où elle vient, ce qu'elle mesure, ce qu'elle vaut. Un
 générateur qui dispose d'un catalogue commenté lit ses commentaires plutôt que de recomposer
 l'en-tête. Répétition **voulue** (graphie normalisée, transcription) → `data-legende-ok`,
@@ -322,7 +322,7 @@ de (e), le même livrable portait des colonnes « Source héritée » nommant le
 entrepôt cité et non joint — `LOC.FAI_LOT_MOIS`, `DIM_BATIMENT`. Aucun catalogue ne les
 commente : le générateur a fait retomber l'infobulle sur la **définition de la colonne**, la
 même phrase sur toute la colonne, qui se lit « pas d'explication ». Ni (e) — l'infobulle ne
-recopie pas la cellule, elle recopie l'en-tête — ni L27 — la colonne *a* sa définition — ne le
+recopie pas la cellule, elle recopie l'en-tête — ni L27 (colonne) — la colonne *a* sa définition — ne le
 voient : le trou est entre les deux.
 
 Exigence : **toute page qui nomme les objets d'un système source déclare un dictionnaire de ces
@@ -761,7 +761,7 @@ règle `@media print` qui la déplie.
 **Revue de lecture.** Que le détail dise plus que la ligne — sinon c'est un dépliant qui cache
 trop peu (L9).
 
-## L18 — Un identifiant porte son SENS, là où on le lit
+## L18 (jeton) — Un identifiant porte son SENS, là où on le lit
 
 *Retour DIRECT du client, en cours de session, le 22/08/2026* : **« je ne sais pas ce qu'est
 E2 »**. Sa consigne tient en une phrase — **garder les codes, ils servent la traçabilité, mais
@@ -779,7 +779,7 @@ dans le produit ; comme elle n'était écrite nulle part, **elle s'arrêtait à 
 HTML** et ne passait ni dans les livrables Markdown ni dans la restitution. Quatre documents et
 une restitution entière ont employé une trentaine de codes sans glose, jusqu'à l'interruption.
 
-**Contrôle mécanique.** `L18` — la **première** occurrence de chaque jeton dans la page doit
+**Contrôle mécanique.** `L18 (jeton)` — la **première** occurrence de chaque jeton dans la page doit
 RÉSOUDRE : un `title` non vide, un `aria-label`, un `aria-describedby` qui pointe une cible
 existante, un lien interne vers une ancre présente, ou `data-code-glose="<raison>"`. Les
 occurrences suivantes ne sont pas exigées — imposer la glose à chaque ligne produirait du bruit,
@@ -798,7 +798,7 @@ le motif ne connaissait que `ADR 0009` AVEC espace, et L3 (d) ne lit que des feu
 La consigne humaine avait été répétée quatre fois chez un autre produit. La forme reconnue : deux à cinq
 majuscules, trois à cinq chiffres, un suffixe `-R05` facultatif. Les préfixes de NORMES et de FORMATS (ISO, IEC,
 RFC, SHA, TLS, SQL, AES, HTTP, UTF, WCAG, CVE, NIST…) en sont exclus : `ISO27001` ou `SHA256` ne sont pas des
-codes du livrable. Le remède est celui de L18 : `title`, `aria-label`, `aria-describedby` vers une définition,
+codes du livrable. Le remède est celui de L18 (jeton) : `title`, `aria-label`, `aria-describedby` vers une définition,
 lien interne vers son ancre, ou `data-code-glose="<raison>"`. Fixtures `l18-code-regle-nu.html` (rouge : un
 avertissement nommant les trois codes, les trois normes citées dans la même page ne sont pas accusées) et
 `l18-code-regle-glose.html` (verte). **Avertissement et non échec.** Bruit mesuré le 29/10/2026, ancienne et nouvelle
@@ -816,20 +816,20 @@ impossible à attraper aujourd'hui.
 
 ### L18 bis — Un SYSTÈME d'identifiants s'explique une fois, avant son premier tableau
 
-*Retour humain du 08/09/2026, sur une page où **L18 était vert*** : **« à quoi servent les
+*Retour humain du 08/09/2026, sur une page où **L18 (jeton) était vert*** : **« à quoi servent les
 repères S1, S2, G5 ? ce n'est pas expliqué »**. Chaque jeton portait bien son infobulle, ligne à
 ligne. Et le lecteur ne savait toujours pas ce qu'**est** un repère de cette famille, combien il
 y en a, ni où ils vivent aussi (fichier de définition, chapitre des objets, listing). **Gloser
-chaque occurrence et expliquer le système sont deux gestes différents**, et L18 ne connaissait
+chaque occurrence et expliquer le système sont deux gestes différents**, et L18 (jeton) ne connaissait
 que le premier — c'est pour cela que la page pouvait être verte et incomprise.
 
 **Règle.** Dès qu'un même préfixe d'identifiant est employé sur **plus de trois lignes de
 tableau**, la page porte une **légende du système** *avant* le premier tableau qui l'emploie.
 En dessous du seuil, une famille n'est pas un système : trois renvois se lisent un par un, et
-exiger une légende produirait le bruit que L18 évite déjà en ne glosant que la première
+exiger une légende produirait le bruit que L18 (jeton) évite déjà en ne glosant que la première
 occurrence.
 
-**La légende se déclare, elle ne se devine pas** — même doctrine que `data-codes` pour L18 et
+**La légende se déclare, elle ne se devine pas** — même doctrine que `data-codes` pour L18 (jeton) et
 `data-legende-ok` pour L3 : `data-legende-codes="S,G"` sur le bloc qui explique le système
 (repère, objet, action, pourquoi). Un oracle qui reconnaîtrait une légende à sa *forme*
 accepterait n'importe quel tableau placé au bon endroit ; déclarer coûte un attribut et rend le
@@ -837,7 +837,7 @@ contrat lisible par l'auteur comme par l'oracle.
 
 **La position compte, et c'est la borne de la règle** : une légende posée *après* le tableau
 explique ce que le lecteur a déjà renoncé à comprendre. Les trois fixtures tiennent ensemble —
-`l18bis-systeme-non-explique` (jetons tous glosés, L18 vert, L18 bis rouge),
+`l18bis-systeme-non-explique` (jetons tous glosés, L18 (jeton) vert, L18 bis rouge),
 `l18bis-systeme-explique` (légende avant), `l18bis-legende-apres-le-tableau` (même légende,
 placée après : rouge). Sans la troisième, une règle qui se contenterait de *trouver* la
 déclaration quelque part rendrait le même verdict sur les deux premières.
@@ -907,7 +907,7 @@ internes dans le même conteneur. *Une phrase qui promet une vue ne compte pas.*
 85 Ko et 297 entrées, le lanceur en jugeait **quatre**, et **aucun de lisibilité** : les règles
 L1-L22 vivent dans `check_html.py`, qui ne s'exécute que sur du HTML. Or le **Markdown est le
 format de livraison dominant** des runs d'architecture et de conseil — le projet concerné remet
-dix documents Markdown et un seul HTML. Conséquence directe : le défaut de L18 (un identifiant
+dix documents Markdown et un seul HTML. Conséquence directe : le défaut de L18 (jeton) (un identifiant
 sans son sens) s'est produit **dans les documents Markdown**, là où rien ne regardait, et c'est
 un humain qui l'a trouvé. Exactement comme le défaut fondateur de L14.
 
@@ -919,7 +919,7 @@ noms qui disent leur origine :
 | `M7` | un chapitre ouvre par ce qu'il apprend, pas par un tableau nu | L7 |
 | `M10` | au-delà de 12 lignes de tableau, une phrase dit COMMENT lire | L10 |
 | `M14` | aucune plomberie interne dans le texte | L14 |
-| `M18` | un identifiant porte son sens, **en ligne** | L18 |
+| `M18` | un identifiant porte son sens, **en ligne** | L18 (jeton) |
 
 **Hors HTML, la glose est forcément EN LIGNE** : il n'y a ni infobulle ni ancre à survoler. `M18`
 l'accepte entre parenthèses, après un tiret, ou après deux-points — les trois formes qu'un œil
@@ -1269,7 +1269,7 @@ désormais l'alignement des **contrôles** d'une même rangée à **2 px près**
 (`controles_desalignes`, bloquant) — V3 juge des séries de blocs, L2 des largeurs de texte, et
 une rangée de formulaire n'est ni l'un ni l'autre.
 
-## L27 — Sur une page de données, une colonne se DÉFINIT (TF-0777, 02/09/2026)
+## L27 (colonne) — Sur une page de données, une colonne se DÉFINIT (TF-0777, 02/09/2026)
 
 **Le fait payé.** Aucun en-tête de la console livrée n'était défini, et l'infobulle du tri disait
 « Trier par ». Une hypothèse exprimée **en euros par an** était consommée par un calcul
@@ -1283,18 +1283,18 @@ mesure, dans quelle UNITÉ, et d'où elle vient**. La source unique est un **dic
 colonnes** ([`dictionnaire-de-colonnes.md`](dictionnaire-de-colonnes.md)) : en-têtes, infobulles
 et glossaire en **dérivent**, au lieu d'être réécrits trois fois.
 
-**Contrôle mécanique.** `L27` — un `<th>` muet sur une page de données. La règle ne juge que les
+**Contrôle mécanique.** `L27 (colonne)` — un `<th>` muet sur une page de données. La règle ne juge que les
 pages déclarées : exiger une définition sur le tableau à deux colonnes d'une note de synthèse
 ferait crier le contrôle là où il n'apprend rien.
 
 ### L27 bis — un EN-TÊTE DE LIGNE se définit aussi (TF-1970, RT-19 du lot Produit-84 20261019e)
 
 Un comparatif nommait dix-neuf composants dans sa première colonne (`<th scope="row">`) sans une infobulle ;
-l'utilisateur a demandé qu'ils soient définis, et `check_html` rendait PASS : L27 ne juge que les pages
+l'utilisateur a demandé qu'ils soient définis, et `check_html` rendait PASS : L27 (colonne) ne juge que les pages
 DÉCLARÉES de données, et un comparatif est le plus souvent une page de lecture. **Règle** : dans un tableau
 d'au moins trois lignes de corps et trois `<th>` de ligne (`scope="row"`, ou placé dans le corps), chacun porte
 `data-definition` (ou `title`, un `<abbr title>`, un lien vers son entrée de glossaire). **Avertissement**
-(règle neuve) ; sur une page de données, L27 le juge déjà, bloquant. Écart voulu :
+(règle neuve) ; sur une page de données, L27 (colonne) le juge déjà, bloquant. Écart voulu :
 `data-entetes-ok="<raison, 8 caractères au moins>"` sur le tableau. Fixtures `l27-entetes-de-ligne-muets.html`
 (rouge) et `l27-entetes-de-ligne-definis.html` (verte : trois porteurs). Bruit mesuré le 29/10/2026 sur 2 405 pages
 HTML de `C:\dev` hors fixtures : 34 pages nouvellement accusées (1,4 %), 91 avertissements — des comparatifs réels
@@ -1640,7 +1640,7 @@ nulle part), d'où l'avertissement.
 « Partiel », et aucune ne disait quoi faire : les remèdes vivaient dans un autre tableau, sans renvoi
 ligne à ligne. `check_html.py`, `render_page.py` et les oracles de `digit-ai-forge-design` rendaient
 PASS ; le porteur l'a renvoyé : « pour chaque ligne de la comparaison, fournis les actions de
-remédiation ». L3 juge la légende des statuts, L10 l'exemple de lecture, L27 la définition des
+remédiation ». L3 juge la légende des statuts, L10 l'exemple de lecture, L27 (colonne) la définition des
 colonnes : aucune règle ne reliait une valeur d'écart à un remède.
 
 **La règle.** Dans un tableau, une ligne dont une cellule porte un statut **défavorable** porte

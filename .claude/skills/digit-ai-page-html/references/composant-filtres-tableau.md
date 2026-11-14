@@ -123,7 +123,7 @@ chronologique**. C'est la raison pour laquelle le socle ne demande pas d'autre f
 **Qui juge quoi, aujourd'hui — et ce qui reste ouvert.** `oracle-filtres-tableau.mjs`
 (skill `quality-oracles`) juge le **câblage G1–G6**. Les trois contrôles ajoutés le 02/09 sont
 tenus ailleurs, et il vaut mieux l'écrire que de le laisser croire : **G7** (exemption de colonne
-motivée) et **G9** (définition d'en-tête) par `check_html.py` — `L4` et `L27` ; **G8** (valeur
+motivée) et **G9** (définition d'en-tête) par `check_html.py` — `L4` et `L27 (colonne)` ; **G8** (valeur
 d'ordre) par `L28` ; le **comportement** par les fixtures Playwright du banc
 (`tf-tri-milliers.html`, `tf-facettes-ordre.html`, `tf-etat-rejoue.html`). *Porter G7–G9 dans
 l'oracle lui-même reste à faire, côté `quality-oracles` : un référentiel qui annoncerait neuf
@@ -193,7 +193,7 @@ fautif, aucun en-tête n'était défini et l'infobulle disait « Trier par » : 
 **euros par an** s'est fait multiplier par un nombre de séjours sans que personne puisse le voir.
 La définition — ce que la colonne mesure, son **unité**, sa source — vit dans un dictionnaire de
 colonnes ([`dictionnaire-de-colonnes.md`](dictionnaire-de-colonnes.md)) dont en-têtes, infobulles
-et glossaire **dérivent**. Contrôle statique : `L27` de `check_html.py`.
+et glossaire **dérivent**. Contrôle statique : `L27 (colonne)` de `check_html.py`.
 
 ## G8 — une facette temporelle se lit dans l'ordre du temps (TF-0781, 02/09)
 
@@ -254,6 +254,17 @@ colonne qui ne mérite pas sa facette la refuse **avec son motif** (G7).
 **Exemption explicite** : un tableau en périmètre qui ne doit pas être filtré porte
 `data-filterable="off"` **et** `data-filterable-reason="…"`. Sans motif, c'est un échec — pas
 une exemption. L'oracle rend alors `SKIP` sur ce tableau et le motif figure au journal.
+
+**Exemption par chemin, pour une page scellée (TF-2296)** : `data-filterable="off"` MODIFIE la page, et une
+page scellée ne se modifie pas — son sceau de jugement (`.jugement.json`) la suit, un octet changé la détache.
+`oracle-filtres-tableau.mjs` lit donc la liste `references/exceptions-filtres-tableau.json` de `quality-oracles` :
+par **chemin** (écrit depuis la racine du dépôt qui garde la page, valable pour tout chemin d'artefact qui se
+termine par lui à une frontière de dossier), les règles `G<n>` qu'il ne retient pas. Une entrée porte `chemin`,
+`regles`, `date` (AAAA-MM-JJ) et `motif` ; sans l'un des quatre, elle est refusée (constat `EX`, bloquant sur la page
+qu'elle vise) et ne retient rien. Sans entrée pour le chemin, le refus reste ; une entrée ne couvre que les règles
+qu'elle nomme ; chaque constat non retenu est dit au `non_juge` (règle, date, motif, lieux) ; une entrée qui ne
+retient plus rien se dit périmée, à retirer. `--exceptions <fichier>` lit une autre liste (la recette). La liste
+livrée porte une entrée : la maquette de Produit-02 remise le 15/08/2026, `G12`, colonne « Gain /5 ».
 
 ## Câblage
 

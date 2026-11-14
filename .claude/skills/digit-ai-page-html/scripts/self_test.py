@@ -85,16 +85,16 @@ CAS = {
     # porte son sens la ou on le lit. La verte emploie la bonne pratique qui existait DEJA dans le
     # rapport HTML du meme projet : une infobulle qui developpe le code, plus son ancre de
     # definition. Elle ne passait nulle part ailleurs, faute d etre ecrite.
-    "l18-identifiant-muet.html": {"L18"},
+    "l18-identifiant-muet.html": {"L18 (jeton)"},
     "l18-identifiant-glose.html": set(),
     # TF-0944 (08/09) — L18 bis : le SYSTEME d'identifiants, pas le jeton. Les trois fixtures
     # tiennent ensemble : la rouge porte des jetons TOUS gloses (L18 vert) et echoue quand meme ;
     # la verte pose la legende AVANT le tableau ; la troisieme pose la MEME legende APRES, et
     # echoue — sans elle, une regle qui se contenterait de trouver la declaration quelque part
     # rendrait le meme verdict sur les deux, et le vert ne prouverait rien.
-    "l18bis-systeme-non-explique.html": {"L18"},
+    "l18bis-systeme-non-explique.html": {"L18 bis"},
     "l18bis-systeme-explique.html": set(),
-    "l18bis-legende-apres-le-tableau.html": {"L18"},
+    "l18bis-legende-apres-le-tableau.html": {"L18 bis"},
     # TF-0952 (08/09) — L31 : une hierarchie longue rendue en tableau se PLIE. Les deux fixtures
     # portent la MEME donnee ; seule la table de la verte porte `data-arbre`.
     "l31-hierarchie-non-pliable.html": {"L31"},
@@ -229,7 +229,7 @@ CAS = {
     "l25-onglets-chapitre-orphelin.html": {"L25"},
     "l26-donnees-colonne-de-lecture.html": {"L26"},
     "l26-donnees-pleine-largeur.html": set(),
-    "l27-entetes-sans-definition.html": {"L27"},
+    "l27-entetes-sans-definition.html": {"L27 (colonne)"},
     "l27-dictionnaire-de-colonnes.html": set(),
     "l28-mois-sans-ordre.html": {"L28"},
     "l28-mois-ordonnes.html": set(),
@@ -2515,7 +2515,7 @@ def sections_par_numero(texte):
 
 
 def numeros_a_section_nue(texte):
-    """Les numéros qui portent plusieurs sections dont une sans qualificatif (« L18 » et « L18 bis ») : non jugés."""
+    """Les numéros qui portent plusieurs sections dont une sans qualificatif (« L15 » et « L15 bis ») : non jugés."""
     return sorted(n for n, noms in sections_par_numero(texte).items()
                   if len(noms) >= 2 and not all(RE_SECTION_QUALIFIEE.match(s) for s in noms))
 
@@ -2527,7 +2527,7 @@ def ecarts_identifiants_partages(texte, emis, hors_check_html=()):
     « L29 ter »), aucune ne porte l'identifiant nu : `check_html` ne peut pas émettre « L30 », qui désignerait
     plusieurs règles, et chaque section doit être émise sous son propre identifiant, sauf celles que
     `hors_check_html` déclare jugées ailleurs (et qu'aucun message n'ouvre alors). Un numéro qui garde une
-    section sans qualificatif (« L18 » et « L18 bis ») n'est pas jugé ici : `numeros_a_section_nue` les nomme,
+    section sans qualificatif (« L15 » et « L15 bis ») n'est pas jugé ici : `numeros_a_section_nue` les nomme,
     pour que la borne se dise au lieu de se taire. Le 13/11/2026 « L12 » et « L29 » étaient dans ce cas, et
     check_html émettait leur identifiant nu pour quatre et trois règles.
     """
@@ -2637,16 +2637,37 @@ def run_sections_lisibilite_publiees():
     vert = ecarts_identifiants_partages(sections_l12_l29, emis_justes, hors)
     cas("jouet : un identifiant par section, la suite déclarée hors de check_html (VERT)", not vert,
         "0 écart", f"{len(vert)} écart(s)", " | ".join(vert))
-    rouge = ecarts_identifiants_partages("## L18 — a\n### L18 bis — b\n", {"L18"})
-    cas("jouet : un numéro à section nue (L18, L18 bis) n'est pas jugé, et se nomme (BORNE DITE)",
-        not rouge and numeros_a_section_nue("## L18 — a\n### L18 bis — b\n## L30 (a) — c\n## L30 (b) — d\n") == [18],
-        "0 écart, numéros non jugés [18]", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    rouge = ecarts_identifiants_partages("## L15 — a\n### L15 bis — b\n", {"L15"})
+    cas("jouet : un numéro à section nue (L15, L15 bis) n'est pas jugé, et se nomme (BORNE DITE)",
+        not rouge and numeros_a_section_nue("## L15 — a\n### L15 bis — b\n## L30 (a) — c\n## L30 (b) — d\n") == [15],
+        "0 écart, numéros non jugés [15]", f"{len(rouge)} écart(s)", " | ".join(rouge))
+
+    # TF-2531 — le 14/11/2026, check_html émettait « L18 » pour trois règles (jeton, code de règle, système) et « L27 »
+    # pour deux (colonne, en-tête de ligne) : leurs sections nues côtoyaient « L18 bis » et « L27 bis », et le contrôle
+    # les nommait sans les juger. Les sections nues deviennent « L18 (jeton) » et « L27 (colonne) », « bis » les distingue.
+    sections_l18_l27 = ("## L18 (jeton) — a\n### L18 bis — b\n## L27 (colonne) — c\n### L27 bis — d\n")
+    emis_justes_18_27 = {"L18 (jeton)", "L18 bis", "L27 (colonne)", "L27 bis"}
+    rouge = ecarts_identifiants_partages(sections_l18_l27, (emis_justes_18_27 - {"L18 (jeton)"}) | {"L18"})
+    cas("jouet : « L18 » nu émis pour ses sections qualifiées (ROUGE)",
+        len(rouge) == 2 and "identifiant « L18 » émis" in rouge[0] and "« L18 (jeton) » : aucun" in rouge[1],
+        "2 écarts : l'identifiant nu, puis la section sans émission", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    rouge = ecarts_identifiants_partages(sections_l18_l27, (emis_justes_18_27 - {"L27 (colonne)"}) | {"L27"})
+    cas("jouet : « L27 » nu émis pour ses sections qualifiées (ROUGE)",
+        len(rouge) == 2 and "identifiant « L27 » émis" in rouge[0] and "« L27 (colonne) » : aucun" in rouge[1],
+        "2 écarts : l'identifiant nu, puis la section sans émission", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    vert = ecarts_identifiants_partages(sections_l18_l27, emis_justes_18_27)
+    cas("jouet : un identifiant par section pour L18 et L27 (VERT)", not vert and numeros_a_section_nue(sections_l18_l27) == [],
+        "0 écart, aucun numéro à section nue", f"{len(vert)} écart(s)", " | ".join(vert))
 
     ref = (FIXTURES.parent / "references" / "lisibilite.md").read_text(encoding="utf-8")
     jugees = regles_jugees_par_check_html()
     emis = identifiants_emis_par_check_html()
     reel = (ecarts_sections_lisibilite(ref, jugees) + ecarts_compte_cas(ref, attendu_cas)
             + ecarts_identifiants_partages(ref, emis, SECTIONS_HORS_CHECK_HTML))
+    nues = numeros_a_section_nue(ref)
+    cas("references/lisibilite.md : L18 et L27 n'ont plus de section nue, le contrôle de TF-2492 les juge",
+        18 not in nues and 27 not in nues and {"L18 (jeton)", "L18 bis", "L27 (colonne)", "L27 bis"} <= emis,
+        "ni 18 ni 27 parmi les numéros à section nue, quatre identifiants émis", f"nues {nues}, émis {sorted(i for i in emis if i[:3] in ('L18', 'L27'))}")
     cas("references/lisibilite.md contre check_html.py", not reel and len(jugees) > 0,
         f"0 écart sur {len(jugees)} règles jugées, {len(emis)} identifiants émis ; "
         f"numéros à section nue non jugés : {numeros_a_section_nue(ref)}", f"{len(reel)} écart(s)",
@@ -6471,7 +6492,7 @@ def run_lot_a_check_html():
     # AVERTISSEMENT et non échec (mesure du 29/10/2026 : GR223, WRD0000, ATT00759 sur le parc) ; les formes
     # historiques (`ADR 0009`) restent des échecs, joués par l18-identifiant-muet.
     fails, warns = check(lire("l18-code-regle-nu.html"), regles="L")
-    w18 = [x for x in warns if x.startswith("L18 code de règle sans glose")]
+    w18 = [x for x in warns if x.startswith("L18 (jeton) code de règle sans glose")]
     cas("l18-code-regle-nu.html",
         len(w18) == 1 and "3 code(s)" in w18[0] and all(c in w18[0] for c in ("ADR0501", "OSP0901", "GDE0202-R05"))
         and not [f for f in fails if f.startswith("L18")] and "ISO27001" not in w18[0] and "SHA256" not in w18[0],
@@ -6483,7 +6504,7 @@ def run_lot_a_check_html():
 
     # --- TF-1970 : L27 juge les en-têtes de ligne hors page de données ---
     fails, warns = check(lire("l27-entetes-de-ligne-muets.html"), regles="L")
-    w = [x for x in warns if x.startswith("L27 en-têtes de ligne sans définition")]
+    w = [x for x in warns if x.startswith("L27 bis en-têtes de ligne sans définition")]
     cas("l27-entetes-de-ligne-muets.html", len(w) == 1 and "4 sur 4" in w[0] and not [f for f in fails if f.startswith("L27")],
         "1 avertissement L27 (4 sur 4), 0 échec", f"{len(w)} avertissement(s)", "TF-1970 en-têtes de ligne", " | ".join(warns))
     fails, warns = check(lire("l27-entetes-de-ligne-definis.html"), regles="L")

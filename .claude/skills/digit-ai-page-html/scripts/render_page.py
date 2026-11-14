@@ -2950,7 +2950,7 @@ MESURE_LARGE_JS = r"""
           + `dans une fenetre de ${window.innerWidth}px — width calcule ${cs.width}, max-width `
           + `${cs.maxWidth}. Une page de DONNEES prend toute la largeur offerte (L26) : au 4K la `
           + `place existe, et la moitie de l'ecran reste vide. Poser width: 100% sur le tableau, `
-          + `ou retirer le plafond de son conteneur ; les colonnes se DEFINISSENT (L27) plutot `
+          + `ou retirer le plafond de son conteneur ; les colonnes se DEFINISSENT (L27 (colonne)) plutot `
           + `que de se laisser etirer` });
       }
     }

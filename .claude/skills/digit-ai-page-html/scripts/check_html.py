@@ -1345,7 +1345,7 @@ def _l39_motif(noeuds):
 
 
 def _glose_de_renvoi(porteur, ids_page) -> bool:
-    """L18 — le renvoi RÉSOUT-il ? title, aria-label, aria-describedby vers une cible présente, lien interne
+    """L18 (jeton) — le renvoi RÉSOUT-il ? title, aria-label, aria-describedby vers une cible présente, lien interne
     vers une ancre présente, ou `data-code-glose`, sur l'élément porteur ou un de ses ancêtres."""
     for n in [porteur, *porteur.ancetres()]:
         if (n.att("title") or "").strip() or (n.att("aria-label") or "").strip():
@@ -2006,7 +2006,7 @@ def check_lisibilite(html: str, a: Arbre):
     for td in [n for n in a.racine.descendants() if n.tag == "td"]:
         # `data-definition` COMPTE COMME PORTEUR (TF-0954, 08/09). La regle ne lisait que les deux
         # attributs natifs ; or `data-definition` est le porteur DOCUMENTE d'une explication dans
-        # ce socle (G9, L27, references/dictionnaire-de-colonnes.md). Une page qui explique par
+        # ce socle (G9, L27 (colonne), references/dictionnaire-de-colonnes.md). Une page qui explique par
         # `data-definition` echappait a la regle sans rien changer au defaut : la meme tautologie,
         # sous un autre attribut. Mesure du 08/09 sur les 350 pages suivies de huit depots du parc :
         # ZERO nouveau constat — la porte s'elargit sans bruiter.
@@ -2325,7 +2325,7 @@ def check_lisibilite(html: str, a: Arbre):
     #
     # LE FAIT. La loi posee par L3 bis est « une explication qui recopie son porteur n'est pas une
     # explication ». Elle n'etait appliquee qu'aux CELLULES. Un cran plus haut, la meme tautologie
-    # passait : G9 et L27 exigent qu'un `<th>` d'une page de donnees porte sa definition — ils
+    # passait : G9 et L27 (colonne) exigent qu'un `<th>` d'une page de donnees porte sa definition — ils
     # verifient qu'elle EXISTE, jamais qu'elle APPREND quelque chose. Un
     # `<th data-definition="Provenance">Provenance</th>` tient les deux regles et n'informe
     # personne, et c'est le geste que produit mecaniquement un generateur qui remplit le champ
@@ -2357,7 +2357,7 @@ def check_lisibilite(html: str, a: Arbre):
     # `LOC.FAI_LOT_MOIS`, `DIM_BATIMENT`. Aucun catalogue ne les commente, alors le generateur
     # a fait retomber l'infobulle sur la DEFINITION DE LA COLONNE : la meme phrase sur toutes
     # les cellules d'une colonne, qui se lit « pas d'explication ». L3 bis ne le voit pas —
-    # l'infobulle ne recopie pas la cellule, elle recopie l'en-tete. L27 non plus : la colonne
+    # l'infobulle ne recopie pas la cellule, elle recopie l'en-tete. L27 (colonne) non plus : la colonne
     # a bien sa definition. Le trou est entre les deux : un objet NOMME sans etre EXPLIQUE.
     #
     # LA MESURE. Une cellule dont le texte est un identifiant technique d'objet et dont
@@ -2443,7 +2443,7 @@ def check_lisibilite(html: str, a: Arbre):
         fails.append(
             f"L3 définition de colonne TAUTOLOGIQUE sur {len(definitions_tautologiques)} "
             f"en-tête(s) — « {libelle} » a pour définition « {aide}… », qui répète son propre "
-            f"libellé sans rien y ajouter ({ou}). G9 et L27 exigent qu'une définition EXISTE ; "
+            f"libellé sans rien y ajouter ({ou}). G9 et L27 (colonne) exigent qu'une définition EXISTE ; "
             "elle doit aussi APPRENDRE quelque chose — au moins un fait nouveau : l'unité, la "
             "source, la règle de calcul, l'ordre. Le dictionnaire de colonnes "
             "(references/dictionnaire-de-colonnes.md) en donne la forme : définition + unité + "
@@ -2455,7 +2455,7 @@ def check_lisibilite(html: str, a: Arbre):
             f"L3 légende TAUTOLOGIQUE sur {len(tautologiques)} cellule(s) — « {libelle} » a "
             f"pour infobulle « {aide}… », qui recopie la cellule une fois son libellé de "
             f"colonne retiré ({ou}). Une infobulle EXPLIQUE la valeur : d'où elle vient, ce "
-            "qu'elle mesure, ce qu'elle vaut. Le dictionnaire de colonnes (L27) porte la "
+            "qu'elle mesure, ce qu'elle vaut. Le dictionnaire de colonnes (L27 (colonne)) porte la "
             "définition du champ ; si un catalogue commenté existe, l'infobulle se génère "
             "depuis ses commentaires. Répétition VOULUE (graphie normalisée, "
             "transcription) → `data-legende-ok`, déclaré sur la cellule ou sa colonne.")
@@ -2683,16 +2683,16 @@ def check_lisibilite(html: str, a: Arbre):
                 muets_code.append((jeton, porteur.chemin()))
     for jeton, ou in muets[:6]:
         fails.append(
-            f"L18 identifiant muet : « {jeton} » employé sans son sens ({ou}) — première "
+            f"L18 (jeton) identifiant muet : « {jeton} » employé sans son sens ({ou}) — première "
             "occurrence dans la page. Un code sert la traçabilité, il ne se lit pas : joindre "
             "un `title` qui le développe, un `aria-describedby` vers sa définition, ou un lien "
             "interne vers son ancre. Retour client du 22/08 : « je ne sais pas ce qu'est E2 ».")
     if len(muets) > 6:
-        fails.append(f"L18 identifiant muet : {len(muets) - 6} autre(s) jeton(s) sans glose.")
+        fails.append(f"L18 (jeton) identifiant muet : {len(muets) - 6} autre(s) jeton(s) sans glose.")
     if muets_code:
         exemples = " · ".join(f"« {j} » ({ou})" for j, ou in muets_code[:3])
         warns.append(
-            f"L18 code de règle sans glose (avertissement) : {len(muets_code)} code(s) en lettres et chiffres "
+            f"L18 (jeton) code de règle sans glose (avertissement) : {len(muets_code)} code(s) en lettres et chiffres "
             f"cité(s) nu(s) — {exemples}{' …' if len(muets_code) > 3 else ''}. Un code de règle sert la "
             "traçabilité, il ne se lit pas : joindre un `title` qui dit ce qu'il impose, un `aria-describedby` "
             "vers sa définition, un lien interne vers son ancre, ou `data-code-glose=\"<raison>\"` (un nom de "
@@ -2777,7 +2777,7 @@ def check_lisibilite(html: str, a: Arbre):
             continue
         ou = "après le tableau" if pos_leg is not None else "absente"
         fails.append(
-            f"L18 système d'identifiants non expliqué : le préfixe « {p} » est employé sur "
+            f"L18 bis système d'identifiants non expliqué : le préfixe « {p} » est employé sur "
             f"{n_lignes} lignes de tableau, et la légende du système est {ou}. Une infobulle de "
             "cellule dit ce que vaut CE jeton ; elle ne dit ni ce qu'EST un repère de cette "
             "famille, ni combien il y en a, ni où ils vivent aussi. Poser, AVANT le premier "
@@ -3339,7 +3339,7 @@ def check_lisibilite(html: str, a: Arbre):
     def _propres_a_la_cible(sec, retenir):
         """Éléments de CETTE cible : ce qui vit sous une cible imbriquée appartient à celle-ci.
 
-        Le même partage vaut pour le chapeau (L7) et pour le bloc de contenu (L30) : sans lui,
+        Le même partage vaut pour le chapeau (L7) et pour le bloc de contenu (L30 (chapitre)) : sans lui,
         un chapitre qui enveloppe un sous-chapitre hérite de ce que le sous-chapitre a écrit,
         et se croit en règle — ou s'accuse lui-même de répéter son propre enfant."""
         out = []
@@ -4174,7 +4174,7 @@ def check_lisibilite(html: str, a: Arbre):
             if muets:
                 noms = [th.texte_propre()[:24] or "(vide)" for th in muets[:4]]
                 fails.append(
-                    f"L27 page de données : {len(muets)} en-tête(s) sans définition — "
+                    f"L27 (colonne) page de données : {len(muets)} en-tête(s) sans définition — "
                     f"« {' » · « '.join(noms)} »"
                     f"{' …' if len(muets) > 4 else ''}. Sur une page de données, un `<th>` porte "
                     "`data-definition` (ou `title`, ou un lien vers son entrée de glossaire) : "
@@ -4265,7 +4265,7 @@ def check_lisibilite(html: str, a: Arbre):
             if muets_l:
                 noms_l = [th.texte_propre()[:24] for th in muets_l[:4]]
                 warns.append(
-                    f"L27 en-têtes de ligne sans définition (avertissement) : {len(muets_l)} sur "
+                    f"L27 bis en-têtes de ligne sans définition (avertissement) : {len(muets_l)} sur "
                     f"{len(th_ligne)} — « {' » · « '.join(noms_l)} »"
                     f"{' …' if len(muets_l) > 4 else ''} ({t.chemin()}). Ce qu'un en-tête de ligne "
                     "nomme (un composant, un objet, un critère), le lecteur ne le devine pas : un "
@@ -5125,15 +5125,15 @@ def exemption_declaree(source, hors=()):
 
 # TF-1589 (RT-115, lot Produit-02 20261001b) — LA CLASSE D'ARTEFACT « source-machine ».
 # Mesure du 22/09/2026 : cinq pages engendrées comme SOURCE pour l'assistant d'ingestion d'une
-# plateforme tierce rendaient FAIL sur 9 occurrences de L7, avec 9 avertissements L30. Chaque
+# plateforme tierce rendaient FAIL sur 9 occurrences de L7, avec 9 avertissements L30 (chapitre). Chaque
 # paragraphe y est repris tel quel comme contenu du livret remis au voyageur : un chapeau
 # « ce que ce chapitre vous apprend » y devient du méta-discours livré au client final. Les
 # 33 autres règles étaient vertes, et utiles. La page dont le lecteur est une machine se
 # DÉCLARE (`--classe=source-machine`, ou `<meta name="classe-artefact" content="source-machine">`)
 # au lieu d'une exemption écrite à la main dans chaque produit. Sous cette classe, trois mesures
 # écrites pour un lecteur humain qui parcourt la page sont retirées, et NOMMÉES au périmètre de
-# non-mesure : L7 (chapeau), L25 (sommaire), et la moitié de L30 qui exige un `.contenu` par
-# chapitre. Tout le reste est jugé, dont le dénominateur de couverture de L30 et la glose du
+# non-mesure : L7 (chapeau), L25 (sommaire), et la moitié de L30 (chapitre) qui exige un `.contenu` par
+# chapitre. Tout le reste est jugé, dont le dénominateur de couverture de L30 (couverture) et la glose du
 # jargon : une donnée lue par une machine doit encore dire « sur combien ».
 CLASSES_ARTEFACT = ("page-lue", "source-machine")
 CLASSE_PAR_DEFAUT = "page-lue"
@@ -5475,7 +5475,7 @@ def non_juge(classe: str = CLASSE_PAR_DEFAUT, origine: str = "") -> list:
         "capture, et nulle part ailleurs",
         "LA DENSITÉ ET LA PROPORTION D'UNE FIGURE ne sont pas jugées : un schéma trop dense pour "
         "être lu, ou étiré au-delà de sa taille naturelle, reste du balisage valide",
-        "LE SENS D'UN LIBELLÉ pour un lecteur neuf n'est pas jugé. L6 et L30 exigent qu'une "
+        "LE SENS D'UN LIBELLÉ pour un lecteur neuf n'est pas jugé. L6 et L30 (chapitre) exigent qu'une "
         "annonce EXISTE et fasse une longueur minimale — jamais qu'elle veuille dire quelque "
         "chose. Un intitulé de navigation juste et incompréhensible passe",
         "L'ADÉQUATION DU CONTENU À SON LECTEUR DÉCLARÉ n'est pas jugée : qu'un chapitre "

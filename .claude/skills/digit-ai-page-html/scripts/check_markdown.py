@@ -17,7 +17,7 @@ CE QUI EST JUGÉ ICI : le sous-ensemble des règles INDÉPENDANTES DU FORMAT DE 
   M7  — un chapitre OUVRE par ce qu'il apprend, pas par un tableau nu (L7 transposée) ;
   M10 — un chapitre de DONNÉES porte son mode d'emploi (L10 transposée) ;
   M14 — aucune plomberie interne dans le texte (L14, portée telle quelle) ;
-  M18 — un identifiant du vocabulaire du document porte son sens (L18 transposée : hors HTML,
+  M18 — un identifiant du vocabulaire du document porte son sens (L18 (jeton) transposée : hors HTML,
         la glose est forcément EN LIGNE — pas d'infobulle, pas d'ancre à survoler).
 
 CE QUI RESTE HORS PÉRIMÈTRE, ET LE DIT. Les règles qui dépendent du RENDU n'ont pas de sens sur

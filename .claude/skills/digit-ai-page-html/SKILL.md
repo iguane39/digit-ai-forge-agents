@@ -158,8 +158,8 @@ dans la pile, texte dessous), et le centre de trois contrôles. Cas fondateur re
 PASS ; outil neuf et feuille d'avant, FAIL (fond `rgba(0,0,0,0)`, 6 points sur 9) ; feuille neuve, PASS. **(5) Colonnes déséquilibrées
 (TF-1966).** `colonnes_desequilibrees` (V25, avertissement) : une colonne à 25 % du tableau ou plus, remplie à 30 % ou moins, face à une
 colonne plus étroite, pleine et sur 3 lignes ou plus ; écart voulu `data-colonnes-ok`. **(6) Trois règles de forme, toutes en avertissement
-(TF-1967, TF-1970, TF-1969).** L12 lit les virgules d'une cellule (4 éléments) et la colonne qui mêle listes et prose ; L27 juge aussi les
-`<th scope="row">` d'une page qui n'est pas déclarée de données (écart voulu `data-entetes-ok`) ; L18 signale un code de règle en lettres puis
+(TF-1967, TF-1970, TF-1969).** L12 lit les virgules d'une cellule (4 éléments) et la colonne qui mêle listes et prose ; L27 bis juge aussi les
+`<th scope="row">` d'une page qui n'est pas déclarée de données (écart voulu `data-entetes-ok`) ; L18 (jeton) signale un code de règle en lettres puis
 chiffres (`ADR0501`, `OSP0901`, `GDE0202-R05`) cité nu, hors préfixes de normes (ISO, SHA, HTTP…) : avertissement, parce que la
 mesure du parc y trouve des noms de sentier et de fichier (`GR223`, `WRD0000`), pas des codes de règle. **(7) V1 ne compte plus la bande de sommaire
 défilante que L25 prescrit (TF-1992).** Un élément au-delà de la fenêtre, dans un conteneur `overflow-x` qui tient dans la fenêtre ET dans un
@@ -478,7 +478,7 @@ fichier reste le défaut et son comportement ne change pas.
 **1.22.0 (14/09/2026)** — **le socle cesse d'accuser ce qu'il impose, et ses composants disent ce
 qu'ils font.** · Trois règles de `check_html` jugeaient le mauvais objet : A5 comptait les polices
 embarquées que A1 exige (TF-0984), la police Syne se cherchait dans le texte au lieu des
-déclarations (TF-1049), L30 trouvait « gate » dans `aggregate_type` (TF-0969). · Deux règles de
+déclarations (TF-1049), L30 (chapitre) trouvait « gate » dans `aggregate_type` (TF-0969). · Deux règles de
 STRUCTURE naissent : **S2** refuse un même ensemble énuméré deux fois, en tableau et en fiches
 (TF-1036), **S3** exige qu'une colonne déclarée relevée porte sa source par ligne et que la page
 cite son garde-fou (TF-1053). · `render_page` sépare l'en-tête bridé par la fin de son tableau
@@ -510,7 +510,7 @@ arbre à chaque changement de filtre. · **Le socle sait plier une hiérarchie**
 le pliage **survit** au passage des filtres. · **Deux règles ferment la porte à l'explication qui
 n'explique rien** : L3 bis lit désormais `data-definition` et juge aussi la définition d'un
 `<th>` qui répète son propre libellé ; **L18 bis** exige la légende d'un SYSTÈME d'identifiants
-avant son premier tableau — la page fondatrice était **verte à L18**, glosée jeton par jeton, et
+avant son premier tableau — la page fondatrice était **verte à L18 (jeton)**, glosée jeton par jeton, et
 son lecteur ne savait toujours pas ce qu'est un repère S. · **Le socle dit où s'arrête son
 périmètre** : un tableau, avant le quick start, renvoie les schémas de base de données, ERD et
 schémas différentiels vers `digit-ai-schemas` — leur absence de renvoi avait fait écrire puis
@@ -546,7 +546,7 @@ mesurer des symptômes. **A5** juge une feuille sur sa **densité de règles** e
 balisage. · **Une capture qui échoue rendait un traceback au lieu d'un verdict** (TF-0897) : la
 branche d'échec existait, la sortie texte la traversait en `Path(None)`. · **Une page de
 couverture doit dire sur combien elle porte** (TF-0909) : 47 lignes de mapping, trois PASS, et
-38 colonnes + 22 mesures orphelines trouvées en recette le soir même — **L30**. · **Le poseur de
+38 colonnes + 22 mesures orphelines trouvées en recette le soir même — **L30 (couverture)**. · **Le poseur de
 composants s'importe enfin** (TF-0890) : son analyse d'arguments s'exécutait au chargement et
 tuait tout importateur ; un produit avait réimplémenté le format du bloc dans un autre langage,
 *la classe de défaut que ce script existe pour éliminer*. `--poser` et `--constat <page>`
@@ -572,7 +572,7 @@ calculent dans la page l'ordre qu'aurait rendu l'ancienne lecture et exigent qu'
 sommaire visible en permanence au-delà de trois chapitres (« fournis un menu sur la gauche ») ;
 **L26** une page de données se DÉCLARE et prend toute la largeur, la colonne de lecture reste pour
 la prose — l'arbitrage manquait, et le même défaut a été signalé « des dizaines de fois » ;
-**L27** un `<th>` définit sa colonne, avec son **unité** (une hypothèse en euros/an était
+**L27 (colonne)** un `<th>` définit sa colonne, avec son **unité** (une hypothèse en euros/an était
 multipliée par un nombre de séjours) ; **L28** le temps s'affiche comme du temps, valeur d'ordre
 obligatoire ; **L29** l'arbitrage `header` collant / `thead` collant, tranché au socle par le
 token `--hh` — un **produit** avait dû le trancher seul. · **Quatre familles de rendu**
@@ -703,7 +703,7 @@ oracles. Recette 96/96 -> 101/101.
 **L1** : le SUJET d'un sélecteur est son DERNIER composant, plus son premier —
 `a.kpi .kpi-label{display:flex}` faisait de tout lien un élément de bloc, et six phrases
 correctes échouaient d'un coup ; le message nomme désormais le sélecteur fautif.
-**L18** (neuve) : un identifiant du vocabulaire du livrable — `E2`, `H3`, `ADR 0009` — RÉSOUT à
+**L18 (jeton)** (neuve) : un identifiant du vocabulaire du livrable — `E2`, `H3`, `ADR 0009` — RÉSOUT à
 sa première occurrence (`title`, `aria-describedby`, ancre interne). Retour direct du client :
 « je ne sais pas ce qu'est E2 ».
 **L19** (neuve) : `overflow-wrap: anywhere` sur un sélecteur de PROSE est refusé — nécessaire sur

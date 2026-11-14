@@ -15,7 +15,7 @@ Une colonne se définit **une fois**, dans un fichier de données ; l'en-tête, 
 glossaire et la légende d'export en **dérivent**. Trois écritures d'une même définition
 divergent — c'est la loi transverse n° 4 : *une donnée volatile est une donnée, pas du code*.
 
-Contrôle mécanique : `L27` (`check_html.py`) — sur une page `data-page="donnees"`, un `<th>` sans
+Contrôle mécanique : `L27 (colonne)` (`check_html.py`) — sur une page `data-page="donnees"`, un `<th>` sans
 `data-definition` (ou `title`, ou lien vers son entrée de glossaire) est un **échec**.
 Côté composant de filtres, c'est **G9** de
 [`composant-filtres-tableau.md`](composant-filtres-tableau.md).
