@@ -85,9 +85,9 @@
  *   · `ts_consigne` doit correspondre EXACTEMENT au ts de l'entrée visée : une déclaration
  *     qui ne colle pas à l'histoire ne couvre rien (et le dit) ;
  *   · les quatre champs sont dus — une déclaration incomplète est un écart, pas une couverture ;
- *   · elle agit sur l'horodatage et, depuis TF-1425, sur un seq en double ou en recul : un seq
- *     SAUTÉ (saut en avant), JSON invalide, run_open absent, forme du payload restent des FAIL —
- *     rien ne les déclare rectifiables ;
+ *   · elle agit sur l'horodatage et, depuis TF-1425, sur un seq en double ou en recul, et, depuis
+ *     TF-2494 (voir plus bas), sur un seq SAUTÉ (saut en avant) : JSON invalide, run_open absent,
+ *     forme du payload restent des FAIL — rien ne les déclare rectifiables ;
  *   · un écart rectifié s'IMPRIME `[RECTIFIÉ]`, toujours, à chaque verify. Il ne disparaît
  *     pas : il cesse seulement de bloquer. Un écart NON déclaré reste FAIL.
  *
@@ -103,6 +103,26 @@
  * l'entrée dont le ts est `ts_consigne` (c'est lui qui dit LAQUELLE des entrées au même seq est
  * visée), et seulement si elle est écrite après elle. Le doublon de seq (TF-1367) dont chaque
  * occurrence après la première est ainsi couverte s'imprime [RECTIFIÉ], en tête.
+ *
+ * LE SAUT DE SEQ EN AVANT A SES DEUX VOIES (TF-2494, 14/11/2026). Le message de R-42 d'
+ * `oracle-conformite-projet` du pilot prescrit `type: anteriorite_ledger` et couvre, depuis l'héritage
+ * 1.63.0 (a86f397d), un saut en avant — des seq jamais écrits — par deux voies ; ce script refusait
+ * le type (vocabulaire) et fait encore FAIL un saut que R-42 couvre : le même fichier était intègre
+ * pour un juge et rompu pour l'autre (le défaut de TF-1425). Mesuré le 13/11/2026 chez un produit :
+ * 15 sauts sans entrée qui les couvre. Désormais `verify` couvre un saut en avant par :
+ *   (1) une `rectification_horodatage` ULTÉRIEURE dont `entrees[]` nomme le seq qui SUIT la lacune,
+ *       avec son `ts_consigne` EXACT (mêmes bornes que la collision : quatre champs dus, seq antérieur
+ *       à la rectification, écrite après l'entrée visée) ;
+ *   (2) une `anteriorite_ledger` portant `avant` (date ISO lisible) et `cause` (≥ 20 caractères),
+ *       qui couvre tout saut dont l'entrée qui suit la lacune est horodatée STRICTEMENT avant `avant`
+ *       (la plus récente des déclarations valides fait foi, comme R-42).
+ * Le saut s'IMPRIME toujours (`[RECTIFIÉ]` ou `[ANTÉRIORITÉ]`, « saut en avant ») : il cesse de bloquer,
+ * il ne disparaît pas. Un saut que ni l'une ni l'autre ne couvre reste FAIL. L'antériorité ne couvre ICI
+ * que le saut en avant (la demande de TF-2494) : R-42 l'étend aussi à une collision et à un recul
+ * d'horodatage, ce que ce script ne fait pas encore.
+ * À l'écriture, `anteriorite_ledger` est au vocabulaire et refusée sans `avant` lisible ou sans `cause`
+ * de 20 caractères : une déclaration que R-42 ignorerait resterait pour toujours dans un journal en
+ * ajout seul (même garde que TF-1722).
  *
  * DES INSTANTS, JAMAIS DES CHAÎNES (TF-1422, 28/09/2026). Le fait mesuré chez un produit le
  * 25/09 : `append` horodate en UTC (`toISOString`, suffixe `Z`), et ce produit écrit l'heure de
@@ -411,6 +431,18 @@ const CHAMPS_QUALIFICATION_ENCLENCHEMENT = [
     (v) => (typeof v === "string" ? null : `doit etre une CHAINE (recu ${typeof v})`)],
 ];
 
+//: TF-2494 (14/11/2026) — l'ANTÉRIORITÉ BORNÉE que le message de R-42 du pilot prescrit (TF-1203) : `avant` (date ISO) et
+//: `cause` (≥ 20 caractères, comme R-42 la lit). Une déclaration sans l'un ou l'autre est ignorée par R-42 : refusée À L'ÉCRITURE,
+//: quel que soit le schéma, comme la rectification de forges (TF-1722) — elle resterait pour toujours dans un journal en ajout seul.
+const TYPE_ANTERIORITE = "anteriorite_ledger";
+const CAUSE_ANTERIORITE_MIN = 20;
+const CHAMPS_ANTERIORITE = [
+  ["avant", "la DATE ISO avant laquelle les écarts sont déclarés antérieurs — sans elle, R-42 du pilot ignore la déclaration",
+    (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? null : `doit etre une date ISO lisible (recu ${JSON.stringify(v)})`)],
+  ["cause", `pourquoi ces écarts sont antérieurs (au moins ${CAUSE_ANTERIORITE_MIN} caracteres) — sans elle, R-42 du pilot ignore la déclaration`,
+    (v) => (typeof v === "string" && v.trim().length >= CAUSE_ANTERIORITE_MIN ? null : `doit etre une CHAINE d'au moins ${CAUSE_ANTERIORITE_MIN} caracteres (recu ${JSON.stringify(v)})`)],
+];
+
 //: TF-2245 (06/11/2026) — LE VOCABULAIRE DES TYPES, LE REMPLACEMENT ET LE JOURNAL HORS RUN : trois choses que
 //: `gabarits/ledger.py` du pilot tenait déjà et que ce script ignorait, de sorte que les deux écrivains d'un même ledger
 //: divergeaient (ledger.py refusait ce que ledger.mjs écrivait). Le vocabulaire est celui du CONTRAT-INTERFACE.md §3 du
@@ -422,7 +454,8 @@ const TYPES_VOCABULAIRE = ["run_open", "etape_open", "invocation", "oracles_verd
   "question_humain", "reponse_humain", "etape_close", "retour", "relais_arme", "run_close",
   "rectification_versions_forges", "rectification_run_open", "rectification_horodatage",
   "rectification_forges_mobilisees", "go_publication", "conflit_regles", "demande_emise", "demande_recue",
-  "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement", "secret_range"];
+  "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement",
+  "anteriorite_ledger", "secret_range"];
 //: TF-2223 du pilot — sans ledger de run, ces types s'écrivent au journal `forge/hors-run.jsonl` (même discipline de
 //: `seq` et de `ts`, champ `hors_run: true`), pas au ledger du run, dont R-42 exige qu'il s'ouvre par `run_open`.
 //: Le journal hors run se reconnaît à son NOM : c'est le chemin de doctrine, et il ne s'ouvre pas par `run_open`.
@@ -816,8 +849,10 @@ if (cmd === "append") {
   // TF-1722 : une rectification de `forges_mobilisees` sans liste non vide ou sans `cause` est
   // refusée avant le verrou, quel que soit le schéma — le juge du pilot l'ignorerait.
   // TF-1319 (D-5 b) : même garde pour la qualification d'un refus du juge d'enclenchement.
+  // TF-2494 : même garde pour l'antériorité bornée que le message de R-42 prescrit.
   const champsTypeLibre = obj.type === TYPE_RECTIFICATION_FORGES ? CHAMPS_RECTIFICATION_FORGES
-    : obj.type === TYPE_QUALIFICATION_ENCLENCHEMENT ? CHAMPS_QUALIFICATION_ENCLENCHEMENT : null;
+    : obj.type === TYPE_QUALIFICATION_ENCLENCHEMENT ? CHAMPS_QUALIFICATION_ENCLENCHEMENT
+      : obj.type === TYPE_ANTERIORITE ? CHAMPS_ANTERIORITE : null;
   if (champsTypeLibre) {
     const manquants = [];
     for (const [champ, pourquoi, valider] of champsTypeLibre) {
@@ -827,7 +862,7 @@ if (cmd === "append") {
       if (probleme) manquants.push(`\`${champ}\` ${probleme} — ${pourquoi}`);
     }
     if (manquants.length) {
-      fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, ${obj.type === TYPE_RECTIFICATION_FORGES ? "TF-1722" : "TF-1319"}) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
+      fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, ${obj.type === TYPE_RECTIFICATION_FORGES ? "TF-1722" : obj.type === TYPE_ANTERIORITE ? "TF-2494" : "TF-1319"}) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
     }
   }
   // TF-1841 du pilot : `parties_mobilisees`, facultatif, est refusé s'il est présent et mal formé.
@@ -997,6 +1032,19 @@ if (cmd === "append") {
     return { r: enAval.find((d) => d.ts_consigne === e.ts) || null, divergente: enAval[0] || null };
   };
 
+  // TF-2494 : l'ANTÉRIORITÉ BORNÉE déclarée — la plus récente des `anteriorite_ledger` valides (`avant` lisible,
+  // `cause` ≥ 20 caractères) fait foi, comme R-42 du pilot (TF-1203). Elle ne couvre ici que le saut de seq en avant.
+  let anterioriteBorneMs = NaN, anterioriteBorneAvant = "", anterioriteBorneCause = "";
+  for (const e of entrees) {
+    if (e.type !== TYPE_ANTERIORITE) continue;
+    const ms = instant(e.avant);
+    const cause = typeof e.cause === "string" ? e.cause.trim() : "";
+    if (!Number.isNaN(ms) && cause.length >= CAUSE_ANTERIORITE_MIN && (Number.isNaN(anterioriteBorneMs) || ms > anterioriteBorneMs)) {
+      anterioriteBorneMs = ms; anterioriteBorneAvant = e.avant; anterioriteBorneCause = cause;
+    }
+  }
+  const avantBorne = (ms) => !Number.isNaN(ms) && !Number.isNaN(anterioriteBorneMs) && ms < anterioriteBorneMs;
+
   // --- PASSE 1 bis : NUMÉROS PORTÉS PAR PLUSIEURS ENTRÉES (TF-1367, 21/09/2026). Fait mesuré :
   // deux sessions simultanées ont écrit dans le même journal d'un produit ; les seq 262, 263,
   // 265 et 266 y désignaient chacun deux entrées, noyées dans 57 ruptures anciennes par le seul
@@ -1023,14 +1071,38 @@ if (cmd === "append") {
   const rectifiesAppliques = new Set();
   const collisionsAppliquees = new Set(); // seq dont une collision est rectifiée
   const collisionsRectifiees = new Set(); // n° de ligne des entrées en collision rectifiées
+  const sautsCouverts = new Set();        // TF-2494 : seq qui suivent une lacune couverte (rectification ou antériorité)
   entrees.forEach((e, i) => {
     if (e.seq !== seqAttendu) {
       const quoi = `ligne ${i + 1} : seq ${e.seq} attendu ${seqAttendu}`;
       // Un seq en double ou en recul (sous le plus haut seq vu) nommé par une rectification en
-      // aval est [RECTIFIÉ] (TF-0794 du pilot) ; un saut en avant ou un seq non nommé reste FAIL.
+      // aval est [RECTIFIÉ] (TF-0794 du pilot) ; un seq non nommé reste FAIL. TF-2494 : un saut en
+      // avant (des seq jamais écrits) a ses deux voies — la rectification qui nomme le seq qui suit
+      // la lacune, ou l'antériorité bornée (`anteriorite_ledger`) — comme R-42 du pilot.
       const enCollision = Number.isInteger(e.seq) && e.seq < seqAttendu;
-      const { r, divergente } = enCollision ? couverture(e, i + 1) : { r: null, divergente: null };
-      if (r) {
+      const enSaut = Number.isInteger(e.seq) && e.seq > seqAttendu;
+      const { r, divergente } = enCollision || enSaut ? couverture(e, i + 1) : { r: null, divergente: null };
+      if (enSaut) {
+        const lacune = `seq ${seqAttendu}${e.seq - 1 > seqAttendu ? ` à ${e.seq - 1}` : ""} jamais écrit${e.seq - 1 > seqAttendu ? "s" : ""}`;
+        const nature = `saut en avant, ${lacune}`;
+        if (r) {
+          r.applique = true;
+          sautsCouverts.add(e.seq);
+          console.log(`[RECTIFIÉ] ${quoi} (${nature}) — déclaré par la rectification du seq ${r.parSeq}, ` +
+            `heure réelle estimée ${r.ts_reel_estime} : ${r.cause}`);
+        } else if (avantBorne(instant(e.ts))) {
+          sautsCouverts.add(e.seq);
+          console.log(`[ANTÉRIORITÉ] ${quoi} (${nature}) — antérieur au ${new Date(anterioriteBorneMs).toISOString()} ` +
+            `déclaré (${TYPE_ANTERIORITE}, avant ${anterioriteBorneAvant}) : ${anterioriteBorneCause.slice(0, 90)}`);
+        } else if (divergente) {
+          ecartsIntegrite.push(`${quoi} (${nature}, append-only rompu) — la rectification du seq ${divergente.parSeq} ` +
+            `déclare \`ts_consigne\` ${divergente.ts_consigne}, l'entrée porte ${e.ts} : une déclaration ` +
+            `qui ne correspond pas à l'histoire ne couvre rien`);
+        } else {
+          ecartsIntegrite.push(`${quoi} (${nature}, append-only rompu) — remède : une \`${TYPE_RECTIFICATION}\` ultérieure ` +
+            `dont \`entrees[]\` nomme le seq ${e.seq} avec son \`ts_consigne\`, ou une \`${TYPE_ANTERIORITE}\` (\`avant\`, \`cause\` ≥ ${CAUSE_ANTERIORITE_MIN} caractères) (TF-2494)`);
+        }
+      } else if (r) {
         r.applique = true;
         collisionsAppliquees.add(e.seq);
         collisionsRectifiees.add(i + 1);
@@ -1217,10 +1289,13 @@ if (cmd === "append") {
     ? ` · ${collisionsRectifiees.size} collision(s) de seq DÉCLARÉE(S) et rectifiée(s) (seq ${
       [...collisionsAppliquees].join(", ")})`
     : "";
+  const sauts = sautsCouverts.size
+    ? ` · ${sautsCouverts.size} saut(s) de seq en avant DÉCLARÉ(S) et couvert(s) (seq ${[...sautsCouverts].join(", ")})`
+    : "";
   const sansContenuDit = !sansContenuBloquant && sansContenu.length
     ? ` · ${sansContenu.length} entrée(s) SANS CONTENU (non bloquant, schéma ${schemaDeclare || "absent"})`
     : "";
-  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sansContenuDit}${declaresDit}`);
+  console.log(`[PASS] ledger intègre — ${lines.length} entrée(s) · ${forme}${rectifie}${collisions}${sauts}${sansContenuDit}${declaresDit}`);
 } else {
   fail("commande inconnue (append | consigner | verify)");
 }
