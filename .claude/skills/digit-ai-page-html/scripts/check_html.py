@@ -3593,7 +3593,7 @@ def check_lisibilite(html: str, a: Arbre):
         if len(couples) >= 3:
             enums.append((len(couples), t[:60], porteur.chemin()))
     for n, extrait, ou in enums[:6]:
-        fails.append(f"L12 énumération de données en prose : {n} segments "
+        fails.append(f"L12 (données) énumération de données en prose : {n} segments "
                      f"« clé — valeur » enchaînés par des points-virgules "
                      f"(« {extrait}… », {ou}) — au-delà de 3, c'est un tableau ou "
                      "une liste, avec une ligne qui dit ce qu'il faut y voir.")
@@ -3617,7 +3617,7 @@ def check_lisibilite(html: str, a: Arbre):
                 n_max, extrait = n, phrase.strip()
         if n_max >= SEUIL_ENUM_VIRGULES:
             vus_l12 += 1
-            warns.append(f"L12 énumération en prose (avertissement) : {n_max} éléments séparés "
+            warns.append(f"L12 (virgules) énumération en prose (avertissement) : {n_max} éléments séparés "
                          f"par des virgules dans une phrase (« {extrait[:70]}… », {p.chemin()}) — "
                          "au-delà de trois, une liste à puces (E-11) : le lecteur compte, compare "
                          "et repère l'élément qu'il cherche.")
@@ -3645,7 +3645,7 @@ def check_lisibilite(html: str, a: Arbre):
                 cellules_l12.append(td)
         if cellules_l12:
             extrait = cellules_l12[0].texte_propre()
-            warns.append(f"L12 énumération en cellule (avertissement) : {len(cellules_l12)} "
+            warns.append(f"L12 (cellules) énumération en cellule (avertissement) : {len(cellules_l12)} "
                          f"cellule(s) enchaînent plusieurs faits par des points-virgules "
                          f"(« {extrait[:70]}… », {cellules_l12[0].chemin()}) — une liste à puces "
                          "par fait dans la cellule (`<ul>`) : le lecteur compte les faits et "
@@ -3701,7 +3701,7 @@ def check_lisibilite(html: str, a: Arbre):
                              and _enumere_en_prose(td, SEUIL_ENUM_VIRGULES)]
         if cellules_virgules:
             warns.append(
-                f"L12 énumération en cellule (virgules, avertissement) : {len(cellules_virgules)} "
+                f"L12 (cellules, suite) énumération en cellule (virgules, avertissement) : {len(cellules_virgules)} "
                 f"cellule(s) énumèrent {SEUIL_ENUM_VIRGULES} éléments ou plus par des virgules "
                 f"(« {cellules_virgules[0].texte_propre()[:70]}… », {cellules_virgules[0].chemin()}) — "
                 "une liste à puces dans la cellule (`<ul>`) : le lecteur compte les éléments et lit "
@@ -3715,7 +3715,7 @@ def check_lisibilite(html: str, a: Arbre):
             proses = [td for td in col if not _liste_de_cellule(td) and _enumere_en_prose(td, 3)]
             if listes and proses:
                 warns.append(
-                    f"L12 colonne de formes mêlées (avertissement) : dans la colonne {idx + 1}, "
+                    f"L12 (cellules, suite) colonne de formes mêlées (avertissement) : dans la colonne {idx + 1}, "
                     f"{len(listes)} cellule(s) en liste et {len(proses)} qui énumèrent en prose "
                     f"(« {proses[0].texte_propre()[:60]}… », {proses[0].chemin()}) — des cellules sœurs "
                     "d'une même colonne prennent la même forme : mettre en liste celles qui "
@@ -4299,7 +4299,7 @@ def check_lisibilite(html: str, a: Arbre):
             haut = (d.get("top") or "").strip()
             if not haut or _px(haut) == 0 or haut in ("0", "0px"):
                 fails.append(
-                    f"L29 `{cible}` collant à top:{haut or '(absent)'} sous un en-tête lui-même "
+                    f"L29 (collision) `{cible}` collant à top:{haut or '(absent)'} sous un en-tête lui-même "
                     f"collant (`{colle_entete[0][0]}`) : les deux se peignent au même endroit et "
                     "le thead passe DERRIÈRE l'en-tête. Le socle tranche — l'en-tête garde le "
                     "bord haut, le thead se décale du token `--hh` : "
@@ -4308,7 +4308,7 @@ def check_lisibilite(html: str, a: Arbre):
                     "charte-et-tokens.md).")
             elif "var(--hh)" in haut and not re.search(r"--hh\s*:", "\n".join(a.styles)):
                 fails.append(
-                    "L29 `top: var(--hh)` consommé sans que `--hh` soit déclaré dans :root — "
+                    "L29 (collision) `top: var(--hh)` consommé sans que `--hh` soit déclaré dans :root — "
                     "un décalage qui vaut 0 par défaut ramène exactement la collision qu'il "
                     "devait éviter (loi n° 1 : une affordance est câblée ou n'existe pas).")
 
@@ -4347,7 +4347,7 @@ def check_lisibilite(html: str, a: Arbre):
             corps_script, m = pose_nue
             extrait = " ".join(corps_script[max(0, m.start() - 40):m.end() + 40].split())
             warns.append(
-                "L29 un script embarqué pose `style.position` alors que la feuille déclare un "
+                "L29 ter un script embarqué pose `style.position` alors que la feuille déclare un "
                 f"`<th>` collant — « …{extrait[:80]}… ». Un style en ligne l'emporte sur la "
                 "feuille : s'il tombe sur un `<th>` ciblé `sticky`, le `top` reste et devient un "
                 "DÉCALAGE PERMANENT, en-tête posé sur ses propres lignes. Le geste sûr est de ne "

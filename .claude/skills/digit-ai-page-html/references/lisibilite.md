@@ -586,7 +586,7 @@ frontières de mot, dans un nœud de texte visible hors exemptions.
 manque et **ce qu'il faudrait fournir** pour la lever.
 
 
-## L12 — Une énumération de données n'est pas une phrase
+## L12 (données) — Une énumération de données n'est pas une phrase
 
 **Règle.** Au-delà de trois éléments, une énumération `clé — valeur` enchaînée par des
 points-virgules cesse d'être de la prose : c'est un tableau qu'on refuse d'assumer.
@@ -1338,7 +1338,7 @@ Fixtures : `l28-entete-homonyme.html` et `l28-codes-non-temporels.html` (vertes)
 Bruit mesuré : 0 page accusée avant comme après sur 192 pages HTML du parc (14/10/2026), la règle
 ne jugeant que les pages déclarées `data-page="donnees"`.
 
-## L29 — En-tête collant contre thead collant : le socle tranche (TF-0754, 02/09/2026)
+## L29 (collision) — En-tête collant contre thead collant : le socle tranche (TF-0754, 02/09/2026)
 
 **Le fait payé.** B1 (« header sticky », verdict *adapter*) et B6 (« tableau triable, thead
 sticky », verdict *adopter*) se superposent dès qu'une page longue porte un tableau : le thead se

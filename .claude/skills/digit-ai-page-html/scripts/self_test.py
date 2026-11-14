@@ -182,7 +182,7 @@ CAS = {
     "l9-detail-vide.html": {"L9"},
     "l9-depliant-muet.html": {"L9"},
     "l9-depliant-inutile.html": {"L9"},
-    "l12-enumeration-en-prose.html": {"L12"},
+    "l12-enumeration-en-prose.html": {"L12 (données)"},
     # 22/08 — la MÊME page, sa zone de contenu déclarée citée (data-cite) : L12 se tait.
     # Doctrine TF-0436 étendue : un oracle de forme ne juge pas un texte que la page n'a pas
     # écrit. Cas réel : la page du registre TODO rend le contenu des candidatures.
@@ -243,7 +243,7 @@ CAS = {
     # ou leur année, ils le redeviennent.
     "l28-codes-non-temporels.html": set(),
     "l28-abreviations-datees.html": {"L28"},
-    "l29-thead-sous-entete-collant.html": {"L29"},
+    "l29-thead-sous-entete-collant.html": {"L29 (collision)"},
     "l29-thead-decale-par-token.html": set(),
     # TF-0227 (lot Produit-10 du 14/08) : 71 marqueurs [c:id] dans un livrable DIFFUSE, PASS
     # a tous les oracles du socle. La rouge porte le defaut reel, mot pour mot.
@@ -383,7 +383,7 @@ CAS_AVERT = {
     "l34-series-tracees.html": set(),
 }
 
-RE_CODE = re.compile(r"^(L\d+(?: \((?:chapitre|couverture)\))?)(?!\w)")
+RE_CODE = re.compile(r"^(L\d+(?: \([^)]+\)| (?:bis|ter|quater)(?!\w))?)(?!\w)")
 
 # A1 (autonomie réseau, D-10) vit dans la famille « charte » : ses fixtures se
 # jugent avec regles="charte" et on n'extrait que les codes A — les deux pages
@@ -1987,8 +1987,8 @@ def run_avertissements_13_10():
     l'oracle d'écriture du pilot : SKIP motivé si le pilot est absent du poste).
     """
     out = []
-    PAIRES = [("l12-enumeration-virgules.html", "L12 énumération en prose", True, "TF-1621"),
-              ("l12-virgules-prose.html", "L12 énumération en prose", False, "TF-1621"),
+    PAIRES = [("l12-enumeration-virgules.html", "L12 (virgules) énumération en prose", True, "TF-1621"),
+              ("l12-virgules-prose.html", "L12 (virgules) énumération en prose", False, "TF-1621"),
               ("l35-typo-espaces-ordinaires.html", "L35 ", True, "TF-1384"),
               ("l35-typo-insecables.html", "L35 ", False, "TF-1384"),
               ("l36-contenu-auteur.html", "L36 ", True, "TF-1283"),
@@ -2052,8 +2052,8 @@ def run_avertissements_14_10():
     """
     out = []
     BLOQUANTES = {"L37 "}
-    PAIRES = [("l12-cellule-points-virgules.html", "L12 énumération en cellule", True, "TF-1665"),
-              ("l12-cellule-en-puces.html", "L12 énumération en cellule", False, "TF-1665"),
+    PAIRES = [("l12-cellule-points-virgules.html", "L12 (cellules) énumération en cellule", True, "TF-1665"),
+              ("l12-cellule-en-puces.html", "L12 (cellules) énumération en cellule", False, "TF-1665"),
               ("l37-ecart-sans-remede.html", "L37 ", True, "TF-1688"),
               ("l37-ecart-avec-remede.html", "L37 ", False, "TF-1688"),
               ("l37-ecart-lien-vers-action.html", "L37 ", False, "TF-1688")]
@@ -2464,8 +2464,19 @@ def regles_jugees_par_check_html():
     return jugees
 
 
-# Un identifiant de règle émis : « L30 », ou « L30 (chapitre) » quand le numéro porte plusieurs règles.
-RE_IDENTIFIANT_EMIS = re.compile(r"^(L\d+(?: \([^)]+\))?)(?!\w)")
+# Un identifiant de règle émis : « L30 », ou « L30 (chapitre) » ou « L29 ter » quand le numéro porte plusieurs règles.
+RE_IDENTIFIANT_EMIS = RE_CODE
+
+# Un identifiant de section qualifié : « L30 (chapitre) », « L12 (virgules) », « L29 ter » (TF-2508).
+RE_SECTION_QUALIFIEE = re.compile(r"^L\d+ (?:\(|(?:bis|ter|quater)\b)")
+
+# Les sections qualifiées que `check_html` n'émet pas : jugées au rendu, ou prescription du socle sans contrôle
+# de lecture (TF-2508). Le banc vérifie aussi qu'aucun message de `check_html` ne les ouvre : une section
+# déclarée ici et émise est un écart, la liste ne se périme pas en silence.
+SECTIONS_HORS_CHECK_HTML = {
+    "L29 bis": "prescription du socle (conteneur défilant) : aucun message de check_html",
+    "L29 quater": "mesure de rendu : entete_masque_par_collants de render_page.py",
+}
 
 
 def identifiants_emis_par_check_html():
@@ -2494,27 +2505,43 @@ def ecarts_sections_lisibilite(texte, jugees):
     return ecarts
 
 
-def ecarts_identifiants_partages(texte, emis):
-    """TF-2492 — un identifiant émis ne désigne qu'UNE règle de `lisibilite.md`.
-
-    Quand toutes les sections d'un numéro portent un qualificatif (« L30 (chapitre) », « L30 (couverture) »),
-    aucune ne porte l'identifiant nu : `check_html` ne peut pas émettre « L30 », qui désignerait les deux, et
-    chaque section doit être émise sous son propre identifiant. Un numéro qui garde une section sans
-    qualificatif (« L12 » et « L12 (virgules) ») n'est pas jugé ici : sa règle nue est l'ancienne.
-    """
+def sections_par_numero(texte):
+    """Les identifiants de section d'un référentiel de lisibilité, rangés par numéro de règle."""
     sections = [p.strip() for t in RE_TITRE_REGLE.findall(texte) for p in t.split("/")]
     par_numero = {}
     for s in sections:
         par_numero.setdefault(int(re.match(r"L(\d+)", s).group(1)), []).append(s)
+    return par_numero
+
+
+def numeros_a_section_nue(texte):
+    """Les numéros qui portent plusieurs sections dont une sans qualificatif (« L18 » et « L18 bis ») : non jugés."""
+    return sorted(n for n, noms in sections_par_numero(texte).items()
+                  if len(noms) >= 2 and not all(RE_SECTION_QUALIFIEE.match(s) for s in noms))
+
+
+def ecarts_identifiants_partages(texte, emis, hors_check_html=()):
+    """TF-2492, TF-2508 — un identifiant émis ne désigne qu'UNE règle de `lisibilite.md`.
+
+    Quand toutes les sections d'un numéro portent un qualificatif (« L30 (chapitre) », « L12 (virgules) »,
+    « L29 ter »), aucune ne porte l'identifiant nu : `check_html` ne peut pas émettre « L30 », qui désignerait
+    plusieurs règles, et chaque section doit être émise sous son propre identifiant, sauf celles que
+    `hors_check_html` déclare jugées ailleurs (et qu'aucun message n'ouvre alors). Un numéro qui garde une
+    section sans qualificatif (« L18 » et « L18 bis ») n'est pas jugé ici : `numeros_a_section_nue` les nomme,
+    pour que la borne se dise au lieu de se taire. Le 13/11/2026 « L12 » et « L29 » étaient dans ce cas, et
+    check_html émettait leur identifiant nu pour quatre et trois règles.
+    """
     ecarts = []
-    for n, noms in sorted(par_numero.items()):
-        if len(noms) < 2 or not all(re.match(r"L\d+ \(", s) for s in noms):
+    for n, noms in sorted(sections_par_numero(texte).items()):
+        if len(noms) < 2 or not all(RE_SECTION_QUALIFIEE.match(s) for s in noms):
             continue
         if f"L{n}" in emis:
             ecarts.append(f"identifiant « L{n} » émis alors que ses sections sont {', '.join(noms)} : "
                           "deux règles le partagent")
         ecarts += [f"section « {s} » : aucun message de check_html n'ouvre par cet identifiant"
-                   for s in noms if s not in emis]
+                   for s in noms if s not in emis and s not in hors_check_html]
+        ecarts += [f"section « {s} » déclarée jugée hors de check_html, et un message l'ouvre"
+                   for s in noms if s in hors_check_html and s in emis]
     return ecarts
 
 
@@ -2583,13 +2610,46 @@ def run_sections_lisibilite_publiees():
     cas("jouet : un identifiant par section, « L12 » nu partagé par ses volets (VERT)", not vert,
         "0 écart", f"{len(vert)} écart(s)", " | ".join(vert))
 
+    # TF-2508 — le 13/11/2026, check_html émettait « L12 » pour quatre règles et « L29 » pour trois : leurs sections
+    # gardaient une version nue à côté des volets, et le contrôle de TF-2492 ne jugeait que les numéros dont toutes
+    # les sections portent un qualificatif. Les sections nues deviennent « L12 (données) » et « L29 (collision) »,
+    # les ordinaux latins (« L29 ter ») comptent comme des qualificatifs, et le contrôle refuse le code nu.
+    sections_l12_l29 = ("## L12 (données) — a\n## L12 (virgules) — b\n## L29 (collision) — c\n"
+                        "### L29 bis — d\n### L29 ter — e\n")
+    hors = {"L29 bis": "jugée au rendu"}
+    emis_justes = {"L12 (données)", "L12 (virgules)", "L29 (collision)", "L29 ter"}
+    rouge = ecarts_identifiants_partages(sections_l12_l29, (emis_justes - {"L12 (données)"}) | {"L12"}, hors)
+    cas("jouet : « L12 » nu émis pour ses volets qualifiés (ROUGE)",
+        len(rouge) == 2 and "identifiant « L12 » émis" in rouge[0] and "« L12 (données) » : aucun" in rouge[1],
+        "2 écarts : l'identifiant nu, puis la section sans émission", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    rouge = ecarts_identifiants_partages(sections_l12_l29, (emis_justes - {"L29 (collision)"}) | {"L29"}, hors)
+    cas("jouet : « L29 » nu émis pour ses suites et sa collision (ROUGE)",
+        len(rouge) == 2 and "identifiant « L29 » émis" in rouge[0] and "« L29 (collision) » : aucun" in rouge[1],
+        "2 écarts : l'identifiant nu, puis la section sans émission", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    rouge = ecarts_identifiants_partages(sections_l12_l29, emis_justes - {"L29 ter"}, hors)
+    cas("jouet : une suite à ordinal latin jamais émise (ROUGE)",
+        rouge == ["section « L29 ter » : aucun message de check_html n'ouvre par cet identifiant"],
+        "1 écart nommant L29 ter", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    rouge = ecarts_identifiants_partages(sections_l12_l29, emis_justes | {"L29 bis"}, hors)
+    cas("jouet : une section déclarée hors de check_html qu'un message ouvre (ROUGE)",
+        rouge == ["section « L29 bis » déclarée jugée hors de check_html, et un message l'ouvre"],
+        "1 écart nommant L29 bis", f"{len(rouge)} écart(s)", " | ".join(rouge))
+    vert = ecarts_identifiants_partages(sections_l12_l29, emis_justes, hors)
+    cas("jouet : un identifiant par section, la suite déclarée hors de check_html (VERT)", not vert,
+        "0 écart", f"{len(vert)} écart(s)", " | ".join(vert))
+    rouge = ecarts_identifiants_partages("## L18 — a\n### L18 bis — b\n", {"L18"})
+    cas("jouet : un numéro à section nue (L18, L18 bis) n'est pas jugé, et se nomme (BORNE DITE)",
+        not rouge and numeros_a_section_nue("## L18 — a\n### L18 bis — b\n## L30 (a) — c\n## L30 (b) — d\n") == [18],
+        "0 écart, numéros non jugés [18]", f"{len(rouge)} écart(s)", " | ".join(rouge))
+
     ref = (FIXTURES.parent / "references" / "lisibilite.md").read_text(encoding="utf-8")
     jugees = regles_jugees_par_check_html()
     emis = identifiants_emis_par_check_html()
     reel = (ecarts_sections_lisibilite(ref, jugees) + ecarts_compte_cas(ref, attendu_cas)
-            + ecarts_identifiants_partages(ref, emis))
+            + ecarts_identifiants_partages(ref, emis, SECTIONS_HORS_CHECK_HTML))
     cas("references/lisibilite.md contre check_html.py", not reel and len(jugees) > 0,
-        f"0 écart sur {len(jugees)} règles jugées, {len(emis)} identifiants émis", f"{len(reel)} écart(s)",
+        f"0 écart sur {len(jugees)} règles jugées, {len(emis)} identifiants émis ; "
+        f"numéros à section nue non jugés : {numeros_a_section_nue(ref)}", f"{len(reel)} écart(s)",
         " | ".join(reel))
     return out
 
@@ -4303,7 +4363,7 @@ def run_l29_ter():
                               "obtenu": "absente", "regle": "L29 ter", "detail": "fixture manquante"})
             continue
         fails, warns = check(chemin.read_text(encoding="utf-8"), regles="L")
-        n = len([x for x in warns if x.startswith("L29 un script")])
+        n = len([x for x in warns if x.startswith("L29 ter un script")])
         # La fixture doit rester VERTE par ailleurs : un echec L parasite rendrait le cas
         # trompeur — on croirait mesurer la pose de position, on mesurerait un oubli de gabarit.
         parasites = [x for x in fails if x.startswith("L")]
@@ -6432,8 +6492,8 @@ def run_lot_a_check_html():
 
     # --- TF-1967 : L12 voit les virgules d'une cellule et la colonne de formes mêlées ---
     fails, warns = check(lire("l12-cellule-formes-melees.html"), regles="L")
-    v = [x for x in warns if x.startswith("L12 énumération en cellule (virgules")]
-    m = [x for x in warns if x.startswith("L12 colonne de formes mêlées")]
+    v = [x for x in warns if x.startswith("L12 (cellules, suite) énumération en cellule (virgules")]
+    m = [x for x in warns if x.startswith("L12 (cellules, suite) colonne de formes mêlées")]
     cas("l12-cellule-formes-melees.html", len(v) == 1 and len(m) == 1 and not [f for f in fails if f.startswith("L12")],
         "1 avertissement virgules + 1 colonne de formes mêlées, 0 échec", f"{len(v)} + {len(m)}",
         "TF-1967 cellules", " | ".join(warns))

@@ -7,13 +7,27 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.48.1"
+  version: "1.49.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.49.0 (14/11/2026)** — **`check_html.py` qualifie chaque règle émise sous L12 et L29, et le banc refuse l'identifiant nu (TF-2508,
+campagne du 14/11/2026, décision R-58 : exécutée).** La 1.48.0 avait distingué les deux règles L30 ; « L12 » restait émis pour quatre règles
+et « L29 » pour trois, et le contrôle de TF-2492 ne les jugeait pas, faute de sections toutes qualifiées : leur section nue côtoyait des
+volets qualifiés. Les sections nues du référentiel deviennent `L12 (données)` et `L29 (collision)`, et chaque message ouvre par
+l'identifiant de sa section : `L12 (données)` (l'énumération « clé — valeur » en prose), `L12 (virgules)`, `L12 (cellules)`,
+`L12 (cellules, suite)` (les virgules d'une cellule et la colonne aux formes mêlées), `L29 (collision)` (le `thead` collant derrière
+l'en-tête, `--hh` non déclaré) et `L29 ter` (le script qui pose `style.position`) ; les attendus des fixtures et des paires suivent. Le banc
+compte les ordinaux latins (`bis`, `ter`, `quater`) comme des qualificatifs, refuse l'identifiant nu d'un numéro dont toutes les sections
+sont qualifiées, exige chaque section qualifiée émise sauf celles qu'il déclare jugées hors de `check_html` (`L29 bis` et `L29 quater`,
+déclaration qui se périme si un message les ouvre), et nomme les numéros à section nue qu'il ne juge pas (`L15`, `L18`, `L27` : la borne se dit
+au lieu de se taire). Rouge avant : le référentiel qualifié contre l'ancien `check_html` donne 8 écarts, et 7 cas de la recette rouges ; vert
+après : 0 écart, 233 cas lus sans rendu verts. Un consommateur qui lit le premier mot d'un message lit encore « L12 » ou « L29 » ; celui qui
+lit le préfixe entier lit le qualificatif. Le renvoi à `L30` nu de `digit-ai-schemas` (TF-2509) est qualifié dans la même livraison.
 
 **1.48.1 (14/11/2026)** — **Le cas de jonction de TF-2478 ne dépend plus de la console qui lance la recette (TF-2510, campagne du
 14/11/2026, décision R-58 : exécutée).** Recette seule : le comportement du skill ne change pas. Le pilot avait mesuré 863/864 au

@@ -2,7 +2,7 @@
 name: digit-ai-schemas
 description: "Génère des schémas d'architecture, de topologie réseau, de flux temporel ou de tableau de bord aux standards graphiques Digit-AI. À utiliser systématiquement dès qu'un schéma technique est demandé dans un contexte de livrable (Digit-AI, ou un engagement client dont la marque est paramétrée) (architecture cloud, topologie Azure, pipeline CI/CD, flux applicatif, comparatif visuel) — même si le mot 'schéma' n'est pas employé explicitement (ex. 'comment s'articulent les composants', 'dessine la chaîne', 'visualise la promotion'). Couvre cinq canevas standardisés — multi-bandes (architecture par couches), topologie (réseau hub-and-spoke), flux temporel (timeline avec swimlanes), tableau de bord (KPI portfolio), modèle de données (ERD avec classification PII). Garantit la charte Montserrat / Inter / JetBrains Mono, la palette sémantique, le routage des flèches sans superposition et les tooltips structurés. Use when a technical diagram is requested in a Digit-AI or client-engagement context."
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Skill Digit-AI Schemas · génération de schémas Digit-AI aux standards graphiques
@@ -174,7 +174,7 @@ Retour du lot Produit-84 20261019a (RT-9) : une page instanciée fidèlement dep
 `render_page`. Mesuré le 19/10 avant correction, sur ce dépôt : l'instance du gabarit passait déjà
 `check_html` et le lanceur de forge-design (le `<link>` Google Fonts de l'ancien gabarit n'y est plus),
 mais `oracle-bascule` ne la jugeait pas (« rendu figé », aucun bouton), la pastille de la bande 2 cachait la
-flèche du couloir x = 127, et **`exemple-reference.html` échouait aux trois** : `check_html` (L30, « gate »
+flèche du couloir x = 127, et **`exemple-reference.html` échouait aux trois** : `check_html` (L30 (chapitre), « gate »
 non glosée dans six chapitres), forge-design (S6, `↔` ; T8, deux anneaux de focus sans jeton) et
 `render_page` (V4 sur la même pastille, V16 sur des badges d'état indiscernables, V18 aux largeurs 4K).
 
