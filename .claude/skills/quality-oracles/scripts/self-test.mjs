@@ -2067,6 +2067,67 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-2539 (14/11/2026) — LES ALERTES DE DÉPENDANCES SE LISENT, ET LES FIXTURES VOLONTAIREMENT VULNÉRABLES SE DÉCLARENT.
+//
+// LE FAIT : l'hébergeur signale 35 alertes sur la branche par défaut de ce dépôt, à chaque envoi, et aucun contrôle ne les lisait. Relevées
+// en lecture (`gh api`, 14/11/2026), les 35 visaient les cinq fixtures rouges de l'oracle SCA, qui portent des versions vulnérables EXPRÈS.
+// `references/fixtures-vulnerables.json` les déclare, `scripts/releve-alertes-dependances.mjs` les distingue des dépendances réelles.
+// Deux sens, hors ligne (des relevés d'API figés sous fixtures/alertes-dependances/, jamais le réseau) :
+//   VERT  : des alertes qui ne visent que des fixtures déclarées → exit 0, la distinction dite ;
+//   ROUGE : une alerte sur une dépendance réelle, une alerte sur un dossier VOISIN d'une fixture déclarée (`sca-red-bis`), une déclaration
+//           sans motif, une source illisible ou absente → exit 1 (réelles nommées) ou 2 (INCONCLUSIF), jamais un « zéro » qui n'a rien lu.
+{
+  const racineDepot = path.resolve(SKILLDIR, '..', '..', '..');
+  const releve = path.join(SKILLDIR, 'scripts', 'releve-alertes-dependances.mjs');
+  const dossierAlertes = path.join(SKILLDIR, 'fixtures', 'alertes-dependances');
+  const jouer = (...a) => spawnSync(process.execPath, [releve, ...a], { encoding: 'utf8', timeout: 60000 });
+  const declaration = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'fixtures-vulnerables.json'), 'utf8'));
+  const declarees = (declaration.fixtures || []).map((f) => String(f.chemin).replace(/\/+$/, ''));
+  const dossiersRouges = fs.readdirSync(path.join(SKILLDIR, 'fixtures')).filter((n) => /^sca(-.*)?-red$/.test(n))
+    .map((n) => '.claude/skills/quality-oracles/fixtures/' + n);
+  const nonDeclarees = (liste, dossiers) => dossiers.filter((d) => !liste.includes(d));
+
+  const incompletes = (declaration.fixtures || []).filter((f) => !f.chemin || !f.motif || !/^\d{4}-\d{2}-\d{2}$/.test(f.date || ''));
+  const absentes = declarees.filter((d) => !fs.existsSync(path.join(racineDepot, d)));
+  if (!declarees.length || incompletes.length || absentes.length) ko(`TF-2539 déclaration : liste vide ou incomplète (${incompletes.length} entrée(s) sans chemin, motif ou date) ou chemin inexistant (${absentes.join(', ') || 'aucun'})`);
+  else if (nonDeclarees(declarees, dossiersRouges).length) ko('TF-2539 déclaration : fixture(s) rouge(s) de l oracle SCA non déclarée(s) volontairement vulnérable(s) : ' + nonDeclarees(declarees, dossiersRouges).join(', '));
+  else if (nonDeclarees(declarees.slice(1), dossiersRouges).length !== 1) ko('TF-2539 déclaration (rouge) : une fixture rouge retirée de la liste doit se voir, une seule fois');
+  else ok(`TF-2539 déclaration : les ${dossiersRouges.length} fixtures rouges de l oracle SCA sont déclarées (chemin, date, motif), tous les chemins existent, et le retrait d une seule se voit`);
+
+  const vert = jouer('--alertes', path.join(dossierAlertes, 'alertes-sur-fixtures.json'));
+  if (vert.status !== 0 || !/3 alerte\(s\) ouverte\(s\)[^\n]*3 sur des fixtures volontairement vulnérables déclarées, 0 sur des dépendances réelles/.test(vert.stdout) || !vert.stdout.includes('PASS'))
+    ko('TF-2539 vert : des alertes qui ne visent que des fixtures déclarées doivent rendre exit 0 et dire la distinction — ' + vert.status + ' ' + (vert.stdout + vert.stderr).slice(0, 300));
+  else ok('TF-2539 vert : 3 alertes sur des fixtures déclarées → exit 0, « 3 sur des fixtures volontairement vulnérables déclarées, 0 sur des dépendances réelles »');
+
+  const rouge = jouer('--alertes', path.join(dossierAlertes, 'alertes-avec-reelle.json'));
+  if (rouge.status !== 1 || !/RÉELLE n° 4 : pillow[^\n]*critical[^\n]*pyproject\.toml/.test(rouge.stdout) || !/RÉELLE n° 5 : requests[^\n]*sca-red-bis/.test(rouge.stdout))
+    ko('TF-2539 rouge : une dépendance réelle et un dossier voisin d une fixture déclarée (`sca-red-bis`) doivent être nommées et rendre exit 1 — ' + rouge.status + ' ' + rouge.stdout.slice(0, 500));
+  else if (/RÉELLE n° (1|6) :/.test(rouge.stdout) || !/3 alerte\(s\) ouverte\(s\)[^\n]*1 sur des fixtures volontairement vulnérables déclarées, 2 sur des dépendances réelles/.test(rouge.stdout))
+    ko('TF-2539 rouge : l alerte de la fixture déclarée (n° 1) et l alerte rejetée (n° 6) ne doivent pas compter parmi les réelles — ' + rouge.stdout.slice(0, 500));
+  else ok('TF-2539 rouge : une dépendance réelle (critique) et un dossier voisin de fixture sont nommés, exit 1 ; la fixture déclarée et l alerte rejetée n y sont pas');
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2539-'));
+  try {
+    const sansMotif = path.join(tmp, 'declaration-sans-motif.json');
+    fs.writeFileSync(sansMotif, JSON.stringify({ fixtures: [{ chemin: '.claude/skills/quality-oracles/fixtures/sca-red', date: '2026-11-14' }] }), 'utf8');
+    const illisible = path.join(tmp, 'alertes-illisibles.json');
+    fs.writeFileSync(illisible, '{ pas du json', 'utf8');
+    const refus = [
+      ['déclaration sans motif', jouer('--alertes', path.join(dossierAlertes, 'alertes-sur-fixtures.json'), '--declaration', sansMotif), /n'a pas ses trois champs/],
+      ['alertes illisibles', jouer('--alertes', illisible), /alertes non lisibles/],
+      ['alertes absentes', jouer('--alertes', path.join(tmp, 'absent.json')), /alertes illisibles/],
+      ['aucune source', jouer(), /une source d'alertes, et une seule/],
+    ];
+    const faux = refus.filter(([, r, motif]) => r.status !== 2 || !r.stdout.includes('INCONCLUSIF') || !motif.test(r.stdout));
+    if (faux.length) ko('TF-2539 refus : doivent rendre exit 2 INCONCLUSIF avec leur motif, jamais un zéro : ' + faux.map(([n, r]) => `${n} (exit ${r.status} : ${(r.stdout + r.stderr).slice(0, 120)})`).join(' · '));
+    else ok('TF-2539 refus : une déclaration sans motif, des alertes illisibles ou absentes, aucune source → exit 2 INCONCLUSIF avec le motif, jamais « aucune alerte réelle » sur ce qu on n a pas lu');
+    const js = jouer('--alertes', path.join(dossierAlertes, 'alertes-sur-fixtures.json'), '--json');
+    let o = null; try { o = JSON.parse(js.stdout); } catch { /* ko ci-dessous */ }
+    if (!o || o.verdict !== 'PASS' || o.alertes_ouvertes !== 3 || o.dependances_reelles !== 0 || js.status !== 0) ko('TF-2539 --json : verdict, alertes_ouvertes et dependances_reelles doivent être des champs — ' + js.stdout.slice(0, 200));
+    else ok('TF-2539 --json : verdict PASS, alertes_ouvertes 3 et dependances_reelles 0 se lisent en champs, sans prose');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 // TF-0824 (06/09/2026) — LE CONTRAT DE SORTIE DU LANCEUR EST ÉPROUVÉ, PAS SEULEMENT ÉCRIT.
 //
 // LE FAIT PAYÉ : le champ `detail` d'une ligne de résultat a changé DEUX FOIS en dix jours — sa

@@ -1,0 +1,30 @@
+{
+  "note": "Fixtures VOLONTAIREMENT vulnérables de ce dépôt (TF-2539, 14/11/2026). Ce sont les fixtures rouges de l'oracle SCA (oracle-sca.mjs) : elles portent des dépendances épinglées à des versions connues pour être vulnérables, exprès, pour prouver que l'oracle les refuse. L'hébergeur signale leurs vulnérabilités comme des alertes de dépendances ; elles ne sont pas des dépendances réelles du dépôt et ne se « corrigent » pas — les mettre à jour casserait la preuve de l'oracle. scripts/releve-alertes-dependances.mjs lit cette liste pour distinguer, parmi les alertes ouvertes, celles qui visent une fixture déclarée de celles qui visent une dépendance réelle (la seule chose à mettre à jour, sous recette verte). Une entrée porte `chemin` (dossier ou fichier, écrit depuis la racine du dépôt, séparateurs `/`), `date` (AAAA-MM-JJ de la déclaration) et `motif` ; sans l'un des trois, le relevé refuse la liste (exit 2). La recette exige que chaque dossier fixtures/sca-*-red soit déclaré ici et que chaque chemin déclaré existe. Donnée périssable, donc éditable, datée et motivée (loi transverse n° 4).",
+  "fixtures": [
+    {
+      "chemin": ".claude/skills/quality-oracles/fixtures/sca-red",
+      "date": "2026-11-14",
+      "motif": "Fixture rouge de l'oracle SCA, requirements.txt : versions de requests et de flask épinglées exprès sur des versions vulnérables, pour que l'oracle rende FAIL."
+    },
+    {
+      "chemin": ".claude/skills/quality-oracles/fixtures/sca-sous-dossier-red",
+      "date": "2026-11-14",
+      "motif": "Fixture rouge de l'oracle SCA, manifeste dans un sous-dossier (tests/requirements.txt) : prouve que l'oracle trouve un manifeste hors de la racine ; versions vulnérables exprès."
+    },
+    {
+      "chemin": ".claude/skills/quality-oracles/fixtures/sca-verrou-red",
+      "date": "2026-11-14",
+      "motif": "Fixture rouge de l'oracle SCA, verrou uv.lock : prouve que l'oracle lit un verrou uv (TF-2281) ; version vulnérable de requests exprès."
+    },
+    {
+      "chemin": ".claude/skills/quality-oracles/fixtures/sca-verrou-poetry-red",
+      "date": "2026-11-14",
+      "motif": "Fixture rouge de l'oracle SCA, verrou poetry.lock : prouve que l'oracle lit un verrou poetry (TF-2281) ; versions vulnérables de flask exprès."
+    },
+    {
+      "chemin": ".claude/skills/quality-oracles/fixtures/sca-npm-verrou-red",
+      "date": "2026-11-14",
+      "motif": "Fixture rouge de l'oracle SCA, verrou npm (package-lock.json) : prouve que l'oracle lit le verrou et nomme chaque avis (TF-2450) ; versions vulnérables de vite, react-router et esbuild exprès."
+    }
+  ]
+}

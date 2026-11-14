@@ -1,0 +1,23 @@
+[
+  {
+    "number": 1,
+    "state": "open",
+    "dependency": { "package": { "ecosystem": "pip", "name": "requests" }, "manifest_path": ".claude/skills/quality-oracles/fixtures/sca-red/requirements.txt", "scope": "runtime" },
+    "security_advisory": { "ghsa_id": "GHSA-fixt-0001-aaaa", "severity": "high" },
+    "security_vulnerability": { "severity": "high", "first_patched_version": { "identifier": "2.31.0" } }
+  },
+  {
+    "number": 2,
+    "state": "open",
+    "dependency": { "package": { "ecosystem": "npm", "name": "vite" }, "manifest_path": ".claude/skills/quality-oracles/fixtures/sca-npm-verrou-red/package-lock.json", "scope": "runtime" },
+    "security_advisory": { "ghsa_id": "GHSA-fixt-0002-bbbb", "severity": "medium" },
+    "security_vulnerability": { "severity": "medium", "first_patched_version": { "identifier": "6.4.5" } }
+  },
+  {
+    "number": 3,
+    "state": "open",
+    "dependency": { "package": { "ecosystem": "pip", "name": "flask" }, "manifest_path": ".claude/skills/quality-oracles/fixtures/sca-sous-dossier-red/tests/requirements.txt", "scope": "runtime" },
+    "security_advisory": { "ghsa_id": "GHSA-fixt-0003-cccc", "severity": "low" },
+    "security_vulnerability": { "severity": "low", "first_patched_version": { "identifier": "3.1.4" } }
+  }
+]
