@@ -9,7 +9,7 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync, rmSync, mkdtempSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "..", "fixtures");
@@ -462,7 +462,11 @@ check("ledger TF-2494 (anti-fail-fast) : deux sauts, un seul couvert → FAIL qu
   if (!sortie.includes("seq 10 attendu 8") || !sortie.includes("seq 8 à 9 jamais écrits")) throw new Error("le second saut doit être nommé : " + sortie.slice(0, 500));
   if (!sortie.includes("[RECTIFIÉ]") || !sortie.includes("1 écart(s) non rectifié(s)")) throw new Error("le premier saut est couvert et le compte dit 1 écart : " + sortie.slice(0, 500));
 });
-check("ledger TF-2494 (rouge) : un seq EN RECUL ou en double nommé par rien reste FAIL — l'antériorité ne couvre ici que le saut en avant", () => {
+// TF-2540 RENVERSE ce cas, par décision (14/11/2026) : TF-2494 figeait « l'antériorité ne couvre ici que le saut en avant » alors que R-42
+// du pilot couvre aussi une collision ; la décision de TF-2540 est que les deux juges rendent le même verdict. La même fixture (seq 2 en
+// double, horodaté 10:45, sous une antériorité `avant` 12:00) est donc désormais couverte [ANTÉRIORITÉ] ; le FAIL reste dû à l'écart
+// qu'aucune antériorité ne précède (cas « collision nue », « égal à `avant` » du bloc TF-2540 plus bas).
+check("ledger TF-2494 → TF-2540 : un seq en double antérieur à `avant` est couvert [ANTÉRIORITÉ], comme R-42 le couvre (TF-2494 le laissait FAIL)", () => {
   const lf = join(out, "t2494-recul-hors-anteriorite.jsonl");
   ecrireBrut(lf, [
     { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-saut" },
@@ -470,8 +474,8 @@ check("ledger TF-2494 (rouge) : un seq EN RECUL ou en double nommé par rien res
     { seq: 2, ts: "2026-01-01T10:45:00Z", type: "note", detail: "seq 2 en double, deuxième écrivain" },
     { seq: 3, ts: "2026-01-02T09:00:00Z", type: "anteriorite_ledger", avant: "2026-01-01T12:00:00Z", cause: "lacune de seq du 01/01, antérieure à la session qui la révèle" },
   ]);
-  const { sortie } = verifyRouge(lf);
-  if (!sortie.includes("append-only rompu") || sortie.includes("[ANTÉRIORITÉ]")) throw new Error("une collision reste hors de portée de l'antériorité : " + sortie.slice(0, 400));
+  const sortie = run(ledger, ["verify", lf]);
+  if (!sortie.includes("[PASS]") || !sortie.includes("[ANTÉRIORITÉ]") || !sortie.includes("seq en collision")) throw new Error("une collision antérieure à `avant` est couverte, imprimée [ANTÉRIORITÉ] : " + sortie.slice(0, 400));
 });
 
 check("ledger TF-0410 : append refuse un `ts` de payload ANTÉRIEUR au maximum, sans rien écrire", () => {
@@ -1531,7 +1535,7 @@ const TYPES_ATTENDUS = ["run_open", "etape_open", "invocation", "oracles_verdict
   "reponse_humain", "etape_close", "retour", "relais_arme", "run_close", "rectification_versions_forges",
   "rectification_run_open", "rectification_horodatage", "rectification_forges_mobilisees", "go_publication",
   "conflit_regles", "demande_emise", "demande_recue", "deplacement_effectue", "deplacement_en_attente",
-  "demande_humain", "qualification_enclenchement", "anteriorite_ledger", "rectification_doublon", "secret_range"];
+  "demande_humain", "qualification_enclenchement", "anteriorite_ledger", "rectification_doublon", "decision_retiree", "secret_range"];
 check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'écriture, le message nomme le vocabulaire, rien n'est écrit", () => {
   const lf = join(out, "t2245-vocabulaire.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
@@ -1544,7 +1548,7 @@ check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'�
   const annonce = (err.match(/attendus ([a-z_, ]+) \(/) || [])[1];
   if (!annonce || annonce !== [...TYPES_ATTENDUS].sort().join(", ")) throw new Error("le vocabulaire annoncé diverge de la liste attendue : " + annonce);
 });
-check("ledger TF-2245 : les 26 types du vocabulaire sont acceptés à l'écriture (sauf `rectification_doublon`, qui exige un doublon réel : test dédié, TF-2424)", () => {
+check("ledger TF-2245 : les 27 types du vocabulaire sont acceptés à l'écriture (sauf `rectification_doublon`, qui exige un doublon réel : test dédié, TF-2424)", () => {
   const lf = join(out, "t2245-24-types.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
   const payload = {
@@ -1553,6 +1557,7 @@ check("ledger TF-2245 : les 26 types du vocabulaire sont acceptés à l'écritur
     qualification_enclenchement: { qualification: "fonde", cause: "x" },
     rectification_horodatage: { entrees: [{ seq: 1, ts_consigne: "x", ts_reel_estime: "x", cause: "x" }] },
     anteriorite_ledger: { avant: "2026-01-01T00:00:00Z", cause: "lacune antérieure à la session qui la révèle" },
+    decision_retiree: { decision: "D-12", cause: "la question ne se pose plus depuis ce lot" },
     secret_range: { nom: "X", remplace: false },
   };
   for (const t of TYPES_ATTENDUS.filter((x) => x !== "run_open" && x !== "rectification_doublon")) {
@@ -1676,7 +1681,8 @@ check("ledger TF-2494 : `anteriorite_ledger` est écrite par `append` (le remèd
     // DIVERGENCE CONNUE, volontairement hors de ce test : une rectification dont `ts_consigne` ne colle PAS à l'entrée visée
     // (ici 11:30 au lieu de 11:00) est un écart pour `verify` (TF-1425 : « ts_consigne doit correspondre EXACTEMENT »), que R-42
     // laisse passer — il ne contrôle que l'antériorité de la rectification sur le ts cité (TF-1466). Mesuré le 14/11/2026 pour le
-    // saut comme pour la collision ; R-42 est au pilot, hors de ce lot : rapporté, non aligné à la baisse ici.
+    // saut comme pour la collision ; R-42 est au pilot, hors de ce lot : rapporté, non aligné à la baisse ici (TF-2540, part pilot :
+    // R-42 doit vérifier `ts_consigne`). L'AUTRE divergence de TF-2540, l'étendue de l'antériorité, est fermée ici : sept cas d'accord plus bas.
     for (const [nom, entrees, integre] of cas) {
       const racine = mkdtempSync(join(out, "r42-"));
       mkdirSync(join(racine, "forge"));
@@ -1692,6 +1698,174 @@ check("ledger TF-2494 : `anteriorite_ledger` est écrite par `append` (le remèd
     }
   });
 }
+
+// --- TF-2540 (14/11/2026) : L'ANTÉRIORITÉ COUVRE AUSSI UNE COLLISION DE SEQ ET UN RECUL D'HORODATAGE, comme R-42 du pilot (TF-1203).
+// Le fait (lot fa2, TF-2494) : R-42 couvrait par `anteriorite_ledger` tout écart dont l'horodatage précède `avant`, `verify` seulement le
+// saut en avant ; le même ledger était intègre pour R-42 et rompu pour `verify`. Sens rouge : sur l'ancien `verify`, les deux cas « avant »
+// ci-dessous échouent ; sens vert : la déclaration couvre, imprimée [ANTÉRIORITÉ] et comptée ; et trois bornes qui restent FAIL — l'entrée
+// qui n'est pas STRICTEMENT antérieure à `avant`, un `ts` illisible (sans instant à comparer) et l'écart que rien ne déclare.
+const BASE_3 = [
+  { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "self-test-anteriorite" },
+  { seq: 2, ts: "2026-01-01T10:30:00Z", type: "note", detail: "avant l'écart" },
+  { seq: 3, ts: "2026-01-01T11:00:00Z", type: "note", detail: "dernière entrée saine" },
+];
+const ANTERIORITE_COLLISION = [...BASE_3, { seq: 3, ts: "2026-01-01T11:10:00Z", type: "note", detail: "seq 3 écrit par un second écrivain" }, { seq: 4, ts: "2026-01-01T11:20:00Z", type: "note", detail: "la suite reprend" }];
+const ANTERIORITE_RECUL = [...BASE_3, { seq: 4, ts: "2026-01-01T10:45:00Z", type: "note", detail: "horodatage en recul" }];
+const ANTERIORITE_ILLISIBLE = [...BASE_3, { seq: 4, ts: "pas-une-date", type: "note", detail: "horodatage illisible" }];
+const ANTERIORITE_SEQ = (seq, avant) => ({ seq, ts: "2026-01-02T09:00:00Z", type: "anteriorite_ledger", avant, cause: "écart du 01/01 antérieur à la session qui le révèle" });
+const CAS_ANTERIORITE = [
+  ["collision nue", ANTERIORITE_COLLISION, false],
+  ["collision couverte par une antériorité postérieure à son horodatage", [...ANTERIORITE_COLLISION, ANTERIORITE_SEQ(5, "2026-01-01T12:00:00Z")], true],
+  ["collision, `avant` égal à son horodatage (pas STRICTEMENT antérieure)", [...ANTERIORITE_COLLISION, ANTERIORITE_SEQ(5, "2026-01-01T11:10:00Z")], false],
+  ["recul nu", ANTERIORITE_RECUL, false],
+  ["recul couvert par une antériorité postérieure à son horodatage", [...ANTERIORITE_RECUL, ANTERIORITE_SEQ(5, "2026-01-01T12:00:00Z")], true],
+  ["recul, `avant` égal à son horodatage", [...ANTERIORITE_RECUL, ANTERIORITE_SEQ(5, "2026-01-01T10:45:00Z")], false],
+  ["horodatage illisible, même sous une antériorité lointaine (aucun instant à comparer)", [...ANTERIORITE_ILLISIBLE, ANTERIORITE_SEQ(5, "2099-01-01T00:00:00Z")], false],
+];
+check("ledger TF-2540 : l'antériorité déclarée couvre une collision de seq et un recul d'horodatage antérieurs à `avant`, et ne couvre ni l'égalité, ni un `ts` illisible, ni un écart nu", () => {
+  for (const [nom, entrees, integre] of CAS_ANTERIORITE) {
+    const lf = join(out, "t2540-" + nom.replace(/[^a-z]+/gi, "-").slice(0, 40) + ".jsonl");
+    ecrireBrut(lf, entrees);
+    let sortie = "", passe = true;
+    try { sortie = execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); } catch (e) { passe = false; sortie = String(e.stdout || "") + String(e.stderr || ""); }
+    if (passe !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${passe} — ${sortie.slice(0, 300)}`);
+    if (integre) {
+      if (!sortie.includes("[ANTÉRIORITÉ]") || !/1 écart\(s\) de seq en collision ou d'horodatage ANTÉRIEUR\(S\)/.test(sortie)) throw new Error(`${nom} : l'écart couvert doit s'imprimer [ANTÉRIORITÉ] et se compter au verdict — ${sortie.slice(0, 400)}`);
+    }
+  }
+});
+{
+  const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
+  if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2540 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
+  else check("ledger TF-2540 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les sept cas d'antériorité (collision, recul, égalité, illisible)", () => {
+    for (const [nom, entrees, integre] of CAS_ANTERIORITE) {
+      const racine = mkdtempSync(join(out, "r42a-"));
+      mkdirSync(join(racine, "forge"));
+      const lf = join(racine, "forge", "ledger.jsonl");
+      ecrireBrut(lf, entrees);
+      let verifyPasse = true;
+      try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); } catch { verifyPasse = false; }
+      const r = spawnSync(process.execPath, [juge, racine], { encoding: "utf8" });
+      const r42 = (JSON.parse(r.stdout || "{}").findings || []).filter((f) => f.regle === "R-42");
+      if (!r42.length) throw new Error(`${nom} : R-42 n'a rendu aucun constat : ${(r.stdout || r.stderr || "").slice(0, 200)}`);
+      const r42Passe = !r42.some((f) => f.statut === "FAIL");
+      if (verifyPasse !== integre || r42Passe !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}, R-42 ${r42Passe} (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
+    }
+  });
+}
+
+// --- TF-2527 (14/11/2026) : `decision_retiree`, le type que `oracles/lib-decisions.mjs` du pilot lit depuis TF-2415 (décision posée, puis
+// retirée : elle n'est plus rappelée comme ouverte). Ni `gabarits/ledger.py` ni ce script ne l'acceptaient à l'écriture : une retraite
+// s'écrivait en `reponse_humain --decision D-M --remplace D-N`. Sens rouge : l'ancien écrivain refuse le type (« type inconnu ») ; sens vert :
+// une décision nommée au format D-N et une cause de 20 caractères au moins s'écrivent, sous chacun des trois champs que lib-decisions lit.
+const CAUSE_RETRAIT = "la question ne se pose plus depuis ce lot";
+check("ledger TF-2527 (vert) : `decision_retiree` s'écrit quand elle nomme la décision (`decision`, `decisions` ou `decisions_retirees`, chaîne ou liste) et sa cause", () => {
+  const lf = join(out, "t2527-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2527" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "decision_retiree", decision: "D-12", cause: CAUSE_RETRAIT })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "decision_retiree", decisions: ["D-13", "d-14"], cause: CAUSE_RETRAIT })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "decision_retiree", decisions_retirees: "D-15", cause: CAUSE_RETRAIT })]);
+  if (lignesDe(lf).filter((e) => e.type === "decision_retiree").length !== 3) throw new Error("3 entrées decision_retiree attendues");
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre : le type est au vocabulaire");
+});
+check("ledger TF-2527 (rouge) : sans décision nommée au format D-N, ou sans cause de 20 caractères, l'écriture est refusée et rien n'est écrit", () => {
+  const lf = join(out, "t2527-rouge.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2527" })]);
+  for (const [libelle, payload, motif] of [
+    ["aucune décision", { type: "decision_retiree", cause: CAUSE_RETRAIT }, "doit nommer"],
+    ["décision au mauvais format", { type: "decision_retiree", decision: "12", cause: CAUSE_RETRAIT }, "doit nommer"],
+    ["liste dont un élément n'est pas une décision", { type: "decision_retiree", decisions: ["D-12", "bientôt"], cause: CAUSE_RETRAIT }, "doit nommer"],
+    ["cause absente", { type: "decision_retiree", decision: "D-12" }, "doit dire pourquoi"],
+    ["cause de 19 caractères", { type: "decision_retiree", decision: "D-12", cause: "x".repeat(19) }, "doit dire pourquoi"],
+    ["cause qui n'est pas une chaîne", { type: "decision_retiree", decision: "D-12", cause: 12345678901234567890 }, "doit dire pourquoi"],
+  ]) {
+    const err = refuse(lf, payload);
+    if (!err.includes("TF-2527") || !err.includes(motif)) throw new Error(`${libelle} : le refus doit nommer TF-2527 et dire « ${motif} » : ${err.slice(0, 300)}`);
+  }
+  if (lignesDe(lf).length !== 1) throw new Error("un refus est sans écriture : 1 entrée attendue, " + lignesDe(lf).length);
+});
+{
+  const lib = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "lib-decisions.mjs");
+  if (!existsSync(lib)) console.log(`  [NON JOUÉ] ledger TF-2527 : accord avec lib-decisions — lib-decisions.mjs du pilot introuvable (${lib})`);
+  else await checkAsync("ledger TF-2527 : ACCORD avec lib-decisions du pilot — la décision qu'écrit `decision_retiree` n'est plus rappelée comme ouverte, la même sans la retraite l'est", async () => {
+    const m = await import(pathToFileURL(lib).href);
+    if (typeof m.decisionsSansReponse !== "function") throw new Error("lib-decisions n'expose pas `decisionsSansReponse`");
+    const produit = mkdtempSync(join(out, "t2527-produit-"));
+    mkdirSync(join(produit, "forge"));
+    const lf = join(produit, "forge", "ledger.jsonl");
+    run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2527" })]);
+    run(ledger, ["append", lf, JSON.stringify({ type: "question_humain", decisions_posees: { "D-12": "Faut-il garder le lot de la semaine passée ?" } })]);
+    const ouvertes = m.decisionsSansReponse(produit).map((d) => d.n).join();
+    if (ouvertes !== "D-12") throw new Error("avant la retraite, D-12 doit être rappelée comme ouverte : " + ouvertes);
+    run(ledger, ["append", lf, JSON.stringify({ type: "decision_retiree", decision: "D-12", cause: CAUSE_RETRAIT })]);
+    const apres = m.decisionsSansReponse(produit).map((d) => d.n).join();
+    if (apres !== "") throw new Error("après la retraite écrite par ledger.mjs, D-12 ne doit plus être rappelée : " + apres);
+  });
+}
+
+// --- TF-2549 (14/11/2026) : LE MODE D'ESSAI. Le 14/11/2026, un agent vérificateur en lecture seule a joué `oracles_verdict --etape x` « pour
+// voir » : l'entrée 84 est entrée au ledger d'un run, et aucun type de rectification ne neutralise une entrée. `--essai` joue tous les
+// contrôles de `append` et de `consigner` et n'écrit RIEN — ni journal, ni verrou (il ne prend pas le verrou et ne libère jamais celui d'un
+// autre processus). Sens rouge : l'ancien écrivain refuse `--essai` comme argument inconnu (exit 1) ; sens vert : exit 0, entrée montrée,
+// fichier identique à l'octet, aucun `.lock`, et la même commande sans `--essai` écrit bien l'entrée montrée.
+const lancer = (...args) => spawnSync(process.execPath, [ledger, ...args], { encoding: "utf8" });
+check("ledger TF-2549 (vert) : `append --essai` rend 0, montre l'entrée et son seq, ne change pas un octet, ne laisse aucun verrou ; sans `--essai`, la même commande écrit l'entrée montrée", () => {
+  const lf = join(out, "t2549-append.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2549" })]);
+  const avant = readFileSync(lf, "utf8");
+  const payload = JSON.stringify({ type: "oracles_verdict", oracle: "oracle-x", verdict: "PASS", etape: "x" });
+  for (const args of [["append", lf, payload, "--essai"], ["append", lf, "--essai", payload]]) {
+    const r = lancer(...args);
+    if (r.status !== 0) throw new Error(`exit 0 attendu, ${r.status} : ${r.stderr.slice(0, 300)}`);
+    if (!r.stdout.includes("[ESSAI] rien n'est écrit") || !r.stdout.includes("seq 2") || !r.stdout.includes('"oracle":"oracle-x"')) throw new Error("l'essai doit dire qu'il n'écrit rien et montrer l'entrée avec son seq : " + r.stdout.slice(0, 400));
+    if (readFileSync(lf, "utf8") !== avant) throw new Error("un essai ne change pas un octet du ledger");
+    if (existsSync(lf + ".lock")) throw new Error("un essai ne laisse aucun verrou");
+  }
+  const reel = lancer("append", lf, payload);
+  if (reel.status !== 0 || lignesDe(lf).length !== 2) throw new Error("sans --essai, la même commande écrit : " + reel.stdout + reel.stderr);
+  const e = lignesDe(lf)[1];
+  if (e.seq !== 2 || e.oracle !== "oracle-x" || e.etape !== "x") throw new Error("l'entrée écrite n'est pas celle que l'essai montrait : " + JSON.stringify(e));
+});
+check("ledger TF-2549 (rouge) : l'essai joue TOUS les contrôles — type inconnu, `decision_retiree` sans cause, première entrée qui n'est pas run_open : refus, exit 1, ledger absent ou intact", () => {
+  const lf = join(out, "t2549-controles.jsonl");
+  const absent = lancer("append", lf, JSON.stringify({ type: "oracles_verdict", etape: "x" }), "--essai");
+  if (absent.status !== 1 || !absent.stderr.includes("run_open exigé") || existsSync(lf)) throw new Error("sans ledger, une première entrée non run_open est refusée et rien n'est créé : " + absent.stderr.slice(0, 200));
+  const ouverture = lancer("append", lf, JSON.stringify({ type: "run_open", substrat: "t2549" }), "--essai");
+  if (ouverture.status !== 0 || existsSync(lf)) throw new Error("un run_open en essai ne crée pas le ledger : " + ouverture.stderr.slice(0, 200));
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2549" })]);
+  const avant = readFileSync(lf, "utf8");
+  for (const payload of [{ type: "type_improvise", detail: "x" }, { type: "decision_retiree", decision: "D-12" }]) {
+    const r = lancer("append", lf, JSON.stringify(payload), "--essai");
+    if (r.status !== 1 || !r.stderr.includes("[LEDGER FAIL]")) throw new Error(`l'essai doit refuser ${payload.type} (exit 1) : ${r.status} ${r.stderr.slice(0, 200)}`);
+  }
+  if (readFileSync(lf, "utf8") !== avant) throw new Error("un essai refusé ne change rien");
+});
+check("ledger TF-2549 : l'essai ne prend pas le verrou et ne libère pas celui d'un autre processus ; il ne crée pas le journal hors run", () => {
+  const lf = join(out, "t2549-verrou.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2549" })]);
+  writeFileSync(lf + ".lock", "");                                                      // le verrou d'une autre écriture, en cours
+  const r = lancer("append", lf, JSON.stringify({ type: "etape_open", etape: "x" }), "--essai");
+  if (r.status !== 0) throw new Error("l'essai n'attend pas un verrou qu'il ne prend pas : " + r.stderr.slice(0, 200));
+  if (!existsSync(lf + ".lock")) throw new Error("l'essai a LIBÉRÉ le verrou d'un autre processus");
+  rmSync(lf + ".lock", { force: true });
+  const dossier = join(out, "t2549-forge");
+  mkdirSync(dossier);
+  const horsRun = join(dossier, "hors-run.jsonl");
+  const h = lancer("append", horsRun, JSON.stringify({ type: "retour", detail: "essai" }), "--essai");
+  if (h.status !== 0 || existsSync(horsRun)) throw new Error("l'essai ne crée pas le journal hors run : " + h.stderr.slice(0, 200));
+});
+check("ledger TF-2549 : `consigner --essai` ne change pas un octet, montre le lot ; `verify --essai` reste refusé (argument inconnu : verify n'écrit pas)", () => {
+  const lf = join(out, "t2549-consigner.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2549" })]);
+  const rapport = join(out, "t2549-rapport.json");
+  writeFileSync(rapport, JSON.stringify({ oracles: [{ oracle: "oracle-x", verdict: "PASS" }, { oracle: "oracle-y", verdict: "FAIL" }] }));
+  const avant = readFileSync(lf, "utf8");
+  const r = lancer("consigner", lf, "--rapport", rapport, "--essai");
+  if (r.status !== 0 || !r.stdout.includes("[ESSAI] rien n'est écrit : 2 entrée(s)") || !r.stdout.includes('"oracle":"oracle-y"')) throw new Error("l'essai du lot doit dire qu'il n'écrit rien et le montrer : " + r.stdout.slice(0, 400) + r.stderr.slice(0, 200));
+  if (readFileSync(lf, "utf8") !== avant || existsSync(lf + ".lock")) throw new Error("un essai de consigner ne change rien et ne laisse aucun verrou");
+  const v = lancer("verify", lf, "--essai");
+  if (v.status !== 1 || !v.stderr.includes("non reconnu")) throw new Error("verify --essai doit rester refusé : " + v.stderr.slice(0, 200));
+});
 
 // --- TF-2424 (14/11/2026) : LE DOUBLON. Un script de clôture rejoué a écrit 6 entrées en double (seq 835 à 840 pour 830 à 834)
 // chez un produit ; `append` ne bronchait pas, et aucun type ne désignait un doublon. Sens rouge : l'ancien écrivain écrit le second
