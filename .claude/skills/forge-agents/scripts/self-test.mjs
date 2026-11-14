@@ -1737,21 +1737,36 @@ check("ledger TF-2540 : l'antériorité déclarée couvre une collision de seq e
 {
   const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
   if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2540 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
-  else check("ledger TF-2540 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les sept cas d'antériorité (collision, recul, égalité, illisible)", () => {
-    for (const [nom, entrees, integre] of CAS_ANTERIORITE) {
-      const racine = mkdtempSync(join(out, "r42a-"));
-      mkdirSync(join(racine, "forge"));
-      const lf = join(racine, "forge", "ledger.jsonl");
-      ecrireBrut(lf, entrees);
-      let verifyPasse = true;
-      try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); } catch { verifyPasse = false; }
-      const r = spawnSync(process.execPath, [juge, racine], { encoding: "utf8" });
-      const r42 = (JSON.parse(r.stdout || "{}").findings || []).filter((f) => f.regle === "R-42");
-      if (!r42.length) throw new Error(`${nom} : R-42 n'a rendu aucun constat : ${(r.stdout || r.stderr || "").slice(0, 200)}`);
-      const r42Passe = !r42.some((f) => f.statut === "FAIL");
-      if (verifyPasse !== integre || r42Passe !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}, R-42 ${r42Passe} (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
-    }
-  });
+  else {
+    // Les deux juges lisent le MÊME fichier : `verify` (ce script) et R-42 (oracle-conformite-projet du pilot). Même verdict, ou l'accord est rompu.
+    const accord = (cas) => {
+      for (const [nom, entrees, integre] of cas) {
+        const racine = mkdtempSync(join(out, "r42a-"));
+        mkdirSync(join(racine, "forge"));
+        const lf = join(racine, "forge", "ledger.jsonl");
+        ecrireBrut(lf, entrees);
+        let verifyPasse = true;
+        try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); } catch { verifyPasse = false; }
+        const r = spawnSync(process.execPath, [juge, racine], { encoding: "utf8" });
+        const r42 = (JSON.parse(r.stdout || "{}").findings || []).filter((f) => f.regle === "R-42");
+        if (!r42.length) throw new Error(`${nom} : R-42 n'a rendu aucun constat : ${(r.stdout || r.stderr || "").slice(0, 200)}`);
+        const r42Passe = !r42.some((f) => f.statut === "FAIL");
+        if (verifyPasse !== integre || r42Passe !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}, R-42 ${r42Passe} (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
+      }
+    };
+    check("ledger TF-2540 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les sept cas d'antériorité (collision, recul, égalité, illisible)", () => accord(CAS_ANTERIORITE));
+    // L'AUTRE divergence de TF-2540 : une rectification dont `ts_consigne` ne colle pas à l'entrée visée. `verify` l'exige depuis TF-1425 ; R-42 la
+    // laissait passer jusqu'à TF-2540 (part pilot) : ce cas d'accord est rouge contre un pilot dont R-42 ne vérifie pas `ts_consigne`.
+    const rectifTs = (seq, tsConsigne, parSeq) => ({ seq: parSeq, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage", entrees: [{ seq, ts_consigne: tsConsigne, ts_reel_estime: tsConsigne, cause: "heure de l'action et non de consignation" }] });
+    check("ledger TF-2540 : ACCORD avec R-42 du pilot sur `ts_consigne` — la déclaration qui colle à l'entrée visée couvre, celle qui diverge ne couvre rien, chez les deux juges (saut, collision, recul)", () => accord([
+      ["saut, ts_consigne exact", [...SAUT_ENTREES, RECTIF_SAUT(7, "2026-01-01T11:00:00Z")], true],
+      ["saut, ts_consigne qui diverge", [...SAUT_ENTREES, RECTIF_SAUT(7, "2026-01-01T11:30:00Z")], false],
+      ["collision, ts_consigne exact", [...ANTERIORITE_COLLISION, rectifTs(3, "2026-01-01T11:10:00Z", 5)], true],
+      ["collision, ts_consigne qui diverge", [...ANTERIORITE_COLLISION, rectifTs(3, "2026-01-01T11:05:00Z", 5)], false],
+      ["recul, ts_consigne exact", [...ANTERIORITE_RECUL, rectifTs(4, "2026-01-01T10:45:00Z", 5)], true],
+      ["recul, ts_consigne qui diverge", [...ANTERIORITE_RECUL, rectifTs(4, "2026-01-01T10:50:00Z", 5)], false],
+    ]));
+  }
 }
 
 // --- TF-2527 (14/11/2026) : `decision_retiree`, le type que `oracles/lib-decisions.mjs` du pilot lit depuis TF-2415 (décision posée, puis
