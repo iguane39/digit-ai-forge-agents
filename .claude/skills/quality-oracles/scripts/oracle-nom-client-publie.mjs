@@ -899,6 +899,40 @@ if (!prodPath) {
   }
 }
 
+// TF-2340 (décision du 10/11/2026) — LE DÉPÔT JUGÉ N'EST PAS ACCUSÉ DE SON PROPRE NOM. Le 16/09, le
+// nom du dépôt d'un produit est entré à la table des produits : C5 a rendu 200 constats bloquants sur
+// les fichiers de ce produit (.env.example, restitutions, README) alors qu'il rendait PASS le matin
+// même. Un dépôt écrit son propre nom partout, et n'a aucun pseudonyme à s'y substituer : la clé de
+// la table qui EST le nom du dépôt jugé est exemptée, pour ses propres fichiers, noms de fichiers et
+// messages — jamais pour les autres dépôts, où la même clé reste un produit tiers à pseudonymiser.
+// L'identité du dépôt est le nom de son dossier et le dernier segment de l'adresse de ses distants
+// (un arbre lié porte un dossier d'un autre nom que son dépôt) ; un bundle n'en a pas, et rien n'y
+// est exempté. L'exemption est DITE au non_juge : un angle réduit en silence se lirait comme vert.
+// La clé est comparée ENTIÈRE : « <nom>-suite » reste un autre terme, jugé.
+function identiteDepot(artefact) {
+  const noms = new Set();
+  if (!fs.existsSync(artefact) || !fs.statSync(artefact).isDirectory()) return noms;
+  noms.add(path.basename(path.resolve(artefact)).toLowerCase());
+  const r = spawnSync('git', ['-C', artefact, 'config', '--get-regexp', '^remote\\..*\\.url$'], { encoding: 'utf8' });
+  for (const l of String(r.stdout || '').split('\n')) {
+    const url = l.trim().split(/\s+/)[1];
+    const seg = url ? url.replace(/[\\/]+$/, '').split(/[\\/:]/).pop().replace(/\.git$/i, '') : '';
+    if (seg) noms.add(seg.toLowerCase());
+  }
+  return noms;
+}
+const prodExemptes = [];
+if (P.length) {
+  const moi = identiteDepot(cible);
+  const gardes = P.filter((p) => !moi.has(String(p.cle).toLowerCase()));
+  for (const p of P) if (!gardes.includes(p)) prodExemptes.push(p.cle);
+  if (prodExemptes.length) {
+    P = gardes;
+    if (!P.length) prodMotif = "C5 NON JOUÉE : le seul terme de la table est le nom du dépôt jugé (« "
+      + prodExemptes.join(' », « ') + " »), exempté pour ses propres fichiers (TF-2340) — rien d'autre à chercher";
+  }
+}
+
 // TF-1071 (13/09) — LE MESSAGE SE JUGE AU COMMIT, PAS AU PUSH. Un nom de produit réel est entré
 // dans un message au commit, y a survécu deux jours, et ne s'est corrigé qu'en réécrivant 23
 // enregistrements de l'histoire locale. Le pre-push le voyait — après coup. En mode `--message`,
@@ -1417,6 +1451,9 @@ nj.push(prodMotif || ('table lue (pseudonymes de produits) : ' + prodPath
   + ' — table des produits employée (' + P.length
   + ' nom(s) de produit jugé(s) par C5, ' + prodIgnorees + ' clé(s) de CHEMIN ignorée(s) — un chemin '
   + "de disque n'est pas un nom)"));
+if (prodExemptes.length && P.length) nj.push('C5 : exemption TF-2340 — « ' + prodExemptes.join(' », « ')
+  + " » est le nom du dépôt jugé : ce terme de la table n'est pas cherché dans les fichiers, les noms "
+  + "de fichiers et les messages de ce dépôt (il reste jugé dans tout autre dépôt)");
 // TF-0825 (05/09, garde-fou n° 1) — LA PORTÉE « FICHIERS SUIVIS PAR GIT » EST UNE PROPRIÉTÉ,
 // PAS UNE LIMITE SUBIE, et elle se DÉCLARE comme telle. Elle était déjà tenue et déjà au
 // non_juge, mais énoncée comme un manque. Pour les termes COURTS elle devient ce qui rend
