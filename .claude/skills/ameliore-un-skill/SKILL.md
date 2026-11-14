@@ -13,6 +13,8 @@ description: >
   (→ prompt-analyzer-l99).
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
+metadata:
+  version: "1.0.0"
 ---
 
 # Améliore un skill

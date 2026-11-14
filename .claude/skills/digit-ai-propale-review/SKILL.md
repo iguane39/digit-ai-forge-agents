@@ -13,6 +13,8 @@ description: >
   Digit-AI, ou demande si elle est prête à partir, ce qui cloche, ou comment l'améliorer
   commercialement. Ne pas déclencher pour créer ou chiffrer une propale (digit-ai-propale)
   ni pour le rendu PPTX (digit-ai-pptx).
+metadata:
+  version: "1.0.0"
 ---
 
 # Digit-AI Propale Review

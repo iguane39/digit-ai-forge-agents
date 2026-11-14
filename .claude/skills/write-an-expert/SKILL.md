@@ -1,6 +1,8 @@
 ---
 name: write-an-expert
 description: Analyse le besoin d'un nouveau domaine d'expertise et génère en une commande une fiche expert conforme au schéma 6 champs d'experts-forge (domaine, déclencheurs, corpus résolu par test d'existence, rubrique, frontière, fixture de valeur) plus son entrée de registre en statut todo, puis guide son durcissement jusqu'à l'admission par oracle-judge. Scaffolder transactionnel calqué sur write-an-oracle — toutes les validations avant toute écriture, un refus ne laisse aucune modification partielle. Use when l'utilisateur veut créer, scaffolder ou ajouter un expert de domaine au pool experts-forge, couvrir un nouveau domaine de contribution, ou industrialiser la création d'une fiche expert. Ne pas déclencher pour appliquer une fiche existante à une demande (→ experts-forge), créer un oracle de jugement (→ write-an-oracle), ni créer un skill complet (→ write-a-skill).
+metadata:
+  version: "1.0.0"
 ---
 
 # write-an-expert — scaffolder de fiches expert
