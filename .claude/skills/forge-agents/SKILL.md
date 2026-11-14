@@ -2,7 +2,7 @@
 name: forge-agents
 description: Skill méta multi-agents — découpe un workflow en étapes, dérive les agents spécialisés justifiés (outils, arbitre ou parallélisme distincts), produit leurs définitions au format agent.def et les compile en subagents Claude Code ; référentiel d'exigences A0 en amont, recette C2 à oracles exécutés en aval, ledger de run persisté. Exécution : run parallèle sous Claude Code, ou run-sequentiel dégradé assumé dans claude.ai (artefacts et oracles réels, isolation comportementale, limites consignées au ledger). Use when / déclencher dès que l'utilisateur veut agentifier un workflow, créer des agents spécialisés pour un chantier, découper une mission en agents, orchestrer plusieurs agents sur des livrables, ou qu'un skill pair escalade une tâche justifiant plusieurs agents. Ne pas déclencher pour une boucle mono-agent auto-arbitrée (→ la-boucle) ni pour le brief de handoff d'un chantier (→ forge-brief).
 metadata:
-  version: 1.5.0
+  version: 1.6.0
 ---
 
 # forge-agents — skill méta multi-agents
@@ -41,6 +41,7 @@ node scripts/ledger.mjs append <dossier-projet>/forge/ledger.jsonl '{"type":"run
 node scripts/ledger.mjs append <dossier-projet>/forge/hors-run.jsonl '{"type":"retour",…}'  # sans run ouvert : retour, question_humain, reponse_humain, demande_humain (TF-2245) ; tout autre type est refusé hors du vocabulaire du pilot
 node scripts/ledger.mjs append <dossier-projet>/forge/ledger.jsonl '{"type":"anteriorite_ledger","avant":"<date ISO>","cause":"<≥ 20 caractères>"}'  # le remède que prescrit R-42 du pilot : couvre en [ANTÉRIORITÉ] un saut de seq en avant antérieur à la date (TF-2494) ; l'autre voie, une rectification_horodatage qui nomme le seq qui suit la lacune
 node scripts/ledger.mjs append <dossier-projet>/forge/ledger.jsonl '{"type":"rectification_doublon","entrees":[{"seq":<copie>,"doublon_de":<source>,"cause":"…"}]}'  # désigne un doublon déjà écrit, par ajout, vérifié identique à sa source ; `append` refuse désormais une entrée identique (hors seq et ts) à une autre du même run (TF-2424)
+node scripts/ledger.mjs append <dossier-projet>/forge/ledger.jsonl '{"type":"etape_close","resume":"11 demandes recomptées par requête"}'  # un chiffre écrit sans provenance ni « non mesuré » est RAPPELÉ [RAPPEL S90] (l'entrée est écrite) : un compte se relève à la source (TF-2425)
 node scripts/retablir-pseudonymes.mjs --table <table.json> [--fichier <réponse>]  # pseudonymes rétablis PAR MOTIF, crochets perdus admis (TF-2163)
 node scripts/self-test.mjs   # fixtures verte/rouges — à rejouer après toute modification
 node scripts/otlp-project.mjs <dossier-projet>/ledger.jsonl --out spans.json  # TF-0106 (1)

@@ -1793,6 +1793,41 @@ check("ledger TF-2424 : `append` écrit une `rectification_doublon` juste (le re
   if (!v.includes("[PASS]") || !v.includes("2 doublon(s) DÉCLARÉ(S)") || v.includes("[DOUBLON]")) throw new Error("le remède joué solde les deux doublons : " + v);
 });
 
+// --- TF-2425 (14/11/2026) : S90 RAPPELÉE À L'ÉCRITURE. Une session a consigné « 12 demandes, 7 autorisées et 12 jobs » d'après une liste
+// tronquée (recompte par requête : 11, 6 et 6) ; S90 ne juge que la restitution. Sens rouge : l'ancien écrivain n'imprime aucun rappel.
+check("ledger TF-2425 (rouge) : un compte écrit sans provenance est RAPPELÉ [RAPPEL S90] (chiffre, nature, champ nommés), l'entrée est écrite et la sortie reste exit 0", () => {
+  const lf = join(out, "t2425-rappel.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2425" })]);
+  const o = run(ledger, ["append", lf, JSON.stringify({ type: "etape_close", etape: "cloture", resume: "12 demandes consignées, 7 autorisées et 12 jobs, 34 minutes de campagne" })]);
+  if (!o.includes("[RAPPEL S90]") || !o.includes("« 12 demandes » (compte, champ `resume`)") || !o.includes("« 34 minutes » (durée, champ `resume`)")) throw new Error("le rappel doit nommer les chiffres, leur nature et leur champ : " + o);
+  if (!o.includes("[OK] entrée 2 ajoutée") || lignesDe(lf).length !== 2) throw new Error("le rappel n'empêche pas l'écriture (S90 est avertissante) : " + o);
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger reste intègre");
+});
+check("ledger TF-2425 (vert) : un chiffre qui dit sa provenance, ou non mesuré, estimé, rapporté — ou en code en ligne, dans `commande`, dans une date — n'est pas rappelé", () => {
+  const lf = join(out, "t2425-vert.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2425" })]);
+  const sans = (payload) => {
+    const o = run(ledger, ["append", lf, JSON.stringify({ type: "etape_close", etape: "x", ...payload })]);
+    if (o.includes("[RAPPEL S90]")) throw new Error(`aucun rappel attendu pour ${JSON.stringify(payload)} : ${o}`);
+  };
+  sans({ resume: "11 demandes recomptées par requête SELECT count(*)" });
+  sans({ resume: "6 jobs autorisés, 12 fichiers mesurés par wc -l" });
+  sans({ resume: "environ 40 minutes, non mesurées" });
+  sans({ resume: "12 demandes (rapporté par l'agent, non recompté)" });
+  sans({ resume: "le script `lancer 12 tests` a rendu exit 0" });
+  sans({ resume: "clôture du 14/11/2026 à 12:45, sans compte" });
+  sans({ commande: "node cible.mjs --max 12 tests", resume: "commande jouée" });
+  if (lignesDe(lf).length !== 8) throw new Error("toutes les entrées sont écrites : 8 attendues, " + lignesDe(lf).length);
+});
+check("ledger TF-2425 : `consigner` ne rappelle rien (ses verdicts viennent d'oracles, pas d'un compte écrit par l'agent)", () => {
+  const lf = join(out, "t2425-consigner.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2425" })]);
+  const rapport = join(out, "t2425-rapport.json");
+  writeFileSync(rapport, JSON.stringify({ oracles: [{ oracle: "oracle-x", verdict: "FAIL", message: "12 fichiers en défaut sur 40" }] }));
+  const o = run(ledger, ["consigner", lf, "--rapport", rapport]);
+  if (o.includes("[RAPPEL S90]")) throw new Error("consigner ne rappelle pas S90 : " + o);
+});
+
 rmSync(out, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 console.log(`\nSelf-test forge-agents : ${pass} PASS, ${failCount} FAIL`);
 process.exit(failCount === 0 ? 0 : 1);

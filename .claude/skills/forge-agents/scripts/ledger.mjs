@@ -135,6 +135,15 @@
  * déclaration fausse est un écart bloquant) et `[DOUBLON]`, non bloquant, pour un doublon non désigné (on ne met
  * jamais en échec un ledger existant, comme pour le vocabulaire).
  *
+ * S90 RAPPELÉE À L'ÉCRITURE (TF-2425, 14/11/2026). Un compte consigné d'après un affichage borné (12 demandes,
+ * 7 autorisées, 12 jobs ; 11, 6 et 6 au recompte par requête) échappait à S90 d'`oracle-synthese` du pilot, qui ne
+ * juge que la restitution. `append` rejoue la détection de S90 sur le texte de l'entrée et RAPPELLE (`[RAPPEL S90]`,
+ * chaque chiffre nommé avec son champ) sans refuser ni changer le code de sortie : S90 est avertissante. Ne sont
+ * pas accusés un texte qui dit le chiffre non mesuré, estimé ou projeté, ni un texte qui nomme sa provenance
+ * (recompté, mesuré, relevé, requête, wc, git, rapporté). `consigner` ne rappelle rien : ses verdicts viennent
+ * des sorties d'oracles, pas d'un compte écrit par l'agent. NON JUGÉ : que le chiffre soit le bon, un champ
+ * numérique (`demandes: 12`), un chiffre écrit en lettres.
+ *
  * DES INSTANTS, JAMAIS DES CHAÎNES (TF-1422, 28/09/2026). Le fait mesuré chez un produit le
  * 25/09 : `append` horodate en UTC (`toISOString`, suffixe `Z`), et ce produit écrit l'heure de
  * Paris avec son décalage (`+02:00`) ; la monotonie se jugeait en comparant des CHAÎNES. Sur deux
@@ -453,6 +462,44 @@ const CHAMPS_ANTERIORITE = [
   ["cause", `pourquoi ces écarts sont antérieurs (au moins ${CAUSE_ANTERIORITE_MIN} caracteres) — sans elle, R-42 du pilot ignore la déclaration`,
     (v) => (typeof v === "string" && v.trim().length >= CAUSE_ANTERIORITE_MIN ? null : `doit etre une CHAINE d'au moins ${CAUSE_ANTERIORITE_MIN} caracteres (recu ${JSON.stringify(v)})`)],
 ];
+
+//: TF-2425 (14/11/2026) — LE RAPPEL DE S90 À L'ÉCRITURE. S90 d'`oracle-synthese` (pilot, D-100 (a)) veut qu'un chiffre — durée, coût, score,
+//: volume, compte d'objets — se relève dans le tour ou se dise non mesuré ; elle ne juge que la restitution. Le fait : une session a consigné
+//: « 12 demandes, 7 autorisées et 12 jobs » lus sur une liste tronquée et une liste de jobs bornée qui mêlait des jobs antérieurs ; le recompte
+//: par requête donnait 11, 6 et 6, et l'entrée fausse est restée au ledger jusqu'à sa rectification. `append` rejoue donc la détection de S90
+//: sur le TEXTE de l'entrée qu'il écrit et RAPPELLE, sans refuser (S90 est avertissante) : l'entrée est écrite, le rappel nomme chaque chiffre.
+//: Les cinq natures et la liste des objets comptés sont celles de `lib-chiffres-releves.mjs` du pilot (recopiées : ce script n'importe rien
+//: du pilot). Ce qui n'est pas accusé : un texte qui dit le chiffre non mesuré, estimé, projeté ou visé (DECLARE_NON_MESURE de S90) ou qui
+//: nomme sa PROVENANCE (recompté, mesuré, relevé, requête, wc, git, à la source) — un compte qui dit d'où il vient se relit. NON JUGÉ : que le
+//: chiffre soit le bon ; un chiffre en lettres ; un champ numérique (`demandes: 12`) ; ce que ce script ne connaît pas : « relevé dans le tour »
+//: est un fait de la session (S90 le lit aux sorties d'outils du tour), le rappel ne peut que demander à l'agent de le vérifier.
+const NOMBRE_S90 = String.raw`\d(?:[\d   ]*\d)?(?:[.,]\d+)?`;
+const FIGURES_S90 = [
+  ["durée", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:minutes?|min\b|secondes?|heures?|jours?|semaines?)`, "giu")],
+  ["coût", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:\$|€|euros?\b|dollars?\b)`, "giu")],
+  ["score", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:sur\s*100\b|/\s*100\b|%)`, "giu")],
+  ["volume", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s*(?:jetons?\b|tokens?\b|Ko\b|Mo\b|Go\b)`, "gu")],
+  ["compte", new RegExp(String.raw`(?<![\d.,:/-])(${NOMBRE_S90})\s+(?:fichiers?|lignes?|tests?|cas\b|commits?|sessions?|demandes?|refus\b|erreurs?|d[ée]fauts?|produits?|scripts?|contr[ôo]les?|entr[ée]es\b|items?\b|occurrences?)`, "giu")],
+];
+const DECLARE_NON_MESURE_S90 = /non mesur|non recompt|non v[ée]rifi|projet[ée]|estim|environ|hypoth|à mesurer|\bcible\b|objectif|attendue?s?\b|(?<![A-Za-zÀ-ÿ])vis[ée]e?s?(?![A-Za-zÀ-ÿ])|d'ici|plafond|seuil|au plus|au moins/i;
+const PROVENANCE_DITE = /recompt|mesur[ée]|relev[ée]|requ[êe]te|count\(|\bwc\b|\bgit (?:diff|log|ls-files|rev-list)|à la source|rapport[ée]/i;
+//: Les champs techniques dont le texte n'est pas une affirmation : la commande lancée, un chemin, un nom d'oracle, un horodatage.
+const CHAMPS_HORS_S90 = new Set(["type", "ts", "commande", "cible", "chemin", "fichier", "journal", "oracle", "lanceur", "forge", "etape", "consigne_par", "ts_action", "ts_consigne", "ts_reel_estime", "avant"]);
+/** Les chiffres qu'un texte d'entrée affirme sans dire qu'ils sont non mesurés ni d'où ils viennent : [{ nature, chiffre, champ }]. */
+function chiffresAffirmes(valeur, champ = "", sortie = []) {
+  if (typeof valeur === "string") {
+    for (const ligne of valeur.split(/\r?\n/)) {
+      if (DECLARE_NON_MESURE_S90.test(ligne) || PROVENANCE_DITE.test(ligne)) continue;
+      // Le code en ligne (chemins, commandes) n'est pas un chiffre affirmé, comme pour S90.
+      const lue = ligne.replace(/`[^`]*`/g, " ");
+      for (const [nature, re] of FIGURES_S90) for (const m of lue.matchAll(re)) sortie.push({ nature, chiffre: m[0].trim(), champ });
+    }
+  } else if (Array.isArray(valeur)) valeur.forEach((v) => chiffresAffirmes(v, champ, sortie));
+  else if (valeur && typeof valeur === "object") {
+    for (const [k, v] of Object.entries(valeur)) if (!CHAMPS_HORS_S90.has(k)) chiffresAffirmes(v, k, sortie);
+  }
+  return sortie;
+}
 
 //: TF-2424 (14/11/2026) — LE DOUBLON : une entrée IDENTIQUE à une autre du même run, hors `seq`, `ts` et marque hors run. Le fait :
 //: un script de clôture rejoué a écrit 6 entrées en double (seq 835 à 840 pour 830 à 834) chez un produit, et le ledger, en ajout
@@ -957,6 +1004,16 @@ if (cmd === "append") {
   // TF-1366 (d) : l'écho NOMME le type et les champs écrits — un « [OK] » muet sur le contenu ne
   // permet pas de relire, depuis la seule sortie de la commande, ce qui vient d'être ajouté.
   console.log(`[OK] entrée ${seq} ajoutée (type ${obj.type} ; champs : ${clesUtiles.join(", ")})`);
+  // TF-2425 : S90 rappelée À L'ÉCRITURE — un chiffre affirmé sans provenance ni mention « non mesuré » se relève à la source avant de rester
+  // pour toujours dans un journal en ajout seul. Rappel seul : l'entrée est écrite (S90 est avertissante), la sortie reste exit 0.
+  const sansReleve = chiffresAffirmes(obj);
+  if (sansReleve.length) {
+    const cites = sansReleve.slice(0, 5).map((x) => `« ${x.chiffre} » (${x.nature}, champ \`${x.champ || "?"}\`)`).join(", ");
+    console.log(`[RAPPEL S90] ${sansReleve.length} chiffre(s) affirmé(s) sans provenance : ${cites}${sansReleve.length > 5 ? `, … ${sansReleve.length - 5} autre(s)` : ""} — ` +
+      "un compte écrit au ledger se RELÈVE à la source (requête, `wc -l`, `git`, compte du script), jamais d'un affichage borné ni d'un souvenir ; " +
+      "à défaut, le dire « non recompté », « estimé » ou « rapporté ». Le 10/11/2026, 12 demandes, 7 autorisées et 12 jobs consignés d'après une liste tronquée " +
+      "valaient 11, 6 et 6 au recompte par requête : l'entrée fausse est restée au ledger (TF-2425, S90 d'oracle-synthese du pilot). L'entrée est écrite telle quelle.");
+  }
   // TF-2206, TF-2245 : une décision qui en remplace une autre dit ce que la première avait créé, et son sort.
   if (remplaceSansArtefacts(obj)) {
     console.log("[À PORTER] remplace sans artefacts_remplaces : lister ce que la décision remplacée avait créé (ressources, exigences, " +
