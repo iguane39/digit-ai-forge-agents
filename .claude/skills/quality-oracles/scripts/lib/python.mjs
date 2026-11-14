@@ -32,6 +32,46 @@ export function resolvePython() {
   return null;
 }
 
+// TF-2522 (14/11/2026) — UN PRÉREQUIS ABSENT DU POSTE SE DIT, IL NE SE LIT PAS COMME UN ÉCHEC.
+// Le 14/11/2026, sur le poste DESKTOP-ULTRA7, pypdf, pypdfium2, pdfplumber et reportlab manquaient à l'interpréteur
+// résolu : les oracles PDF rendaient bien SKIP, avec leur motif, mais la recette lisait ce SKIP comme un échec
+// (fixture « verdict SKIP, attendu FAIL ») — 11 contrôles rouges pour une bibliothèque non installée, que rien ne
+// distinguait d'un oracle cassé. La fixture DÉCLARE désormais les modules Python qu'elle exige (`prerequis_python`) ;
+// la recette SONDE chacun (un `import` réel, avec l'interpréteur de l'oracle) et ne tolère le SKIP que si l'un d'eux
+// manque VRAIMENT. Un SKIP alors que tout est installé, un SKIP sans prérequis déclaré, un verdict faux : échecs.
+const PAQUET_PIP = { fitz: 'pymupdf', PIL: 'pillow', docx: 'python-docx', pptx: 'python-pptx' };
+
+/** Le module s'importe-t-il avec cet interpréteur ? (exit 0 de `import <module>`). */
+export function sondeImport(module, py = resolvePython()) {
+  if (!py || !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(module)) return false;
+  return spawnSync(py[0], [...py.slice(1), '-c', `import ${module}`], { encoding: 'utf8', timeout: 30000 }).status === 0;
+}
+
+/** Les modules de la liste que l'interpréteur n'importe pas. `sonde` est injectable pour la recette. */
+export function modulesAbsents(modules, sonde = sondeImport) {
+  return (modules || []).filter((m) => !sonde(m));
+}
+
+/** La commande qui installe ces modules au poste (nom du paquet pip, qui diffère parfois du module). */
+export function commandeInstallation(modules, py = resolvePython()) {
+  const paquets = [...new Set((modules || []).map((m) => PAQUET_PIP[m] || m))];
+  return `${(py || ['python']).join(' ')} -m pip install ${paquets.join(' ')}`;
+}
+
+/**
+ * Le motif d'un SKIP motivé par un prérequis absent, ou null. Rend un motif seulement si le verdict est SKIP, que
+ * la fixture déclare des modules et que l'un d'eux manque réellement : le motif nomme le paquet absent et la
+ * commande d'installation. Tout autre cas reste jugé comme avant par l'appelant. Un attendu qui tolère déjà le
+ * SKIP n'y change rien : il tolère le verdict, pas les messages que la paire rouge attendait de l'oracle.
+ */
+export function skipMotiveParPrerequis(verdict, modules, { sonde = sondeImport, py } = {}) {
+  if (verdict !== 'SKIP' || !(modules || []).length) return null;
+  const absents = modulesAbsents(modules, sonde);
+  if (!absents.length) return null;
+  return `paquet(s) Python absent(s) de ce poste : ${absents.join(', ')} — à installer au poste : ${commandeInstallation(absents, py)} ; `
+    + `cette paire rouge/verte n'est PAS rejouée ici`;
+}
+
 /** spawnSync prêt à l'emploi : runPython(['script.py', 'arg'], opts) avec l'interpréteur validé. */
 export function runPython(args, opts = {}) {
   const py = resolvePython();

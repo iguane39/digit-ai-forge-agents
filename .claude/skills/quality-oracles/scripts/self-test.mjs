@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { resolvePython } from './lib/python.mjs';
+import { resolvePython, skipMotiveParPrerequis, modulesAbsents, commandeInstallation } from './lib/python.mjs';
 import { frontmatter } from './lib/frontmatter.mjs';
 import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
@@ -1139,6 +1139,12 @@ else {
       if (!v) v = r.status === 0 ? 'PASS' : r.status === 2 ? 'SKIP' : 'FAIL';
       const attendu = fx['attendu_' + side];
 
+      // TF-2522 — un SKIP dû à un module Python que la fixture déclare (`prerequis_python`) et que le poste n'a pas
+      // (sondé par un import réel) est un SKIP MOTIVÉ qui nomme le paquet et la commande d'installation, jamais un
+      // échec : ni le verdict, ni les messages que la paire rouge attendait d'un oracle qui n'a pas pu juger.
+      const skipMotive = skipMotiveParPrerequis(v, fx.prerequis_python);
+      if (skipMotive) { ok(`fixture ${fx.nom}/${side} : SKIP motivé — ${skipMotive}`); continue; }
+
       // TF-0362 (18/08/2026) — le VERDICT seul ne verrouille pas une règle non bloquante.
       // Une fixture rouge qui échoue déjà sur une autre règle reste FAIL même si celle qu'on
       // voulait prouver disparaît : le self-test resterait vert sur un contrôle mort. Champ
@@ -1167,6 +1173,50 @@ else {
       else ok(`fixture ${fx.nom}/${side} : ${v} conforme`);
     }
   }
+}
+
+// TF-2522 (14/11/2026) — UN MODULE PYTHON ABSENT DU POSTE REND UN SKIP MOTIVÉ À LA RECETTE, PAS UN ÉCHEC.
+// Le fait : sur DESKTOP-ULTRA7, pypdf, pypdfium2, pdfplumber et reportlab manquent ; oracle-pdf et oracle-formulaire-pdf
+// rendent SKIP avec leur motif, et la recette lisait « verdict SKIP, attendu FAIL » comme un oracle cassé (11 rouges).
+// Les deux sens se jouent sur la décision elle-même (`skipMotiveParPrerequis`, sonde injectée), puis avec la vraie
+// sonde. VERT : un SKIP dont un module déclaré manque se dit, le paquet et la commande d'installation nommés. ROUGE
+// (l'ancienne lecture, qui échouait ici, et la nouvelle, qui ne doit pas tout excuser) : un SKIP alors que tout est
+// installé, un SKIP sans module déclaré, un verdict FAUX même avec un module absent, restent des échecs.
+{
+  const echecs = [];
+  const absent = () => false, present = () => true;
+  const v1 = skipMotiveParPrerequis('SKIP', ['pypdf', 'reportlab'], { sonde: absent, py: ['python'] });
+  if (!v1 || !/pypdf, reportlab/.test(v1) || !/python -m pip install pypdf reportlab/.test(v1) || !/PAS rejouée/.test(v1))
+    echecs.push('VERT : un SKIP avec modules absents ne rend pas un motif qui nomme les paquets et la commande — ' + v1);
+  const v2 = skipMotiveParPrerequis('SKIP', ['fitz'], { sonde: absent, py: ['py', '-3'] });
+  if (!v2 || !/py -3 -m pip install pymupdf/.test(v2)) echecs.push('VERT : le module « fitz » ne se traduit pas en paquet pymupdf — ' + v2);
+  const v3 = skipMotiveParPrerequis('SKIP', ['pypdf', 'json'], { sonde: (m) => m === 'json', py: ['python'] });
+  if (!v3 || /json/.test(v3.split('à installer')[0]) || !/pypdf/.test(v3)) echecs.push('VERT : seul le module réellement absent doit être nommé — ' + v3);
+  if (skipMotiveParPrerequis('SKIP', ['pypdf'], { sonde: present })) echecs.push('ROUGE : un SKIP alors que tous les modules déclarés sont installés est excusé');
+  if (skipMotiveParPrerequis('SKIP', [], { sonde: absent }) || skipMotiveParPrerequis('SKIP', undefined, { sonde: absent }))
+    echecs.push('ROUGE : un SKIP sans module déclaré est excusé');
+  if (skipMotiveParPrerequis('FAIL', ['pypdf'], { sonde: absent }) || skipMotiveParPrerequis('PASS', ['pypdf'], { sonde: absent }))
+    echecs.push('ROUGE : un verdict FAIL ou PASS est excusé par un module absent (seul un SKIP l\'est)');
+  // La vraie sonde, avec le vrai interpréteur : un module qui n'existe pas est absent, `sys` est présent.
+  if (!resolvePython()) ok('TF-2522 : vraie sonde NON JOUÉE — aucun interpréteur Python sur ce poste, et c\'est dit');
+  else {
+    const reel = modulesAbsents(['qo_paquet_2522_absent', 'sys']);
+    if (JSON.stringify(reel) !== JSON.stringify(['qo_paquet_2522_absent'])) echecs.push('la vraie sonde ne sépare pas un module absent (qo_paquet_2522_absent) d\'un module présent (sys) : ' + JSON.stringify(reel));
+    if (!/-m pip install qo_paquet_2522_absent/.test(commandeInstallation(reel))) echecs.push('la commande d\'installation ne porte pas la commande pip du paquet absent');
+  }
+  // La déclaration est portée par les trois fixtures dont l'oracle exige une bibliothèque PDF absente d'un poste nu.
+  try {
+    const fixtures = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'manifest.json'), 'utf8')).fixtures;
+    const declare = (n) => (fixtures.find((f) => f.nom === n) || {}).prerequis_python;
+    for (const n of ['pdf', 'formulaire-pdf-champs', 'formulaire-pdf-plat'])
+      if (!Array.isArray(declare(n)) || !declare(n).includes('pypdf')) echecs.push(`la fixture « ${n} » ne déclare pas prerequis_python avec pypdf`);
+    for (const f of fixtures)
+      if ('prerequis_python' in f && !(Array.isArray(f.prerequis_python) && f.prerequis_python.length && f.prerequis_python.every((m) => /^[A-Za-z_][A-Za-z0-9_.]*$/.test(m))))
+        echecs.push(`la fixture « ${f.nom} » déclare un prerequis_python mal formé`);
+  } catch (e) { echecs.push('manifest illisible : ' + e.message); }
+  echecs.length
+    ? echecs.forEach((e) => ko('TF-2522 : ' + e))
+    : ok('TF-2522 : un module Python déclaré et absent rend un SKIP motivé (paquet et commande d\'installation nommés) ; un SKIP alors que tout est installé, sans module déclaré, ou un verdict faux restent des échecs ; la vraie sonde sépare absent et présent');
 }
 
 // preuve comportementale : empreinte du contenu jugé et péremption bloquante (TF-0478, verdict O2)

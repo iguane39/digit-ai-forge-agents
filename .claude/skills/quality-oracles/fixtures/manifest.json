@@ -1,5 +1,5 @@
 {
- "commentaire": "Oracle de l'oracle (P1) : chaque oracle prouve qu'il sait ÉCHOUER (rouge) et RÉUSSIR (verte). Rejoué par self-test.mjs. attendu_* = verdicts admis ; SKIP n'est toléré que pour les oracles dépendant d'un outil externe (raison exigée dans la sortie).",
+ "commentaire": "Oracle de l'oracle (P1) : chaque oracle prouve qu'il sait ÉCHOUER (rouge) et RÉUSSIR (verte). Rejoué par self-test.mjs. attendu_* = verdicts admis ; SKIP n'est toléré que pour les oracles dépendant d'un outil externe (raison exigée dans la sortie). prerequis_python (TF-2522) : les modules Python qu'exige l'oracle ; un SKIP alors que l'un d'eux manque RÉELLEMENT au poste (un import est sondé) est un SKIP motivé qui nomme le paquet et la commande d'installation, jamais un échec — un SKIP alors que tout est installé, un SKIP sans module déclaré et un verdict faux restent des échecs.",
  "fixtures": [
   {
    "nom": "format",
@@ -893,6 +893,9 @@
   },
   {
    "nom": "pdf",
+   "prerequis_python": [
+    "pypdf"
+   ],
    "cmd": [
     "node",
     "{skilldir}/scripts/oracle-pdf.mjs",
@@ -925,6 +928,10 @@
   },
   {
    "nom": "pdf-lisibilite-plusieurs-lecteurs",
+   "prerequis_python": [
+    "pypdf",
+    "pymupdf"
+   ],
    "cmd": [
     "node",
     "{skilldir}/scripts/oracle-pdf.mjs",
@@ -2439,6 +2446,13 @@
   },
   {
    "nom": "formulaire-pdf-champs",
+   "prerequis_python": [
+    "pypdf",
+    "pypdfium2",
+    "pdfplumber",
+    "reportlab",
+    "PIL"
+   ],
    "cmd": [
     "python3",
     "{skillsroot}/digit-ai-pdf/scripts/oracle-formulaire-pdf.py",
@@ -2464,6 +2478,13 @@
   },
   {
    "nom": "formulaire-pdf-plat",
+   "prerequis_python": [
+    "pypdf",
+    "pypdfium2",
+    "pdfplumber",
+    "reportlab",
+    "PIL"
+   ],
    "cmd": [
     "python3",
     "{skillsroot}/digit-ai-pdf/scripts/oracle-formulaire-pdf.py",
