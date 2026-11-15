@@ -1769,6 +1769,92 @@ check("ledger TF-2540 : l'antériorité déclarée couvre une collision de seq e
   }
 }
 
+// --- TF-2573 (15/11/2026) : LES FORMES DE `ts_reel_estime`, UN CAS D'ACCORD PAR FORME (part forge-agents ; part pilot : R-42 d'oracle-conformite-projet).
+// Le fait (lot ph, seconde campagne du 14/11) : R-42 couvrait une rectification avec `ts_consigne` OU `ts_reel_estime` (TF-1466) ; `verify` tient depuis TF-1425
+// les quatre champs de la déclaration pour DUS (`CHAMPS_RECTIFICATION`) et une déclaration incomplète pour sans effet. Mesuré le 15/11/2026 sur 14 formes, une
+// collision de seq déclarée par une rectification : `verify` rend FAIL sur 6 (champ absent, null, vide ou fait d'espaces, `ts_consigne` absent), R-42 du pilot
+// PASS sur 6 d'entre elles. Le verdict de `verify` est la cible : les quatre champs sont ce qui rend une rectification vérifiable, et R-42 s'y aligne (lot pb) — `verify`
+// ne change donc pas, ses cas d'accord s'écrivent. Une valeur PRÉSENTE mais illisible (« vers midi », un nombre, une date sans heure) passe chez les deux juges : ni l'un ni l'autre
+// ne lit `ts_reel_estime`, constat rapporté, non corrigé ici.
+const TS_CONSIGNE_2573 = "2026-01-01T11:10:00Z";
+const CAUSE_2573 = "heure de l'action et non de consignation";
+const declTs2573 = (extra, base = { seq: 3, ts_consigne: TS_CONSIGNE_2573, cause: CAUSE_2573 }) => ({ ...base, ...extra });
+// [forme, déclaration, intègre ?, champ(s) que le refus doit nommer]
+const FORMES_TS_REEL = [
+  ["ISO UTC postérieur à ts_consigne", declTs2573({ ts_reel_estime: "2026-01-01T12:30:00Z" }), true, []],
+  ["ISO avec décalage +02:00 (même instant que ts_consigne)", declTs2573({ ts_reel_estime: "2026-01-01T13:10:00+02:00" }), true, []],
+  ["ISO antérieur à ts_consigne", declTs2573({ ts_reel_estime: "2026-01-01T09:00:00Z" }), true, []],
+  ["ISO postérieur à la rectification elle-même", declTs2573({ ts_reel_estime: "2026-03-01T09:00:00Z" }), true, []],
+  ["absent", declTs2573({}), false, ["ts_reel_estime"]],
+  ["chaîne vide", declTs2573({ ts_reel_estime: "" }), false, ["ts_reel_estime"]],
+  ["blancs seuls", declTs2573({ ts_reel_estime: "   " }), false, ["ts_reel_estime"]],
+  ["null", declTs2573({ ts_reel_estime: null }), false, ["ts_reel_estime"]],
+  ["texte illisible (présent : ni verify ni R-42 ne le lisent)", declTs2573({ ts_reel_estime: "vers midi" }), true, []],
+  ["nombre", declTs2573({ ts_reel_estime: 1767266400000 }), true, []],
+  ["date sans heure", declTs2573({ ts_reel_estime: "2026-01-01" }), true, []],
+  ["ts_consigne absent, ts_reel_estime ISO exact", { seq: 3, ts_reel_estime: TS_CONSIGNE_2573, cause: CAUSE_2573 }, false, ["ts_consigne"]],
+  ["ts_consigne absent, ts_reel_estime illisible", { seq: 3, ts_reel_estime: "vers midi", cause: CAUSE_2573 }, false, ["ts_consigne"]],
+  ["ts_consigne et ts_reel_estime absents", { seq: 3, cause: CAUSE_2573 }, false, ["ts_consigne", "ts_reel_estime"]],
+];
+const entreesForme2573 = (d) => [...ANTERIORITE_COLLISION, { seq: 5, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage", entrees: [d] }];
+const verifierForme2573 = (script, nom, d) => {
+  const lf = join(out, "t2573-" + nom.replace(/[^a-z]+/gi, "-").slice(0, 40) + ".jsonl");
+  ecrireBrut(lf, entreesForme2573(d));
+  try { execFileSync("node", [script, "verify", lf], { encoding: "utf8", stdio: "pipe" }); return { passe: true, sortie: "" }; }
+  catch (e) { return { passe: false, sortie: String(e.stdout || "") + String(e.stderr || "") }; }
+};
+check("ledger TF-2573 : `verify` juge chaque forme de `ts_reel_estime` — les quatre champs dus font la déclaration, une valeur présente couvre, un champ absent, null, vide ou fait d'espaces ne couvre rien et est nommé", () => {
+  for (const [nom, d, integre, nommes] of FORMES_TS_REEL) {
+    const { passe, sortie } = verifierForme2573(ledger, nom, d);
+    if (passe !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${passe} — ${sortie.slice(0, 300)}`);
+    if (!integre) {
+      if (!sortie.includes("déclaration incomplète")) throw new Error(`${nom} : le refus doit dire « déclaration incomplète » — ${sortie.slice(0, 300)}`);
+      for (const c of nommes) if (!sortie.includes("`" + c + "`")) throw new Error(`${nom} : le refus doit nommer le champ \`${c}\` — ${sortie.slice(0, 300)}`);
+    }
+  }
+});
+check("ledger TF-2573 (sens rouge) : un `verify` qui ne tiendrait plus `ts_reel_estime` pour dû (la lecture de R-42 avant TF-2573) rend PASS sur absent, vide, blancs et null — les cas ci-dessus discriminent", () => {
+  const source = readFileSync(ledger, "utf8");
+  const ligne = 'const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "ts_reel_estime", "cause"];';
+  if (!source.includes(ligne)) throw new Error("la constante CHAMPS_RECTIFICATION a changé : adapter le mutant de ce cas");
+  const dossier = mkdtempSync(join(out, "t2573-mutant-"));
+  const mutant = join(dossier, "ledger.mjs");
+  writeFileSync(mutant, source.replace(ligne, 'const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "cause"];'), "utf8");
+  for (const nom of ["absent", "chaîne vide", "blancs seuls", "null"]) {
+    const [, d] = FORMES_TS_REEL.find(([n]) => n === nom);
+    if (!verifierForme2573(mutant, nom + " (mutant)", d).passe) throw new Error(`${nom} : le mutant (sans ts_reel_estime dû) devait rendre PASS, sinon le cas ne discrimine rien`);
+  }
+});
+{
+  const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
+  if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2573 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
+  else check("ledger TF-2573 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les 14 formes de `ts_reel_estime` ; seules les divergences que R-42 portait avant TF-2573 (lot pb) sont tolérées, et dites", () => {
+    // Les formes où R-42 du pilot PASSE alors que `verify` rend FAIL, mesurées le 15/11/2026 sur le pilot d'avant le lot pb. Cette liste ne
+    // dispense de rien d'autre : toute autre divergence est rouge, `verify` est jugé sur chaque forme, et une forme listée qui s'accorde
+    // l'est sans réserve. Le lot pb aligne R-42 : à la fusion les six formes s'accordent, et la liste se vide (le cas le dit).
+    const DIVERGENCES_R42_AVANT_TF2573 = new Set(["absent", "chaîne vide", "blancs seuls", "null", "ts_consigne absent, ts_reel_estime ISO exact", "ts_consigne absent, ts_reel_estime illisible"]);
+    const tolerees = [], accordees = [];
+    for (const [nom, d, integre] of FORMES_TS_REEL) {
+      const racine = mkdtempSync(join(out, "r42t-"));
+      mkdirSync(join(racine, "forge"));
+      const lf = join(racine, "forge", "ledger.jsonl");
+      ecrireBrut(lf, entreesForme2573(d));
+      let verifyPasse = true;
+      try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); } catch { verifyPasse = false; }
+      const r = spawnSync(process.execPath, [juge, racine], { encoding: "utf8" });
+      const r42 = (JSON.parse(r.stdout || "{}").findings || []).filter((f) => f.regle === "R-42");
+      if (!r42.length) throw new Error(`${nom} : R-42 n'a rendu aucun constat : ${(r.stdout || r.stderr || "").slice(0, 200)}`);
+      const r42Passe = !r42.some((f) => f.statut === "FAIL");
+      if (verifyPasse !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}`);
+      if (r42Passe === integre) { if (DIVERGENCES_R42_AVANT_TF2573.has(nom)) accordees.push(nom); continue; }
+      if (!DIVERGENCES_R42_AVANT_TF2573.has(nom)) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}, R-42 ${r42Passe} (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
+      tolerees.push(nom);
+    }
+    if (tolerees.length) console.log(`  [DIVERGENCE PILOTE] TF-2573 : R-42 du pilot rend encore PASS là où \`verify\` rend FAIL, ${tolerees.length} forme(s) sur ${FORMES_TS_REEL.length} (lot pb) : ${tolerees.join(" · ")}`);
+    if (accordees.length) console.log(`  [ACCORD ATTEINT] TF-2573 : ${accordees.length} forme(s) listées comme divergentes s'accordent désormais — retirer de DIVERGENCES_R42_AVANT_TF2573 : ${accordees.join(" · ")}`);
+  });
+}
+
 // --- TF-2527 (14/11/2026) : `decision_retiree`, le type que `oracles/lib-decisions.mjs` du pilot lit depuis TF-2415 (décision posée, puis
 // retirée : elle n'est plus rappelée comme ouverte). Ni `gabarits/ledger.py` ni ce script ne l'acceptaient à l'écriture : une retraite
 // s'écrivait en `reponse_humain --decision D-M --remplace D-N`. Sens rouge : l'ancien écrivain refuse le type (« type inconnu ») ; sens vert :
