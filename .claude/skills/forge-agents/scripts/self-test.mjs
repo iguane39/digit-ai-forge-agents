@@ -1828,11 +1828,10 @@ check("ledger TF-2573 (sens rouge) : un `verify` qui ne tiendrait plus `ts_reel_
 {
   const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
   if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2573 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
-  else check("ledger TF-2573 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les 14 formes de `ts_reel_estime` ; seules les divergences que R-42 portait avant TF-2573 (lot pb) sont tolérées, et dites", () => {
-    // Les formes où R-42 du pilot PASSE alors que `verify` rend FAIL, mesurées le 15/11/2026 sur le pilot d'avant le lot pb. Cette liste ne
-    // dispense de rien d'autre : toute autre divergence est rouge, `verify` est jugé sur chaque forme, et une forme listée qui s'accorde
-    // l'est sans réserve. Le lot pb aligne R-42 : à la fusion les six formes s'accordent, et la liste se vide (le cas le dit).
-    const DIVERGENCES_R42_AVANT_TF2573 = new Set(["absent", "chaîne vide", "blancs seuls", "null", "ts_consigne absent, ts_reel_estime ISO exact", "ts_consigne absent, ts_reel_estime illisible"]);
+  else check("ledger TF-2573 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les 14 formes de `ts_reel_estime`, sans divergence tolérée", () => {
+    // Liste vide depuis la fusion du lot pb au pilot (e7d8e261, 15/11/2026) : les six formes où R-42 passait alors que `verify` rendait
+    // FAIL (absent, chaîne vide, blancs seuls, null, ts_consigne absent ×2) s'accordent ; toute divergence est désormais rouge.
+    const DIVERGENCES_R42_AVANT_TF2573 = new Set([]);
     const tolerees = [], accordees = [];
     for (const [nom, d, integre] of FORMES_TS_REEL) {
       const racine = mkdtempSync(join(out, "r42t-"));
