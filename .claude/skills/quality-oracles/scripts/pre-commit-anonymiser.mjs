@@ -207,11 +207,35 @@ for (const f of aTraiter) {
 
 let r;
 const sauvees = {};
+const resultat = new Map();   // fichier corrigé → ses octets réécrits, lus dans le dépôt jetable (TF-2575)
 for (const k of VARIABLES_GIT) if (k in process.env) { sauvees[k] = process.env[k]; delete process.env[k]; }
 try {
   const ini = spawnSync('git', ['init', '-q', JETABLE], { encoding: 'utf8' });
   if (ini.status !== 0) throw new Error('dépôt jetable impossible à créer : ' + String(ini.stderr || '').trim().slice(0, 200));
+  // TF-2575 (15/11/2026) — LES FICHIERS SONT AUSSI INDEXÉS DANS LE DÉPÔT JETABLE. Depuis TF-2457 (pilot,
+  // 12/11/2026) la chaîne du pilot lit son contenu À L'INDEX de la racine qu'on lui donne et ne réécrit
+  // que l'index : dans un dépôt jetable où les fichiers n'étaient que posés sur le disque, elle ne
+  // voyait rien, ne corrigeait rien, et le commit partait avec le nom (cas 7 bis du banc, 2 FAIL).
+  // L'objet est écrit sans filtre, tel que l'index du dépôt qui commite le porte.
+  for (const f of aTraiter) {
+    const h = spawnSync('git', ['-C', JETABLE, 'hash-object', '-w', '--no-filters', '--stdin'],
+      { input: fs.readFileSync(path.join(JETABLE, f)), encoding: 'utf8', maxBuffer: 256e6 });
+    const sha = String(h.stdout || '').trim();
+    const u = h.status === 0 ? spawnSync('git', ['-C', JETABLE, 'update-index', '--add', '--cacheinfo', indexe.get(f).mode, sha, f], { encoding: 'utf8' }) : h;
+    if (h.status !== 0 || u.status !== 0) throw new Error("copie indexée de " + f + ' impossible à poser dans le dépôt jetable : ' + String(u.stderr || '').trim().slice(0, 200));
+  }
+  const avant = new Map(aTraiter.map((f) => [f, fs.readFileSync(path.join(JETABLE, f))]));
   r = passer({ fichiers: aTraiter, racine: JETABLE, ecrire: !essai });
+  // Le texte réécrit se lit là où la chaîne l'a posé : sur le disque du dépôt jetable (ancien contrat, la
+  // chaîne y écrit puis indexe) ou, si le disque est resté tel quel, à son index (contrat TF-2457).
+  if (!essai) for (const c of r.corriges) {
+    const disque = fs.readFileSync(path.join(JETABLE, c.fichier));
+    if (!disque.equals(avant.get(c.fichier))) { resultat.set(c.fichier, disque); continue; }
+    const ls = spawnSync('git', ['-C', JETABLE, 'ls-files', '-s', '-z', '--', c.fichier], { encoding: 'utf8' });
+    const m = String(ls.stdout || '').match(/^\d{6} ([0-9a-f]{40,64}) 0\t/);
+    const blob = m ? spawnSync('git', ['-C', JETABLE, 'cat-file', 'blob', m[1]], { maxBuffer: 256e6 }) : null;
+    if (blob && blob.status === 0) resultat.set(c.fichier, blob.stdout);
+  }
 }
 catch (e) {
   Object.assign(process.env, sauvees);
@@ -228,8 +252,9 @@ Object.assign(process.env, sauvees);
 if (!essai) for (const c of r.corriges) {
   const e = indexe.get(c.fichier);
   if (!e) continue;
+  if (!resultat.has(c.fichier)) refusJetable(["COMMIT REFUSÉ — la chaîne dit avoir corrigé " + c.fichier + ', mais ni le disque ni l\'index du dépôt jetable ne portent un texte réécrit.', '  Un anonymiseur qui annonce une correction sans la livrer ne doit pas laisser passer.']);
   const h = spawnSync('git', ['-C', DEPOT, 'hash-object', '-w', '--no-filters', '--stdin'],
-    { input: fs.readFileSync(path.join(JETABLE, c.fichier)), encoding: 'utf8' });
+    { input: resultat.get(c.fichier), encoding: 'utf8' });
   const sha = String(h.stdout || '').trim();
   if (h.status !== 0 || !/^[0-9a-f]{40,64}$/.test(sha)) refusJetable(["COMMIT REFUSÉ — l'objet pseudonymisé de " + c.fichier + " n'a pas pu être écrit.", '  ' + String(h.stderr || '').trim().slice(0, 200)]);
   const u = spawnSync('git', ['-C', DEPOT, 'update-index', '--cacheinfo', `${e.mode},${sha},${c.fichier}`], { encoding: 'utf8' });

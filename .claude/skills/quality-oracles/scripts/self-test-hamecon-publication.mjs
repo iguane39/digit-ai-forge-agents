@@ -1189,6 +1189,54 @@ try {
     if (!resteCommit && !restePush && /RETIRE/.test(ret6.stdout || '')) oks.push('cas 6i — le retrait emporte les DEUX hameçons : ce qui se pose se dépose');
     else kos.push('cas 6i — le retrait laisse un hameçon derrière lui (pre-commit : ' + resteCommit + ', pre-push : ' + restePush + ')');
 
+    // --- (6j) TF-2575 : UNE CHAÎNE QUI NE LIT QUE L'INDEX DE SA RACINE ---------------------
+    // Le fait : depuis TF-2457 (pilot, 12/11/2026) la chaîne du pilot lit ses fichiers À L'INDEX de la
+    // racine qu'on lui donne et ne réécrit que l'index. Le lanceur ne posait les fichiers que sur le disque
+    // du dépôt jetable : la chaîne ne voyait rien, ne corrigeait rien, et le commit partait avec le nom —
+    // les deux cas 7 bis rouges, qu'aucun cas 6 ne voyait, leur chaîne jetable étant restée du contrat
+    // d'avant (elle lit le disque). Cette chaîne-ci a le contrat d'APRÈS ; le témoin la montre aveugle à un
+    // fichier non indexé (le défaut), le commit la montre servie par le lanceur (le remède).
+    const chaineIndex = path.join(cc, 'chaine-index.mjs');
+    fs.writeFileSync(chaineIndex, [
+      "import { execFileSync } from 'node:child_process';",
+      "const NOM = 'Zorglub', PSEUDO = 'Client-A';",
+      'export function passer({ fichiers, racine, ecrire = true } = {}) {',
+      '  const corriges = [], nomsPorteurs = [];',
+      '  for (const f of fichiers) {',
+      "    const s = execFileSync('git', ['--literal-pathspecs', 'ls-files', '--stage', '-z', '--', f], { cwd: racine, encoding: 'utf8' });",
+      '    const m = /^(\\d{6}) ([0-9a-f]{40,64}) 0\\t/.exec(s.split("\\0")[0] || "");',
+      '    if (!m) continue;',
+      "    const brut = execFileSync('git', ['cat-file', 'blob', m[2]], { cwd: racine, encoding: 'utf8' });",
+      '    if (!brut.includes(NOM)) continue;',
+      '    if (ecrire) {',
+      "      const sha = execFileSync('git', ['hash-object', '-w', '--stdin'], { cwd: racine, input: brut.split(NOM).join(PSEUDO), encoding: 'utf8' }).trim();",
+      "      execFileSync('git', ['--literal-pathspecs', 'update-index', '--cacheinfo', m[1], sha, f], { cwd: racine });",
+      '    }',
+      '    corriges.push({ fichier: f, termes: 1 });',
+      '  }',
+      '  return { corriges, nomsPorteurs };',
+      '}',
+    ].join('\n'), 'utf8');
+    const temoin6j = nu('chaine-index-temoin');
+    fs.writeFileSync(path.join(temoin6j, 'note.md'), 'Compte rendu remis a Zorglub ce matin.\n');
+    const pTemoin = spawnSync(process.execPath, ['--input-type=module', '-e',
+      'const m = await import(' + JSON.stringify(pathToFileURL(chaineIndex).href) + '); process.stdout.write(JSON.stringify(m.passer({ fichiers: ["note.md"], racine: process.argv[1] })));',
+      temoin6j], { encoding: 'utf8', env: envBanc({}) });
+    let corrigesTemoin = null;
+    try { corrigesTemoin = JSON.parse(pTemoin.stdout).corriges.length; } catch { /* verdict illisible : le cas échoue */ }
+    if (corrigesTemoin === 0) oks.push('cas 6j (sens rouge, TF-2575) — la chaîne qui ne lit que l\'index ne corrige RIEN dans un dépôt où le fichier est posé sur le disque sans être indexé : le défaut que le lanceur doit lever');
+    else kos.push('cas 6j (sens rouge, TF-2575) — le témoin ne reproduit pas le défaut (corrigés : ' + corrigesTemoin + ') : la chaîne de ce cas n\'est pas aveugle au fichier non indexé, le cas ne prouverait rien. ' + (pTemoin.stderr || '').trim().slice(0, 200));
+    const dIndex = nu('chaine-index');
+    sh(cc, 'node', [INSTALLEUR, dIndex]);
+    fs.writeFileSync(path.join(dIndex, 'note.md'), 'Compte rendu remis a Zorglub ce matin.\n');
+    git(dIndex, 'add', '-A');
+    const c6j = sh(dIndex, 'git', ['commit', '-q', '-m', 'note du banc'], { ...ENV_COMMIT, FORGE_ANONYMISEUR: chaineIndex });
+    const commite6j = lireCommite(dIndex, 'note.md');
+    const disque6j = fs.readFileSync(path.join(dIndex, 'note.md'), 'utf8');
+    if (c6j.status === 0 && /Client-A/.test(commite6j) && !/Zorglub/.test(commite6j) && /Zorglub/.test(disque6j))
+      oks.push('cas 6j (TF-2575) — chaîne du contrat TF-2457 (lit et écrit l\'index de sa racine) : le commit porte le PSEUDONYME, le disque garde son texte — le lanceur indexe les fichiers dans son dépôt jetable et relit le résultat à son index');
+    else kos.push('cas 6j (TF-2575) — chaîne qui ne lit que l\'index (exit ' + c6j.status + ') : commité « ' + commite6j.trim().slice(0, 120) + ' », disque intact : ' + /Zorglub/.test(disque6j) + ' — ' + (c6j.stderr || '').trim().slice(0, 200));
+
     // --- cas 7 : LE RACCORD AVEC LA CHAÎNE RÉELLE DU PILOT --------------------------------
     // Les cas 6a-6i prouvent le câblage contre une chaîne jetable. Ils ne diraient RIEN du jour
     // où la chaîne réelle change de contrat d'appel — et c'est un contrat entre DEUX dépôts, donc
