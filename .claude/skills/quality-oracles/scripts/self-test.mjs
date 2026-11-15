@@ -14,6 +14,7 @@ import { frontmatter } from './lib/frontmatter.mjs';
 import { MARQUEUR_PILOT, resolvePilot, motifPilotAbsent } from './lib/pilot.mjs';
 import { MARQUEUR_FORGES, resolveForges, motifForgesAbsentes } from './lib/forges.mjs';
 import { motifDeSkip, ecrivainDeContrat } from './lib/contrat.mjs';
+import { lireDeclaration, controlerRangement, materialiser } from './lib/fixtures-vulnerables.mjs';
 
 const SKILLDIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLSROOT = path.resolve(SKILLDIR, '..');
@@ -1107,6 +1108,10 @@ for (const s of ['bootstrap.mjs', 'report-couverture.mjs']) {
 // (5) P1 — oracle de l'oracle : rejouer les fixtures rouge/verte du manifest.
 // Un oracle n'est recevable que s'il ÉCHOUE sur le cas rouge et RÉUSSIT sur le cas vert
 // (SKIP toléré uniquement pour les oracles déclarés dépendants d'un outil externe).
+// TF-2580 (15/11/2026, D-220 (a)) — les manifestes des fixtures rouges de l'oracle SCA sont rangés sous un nom que l'hébergeur ne lit pas
+// (`requirements.txt.fixture`) : la recette les recopie sous leur vrai nom dans un dossier temporaire, joue l'oracle sur la copie, la retire.
+const RACINE_DEPOT = path.resolve(SKILLDIR, '..', '..', '..');
+const DECLARATION_FIXTURES = lireDeclaration(SKILLDIR);
 const manifestPath = path.join(SKILLDIR, 'fixtures', 'manifest.json');
 if (!fs.existsSync(manifestPath)) ko('fixtures/manifest.json absent (P1 — chaque oracle doit prouver FAIL rouge / PASS verte)');
 else {
@@ -1124,16 +1129,18 @@ else {
           + " ; la paire rouge/verte de ce domaine n'est PAS rejouée sur ce poste");
         continue;
       }
+      const aRejouer = materialiser(DECLARATION_FIXTURES, RACINE_DEPOT, fxFile);   // TF-2580 : une fixture déclarée se rejoue sous ses vrais noms
       let cmd = fx.cmd.map(s => s.replace('{skilldir}', SKILLDIR).replace('{skillsroot}', SKILLSROOT)
-        .replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace('{fixture}', fxFile));
+        .replace(MARQUEUR_PILOT, PILOT || MARQUEUR_PILOT).replace('{fixture}', aRejouer.cible));
       // « python3 » du manifest est un nom Unix : sur ce poste on substitue l'interpréteur
       // réellement fonctionnel (esquive l'alias Store Windows) — cf. lib/python.mjs.
       if (cmd[0] === 'python3' || cmd[0] === 'python') {
         const pyFx = resolvePython();
-        if (!pyFx) { ok(`fixture ${fx.nom}/${side} : SKIP toléré (python indisponible)`); continue; }
+        if (!pyFx) { aRejouer.retirer(); ok(`fixture ${fx.nom}/${side} : SKIP toléré (python indisponible)`); continue; }
         cmd = [...pyFx, ...cmd.slice(1)];
       }
       const r = spawnSync(cmd[0], cmd.slice(1), { encoding: 'utf8', timeout: 180000, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+      aRejouer.retirer();
       let v = null, sortie = null;
       try { sortie = JSON.parse((r.stdout || '').trim().match(/\{[\s\S]*\}/)[0]); v = sortie.verdict; } catch {}
       if (!v) v = r.status === 0 ? 'PASS' : r.status === 2 ? 'SKIP' : 'FAIL';
@@ -2176,6 +2183,109 @@ else {
     if (!o || o.verdict !== 'PASS' || o.alertes_ouvertes !== 3 || o.dependances_reelles !== 0 || js.status !== 0) ko('TF-2539 --json : verdict, alertes_ouvertes et dependances_reelles doivent être des champs — ' + js.stdout.slice(0, 200));
     else ok('TF-2539 --json : verdict PASS, alertes_ouvertes 3 et dependances_reelles 0 se lisent en champs, sans prose');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
+// TF-2580 (15/11/2026, décision D-220 (a)) — LES MANIFESTES DES FIXTURES VULNÉRABLES SE RANGENT SOUS UN NOM QUE L'HÉBERGEUR NE LIT PAS,
+// ET LA RECETTE LES REJOUE SOUS LEUR VRAI NOM.
+//
+// LE FAIT : les 35 alertes de dépendances ouvertes chez l'hébergeur le 14/11/2026 visaient les cinq fixtures rouges de l'oracle SCA, qui
+// portent des versions vulnérables EXPRÈS et ne se corrigent pas. Un manifeste rangé sous son vrai nom (`requirements.txt`, `uv.lock`…) est lu ;
+// rangé sous `<nom>.fixture`, il ne l'est plus. Le prix : l'oracle SCA, qui cherche un vrai nom de manifeste, ne voit plus la fixture rangée.
+// Il la juge donc sur une COPIE sous les vrais noms (lib/fixtures-vulnerables.mjs), retirée ensuite ; l'oracle reste inchangé.
+//   VERT  : le dépôt est rangé conformément (aucun manifeste de fixture sous un nom lu) ; la copie porte les vrais noms ; la fixture rouge
+//           rejouée sur sa copie rend FAIL, la verte PASS (paire du manifest, rejouée ci-dessus) ;
+//   ROUGE : une fixture qui reprend son vrai nom, un nom de variante (`requirements.fixture.txt`), un fichier supplémentaire sous un nom lu,
+//           un fichier rangé absent, un nom rejoué qui n'est pas un nom de manifeste, une déclaration sans liste de noms lus, sont refusés ;
+//           l'oracle SCA sur le fichier rangé tel quel ne rend PAS FAIL (il ne voit rien) : le FAIL de la paire vient bien de la copie.
+{
+  const lecture = DECLARATION_FIXTURES.lecture_hebergeur;
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const reel = controlerRangement(DECLARATION_FIXTURES, RACINE_DEPOT);
+  reel.length
+    ? ko('TF-2580 rangement : un manifeste de fixture est rangé sous un nom que l\'hébergeur lit, ou une entrée est incomplète — ' + reel.join(' · '))
+    : ok(`TF-2580 rangement : les ${DECLARATION_FIXTURES.fixtures.length} fixtures déclarées ne portent aucun manifeste sous un nom lu par l'hébergeur (${lecture.noms.length} noms et ${lecture.motifs.length} motifs de la liste du ${lecture.date}), chaque fichier rangé existe`);
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2580-'));
+  try {
+    const depot = (nom, fichiers) => {
+      const d = path.join(tmp, nom);
+      for (const [rel, contenu] of Object.entries(fichiers)) { const p = path.join(d, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, contenu); }
+      return d;
+    };
+    const decl = (range, rejoue = 'requirements.txt', surcharge = {}) => ({
+      lecture_hebergeur: lecture,
+      fixtures: [{ chemin: 'fx/sca-demo-red', date: '2026-11-15', motif: 'banc TF-2580', manifestes: [{ range, rejoue }] }],
+      ...surcharge,
+    });
+    const RANGE = 'fx/sca-demo-red/requirements.txt.fixture';
+    const rangee = depot('rangee', { [RANGE]: 'requests==2.19.0\n' });
+    const verte = controlerRangement(decl(RANGE), rangee);
+    verte.length ? ko('TF-2580 vert : un manifeste rangé sous « .fixture » avec son nom de rejeu doit être conforme — ' + verte.join(' · ')) : ok('TF-2580 vert : un manifeste rangé sous « requirements.txt.fixture », rejoué sous « requirements.txt », est conforme');
+
+    const refus = [
+      ['la fixture reprend son vrai nom', controlerRangement(decl('fx/sca-demo-red/requirements.txt'), depot('vrai-nom', { 'fx/sca-demo-red/requirements.txt': 'x\n' })), /rangé sous un nom que l'hébergeur lit[^\n]*rangez-le sous « requirements\.txt\.fixture »/],
+      ['une variante requirements.fixture.txt', controlerRangement(decl('fx/sca-demo-red/requirements.fixture.txt'), depot('variante', { 'fx/sca-demo-red/requirements.fixture.txt': 'x\n' })), /requirements\.fixture\.txt : rangé sous un nom que l'hébergeur lit/],
+      ['un fichier de plus sous un nom lu, déclaré nulle part', controlerRangement(decl(RANGE), depot('en-trop', { [RANGE]: 'x\n', 'fx/sca-demo-red/uv.lock': 'x\n' })), /fx\/sca-demo-red\/uv\.lock : un fichier sous une fixture déclarée porte un nom que l'hébergeur lit/],
+      ['le fichier rangé est absent', controlerRangement(decl(RANGE), depot('absent', { 'fx/sca-demo-red/autre.fixture': 'x\n' })), /le fichier rangé n'existe pas/],
+      ['un nom rejoué qui n\'est pas un nom de manifeste', controlerRangement(decl(RANGE, 'notes.txt'), rangee), /rejoué sous « notes\.txt », qui n'est pas un nom que l'hébergeur lit/],
+      ['une déclaration sans liste de noms lus', controlerRangement(decl(RANGE, 'requirements.txt', { lecture_hebergeur: undefined }), rangee), /ne porte pas `lecture_hebergeur`/],
+      ['une entrée sans manifestes', controlerRangement({ lecture_hebergeur: lecture, fixtures: [{ chemin: 'fx/sca-demo-red', date: '2026-11-15', motif: 'banc' }] }, rangee), /aucun manifeste déclaré/],
+    ];
+    const faux = refus.filter(([, defauts, motif]) => !defauts.some((d) => motif.test(d)));
+    faux.length
+      ? ko('TF-2580 rouge : doivent être refusés, avec leur motif — ' + faux.map(([n, d]) => `${n} (obtenu : ${d.join(' | ') || 'rien'})`).join(' · '))
+      : ok(`TF-2580 rouge : ${refus.length} rangements fautifs sont refusés, chacun avec son motif (vrai nom, variante, fichier en trop, fichier absent, nom rejoué non lu, liste absente, aucun manifeste)`);
+    // Le remède que le message propose est joué : le même dépôt, la fixture renommée comme dit, passe (vert ci-dessus, même chemin).
+    const remede = controlerRangement(decl(RANGE), depot('remede', { [RANGE]: 'requests==2.19.0\n' }));
+    remede.length ? ko('TF-2580 remède : la correction que le refus propose (« .fixture » et nom de rejeu) doit passer — ' + remede.join(' · ')) : ok('TF-2580 remède : renommer comme le refus le dit (« <nom>.fixture » + nom de rejeu) rend le rangement conforme');
+
+    // La recopie : une fixture déclarée se rejoue sous ses vrais noms, une autre cible n'est pas copiée.
+    const sousDossier = depot('sous-dossier', { 'fx/sca-demo-red/tests/requirements.txt.fixture': 'django==1.4\n' });
+    const dSous = decl('fx/sca-demo-red/tests/requirements.txt.fixture', 'tests/requirements.txt');
+    const copieDossier = materialiser(dSous, sousDossier, path.join(sousDossier, 'fx', 'sca-demo-red'));
+    const copieFichier = materialiser(decl(RANGE), rangee, path.join(rangee, RANGE));
+    const horsFixture = materialiser(decl(RANGE), rangee, path.join(rangee, 'fx'));
+    const lu = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
+    const okDossier = lu(path.join(copieDossier.cible, 'tests', 'requirements.txt')) === 'django==1.4\n' && !lister2(copieDossier.cible).some((f) => /\.fixture$/.test(f));
+    const okFichier = path.basename(copieFichier.cible) === 'requirements.txt' && lu(copieFichier.cible) === 'requests==2.19.0\n';
+    const okHors = horsFixture.cible === path.join(rangee, 'fx');
+    const dossiersCopies = [copieDossier.cible, path.dirname(copieFichier.cible)];
+    copieDossier.retirer(); copieFichier.retirer(); horsFixture.retirer();
+    okDossier && okFichier && okHors
+      ? ok('TF-2580 recopie : le dossier d\'une fixture déclarée est recopié sous les vrais noms (tests/requirements.txt, sans « .fixture »), le fichier rangé devient « requirements.txt », une cible hors fixture n\'est pas copiée')
+      : ko(`TF-2580 recopie : dossier ${okDossier}, fichier ${okFichier}, hors fixture ${okHors}`);
+    dossiersCopies.some((d) => fs.existsSync(d))
+      ? ko('TF-2580 recopie : la copie temporaire n\'est pas retirée après le jeu')
+      : ok('TF-2580 recopie : la copie temporaire est retirée après le jeu');
+
+    // Le dépôt réel : chaque fixture déclarée se recopie avec tous ses noms de rejeu.
+    const manquants = [];
+    for (const f of DECLARATION_FIXTURES.fixtures) {
+      const c = materialiser(DECLARATION_FIXTURES, RACINE_DEPOT, path.join(RACINE_DEPOT, f.chemin));
+      for (const m of f.manifestes) if (!fs.existsSync(path.join(c.cible, m.rejoue))) manquants.push(f.chemin + ' → ' + m.rejoue);
+      if (lister2(c.cible).some((p) => /\.fixture$/.test(p))) manquants.push(f.chemin + ' : un « .fixture » subsiste dans la copie');
+      c.retirer();
+    }
+    manquants.length ? ko('TF-2580 dépôt réel : ' + manquants.join(' · ')) : ok(`TF-2580 dépôt réel : les ${DECLARATION_FIXTURES.fixtures.length} fixtures déclarées se recopient avec leurs vrais noms, sans « .fixture »`);
+
+    // L'oracle SCA est INCHANGÉ : sur le fichier rangé tel quel il ne voit aucun manifeste (pas de FAIL) ; sur la copie il rend FAIL.
+    const jouerSca = (cible) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-sca.mjs'), cible, '--osv-fige=' + path.join(FX, 'sca-osv-fige.json')],
+        { encoding: 'utf8', timeout: 120000, env: { ...process.env, QO_PERIMETRE: '' } });
+      try { return JSON.parse(r.stdout).verdict; } catch { return null; }
+    };
+    const rouges = ['sca-red', 'sca-sous-dossier-red', 'sca-verrou-red', 'sca-verrou-poetry-red', 'sca-npm-verrou-red'];
+    const sansCopie = rouges.map((n) => [n, jouerSca(path.join(FX, n))]);
+    const avecCopie = rouges.map((n) => {
+      const c = materialiser(DECLARATION_FIXTURES, RACINE_DEPOT, path.join(FX, n));
+      try { return [n, jouerSca(c.cible)]; } finally { c.retirer(); }
+    });
+    const fautifs = [...sansCopie.filter(([, v]) => v === 'FAIL').map(([n]) => n + ' rangée telle quelle rend FAIL (elle devrait être invisible)'),
+      ...avecCopie.filter(([, v]) => v !== 'FAIL').map(([n, v]) => n + ' rejouée sur sa copie rend ' + v + ' (attendu FAIL)')];
+    fautifs.length ? ko('TF-2580 oracle SCA inchangé : ' + fautifs.join(' · ')) : ok('TF-2580 oracle SCA inchangé : les 5 fixtures rouges rangées telles quelles ne rendent pas FAIL (l\'hébergeur n\'a rien à lire, l\'oracle non plus), rejouées sur leur copie sous les vrais noms elles rendent FAIL');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+
+  function lister2(d) { return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? lister2(path.join(d, e.name)) : [path.join(d, e.name)])); }
 }
 
 // TF-0824 (06/09/2026) — LE CONTRAT DE SORTIE DU LANCEUR EST ÉPROUVÉ, PAS SEULEMENT ÉCRIT.
@@ -4153,7 +4263,8 @@ else {
   const SIM = path.join(FX, 'sca-npm-simule.mjs'), SERVEUR = path.join(FX, 'sca-osv-local.mjs');
   const ABSENT = path.join(os.tmpdir(), 'qo-sca-npm-absent');
   const FIGEES = path.join(FX, 'sca-osv-fige.json');
-  const ROUGE = path.join(FX, 'sca-npm-verrou-red');
+  const ROUGE_REJOUE = materialiser(DECLARATION_FIXTURES, RACINE_DEPOT, path.join(FX, 'sca-npm-verrou-red'));   // TF-2580 : rangée sous .fixture, rejouée sous ses vrais noms
+  const ROUGE = ROUGE_REJOUE.cible;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-sca-2450-'));
   const juger = (cible, args = [], env = {}) => {
     const r = spawnSync(process.execPath, [ORA, cible, ...args], { encoding: 'utf8', timeout: 120000, env: { ...process.env, QO_PERIMETRE: '', ...env } });
@@ -4252,7 +4363,7 @@ else {
     !illisible || illisible.verdict !== 'PASS' || !illisible.non_juge.some(x => /package-lock\.json illisible/.test(x))
       ? ko(`TF-2450 (G) verrou illisible : attendu la limite dite au non_juge (package.json seul lu), obtenu ${illisible && illisible.verdict}`)
       : ok('TF-2450 (G) verrou illisible : dit au non_juge, package.json seul est lu');
-  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); ROUGE_REJOUE.retirer(); }
 }
 
 // TF-1701 (lot Produit-82 20261014b, RA-2) — GITLEAKS LISAIT LES EMPREINTES D'UN JOURNAL D'ORACLES

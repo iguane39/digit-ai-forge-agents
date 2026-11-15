@@ -169,6 +169,11 @@ Calibrer l'effort à l'**enjeu** et à la **réversibilité** — mécanisé (v2
   (chemin, date, motif ; les fixtures rouges de l'oracle SCA, qui ne se « corrigent » pas) de celles qui visent une **dépendance réelle**, à mettre à jour
   sous recette verte. Exit 0 aucune dépendance réelle, 1 au moins une, 2 source ou déclaration illisible (jamais un « zéro » sur ce qu'on n'a pas lu).
   Le 14/11/2026 : 35 alertes sur ce dépôt, les 35 sur les cinq fixtures déclarées. Jouée par la recette, dans les deux sens ; pas d'entrée au registre.
+  **Les manifestes de ces fixtures sont rangés sous un nom que l'hébergeur ne lit pas** (TF-2580, D-220 (a) du 15/11/2026) : `requirements.txt.fixture`, `uv.lock.fixture`,
+  `package-lock.json.fixture`… ; la déclaration nomme, par entrée, le fichier rangé (`range`) et le nom sous lequel la recette le rejoue (`rejoue`), et porte la liste datée et
+  sourcée des noms que l'hébergeur lit (`lecture_hebergeur`). La recette recopie la fixture sous ses vrais noms dans un dossier temporaire, y joue `oracle-sca.mjs` (inchangé), puis
+  retire la copie (`scripts/lib/fixtures-vulnerables.mjs`) ; un contrôle refuse tout manifeste de fixture rangé sous un nom lu. Une fixture rouge s'ajoute donc en rangeant son
+  manifeste sous `<nom>.fixture` et en le déclarant ; l'oracle lancé à la main sur le fichier rangé ne voit rien (SKIP) : la paire rouge/verte se joue par la recette.
 - **Où vivent les journaux** — sous un segment de livraison (`output/`, `old/`, `dist/`, `build/`), les journaux
   sortent AU-DESSUS du premier segment rencontré, dans un `.oracles/` qui rejoue l'arborescence relative.
   Corrigé le 22/08/2026 (TF-0501) : l'intention « ce que le client reçoit ne contient pas les traces de son audit »

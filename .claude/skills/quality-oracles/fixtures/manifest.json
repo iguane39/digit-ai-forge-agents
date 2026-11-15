@@ -248,7 +248,7 @@
     "{fixture}",
     "--osv-fige={skilldir}/fixtures/sca-osv-fige.json"
    ],
-   "red": "sca-red/requirements.txt",
+   "red": "sca-red/requirements.txt.fixture",
    "green": "sca-green/requirements.txt",
    "attendu_red": [
     "FAIL"

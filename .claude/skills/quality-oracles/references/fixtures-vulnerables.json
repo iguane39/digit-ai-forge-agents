@@ -1,30 +1,76 @@
 {
-  "note": "Fixtures VOLONTAIREMENT vulnérables de ce dépôt (TF-2539, 14/11/2026). Ce sont les fixtures rouges de l'oracle SCA (oracle-sca.mjs) : elles portent des dépendances épinglées à des versions connues pour être vulnérables, exprès, pour prouver que l'oracle les refuse. L'hébergeur signale leurs vulnérabilités comme des alertes de dépendances ; elles ne sont pas des dépendances réelles du dépôt et ne se « corrigent » pas — les mettre à jour casserait la preuve de l'oracle. scripts/releve-alertes-dependances.mjs lit cette liste pour distinguer, parmi les alertes ouvertes, celles qui visent une fixture déclarée de celles qui visent une dépendance réelle (la seule chose à mettre à jour, sous recette verte). Une entrée porte `chemin` (dossier ou fichier, écrit depuis la racine du dépôt, séparateurs `/`), `date` (AAAA-MM-JJ de la déclaration) et `motif` ; sans l'un des trois, le relevé refuse la liste (exit 2). La recette exige que chaque dossier fixtures/sca-*-red soit déclaré ici et que chaque chemin déclaré existe. Donnée périssable, donc éditable, datée et motivée (loi transverse n° 4).",
+  "note": "Fixtures VOLONTAIREMENT vulnérables de ce dépôt (TF-2539, 14/11/2026). Ce sont les fixtures rouges de l'oracle SCA (oracle-sca.mjs) : elles portent des dépendances épinglées à des versions connues pour être vulnérables, exprès, pour prouver que l'oracle les refuse. L'hébergeur signalait leurs vulnérabilités comme des alertes de dépendances ; elles ne sont pas des dépendances réelles du dépôt et ne se « corrigent » pas — les mettre à jour casserait la preuve de l'oracle. scripts/releve-alertes-dependances.mjs lit cette liste pour distinguer, parmi les alertes ouvertes, celles qui visent une fixture déclarée de celles qui visent une dépendance réelle (la seule chose à mettre à jour, sous recette verte). Une entrée porte `chemin` (dossier ou fichier, écrit depuis la racine du dépôt, séparateurs `/`), `date` (AAAA-MM-JJ de la déclaration) et `motif` ; sans l'un des trois, le relevé refuse la liste (exit 2). La recette exige que chaque dossier fixtures/sca-*-red soit déclaré ici et que chaque chemin déclaré existe. TF-2580 (15/11/2026, décision D-220 (a)) : chaque manifeste d'une fixture est RANGÉ sous un nom que l'hébergeur ne lit pas (le nom complet suivi de `.fixture`) et l'entrée le déclare dans `manifestes` : `range` (chemin du fichier rangé dans le dépôt, depuis la racine) et `rejoue` (nom sous lequel la recette le rejoue, relatif au dossier `chemin`). La recette recopie le dossier dans un dossier temporaire en rendant à chaque manifeste son nom de rejeu, joue l'oracle SCA sur la copie, puis la retire (lib/fixtures-vulnerables.mjs) ; l'oracle reste inchangé. Un contrôle de la recette refuse tout manifeste rangé sous un nom de `lecture_hebergeur`. Donnée périssable, donc éditable, datée et motivée (loi transverse n° 4).",
+  "lecture_hebergeur": {
+    "source": "docs.github.com, « Dependency graph supported package ecosystems » (https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/dependency-graph-supported-package-ecosystems), tableau « Supported package ecosystems », colonnes « Recommended files » et « Additional files », page lue le 15/11/2026. Ajouts hors page, signalés un à un dans `observe` et `prudence`.",
+    "date": "2026-11-15",
+    "noms": [
+      "MODULE.bazel", "WORKSPACE", "MODULE.bazel.lock", "maven_install.json",
+      "Cargo.lock", "Cargo.toml",
+      "composer.lock", "composer.json",
+      "deno.lock", "deno.json", "deno.jsonc",
+      "packages.config",
+      "go.mod",
+      "Manifest.toml", "Project.toml",
+      "pom.xml",
+      "package-lock.json", "package.json",
+      ".terraform.lock.hcl",
+      "requirements.txt", "Pipfile.lock", "Pipfile", "setup.py",
+      "pnpm-lock.yaml",
+      "pubspec.lock", "pubspec.yaml",
+      "poetry.lock", "pyproject.toml",
+      "Gemfile.lock", "Gemfile",
+      "Package.resolved",
+      "yarn.lock",
+      "uv.lock"
+    ],
+    "motifs": [
+      "*.MODULE.bazel", "*.csproj", "*.vbproj", "*.nuspec", "*.vcxproj", "*.fsproj", "*.gemspec", "*.tf", "*.tofu",
+      "requirements*.txt"
+    ],
+    "observe": "uv.lock ne figure pas dans la page du 15/11/2026, mais l'hébergeur a signalé 5 alertes ouvertes sur sca-verrou-red/uv.lock (relevé en lecture du 15/11/2026) : il le lit, il est donc au nombre des noms refusés.",
+    "prudence": "requirements*.txt : la page ne cite que requirements.txt ; les variantes (requirements-dev.txt, requirements.fixture.txt…) sont refusées par prudence, faute de preuve que l'hébergeur les ignore. Les workflows (.github/workflows/*.yml) sont lus par chemin, hors du champ d'une fixture."
+  },
   "fixtures": [
     {
       "chemin": ".claude/skills/quality-oracles/fixtures/sca-red",
       "date": "2026-11-14",
-      "motif": "Fixture rouge de l'oracle SCA, requirements.txt : versions de requests et de flask épinglées exprès sur des versions vulnérables, pour que l'oracle rende FAIL."
+      "motif": "Fixture rouge de l'oracle SCA, requirements.txt : versions de requests et de flask épinglées exprès sur des versions vulnérables, pour que l'oracle rende FAIL.",
+      "manifestes": [
+        { "range": ".claude/skills/quality-oracles/fixtures/sca-red/requirements.txt.fixture", "rejoue": "requirements.txt" }
+      ]
     },
     {
       "chemin": ".claude/skills/quality-oracles/fixtures/sca-sous-dossier-red",
       "date": "2026-11-14",
-      "motif": "Fixture rouge de l'oracle SCA, manifeste dans un sous-dossier (tests/requirements.txt) : prouve que l'oracle trouve un manifeste hors de la racine ; versions vulnérables exprès."
+      "motif": "Fixture rouge de l'oracle SCA, manifeste dans un sous-dossier (tests/requirements.txt) : prouve que l'oracle trouve un manifeste hors de la racine ; versions vulnérables exprès.",
+      "manifestes": [
+        { "range": ".claude/skills/quality-oracles/fixtures/sca-sous-dossier-red/tests/requirements.txt.fixture", "rejoue": "tests/requirements.txt" }
+      ]
     },
     {
       "chemin": ".claude/skills/quality-oracles/fixtures/sca-verrou-red",
       "date": "2026-11-14",
-      "motif": "Fixture rouge de l'oracle SCA, verrou uv.lock : prouve que l'oracle lit un verrou uv (TF-2281) ; version vulnérable de requests exprès."
+      "motif": "Fixture rouge de l'oracle SCA, verrou uv.lock : prouve que l'oracle lit un verrou uv (TF-2281) ; version vulnérable de requests exprès.",
+      "manifestes": [
+        { "range": ".claude/skills/quality-oracles/fixtures/sca-verrou-red/uv.lock.fixture", "rejoue": "uv.lock" }
+      ]
     },
     {
       "chemin": ".claude/skills/quality-oracles/fixtures/sca-verrou-poetry-red",
       "date": "2026-11-14",
-      "motif": "Fixture rouge de l'oracle SCA, verrou poetry.lock : prouve que l'oracle lit un verrou poetry (TF-2281) ; versions vulnérables de flask exprès."
+      "motif": "Fixture rouge de l'oracle SCA, verrou poetry.lock : prouve que l'oracle lit un verrou poetry (TF-2281) ; versions vulnérables de flask exprès.",
+      "manifestes": [
+        { "range": ".claude/skills/quality-oracles/fixtures/sca-verrou-poetry-red/poetry.lock.fixture", "rejoue": "poetry.lock" }
+      ]
     },
     {
       "chemin": ".claude/skills/quality-oracles/fixtures/sca-npm-verrou-red",
       "date": "2026-11-14",
-      "motif": "Fixture rouge de l'oracle SCA, verrou npm (package-lock.json) : prouve que l'oracle lit le verrou et nomme chaque avis (TF-2450) ; versions vulnérables de vite, react-router et esbuild exprès."
+      "motif": "Fixture rouge de l'oracle SCA, verrou npm (package-lock.json) : prouve que l'oracle lit le verrou et nomme chaque avis (TF-2450) ; versions vulnérables de vite, react-router et esbuild exprès.",
+      "manifestes": [
+        { "range": ".claude/skills/quality-oracles/fixtures/sca-npm-verrou-red/package-lock.json.fixture", "rejoue": "package-lock.json" },
+        { "range": ".claude/skills/quality-oracles/fixtures/sca-npm-verrou-red/package.json.fixture", "rejoue": "package.json" }
+      ]
     }
   ]
 }
