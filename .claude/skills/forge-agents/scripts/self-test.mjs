@@ -1837,7 +1837,8 @@ check("ledger TF-2573 (sens rouge) : un `verify` qui ne tiendrait plus `ts_reel_
     // Les six formes de TF-2573 (absent, chaîne vide, blancs seuls, null, ts_consigne absent ×2) s'accordent depuis la fusion du lot pb au
     // pilot (e7d8e261, 15/11/2026). TF-2587 (part forge-agents) ajoute trois formes que `verify` refuse et que R-42 du pilot passe encore
     // tant que sa part (lot pc) n'est pas fusionnée : tolérées ET nommées ici, la liste se vide à la fusion (le cas le dit alors).
-    const DIVERGENCES_R42_AVANT_TF2587 = new Set(["texte illisible (TF-2587 : présent mais pas un instant, refusé)", "nombre", "date sans heure"]);
+    // Vidée le 15/11/2026 à la fusion du lot pc au pilot (85153344) : R-42 tient ts_reel_estime pour un instant, comme verify.
+    const DIVERGENCES_R42_AVANT_TF2587 = new Set([]);
     const tolerees = [], accordees = [];
     for (const [nom, d, integre] of FORMES_TS_REEL) {
       const racine = mkdtempSync(join(out, "r42t-"));
@@ -1982,7 +1983,8 @@ check("ledger TF-2587 (sens rouge) : un `verify` pour qui toute valeur de `ts_re
   if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2587 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
   else check("ledger TF-2587 : ACCORD avec R-42 du pilot sur cause absente, `seq` non entier ou nul, et ts_reel_estime « inconnu » — mêmes verdicts, divergences tolérées et nommées tant que le lot pc n'est pas fusionné", () => {
     // Mesuré le 15/11/2026 sur le pilot d'avant le lot pc : R-42 PASSE ces cinq formes, `verify` les refuse. Les autres s'accordent déjà (la collision reste non couverte).
-    const DIVERGENCES_R42_AVANT_TF2587_FORMES = new Set(["cause absente", "cause faite d'espaces", "cause null", "seq écrit en chaîne", FORMES_DECLARATION_2587[7][0]]);
+    // Vidée le 15/11/2026 à la fusion du lot pc au pilot (85153344) : R-42 refuse cause absente, blanche ou nulle et seq non entier, comme verify.
+    const DIVERGENCES_R42_AVANT_TF2587_FORMES = new Set([]);
     const tolerees = [], accordees = [];
     for (const [nom, d] of FORMES_DECLARATION_2587) {
       const racine = mkdtempSync(join(out, "r42d-"));
