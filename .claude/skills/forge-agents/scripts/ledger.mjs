@@ -85,6 +85,8 @@
  *   · `ts_consigne` doit correspondre EXACTEMENT au ts de l'entrée visée : une déclaration
  *     qui ne colle pas à l'histoire ne couvre rien (et le dit) ;
  *   · les quatre champs sont dus — une déclaration incomplète est un écart, pas une couverture ;
+ *     `seq` est un entier ≥ 1 et, depuis le 15/11/2026 (TF-2587), `ts_reel_estime` un instant (date ET heure
+ *     ISO 8601) ; `append` refuse avant écriture une rectification qui ne tient pas cela (TF-2586) ;
  *   · elle agit sur l'horodatage et, depuis TF-1425, sur un seq en double ou en recul, et, depuis
  *     TF-2494 (voir plus bas), sur un seq SAUTÉ (saut en avant) : JSON invalide, run_open absent,
  *     forme du payload restent des FAIL — rien ne les déclare rectifiables ;
@@ -405,6 +407,29 @@ const CHAMPS_DUS_PAR_VERSION = {
 //: réelle estimée, la cause). Sans eux, « rectification » serait un mot qui éteint un contrôle.
 const TYPE_RECTIFICATION = "rectification_horodatage";
 const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "ts_reel_estime", "cause"];
+
+//: TF-2586 et TF-2587 (15/11/2026) — UNE déclaration de `entrees[]` se juge en un seul endroit, pour `append` (avant écriture) et `verify`
+//: (à la relecture) : les quatre champs dus, `seq` entier ≥ 1, et `ts_reel_estime` LISIBLE comme un instant (date ET heure ISO 8601 :
+//: « vers midi », un nombre ou une date sans heure n'ordonnent rien). Avant, `append` écrivait une rectification que `verify` refusait
+//: ensuite, et `verify` laissait passer un `ts_reel_estime` qu'aucun juge ne lit (mesuré le 15/11/2026 : « vers midi », un nombre, « 2026-01-01 »).
+//: La lisibilité de `ts_reel_estime` naît le 15/11/2026 : `verify` ne la juge pas sur une rectification écrite avant (un ledger existant
+//: n'est jamais mis en échec par une règle neuve, TF-1401) — chez un produit (relevé au ledger de ce produit le 15/11/2026), quatre déclarations d'octobre 2026 portent honnêtement
+//: « inconnu, antérieur à <date> ». `append`, lui, ne juge que des entrées neuves.
+const NAISSANCE_TS_REEL_LISIBLE = "2026-11-15T00:00:00Z";
+const tsReelLisible = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(v.trim()) && !Number.isNaN(Date.parse(v));
+/** Le défaut d'UNE déclaration de `entrees[]` (texte), ou null. `exigerTsLisible` : juger aussi la lisibilité de `ts_reel_estime`. */
+function defautDeclarationRectification(d, exigerTsLisible = true) {
+  const manquants = CHAMPS_RECTIFICATION.filter((c) =>
+    d === null || typeof d !== "object" || d[c] === undefined || d[c] === null || String(d[c]).trim() === "");
+  if (manquants.length) {
+    return `déclaration incomplète — champ(s) ${manquants.map((c) => `\`${c}\``).join(", ")} manquant(s) dans ${JSON.stringify(d)}`;
+  }
+  if (!Number.isInteger(d.seq) || d.seq < 1) return `\`seq\` déclaré invalide (${JSON.stringify(d.seq)}) — entier ≥ 1 attendu`;
+  if (exigerTsLisible && !tsReelLisible(d.ts_reel_estime)) {
+    return `déclaration incomplète — \`ts_reel_estime\` illisible (${JSON.stringify(d.ts_reel_estime)}) — une date ET une heure ISO 8601 sont attendues (2026-01-01T12:30:00Z), l'heure réelle estimée de l'action`;
+  }
+  return null;
+}
 
 //: TF-1722 (15/10/2026) — la rectification PAR AJOUT d'une déclaration fausse de `forges_mobilisees`
 //: (TF-1715, CONTRAT-INTERFACE.md §3 du pilot) porte la liste corrigée ENTIÈRE et sa `cause`. Le juge
@@ -1026,6 +1051,20 @@ if (cmd === "append") {
       fail(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, ${obj.type === TYPE_RECTIFICATION_FORGES ? "TF-1722" : obj.type === TYPE_ANTERIORITE ? "TF-2494" : "TF-1319"}) — champ(s) dû(s) :\n           ${manquants.join("\n           ")}`);
     }
   }
+  // TF-2586 : une `rectification_horodatage` sans `entrees[]`, ou dont une déclaration n'a pas ses quatre champs, un `seq` entier ≥ 1
+  // et un `ts_reel_estime` lisible, est refusée avant le verrou, quel que soit le schéma — `verify` et R-42 du pilot la tiennent pour
+  // sans effet, et elle resterait pour toujours dans un journal en ajout seul.
+  if (obj.type === TYPE_RECTIFICATION) {
+    const fautes = [];
+    if (!Array.isArray(obj.entrees) || obj.entrees.length === 0) {
+      fautes.push("`entrees` absent ou vide — une rectification qui ne déclare aucun seq ne rectifie rien (les seq visés se DISENT : `entrees: [{seq, ts_consigne, ts_reel_estime, cause}]`)");
+    } else {
+      obj.entrees.forEach((d, i) => { const defaut = defautDeclarationRectification(d); if (defaut) fautes.push(`entrees[${i}] : ${defaut}`); });
+    }
+    if (fautes.length) {
+      fail(`entrée refusée (type \`${TYPE_RECTIFICATION}\`, quel que soit le schéma, TF-2586) — rectification inopérante, \`verify\` et R-42 du pilot la refuseraient :\n           ${fautes.join("\n           ")}`);
+    }
+  }
   // TF-1841 du pilot : `parties_mobilisees`, facultatif, est refusé s'il est présent et mal formé.
   if (TYPES_PORTEURS_PARTIES.includes(obj.type) && Object.prototype.hasOwnProperty.call(obj, CHAMP_PARTIES)) {
     const probleme = validerPartiesMobilisees(obj[CHAMP_PARTIES]);
@@ -1177,6 +1216,7 @@ if (cmd === "append") {
   // et c'est `ts_consigne` qui dit laquelle est visée.
   const rectifs = new Map();
   const ecartsRectif = [];   // une déclaration fautive n'est pas une couverture : c'est un écart
+  const tsReelAnterieurs = []; // TF-2587 : `ts_reel_estime` illisible d'une rectification écrite avant la règle — dit, jamais jugé
   entrees.forEach((e, i) => {
     if (e.type !== TYPE_RECTIFICATION) return;
     const ou = `ligne ${i + 1} (${TYPE_RECTIFICATION}, seq ${e.seq})`;
@@ -1185,18 +1225,12 @@ if (cmd === "append") {
         `aucun seq ne rectifie rien (les seq visés se DISENT, ils ne se devinent pas)`);
       return;
     }
+    // TF-2587 : la lisibilité de `ts_reel_estime` ne se juge que sur une rectification née avec la règle.
+    const exigerTsLisible = !(instant(e.ts) < instant(NAISSANCE_TS_REEL_LISIBLE));
     for (const d of e.entrees) {
-      const manquants = CHAMPS_RECTIFICATION.filter((c) =>
-        d === null || typeof d !== "object" || d[c] === undefined || d[c] === null || String(d[c]).trim() === "");
-      if (manquants.length) {
-        ecartsRectif.push(`${ou} : déclaration incomplète — champ(s) ${
-          manquants.map((c) => `\`${c}\``).join(", ")} manquant(s) dans ${JSON.stringify(d)}`);
-        continue;
-      }
-      if (!Number.isInteger(d.seq) || d.seq < 1) {
-        ecartsRectif.push(`${ou} : \`seq\` déclaré invalide (${JSON.stringify(d.seq)}) — entier ≥ 1 attendu`);
-        continue;
-      }
+      const defaut = defautDeclarationRectification(d, exigerTsLisible);
+      if (defaut) { ecartsRectif.push(`${ou} : ${defaut}`); continue; }
+      if (!exigerTsLisible && !tsReelLisible(d.ts_reel_estime)) tsReelAnterieurs.push(`${ou} seq ${d.seq}`);
       if (d.seq >= e.seq) {
         ecartsRectif.push(`${ou} : déclare le seq ${d.seq}, qui ne lui est pas ANTÉRIEUR — une ` +
           `rectification ne couvre jamais un seq postérieur ni elle-même : on ne se dédouane pas d'avance`);
@@ -1208,6 +1242,9 @@ if (cmd === "append") {
       rectifs.get(d.seq).push({ ...d, parSeq: e.seq, parLigne: i + 1, applique: false });
     }
   });
+  if (tsReelAnterieurs.length) {
+    console.log(`[ANTÉRIEUR] ts_reel_estime — ${tsReelAnterieurs.length} déclaration(s) à \`ts_reel_estime\` illisible, écrite(s) avant la règle du ${NAISSANCE_TS_REEL_LISIBLE.slice(0, 10)}, non jugée(s) sur ce champ (TF-2587) : ${tsReelAnterieurs.join(", ")}`);
+  }
 
   // TF-1425 : la déclaration qui couvre UNE entrée — même seq, écrite APRÈS elle dans le fichier
   // (avec deux entrées au même seq, le numéro seul ne situe plus rien), et `ts_consigne` égal au

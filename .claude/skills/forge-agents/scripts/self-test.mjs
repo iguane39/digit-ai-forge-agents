@@ -1555,7 +1555,7 @@ check("ledger TF-2245 : les 27 types du vocabulaire sont acceptés à l'écritur
     oracles_verdict: { oracle: "x", verdict: "PASS" },
     rectification_forges_mobilisees: { forges_mobilisees: ["agents"], cause: "x" },
     qualification_enclenchement: { qualification: "fonde", cause: "x" },
-    rectification_horodatage: { entrees: [{ seq: 1, ts_consigne: "x", ts_reel_estime: "x", cause: "x" }] },
+    rectification_horodatage: { entrees: [{ seq: 1, ts_consigne: "x", ts_reel_estime: "2026-01-01T12:00:00Z", cause: "x" }] },
     anteriorite_ledger: { avant: "2026-01-01T00:00:00Z", cause: "lacune antérieure à la session qui la révèle" },
     decision_retiree: { decision: "D-12", cause: "la question ne se pose plus depuis ce lot" },
     secret_range: { nom: "X", remplace: false },
@@ -1775,7 +1775,8 @@ check("ledger TF-2540 : l'antériorité déclarée couvre une collision de seq e
 // collision de seq déclarée par une rectification : `verify` rend FAIL sur 6 (champ absent, null, vide ou fait d'espaces, `ts_consigne` absent), R-42 du pilot
 // PASS sur 6 d'entre elles. Le verdict de `verify` est la cible : les quatre champs sont ce qui rend une rectification vérifiable, et R-42 s'y aligne (lot pb) — `verify`
 // ne change donc pas, ses cas d'accord s'écrivent. Une valeur PRÉSENTE mais illisible (« vers midi », un nombre, une date sans heure) passe chez les deux juges : ni l'un ni l'autre
-// ne lit `ts_reel_estime`, constat rapporté, non corrigé ici.
+// ne lit `ts_reel_estime`, constat rapporté, non corrigé ici. TF-2587 (même jour) le corrige : `verify` refuse désormais ces trois formes (voir plus bas), pour une
+// rectification écrite à partir du 15/11/2026 ; la rectification de ces fixtures porte donc un `ts` du 15/11/2026.
 const TS_CONSIGNE_2573 = "2026-01-01T11:10:00Z";
 const CAUSE_2573 = "heure de l'action et non de consignation";
 const declTs2573 = (extra, base = { seq: 3, ts_consigne: TS_CONSIGNE_2573, cause: CAUSE_2573 }) => ({ ...base, ...extra });
@@ -1789,14 +1790,15 @@ const FORMES_TS_REEL = [
   ["chaîne vide", declTs2573({ ts_reel_estime: "" }), false, ["ts_reel_estime"]],
   ["blancs seuls", declTs2573({ ts_reel_estime: "   " }), false, ["ts_reel_estime"]],
   ["null", declTs2573({ ts_reel_estime: null }), false, ["ts_reel_estime"]],
-  ["texte illisible (présent : ni verify ni R-42 ne le lisent)", declTs2573({ ts_reel_estime: "vers midi" }), true, []],
-  ["nombre", declTs2573({ ts_reel_estime: 1767266400000 }), true, []],
-  ["date sans heure", declTs2573({ ts_reel_estime: "2026-01-01" }), true, []],
+  ["texte illisible (TF-2587 : présent mais pas un instant, refusé)", declTs2573({ ts_reel_estime: "vers midi" }), false, ["ts_reel_estime"]],
+  ["nombre", declTs2573({ ts_reel_estime: 1767266400000 }), false, ["ts_reel_estime"]],
+  ["date sans heure", declTs2573({ ts_reel_estime: "2026-01-01" }), false, ["ts_reel_estime"]],
   ["ts_consigne absent, ts_reel_estime ISO exact", { seq: 3, ts_reel_estime: TS_CONSIGNE_2573, cause: CAUSE_2573 }, false, ["ts_consigne"]],
   ["ts_consigne absent, ts_reel_estime illisible", { seq: 3, ts_reel_estime: "vers midi", cause: CAUSE_2573 }, false, ["ts_consigne"]],
   ["ts_consigne et ts_reel_estime absents", { seq: 3, cause: CAUSE_2573 }, false, ["ts_consigne", "ts_reel_estime"]],
 ];
-const entreesForme2573 = (d) => [...ANTERIORITE_COLLISION, { seq: 5, ts: "2026-01-02T09:00:00Z", type: "rectification_horodatage", entrees: [d] }];
+const TS_RECTIF_2587 = "2026-11-15T09:00:00Z";   // TF-2587 : après la naissance de la lisibilité de `ts_reel_estime` (15/11/2026)
+const entreesForme2573 = (d, tsRectif = TS_RECTIF_2587) => [...ANTERIORITE_COLLISION, { seq: 5, ts: tsRectif, type: "rectification_horodatage", entrees: [d] }];
 const verifierForme2573 = (script, nom, d) => {
   const lf = join(out, "t2573-" + nom.replace(/[^a-z]+/gi, "-").slice(0, 40) + ".jsonl");
   ecrireBrut(lf, entreesForme2573(d));
@@ -1819,7 +1821,10 @@ check("ledger TF-2573 (sens rouge) : un `verify` qui ne tiendrait plus `ts_reel_
   if (!source.includes(ligne)) throw new Error("la constante CHAMPS_RECTIFICATION a changé : adapter le mutant de ce cas");
   const dossier = mkdtempSync(join(out, "t2573-mutant-"));
   const mutant = join(dossier, "ledger.mjs");
-  writeFileSync(mutant, source.replace(ligne, 'const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "cause"];'), "utf8");
+  // TF-2587 : `tsReelLisible` refuse aussi l'absent ; l'ancien `verify` (avant TF-2573) n'avait NI le champ dû NI cette lisibilité.
+  const ligneLisible = source.split("\n").find((l) => l.startsWith("const tsReelLisible = "));
+  if (!ligneLisible) throw new Error("tsReelLisible a changé : adapter le mutant de ce cas");
+  writeFileSync(mutant, source.replace(ligne, 'const CHAMPS_RECTIFICATION = ["seq", "ts_consigne", "cause"];').replace(ligneLisible, "const tsReelLisible = () => true;"), "utf8");
   for (const nom of ["absent", "chaîne vide", "blancs seuls", "null"]) {
     const [, d] = FORMES_TS_REEL.find(([n]) => n === nom);
     if (!verifierForme2573(mutant, nom + " (mutant)", d).passe) throw new Error(`${nom} : le mutant (sans ts_reel_estime dû) devait rendre PASS, sinon le cas ne discrimine rien`);
@@ -1828,10 +1833,11 @@ check("ledger TF-2573 (sens rouge) : un `verify` qui ne tiendrait plus `ts_reel_
 {
   const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
   if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2573 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
-  else check("ledger TF-2573 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les 14 formes de `ts_reel_estime`, sans divergence tolérée", () => {
-    // Liste vide depuis la fusion du lot pb au pilot (e7d8e261, 15/11/2026) : les six formes où R-42 passait alors que `verify` rendait
-    // FAIL (absent, chaîne vide, blancs seuls, null, ts_consigne absent ×2) s'accordent ; toute divergence est désormais rouge.
-    const DIVERGENCES_R42_AVANT_TF2573 = new Set([]);
+  else check("ledger TF-2573 : ACCORD avec R-42 du pilot — mêmes verdicts, chez les deux juges, sur les 14 formes de `ts_reel_estime`, les divergences de TF-2587 tolérées et nommées tant que le lot pc n'est pas fusionné", () => {
+    // Les six formes de TF-2573 (absent, chaîne vide, blancs seuls, null, ts_consigne absent ×2) s'accordent depuis la fusion du lot pb au
+    // pilot (e7d8e261, 15/11/2026). TF-2587 (part forge-agents) ajoute trois formes que `verify` refuse et que R-42 du pilot passe encore
+    // tant que sa part (lot pc) n'est pas fusionnée : tolérées ET nommées ici, la liste se vide à la fusion (le cas le dit alors).
+    const DIVERGENCES_R42_AVANT_TF2587 = new Set(["texte illisible (TF-2587 : présent mais pas un instant, refusé)", "nombre", "date sans heure"]);
     const tolerees = [], accordees = [];
     for (const [nom, d, integre] of FORMES_TS_REEL) {
       const racine = mkdtempSync(join(out, "r42t-"));
@@ -1845,12 +1851,157 @@ check("ledger TF-2573 (sens rouge) : un `verify` qui ne tiendrait plus `ts_reel_
       if (!r42.length) throw new Error(`${nom} : R-42 n'a rendu aucun constat : ${(r.stdout || r.stderr || "").slice(0, 200)}`);
       const r42Passe = !r42.some((f) => f.statut === "FAIL");
       if (verifyPasse !== integre) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}`);
-      if (r42Passe === integre) { if (DIVERGENCES_R42_AVANT_TF2573.has(nom)) accordees.push(nom); continue; }
-      if (!DIVERGENCES_R42_AVANT_TF2573.has(nom)) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}, R-42 ${r42Passe} (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
+      if (r42Passe === integre) { if (DIVERGENCES_R42_AVANT_TF2587.has(nom)) accordees.push(nom); continue; }
+      if (!DIVERGENCES_R42_AVANT_TF2587.has(nom)) throw new Error(`${nom} : intègre attendu ${integre}, verify ${verifyPasse}, R-42 ${r42Passe} (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
       tolerees.push(nom);
     }
-    if (tolerees.length) console.log(`  [DIVERGENCE PILOTE] TF-2573 : R-42 du pilot rend encore PASS là où \`verify\` rend FAIL, ${tolerees.length} forme(s) sur ${FORMES_TS_REEL.length} (lot pb) : ${tolerees.join(" · ")}`);
-    if (accordees.length) console.log(`  [ACCORD ATTEINT] TF-2573 : ${accordees.length} forme(s) listées comme divergentes s'accordent désormais — retirer de DIVERGENCES_R42_AVANT_TF2573 : ${accordees.join(" · ")}`);
+    if (tolerees.length) console.log(`  [DIVERGENCE PILOTE] TF-2587 : R-42 du pilot rend encore PASS là où \`verify\` rend FAIL, ${tolerees.length} forme(s) sur ${FORMES_TS_REEL.length} (lot pc) : ${tolerees.join(" · ")}`);
+    if (accordees.length) console.log(`  [ACCORD ATTEINT] TF-2587 : ${accordees.length} forme(s) listées comme divergentes s'accordent désormais — retirer de DIVERGENCES_R42_AVANT_TF2587 : ${accordees.join(" · ")}`);
+  });
+}
+
+// --- TF-2586 (15/11/2026) : `append` REFUSE AVANT ÉCRITURE UNE RECTIFICATION D'HORODATAGE INOPÉRANTE. Le fait (lot pb, troisième campagne du 15/11) :
+// depuis TF-2573, R-42 du pilot et `verify` exigent les quatre champs d'une déclaration (`seq`, `ts_consigne`, `ts_reel_estime`, `cause`) ; `append`
+// écrivait une `rectification_horodatage` sans `entrees`, ou sans cause, ou sans `ts_reel_estime`, que les deux juges tiennent pour sans effet : elle
+// restait pour toujours dans un journal en ajout seul. Sens rouge : sur l'ancien `append`, les seize cas ci-dessous sont ÉCRITS (exit 0) — le mutant
+// du dernier cas rejoue cet ancien comportement ; sens vert : refus nommé, exit 1, octets du ledger identiques, aucun verrou, et la forme complète, celle que le refus
+// prescrit, s'écrit et rend `verify` PASS avec la collision [RECTIFIÉ]. `--essai` joue la même garde.
+const lancer2586 = (...args) => spawnSync(process.execPath, [ledger, ...args], { encoding: "utf8" });   // `lancer` (TF-2549) est défini plus bas
+const DECL_2586 = { seq: 3, ts_consigne: TS_CONSIGNE_2573, ts_reel_estime: "2026-01-01T12:30:00Z", cause: CAUSE_2573 };
+const sansChamp2586 = (champ) => { const { [champ]: _, ...reste } = DECL_2586; return reste; };
+const RECTIF_2586 = (entrees) => ({ type: "rectification_horodatage", entrees });
+const RECTIFS_INOPERANTES_2586 = [
+  ["sans `entrees`", { type: "rectification_horodatage", cause: "x" }, ["`entrees` absent ou vide"]],
+  ["`entrees` vide", RECTIF_2586([]), ["`entrees` absent ou vide"]],
+  ["`entrees` qui n'est pas une liste", RECTIF_2586("seq 3"), ["`entrees` absent ou vide"]],
+  ["déclaration nulle", RECTIF_2586([null]), ["entrees[0]", "déclaration incomplète"]],
+  ["sans `cause`", RECTIF_2586([sansChamp2586("cause")]), ["`cause`"]],
+  ["`cause` faite d'espaces", RECTIF_2586([{ ...DECL_2586, cause: "  " }]), ["`cause`"]],
+  ["sans `ts_reel_estime`", RECTIF_2586([sansChamp2586("ts_reel_estime")]), ["`ts_reel_estime`"]],
+  ["sans `ts_consigne`", RECTIF_2586([sansChamp2586("ts_consigne")]), ["`ts_consigne`"]],
+  ["sans `seq`", RECTIF_2586([sansChamp2586("seq")]), ["`seq`"]],
+  ["`seq` décimal", RECTIF_2586([{ ...DECL_2586, seq: 3.5 }]), ["`seq` déclaré invalide"]],
+  ["`seq` écrit en chaîne", RECTIF_2586([{ ...DECL_2586, seq: "3" }]), ["`seq` déclaré invalide"]],
+  ["`seq` nul", RECTIF_2586([{ ...DECL_2586, seq: 0 }]), ["`seq` déclaré invalide"]],
+  ["`ts_reel_estime` en texte libre", RECTIF_2586([{ ...DECL_2586, ts_reel_estime: "vers midi" }]), ["`ts_reel_estime` illisible"]],
+  ["`ts_reel_estime` en nombre", RECTIF_2586([{ ...DECL_2586, ts_reel_estime: 1767266400000 }]), ["`ts_reel_estime` illisible"]],
+  ["`ts_reel_estime` en date sans heure", RECTIF_2586([{ ...DECL_2586, ts_reel_estime: "2026-01-01" }]), ["`ts_reel_estime` illisible"]],
+  ["une bonne déclaration suivie d'une fautive", RECTIF_2586([DECL_2586, sansChamp2586("cause")]), ["entrees[1]", "`cause`"]],
+];
+const ledgerCollision2586 = (nom) => { const lf = join(out, nom); ecrireBrut(lf, ANTERIORITE_COLLISION); return lf; };
+check("ledger TF-2586 (rouge) : `append` REFUSE une rectification sans `entrees`, sans l'un de ses quatre champs, au `seq` invalide ou au `ts_reel_estime` illisible — refus nommé, exit 1, ledger intact, aussi sous `--essai`", () => {
+  const lf = ledgerCollision2586("t2586-refus.jsonl");
+  const avant = readFileSync(lf, "utf8");
+  for (const [nom, payload, attendus] of RECTIFS_INOPERANTES_2586) {
+    for (const args of [["append", lf, JSON.stringify(payload)], ["append", lf, JSON.stringify(payload), "--essai"]]) {
+      const r = lancer2586(...args);
+      if (r.status !== 1) throw new Error(`${nom} (${args.length > 3 ? "--essai" : "écriture"}) : exit 1 attendu, ${r.status} — ${r.stdout.slice(0, 200)}${r.stderr.slice(0, 200)}`);
+      if (!r.stderr.includes("TF-2586")) throw new Error(`${nom} : le refus doit citer TF-2586 — ${r.stderr.slice(0, 300)}`);
+      for (const a of attendus) if (!r.stderr.includes(a)) throw new Error(`${nom} : le refus doit dire « ${a} » — ${r.stderr.slice(0, 400)}`);
+    }
+    if (readFileSync(lf, "utf8") !== avant) throw new Error(`${nom} : un refus ne change pas un octet du ledger`);
+    if (existsSync(lf + ".lock")) throw new Error(`${nom} : un refus ne laisse aucun verrou`);
+  }
+});
+check("ledger TF-2586 (vert) : la rectification complète — celle que le refus prescrit — s'écrit, sous `--essai` elle n'écrit rien, et `verify` rend PASS avec la collision [RECTIFIÉ]", () => {
+  const lf = ledgerCollision2586("t2586-vert.jsonl");
+  const avant = readFileSync(lf, "utf8");
+  const essai = lancer2586("append", lf, JSON.stringify(RECTIF_2586([DECL_2586])), "--essai");
+  if (essai.status !== 0 || readFileSync(lf, "utf8") !== avant) throw new Error("l'essai de la forme complète rend 0 et n'écrit rien : " + essai.stderr.slice(0, 200));
+  const r = lancer2586("append", lf, JSON.stringify(RECTIF_2586([DECL_2586])));
+  if (r.status !== 0 || !r.stdout.includes("[OK]")) throw new Error("la forme complète doit s'écrire : " + r.stdout.slice(0, 200) + r.stderr.slice(0, 300));
+  const v = lancer2586("verify", lf);
+  if (v.status !== 0 || !v.stdout.includes("[PASS]") || !v.stdout.includes("[RECTIFIÉ]")) throw new Error("verify doit rendre PASS avec la collision [RECTIFIÉ] : " + v.stdout.slice(0, 400) + v.stderr.slice(0, 300));
+});
+check("ledger TF-2586 (sens rouge) : sans la garde de `append`, les seize rectifications inopérantes sont ÉCRITES — les cas ci-dessus discriminent", () => {
+  const source = readFileSync(ledger, "utf8");
+  const ligne = "if (obj.type === TYPE_RECTIFICATION) {\n    const fautes = [];";
+  if (!source.includes(ligne)) throw new Error("la garde de append a changé : adapter le mutant de ce cas");
+  const dossier = mkdtempSync(join(out, "t2586-mutant-"));
+  const mutant = join(dossier, "ledger.mjs");
+  writeFileSync(mutant, source.replace(ligne, "if (false && obj.type === TYPE_RECTIFICATION) {\n    const fautes = [];"), "utf8");
+  for (const [nom, payload] of RECTIFS_INOPERANTES_2586) {
+    const lf = ledgerCollision2586("t2586-mutant-" + RECTIFS_INOPERANTES_2586.findIndex(([n]) => n === nom) + ".jsonl");
+    const r = spawnSync(process.execPath, [mutant, "append", lf, JSON.stringify(payload)], { encoding: "utf8" });
+    // `entrees` absent ou non liste : sans la garde, l'entrée est écrite (hors « aucun contenu » : `cause` porte le contenu du premier cas).
+    if (r.status !== 0) throw new Error(`${nom} : le mutant (sans garde) devait ÉCRIRE, sinon le cas ne discrimine rien — exit ${r.status} ${r.stderr.slice(0, 200)}`);
+  }
+});
+
+// --- TF-2587 (15/11/2026) : LES FORMES QUE R-42 ET `verify` JUGEAIENT DIFFÉREMMENT, ET LA VALEUR DE `ts_reel_estime` QUE PERSONNE NE LISAIT (part forge-agents ;
+// part pilot : R-42 d'oracle-conformite-projet, lot pc). Lu au code par le lot pb : cause absente (R-42 écrit « cause non dite », `verify` refuse), `seq` non entier ou
+// inférieur à 1 ; mesuré par le lot ag : « vers midi », un nombre et « 2026-01-01 » passaient chez les deux. `verify` refuse déjà les deux premières ; il refuse
+// désormais la troisième, pour une rectification écrite à partir du 15/11/2026 (naissance de la règle : jamais mettre en échec un ledger existant, TF-1401 —
+// chez un produit (relevé au ledger de ce produit le 15/11/2026), quatre déclarations d'octobre 2026 portent « inconnu, antérieur à 2026-10-02T05:36:52.000Z »). Les cas d'accord avec R-42 s'étendent à ces formes ;
+// la divergence tolérée est nommée, et le cas dit quand elle se ferme.
+const ISO_2587 = "2026-01-01T12:30:00Z";
+const INCONNU_2587 = "inconnu, antérieur à 2026-10-02T05:36:52.000Z";
+// [forme, déclaration, ce que le refus doit dire]
+const FORMES_DECLARATION_2587 = [
+  ["cause absente", { seq: 3, ts_consigne: TS_CONSIGNE_2573, ts_reel_estime: ISO_2587 }, "`cause`"],
+  ["cause faite d'espaces", { ...DECL_2586, cause: "   " }, "`cause`"],
+  ["cause null", { ...DECL_2586, cause: null }, "`cause`"],
+  ["seq écrit en chaîne", { ...DECL_2586, seq: "3" }, "`seq` déclaré invalide"],
+  ["seq décimal", { ...DECL_2586, seq: 3.5 }, "`seq` déclaré invalide"],
+  ["seq nul", { ...DECL_2586, seq: 0 }, "`seq` déclaré invalide"],
+  ["seq négatif", { ...DECL_2586, seq: -1 }, "`seq` déclaré invalide"],
+  ["ts_reel_estime « inconnu, antérieur à … » (honnête, mais pas un instant)", { ...DECL_2586, ts_reel_estime: INCONNU_2587 }, "`ts_reel_estime` illisible"],
+];
+check("ledger TF-2587 : `verify` refuse cause absente, `seq` non entier ou inférieur à 1, et un `ts_reel_estime` qui n'est pas un instant, chacun nommé ; la forme complète passe", () => {
+  for (const [nom, d, dit] of FORMES_DECLARATION_2587) {
+    const { passe, sortie } = verifierForme2573(ledger, nom, d);
+    if (passe) throw new Error(`${nom} : verify devait refuser`);
+    if (!sortie.includes(dit)) throw new Error(`${nom} : le refus doit dire « ${dit} » — ${sortie.slice(0, 400)}`);
+  }
+  const vert = verifierForme2573(ledger, "forme complete", DECL_2586);
+  if (!vert.passe) throw new Error("la forme complète doit passer : " + vert.sortie.slice(0, 300));
+});
+check("ledger TF-2587 (naissance) : une rectification écrite AVANT le 15/11/2026 n'est pas jugée sur la lisibilité de `ts_reel_estime` — imprimée [ANTÉRIEUR], PASS ; la même forme écrite après est refusée", () => {
+  for (const ts of ["vers midi", 1767266400000, "2026-01-01", INCONNU_2587]) {
+    const d = { ...DECL_2586, ts_reel_estime: ts };
+    const lf = join(out, "t2587-anterieur-" + String(ts).replace(/[^a-z0-9]+/gi, "-").slice(0, 20) + ".jsonl");
+    ecrireBrut(lf, entreesForme2573(d, "2026-10-02T09:00:00Z"));
+    const r = lancer2586("verify", lf);
+    if (r.status !== 0 || !r.stdout.includes("[ANTÉRIEUR] ts_reel_estime")) throw new Error(`${JSON.stringify(ts)} : écrit avant la règle, il doit passer et se dire [ANTÉRIEUR] — exit ${r.status} ${r.stdout.slice(0, 300)}${r.stderr.slice(0, 300)}`);
+    if (verifierForme2573(ledger, "apres " + String(ts), d).passe) throw new Error(`${JSON.stringify(ts)} : écrit après la règle, il doit être refusé`);
+  }
+});
+check("ledger TF-2587 (sens rouge) : un `verify` pour qui toute valeur de `ts_reel_estime` est lisible (l'ancien comportement) rend PASS sur « vers midi », un nombre, une date sans heure et « inconnu, antérieur à … » — les cas discriminent", () => {
+  const source = readFileSync(ledger, "utf8");
+  const ligne = source.split("\n").find((l) => l.startsWith("const tsReelLisible = "));
+  if (!ligne) throw new Error("tsReelLisible a changé : adapter le mutant de ce cas");
+  const dossier = mkdtempSync(join(out, "t2587-mutant-"));
+  const mutant = join(dossier, "ledger.mjs");
+  writeFileSync(mutant, source.replace(ligne, "const tsReelLisible = () => true;"), "utf8");
+  for (const ts of ["vers midi", 1767266400000, "2026-01-01", INCONNU_2587]) {
+    if (!verifierForme2573(mutant, "mutant " + String(ts), { ...DECL_2586, ts_reel_estime: ts }).passe) throw new Error(`${JSON.stringify(ts)} : le mutant devait rendre PASS`);
+  }
+});
+{
+  const juge = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "oracles", "oracle-conformite-projet.mjs");
+  if (!existsSync(juge)) console.log(`  [NON JOUÉ] ledger TF-2587 : accord avec R-42 — oracle-conformite-projet du pilot introuvable (${juge})`);
+  else check("ledger TF-2587 : ACCORD avec R-42 du pilot sur cause absente, `seq` non entier ou nul, et ts_reel_estime « inconnu » — mêmes verdicts, divergences tolérées et nommées tant que le lot pc n'est pas fusionné", () => {
+    // Mesuré le 15/11/2026 sur le pilot d'avant le lot pc : R-42 PASSE ces cinq formes, `verify` les refuse. Les autres s'accordent déjà (la collision reste non couverte).
+    const DIVERGENCES_R42_AVANT_TF2587_FORMES = new Set(["cause absente", "cause faite d'espaces", "cause null", "seq écrit en chaîne", FORMES_DECLARATION_2587[7][0]]);
+    const tolerees = [], accordees = [];
+    for (const [nom, d] of FORMES_DECLARATION_2587) {
+      const racine = mkdtempSync(join(out, "r42d-"));
+      mkdirSync(join(racine, "forge"));
+      const lf = join(racine, "forge", "ledger.jsonl");
+      ecrireBrut(lf, entreesForme2573(d));
+      let verifyPasse = true;
+      try { execFileSync("node", [ledger, "verify", lf], { encoding: "utf8", stdio: "pipe" }); } catch { verifyPasse = false; }
+      const r = spawnSync(process.execPath, [juge, racine], { encoding: "utf8" });
+      const r42 = (JSON.parse(r.stdout || "{}").findings || []).filter((f) => f.regle === "R-42");
+      if (!r42.length) throw new Error(`${nom} : R-42 n'a rendu aucun constat : ${(r.stdout || r.stderr || "").slice(0, 200)}`);
+      const r42Passe = !r42.some((f) => f.statut === "FAIL");
+      if (verifyPasse) throw new Error(`${nom} : verify devait refuser`);
+      if (!r42Passe) { if (DIVERGENCES_R42_AVANT_TF2587_FORMES.has(nom)) accordees.push(nom); continue; }
+      if (!DIVERGENCES_R42_AVANT_TF2587_FORMES.has(nom)) throw new Error(`${nom} : verify refuse, R-42 passe, et la divergence n'est pas tolérée (${r42.map((f) => f.message).join(" ").slice(0, 200)})`);
+      tolerees.push(nom);
+    }
+    if (tolerees.length) console.log(`  [DIVERGENCE PILOTE] TF-2587 : R-42 du pilot rend encore PASS là où \`verify\` rend FAIL, ${tolerees.length} forme(s) sur ${FORMES_DECLARATION_2587.length} (lot pc) : ${tolerees.join(" · ")}`);
+    if (accordees.length) console.log(`  [ACCORD ATTEINT] TF-2587 : ${accordees.length} forme(s) listées comme divergentes s'accordent désormais — retirer de DIVERGENCES_R42_AVANT_TF2587_FORMES : ${accordees.join(" · ")}`);
   });
 }
 
