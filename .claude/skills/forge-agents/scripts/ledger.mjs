@@ -1037,7 +1037,9 @@ if (cmd === "append") {
   const [seq] = seqsEcrits;
   if (essai) {
     // TF-2549 : tous les contrôles ont été joués (un refus est sorti plus haut, exit 1) ; rien n'a été écrit.
-    console.log(`[ESSAI] rien n'est écrit : cette entrée serait écrite à ${basename(file)} (seq ${seq}, indicatif : une autre session peut le prendre)`);
+    // TF-2575 (15/11/2026) : le CANAL de [ESSAI] est celui de `gabarits/ledger.py` du pilot — l'annonce sur l'erreur standard, l'entrée seule sur la sortie standard
+    // (une ligne JSON qu'un `| jq` ou un `JSON.parse` lit telle quelle). Avant, les deux se mêlaient sur la sortie standard ici, et se séparaient là.
+    console.error(`[ESSAI] rien n'est écrit : cette entrée serait écrite à ${basename(file)} (seq ${seq}, indicatif : une autre session peut le prendre)`);
     console.log(seqsEcrits.lignes[0]);
     process.exit(0);
   }
@@ -1144,7 +1146,7 @@ if (cmd === "append") {
   const seqs = ecrireSousVerrou(file, entrees, essai);
   if (essai) {
     // TF-2549 : le lot a passé tous les contrôles ; rien n'est écrit. La commande du lanceur, elle, a été jouée (c'est elle qu'on essaie).
-    console.log(`[ESSAI] rien n'est écrit : ${entrees.length} entrée(s) oracles_verdict seraient écrites à ${basename(file)}, seq ${seqs[0]}${seqs.length > 1 ? ` à ${seqs[seqs.length - 1]}` : ""} (lot ${lot}, indicatif : une autre session peut prendre ces seq)`);
+    console.error(`[ESSAI] rien n'est écrit : ${entrees.length} entrée(s) oracles_verdict seraient écrites à ${basename(file)}, seq ${seqs[0]}${seqs.length > 1 ? ` à ${seqs[seqs.length - 1]}` : ""} (lot ${lot}, indicatif : une autre session peut prendre ces seq)`);
     seqs.lignes.forEach((l) => console.log(l));
     process.exit(0);
   }

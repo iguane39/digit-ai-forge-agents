@@ -1832,7 +1832,10 @@ check("ledger TF-2549 (vert) : `append --essai` rend 0, montre l'entrée et son 
   for (const args of [["append", lf, payload, "--essai"], ["append", lf, "--essai", payload]]) {
     const r = lancer(...args);
     if (r.status !== 0) throw new Error(`exit 0 attendu, ${r.status} : ${r.stderr.slice(0, 300)}`);
-    if (!r.stdout.includes("[ESSAI] rien n'est écrit") || !r.stdout.includes("seq 2") || !r.stdout.includes('"oracle":"oracle-x"')) throw new Error("l'essai doit dire qu'il n'écrit rien et montrer l'entrée avec son seq : " + r.stdout.slice(0, 400));
+    // TF-2575 : le canal est celui de ledger.py — l'annonce sur l'erreur standard, l'entrée SEULE sur la sortie standard (une ligne JSON que `JSON.parse` lit telle quelle).
+    if (!r.stderr.includes("[ESSAI] rien n'est écrit") || !r.stderr.includes("seq 2") || r.stdout.includes("[ESSAI]")) throw new Error("l'essai doit dire sur l'ERREUR standard qu'il n'écrit rien, avec son seq, et rien de tel sur la sortie : " + r.stderr.slice(0, 300) + " | " + r.stdout.slice(0, 200));
+    let montre; try { montre = JSON.parse(r.stdout); } catch { throw new Error("la sortie standard d'un essai doit être l'entrée seule, en JSON : " + r.stdout.slice(0, 300)); }
+    if (montre.seq !== 2 || montre.oracle !== "oracle-x") throw new Error("l'entrée montrée doit porter le seq 2 et l'oracle : " + r.stdout.slice(0, 300));
     if (readFileSync(lf, "utf8") !== avant) throw new Error("un essai ne change pas un octet du ledger");
     if (existsSync(lf + ".lock")) throw new Error("un essai ne laisse aucun verrou");
   }
@@ -1876,7 +1879,7 @@ check("ledger TF-2549 : `consigner --essai` ne change pas un octet, montre le lo
   writeFileSync(rapport, JSON.stringify({ oracles: [{ oracle: "oracle-x", verdict: "PASS" }, { oracle: "oracle-y", verdict: "FAIL" }] }));
   const avant = readFileSync(lf, "utf8");
   const r = lancer("consigner", lf, "--rapport", rapport, "--essai");
-  if (r.status !== 0 || !r.stdout.includes("[ESSAI] rien n'est écrit : 2 entrée(s)") || !r.stdout.includes('"oracle":"oracle-y"')) throw new Error("l'essai du lot doit dire qu'il n'écrit rien et le montrer : " + r.stdout.slice(0, 400) + r.stderr.slice(0, 200));
+  if (r.status !== 0 || !r.stderr.includes("[ESSAI] rien n'est écrit : 2 entrée(s)") || r.stdout.includes("[ESSAI]") || !r.stdout.includes('"oracle":"oracle-y"')) throw new Error("l'essai du lot doit dire qu'il n'écrit rien et le montrer : " + r.stdout.slice(0, 400) + r.stderr.slice(0, 200));
   if (readFileSync(lf, "utf8") !== avant || existsSync(lf + ".lock")) throw new Error("un essai de consigner ne change rien et ne laisse aucun verrou");
   const v = lancer("verify", lf, "--essai");
   if (v.status !== 1 || !v.stderr.includes("non reconnu")) throw new Error("verify --essai doit rester refusé : " + v.stderr.slice(0, 200));
