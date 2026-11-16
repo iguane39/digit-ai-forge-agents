@@ -43,6 +43,12 @@
 //       `score_mesure` est la moyenne de ces notes (0,5 près) ; avec `bruit_tolere: "mesure"`, B8 tolère une
 //       baisse jusqu'à l'écart des relecteurs de la passe gardée, sans plafond fixe à 2 ; une baisse avec un
 //       bloquant retenu (plafond de 40) reste une régression.
+//   B14 `arret_atteignable: true` (TF-2238) : l'arrêt `zero_majeur_texte_corrige` (passe 2 au moins) est
+//       valable quand aucun défaut grave retenu ne cite le texte écrit par la dernière correction
+//       (`origine: "correction"`) ; les majeurs restants (`origine: "anterieur"`) sont recomptés
+//       (`arret.majeurs_restants`) et listés au Ch8 (`arret.liste_au_ch8`) ; chaque défaut grave retenu d'une
+//       passe 2 ou suivante porte son origine ; une passe qui remplissait déjà cet arrêt devait l'arrêter.
+//       L'arrêt strict « 0 bloquant et 0 majeur » reste valable : c'est le cas idéal.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -56,12 +62,17 @@ const NJ = [
   "l'aveuglement réel du relecteur : l'oracle lit la déclaration, il ne lit pas le transcript de l'agent",
   "la justesse des sévérités et des scores attribués par le relecteur",
   "la qualité du prompt réécrit lui-même (→ relecteur, puis humain)",
+  "l'origine d'un défaut grave (correction ou antérieur) : l'oracle lit la déclaration, il ne rejoue pas le test de citation contre le texte de la passe précédente",
 ];
 const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
 const BORNE_BASE_MAX = 3;
 const BORNE_EXTENSION_MAX = 5;
-const RAISONS = new Set(['zero_majeur', 'gain_insuffisant', 'borne', 'regression']);
+// TF-2238 (16/11/2026) : `zero_majeur_texte_corrige`, l'arrêt atteignable (0 bloquant, 0 majeur dans le texte
+// écrit par la dernière correction), valable seulement si l'arbitre déclare `arret_atteignable`.
+const RAISON_ATTEIGNABLE = 'zero_majeur_texte_corrige';
+const RAISONS = new Set(['zero_majeur', 'gain_insuffisant', 'borne', 'regression', RAISON_ATTEIGNABLE]);
+const ORIGINES = new Set(['correction', 'anterieur']);
 const estRejetee = (p) => p.rejetee === true || p.decision === 'rejeter';
 
 const propre = (x) => typeof x === 'string' && x.trim() !== '';
@@ -151,6 +162,26 @@ export function juger(j) {
       gardees.slice(0, Math.max(pos, 0)).forEach(({ p, i }) => {
         if (retenus(p).length === 0) ko('B5', `passes[${i}]`, 'cette passe atteignait déjà « 0 bloquant et 0 majeur » : la boucle devait s arrêter');
       });
+      // B14 — l'arrêt atteignable (TF-2238) : 0 bloquant et 0 majeur DANS LE TEXTE ÉCRIT PAR LA DERNIÈRE CORRECTION, les
+      // majeurs restants (des défauts antérieurs que de nouveaux relecteurs ont vus) recomptés et listés au Ch8.
+      if (ar.raison === RAISON_ATTEIGNABLE) {
+        const reste = retenus(pa);
+        if (!(a && a.arret_atteignable === true)) ko('B14', 'arbitre.arret_atteignable', `arrêt « ${RAISON_ATTEIGNABLE} » sans que l arbitre l ait déclaré avant la passe 1 (arret_atteignable)`);
+        if (!(nb(pa.n) && pa.n >= 2)) ko('B14', 'arret.passe', 'l arrêt sur le texte de la dernière correction suppose une correction : passe 2 au moins');
+        const crees = reste.filter((d) => d.origine === 'correction').length;
+        if (crees > 0) ko('B14', 'arret.raison', `arrêt « ${RAISON_ATTEIGNABLE} » déclaré, ${crees} défaut(s) grave(s) retenu(s) dans le texte écrit par la dernière correction`);
+        if (ar.majeurs_restants !== reste.length) ko('B14', 'arret.majeurs_restants', `majeurs restants déclarés ${ar.majeurs_restants === undefined ? 'absents' : ar.majeurs_restants}, recomptés ${reste.length} aux défauts retenus de la passe d arrêt`);
+        if (ar.liste_au_ch8 !== true) ko('B14', 'arret.liste_au_ch8', 'les majeurs restants doivent être listés au Ch8 (liste_au_ch8: true) : le prompt est livré avec eux, jamais présenté comme fini');
+        if (seuil !== null && !(pa.score_mesure >= seuil)) ko('B14', 'arret.raison', `seuil ${seuil} non tenu (${pa.score_mesure})`);
+      }
+      if (a && a.arret_atteignable === true) {
+        // Une passe gardée avant l'arrêt qui n'avait plus de défaut grave dans le texte de sa correction devait déjà l'arrêter.
+        gardees.slice(0, Math.max(pos, 0)).forEach(({ p, i }) => {
+          const r = retenus(p);
+          if (nb(p.n) && p.n >= 2 && r.length > 0 && r.every((d) => d.origine === 'anterieur'))
+            ko('B14', `passes[${i}]`, 'cette passe n avait plus de défaut grave dans le texte de sa correction : la boucle devait s arrêter');
+        });
+      }
     }
   }
 
@@ -205,6 +236,17 @@ export function juger(j) {
           ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure}${bloquant ? ' avec un bloquant retenu (plafond de 40)' : bruit ? ` (au-delà du bruit ${mesure ? 'mesuré' : 'toléré'} de ${bruit})` : ''} : passe à rejeter, on garde la précédente`);
       }
       if (!estRejetee(p)) precGardee = p;
+    });
+  }
+
+  // B14 (suite) — sous `arret_atteignable`, chaque défaut grave retenu d'une passe 2 ou suivante dit d'où il vient :
+  // `correction` (sa citation figure dans le texte que la dernière correction a écrit) ou `anterieur`.
+  if (a && a.arret_atteignable === true) {
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      retenus(p).forEach((d) => {
+        if (!ORIGINES.has(d.origine)) ko('B14', `passes[${i}]`, `défaut ${d.severite} retenu sans origine (« correction » ou « anterieur ») : l arrêt sur le texte de la dernière correction ne se juge pas sans elle`);
+      });
     });
   }
 
@@ -427,6 +469,38 @@ function selfTest() {
   });
   rougeB('B13 score de passe qui n est pas la moyenne (86 pour 86 et 80)', 'B13', moyenne, (j) => { j.passes[1].score_mesure = 86; j.score_affiche.valeur = 86; });
   rougeB('B13 notes des relecteurs absentes', 'B13', moyenne, (j) => { delete j.passes[1].scores_relecteurs; });
+  // TF-2238 (16/11/2026) : l'arrêt atteignable. Sur 59 passes relevées au 06/11/2026, aucune n'atteignait « 0 bloquant
+  // et 0 majeur » (médiane 6 par passe) : les boucles s'arrêtaient sur le gain, la régression ou la borne. Ici la
+  // passe 2 n'a plus de défaut grave dans le texte de sa correction ; il lui en reste un, antérieur, recompté et listé.
+  const atteignable = () => {
+    const j = essai();
+    j.arbitre.arret_atteignable = true;
+    j.arbitre.arret = '0 bloquant et 0 majeur dans le texte écrit par la dernière correction ; majeurs restants recomptés et listés au Ch8 (cible : 0 bloquant et 0 majeur)';
+    j.passes[1].defauts = [
+      { severite: 'majeur', origine: 'anterieur', citation: 'l. 41 : « 14 dépôts »', recompte: { commande: 'git grep -c "14 dépôts" prompt-p1.md', resultat: '1 occurrence, déjà présente en passe 1' }, statut: 'retenu' },
+      { severite: 'mineur', citation: 'l. 118', statut: 'retenu' },
+    ];
+    j.arret = { passe: 2, raison: 'zero_majeur_texte_corrige', majeurs_restants: 1, liste_au_ch8: true };
+    return j;
+  };
+  cas.push({ nom: 'TF-2238 vert — arrêt atteignable : 0 majeur dans le texte de la dernière correction, 1 majeur antérieur listé', j: atteignable(), attendu: [] });
+  cas.push({ nom: 'TF-2238 vert — l arrêt strict « zéro majeur » reste valable sous la même déclaration (le cas idéal)', j: (() => { const j = essai(); j.arbitre.arret_atteignable = true; return j; })(), attendu: [] });
+  rougeB('B14 majeur retenu dans le texte de la dernière correction', 'B14', atteignable, (j) => { j.passes[1].defauts[0].origine = 'correction'; });
+  rougeB('B14 majeurs restants mal recomptés', 'B14', atteignable, (j) => { j.arret.majeurs_restants = 0; });
+  rougeB('B14 majeurs restants non listés au Ch8', 'B14', atteignable, (j) => { j.arret.liste_au_ch8 = false; });
+  rougeB('B14 arrêt atteignable non déclaré à l arbitre', 'B14', atteignable, (j) => { delete j.arbitre.arret_atteignable; });
+  rougeB('B14 défaut grave retenu sans origine', 'B14', atteignable, (j) => { delete j.passes[1].defauts[0].origine; });
+  rougeB('B14 arrêt atteignable posé sur la passe 1, sans correction', 'B14', atteignable, (j) => {
+    j.passes.length = 1; j.passes[0].decision = 'arreter';
+    j.arret = { passe: 1, raison: 'zero_majeur_texte_corrige', majeurs_restants: 2, liste_au_ch8: true }; j.score_affiche = { valeur: 84, nature: 'mesure' };
+  });
+  rougeB('B14 la passe 2 remplissait déjà l arrêt : la boucle devait s arrêter', 'B14', atteignable, (j) => {
+    j.passes[1].decision = 'continuer';
+    j.passes.push({ n: 3, fichier: 'prompt-p3.md', mots: 1300, relecteur: { agent: 'relecteur-3', aveugle: true, interdits: ['analyse', 'passes précédentes'] },
+      score_mesure: 93, defauts: [{ severite: 'mineur', citation: 'l. 120', statut: 'retenu' }], majeurs_clos: 1, rejetee: false, decision: 'arreter',
+      verification_cloture: { agent: 'verificateur-1', note: false, clotures: 1, defauts_crees: 0 } });
+    j.arret = { passe: 3, raison: 'zero_majeur' }; j.score_affiche = { valeur: 93, nature: 'mesure' };
+  });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

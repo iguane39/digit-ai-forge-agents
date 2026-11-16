@@ -101,6 +101,7 @@ cas.push(
 // rappel au SKILL.md et son contrôle à l'oracle ; la puce retirée de boucle.md se voit. Une entrée : [TF, clé d'arbitre, règle].
 const REGLES_REVUE = [
   ['TF-2237', 'score_de_passe', 'B13'],
+  ['TF-2238', 'arret_atteignable', 'B14'],
 ];
 for (const [tf, cle, regle] of REGLES_REVUE) {
   const puce = new RegExp(`- \\*\\*[^\\n]*\\(${tf}[\\s\\S]*?\`${cle}\``);

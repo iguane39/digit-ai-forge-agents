@@ -101,6 +101,19 @@ nomme « défaut ». Les clés se déclarent avant la passe 1, comme le reste de
   baisse stricte s'applique. Une baisse accompagnée d'un bloquant retenu, donc d'un plafond de 40,
   reste une régression. Le fait : le 06/11/2026, la passe 3 de la boucle d'indice a, qui fermait 4
   majeurs vérifiés, a été rejetée à 80 contre 82, bruit toléré déclaré à 0.
+- **Arrêt atteignable et mesurable** (TF-2238, défaut) : `arret_atteignable` : `true`. L'arrêt
+  « 0 bloquant et 0 majeur » n'a été atteint par aucune des 59 passes relevées (minimum 2 défauts
+  graves, médiane 6) : chaque défaut fermé en crée environ 0,54, et 2 relecteurs ne voient qu'environ
+  73 % du stock. Les boucles s'arrêtaient donc sur le gain, la régression ou la borne, et livraient
+  leurs majeurs sans que l'arrêt le dise. La boucle peut désormais s'arrêter, à partir de la passe 2,
+  sur la raison `zero_majeur_texte_corrige` : aucun défaut grave retenu ne cite le texte écrit par la
+  dernière correction. Chaque défaut grave retenu d'une passe 2 ou suivante porte son `origine` :
+  `correction` quand sa citation figure dans le texte que la dernière correction a écrit (absente de
+  la passe gardée précédente), `anterieur` sinon. Les majeurs restants, tous antérieurs, se recomptent
+  à la source, se portent à `arret.majeurs_restants` (leur nombre) avec `arret.liste_au_ch8` : `true`, et
+  le Ch8 les nomme : le prompt est livré avec eux, jamais présenté comme fini. L'arrêt strict « 0
+  bloquant et 0 majeur » reste la cible affichée et le cas idéal ; il garde sa raison `zero_majeur`.
+  B14 le contrôle, et refuse une passe gardée qui remplissait déjà l'arrêt sans l'avoir posé.
 
 ## Une passe
 
@@ -143,7 +156,9 @@ nomme « défaut ». Les clés se déclarent avant la passe 1, comme le reste de
    défaut que la correction a créé : une passe de reprise unique s'ouvre alors (TF-2202, voir
    `reprise_unique`). Sinon, on s'arrête au premier cas
    atteint :
-   - 0 bloquant et 0 majeur retenus, et seuil de score tenu s'il y en a un ;
+   - 0 bloquant et 0 majeur retenus, et seuil de score tenu s'il y en a un ; ou, sous
+     `arret_atteignable` (TF-2238), 0 bloquant et 0 majeur dans le texte écrit par la dernière
+     correction, majeurs restants listés ;
    - gain de score mesuré inférieur à 3 points par rapport à la passe retenue précédente ;
    - borne de 3 passes, ou de l'extension déclarée (5 au plus).
 
@@ -187,10 +202,11 @@ boucle sans journal PASS n'est pas un mode boucle.
 ```
 
 `decision` vaut `continuer`, `arreter` ou `rejeter`. `arret.raison` vaut `zero_majeur`,
-`gain_insuffisant`, `borne` ou `regression`. Sous l'essai D-111 (a), l'arbitre porte en plus
+`gain_insuffisant`, `borne`, `regression` ou, sous `arret_atteignable` (TF-2238), `zero_majeur_texte_corrige`.
+Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
 `recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
-`"moyenne"` (TF-2237), B13.
+`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14.
 
 ## Annexe — sortie demandée au relecteur
 
