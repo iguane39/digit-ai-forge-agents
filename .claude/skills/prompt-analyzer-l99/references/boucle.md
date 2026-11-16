@@ -186,6 +186,16 @@ boucle sans journal PASS n'est pas un mode boucle.
  "majeurs": [], "mineurs_nombre": 0, "premisses_verifiees": 0, "premisses_fausses": []}
 ```
 
+**Deux relecteurs, un score de passe** (TF-2633). Pour un prompt de run, la passe est lue par 2
+relecteurs et le journal ne porte qu'un `score_mesure` : la règle qui passe de leurs 2 notes à ce
+score s'écrit donc à l'arbitre, avant la passe 1, par `score_de_passe` : `"moyenne"`. Chaque passe
+porte alors les notes de ses relecteurs, `scores` (ou `scores_relecteurs`, une note par relecteur),
+et son `score_mesure` en est la moyenne, à 0,5 près : l'oracle joue B13 et refuse un score de passe
+qui n'en découle pas, ou des notes absentes. Sans cette clé, le journal est jugé comme avant et le
+score de passe n'est pas vérifié. Le fait : le 12/11/2026, des notes de 74 et 76 puis de 83 et 74
+valaient 75 puis 78 à la moyenne arrondie vers le bas, et la boucle continuait ; au minimum, 74 puis
+74, elle s'arrêtait pour gain insuffisant. La règle décidait de l'arrêt, et le journal ne la disait pas.
+
 ## Ce que le mode rapporte, mesuré
 
 `node {skilldir}/scripts/releve-boucles.mjs <racine> [--json]` relève tous les journaux

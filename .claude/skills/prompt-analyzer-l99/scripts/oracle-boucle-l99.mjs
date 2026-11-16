@@ -37,7 +37,12 @@
 //       correction (`cause_regression.nature = "defaut_cree"`, recomptée) ouvre UNE passe de reprise
 //       (`reprise: true`, `reprise_de: <n>`) qui ne corrige que ce défaut ; pas de seconde reprise,
 //       pas de reprise sans cause ; la reprise ne compte pas dans la borne.
-// Règle de la revue du 16/11/2026 (retour du 16/11, TF-2673), jouée seulement si un recompte déclare `champ` :
+// Règles du retour du 12/11/2026 (TF-2633) et du retour du 16/11/2026 (TF-2673), jouées seulement si le journal les déclare :
+//   B13 `score_de_passe: "moyenne"` (TF-2633) : la règle d'agrégation des notes des relecteurs est fixée à l'arbitre avant
+//       la passe 1 ; chaque passe porte les notes de ses relecteurs (`scores`, ou `scores_relecteurs`) et son
+//       `score_mesure` en est la moyenne, à 0,5 près. Le 12/11/2026, des notes de 74 et 76 puis 83 et 74 valaient 75 puis 78
+//       à la moyenne arrondie vers le bas et 74 puis 74 au minimum : la règle décidait de l'arrêt et le journal ne la disait pas.
+//   B14 (TF-2673), jouée seulement si un recompte déclare `champ` :
 //   B14 un recompte qui lit un champ de données lit aussi sa règle d'écriture (`regle_ecriture`, commande +
 //       résultat) et, quand le champ porte un fait, le croise avec une seconde source (`seconde_source`,
 //       commande + résultat) ; `porte_un_fait: false` dispense de la seconde source. Un champ proche du fait
@@ -68,6 +73,8 @@ const estRejetee = (p) => p.rejetee === true || p.decision === 'rejeter';
 const propre = (x) => typeof x === 'string' && x.trim() !== '';
 const nb = (x) => typeof x === 'number' && Number.isFinite(x);
 const retenus = (p) => (p.defauts || []).filter((d) => GRAVES.has(d.severite) && d.statut === 'retenu');
+// TF-2633 : les notes des relecteurs d'une passe, objet {A:76,B:69} ou tableau, sous `scores` ou `scores_relecteurs`.
+const notesDeLaPasse = (p) => { const s = p && (p.scores !== undefined ? p.scores : p.scores_relecteurs); return (Array.isArray(s) ? s : s && typeof s === 'object' ? Object.values(s) : []).filter(nb); };
 
 export function juger(j) {
   const f = [];
@@ -253,6 +260,19 @@ export function juger(j) {
     });
   }
 
+  // B13 — la passe est notée par la moyenne de ses relecteurs, règle fixée à l'arbitre avant la passe 1 (TF-2633)
+  if (a && a.score_de_passe === 'moyenne') {
+    passes.forEach((p, i) => {
+      const v = notesDeLaPasse(p);
+      if (v.length === 0) ko('B13', `passes[${i}].scores`, 'notes des relecteurs absentes (`scores` ou `scores_relecteurs`) : la moyenne ne se vérifie pas sans une note par relecteur');
+      else {
+        const moy = v.reduce((x, y) => x + y, 0) / v.length;
+        if (!nb(p.score_mesure) || Math.abs(p.score_mesure - moy) > 0.5)
+          ko('B13', `passes[${i}].score_mesure`, `score de passe ${p.score_mesure}, moyenne des relecteurs ${moy} : sous « moyenne », le score de passe est la moyenne, jamais le minimum`);
+      }
+    });
+  }
+
   // B14 — un recompte qui lit un champ de données lit aussi sa règle d'écriture, et croise le fait (TF-2673)
   const preuve = (x) => !!x && propre(x.commande) && propre(x.resultat);
   passes.forEach((p, i) => {
@@ -383,6 +403,21 @@ function selfTest() {
     j.passes[2].cause_regression = { nature: 'defaut_cree', citation: 'x', recompte: { commande: 'git grep x', resultat: '0' } };
     j.passes.push({ ...j.passes[2], n: 4, reprise_de: 3, cause_regression: undefined });
   });
+  // TF-2633 (16/11/2026) : la règle d'agrégation est fixée à l'arbitre, et le score de passe en découle. Cas d'origine
+  // (retour du 12/11/2026) : deux relecteurs, notes 74 et 76 puis 83 et 74 ; moyenne arrondie vers le bas 75 puis 78, la boucle
+  // continue ; minimum 74 puis 74, elle s'arrête pour gain insuffisant. Le vert à deux passes passe à une passe 2 de 86 et 80.
+  const agregee = () => {
+    const j = essai();
+    Object.assign(j.arbitre, { score_de_passe: 'moyenne' });
+    j.passes[0].scores_relecteurs = [84, 84]; j.passes[0].score_mesure = 84;
+    j.passes[1].scores_relecteurs = [94, 88]; j.passes[1].score_mesure = 91;
+    return j;
+  };
+  cas.push({ nom: 'TF-2633 deux relecteurs par passe, score de passe = moyenne de leurs notes (scores_relecteurs), vert', j: agregee(), attendu: [] });
+  cas.push({ nom: 'TF-2633 les notes sous la clé `scores` en objet, vert', j: (() => { const j = agregee(); j.passes[1].scores = { A: 94, B: 88 }; delete j.passes[1].scores_relecteurs; return j; })(), attendu: [] });
+  cas.push({ nom: 'TF-2633 sans règle déclarée à l arbitre, le journal d avant reste jugé à l identique, vert', j: (() => { const j = agregee(); delete j.arbitre.score_de_passe; j.passes[1].score_mesure = 88; j.score_affiche.valeur = 88; return j; })(), attendu: [] });
+  rougeB('B13 score de passe qui ne découle pas des notes (le minimum, 88, pour 94 et 88)', 'B13', agregee, (j) => { j.passes[1].score_mesure = 88; j.score_affiche.valeur = 88; });
+  rougeB('B13 notes des relecteurs absentes sous une règle déclarée', 'B13', agregee, (j) => { delete j.passes[1].scores_relecteurs; });
   // TF-2673 (16/11/2026) : un recompte qui lit un champ de données lit aussi sa règle d'écriture et croise le fait avec
   // une seconde source. Cas d'origine : `sans_parole` à faux sur 14 clips, lu sans sa règle (vraie pour une description
   // validée seulement), alors que DESCRIPTIONS-CLIPS.md relevait « musique seule » sur les 15.

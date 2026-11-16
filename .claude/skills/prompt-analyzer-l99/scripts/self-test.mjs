@@ -136,6 +136,16 @@ if (existsSync(ORACLE_SYNTHESE)) {
     ['TF-2669 rouge — un message d\'attente est refusé par S1 et par S4', !!rouge && rouge.S1 === 'FAIL' && rouge.S4 === 'FAIL'],
   );
 } else console.log('SKIP TF-2669 — oracle-synthese du pilot introuvable (FORGE_ROOT) : le point d\'étape et l attente ne sont pas jugés ici');
+// TF-2633 (16/11/2026) : à deux relecteurs par passe, la règle d'agrégation des notes est fixée à l'arbitre avant la passe 1
+// (`score_de_passe`), et l'oracle (B13) vérifie que `score_mesure` découle des notes ; boucle.md porte la règle, le banc de
+// l'oracle porte la fixture rouge où le score de passe ne découle pas des notes.
+const regleAgregation = (texte) => /TF-2633/.test(texte) && /`score_de_passe` : `"moyenne"`/.test(texte) && /avant la passe 1/.test(texte)
+  && /`scores_relecteurs`/.test(texte) && /B13/.test(texte);
+cas.push(
+  ['TF-2633 vert — boucle.md fixe la règle d agrégation à l arbitre avant la passe 1 et nomme B13', regleAgregation(boucle)],
+  ['TF-2633 rouge — le paragraphe retiré de boucle.md est vu', !regleAgregation(boucle.replace(/\*\*Deux relecteurs, un score de passe\*\*[\s\S]*?(?=\n## Ce que le mode rapporte)/, ''))],
+  ['TF-2633 vert — l oracle joue B13 sur les notes des relecteurs', /B13/.test(oracleNotes) && /scores_relecteurs/.test(oracleNotes)],
+);
 // TF-2673 (16/11/2026) : à l'étape 3 de boucle.md, un recompte qui lit un champ de données lit aussi sa règle d'écriture et le
 // croise avec une seconde source quand le champ porte un fait ; l'oracle (B14) le joue sur la fixture du journal (le banc de
 // l'oracle porte les cas rouges, ici la phrase et le retrait de la phrase).
