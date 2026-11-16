@@ -856,3 +856,29 @@ méthode n'a encore été exercée par aucune mission réelle, et ses fixtures s
 - **Preuve** : bloc TF-2001 de la recette. Il vérifie qu’aucun déclencheur ne route les deux entrées, puis joue la
   commande du registre sur la paire de chaque oracle : `rouge-permissions-absentes.yml` FAIL, `vert-complet.yml` PASS ;
   `rouge-csp-absente/_headers` FAIL, `vert-complet/_headers` PASS. Forge absente du poste : SKIP motivé.
+
+## Rôles demandés par leur nom (TF-2607, 16/11/2026)
+
+- **Le fait** : la consigne humaine du 12/11/2026 d'un produit exigeait de passer
+  `quality-oracles/scripts/oracle-langue.py --client` et d'en joindre la sortie. Mesure du même jour : aucun fichier
+  `oracle-langue*` sous `~/.claude/skills`, `digit-ai-forge-agents` et `digit-ai-factory`, aucune mention au registre. Le
+  produit a joué un substitut, S5 d'`oracle-charte-pptx-semantique` et une recherche des tournures bannies, sans savoir
+  s'il était le bon.
+- **Ce que le registre décide** : le nom `oracle-langue` désigne un RÔLE, pas un fichier. Aucun oracle neuf : trois
+  oracles existants le tiennent, chacun pour son support, et le registre machine (`registre-oracles.json`, clé `roles`) le
+  dit avec la commande. Une consigne qui nomme `oracle-langue` s'exécute par la ligne du support du livrable.
+
+| Rôle demandé | Support du livrable | Oracle qui le tient | Commande |
+|---|---|---|---|
+| `oracle-langue` | texte Markdown | `oracle-ecriture.mjs` du pilot : EC-7 lexique du destinataire, EC-1 tournures creuses par famille, EC-5, EC-8, EC-15 langue | `node {pilot}/oracles/oracle-ecriture.mjs <texte.md> --json` |
+| `oracle-langue` | diapositives `.pptx` | `scripts/oracle-charte-pptx-semantique.mjs` : S5 lexique du destinataire et tableau « On dit / On ne dit pas » de la marque | `node scripts/oracle-charte-pptx-semantique.mjs <deck.pptx>` |
+| `oracle-langue` | restitution du pilot | `oracle-synthese.mjs` du pilot : S46 lexique du destinataire | `node {pilot}/oracles/oracle-synthese.mjs <restitution.md>` |
+
+- **Le client ne se passe pas en option** : il n'existe pas de `--client`. Le lexique du client se lit dans le socle du
+  produit (`forge/LEXIQUE.json`, `docs/projet/LEXIQUE.json` ou `references/LEXIQUE.json`) et la marque dans
+  `donnees/marque/MARQUE.md`, cherchés depuis le dossier du fichier jugé puis depuis le dossier de travail (TF-2608 pour le
+  deck). Pour juger avec le lexique d'un client, jouer la commande depuis son dossier de produit ou y poser le fichier.
+- **Non désigné** : tout autre support (`.docx`, `.html`, `.pdf`). Le rôle n'y est pas affirmé, faute d'un juge de vocabulaire
+  vérifié pour eux ; un besoin réel passe par `write-an-oracle`.
+- **Preuve** : le bloc TF-2607 de la recette lit la clé `roles`, vérifie que chaque oracle désigné existe (ceux du pilot
+  seulement quand le pilot se résout) et que cette section nomme le rôle, puis refuse un registre sans la clé.

@@ -5065,6 +5065,46 @@ else {
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
+// TF-2607 (16/11/2026, RA-24 du lot marketing du 12/11/2026, seq 717) — UN NOM DE RÔLE DEMANDÉ PAR UNE CONSIGNE DÉSIGNE UN ORACLE.
+// LE FAIT. Une consigne exigeait `quality-oracles/scripts/oracle-langue.py --client` ; le fichier n'a jamais existé et le registre
+// n'en disait rien : le produit a joué un substitut sans savoir s'il était le bon. Le registre décide que `oracle-langue` est un
+// RÔLE (clé `roles` du registre machine, section « Rôles demandés par leur nom » de la vue) tenu par des oracles existants.
+// Le contrôle lit la clé et la vue : chaque rôle dit ce qu'il juge, par quel oracle et quelle commande, par support ; chaque
+// oracle désigné existe (ceux du pilot seulement quand le pilot se résout, SKIP motivé sinon) ; la vue nomme le rôle. Trois
+// registres fautifs fabriqués sur une copie sont refusés, chacun pour sa raison : sans la clé, avec un oracle désigné qui
+// n'existe pas, avec une vue qui ne nomme pas le rôle.
+{
+  const reg = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8'));
+  const vue = fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.md'), 'utf8');
+  const controlerRoles = (registre, texteVue, roleAttendu) => {
+    const f = [];
+    const r = registre.roles && registre.roles[roleAttendu];
+    if (!r) return [`le rôle « ${roleAttendu} » est absent de la clé roles du registre machine`];
+    if (!Array.isArray(r.tenu_par) || !r.tenu_par.length) f.push(`« ${roleAttendu} » ne désigne aucun oracle (tenu_par vide)`);
+    for (const t of r.tenu_par || []) {
+      if (!t.support || !t.oracle || !t.commande || !t.regles) { f.push(`une ligne de « ${roleAttendu} » n'a pas son support, son oracle, ses règles et sa commande`); continue; }
+      const pilote = t.oracle.startsWith('{pilot}/');
+      if (pilote && !PILOT) continue; // pilot introuvable : dit par l'appelant, jamais un PASS
+      const chemin = pilote ? path.join(PILOT, t.oracle.slice('{pilot}/'.length)) : path.join(SKILLDIR, t.oracle);
+      if (!fs.existsSync(chemin)) f.push(`l'oracle « ${t.oracle} » désigné pour « ${t.support} » n'existe pas (${chemin})`);
+      if (!t.commande.includes(path.basename(t.oracle))) f.push(`la commande de « ${t.support} » ne lance pas l'oracle désigné (${t.commande})`);
+    }
+    if (!/--client/.test(r.client_se_designe_par || '')) f.push(`« ${roleAttendu} » ne dit pas ce qu'il advient de l'option --client demandée par la consigne`);
+    if (!texteVue.includes('## Rôles demandés par leur nom') || !texteVue.includes('`' + roleAttendu + '`')) f.push(`la vue ne nomme pas le rôle « ${roleAttendu} » dans sa section « Rôles demandés par leur nom »`);
+    return f;
+  };
+  const vert = controlerRoles(reg, vue, 'oracle-langue');
+  const sansCle = controlerRoles({ ...reg, roles: {} }, vue, 'oracle-langue');
+  const oracleAbsent = controlerRoles({ ...reg, roles: { 'oracle-langue': { ...reg.roles['oracle-langue'], tenu_par: [{ ...reg.roles['oracle-langue'].tenu_par[1], oracle: 'scripts/oracle-qui-n-existe-pas.mjs' }] } } }, vue, 'oracle-langue');
+  const vueMuette = controlerRoles(reg, vue.replace('## Rôles demandés par leur nom', '## Autre section'), 'oracle-langue');
+  const tenants = ((reg.roles || {})['oracle-langue'] || {}).tenu_par || [];
+  if (vert.length) ko('TF-2607 sens vert : le rôle « oracle-langue » du registre ne se tient pas — ' + vert.join(' · '));
+  else if (sansCle.length !== 1 || !/absent de la clé roles/.test(sansCle[0])) ko('TF-2607 sens rouge : un registre sans la clé roles n\'est pas refusé pour cette raison — ' + sansCle.join(' · '));
+  else if (!oracleAbsent.some(x => /n'existe pas/.test(x))) ko('TF-2607 sens rouge : un oracle désigné qui n\'existe pas n\'est pas refusé');
+  else if (!vueMuette.some(x => /la vue ne nomme pas le rôle/.test(x))) ko('TF-2607 sens rouge : une vue qui ne nomme pas le rôle n\'est pas refusée');
+  else ok(`TF-2607 : le rôle « oracle-langue » est tenu par ${tenants.length} oracle(s) existant(s) (${tenants.map(t => t.support).join(', ')}), l'option --client est dite, la vue le nomme${PILOT ? '' : ' ; oracles du pilot NON vérifiés (pilot introuvable)'} ; un registre sans la clé, un oracle désigné absent et une vue muette sont refusés`);
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));
