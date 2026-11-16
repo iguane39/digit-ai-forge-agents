@@ -39,7 +39,7 @@
 //       pas de reprise sans cause ; la reprise ne compte pas dans la borne.
 // Règles de la revue du 16/11/2026 (étude 20261106b, TF-2236 à TF-2242), jouées seulement si l'arbitre
 // les déclare :
-//   B13 `score_de_passe: "moyenne"` (TF-2237) : chaque passe porte `scores` (un nombre par relecteur) et son
+//   B13 `score_de_passe: "moyenne"` (TF-2237) : chaque passe porte `scores_relecteurs` (un nombre par relecteur) et son
 //       `score_mesure` est la moyenne de ces notes (0,5 près) ; avec `bruit_tolere: "mesure"`, B8 tolère une
 //       baisse jusqu'à l'écart des relecteurs de la passe gardée, sans plafond fixe à 2 ; une baisse avec un
 //       bloquant retenu (plafond de 40) reste une régression.
@@ -67,8 +67,8 @@ const estRejetee = (p) => p.rejetee === true || p.decision === 'rejeter';
 const propre = (x) => typeof x === 'string' && x.trim() !== '';
 const nb = (x) => typeof x === 'number' && Number.isFinite(x);
 const retenus = (p) => (p.defauts || []).filter((d) => GRAVES.has(d.severite) && d.statut === 'retenu');
-// TF-2237 : les notes des relecteurs d'une passe (`scores` : objet {A:76,B:69} ou tableau) et leur écart.
-const notesRelecteurs = (p) => { const s = p && p.scores; return (Array.isArray(s) ? s : s && typeof s === 'object' ? Object.values(s) : []).filter(nb); };
+// TF-2237 : les notes des relecteurs d'une passe (`scores_relecteurs`, ou `scores` : tableau ou objet {A:76,B:69}) et leur écart.
+const notesRelecteurs = (p) => { const s = p && (p.scores_relecteurs ?? p.scores); return (Array.isArray(s) ? s : s && typeof s === 'object' ? Object.values(s) : []).filter(nb); };
 const ecartRelecteurs = (p) => { const v = notesRelecteurs(p); return v.length >= 2 ? Math.max(...v) - Math.min(...v) : 0; };
 
 export function juger(j) {
@@ -212,7 +212,7 @@ export function juger(j) {
   if (a && a.score_de_passe === 'moyenne') {
     passes.forEach((p, i) => {
       const v = notesRelecteurs(p);
-      if (v.length === 0) ko('B13', `passes[${i}].scores`, 'notes des relecteurs absentes : la moyenne ne se vérifie pas sans une note par relecteur');
+      if (v.length === 0) ko('B13', `passes[${i}].scores_relecteurs`, 'notes des relecteurs absentes : la moyenne ne se vérifie pas sans une note par relecteur');
       else {
         const moy = v.reduce((x, y) => x + y, 0) / v.length;
         if (!nb(p.score_mesure) || Math.abs(p.score_mesure - moy) > 0.5)
@@ -397,8 +397,8 @@ function selfTest() {
   const moyenne = () => {
     const j = essai();
     Object.assign(j.arbitre, { score_de_passe: 'moyenne', bruit_tolere: 'mesure' });
-    j.passes[0].scores = { A: 84, B: 82 }; j.passes[0].score_mesure = 83;
-    j.passes[1].scores = { A: 86, B: 80 }; j.passes[1].score_mesure = 83;
+    j.passes[0].scores_relecteurs = [84, 82]; j.passes[0].score_mesure = 83;
+    j.passes[1].scores_relecteurs = [86, 80]; j.passes[1].score_mesure = 83;
     j.score_affiche = { valeur: 83, nature: 'mesure' };
     return j;
   };
@@ -412,20 +412,21 @@ function selfTest() {
   // Passe 2 qui baisse de 3 points, passe 1 gardée à 4 points d'écart entre ses relecteurs ; arrêt sur le gain.
   const baisse = (scores2, moy2) => () => {
     const j = moyenne();
-    j.passes[0].scores = { A: 84, B: 80 }; j.passes[0].score_mesure = 82;
-    j.passes[1].scores = scores2; j.passes[1].score_mesure = moy2; j.score_affiche = { valeur: moy2, nature: 'mesure' };
+    j.passes[0].scores_relecteurs = [84, 80]; j.passes[0].score_mesure = 82;
+    j.passes[1].scores_relecteurs = scores2; j.passes[1].score_mesure = moy2; j.score_affiche = { valeur: moy2, nature: 'mesure' };
     return j;
   };
   cas.push({ nom: 'TF-2237 vert — la moyenne garde la passe que le minimum rejetait (83 contre 83, au lieu de 82 contre 80)', j: moyenne(), attendu: [] });
+  cas.push({ nom: 'TF-2237 vert — la clé « scores » (un objet par relecteur) est lue comme « scores_relecteurs »', j: (() => { const j = moyenne(); j.passes[0].scores = { A: 84, B: 82 }; delete j.passes[0].scores_relecteurs; j.passes[1].scores = { A: 86, B: 80 }; delete j.passes[1].scores_relecteurs; return j; })(), attendu: [] });
   cas.push({ nom: 'TF-2237 rouge — la même boucle notée par le minimum, bruit à 0 : la règle d avant rejette la passe (B8)', j: parLeMinimum(), attendu: ['B8'] });
-  cas.push({ nom: 'TF-2237 vert — une baisse de 3 points dans l écart de 4 des relecteurs de la passe gardée reste gardée', j: baisse({ A: 80, B: 78 }, 79)(), attendu: [] });
-  rougeB('B8 baisse de 6 points, au-delà de l écart de 4 des relecteurs de la passe gardée', 'B8', baisse({ A: 77, B: 75 }, 76), () => {});
-  rougeB('B8 baisse dans le bruit, mais avec un bloquant retenu (plafond de 40)', 'B8', baisse({ A: 80, B: 78 }, 79), (j) => {
+  cas.push({ nom: 'TF-2237 vert — une baisse de 3 points dans l écart de 4 des relecteurs de la passe gardée reste gardée', j: baisse([80, 78], 79)(), attendu: [] });
+  rougeB('B8 baisse de 6 points, au-delà de l écart de 4 des relecteurs de la passe gardée', 'B8', baisse([77, 75], 76), () => {});
+  rougeB('B8 baisse dans le bruit, mais avec un bloquant retenu (plafond de 40)', 'B8', baisse([80, 78], 79), (j) => {
     j.passes[1].defauts.push({ severite: 'bloquant', citation: 'renvoi à une section absente', recompte: { commande: 'git grep -n "section 7" prompt-p2.md', resultat: '0 occurrence' }, statut: 'retenu' });
     j.arret = { passe: 2, raison: 'gain_insuffisant' };
   });
   rougeB('B13 score de passe qui n est pas la moyenne (86 pour 86 et 80)', 'B13', moyenne, (j) => { j.passes[1].score_mesure = 86; j.score_affiche.valeur = 86; });
-  rougeB('B13 notes des relecteurs absentes', 'B13', moyenne, (j) => { delete j.passes[1].scores; });
+  rougeB('B13 notes des relecteurs absentes', 'B13', moyenne, (j) => { delete j.passes[1].scores_relecteurs; });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

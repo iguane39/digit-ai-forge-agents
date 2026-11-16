@@ -93,9 +93,11 @@ nomme « défaut ». Les clés se déclarent avant la passe 1, comme le reste de
   `score_de_passe` : `"moyenne"` et `bruit_tolere` : `"mesure"`. L'écart entre les 2 relecteurs d'une
   même passe a une médiane de 3 points et monte à 24 (21 passes) : le plafond de 2 du bruit toléré
   est sous ce bruit, et le minimum de 2 notes bruitées l'est plus que leur moyenne. Chaque passe
-  porte `scores` (un nombre par relecteur) ; son `score_mesure` en est la moyenne, et B13 le contrôle.
+  porte `scores_relecteurs` (un nombre par relecteur, clé que portent déjà 85 des 143 passes des journaux
+  relevés le 16/11/2026 ; `scores`, en tableau ou en objet, est lu de même) ; son `score_mesure` en est la
+  moyenne, et B13 le contrôle.
   B8 tolère une baisse jusqu'à l'écart des relecteurs de la passe gardée (le plus haut de ses
-  `scores` moins le plus bas), sans plafond fixe ; avec un seul relecteur, cet écart est nul et la
+  `scores_relecteurs` moins le plus bas), sans plafond fixe ; avec un seul relecteur, cet écart est nul et la
   baisse stricte s'applique. Une baisse accompagnée d'un bloquant retenu, donc d'un plafond de 40,
   reste une régression. Le fait : le 06/11/2026, la passe 3 de la boucle d'indice a, qui fermait 4
   majeurs vérifiés, a été rejetée à 80 contre 82, bruit toléré déclaré à 0.
