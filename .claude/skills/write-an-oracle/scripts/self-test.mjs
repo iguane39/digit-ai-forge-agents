@@ -195,6 +195,53 @@ try {
       else if (baks(r7.p.dir).length !== 2 || s7r.some((x) => x.motif)) ko(`(8) TF-1537 rouge : les défauts d origine ne sont pas pris — ${baks(r7.p.dir).length} .bak, motifs ${JSON.stringify(s7r.map((x) => x.motif))}`);
       else ok('(8) TF-1537 rouge : le défaut d origine (2 .bak laissés, SKIP sans motif) est bien pris par les deux contrôles');
     }
+    // ================================================ TF-2635 : le cas « même contenu, autre catégorie » (R11)
+    // Le fait (lot du 12/11/2026) : un contrôle de publications conditionné au pilier éditorial que l'auteur déclare ne jugeait
+    // que 2 piliers ; 8 campagnes rangées dans 2 autres passaient 66 contrôles à 0 échec. La règle R11 de quality-oracles :
+    // un contrôle se déclenche sur ce que le contenu fait, pas sur sa catégorie déclarée. Le gabarit de fixtures impose donc
+    // un 3e cas, le même contenu défectueux sous une autre catégorie, qui doit rendre le verdict de la rouge.
+    // Vert : un oracle scaffoldé porte le cas (déclaré au manifest, fichier présent, autre que la rouge, même défaut, même
+    // verdict attendu) et le squelette juge les trois fixtures comme prévu. Rouge : un scaffolder amputé du cas produit un
+    // oracle que ce contrôle REFUSE, pour cette raison.
+    const casAutreCategorie = (p, nomOracle) => {
+      const man = JSON.parse(fs.readFileSync(p.man, 'utf8'));
+      const e = man.fixtures.find((x) => x.nom === nomOracle);
+      if (!e) return [`entrée de manifest « ${nomOracle} » absente`];
+      if (!e.autre_categorie) return [`l'entrée « ${nomOracle} » ne déclare aucun cas « même contenu, autre catégorie » (clé autre_categorie)`];
+      const fx = path.join(p.dir, 'fixtures');
+      if (!fs.existsSync(path.join(fx, e.autre_categorie))) return [`la fixture « ${e.autre_categorie} » déclarée n'existe pas`];
+      const rouge = fs.readFileSync(path.join(fx, e.red), 'utf8'), autre = fs.readFileSync(path.join(fx, e.autre_categorie), 'utf8');
+      const f = [];
+      if (rouge === autre) f.push('le cas « autre catégorie » est identique à la rouge : il ne change pas de catégorie');
+      if (!autre.includes('DEFAUT')) f.push('le cas « autre catégorie » ne porte pas le défaut de la rouge (marqueur DEFAUT du squelette)');
+      if (JSON.stringify(e.attendu_autre_categorie || e.attendu_red) !== JSON.stringify(e.attendu_red)) f.push('le verdict attendu du cas « autre catégorie » diffère de celui de la rouge');
+      return f;
+    };
+    const v9 = remonter(scaffold, 'cat-vert');
+    if (v9.r.status !== 0) ko(`(9) TF-2635 : le scaffolder échoue (exit ${v9.r.status}) — ${(v9.r.stderr || '').slice(0, 200)}`);
+    else {
+      const manifeste = JSON.parse(fs.readFileSync(v9.p.man, 'utf8')).fixtures.find((x) => x.nom === 'banc-1537-cat-vert');
+      const ecarts9 = casAutreCategorie(v9.p, 'banc-1537-cat-vert');
+      const jouerFx = (f) => spawnSync(process.execPath, [v9.oracle, path.join(v9.p.dir, 'fixtures', f)], { encoding: 'utf8', timeout: 60000 }).status;
+      const codes = manifeste && manifeste.autre_categorie ? [jouerFx(manifeste.red), jouerFx(manifeste.autre_categorie), jouerFx(manifeste.green)] : [];
+      if (ecarts9.length) ko(`(9) TF-2635 : l'oracle scaffoldé n'a pas le cas « même contenu, autre catégorie » — ${ecarts9.join(' · ')}`);
+      else if (codes.join(',') !== '1,1,0') ko(`(9) TF-2635 : le squelette doit rendre FAIL sur la rouge, FAIL sur le cas « autre catégorie » et PASS sur la verte — codes ${codes.join(',')}`);
+      else ok('(9) TF-2635 : un oracle scaffoldé porte le cas « même contenu, autre catégorie » (déclaré au manifest, fichier présent, même défaut, verdict de la rouge), et le squelette juge rouge FAIL, autre catégorie FAIL, verte PASS');
+    }
+    const src10 = fs.readFileSync(scaffold, 'utf8');
+    const mute10 = src10.replace(/^fs\.writeFileSync\(path\.join\(fxDir, `\$\{nom\}-autre-categorie[^\n]*\n/m, '')
+      .replace(/, autre_categorie: `[^`]*`, attendu_autre_categorie: \['FAIL'\]/, '');
+    if (mute10 === src10 || /^fs\.writeFileSync\(path\.join\(fxDir, `\$\{nom\}-autre-categorie/m.test(mute10) || mute10.includes('attendu_autre_categorie: [')) ko('(10) TF-2635 rouge : la mutation ne s\'applique plus — la fixture rouge est devenue creuse, à réaccorder');
+    else {
+      const mutant10 = path.join(tmp, 'scaffold-mute-2635.mjs');
+      fs.writeFileSync(mutant10, mute10, 'utf8');
+      const r10 = remonter(mutant10, 'cat-rouge');
+      const ecarts10 = r10.r.status === 0 ? casAutreCategorie(r10.p, 'banc-1537-cat-rouge') : [];
+      if (r10.r.status !== 0) ko(`(10) TF-2635 rouge : le mutant n'a pas scaffoldé (exit ${r10.r.status})`);
+      else if (!ecarts10.some((x) => /ne déclare aucun cas/.test(x))) ko(`(10) TF-2635 rouge : un oracle scaffoldé SANS le cas « autre catégorie » n'est pas refusé — ${ecarts10.join(' · ') || 'aucun écart relevé'}`);
+      else ok('(10) TF-2635 rouge : un oracle scaffoldé sans le cas « même contenu, autre catégorie » est refusé (aucune clé autre_categorie au manifest)');
+    }
+
   }
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 

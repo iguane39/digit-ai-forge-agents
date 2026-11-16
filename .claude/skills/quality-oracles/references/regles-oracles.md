@@ -1,4 +1,4 @@
-# Règles canoniques des oracles (R1–R10)
+# Règles canoniques des oracles (R1–R11)
 
 > **Source de vérité** du référentiel d'audit des skills d'oracles (v1.0, intégré à quality-oracles 1.3.0).
 > Tout prompt ou skill qui audite un oracle charge CE fichier ; les copies embarquées ailleurs sont
@@ -17,6 +17,7 @@
 | R8 | Boucle bornée | — (porté ici uniquement) |
 | R9 | Proportionnalité | §6 |
 | R10 | Typage du qualitatif | conception d'`oracle-llm.mjs` (véracité jamais simulée en PASS) |
+| R11 | Déclencheur sur le contenu | §3 point 9 (TF-2635) |
 
 R1. **Extériorité du verdict.** Aucun ✓ ne peut provenir du jugement du générateur. Tout verdict
 trace vers un mécanisme exécuté (script, test, rendu mesuré, juge indépendant). Un ✓ sans
@@ -63,3 +64,15 @@ one-shot trivial, ni s'en dispenser pour un livrable récurrent ou critique.
 R10. **Typage du qualitatif.** Pour les propriétés sans oracle fort possible (fond, pertinence
 métier), assumer le LLM-as-judge : grille figée avant génération, juge en contexte séparé du
 générateur, statut annoncé comme « promesse » et non « garantie ».
+
+R11. **Un contrôle se déclenche sur ce que le contenu fait, jamais sur la catégorie que son auteur déclare.**
+Une règle conditionnée à un pilier, un type, une étiquette ou un dossier que l'auteur choisit laisse passer le contenu qui
+porte le défaut mais qu'il a rangé ailleurs : le contrôle ne se désactive pas, il n'a jamais été armé. Le déclencheur se
+lit dans le contenu (un mot, une forme, une image, une donnée), pas dans son étiquette ; quand une catégorie est
+légitimement un paramètre (un profil, un référentiel), elle est celle de la CIBLE jugée, jamais celle que l'auteur peut
+changer pour sortir du champ. *Le fait* : chez un produit, un contrôle de publications refusait une présentation
+d'hébergement sans photo de la piscine pour 2 piliers éditoriaux seulement ; 8 campagnes rangées dans 2 autres piliers ont
+passé 66 contrôles à 0 échec avec 0 photo du domaine sur 40 images (lot du 12/11/2026). Le jeu d'essais rouge porte donc un
+cas « même contenu, autre catégorie », qui doit rendre le verdict de la rouge : `write-an-oracle` le crée d'office
+(`<nom>-autre-categorie`, clé `autre_categorie` du manifest), la recette de `quality-oracles` le rejoue, et le self-test de
+`write-an-oracle` refuse un oracle scaffoldé sans lui.

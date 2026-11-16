@@ -2276,6 +2276,14 @@
    "attendu_green": [
     "PASS"
    ],
+   "autre_categorie": "transparence-autre-support-red.md",
+   "attendu_autre_categorie": [
+    "FAIL"
+   ],
+   "attendu_messages_autre_categorie": [
+    "TR1",
+    "AUCUNE MENTION"
+   ],
    "attendu_messages_red": [
     "TR1",
     "AUCUNE MENTION"

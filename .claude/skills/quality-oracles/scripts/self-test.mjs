@@ -189,13 +189,13 @@ let reg = null;
 try { reg = JSON.parse(fs.readFileSync(path.join(SKILLDIR, 'references', 'registre-oracles.json'), 'utf8')); ok('registre-oracles.json : JSON valide (' + reg.oracles.length + ' oracles)'); }
 catch (e) { ko('registre-oracles.json illisible : ' + e.message); }
 
-// (2b) référentiel R1-R10 : source de vérité présente et non vide (règles canoniques d'audit des oracles)
+// (2b) référentiel R1-R11 : source de vérité présente et non vide (règles canoniques d'audit des oracles)
 const reglesPath = path.join(SKILLDIR, 'references', 'regles-oracles.md');
-if (!fs.existsSync(reglesPath)) ko('regles-oracles.md absent (référentiel R1-R10 — source de vérité des audits d\'oracles)');
+if (!fs.existsSync(reglesPath)) ko('regles-oracles.md absent (référentiel R1-R11 — source de vérité des audits d\'oracles)');
 else {
   const t = fs.readFileSync(reglesPath, 'utf8');
-  const missing = Array.from({ length: 10 }, (_, i) => 'R' + (i + 1) + '.').filter(r => !t.includes(r));
-  missing.length ? ko('regles-oracles.md incomplet : règles manquantes ' + missing.join(' ')) : ok('regles-oracles.md : référentiel R1-R10 complet');
+  const missing = Array.from({ length: 11 }, (_, i) => 'R' + (i + 1) + '.').filter(r => !t.includes(r));
+  missing.length ? ko('regles-oracles.md incomplet : règles manquantes ' + missing.join(' ')) : ok('regles-oracles.md : référentiel R1-R11 complet');
 }
 
 // (2c) TF-1006 (16/09/2026) — UN REGISTRE ÉDITÉ HORS DE SA SOURCE EST DÉTECTABLE.
@@ -1118,7 +1118,9 @@ else {
   let man = null;
   try { man = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) { ko('manifest.json illisible : ' + e.message); }
   if (man) for (const fx of man.fixtures) {
-    for (const side of ['red', 'green']) {
+    // TF-2635 : une entrée qui déclare `autre_categorie` (même contenu défectueux, autre catégorie, R11) rejoue ce 3e cas ; son
+    // verdict attendu est celui de la rouge si `attendu_autre_categorie` n'est pas donné.
+    for (const side of ['red', 'green', ...(fx.autre_categorie ? ['autre_categorie'] : [])]) {
       const fxFile = path.join(SKILLDIR, 'fixtures', fx[side]);
       if (!fs.existsSync(fxFile)) { ko(`fixture ${side} absente : ${fx[side]} (${fx.nom})`); continue; }
       // `{skillsroot}` accepté ici comme dans `run-oracles` et dans le contrôle de compilation
@@ -1144,7 +1146,7 @@ else {
       let v = null, sortie = null;
       try { sortie = JSON.parse((r.stdout || '').trim().match(/\{[\s\S]*\}/)[0]); v = sortie.verdict; } catch {}
       if (!v) v = r.status === 0 ? 'PASS' : r.status === 2 ? 'SKIP' : 'FAIL';
-      const attendu = fx['attendu_' + side];
+      const attendu = fx['attendu_' + side] || (side === 'autre_categorie' ? fx.attendu_red : undefined);
 
       // TF-2522 — un SKIP dû à un module Python que la fixture déclare (`prerequis_python`) et que le poste n'a pas
       // (sondé par un import réel) est un SKIP MOTIVÉ qui nomme le paquet et la commande d'installation, jamais un

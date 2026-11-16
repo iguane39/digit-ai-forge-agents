@@ -116,6 +116,11 @@ out('PASS', [{ sev: 'info', msg: 'aucun défaut détecté (squelette — étendr
 const fxDir = path.join(SKILLDIR, 'fixtures');
 fs.writeFileSync(path.join(fxDir, `${nom}-red${extList[0]}`), 'exemple avec DEFAUT volontaire — remplacer par un vrai cas rouge du domaine\n', 'utf8');
 fs.writeFileSync(path.join(fxDir, `${nom}-green${extList[0]}`), 'exemple conforme — remplacer par un vrai cas vert du domaine\n', 'utf8');
+// TF-2635 (R11 de regles-oracles.md) : un contrôle se déclenche sur ce que le contenu FAIT, jamais sur la catégorie que
+// son auteur déclare. Le jeu d'essais rouge porte donc un 3e cas, MÊME contenu défectueux rangé sous une AUTRE catégorie,
+// qui doit rendre le verdict de la rouge : sans lui, un contrôle conditionné à une catégorie déclarée (pilier, type, dossier)
+// passe tout ce qui est rangé ailleurs et rien ne le voit (66 contrôles à 0 échec sur 8 campagnes, lot du 12/11/2026).
+fs.writeFileSync(path.join(fxDir, `${nom}-autre-categorie${extList[0]}`), 'exemple avec DEFAUT volontaire, rangé sous une AUTRE catégorie que celle de la rouge (autre pilier, autre type, autre dossier) — le verdict doit être celui de la rouge ; remplacer par le même contenu défectueux que la vraie rouge, sous une catégorie différente\n', 'utf8');
 
 // 3) registre et 4) manifest — registre lu et validé AVANT les écritures. Les sauvegardes .bak ne
 // servent qu'à RESTAURER si une écriture échoue ; elles sont retirées ensuite, jamais laissées
@@ -130,7 +135,7 @@ try {
   sauvegarder(manPath);
   const manBrut = fs.readFileSync(manPath, 'utf8');
   const man = JSON.parse(manBrut);
-  man.fixtures.push({ nom, cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{fixture}'], red: `${nom}-red${extList[0]}`, green: `${nom}-green${extList[0]}`, attendu_red: ['FAIL'], attendu_green: ['PASS'] });
+  man.fixtures.push({ nom, cmd: ['node', '{skilldir}/scripts/oracle-' + nom + '.mjs', '{fixture}'], red: `${nom}-red${extList[0]}`, green: `${nom}-green${extList[0]}`, attendu_red: ['FAIL'], attendu_green: ['PASS'], autre_categorie: `${nom}-autre-categorie${extList[0]}`, attendu_autre_categorie: ['FAIL'] });
   fs.writeFileSync(manPath, rendreJson(man, formeDe(manBrut)), 'utf8');
 } catch (e) {
   for (const p of sauvegardes) fs.copyFileSync(p + '.bak', p);
@@ -143,6 +148,6 @@ if (process.exitCode) process.exit(process.exitCode);
 
 console.log(`✅ oracle-${nom} scaffoldé :
   - ${path.relative(process.cwd(), oraclePath)}
-  - fixtures/${nom}-red${extList[0]} + ${nom}-green${extList[0]}
+  - fixtures/${nom}-red${extList[0]} + ${nom}-green${extList[0]} + ${nom}-autre-categorie${extList[0]} (même défaut, autre catégorie : R11)
   - entrée registre « ${domaine} » (statut partiel) + entrée manifest
 Étapes suivantes : remplacer le contrôle-marqueur DEFAUT par les vrais contrôles, durcir les fixtures, relancer self-test.mjs (doit rester PASS), puis passer le statut à « ok » et mettre à jour registre-oracles.md.`);
