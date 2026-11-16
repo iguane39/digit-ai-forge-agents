@@ -301,7 +301,8 @@
    "non_juge": [
     "SCA (voir oracle-sca)",
     "historique git",
-    "sous --versionne (run-oracles ou oracle-secrets, TF-1702) : les fichiers ignorés par git — nommés au non_juge, jamais jugés"
+    "sous --versionne (run-oracles ou oracle-secrets, TF-1702) : les fichiers ignorés par git — nommés au non_juge, jamais jugés",
+    "gitleaks (TF-2628) : une valeur sur la ligne suivante d'une affectation vide `NOM=` n'est pas lue comme sa valeur, et `curl -uadmin:mdp` (collé) est rétrogradé avec les phrases où `-u` est collé au mot suivant"
    ],
    "note": "TF-1702 : par défaut le DISQUE est jugé ; `--versionne` borne le jugement au contenu que git suit ou suivrait (git ls-files -co --exclude-standard), run-oracles le transmet par QO_PERIMETRE=versionne et écrit le périmètre au journal ; hors dépôt git, le disque entier est jugé et dit. `docker compose config` recopie EN CLAIR les variables des env_file : sa sortie rangée en preuve porte les secrets, la masquer avant de la ranger. TF-1701 : une empreinte hexadécimale (16 ou 64 caractères) lue par gitleaks dans un journal de run-oracles est rétrogradée en avertissement, tout autre constat gitleaks reste bloquant et localisé."
   },

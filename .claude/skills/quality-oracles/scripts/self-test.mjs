@@ -4412,6 +4412,67 @@ else {
   }
 }
 
+// TF-2628 (lot Produit-82 20261112g, RT-36) — DEUX FAUX BLOQUANTS DE GITLEAKS, comme TF-1701. La règle
+// `generic-api-key` capture le nom de la variable suivante quand une affectation est VIDE (la classe de
+// blancs qui suit `=` franchit la fin de ligne), et `curl-auth-user` prend pour des identifiants un `-user:xyz`
+// collé dans une phrase. Le dossier rouge porte les deux cas, en CRLF : l'oracle rend FAIL sur l'état d'avant et
+// PASS maintenant, avec les deux constats rétrogradés et nommés. Le dossier des vraies fuites (une option
+// `curl -u` isolée, une affectation à valeur réelle, une valeur d'une ligne `token:` suivante, une valeur base64
+// à `==`) reste FAIL, constat par constat : rétrograder ne doit rien faire taire d'autre. Dernier cas : le même
+// dossier rouge, jugé sous `--versionne` dans un dépôt jetable, rend PASS, le critère de la décision. Valeurs
+// assemblées ici : aucun scanner ne doit lire ce fichier comme une fuite. Sans gitleaks, le cas le dit.
+{
+  const aGitleaks = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['gitleaks'], { encoding: 'utf8' }).status === 0;
+  const aGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
+  if (!aGitleaks) ok('TF-2628 NON JUGÉ sur ce poste : gitleaks absent (les deux faux bloquants sont des règles de gitleaks)');
+  else {
+    const V = 'Zx8vQ2mN' + '7pL4rT9';
+    const P = 'Zq8xK2mP' + '9vLw3Tn7';
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-gitleaks-faux-'));
+    const juger = (dossier, ...extra) => {
+      const r = spawnSync(process.execPath, [path.join(SKILLDIR, 'scripts', 'oracle-secrets.mjs'), dossier, ...extra], { encoding: 'utf8', timeout: 120000 });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    };
+    const bloquantsGitleaks = j => (j && j.findings || []).filter(f => f.sev === 'bloquant' && /^gitleaks /.test(f.msg));
+    try {
+      const rouge = path.join(tmp, 'rouge');
+      fs.mkdirSync(rouge);
+      fs.writeFileSync(path.join(rouge, 'variables.txt'), `API_KEY=\r\n${V}=\r\nDEBUG=0\r\n`);
+      fs.writeFileSync(path.join(rouge, 'note.md'), `Le script appelle curl, puis la valeur -utilisateur:${P} est lue.\r\n`);
+      const fuites = path.join(tmp, 'fuites');
+      fs.mkdirSync(fuites);
+      fs.writeFileSync(path.join(fuites, 'a.sh'), `curl -u admin:${P} https://api.exemple.fr\n`);
+      fs.writeFileSync(path.join(fuites, 'b.txt'), `API_KEY=${P}\r\n`);
+      fs.writeFileSync(path.join(fuites, 'c.txt'), `token:\r\n${P}\r\n`);
+      fs.writeFileSync(path.join(fuites, 'd.txt'), `token=${P}==\nsuite\n`);
+      const r = juger(rouge), f = juger(fuites);
+      const retro = (r && r.findings || []).filter(x => x.sev === 'warn' && /TF-2628/.test(x.msg));
+      !r ? ko('TF-2628 sens vert : sortie d\'oracle-secrets illisible')
+        : r.verdict !== 'PASS' || retro.length !== 2 ? ko(`TF-2628 sens vert : verdict ${r.verdict}, ${retro.length} constat(s) rétrogradé(s) au lieu de 2 — ${JSON.stringify(r.findings).slice(0, 200)}`)
+          : ok('TF-2628 sens vert : l\'affectation vide en CRLF et la phrase à `-utilisateur:` sont rétrogradées et nommées, verdict PASS');
+      const noms = bloquantsGitleaks(f).map(x => (String(x.where || '').match(/([^\\/]+):\d+(?:\s|$)/) || [])[1]).sort().join(',');
+      !f ? ko('TF-2628 sens rouge : sortie illisible')
+        : f.verdict !== 'FAIL' || noms !== 'a.sh,b.txt,c.txt,d.txt' ? ko(`TF-2628 sens rouge : verdict ${f.verdict}, bloquants de gitleaks sur « ${noms} » au lieu de a.sh,b.txt,c.txt,d.txt — une vraie fuite ne doit jamais être rétrogradée`)
+          : ok('TF-2628 sens rouge : `curl -u` isolé, affectation à valeur réelle, valeur après `token:` et valeur base64 à `==` restent bloquants, localisés');
+      if (!aGit) ok('TF-2628 --versionne NON JUGÉ sur ce poste : git absent');
+      else {
+        const depot = path.join(tmp, 'depot');
+        fs.mkdirSync(depot);
+        const git = (...a) => spawnSync('git', a, { cwd: depot, encoding: 'utf8' });
+        git('init', '-q');
+        fs.copyFileSync(path.join(rouge, 'variables.txt'), path.join(depot, 'variables.txt'));
+        fs.copyFileSync(path.join(rouge, 'note.md'), path.join(depot, 'note.md'));
+        git('add', '.');
+        const v = juger(depot, '--versionne');
+        const retroV = (v && v.findings || []).filter(x => x.sev === 'warn' && /TF-2628/.test(x.msg));
+        !v ? ko('TF-2628 --versionne : sortie illisible')
+          : v.verdict !== 'PASS' || retroV.length !== 2 ? ko(`TF-2628 --versionne : verdict ${v.verdict}, ${retroV.length} constat(s) rétrogradé(s) au lieu de 2 — ${JSON.stringify(v.findings).slice(0, 200)}`)
+            : ok('TF-2628 --versionne : le cas du 12/11 rend PASS sur le contenu suivi, les deux constats rétrogradés et nommés');
+      }
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
+}
+
 // TF-1702 (lot Produit-82 20261014b, RA-3) — LE PÉRIMÈTRE VERSIONNÉ. run-oracles et oracle-secrets
 // jugeaient le DISQUE : un `.env` ignoré par git rendait FAIL le verdict du dépôt. `--versionne` borne
 // le jugement à `git ls-files -co --exclude-standard`. Le banc monte un dépôt jetable : un `.env`
