@@ -5019,6 +5019,52 @@ else {
   } finally { fs.rmSync(copie, { recursive: true, force: true }); }
 }
 
+// TF-2608 (16/11/2026, RA-25 du lot marketing du 12/11/2026, seq 718) — LE MÊME DECK RENDAIT PASS OU FAIL SELON SON DOSSIER.
+// LE FAIT. Joué depuis le dossier de travail, le deck rendait PASS (S5 sur le lexique du destinataire, 3 termes) ; joué
+// depuis output/ du produit, FAIL (S5 sur le tableau de la marque, 9 constats bloquants). Le lexique du destinataire se
+// cherche depuis le dossier du deck PUIS depuis le dossier de travail ; la marque ne se cherchait QU'en remontant depuis
+// le deck. Un deck posé hors du produit, joué depuis le produit, ne voyait donc jamais la marque, et le PASS ne disait pas
+// ce qu'il n'avait pas lu. Le banc monte un produit jetable (une marque, un lexique) et joue le MÊME deck de jeu trois fois :
+//   (A) posé sous output/ du produit, joué depuis le produit : FAIL, S5 marque, référentiels annoncés ;
+//   (B) posé hors du produit (un dossier de travail voisin), joué depuis le produit : le MÊME verdict, les MÊMES constats S5
+//       et les MÊMES référentiels annoncés qu'en (A) — c'est le critère de la décision ;
+//   (C) posé hors du produit, joué depuis un dossier qui n'est pas le produit : aucun référentiel ne se résout ; le PASS
+//       l'ANNONCE (« marque = aucune » au constat, S5 (marque) NON jouée au non_juge) au lieu de se taire.
+{
+  const FX = path.join(SKILLDIR, 'fixtures');
+  const oracle = path.join(SKILLDIR, 'scripts', 'oracle-charte-pptx-semantique.mjs');
+  const sourceDeck = path.join(FX, 'charte-pptx-marque-red', 'deck.pptx');
+  const sourceMarque = path.join(FX, 'charte-pptx-marque-red', 'donnees', 'marque', 'MARQUE.md');
+  const sourceLexique = path.join(FX, 'charte-pptx-lexique-red', 'forge', 'LEXIQUE.json');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2608-'));
+  try {
+    const produit = path.join(tmp, 'produit'), travail = path.join(tmp, 'travail'), ailleurs = path.join(tmp, 'ailleurs');
+    for (const d of [path.join(produit, 'donnees', 'marque'), path.join(produit, 'forge'), path.join(produit, 'output'), travail, ailleurs]) fs.mkdirSync(d, { recursive: true });
+    fs.copyFileSync(sourceMarque, path.join(produit, 'donnees', 'marque', 'MARQUE.md'));
+    fs.copyFileSync(sourceLexique, path.join(produit, 'forge', 'LEXIQUE.json'));
+    const sousOutput = path.join(produit, 'output', 'deck.pptx'), horsProduit = path.join(travail, 'deck.pptx');
+    fs.copyFileSync(sourceDeck, sousOutput);
+    fs.copyFileSync(sourceDeck, horsProduit);
+    const jouer = (deck, cwd) => {
+      const r = spawnSync(process.execPath, [oracle, deck], { encoding: 'utf8', cwd, timeout: 120000 });
+      try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [], non_juge: [] }; }
+    };
+    const s5 = (j) => (j.findings || []).filter((f) => f.sev === 'bloquant' && /^S5 /.test(f.msg)).map((f) => f.msg.replace(/\(([A-Za-z]:)?[^)]*MARQUE\.md[^)]*\)/, '(MARQUE)')).sort();
+    const annonce = (j) => (((j.findings || []).find((f) => /référentiels de vocabulaire résolus/.test(f.msg)) || {}).msg || '');
+    const resolus = (j) => { const m = annonce(j).match(/lexique du destinataire = (.*?) ; marque = (.*?) \(recherche/); return m ? { lexique: m[1], marque: m[2] } : null; };
+    const norm = (p) => path.resolve(p).toLowerCase();
+    const a = jouer(sousOutput, produit), b = jouer(horsProduit, produit), c = jouer(horsProduit, ailleurs);
+    const ra = resolus(a), rb = resolus(b), rc = resolus(c);
+    const marqueAttendue = norm(path.join(produit, 'donnees', 'marque', 'MARQUE.md'));
+    if (a.verdict !== 'FAIL' || !s5(a).length) ko(`TF-2608 (A) : le deck sous output/ du produit doit être refusé par S5 (marque) — ${a.verdict}, ${s5(a).length} constat(s) S5`);
+    else if (!ra || norm(ra.marque) !== marqueAttendue) ko(`TF-2608 (A) : la marque résolue n'est pas annoncée (${annonce(a).slice(0, 160) || 'aucune annonce'})`);
+    else if (b.verdict !== a.verdict || JSON.stringify(s5(b)) !== JSON.stringify(s5(a))) ko(`TF-2608 (B) : le MÊME deck posé hors du produit et joué depuis le produit rend ${b.verdict} avec ${s5(b).length} constat(s) S5, contre ${a.verdict} avec ${s5(a).length} sous output/ — le verdict dépend encore de l'emplacement`);
+    else if (!rb || norm(rb.marque) !== marqueAttendue || norm(rb.lexique.split(' + ')[0]) !== norm(path.join(produit, 'forge', 'LEXIQUE.json')) && PILOT) ko(`TF-2608 (B) : les référentiels résolus ne sont pas annoncés comme sous output/ (${annonce(b).slice(0, 200) || 'aucune annonce'})`);
+    else if (c.verdict !== 'PASS' || !rc || rc.marque !== 'aucune' || !(c.non_juge || []).some((x) => /^S5 \(marque\) NON jouée/.test(x))) ko(`TF-2608 (C) : sans produit en vue, le PASS doit annoncer « marque = aucune » et dire S5 (marque) NON jouée — ${c.verdict}, annonce « ${annonce(c).slice(0, 120)} »`);
+    else ok(`TF-2608 : le même deck rend le même verdict (${a.verdict}) et les mêmes ${s5(a).length} constat(s) S5 sous output/ du produit et dans un dossier de travail voisin joué depuis le produit, la marque résolue est annoncée ; hors de tout produit, le PASS annonce « marque = aucune » et S5 (marque) NON jouée`);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
+
 console.log('SELF-TEST quality-oracles');
 oks.forEach(m => console.log('  ✅ ' + m));
 fails.forEach(m => console.log('  ❌ ' + m));
