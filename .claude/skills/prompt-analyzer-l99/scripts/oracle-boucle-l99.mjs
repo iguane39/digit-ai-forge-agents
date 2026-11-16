@@ -55,6 +55,9 @@
 //       sa préférence (`gardee` ou `corrigee`), ses deux notes et l'ordre de lecture (alterné) ; le verdict suit la
 //       majorité des voix (à égalité, l'écart moyen des notes) et une passe dont le verdict est `gardee` est
 //       rejetée. B8 ne joue plus : la décision de garder suit ce jugement, la note absolue reste affichée.
+//   B17 `fiche_premisses: true` (TF-2236) : le journal porte `fiche_premisses`, liste des prémisses
+//       d'environnement vérifiées une fois par boucle (`commande`, `sortie`, `heure`), et chaque relecteur la
+//       reçoit (`relecteur.fiche_remise: true`) avec le droit de vérifier tout ce qu'elle ne couvre pas.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -70,6 +73,7 @@ const NJ = [
   "la qualité du prompt réécrit lui-même (→ relecteur, puis humain)",
   "l'origine d'un défaut grave (correction ou antérieur) : l'oracle lit la déclaration, il ne rejoue pas le test de citation contre le texte de la passe précédente",
   "la présentation réelle sans étiquette et l'alternance de l'ordre de lecture du jugement apparié : l'oracle lit la déclaration",
+  "l'exhaustivité de la fiche des prémisses : l'oracle ne sait pas quelles prémisses d'environnement le prompt pose",
 ];
 const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
@@ -296,6 +300,22 @@ export function juger(j) {
       const verdict = pourCorrigee > pourGardee ? 'corrigee' : pourGardee > pourCorrigee ? 'gardee' : ecart > 0 ? 'corrigee' : 'gardee';
       if (jg.verdict !== verdict) ko('B16', lieu, `verdict « ${jg.verdict} », les voix (${pourCorrigee} pour la corrigée, ${pourGardee} pour la gardée, écart moyen ${ecart}) donnent « ${verdict} »`);
       if (verdict === 'gardee' && !estRejetee(p)) ko('B16', `passes[${i}]`, 'le jugement apparié préfère la version gardée : la passe est à rejeter');
+    });
+  }
+
+  // B17 — fiche des prémisses d'environnement (TF-2236) : l'orchestrateur vérifie une fois par boucle, par commande,
+  // les prémisses que les relecteurs revérifiaient chacun (112 de leurs 165 appels d'outil le 06/11/2026), et remet la
+  // fiche à chaque relecteur, qui garde le droit de vérifier tout ce qu'elle ne couvre pas. Une prémisse sans commande,
+  // sortie et heure n'y entre pas : une prémisse fausse de la fiche aveuglerait tous les relecteurs à la fois.
+  if (a && a.fiche_premisses === true) {
+    const fiche = j.fiche_premisses;
+    if (!Array.isArray(fiche)) ko('B17', 'fiche_premisses', 'fiche des prémisses absente : l orchestrateur l écrit une fois par boucle, avant la passe 1 (liste vide si le prompt ne pose aucune prémisse d environnement)');
+    else fiche.forEach((e, k) => {
+      if (!e || !propre(e.commande) || !propre(e.sortie) || !propre(e.heure) || Number.isNaN(Date.parse(e.heure)))
+        ko('B17', `fiche_premisses[${k}]`, 'prémisse sans commande, sortie ou heure (ISO 8601) : une prémisse non mesurée n entre pas dans la fiche');
+    });
+    passes.forEach((p, i) => {
+      if (!(p.relecteur && p.relecteur.fiche_remise === true)) ko('B17', `passes[${i}].relecteur`, 'fiche des prémisses non remise au relecteur (fiche_remise: true, même si la fiche est vide)');
     });
   }
 
@@ -593,6 +613,24 @@ function selfTest() {
   rougeB('B16 verdict qui contredit les voix', 'B16', apparie, (j) => { j.passes[1].jugement_apparie.verdict = 'gardee'; j.passes[1].rejetee = true; j.passes[1].decision = 'rejeter'; j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' }; });
   rougeB('B16 préférence des relecteurs pour la gardée, passe gardée quand même', 'B16', apparieGardee, (j) => { j.passes[1].rejetee = false; j.passes[1].decision = 'arreter'; j.arret = { passe: 2, raison: 'zero_majeur' }; j.score_affiche = { valeur: 91, nature: 'mesure' }; });
   rougeB('B5 arrêt « regression » sans jugement apparié qui préfère la gardée', 'B5', apparieGardee, (j) => { j.passes[1].jugement_apparie.verdict = 'corrigee'; j.passes[1].jugement_apparie.relecteurs.forEach((r) => { r.prefere = 'corrigee'; }); });
+  // TF-2236 (16/11/2026) : la fiche des prémisses d'environnement. Le 06/11/2026, les 10 relecteurs ont revérifié chacun
+  // `bootstrap.mjs --pull` et `allouer-indice.mjs` (10 sur 10) et les règles R-4 et R-25 : 112 de leurs 165 appels d'outil.
+  const fiche = () => {
+    const j = essai();
+    j.arbitre.fiche_premisses = true;
+    j.fiche_premisses = [
+      { commande: 'node bootstrap.mjs --pull', sortie: 'exit 0, 14 dépôts à jour', heure: '2026-11-16T10:02:11+01:00' },
+      { commande: 'node scripts/allouer-indice.mjs --dossier output/03-etudes --jour 20261116', sortie: 'b', heure: '2026-11-16T10:02:40+01:00' },
+    ];
+    j.passes.forEach((p) => { p.relecteur.fiche_remise = true; });
+    return j;
+  };
+  cas.push({ nom: 'TF-2236 vert — fiche de 2 prémisses mesurées, remise aux relecteurs des 2 passes', j: fiche(), attendu: [] });
+  cas.push({ nom: 'TF-2236 vert — fiche vide mais déclarée et remise : le prompt ne pose aucune prémisse d environnement', j: (() => { const j = fiche(); j.fiche_premisses = []; return j; })(), attendu: [] });
+  rougeB('B17 fiche absente du journal', 'B17', fiche, (j) => { delete j.fiche_premisses; });
+  rougeB('B17 prémisse sans sortie', 'B17', fiche, (j) => { delete j.fiche_premisses[0].sortie; });
+  rougeB('B17 prémisse sans heure lisible', 'B17', fiche, (j) => { j.fiche_premisses[1].heure = 'ce matin'; });
+  rougeB('B17 fiche non remise au relecteur de la passe 2', 'B17', fiche, (j) => { delete j.passes[1].relecteur.fiche_remise; });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {
