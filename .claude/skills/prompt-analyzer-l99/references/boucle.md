@@ -97,7 +97,9 @@ le reste de l'arbitre.
   est sous ce bruit, et le minimum de 2 notes bruitées l'est plus que leur moyenne. Chaque passe
   porte `scores_relecteurs` (un nombre par relecteur, clé que portent déjà 85 des 143 passes des journaux
   relevés le 16/11/2026 ; `scores`, en tableau ou en objet, est lu de même) ; son `score_mesure` en est la
-  moyenne, et B13 le contrôle.
+  moyenne, et B13 le contrôle. La règle d'agrégation s'écrit ainsi à l'arbitre avant la passe 1
+  (TF-2633) : le 12/11/2026, des notes de 74 et 76 puis de 83 et 74 valaient 75 puis 78 à la moyenne
+  arrondie vers le bas et 74 puis 74 au minimum, et le journal ne disait pas laquelle décidait de l'arrêt.
   B8 tolère une baisse jusqu'à l'écart des relecteurs de la passe gardée (le plus haut de ses
   `scores_relecteurs` moins le plus bas), sans plafond fixe ; avec un seul relecteur, cet écart est nul et la
   baisse stricte s'applique. Une baisse accompagnée d'un bloquant retenu, donc d'un plafond de 40,
@@ -225,6 +227,16 @@ le reste de l'arbitre.
    que les défauts graves : toute NOTE du relecteur ou du vérificateur que la correction reprend
    (chiffre, citation, renvoi) se recompte aussi avant d'y entrer, et se consigne à
    `notes_reprises` (TF-2202).
+   **Un recompte qui lit un champ de données lit aussi sa règle d'écriture** (TF-2673) : un champ
+   proche du fait n'est pas le fait. Le recompte nomme le champ lu (`champ`), lit la règle qui
+   l'écrit (`regle_ecriture`, commande et résultat) et, quand le champ porte un fait, le croise avec
+   une seconde source indépendante (`seconde_source`, commande et résultat). Le fait : le 16/11/2026,
+   un relecteur affirmait 14 clips parlés en français ; le recompte a lu le champ `sans_parole` de
+   `data/v2/clips.json` (14 à faux) sans lire sa règle d'écriture, or ce champ n'est vrai que pour une
+   description validée, et `DESCRIPTIONS-CLIPS.md` relève « musique seule, sans parole » sur les 15
+   clips. Une décision a été posée sur cette prémisse fausse, puis remplacée. L'oracle joue B20 sur
+   tout recompte qui déclare `champ` ; `porte_un_fait` : `false`, posé au recompte, dispense de la
+   seconde source.
 4. **Mesurer la longueur** du prompt en mots.
 5. **Décider la suite.** Une passe dont le prompt grossit de plus de 15 % sans clore un majeur
    est REJETÉE : on repart de la version précédente. Une passe dont le score mesuré baisse sous
@@ -284,7 +296,7 @@ boucle sans journal PASS n'est pas un mode boucle.
 Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
 `recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
-`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16 ; avec `fiche_premisses` (TF-2236), B17 ; avec `type_relecteur` (TF-2241), B18 ; avec `verification_diff` (TF-2242), B19.
+`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16 ; avec `fiche_premisses` (TF-2236), B17 ; avec `type_relecteur` (TF-2241), B18 ; avec `verification_diff` (TF-2242), B19 ; et, pour tout recompte qui déclare `champ` (TF-2673), B20.
 
 ## Annexe — sortie demandée au relecteur
 

@@ -5,7 +5,7 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.12.0"
+  version: "2.13.0"
   updated: "2026-11-16"
 ---
 
@@ -78,6 +78,10 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    **L'analyse elle-même**, écrite dans un tel projet, prend le type « Revue » du registre :
    `<Projet> - Revue - Prompt <objet> passé au crible L99 - AAAAMMJJ<indice>.md`. « Analyse »
    n'est pas au registre des types (TF-1975 : trois analyses ainsi typées chez un produit).
+   **Le chemin du journal borne l'objet** (TF-2632) : R-4 plafonne un chemin à 116 caractères utiles
+   (150 moins les 34 du sidecar d'oracle), et le journal `<analyse>.boucle.json` ajoute 12 caractères au
+   nom de l'analyse. L'`<objet>` tient en 4 mots au plus, et le chemin du journal se mesure avant
+   l'écriture : au-delà de 116 caractères, l'objet se raccourcit.
    Détail : `references/couches.md`, section « Nom du livrable ».
 10. **Mode boucle : le juge n'est jamais l'auteur** (TF-1831) : en mode L99 boucle, chaque passe
    est notée par un agent neuf qui ne voit ni l'analyse ni les passes précédentes ; chaque défaut
@@ -112,7 +116,14 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    <fichier>`), se corrige jusqu'à l'exit 0, et ne s'**affiche qu'après**, telle quelle. Le fait : le
    14/11/2026, chez un produit, une revue L99 en 8 chapitres affichée sans fichier ni préjugement a été
    refusée par le hook de fin de tour (S1, S4) faute de blocs de restitution, et ce SKILL.md ne le
-   rappelait pas. Hors de la Factory, aucune restitution n'est prescrite ici.
+   rappelait pas. **Le tour qui attend les relecteurs aveugles** (TF-2669) : après leur lancement en
+   arrière-plan, le tour ne se clôt jamais sur un message d'attente, que le hook refuse (S1, S4) ; il
+   rend un point d'étape préjugé (`gabarits/RESTITUTION.md`, section « Point d'étape »), dont le
+   bloc 1 porte la mention « point d'étape » et dont le bloc 2, « Ce qui reste à mesurer, et par
+   quoi », nomme la note attendue de chaque relecteur et l'outil qui la rendra,
+   `scripts/oracle-boucle-l99.mjs`. Le tour qui reçoit les notes rend la restitution complète. Le
+   fait : le 16/11/2026, chez un produit, le tour qui attendait deux relecteurs s'est clos sur une
+   attente, refusée par S1 et S4. Hors de la Factory, aucune restitution n'est prescrite ici.
 
 ## Les 8 couches (vue d'ensemble)
 

@@ -156,6 +156,20 @@ n'est pas au registre des types (36 types, forge-organization 1.6.0), et rien ne
 L'analyse est une revue d'un existant contre une grille : dans un projet de la factory, son nom
 est `<Projet> - Revue - Prompt <objet> passé au crible L99 - AAAAMMJJ<indice>.md`.
 
+**Le chemin du journal borne l'objet** (TF-2632, 16/11/2026). R-4 mesure le chemin relatif de
+chaque fichier d'`output\` avec le sidecar d'oracle (`.oracles/` et `.oracles-historique.jsonl`, 34
+caractères) sous un plafond de 150, soit **116 caractères utiles**. Le fichier le plus long d'une
+analyse en mode boucle est son journal `<analyse>.boucle.json`, qui ajoute 12 caractères au nom de
+l'analyse : c'est lui qu'on mesure, dossier compris. Le fait : le 12/11/2026, chez un produit, le nom
+prescrit par le point 9 de `SKILL.md` a donné un chemin de 149 caractères pour l'analyse, R-4 FAIL
+(mesure du retour, non rejouée ici). Rejoué le 16/11/2026 sur `oracle-conformite-projet --regles R-4`
+avec le projet `digit-ai-marketing` (18 caractères) : un objet de trois mots, « de relance LinkedIn »,
+donne un journal de 119 caractères, FAIL ; l'objet « relance » en donne 107, PASS. L'`<objet>` tient
+donc en 4 mots au plus, et le nombre de mots ne suffit pas : sous `output\03-etudes\`, projet et objet
+tiennent à 34 caractères au plus à eux deux. Le prompt réécrit et le contrat de sortie le disent, et
+le producteur mesure le chemin du journal avant d'écrire.
+Exemple rejoué sous R-4 : `output/03-etudes/digit-ai-marketing - Revue - Prompt relance passé au crible L99 - 20261116a.md.boucle.json`
+
 **Borne** : hors factory, le Ch8 reprend la convention que le projet déclare, ou n'en prescrit
 aucune. L99 **cite** R-4 et R-25, il ne les vérifie pas : le contrôle appartient au producteur,
 par la conformité du pilot.

@@ -4,7 +4,7 @@
 // TF-1975 (29/10/2026) : le type du rapport d'analyse est « Revue », au registre des types ; le
 // SKILL.md et couches.md le prescrivent tous deux, et un type « Analyse » prescrit serait vu.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -118,6 +118,55 @@ for (const [tf, cle, regle] of REGLES_REVUE) {
     [`${tf} rouge — la puce retirée de boucle.md est vue`, !puce.test(sansPuce(boucle))],
   );
 }
+// TF-2632 (16/11/2026) : le nom prescrit au point 9 donnait un journal au-delà du plafond de chemin de R-4 (116 caractères
+// utiles : 150 moins les 34 du sidecar d'oracle). SKILL.md et couches.md rappellent le plafond, le suffixe `.boucle.json` et
+// l'objet en 4 mots ; couches.md porte un exemple dont le chemin de journal se mesure ici (même arithmétique que
+// `oracle-conformite-projet`, rejoué le 16/11 : 107 caractères PASS, 119 FAIL).
+const PLAFOND_UTILE_R4 = 116;
+const regleChemin = (texte) => /TF-2632/.test(texte) && /116 caractères/.test(texte) && /\.boucle\.json/.test(texte) && /4 mots/.test(texte);
+const exempleRejoue = (texte) => (texte.match(/Exemple rejoué sous R-4 : `([^`]+)`/) || [, ''])[1];
+const cheminAdmissible = (chemin) => /^output\/[^/]+\/.+ - Revue - Prompt .+ passé au crible L99 - \d{8}[a-z]\.md\.boucle\.json$/.test(chemin) && chemin.length <= PLAFOND_UTILE_R4;
+const exemple = exempleRejoue(couches);
+cas.push(
+  ['TF-2632 vert — SKILL.md et couches.md rappellent le plafond de 116 caractères, le suffixe .boucle.json et l objet en 4 mots', regleChemin(skill) && regleChemin(couches)],
+  ['TF-2632 vert — l exemple de couches.md suit le gabarit du point 9 et son journal tient sous le plafond', cheminAdmissible(exemple)],
+  ['TF-2632 rouge — le même gabarit avec un objet de 8 mots dépasse le plafond et est refusé', !cheminAdmissible(exemple.replace(' relance ', ' relance des prospects LinkedIn du secteur industriel '))],
+  ['TF-2632 rouge — le paragraphe retiré de couches.md est vu', !regleChemin(couches.replace(/\*\*Le chemin du journal borne l'objet\*\*[\s\S]*?(?=\*\*Borne\*\* : hors factory)/, ''))],
+  ['TF-2632 rouge — la phrase retirée de SKILL.md est vue', !regleChemin(skill.replace(/\*\*Le chemin du journal borne l'objet\*\*[\s\S]*?(?=\n\s+Détail : `references\/couches\.md`, section « Nom du livrable »)/, ''))],
+);
+// TF-2669 (16/11/2026) : le tour qui attend les relecteurs aveugles rend un point d'étape préjugé au lieu de se clore sur une
+// attente (refusée par S1 et S4). Le point 12 de SKILL.md le prescrit, nomme la mesure attendue et l'outil ; le retrait de la
+// phrase se voit. Deux fixtures, un point d'étape et un message d'attente, sont jugées par `oracle-synthese` du pilot quand il
+// est joignable (FORGE_ROOT, ou le dossier parent du dépôt) : le premier ne doit pas être refusé par S1 et S4, le second doit
+// l'être. Pilot absent : les deux cas se disent SKIP, sans échec ni faux vert.
+const regleAttente = (texte) => /TF-2669/.test(texte) && /point d'étape/.test(texte) && /Ce qui reste à mesurer, et par\s+quoi/.test(texte)
+  && /scripts\/oracle-boucle-l99\.mjs/.test(texte) && /S1, S4/.test(texte);
+const ORACLE_SYNTHESE = path.join(process.env.FORGE_ROOT || path.resolve(ICI, '..', '..', '..', '..', '..'), 'digit-ai-factory', 'oracles', 'oracle-synthese.mjs');
+const reglesVues = (fixture) => {
+  const rs = spawnSync(process.execPath, [ORACLE_SYNTHESE, path.join(ICI, '..', 'fixtures', fixture)], { encoding: 'utf8', timeout: 120000 });
+  try { return Object.fromEntries(JSON.parse(rs.stdout).findings.filter((x) => ['S1', 'S4'].includes(x.regle)).map((x) => [x.regle, x.statut])); } catch { return null; }
+};
+cas.push(
+  ['TF-2669 vert — SKILL.md prescrit le point d\'étape préjugé après le lancement des relecteurs, avec la mesure et l outil', regleAttente(skill)],
+  ['TF-2669 rouge — la phrase retirée du point 12 est vue', !regleAttente(skill.replace(/\*\*Le tour qui attend les relecteurs aveugles\*\*[\s\S]*?(?=Hors de la Factory, aucune restitution)/, ''))],
+);
+if (existsSync(ORACLE_SYNTHESE)) {
+  const vert = reglesVues('point-etape-vert.md'), rouge = reglesVues('attente-rouge.md');
+  cas.push(
+    ['TF-2669 vert — un point d\'étape (bloc 2 « ce qui reste à mesurer », outil nommé) n est refusé ni par S1 ni par S4', !!vert && vert.S1 === 'PASS' && vert.S4 === 'PASS'],
+    ['TF-2669 rouge — un message d\'attente est refusé par S1 et par S4', !!rouge && rouge.S1 === 'FAIL' && rouge.S4 === 'FAIL'],
+  );
+} else console.log('SKIP TF-2669 — oracle-synthese du pilot introuvable (FORGE_ROOT) : le point d\'étape et l attente ne sont pas jugés ici');
+// TF-2673 (16/11/2026) : à l'étape 3 de boucle.md, un recompte qui lit un champ de données lit aussi sa règle d'écriture et le
+// croise avec une seconde source quand le champ porte un fait ; l'oracle (B20) le joue sur la fixture du journal (le banc de
+// l'oracle porte les cas rouges, ici la phrase et le retrait de la phrase).
+const regleChamp = (texte) => /TF-2673/.test(texte) && /lit aussi sa règle d'écriture/.test(texte) && /seconde source/.test(texte)
+  && /`regle_ecriture`/.test(texte) && /`seconde_source`/.test(texte);
+cas.push(
+  ['TF-2673 vert — boucle.md prescrit à l étape 3 la lecture de la règle d écriture et la seconde source', regleChamp(boucle)],
+  ['TF-2673 rouge — la phrase retirée de boucle.md est vue', !regleChamp(boucle.replace(/\*\*Un recompte qui lit un champ de données[\s\S]*?(?=\n4\. \*\*Mesurer la longueur)/, ''))],
+  ['TF-2673 vert — l oracle joue B20', /B20/.test(oracleNotes)],
+);
 for (const [libelle, tenu] of cas) console.log(`${tenu ? 'ok  ' : 'FAIL'} ${libelle}`);
 const echecs = cas.filter(([, tenu]) => !tenu).length;
 process.exit(r.status === 0 && echecs === 0 ? 0 : 1);
