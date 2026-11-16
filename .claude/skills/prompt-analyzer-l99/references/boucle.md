@@ -113,6 +113,16 @@ n'est pas fini (P5 de l'étude).
    que les défauts graves : toute NOTE du relecteur ou du vérificateur que la correction reprend
    (chiffre, citation, renvoi) se recompte aussi avant d'y entrer, et se consigne à
    `notes_reprises` (TF-2202).
+   **Un recompte qui lit un champ de données lit aussi sa règle d'écriture** (TF-2673) : un champ
+   proche du fait n'est pas le fait. Le recompte nomme le champ lu (`champ`), lit la règle qui
+   l'écrit (`regle_ecriture`, commande et résultat) et, quand le champ porte un fait, le croise avec
+   une seconde source indépendante (`seconde_source`, commande et résultat). Le fait : le 16/11/2026,
+   un relecteur affirmait 14 clips parlés en français ; le recompte a lu le champ `sans_parole` de
+   `data/v2/clips.json` (14 à faux) sans lire sa règle d'écriture, or ce champ n'est vrai que pour une
+   description validée, et `DESCRIPTIONS-CLIPS.md` relève « musique seule, sans parole » sur les 15
+   clips. Une décision a été posée sur cette prémisse fausse, puis remplacée. L'oracle joue B14 sur
+   tout recompte qui déclare `champ` ; `porte_un_fait` : `false`, posé au recompte, dispense de la
+   seconde source.
 4. **Mesurer la longueur** du prompt en mots.
 5. **Décider la suite.** Une passe dont le prompt grossit de plus de 15 % sans clore un majeur
    est REJETÉE : on repart de la version précédente. Une passe dont le score mesuré baisse sous

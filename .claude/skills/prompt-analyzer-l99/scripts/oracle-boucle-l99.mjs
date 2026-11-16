@@ -37,6 +37,12 @@
 //       correction (`cause_regression.nature = "defaut_cree"`, recomptée) ouvre UNE passe de reprise
 //       (`reprise: true`, `reprise_de: <n>`) qui ne corrige que ce défaut ; pas de seconde reprise,
 //       pas de reprise sans cause ; la reprise ne compte pas dans la borne.
+// Règle de la revue du 16/11/2026 (retour du 16/11, TF-2673), jouée seulement si un recompte déclare `champ` :
+//   B14 un recompte qui lit un champ de données lit aussi sa règle d'écriture (`regle_ecriture`, commande +
+//       résultat) et, quand le champ porte un fait, le croise avec une seconde source (`seconde_source`,
+//       commande + résultat) ; `porte_un_fait: false` dispense de la seconde source. Un champ proche du fait
+//       n'est pas le fait : le 16/11/2026, `sans_parole` à faux sur 14 clips a fondé une décision sur une
+//       prémisse fausse, la règle d'écriture du champ n'ayant pas été lue.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -50,6 +56,7 @@ const NJ = [
   "l'aveuglement réel du relecteur : l'oracle lit la déclaration, il ne lit pas le transcript de l'agent",
   "la justesse des sévérités et des scores attribués par le relecteur",
   "la qualité du prompt réécrit lui-même (→ relecteur, puis humain)",
+  "un recompte qui lit un champ de données sans le déclarer (`champ`) : B14 ne voit que les recomptes qui le déclarent",
 ];
 const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
@@ -246,6 +253,22 @@ export function juger(j) {
     });
   }
 
+  // B14 — un recompte qui lit un champ de données lit aussi sa règle d'écriture, et croise le fait (TF-2673)
+  const preuve = (x) => !!x && propre(x.commande) && propre(x.resultat);
+  passes.forEach((p, i) => {
+    const recomptes = [
+      ...(p.defauts || []).map((d, k) => [`passes[${i}].defauts[${k}].recompte`, d.recompte]),
+      ...(p.notes_reprises || []).map((n, k) => [`passes[${i}].notes_reprises[${k}].recompte`, n.recompte]),
+    ];
+    recomptes.forEach(([lieu, rc]) => {
+      if (!rc || !propre(rc.champ)) return;
+      if (!preuve(rc.regle_ecriture))
+        ko('B14', `${lieu}.regle_ecriture`, `recompte du champ « ${rc.champ} » sans la règle qui l'écrit (commande et résultat) : un champ proche du fait n'est pas le fait`);
+      if (rc.porte_un_fait !== false && !preuve(rc.seconde_source))
+        ko('B14', `${lieu}.seconde_source`, `recompte du champ « ${rc.champ} », qui porte un fait, sans seconde source (commande et résultat) ; \`porte_un_fait: false\` dispense`);
+    });
+  });
+
   return f;
 }
 
@@ -359,6 +382,24 @@ function selfTest() {
   rougeB('B12 seconde reprise', 'B12', repriseRejetee, (j) => {
     j.passes[2].cause_regression = { nature: 'defaut_cree', citation: 'x', recompte: { commande: 'git grep x', resultat: '0' } };
     j.passes.push({ ...j.passes[2], n: 4, reprise_de: 3, cause_regression: undefined });
+  });
+  // TF-2673 (16/11/2026) : un recompte qui lit un champ de données lit aussi sa règle d'écriture et croise le fait avec
+  // une seconde source. Cas d'origine : `sans_parole` à faux sur 14 clips, lu sans sa règle (vraie pour une description
+  // validée seulement), alors que DESCRIPTIONS-CLIPS.md relevait « musique seule » sur les 15.
+  const champ = () => {
+    const j = base();
+    const d = j.passes[0].defauts[0];
+    d.recompte = { ...d.recompte, champ: 'data/v2/clips.json : sans_parole',
+      regle_ecriture: { commande: 'git grep -n "sans_parole" scripts/', resultat: 'écrit à vrai seulement pour une description validée (scripts/valider.mjs:41)' },
+      seconde_source: { commande: 'git grep -c "musique seule" DESCRIPTIONS-CLIPS.md', resultat: '15 clips relevés sans parole' } };
+    return j;
+  };
+  cas.push({ nom: 'TF-2673 recompte d un champ avec sa règle d écriture et une seconde source, vert', j: champ(), attendu: [] });
+  cas.push({ nom: 'TF-2673 champ sans fait (porte_un_fait false) : la règle d écriture suffit, vert', j: (() => { const j = champ(); delete j.passes[0].defauts[0].recompte.seconde_source; j.passes[0].defauts[0].recompte.porte_un_fait = false; return j; })(), attendu: [] });
+  rougeB('B14 champ lu sans sa règle d écriture (le recompte du 16/11)', 'B14', champ, (j) => { delete j.passes[0].defauts[0].recompte.regle_ecriture; });
+  rougeB('B14 champ porteur d un fait sans seconde source', 'B14', champ, (j) => { delete j.passes[0].defauts[0].recompte.seconde_source; });
+  rougeB('B14 champ d une note reprise lu sans sa règle d écriture', 'B14', notes, (j) => {
+    j.passes[1].notes_reprises[0].recompte = { ...j.passes[1].notes_reprises[0].recompte, champ: 'data/v2/clips.json : sans_parole', porte_un_fait: false };
   });
   let ok = 0;
   const lignes = [];

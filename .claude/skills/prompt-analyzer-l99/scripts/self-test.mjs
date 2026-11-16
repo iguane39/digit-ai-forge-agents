@@ -136,6 +136,16 @@ if (existsSync(ORACLE_SYNTHESE)) {
     ['TF-2669 rouge — un message d\'attente est refusé par S1 et par S4', !!rouge && rouge.S1 === 'FAIL' && rouge.S4 === 'FAIL'],
   );
 } else console.log('SKIP TF-2669 — oracle-synthese du pilot introuvable (FORGE_ROOT) : le point d\'étape et l attente ne sont pas jugés ici');
+// TF-2673 (16/11/2026) : à l'étape 3 de boucle.md, un recompte qui lit un champ de données lit aussi sa règle d'écriture et le
+// croise avec une seconde source quand le champ porte un fait ; l'oracle (B14) le joue sur la fixture du journal (le banc de
+// l'oracle porte les cas rouges, ici la phrase et le retrait de la phrase).
+const regleChamp = (texte) => /TF-2673/.test(texte) && /lit aussi sa règle d'écriture/.test(texte) && /seconde source/.test(texte)
+  && /`regle_ecriture`/.test(texte) && /`seconde_source`/.test(texte);
+cas.push(
+  ['TF-2673 vert — boucle.md prescrit à l étape 3 la lecture de la règle d écriture et la seconde source', regleChamp(boucle)],
+  ['TF-2673 rouge — la phrase retirée de boucle.md est vue', !regleChamp(boucle.replace(/\*\*Un recompte qui lit un champ de données[\s\S]*?(?=\n4\. \*\*Mesurer la longueur)/, ''))],
+  ['TF-2673 vert — l oracle joue B14', /B14/.test(oracleNotes)],
+);
 for (const [libelle, tenu] of cas) console.log(`${tenu ? 'ok  ' : 'FAIL'} ${libelle}`);
 const echecs = cas.filter(([, tenu]) => !tenu).length;
 process.exit(r.status === 0 && echecs === 0 ? 0 : 1);
