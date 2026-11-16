@@ -48,6 +48,12 @@
 //        une formation sans tableau de public par module) est refusée pour sa raison. SKILL.md prescrit la
 //        commande à l'étape 1.
 //
+//   C7 — le gras Unicode (TF-2637, 16/11/2026) : le preset « Publication réseau » dit que le script décompose
+//        en NFD, nomme l'avertissement `lettres_restees_maigres` et rappelle la mauvaise lecture du gras
+//        Unicode par les lecteurs d'écran ; l'auto-test du script passe, et une copie du script sans la
+//        décomposition NFD le fait échouer. Le fait : « é » et « è » sortaient maigres au milieu du gras
+//        et l'auto-test rendait « accents préservés » PASS.
+//
 // DOUBLE SENS. C1, C3, C4, C5 et C6 sont rejoués sur des FIXTURES ROUGES synthétiques : si une fixture
 // rouge ne rougit pas, le contrôle correspondant est aveugle et le self-test échoue de
 // lui-même. La fixture VERTE est le skill réel.
@@ -300,6 +306,30 @@ function verifierCadrageC6() {
   return findings;
 }
 
+// ---------------------------------------------------------------- C7 : le gras Unicode (TF-2637)
+// Le preset « Publication réseau » dit comment le script met en gras (NFD, diacritique combinant) et
+// rappelle la mauvaise lecture du gras Unicode par les lecteurs d'écran ; l'auto-test Python du script
+// passe, et une copie du script SANS la décomposition NFD le fait échouer (le banc n'est pas aveugle).
+const SCRIPT_GRAS = path.join(SKILL_DIR, 'scripts', 'linkedin_unicode_formatting.py');
+const CLAUSES_GRAS = [
+  ['décompose le texte en NFD', "le preset ne dit plus que le script décompose en NFD et garde le diacritique combinant"],
+  ['lettres_restees_maigres', "le preset ne nomme plus l'avertissement sur les lettres qui restent maigres"],
+  ["lecteurs d'écran", "le preset ne rappelle plus la mauvaise lecture du gras Unicode par les lecteurs d'écran"],
+];
+
+function verifierGras(texte, etiquette) {
+  const norm = texte.replace(/\s+/g, ' ');
+  return CLAUSES_GRAS.filter(([clause]) => !norm.includes(clause)).map(([clause, sens]) => `${etiquette} — « ${clause} » absent : ${sens}`);
+}
+
+function jouerScriptGras(fichier) {
+  for (const exe of ['python', 'python3', 'py']) {
+    const r = spawnSync(exe, [fichier], { encoding: 'utf8', timeout: 30000, env: { ...process.env, PYTHONUTF8: '1' } });
+    if (!r.error) return { code: r.status, sortie: (r.stdout || '') + (r.stderr || '') };
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------- C2 : noms interdits
 function chargerTable() {
   for (const p of PISTES_TABLE) {
@@ -477,6 +507,44 @@ if (!fs.existsSync(presetsPath)) {
 // C6 — le fichier de cadrage de l'étape 1
 findings.push(...verifierCadrageC6());
 
+// C7 — le gras Unicode : le preset (vert, puis une clause retirée à la fois), puis le script (vert, puis muté)
+let c7Jouee = false;
+if (!fs.existsSync(presetsPath) || !fs.existsSync(SCRIPT_GRAS)) {
+  nonJuge.push('C7 NON JOUÉE : references/presets-livrables.md ou scripts/linkedin_unicode_formatting.py introuvable.');
+} else {
+  c7Jouee = true;
+  const proseGras = fs.readFileSync(presetsPath, 'utf8');
+  findings.push(...verifierGras(proseGras, 'digit-ai-communication/references/presets-livrables.md'));
+  for (const [clause] of CLAUSES_GRAS) {
+    const mutant = proseGras.replace(/\s+/g, ' ').split(clause).join('XXX');
+    if (!verifierGras(mutant, 'fixture-rouge-gras').some((x) => x.includes(`« ${clause} »`))) {
+      findings.push(`fixture-rouge — C7 est AVEUGLE : la clause « ${clause} » retirée du preset n'a pas été détectée`);
+    }
+  }
+  const vertGras = jouerScriptGras(SCRIPT_GRAS);
+  if (vertGras === null) {
+    c7Jouee = false;
+    nonJuge.push("C7 : l'auto-test du script de gras n'est pas joué, aucun interpréteur Python (python, python3, py) trouvé.");
+  } else {
+    if (vertGras.code !== 0) findings.push(`C7 sens vert : l'auto-test de linkedin_unicode_formatting.py rend le code ${vertGras.code} — ${vertGras.sortie.split(/\r?\n/).filter(Boolean).slice(-2).join(' · ')}`);
+    const dossierGras = fs.mkdtempSync(path.join(os.tmpdir(), 'gras-'));
+    try {
+      const source = fs.readFileSync(SCRIPT_GRAS, 'utf8');
+      const mutantSrc = source.replace("unicodedata.normalize('NFD', text)", 'text');
+      if (mutantSrc === source) {
+        findings.push("C7 : la mutation « sans décomposition NFD » n'a rien changé au script — la fixture est cassée");
+      } else {
+        const f = path.join(dossierGras, 'linkedin_unicode_formatting.py');
+        fs.writeFileSync(f, mutantSrc, 'utf8');
+        const rouge = jouerScriptGras(f);
+        if (rouge !== null && rouge.code === 0) findings.push("fixture-rouge — C7 est AVEUGLE : le script sans décomposition NFD passe encore son auto-test (une lettre accentuée maigre n'est pas vue)");
+      }
+    } finally {
+      try { fs.rmSync(dossierGras, { recursive: true, force: true }); } catch { /* rien */ }
+    }
+  }
+}
+
 // C2 — noms interdits
 const table = chargerTable();
 let c2Jouee = false;
@@ -510,7 +578,7 @@ if (!table) {
 }
 
 if (findings.length) verdict = 'FAIL';
-else if (!c2Jouee || !c3Jouee || !c4Jouee || !c5Jouee) verdict = 'SKIP';
+else if (!c2Jouee || !c3Jouee || !c4Jouee || !c5Jouee || !c7Jouee) verdict = 'SKIP';
 
 const code = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2;
 process.stdout.write(JSON.stringify({
@@ -524,6 +592,7 @@ process.stdout.write(JSON.stringify({
     C4_contrats_publication: c4Jouee ? 'jouée' : 'NON jouée (contrats-publication.json ou presets-livrables.md absent)',
     C5_preset_formation: c5Jouee ? 'jouée' : 'NON jouée (presets-livrables.md absent)',
     C6_cadrage_etape_1: 'jouée',
+    C7_gras_unicode: c7Jouee ? 'jouée' : 'NON jouée (preset, script ou interpréteur Python absent)',
   },
   verdict,
   findings,

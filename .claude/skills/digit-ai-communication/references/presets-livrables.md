@@ -61,7 +61,14 @@ de marque (`MARQUE.md` de l'émetteur) : jamais de « je », un fait ou une anno
 [references/structures-publication.md](structures-publication.md) — « Les N points »,
 « Retour d'expérience », « Analyse comparative ». La mise en gras passe par
 [scripts/linkedin_unicode_formatting.py](../scripts/linkedin_unicode_formatting.py) : LinkedIn
-ne rend pas le gras Markdown au copier-coller.
+ne rend pas le gras Markdown au copier-coller. Le script décompose le texte en NFD : une lettre
+accentuée sort en gras avec son diacritique combinant, et `lettres_restees_maigres(texte)` nomme les
+rares lettres qui ne s'y prêtent pas (« œ », « æ », lettres non latines). Le gras Unicode n'est pas
+du gras : les lecteurs d'écran lisent chaque lettre comme un symbole mathématique (« lettre
+mathématique grasse a »), et la recherche ne retrouve pas le mot. Il se réserve donc à un mot ou
+deux, jamais à une phrase ni à l'accroche entière. *Le fait* : relevé le 12/11/2026, une
+accroche française sortait du script avec ses « é » et ses « è » maigres au milieu du gras, et
+l'auto-test rendait « accents préservés » PASS sans le signaler (TF-2637).
 
 **Contrat de sortie, binaire.** Un post qui manque un seul critère n'est pas livré.
 - Longueur : 150 à 300 mots.
