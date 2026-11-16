@@ -78,6 +78,10 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    **L'analyse elle-même**, écrite dans un tel projet, prend le type « Revue » du registre :
    `<Projet> - Revue - Prompt <objet> passé au crible L99 - AAAAMMJJ<indice>.md`. « Analyse »
    n'est pas au registre des types (TF-1975 : trois analyses ainsi typées chez un produit).
+   **Le chemin du journal borne l'objet** (TF-2632) : R-4 plafonne un chemin à 116 caractères utiles
+   (150 moins les 34 du sidecar d'oracle), et le journal `<analyse>.boucle.json` ajoute 12 caractères au
+   nom de l'analyse. L'`<objet>` tient en 4 mots au plus, et le chemin du journal se mesure avant
+   l'écriture : au-delà de 116 caractères, l'objet se raccourcit.
    Détail : `references/couches.md`, section « Nom du livrable ».
 10. **Mode boucle : le juge n'est jamais l'auteur** (TF-1831) : en mode L99 boucle, chaque passe
    est notée par un agent neuf qui ne voit ni l'analyse ni les passes précédentes ; chaque défaut

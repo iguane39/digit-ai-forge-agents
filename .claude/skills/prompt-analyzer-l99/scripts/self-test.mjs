@@ -97,6 +97,22 @@ cas.push(
   ['TF-2551 vert — SKILL.md rappelle d ecrire la restitution dans un fichier et de la préjuger avant affichage', rappelRestitution(skill)],
   ['TF-2551 rouge — le point retiré de SKILL.md est vu', !rappelRestitution(skill.replace(/12\. \*\*Restitution dans un projet de la Factory[\s\S]*?(?=\n## Les 8 couches)/, ''))],
 );
+// TF-2632 (16/11/2026) : le nom prescrit au point 9 donnait un journal au-delà du plafond de chemin de R-4 (116 caractères
+// utiles : 150 moins les 34 du sidecar d'oracle). SKILL.md et couches.md rappellent le plafond, le suffixe `.boucle.json` et
+// l'objet en 4 mots ; couches.md porte un exemple dont le chemin de journal se mesure ici (même arithmétique que
+// `oracle-conformite-projet`, rejoué le 16/11 : 107 caractères PASS, 119 FAIL).
+const PLAFOND_UTILE_R4 = 116;
+const regleChemin = (texte) => /TF-2632/.test(texte) && /116 caractères/.test(texte) && /\.boucle\.json/.test(texte) && /4 mots/.test(texte);
+const exempleRejoue = (texte) => (texte.match(/Exemple rejoué sous R-4 : `([^`]+)`/) || [, ''])[1];
+const cheminAdmissible = (chemin) => /^output\/[^/]+\/.+ - Revue - Prompt .+ passé au crible L99 - \d{8}[a-z]\.md\.boucle\.json$/.test(chemin) && chemin.length <= PLAFOND_UTILE_R4;
+const exemple = exempleRejoue(couches);
+cas.push(
+  ['TF-2632 vert — SKILL.md et couches.md rappellent le plafond de 116 caractères, le suffixe .boucle.json et l objet en 4 mots', regleChemin(skill) && regleChemin(couches)],
+  ['TF-2632 vert — l exemple de couches.md suit le gabarit du point 9 et son journal tient sous le plafond', cheminAdmissible(exemple)],
+  ['TF-2632 rouge — le même gabarit avec un objet de 8 mots dépasse le plafond et est refusé', !cheminAdmissible(exemple.replace(' relance ', ' relance des prospects LinkedIn du secteur industriel '))],
+  ['TF-2632 rouge — le paragraphe retiré de couches.md est vu', !regleChemin(couches.replace(/\*\*Le chemin du journal borne l'objet\*\*[\s\S]*?(?=\*\*Borne\*\* : hors factory)/, ''))],
+  ['TF-2632 rouge — la phrase retirée de SKILL.md est vue', !regleChemin(skill.replace(/\*\*Le chemin du journal borne l'objet\*\*[\s\S]*?(?=\n\s+Détail : `references\/couches\.md`, section « Nom du livrable »)/, ''))],
+);
 for (const [libelle, tenu] of cas) console.log(`${tenu ? 'ok  ' : 'FAIL'} ${libelle}`);
 const echecs = cas.filter(([, tenu]) => !tenu).length;
 process.exit(r.status === 0 && echecs === 0 ? 0 : 1);
