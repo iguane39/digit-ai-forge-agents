@@ -92,7 +92,8 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    bruit toléré se mesure sur leur écart (TF-2237, B13 de l'oracle) ; l'arrêt se pose atteignablement
    sur l'absence de défaut grave dans le texte écrit par la dernière correction, majeurs restants
    listés (TF-2238, B14) ; une passe qui dépasse de 30 % la longueur de la passe 1 dit pourquoi elle
-   ajoute, en alerte motivée et non en refus (TF-2239, B15).
+   ajoute, en alerte motivée et non en refus (TF-2239, B15) ; chaque relecteur neuf de la passe 2 juge
+   à l'aveugle les deux versions et la décision de garder suit ce jugement apparié (TF-2240, B16).
 11. **Contrat de sortie : l'oracle de forme de chaque format produit** (TF-2194) : le contrat du
    Ch8 nomme `check_html.py` pour une page HTML et `check_markdown.py` pour un Markdown, **y
    compris pour la voie de repli** (générateur en échec, format de secours). Le 05/11/2026, un

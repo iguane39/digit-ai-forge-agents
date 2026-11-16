@@ -127,6 +127,21 @@ nomme « défaut ». Les clés se déclarent avant la passe 1, comme le reste de
   30 % imposée sans motif faire perdre des points : 66 et 70 contre 79 et 77 au témoin, 7 défauts
   graves distincts contre 4, presque tous des spécifications retranchées pour tenir la garde.
   B15 refuse le journal d'une passe au-delà de la garde sans motif.
+- **Jugement apparié** (TF-2240, défaut) : `jugement_apparie` : `true`. Garder ou rejeter une passe
+  comparait la note de ses relecteurs à celle d'autres relecteurs : deux jurys, dont l'étude du
+  29/10/2026 mesure le biais de configuration à 4 à 7 points, et le 06/11/2026, 7 des 22 défauts
+  graves relevés après la passe 1 citaient du texte déjà présent en passe 1 que ses relecteurs
+  n'avaient pas vu. Dès la passe 2, chaque relecteur neuf lit les deux versions, gardée et corrigée,
+  présentées sans étiquette, dans un ordre qui alterne d'un relecteur à l'autre. Il note chacune,
+  dit laquelle est meilleure et rend sa grille habituelle pour la corrigée. Le journal porte, à la
+  passe, `jugement_apparie` : `presentation` (`"sans_etiquette"`), `relecteurs` (pour chacun
+  `agent`, `ordre` `gardee_en_premier` ou `corrigee_en_premier`, `prefere` `gardee` ou `corrigee`,
+  `note_gardee`, `note_corrigee`) et `verdict`. Le verdict suit la majorité des voix ; à égalité, la
+  différence moyenne des notes (corrigée moins gardée) tranche, et un écart nul va à la gardée. Une
+  passe dont le verdict est `gardee` est rejetée, et la boucle s'arrête sur la passe gardée avec la
+  raison `regression`. La note absolue reste affichée (`score_mesure`) mais ne décide plus : B8 ne
+  joue pas sous cette clé. Les relecteurs restent neufs et aveugles ; le coût estimé est de 10 000 à
+  20 000 jetons de plus par relecteur. B16 contrôle le journal.
 
 ## Une passe
 
@@ -164,8 +179,9 @@ nomme « défaut ». Les clés se déclarent avant la passe 1, comme le reste de
 4. **Mesurer la longueur** du prompt en mots.
 5. **Décider la suite.** Une passe dont le prompt grossit de plus de 15 % sans clore un majeur
    est REJETÉE : on repart de la version précédente. Une passe dont le score mesuré baisse sous
-   la passe gardée précédente est REJETÉE aussi (D-111 (a)) : la boucle s'arrête sur la passe
-   gardée, raison `regression`, et c'est elle qui est livrée, sauf si la régression tient à un
+   la passe gardée précédente est REJETÉE aussi (D-111 (a)) ; sous `jugement_apparie` (TF-2240),
+   elle l'est quand le jugement apparié préfère la version gardée, non sur la note absolue : la
+   boucle s'arrête sur la passe gardée, raison `regression`, et c'est elle qui est livrée, sauf si la régression tient à un
    défaut que la correction a créé : une passe de reprise unique s'ouvre alors (TF-2202, voir
    `reprise_unique`). Sinon, on s'arrête au premier cas
    atteint :
@@ -219,7 +235,7 @@ boucle sans journal PASS n'est pas un mode boucle.
 Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
 `recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
-`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15.
+`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16.
 
 ## Annexe — sortie demandée au relecteur
 

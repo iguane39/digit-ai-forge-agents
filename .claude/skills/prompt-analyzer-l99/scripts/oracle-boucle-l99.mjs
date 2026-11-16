@@ -51,6 +51,10 @@
 //       L'arrêt strict « 0 bloquant et 0 majeur » reste valable : c'est le cas idéal.
 //   B15 `garde_cumulee` (TF-2239, ex. 0.30) : une passe gardée dont le prompt dépasse la garde cumulée depuis
 //       la passe 1 porte un `motif_depassement` (4 mots au moins) : alerte motivée, la passe n'est pas rejetée.
+//   B16 `jugement_apparie: true` (TF-2240) : dès la passe 2, `jugement_apparie` porte, pour chaque relecteur neuf,
+//       sa préférence (`gardee` ou `corrigee`), ses deux notes et l'ordre de lecture (alterné) ; le verdict suit la
+//       majorité des voix (à égalité, l'écart moyen des notes) et une passe dont le verdict est `gardee` est
+//       rejetée. B8 ne joue plus : la décision de garder suit ce jugement, la note absolue reste affichée.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -65,6 +69,7 @@ const NJ = [
   "la justesse des sévérités et des scores attribués par le relecteur",
   "la qualité du prompt réécrit lui-même (→ relecteur, puis humain)",
   "l'origine d'un défaut grave (correction ou antérieur) : l'oracle lit la déclaration, il ne rejoue pas le test de citation contre le texte de la passe précédente",
+  "la présentation réelle sans étiquette et l'alternance de l'ordre de lecture du jugement apparié : l'oracle lit la déclaration",
 ];
 const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
@@ -142,7 +147,11 @@ export function juger(j) {
       if (apres.some((p) => !estRejetee(p))) ko('B5', 'arret.passe', 'des passes gardées suivent la passe d arrêt');
       if (ar.raison === 'regression') {
         const r = apres[apres.length - 1];
-        if (!r || !estRejetee(r) || !(nb(r.score_mesure) && r.score_mesure < pa.score_mesure))
+        // TF-2240 : sous le jugement apparié, la décision de rejeter suit les voix, non la note absolue d'un autre jury.
+        if (a && a.jugement_apparie === true) {
+          if (!r || !estRejetee(r) || !(r.jugement_apparie && r.jugement_apparie.verdict === 'gardee'))
+            ko('B5', 'arret.raison', 'arrêt « regression » sans passe rejetée dont le jugement apparié préfère la version gardée');
+        } else if (!r || !estRejetee(r) || !(nb(r.score_mesure) && r.score_mesure < pa.score_mesure))
           ko('B5', 'arret.raison', 'arrêt « regression » sans passe rejetée dont le score baisse sous la passe d arrêt');
       }
       if (pa.rejetee === true || pa.decision === 'rejeter') ko('B5', 'arret.passe', 'la passe d arrêt est une passe rejetée');
@@ -225,7 +234,9 @@ export function juger(j) {
   // TF-2237 (16/11/2026) : `bruit_tolere: "mesure"` remplace le plafond fixe de 2 par l'écart des relecteurs de la
   // passe gardée (étude 20261106b : écart médian de 3 points entre 2 relecteurs d'une même passe, jusqu'à 24) ; une
   // baisse avec un bloquant retenu, donc au plafond de 40, reste une régression quel que soit ce bruit.
-  if (a && a.rejet_regression === true) {
+  // TF-2240 : sous `jugement_apparie`, la décision de garder suit le jugement apparié (B16), non l'écart des notes
+  // absolues de deux jurys différents ; B8 ne joue alors pas.
+  if (a && a.rejet_regression === true && a.jugement_apparie !== true) {
     const mesure = a.bruit_tolere === 'mesure';
     const bruitFixe = nb(a.bruit_tolere) ? Math.min(Math.max(a.bruit_tolere, 0), 2) : 0;
     let precGardee = null;
@@ -261,6 +272,30 @@ export function juger(j) {
       if (p === p1 || estRejetee(p) || !nb(p.mots) || !(p.mots > p1.mots * (1 + a.garde_cumulee))) return;
       if (!propre(p.motif_depassement) || p.motif_depassement.trim().split(/\s+/).length < 4)
         ko('B15', `passes[${i}]`, `le prompt passe de ${p1.mots} mots (passe 1) à ${p.mots}, au-delà de +${Math.round(a.garde_cumulee * 100)} % : la correction remplace du texte ou dit pourquoi elle ajoute (motif_depassement, 4 mots au moins)`);
+    });
+  }
+
+  // B16 — jugement apparié (TF-2240) : dès la passe 2, chaque relecteur neuf note les deux versions, gardée et corrigée,
+  // présentées sans étiquette, et dit laquelle est meilleure ; la décision de garder suit ce jugement, la note absolue
+  // reste affichée. Voix à la majorité ; à égalité, la différence moyenne des notes (corrigée moins gardée) tranche.
+  if (a && a.jugement_apparie === true) {
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      const lieu = `passes[${i}].jugement_apparie`;
+      const jg = p.jugement_apparie;
+      const rel = jg && Array.isArray(jg.relecteurs) ? jg.relecteurs : [];
+      if (!jg || rel.length === 0) { ko('B16', lieu, 'jugement apparié absent : dès la passe 2, chaque relecteur neuf note les versions gardée et corrigée et dit laquelle est meilleure'); return; }
+      if (jg.presentation !== 'sans_etiquette') ko('B16', lieu, 'les deux versions doivent être présentées sans étiquette (presentation: "sans_etiquette")');
+      const valide = (r) => propre(r.agent) && (r.prefere === 'gardee' || r.prefere === 'corrigee') && nb(r.note_gardee) && nb(r.note_corrigee)
+        && (r.ordre === 'gardee_en_premier' || r.ordre === 'corrigee_en_premier');
+      if (!rel.every(valide)) { ko('B16', lieu, 'relecteur sans agent, préférence (gardee ou corrigee), ordre de présentation ou notes des deux versions'); return; }
+      if (rel.length >= 2 && new Set(rel.map((r) => r.ordre)).size < 2) ko('B16', lieu, 'tous les relecteurs ont lu les versions dans le même ordre : l ordre doit alterner');
+      const pourCorrigee = rel.filter((r) => r.prefere === 'corrigee').length;
+      const pourGardee = rel.length - pourCorrigee;
+      const ecart = rel.reduce((s, r) => s + (r.note_corrigee - r.note_gardee), 0) / rel.length;
+      const verdict = pourCorrigee > pourGardee ? 'corrigee' : pourGardee > pourCorrigee ? 'gardee' : ecart > 0 ? 'corrigee' : 'gardee';
+      if (jg.verdict !== verdict) ko('B16', lieu, `verdict « ${jg.verdict} », les voix (${pourCorrigee} pour la corrigée, ${pourGardee} pour la gardée, écart moyen ${ecart}) donnent « ${verdict} »`);
+      if (verdict === 'gardee' && !estRejetee(p)) ko('B16', `passes[${i}]`, 'le jugement apparié préfère la version gardée : la passe est à rejeter');
     });
   }
 
@@ -529,6 +564,35 @@ function selfTest() {
   cas.push({ nom: 'TF-2239 vert — la passe rejetée au-delà de la garde n est pas jugée : son texte est écarté', j: (() => { const j = gonflee()(); Object.assign(j.passes[1], { rejetee: true, decision: 'rejeter', score_mesure: 80 }); j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' }; return j; })(), attendu: [] });
   rougeB('B15 +40 % depuis la passe 1 sans motif', 'B15', gonflee(), () => {});
   rougeB('B15 motif de trois mots, qui ne dit rien', 'B15', gonflee('pour être complet'), () => {});
+  // TF-2240 (16/11/2026) : le jugement apparié. Garder ou rejeter une passe comparait deux notes de jurys différents
+  // (biais de configuration de 4 à 7 points, étude du 29/10/2026) ; chaque relecteur de la passe 2 note maintenant
+  // les deux versions, présentées sans étiquette, et dit laquelle est meilleure.
+  const voix = (agent, ordre, prefere, gardee, corrigee) => ({ agent, ordre, prefere, note_gardee: gardee, note_corrigee: corrigee });
+  const apparie = () => {
+    const j = essai();
+    j.arbitre.jugement_apparie = true;
+    j.passes[1].jugement_apparie = { presentation: 'sans_etiquette', verdict: 'corrigee',
+      relecteurs: [voix('relecteur-2a', 'gardee_en_premier', 'corrigee', 83, 91), voix('relecteur-2b', 'corrigee_en_premier', 'corrigee', 84, 90)] };
+    return j;
+  };
+  // La passe 2 est rejetée parce que ses deux relecteurs préfèrent la version gardée ; la boucle s'arrête sur la passe 1.
+  const apparieGardee = () => {
+    const j = apparie();
+    Object.assign(j.passes[1], { rejetee: true, decision: 'rejeter' });
+    j.passes[1].jugement_apparie = { presentation: 'sans_etiquette', verdict: 'gardee',
+      relecteurs: [voix('relecteur-2a', 'gardee_en_premier', 'gardee', 86, 80), voix('relecteur-2b', 'corrigee_en_premier', 'gardee', 85, 82)] };
+    j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' };
+    return j;
+  };
+  cas.push({ nom: 'TF-2240 vert — jugement apparié accepté : 2 relecteurs préfèrent la version corrigée, ordres alternés', j: apparie(), attendu: [] });
+  cas.push({ nom: 'TF-2240 vert — la note absolue plus basse d un autre jury ne rejette plus une passe que le jugement apparié préfère', j: (() => { const j = apparie(); j.passes[1].score_mesure = 80; j.score_affiche.valeur = 80; return j; })(), attendu: [] });
+  cas.push({ nom: 'TF-2240 vert — le jugement apparié préfère la version gardée : passe rejetée, arrêt sur la passe 1', j: apparieGardee(), attendu: [] });
+  rougeB('B16 passe 2 sans jugement apparié (le champ manque)', 'B16', apparie, (j) => { delete j.passes[1].jugement_apparie; });
+  rougeB('B16 versions présentées avec étiquette', 'B16', apparie, (j) => { j.passes[1].jugement_apparie.presentation = 'etiquetee'; });
+  rougeB('B16 tous les relecteurs lisent dans le même ordre', 'B16', apparie, (j) => { j.passes[1].jugement_apparie.relecteurs[1].ordre = 'gardee_en_premier'; });
+  rougeB('B16 verdict qui contredit les voix', 'B16', apparie, (j) => { j.passes[1].jugement_apparie.verdict = 'gardee'; j.passes[1].rejetee = true; j.passes[1].decision = 'rejeter'; j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' }; });
+  rougeB('B16 préférence des relecteurs pour la gardée, passe gardée quand même', 'B16', apparieGardee, (j) => { j.passes[1].rejetee = false; j.passes[1].decision = 'arreter'; j.arret = { passe: 2, raison: 'zero_majeur' }; j.score_affiche = { valeur: 91, nature: 'mesure' }; });
+  rougeB('B5 arrêt « regression » sans jugement apparié qui préfère la gardée', 'B5', apparieGardee, (j) => { j.passes[1].jugement_apparie.verdict = 'corrigee'; j.passes[1].jugement_apparie.relecteurs.forEach((r) => { r.prefere = 'corrigee'; }); });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

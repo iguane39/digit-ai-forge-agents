@@ -103,6 +103,7 @@ const REGLES_REVUE = [
   ['TF-2237', 'score_de_passe', 'B13'],
   ['TF-2238', 'arret_atteignable', 'B14'],
   ['TF-2239', 'garde_cumulee', 'B15'],
+  ['TF-2240', 'jugement_apparie', 'B16'],
 ];
 for (const [tf, cle, regle] of REGLES_REVUE) {
   const puce = new RegExp(`- \\*\\*[^\\n]*\\(${tf}[\\s\\S]*?\`${cle}\``);
