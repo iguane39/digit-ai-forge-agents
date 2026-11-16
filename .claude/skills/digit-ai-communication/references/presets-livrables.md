@@ -33,6 +33,18 @@ se dit et se fait trancher : il ne se comble pas en silence. *Le fait* : le 13/1
 bâtis sur la lettre de la propale ont été enchaînés comme s'ils se suivaient dans l'ordre ; le
 retour du 26/10 (« les formations ne correspondent à rien de demandé ») a fait refaire les 3 supports.
 
+**Chaque exemple part d'un usage nommé du client servi (TF-2606).** Le public d'une formation est
+celui du client, pas celui d'un cas d'école : chaque consigne type, chaque démonstration et chaque
+exercice part d'un usage que le public fait de son métier, nommé au cadrage, déclaré dans le fichier de
+contenu (`client.usages`) et cité par l'exemple (`usage`). Un exemple qui ne cite aucun usage, ou
+qui en cite un que le client ne déclare pas, est un exemple d'un autre métier. *Le fait* : sur un
+support livré le 09/11/2026, 5 des 7 retours humains du 12/11 portaient sur des exemples hors du
+métier du public (réouverture d'un magasin, comptes rendus de visite, ventes de magasins,
+conformité abstraite, courriel supposé), alors que le public était les fonctions transverses du
+client ; consigne humaine : « Des exemples adaptés aux clients servis des formations. » Le contrôle
+(C10) est confié à `oracle-programme-formation` du skill `quality-oracles` ; le self-test de ce skill
+tient ici le texte de l'exigence (C5).
+
 **Trois pièces, tirées d'un seul fichier de contenu.** Une formation n'est pas livrée avec moins de
 trois pièces, et le contrat de sortie est binaire :
 - le **support**, les diapositives projetées (rendu par `digit-ai-pptx`) ;

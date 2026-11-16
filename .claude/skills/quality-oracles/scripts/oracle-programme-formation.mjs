@@ -35,7 +35,10 @@
 //   C8 le kit du participant ne porte aucune solution : ni marque (« Corrigé : », « Solution : »,
 //      « réponse attendue »), ni ligne recopiée d'une solution du formateur ;
 //   C9 une fiche mémo reprend chaque élément de la grille qu'elle résume (diapositive `etapes` liée par
-//      `grille`, ou par un mot de six lettres au moins commun aux deux titres, éléments courts seulement).
+//      `grille`, ou par un mot de six lettres au moins commun aux deux titres, éléments courts seulement) ;
+//   C10 chaque consigne type, démonstration et exercice (diapositive de type exercice, demo, démonstration,
+//      consigne, et exercice du kit) cite un usage NOMMÉ du client servi (`usage`), tiré de ceux que le contenu
+//      déclare (`client.usages`) — TF-2606 ; sans déclaration ni citation : non jugé, dit.
 // Contrat JSON commun · exit 0/1/2.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -177,8 +180,37 @@ if (ext === '.json') {
     }
   }
 
+  // C10 (TF-2606) — chaque consigne type, démonstration et exercice part d'un usage NOMMÉ du client servi.
+  // Le contenu déclare les usages du client (`client.usages`) ; chaque exemple en cite un (`usage`). Le fait :
+  // sur un support livré le 09/11/2026, 5 des 7 retours humains du 12/11 portaient sur des exemples hors du
+  // métier du public (réouverture d'un magasin, comptes rendus de visite, conformité abstraite), le public étant
+  // les fonctions transverses du client. Sans déclaration ni citation, le contrôle est déclaré non jugé.
+  {
+    const usages = M.client && Array.isArray(M.client.usages)
+      ? M.client.usages.map(u => (typeof u === 'string' ? u : u && (u.nom || u.titre))).map(u => plier(u).replace(/\s+/g, ' ').trim()).filter(Boolean)
+      : [];
+    const exemples = [
+      ...diapos.filter(({ d }) => /^(exercice|demo|demonstration|consigne)/.test(plier(d.type))).map(({ d, ip, id }) => ({ nom: titreDe(d), usage: d.usage, ou: ou(ip, id) })),
+      ...(Array.isArray(kit.exercices) ? kit.exercices : []).map((e, i) => ({ nom: e.titre, usage: e.usage, ou: `${base}:kit.exercices[${i}]` })),
+    ];
+    const citeUnUsage = e => plier(e.usage).trim() !== '';
+    if (!usages.length && !exemples.some(citeUnUsage)) {
+      non_juge.push('C10 non jugé : le contenu ne déclare aucun usage du client (`client.usages`) ni aucun `usage` sur ses exemples — rien ne dit de quel métier les exemples sont tirés (TF-2606)');
+    } else if (!usages.length) {
+      juges++;
+      findings.push({ sev: 'bloquant', regle: 'C10', msg: `C10 — ${exemples.filter(citeUnUsage).length} exemple(s) citent un usage, mais le contenu ne déclare aucun usage du client (\`client.usages\`) : rien ne les rattache au client servi (TF-2606)`, where: base });
+    } else {
+      for (const e of exemples) {
+        juges++;
+        if (!citeUnUsage(e)) findings.push({ sev: 'bloquant', regle: 'C10', msg: `C10 — « ${String(e.nom).slice(0, 60)} » ne cite aucun usage du client servi (champ \`usage\`) : un exemple sans ancrage client est un exemple d'un autre métier (TF-2606)`, where: e.ou });
+        else if (!usages.includes(plier(e.usage).replace(/\s+/g, ' ').trim())) findings.push({ sev: 'bloquant', regle: 'C10', msg: `C10 — « ${String(e.nom).slice(0, 60)} » cite l'usage « ${String(e.usage).slice(0, 60)} », que le client ne déclare pas (\`client.usages\`) : l'exemple n'est pas tiré du métier du client servi (TF-2606)`, where: e.ou });
+      }
+    }
+    non_juge.push('C10 : seuls les exemples dont le type est exercice, demo, démonstration ou consigne, et les exercices du kit, sont jugés ; la PERTINENCE de l\'usage cité pour le public n\'est pas jugée (fiche expert ingenierie-pedagogique), seule sa déclaration l\'est');
+  }
+
   if (findings.some(f => f.sev === 'bloquant')) out('FAIL', non_juge, 1);
-  findings.push({ sev: 'info', msg: `contenu commun conforme : ${juges} contrôle(s) joué(s) (P1, C6 par exercice, C7 par demi-journée, C8, C9 par grille liée)`, where: base });
+  findings.push({ sev: 'info', msg: `contenu commun conforme : ${juges} contrôle(s) joué(s) (P1, C6 par exercice, C7 par demi-journée, C8, C9 par grille liée, C10 par exemple)`, where: base });
   out('PASS', non_juge, 0);
 }
 

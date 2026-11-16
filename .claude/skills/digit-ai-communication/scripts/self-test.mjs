@@ -45,6 +45,9 @@
 //        fiche du formateur avec préparation, déroulé et durée par diapositive, solutions, questions orales,
 //        secours). Le fait : une formation d'une journée livrée en deux pièces, une note de support qui
 //        renvoie à un « kit formateur » inexistant, les solutions imprimées dans le kit du participant.
+//        TF-2606 (16/11/2026) : chaque consigne type, démonstration et exercice part d'un usage nommé du client
+//        servi, déclaré dans `client.usages` du contenu commun ; le contrôle des pièces est C10 de
+//        `oracle-programme-formation` (quality-oracles).
 //   C6 — le fichier de cadrage de l'étape 1 est jugé par `scripts/verifier-cadrage.mjs` (TF-2379, TF-2317) :
 //        l'exemple rempli passe, le gabarit vide est refusé, et chaque altération de l'exemple (une section
 //        retirée, un emplacement laissé entre accolades, un module sans réponse oui/non à « Se suit seul »,
@@ -239,6 +242,8 @@ const CLAUSES_FORMATION = [
   ['solutions des exercices', 'la fiche du formateur ne porte plus les solutions des exercices'],
   ['questions orales', 'la fiche du formateur ne porte plus les questions orales'],
   ['plan de secours', 'la fiche du formateur ne porte plus le plan de secours'],
+  ['usage nommé du client servi', "le preset n'exige plus que chaque exemple parte d'un usage nommé du client servi (TF-2606)"],
+  ['client.usages', "le preset ne nomme plus où le contenu déclare les usages du client (TF-2606)"],
 ];
 
 function sectionFormation(texte) {

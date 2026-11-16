@@ -892,6 +892,29 @@
    "provenance": "TF-2316 (RA-07, lot du produit marketing du 09/11/2026, seq 692) — le 26/10/2026, support, notes et kit ont passé tous leurs oracles avec 8 défauts de cohérence, trouvés par une revue humaine."
   },
   {
+   "nom": "programme-formation-ancrage-client",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-programme-formation.mjs",
+    "{fixture}"
+   ],
+   "red": "formation-contenu-client-red.json",
+   "green": "formation-contenu-client-green.json",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "C10 — « Exercice 1 : relire un compte rendu » ne cite aucun usage du client servi",
+    "C10 — « Exercice 2 : écrire les décisions » cite l'usage « réouverture d'un magasin », que le client ne déclare pas",
+    "C10 — « Démonstration : un compte rendu réécrit devant le groupe » ne cite aucun usage du client servi"
+   ],
+   "commentaire": "TF-2606 — C10, l'ancrage client des exemples d'une formation, lu sur le contenu commun. La VERTE déclare les usages du client (client.usages) et chaque exercice (diapositive et kit), démonstration et consigne type en cite un. La ROUGE, tirée de la verte, retire l'usage d'un exercice (exemple sans ancrage), en cite un que le client ne déclare pas (exemple d'un autre métier) et en laisse un blanc (démonstration). Avant TF-2606, les deux rendaient PASS. Le support jugé au retour d'origine n'est pas au dépôt : le jeu d'essai est inventé, tiré de la formation fictive des deux fixtures voisines.",
+   "provenance": "TF-2606 (RA-23, lot du produit marketing du 12/11/2026, seq 716) — sur un support de formation livré le 09/11/2026, 5 des 7 retours humains du 12/11 portaient sur des exemples hors du métier du public (réouverture d'un magasin, comptes rendus de visite, ventes de magasins, conformité abstraite, courriel supposé), alors que le public était les fonctions transverses du client ; aucun oracle ne relevait un exemple sans ancrage client."
+  },
+  {
    "nom": "pdf",
    "prerequis_python": [
     "pypdf"
