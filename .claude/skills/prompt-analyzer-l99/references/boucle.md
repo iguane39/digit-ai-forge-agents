@@ -175,6 +175,21 @@ le reste de l'arbitre.
   section 5). Le contexte de départ de chaque relecteur se lit au transcript de l'agent et se porte
   à `relecteur.contexte_depart` (jetons) ; critère de l'essai : moins de 25 000 jetons, sinon le type
   se retire de l'arbitre. B18 contrôle le type déclaré, pas la mesure.
+- **Vérification de clôture sur le diff** (TF-2242, en essai) : `verification_diff` : `true`. Le
+  06/11/2026, les vérificateurs ont relevé 10 défauts créés (dont 3 graves) dans les 2 boucles de
+  Produit-84, puis les relecteurs aveugles ont trouvé 11 défauts graves dans du texte écrit par la
+  correction immédiatement précédente et 4 dans celui d'une correction plus ancienne ; sur 20
+  journaux, 123 défauts créés ont été relevés pour 227 clôtures. L'étape 1 bis change : le
+  vérificateur reçoit aussi le diff de la correction, et rend pour chaque phrase ajoutée ou modifiée
+  un état. `verifiee` : sa prémisse (`premisse`), établie par une commande qu'il a exécutée
+  (`commande`, `resultat`). `sans_premisse` : la phrase prescrit ou définit sans affirmer de fait
+  (`motif`). `non_verifiable` : elle affirme un fait qu'aucune commande n'établit. L'orchestrateur ne
+  garde que les ajouts vérifiés : une phrase `non_verifiable` se retire ou se reformule en
+  instruction de mesurer à l'exécution (`sort` : `retire` ou `reformule`), jamais gardée comme un
+  fait. Le journal porte la liste à `verification_cloture.ajouts`, vide si la correction n'ajoute
+  rien. Coût estimé : 10 000 à 15 000 jetons par vérificateur. Critère de l'essai : le banc du
+  15/11/2026 rejoué porte au moins 2 défauts graves de moins que le témoin ; sinon la règle se
+  retire. B19 contrôle le journal, pas la mesure.
 
 ## Une passe
 
@@ -269,7 +284,7 @@ boucle sans journal PASS n'est pas un mode boucle.
 Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
 `recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
-`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16 ; avec `fiche_premisses` (TF-2236), B17 ; avec `type_relecteur` (TF-2241), B18.
+`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16 ; avec `fiche_premisses` (TF-2236), B17 ; avec `type_relecteur` (TF-2241), B18 ; avec `verification_diff` (TF-2242), B19.
 
 ## Annexe — sortie demandée au relecteur
 

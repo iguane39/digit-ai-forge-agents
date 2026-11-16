@@ -60,6 +60,9 @@
 //       reçoit (`relecteur.fiche_remise: true`) avec le droit de vérifier tout ce qu'elle ne couvre pas.
 //   B18 `type_relecteur: "relecteur"` (TF-2241) : chaque passe lance son relecteur avec le type d'agent dédié
 //       (`relecteur.type: "relecteur"`), ou se replie sur `general-purpose` avec son motif (`relecteur.repli`).
+//   B19 `verification_diff: true` (TF-2242) : dès la passe 2, `verification_cloture.ajouts` classe chaque phrase
+//       ajoutée ou modifiée : `verifiee` (prémisse, commande, résultat), `sans_premisse` (motif : la phrase
+//       prescrit ou définit) ou `non_verifiable` (retirée ou reformulée, jamais gardée comme un fait).
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -77,6 +80,7 @@ const NJ = [
   "la présentation réelle sans étiquette et l'alternance de l'ordre de lecture du jugement apparié : l'oracle lit la déclaration",
   "l'exhaustivité de la fiche des prémisses : l'oracle ne sait pas quelles prémisses d'environnement le prompt pose",
   "le type réel de l'agent lancé et son contexte de départ : l'oracle lit la déclaration, il ne lit pas le transcript",
+  "l'exhaustivité de la liste des phrases ajoutées ou modifiées et la justesse de leur classement par le vérificateur : l'oracle ne calcule pas le diff entre les deux versions",
 ];
 const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
@@ -330,6 +334,30 @@ export function juger(j) {
       const r = p.relecteur || {};
       if (r.type === 'relecteur' || (r.type === 'general-purpose' && propre(r.repli))) return;
       ko('B18', `passes[${i}].relecteur`, `relecteur lancé avec le type « ${r.type === undefined ? 'non déclaré' : r.type} » : le type « relecteur », ou un repli sur « general-purpose » avec son motif (relecteur.repli)`);
+    });
+  }
+
+  // B19 — le vérificateur de clôture juge chaque phrase ajoutée ou modifiée par la correction (TF-2242) : les relecteurs
+  // aveugles trouvaient leurs défauts graves dans le texte écrit par la correction précédente (11 sur 22 le 06/11/2026,
+  // que le vérificateur venait de lire). Il reçoit le diff et classe chaque phrase ; l'orchestrateur ne garde pas
+  // comme un fait une phrase qu'aucune commande n'établit.
+  if (a && a.verification_diff === true) {
+    const motif = (m) => propre(m) && m.trim().split(/\s+/).length >= 4;
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      const aj = p.verification_cloture && p.verification_cloture.ajouts;
+      if (!Array.isArray(aj)) { ko('B19', `passes[${i}].verification_cloture.ajouts`, 'liste des phrases ajoutées ou modifiées absente : le vérificateur reçoit le diff de la correction et juge chaque phrase (liste vide si la correction n ajoute rien)'); return; }
+      aj.forEach((x, k) => {
+        const lieu = `passes[${i}].verification_cloture.ajouts[${k}]`;
+        if (!x || !propre(x.phrase)) ko('B19', lieu, 'phrase ajoutée ou modifiée non citée');
+        else if (x.etat === 'verifiee') {
+          if (!propre(x.premisse) || !propre(x.commande) || !propre(x.resultat)) ko('B19', lieu, 'phrase « verifiee » sans sa prémisse, la commande qui l établit et son résultat');
+        } else if (x.etat === 'sans_premisse') {
+          if (!motif(x.motif)) ko('B19', lieu, 'phrase « sans_premisse » sans motif (4 mots au moins) : dire pourquoi elle prescrit ou définit sans affirmer de fait');
+        } else if (x.etat === 'non_verifiable') {
+          if (x.sort !== 'retire' && x.sort !== 'reformule') ko('B19', lieu, 'phrase « non_verifiable » gardée : elle se retire, ou se reformule en instruction de mesurer à l exécution (sort: retire | reformule)');
+        } else ko('B19', lieu, 'état hors de verifiee, sans_premisse, non_verifiable');
+      });
     });
   }
 
@@ -657,6 +685,41 @@ function selfTest() {
   cas.push({ nom: 'TF-2241 vert — repli motivé sur « general-purpose » (type absent hors du pilot)', j: (() => { const j = typee(); Object.assign(j.passes[1].relecteur, { type: 'general-purpose', repli: 'type relecteur absent de ce projet : dossier .claude/agents sans relecteur.md' }); return j; })(), attendu: [] });
   rougeB('B18 relecteur général sans motif de repli', 'B18', typee, (j) => { j.passes[1].relecteur.type = 'general-purpose'; });
   rougeB('B18 type du relecteur non déclaré', 'B18', typee, (j) => { delete j.passes[0].relecteur.type; });
+  // TF-2242 (16/11/2026) : le vérificateur de clôture sur le diff. Les 11 défauts créés qui ont échappé aux
+  // vérificateurs du 14/11/2026 étaient des affirmations sans preuve : « la commande tourne sous Bash », « la seule
+  // durée disponible », « repris du tableau de Q1 ». Chaque phrase ajoutée reçoit ici son état.
+  const diff = () => {
+    const j = essai();
+    j.arbitre.verification_diff = true;
+    j.passes[1].verification_cloture.ajouts = [
+      { phrase: '« (sous Bash) : node scripts\\allouer-indice.mjs »', etat: 'verifiee', premisse: 'la commande tourne sous Bash', commande: 'bash -c "node scripts/allouer-indice.mjs --aide"', resultat: 'exit 0, usage affiché' },
+      { phrase: '« le taux se définit par le nombre de relecteurs »', etat: 'sans_premisse', motif: 'la phrase définit un choix de conception, elle n affirme aucun fait' },
+      { phrase: '« la seule durée disponible »', etat: 'non_verifiable', sort: 'retire' },
+    ];
+    return j;
+  };
+  cas.push({ nom: 'TF-2242 vert — 3 phrases ajoutées classées : 1 vérifiée par commande, 1 qui définit, 1 non vérifiable retirée', j: diff(), attendu: [] });
+  cas.push({ nom: 'TF-2242 vert — la correction n ajoute aucune phrase : liste vide mais déclarée', j: (() => { const j = diff(); j.passes[1].verification_cloture.ajouts = []; return j; })(), attendu: [] });
+  rougeB('B19 liste des phrases ajoutées absente', 'B19', diff, (j) => { delete j.passes[1].verification_cloture.ajouts; });
+  rougeB('B19 phrase « verifiee » sans commande', 'B19', diff, (j) => { delete j.passes[1].verification_cloture.ajouts[0].commande; });
+  rougeB('B19 phrase non vérifiable gardée', 'B19', diff, (j) => { j.passes[1].verification_cloture.ajouts[2].sort = 'garde'; });
+  rougeB('B19 phrase « sans_premisse » sans motif', 'B19', diff, (j) => { delete j.passes[1].verification_cloture.ajouts[1].motif; });
+  rougeB('B19 état hors des trois états', 'B19', diff, (j) => { j.passes[1].verification_cloture.ajouts[1].etat = 'probable'; });
+  // Les sept règles du 16/11/2026 ensemble : une boucle neuve qui les déclare toutes se juge sans que l'une contredise l'autre.
+  const toutes = () => {
+    const j = essai();
+    Object.assign(j.arbitre, { score_de_passe: 'moyenne', bruit_tolere: 'mesure', arret_atteignable: true, garde_cumulee: 0.3,
+      jugement_apparie: true, fiche_premisses: true, type_relecteur: 'relecteur', verification_diff: true });
+    j.fiche_premisses = [{ commande: 'node bootstrap.mjs --pull', sortie: 'exit 0, 14 dépôts à jour', heure: '2026-11-16T10:02:11+01:00' }];
+    j.passes.forEach((p) => Object.assign(p.relecteur, { type: 'relecteur', fiche_remise: true }));
+    j.passes[0].scores_relecteurs = [86, 82]; j.passes[0].score_mesure = 84;
+    j.passes[1].scores_relecteurs = [92, 90]; j.passes[1].score_mesure = 91;
+    j.passes[1].jugement_apparie = { presentation: 'sans_etiquette', verdict: 'corrigee',
+      relecteurs: [voix('relecteur-2a', 'gardee_en_premier', 'corrigee', 83, 92), voix('relecteur-2b', 'corrigee_en_premier', 'corrigee', 84, 90)] };
+    j.passes[1].verification_cloture.ajouts = [{ phrase: '« 14 dépôts »', etat: 'verifiee', premisse: 'le parc compte 14 dépôts', commande: 'node bootstrap.mjs --pull', resultat: '14 dépôts à jour' }];
+    return j;
+  };
+  cas.push({ nom: 'TF-2236 à TF-2242 vert — une boucle neuve qui déclare les sept règles du 16/11/2026 à la fois', j: toutes(), attendu: [] });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

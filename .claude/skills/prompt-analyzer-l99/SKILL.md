@@ -96,7 +96,8 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    à l'aveugle les deux versions et la décision de garder suit ce jugement apparié (TF-2240, B16).
    En essai, avec leur critère de mesure : une fiche des prémisses d'environnement vérifiées une fois
    et remise aux relecteurs (TF-2236, B17) ; le type d'agent dédié `relecteur` pour les relecteurs
-   aveugles (TF-2241, B18).
+   aveugles (TF-2241, B18) ; un vérificateur de clôture qui classe chaque phrase ajoutée par la
+   correction (TF-2242, B19).
 11. **Contrat de sortie : l'oracle de forme de chaque format produit** (TF-2194) : le contrat du
    Ch8 nomme `check_html.py` pour une page HTML et `check_markdown.py` pour un Markdown, **y
    compris pour la voie de repli** (générateur en échec, format de secours). Le 05/11/2026, un
