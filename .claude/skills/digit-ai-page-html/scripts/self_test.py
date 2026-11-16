@@ -5896,7 +5896,11 @@ def _page_hote_du_canevas(legende_en_glyphes=False):
                    '<div class="tbl-grid">%s</div>' % "".join(cartes), corps, flags=re.S)
     page = bp.replace("</head>", sty + "\n</head>")
     ancre = "<h1>{Titre du livrable}</h1>"
-    j = page.index(ancre) + len(ancre)
+    # TF-2679 (V28) : le canevas se pose APRES l'en-tete, dans le `.wrap`, et non dans le bloc flex a largeur
+    # intrinseque qui porte le titre : la grille `auto-fill` s'y calait sur ~860 px d'une fenetre de 1 440 a 1 920
+    # (35 a 78 % du cadre vide a droite), un defaut de la page HOTE et non du canevas que ce cas mesure. Le canevas,
+    # ses cartes, sa legende et leurs mesures V2 et V4 sont inchanges ; seule la place de l'insertion change.
+    j = page.index("</header>", page.index(ancre)) + len("</header>")
     return page[:j] + "\n" + corps + "\n" + page[j:]
 
 
@@ -6446,6 +6450,115 @@ def run_v24_prose_verticale():
                         "attendu": attendu, "obtenu": n, "regle": "prose_verticale (V24)",
                         "detail": "" if n == attendu else f"{n} constat(s) prose_verticale a {largeur} px"})
     shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
+# TF-2679 (factory-digit-ai-fr, run forge-digit-ai-fr-20261114a, 15/11/2026) — V28, L'EQUILIBRE HORIZONTAL DE L'ENCRE.
+# Fixture -> {largeur: constats attendus de la famille `equilibre_droite`}. La rouge est une grille a deux pistes de
+# largeur egale dont la piste de droite, RESERVEE, ne porte qu'un canevas vierge : L2, V23, V1, V2 et V4 y rendent 0
+# (c'est ce qui prouve que le defaut leur echappait), l'encre s'arrete a mi-page. Les trois vertes jouent les sorties
+# que le message nomme : un contenu utile dans la piste de droite, la colonne CENTREE (le blanc se repartit), la
+# colonne etroite DECLAREE sur son conteneur (son rectangle est retire de l'encre).
+CAS_EQUILIBRE = {
+    "equilibre-piste-reservee-vide.html": {1280: 1, 1920: 1},
+    "equilibre-deux-colonnes-pleines.html": {1280: 0, 1920: 0},
+    "equilibre-colonne-centree.html": {1280: 0, 1920: 0},
+    "equilibre-colonne-declaree.html": {1280: 0, 1920: 0},
+    # Un element COLLANT compte sur la hauteur de son parent : l'aside court et collant n'est pas une piste vide
+    # (verte) ; la MEME page sans `position: sticky` laisse la piste de droite vide sous l'aside (rouge jumelle,
+    # a 1 280 px, ou le texte n'occupe pas la piste).
+    "equilibre-aside-collant.html": {1280: 0, 1920: 0},
+    "equilibre-aside-non-collant.html": {1280: 1},
+}
+# Les familles qui, sur la rouge, ne doivent RIEN dire : le defaut leur echappe.
+FAMILLES_MUETTES_SUR_EQUILIBRE = ("v1_overflow", "v2_contrast", "v4_overlap", "l2_width", "l2_conteneur",
+                                  "contenu_etroit", "prose_etroite")
+
+
+def run_v28_equilibre():
+    """TF-2679 — V28 : plus du quart du cadre vide a droite, avec plus de 15 points d'ecart avec la gauche, par tranches de
+    40 px, sur plus de 600 px de haut. Silencieux si playwright, Pillow ou numpy est absent (voir run_rendu_large)."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+        importlib.import_module("PIL")
+        importlib.import_module("numpy")
+    except ImportError:
+        return None
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-v28-")
+    out = []
+    for nom, attendus in CAS_EQUILIBRE.items():
+        d = _rendre_json(nom, sorted(attendus), captures)
+        for largeur, attendu in attendus.items():
+            etiquette = f"{nom} · {largeur} px"
+            if d is None:
+                out.append({"fixture": etiquette, "verdict": "ECHEC", "attendu": attendu, "obtenu": 0,
+                            "regle": "equilibre_droite", "detail": "render_page illisible"})
+                continue
+            issues = d["breakpoints"][str(largeur)]["issues"]
+            n = len(issues["equilibre_droite"])
+            muettes = {k: len(issues[k]) for k in FAMILLES_MUETTES_SUR_EQUILIBRE if issues.get(k)} \
+                if nom.startswith("equilibre-piste") else {}
+            ok = n == attendu and not muettes and (attendu == 0 or d["verdict"] == "FAIL")
+            out.append({"fixture": etiquette, "verdict": "OK" if ok else "ECHEC",
+                        "attendu": attendu, "obtenu": n, "regle": "equilibre_droite (V28)",
+                        "detail": "" if ok else f"{n} constat(s) equilibre_droite a {largeur} px ; autres familles non muettes : {muettes}"})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
+# TF-2677 (factory-digit-ai-fr, run forge-digit-ai-fr-20261114a, 15/11/2026) — UNE DISPENSE data-colonne-ok NE VAUT QUE
+# SUR LE CONTENEUR BRIDEUR. La v2 de la page avait posé data-colonne-ok sur <main>, avec un motif ecrit par l'agent :
+# `closest` dispensait la page entiere, et l'humain a vu sur une capture la moitie de la page vide a droite que L2
+# existe pour refuser. Trois cas : (rouge) la meme page que l2c-conteneur-cale-a-gauche avec la dispense sur <main>
+# aussi large que son parent → FAIL l2_conteneur, la dispense nommee IGNOREE au non_juge ; (verte) la dispense sur la
+# colonne elle-meme → PASS, son motif au non_juge ; (verte) <main> qui est lui-meme la carte etroite → PASS, dispense
+# valide listee sans motif.
+def run_dispenses_colonne():
+    """TF-2677 — la dispense data-colonne-ok n'est valide que sur le conteneur brideur lui-meme, et chaque dispense
+    figure au non_juge avec son motif. Silencieux si playwright est absent (voir run_rendu_large)."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-dispenses-")
+    out = []
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu, "obtenu": obtenu,
+                    "regle": "TF-2677 dispense data-colonne-ok", "detail": "" if ok else detail})
+    try:
+        def lire(nom):
+            d = _rendre_json(nom, [1440], captures)
+            if d is None:
+                return None, [], 0
+            lignes = [x for x in d.get("non_juge", []) if x.startswith("DISPENSES data-colonne-ok")]
+            return d, lignes, len(d["breakpoints"]["1440"]["issues"]["l2_conteneur"])
+        d, lignes, n = lire("l2c-dispense-sur-main.html")
+        cas("l2c-dispense-sur-main.html · dispense sur <main> = FAIL",
+            d is not None and d.get("verdict") == "FAIL" and n >= 1
+            and any("IGNOREE" in x and "mise en page voulue par la page" in x for x in lignes),
+            "FAIL, l2_conteneur >= 1, dispense IGNOREE nommee avec son motif",
+            "illisible" if d is None else f"{d.get('verdict')}, l2_conteneur {n}, {len(lignes)} ligne(s) DISPENSES",
+            "la dispense posee sur <main> eteint L2 pour toute la page, ou n'est pas nommee")
+        d, lignes, n = lire("l2-remede-colonne-declaree.html")
+        cas("l2-remede-colonne-declaree.html · dispense sur la colonne = PASS, motif dit",
+            d is not None and d.get("verdict") == "PASS" and n == 0
+            and any("note de cadrage lue en colonne, a dessein" in x and "IGNOREE" not in x for x in lignes),
+            "PASS, 0 l2_conteneur, motif au non_juge",
+            "illisible" if d is None else f"{d.get('verdict')}, l2_conteneur {n}, {len(lignes)} ligne(s) DISPENSES",
+            "la dispense posee sur le conteneur brideur ne passe plus, ou son motif n'est pas dit")
+        d, lignes, n = lire("session-changement-mdp.html")
+        cas("session-changement-mdp.html · <main> brideur lui-meme = dispense valide",
+            d is not None and d.get("verdict") == "PASS" and len(lignes) == 1 and "IGNOREE" not in lignes[0],
+            "PASS, une dispense listee, non ignoree",
+            "illisible" if d is None else f"{d.get('verdict')}, {len(lignes)} ligne(s) DISPENSES",
+            "<main> plus etroit que son parent est sa propre bride : sa dispense reste valide")
+    finally:
+        shutil.rmtree(captures, ignore_errors=True)
     return out
 
 
@@ -7246,6 +7359,14 @@ def main():
     prose_verticale = run_v24_prose_verticale()
     if prose_verticale:
         res += prose_verticale
+    # TF-2679 — V28, l'equilibre horizontal de l'encre : la piste de droite reservee et vide.
+    equilibre = run_v28_equilibre()
+    if equilibre:
+        res += equilibre
+    # TF-2677 — la dispense data-colonne-ok ne vaut que sur le conteneur brideur, et chaque dispense se dit.
+    dispenses = run_dispenses_colonne()
+    if dispenses:
+        res += dispenses
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

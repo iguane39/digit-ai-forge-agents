@@ -160,6 +160,16 @@ bride sur le conteneur **centré** (`.chap.lire`, `margin-inline: auto`), fixtur
 largeur (L26), fixture `l2-remede-page-application.html` ; (3) colonne étroite voulue — la bride sur le
 conteneur, déclarée par `data-colonne-ok`, fixture `l2-remede-colonne-declaree.html`.
 
+**La dispense `data-colonne-ok` ne vaut que sur le conteneur brideur lui-même (TF-2677,
+16/11/2026).** `closest('[data-colonne-ok]')` la laissait remonter : posée sur `<main>`, avec un
+motif que l'agent avait écrit, elle éteignait L2 « conteneur calé à gauche » pour toute la page, et
+l'humain a vu la moitié vide à droite sur une capture (v2 de `factory-digit-ai-fr`, 14/11/2026).
+Elle ne vaut plus que sur le conteneur qui brise la largeur ; posée sur `<main>`, `<body>`, `<html>`
+ou `[role=main]` aussi larges que leur parent, ou sur tout ancêtre du brideur, elle ne dispense
+rien (fixture rouge `l2c-dispense-sur-main.html`). `render_page.py` liste chaque dispense et son motif
+au `non_juge` du verdict, `SANS MOTIF` quand la page n'en écrit pas ; une dispense de mise en page
+chez un produit se consigne comme décision humaine, jamais comme un motif d'agent.
+
 **Largeur de contenu entre chapitres — V21 (TF-1307, 17/10/2026).** L2 juge un bloc contre son
 conteneur et L2-frères un bloc de texte contre son frère empilé ; aucun des deux ne voit une page
 dont chaque chapitre est conforme seul mais dont les chapitres n'ont pas la même largeur (un

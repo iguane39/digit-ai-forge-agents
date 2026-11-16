@@ -33,6 +33,18 @@ se dit et se fait trancher : il ne se comble pas en silence. *Le fait* : le 13/1
 bâtis sur la lettre de la propale ont été enchaînés comme s'ils se suivaient dans l'ordre ; le
 retour du 26/10 (« les formations ne correspondent à rien de demandé ») a fait refaire les 3 supports.
 
+**Chaque exemple part d'un usage nommé du client servi (TF-2606).** Le public d'une formation est
+celui du client, pas celui d'un cas d'école : chaque consigne type, chaque démonstration et chaque
+exercice part d'un usage que le public fait de son métier, nommé au cadrage, déclaré dans le fichier de
+contenu (`client.usages`) et cité par l'exemple (`usage`). Un exemple qui ne cite aucun usage, ou
+qui en cite un que le client ne déclare pas, est un exemple d'un autre métier. *Le fait* : sur un
+support livré le 09/11/2026, 5 des 7 retours humains du 12/11 portaient sur des exemples hors du
+métier du public (réouverture d'un magasin, comptes rendus de visite, ventes de magasins,
+conformité abstraite, courriel supposé), alors que le public était les fonctions transverses du
+client ; consigne humaine : « Des exemples adaptés aux clients servis des formations. » Le contrôle
+(C10) est confié à `oracle-programme-formation` du skill `quality-oracles` ; le self-test de ce skill
+tient ici le texte de l'exigence (C5).
+
 **Trois pièces, tirées d'un seul fichier de contenu.** Une formation n'est pas livrée avec moins de
 trois pièces, et le contrat de sortie est binaire :
 - le **support**, les diapositives projetées (rendu par `digit-ai-pptx`) ;
@@ -61,7 +73,14 @@ de marque (`MARQUE.md` de l'émetteur) : jamais de « je », un fait ou une anno
 [references/structures-publication.md](structures-publication.md) — « Les N points »,
 « Retour d'expérience », « Analyse comparative ». La mise en gras passe par
 [scripts/linkedin_unicode_formatting.py](../scripts/linkedin_unicode_formatting.py) : LinkedIn
-ne rend pas le gras Markdown au copier-coller.
+ne rend pas le gras Markdown au copier-coller. Le script décompose le texte en NFD : une lettre
+accentuée sort en gras avec son diacritique combinant, et `lettres_restees_maigres(texte)` nomme les
+rares lettres qui ne s'y prêtent pas (« œ », « æ », lettres non latines). Le gras Unicode n'est pas
+du gras : les lecteurs d'écran lisent chaque lettre comme un symbole mathématique (« lettre
+mathématique grasse a »), et la recherche ne retrouve pas le mot. Il se réserve donc à un mot ou
+deux, jamais à une phrase ni à l'accroche entière. *Le fait* : relevé le 12/11/2026, une
+accroche française sortait du script avec ses « é » et ses « è » maigres au milieu du gras, et
+l'auto-test rendait « accents préservés » PASS sans le signaler (TF-2637).
 
 **Contrat de sortie, binaire.** Un post qui manque un seul critère n'est pas livré.
 - Longueur : 150 à 300 mots.
@@ -82,6 +101,27 @@ recopie pas.
 **Publier et répondre restent des gestes humains.** Le contrat de LinkedIn interdit toute
 automatisation hors de son interface agréée (`PLATEFORME-LINKEDIN.md` §1). La programmation gratuite de la plateforme reste ouverte à l'humain. Ce preset prépare
 un texte ; il ne publie ni ne répond.
+
+### Republication avec avis (TF-2641)
+
+Identifiant du contrat : `republication-avec-avis`. Réseau visé : LinkedIn. Une republication avec
+avis affiche le texte de l'auteur au-dessus de la publication d'origine : ce modèle écrit l'avis, il
+ne réécrit pas l'original et ne le résume pas. Le dirigeant a fixé la cible à 50 à 120 mots le
+12/11/2026 ; le plafond de la plateforme vit, daté et sourcé, dans `PLATEFORME-LINKEDIN.md` du
+pilot, jamais ici.
+
+**Contrat de sortie, binaire.** Un avis qui manque un seul critère n'est pas livré.
+- Longueur : 50 à 120 mots.
+- Une accroche de 20 caractères au moins en première ligne, qui dit ce que l'auteur ajoute à la
+  publication d'origine.
+- La publication d'origine est jointe au dossier de la semaine, telle que republiée, avec son
+  auteur et sa date : l'avis se juge contre elle.
+- L'avis ajoute un point de vue, un fait ou une conséquence que l'original ne porte pas ; il ne
+  répète pas l'original.
+- Aucun nom de client ni de personne tierce sans accord, celui de l'auteur de l'original excepté.
+- Mention de transparence présente quand le texte est généré — formule de `MARQUE.md` de l'émetteur.
+- Une question ou un appel à l'action en clôture.
+- 3 hashtags au plus, en fin d'avis.
 
 ## Contrats lisibles par machine (TF-1277)
 

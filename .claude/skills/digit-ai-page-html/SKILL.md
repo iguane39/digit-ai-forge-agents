@@ -1,19 +1,33 @@
 ---
 name: digit-ai-page-html
 description: >
-  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21–V27 et les règles de lisibilité L1–L39 à fixtures rouges.
+  Produit des pages HTML autonomes au socle commun Digit-AI et en fait l'audit de conformité : charte (Montserrat titres / Inter corps, jamais Syne, light theme), tokens :root, sémantique et accessibilité WCAG 2.2 AA, responsive, et robustesse d'export PDF WeasyPrint. Sert de couche de base dont héritent digit-ai-fiches-html et digit-ai-schemas. Use when / déclencher dès qu'il faut créer, charter, refondre, auditer ou corriger une page HTML autonome (fiche, schéma, dashboard, cartographie, livrable HTML) en contexte Digit-AI ou Enseigne-A, ou mentionne page HTML, gabarit HTML, boilerplate HTML, charte HTML, ou veut vérifier qu'un fichier HTML respecte les règles maison. Fournit un boilerplate prêt à l'emploi, un script de conformité déterministe (charte + accessibilité + print) et l'oracle zéro défaut visuel render_page.py (multi-breakpoints, contraste, débordements, chevauchements), avec la checklist canonique V1–V19 et V21–V28 et les règles de lisibilité L1–L39 à fixtures rouges.
 # TF-0475 (23/08/2026) : declenchement CADRE par motif de chemin. Verifie contre la
 # reference de frontmatter de Claude Code — `paths` limite l'activation AUTOMATIQUE, et
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.50.0"
+  version: "1.51.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.51.0 (16/11/2026)** — **La dispense `data-colonne-ok` ne vaut que sur le conteneur brideur (TF-2677), et `render_page` gagne V28, l'équilibre
+horizontal de l'encre (TF-2679) ; `oracle-filtres-tableau` lit les actifs déclarés pour G2 (TF-2618, quality-oracles) ; décisions R-58 : exécutées.**
+*(TF-2677 d'abord :* sur `factory-digit-ai-fr`, la v2 d'une page avait posé `data-colonne-ok` sur `<main>`, avec un motif écrit par l'agent ; `closest`
+laissait la dispense remonter et éteignait L2 « conteneur calé à gauche » pour toute la page, l'humain a vu la moitié vide à droite sur une capture.
+Elle ne vaut plus que sur le conteneur brideur lui-même : posée sur `<main>`, `<body>`, `<html>` ou `[role=main]` aussi larges que leur parent, ou sur un
+ancêtre du brideur, elle ne dispense rien (V23 et V24 la lisent de la même façon) ; chaque dispense rencontrée se dit au `non_juge` avec son motif, ou
+« SANS MOTIF ». Fixture rouge `l2c-dispense-sur-main.html` : PASS avant, FAIL après ; les trois verts du banc, dont `session-changement-mdp.html` (le
+`<main>` de 420 px est sa propre bride), restent PASS. TF-2679 ensuite :* une piste de grille réservée sans contenu, une marge animée vide, un bandeau à
+une seule figure : aucune famille ne jugeait ce que le lecteur voit. La famille `equilibre_droite` (V28, bloquante) découpe la capture pleine page en
+tranches de 40 px et refuse une suite de plus de 600 px dont l'encre laisse plus de 25 % du cadre vide à droite avec plus de 15 points d'écart avec la
+gauche ; un élément collant compte sur la hauteur de son parent, une colonne déclarée n'est pas jugée, une tranche sans encre interrompt la suite ; sans
+image la famille est non jugée et le dit. Fixture rouge `equilibre-piste-reservee-vide.html` (PASS avant, 1 constat après, les sept autres familles
+muettes), trois vertes, et la paire du collant (aside court `sticky` : 0 ; le même sans `sticky` : 1). Les seuils sont ceux de la décision, non calibrés ici sur le parc : le bruit est à mesurer (`mesurer_bruit.py`).
 
 **1.50.0 (14/11/2026)** — **Lot fa de la seconde campagne du 14/11/2026 : `L18` et `L27` qualifiés, les renvois `L30` nus soldés, une classe
 `page-servie`, les quatre cas de scènes indépendants de la police du poste (TF-2531, TF-2533, TF-2543 ; décision R-58 : exécutée).**
@@ -1194,7 +1208,7 @@ contrôles que le producteur lance de toute façon.
 - Bonnes pratiques par axe (structure, sémantique, typo, a11y, responsive, print, JS, maintenabilité) :
   [references/bonnes-pratiques.md](references/bonnes-pratiques.md)
 - Contournements à ne pas généraliser : [references/anti-patterns.md](references/anti-patterns.md)
-- Checklist canonique zéro défaut visuel V1–V19 et V21–V27 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
+- Checklist canonique zéro défaut visuel V1–V19 et V21–V28 (transversale forge ; V20 reste vide, voir 1.32.0) : [references/zero-defaut-visuel.md](references/zero-defaut-visuel.md)
 - Règles de lisibilité L1–L39 + partage contrôle mécanique / revue de lecture : [references/lisibilite.md](references/lisibilite.md)
 
 ## Composants

@@ -9,29 +9,59 @@ reste hors de ce skill — voir SKILL.md, section « Reste ».
 
 LinkedIn ne rend pas le gras Markdown (**texte**) au copier-coller. Ce module convertit le
 texte en veritables caracteres Unicode Mathematical Bold (U+1D400-U+1D7D7), qui survivent au
-copier-coller LinkedIn. Les caracteres hors A-Z/a-z/0-9 (accents compris) sont inchanges.
+copier-coller LinkedIn. Une lettre accentuee est decomposee en NFD (TF-2637, 16/11/2026) : la
+lettre de base passe en gras et son diacritique combinant est conserve, de sorte qu'un texte
+francais ne sort plus avec des lettres maigres au milieu du gras. Les caracteres sans
+decomposition (« œ », « æ », « ß », lettres non latines) restent inchanges :
+`lettres_restees_maigres` les nomme. Le gras Unicode est lu lettre par lettre (« lettre
+mathematique grasse a ») par les lecteurs d'ecran : a reserver a un mot ou deux, jamais a une
+phrase.
 """
 
 import sys
+import unicodedata
 
 
 def to_unicode_bold(text):
     """
     Convertit un texte en caracteres Unicode Mathematical Bold.
 
+    Le texte est decompose en NFD avant conversion : « é » devient « e » en gras suivi du
+    diacritique combinant U+0301, qui survit au copier-coller. Les caracteres sans
+    decomposition ni lettre de base A-Z/a-z/0-9 restent inchanges (voir
+    `lettres_restees_maigres`).
+
     Args:
         text (str): texte source.
 
     Returns:
-        str: texte en gras Unicode ; les caracteres hors A-Z/a-z/0-9 (accents compris)
-        restent inchanges.
+        str: texte en gras Unicode ; diacritiques conserves en caracteres combinants.
     """
     bold_map = {
         **{chr(i): chr(0x1D400 + i - 0x41) for i in range(0x41, 0x5B)},  # A-Z
         **{chr(i): chr(0x1D41A + i - 0x61) for i in range(0x61, 0x7B)},  # a-z
         **{chr(i): chr(0x1D7CE + i - 0x30) for i in range(0x30, 0x3A)},  # 0-9
     }
-    return ''.join(bold_map.get(c, c) for c in text)
+    return ''.join(bold_map.get(c, c) for c in unicodedata.normalize('NFD', text))
+
+
+def lettres_restees_maigres(text):
+    """
+    Liste les lettres que `to_unicode_bold` ne peut pas mettre en gras : celles qui, une fois le
+    texte decompose en NFD, ne sont ni A-Z, a-z, 0-9 ni un diacritique combinant (« œ », « æ »,
+    « ß », lettres non latines). Un texte francais courant n'en porte presque jamais, sauf « œ ».
+
+    Args:
+        text (str): texte source.
+
+    Returns:
+        list[str]: lettres restees maigres, sans doublon, dans l'ordre d'apparition.
+    """
+    vues = []
+    for c in unicodedata.normalize('NFD', text):
+        if c.isalpha() and not ('A' <= c <= 'Z' or 'a' <= c <= 'z') and c not in vues:
+            vues.append(c)
+    return vues
 
 
 def format_list_items(items, intro_text=None):
@@ -135,10 +165,24 @@ def _autotest():
     assert t2 == "\U0001d7d0\U0001d7ce\U0001d7d0\U0001d7d3", "conversion chiffres incorrecte"
     _ecrire("PASS - conversion chiffres")
 
-    # Cas VERT 3 : accents preserves (hors plage bold, jamais convertis)
+    # Cas VERT 3 (TF-2637) : une lettre accentuee sort en gras avec son diacritique combinant,
+    # jamais maigre au milieu du gras. Reference figee en echappements.
     t3 = to_unicode_bold("Stratégie")
-    assert t3[5] == 'é', "un caractere accentue ne doit jamais entrer dans la plage bold"
-    _ecrire("PASS - accents preserves")
+    assert t3 == (
+        "\U0001d412\U0001d42d\U0001d42b\U0001d41a\U0001d42d\U0001d41é"
+        "\U0001d420\U0001d422\U0001d41e"
+    ), "une lettre accentuee doit sortir en gras avec son diacritique combinant"
+    _ecrire("PASS - accents en gras, diacritique combinant conserve")
+
+    # Cas VERT 3 bis : une accroche francaise entiere (grave, aigu, circonflexe, trema, cedille)
+    # ne laisse aucune lettre maigre ; « œ » n'a pas de decomposition et est signale.
+    accroche = to_unicode_bold("À Noël, l'élève français s'est hâté")
+    assert not [c for c in accroche if c.isalpha() and not (0x1D400 <= ord(c) <= 0x1D7FF)], (
+        "une accroche francaise accentuee ne doit laisser aucune lettre maigre"
+    )
+    assert lettres_restees_maigres("À Noël, l'élève français") == [], "faux avertissement"
+    assert lettres_restees_maigres("cœur") == ["œ"], "« œ » doit etre signale comme lettre maigre"
+    _ecrire("PASS - accroche francaise sans lettre maigre, « œ » signale")
 
     # Cas VERT 4 : liste a puces, format strict (deux-points, saut de ligne, pas de ligne
     # vide entre puces)
@@ -159,6 +203,22 @@ def _autotest():
         _ecrire("FAIL - le cas rouge n'a pas echoue : l'auto-test est aveugle")
         sys.exit(1)
     _ecrire("PASS - le cas rouge echoue pour la bonne raison (auto-test non aveugle)")
+
+    # CAS ROUGE 2 (TF-2637) : l'ancienne conversion, ASCII seul, laisse « é » maigre. La meme
+    # assertion que le cas vert 3 bis doit y echouer, sinon elle ne distingue rien.
+    def _bold_ascii_seul(text):
+        return ''.join(
+            chr(0x1D400 + ord(c) - 0x41) if 'A' <= c <= 'Z'
+            else chr(0x1D41A + ord(c) - 0x61) if 'a' <= c <= 'z'
+            else c
+            for c in text
+        )
+    ancienne = _bold_ascii_seul("Stratégie")
+    maigres = [c for c in ancienne if c.isalpha() and not (0x1D400 <= ord(c) <= 0x1D7FF)]
+    if maigres != ["é"]:
+        _ecrire("FAIL - le cas rouge 2 ne reproduit pas la lettre maigre : auto-test aveugle")
+        sys.exit(1)
+    _ecrire("PASS - le cas rouge 2 (ancienne conversion ASCII seul) laisse « é » maigre")
 
     _ecrire("\n=== Tous les tests PASSENT ===")
 

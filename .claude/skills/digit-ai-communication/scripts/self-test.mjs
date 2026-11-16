@@ -35,6 +35,9 @@
 //        silence : C4 exige, dans les DEUX sens, que chaque modèle du fichier ait son
 //        identifiant et ses bornes de longueur dans la prose, que chaque identifiant déclaré
 //        en prose existe au fichier, et que le plafond de hashtags soit le même.
+//        C4 bis (TF-2641, 16/11/2026) : le modèle « republication avec avis » existe, borné à 50-120 mots, trois
+//        hashtags au plus, la publication d'origine pour pièce ; sa longueur refuse 121 mots et accepte 120 ; une
+//        borne haute portée à 121 au fichier seul est refusée pour sa raison (la prose dit 120).
 //
 //   C5 — le preset « Formation / atelier » porte ses deux exigences (TF-2315, TF-2317, 10/11/2026) : le cadrage
 //        par module (public réel, se suit-il seul, programme confronté à l'usage avant la lettre de la propale)
@@ -42,11 +45,20 @@
 //        fiche du formateur avec préparation, déroulé et durée par diapositive, solutions, questions orales,
 //        secours). Le fait : une formation d'une journée livrée en deux pièces, une note de support qui
 //        renvoie à un « kit formateur » inexistant, les solutions imprimées dans le kit du participant.
+//        TF-2606 (16/11/2026) : chaque consigne type, démonstration et exercice part d'un usage nommé du client
+//        servi, déclaré dans `client.usages` du contenu commun ; le contrôle des pièces est C10 de
+//        `oracle-programme-formation` (quality-oracles).
 //   C6 — le fichier de cadrage de l'étape 1 est jugé par `scripts/verifier-cadrage.mjs` (TF-2379, TF-2317) :
 //        l'exemple rempli passe, le gabarit vide est refusé, et chaque altération de l'exemple (une section
 //        retirée, un emplacement laissé entre accolades, un module sans réponse oui/non à « Se suit seul »,
 //        une formation sans tableau de public par module) est refusée pour sa raison. SKILL.md prescrit la
 //        commande à l'étape 1.
+//
+//   C7 — le gras Unicode (TF-2637, 16/11/2026) : le preset « Publication réseau » dit que le script décompose
+//        en NFD, nomme l'avertissement `lettres_restees_maigres` et rappelle la mauvaise lecture du gras
+//        Unicode par les lecteurs d'écran ; l'auto-test du script passe, et une copie du script sans la
+//        décomposition NFD le fait échouer. Le fait : « é » et « è » sortaient maigres au milieu du gras
+//        et l'auto-test rendait « accents préservés » PASS.
 //
 // DOUBLE SENS. C1, C3, C4, C5 et C6 sont rejoués sur des FIXTURES ROUGES synthétiques : si une fixture
 // rouge ne rougit pas, le contrôle correspondant est aveugle et le self-test échoue de
@@ -201,6 +213,17 @@ function verifierContrats(prose, contratsTexte, etiquette) {
   return findings;
 }
 
+// Longueur d'un texte contre le contrat d'un modèle (TF-2641) : les mots comptés sont ceux du texte hashtags
+// exclus, comme l'écrit le champ « mots » du fichier. Miroir de la règle RR2 du pilot, qui n'est pas rejouée ici.
+function motsDuTexte(texte) {
+  return texte.split(/\s+/).filter((m) => m && !/^#\S+$/.test(m)).length;
+}
+function longueurConforme(contrat, texte) {
+  const n = motsDuTexte(texte);
+  return n >= contrat.mots[0] && n <= contrat.mots[1];
+}
+const texteDeMots = (n, hashtags = '') => Array.from({ length: n }, (_, i) => `mot${i}`).join(' ') + hashtags;
+
 // ---------------------------------------------------------------- C5 : le preset formation (TF-2315, TF-2317)
 // Extrait la section « Formation / atelier — détail » et exige, clause par clause, ce que le contrat
 // de sortie dit : le cadrage par module et les trois pièces. Une clause est une expression que la
@@ -219,6 +242,8 @@ const CLAUSES_FORMATION = [
   ['solutions des exercices', 'la fiche du formateur ne porte plus les solutions des exercices'],
   ['questions orales', 'la fiche du formateur ne porte plus les questions orales'],
   ['plan de secours', 'la fiche du formateur ne porte plus le plan de secours'],
+  ['usage nommé du client servi', "le preset n'exige plus que chaque exemple parte d'un usage nommé du client servi (TF-2606)"],
+  ['client.usages', "le preset ne nomme plus où le contenu déclare les usages du client (TF-2606)"],
 ];
 
 function sectionFormation(texte) {
@@ -298,6 +323,30 @@ function verifierCadrageC6() {
     try { fs.rmSync(dossier, { recursive: true, force: true }); } catch { /* rien */ }
   }
   return findings;
+}
+
+// ---------------------------------------------------------------- C7 : le gras Unicode (TF-2637)
+// Le preset « Publication réseau » dit comment le script met en gras (NFD, diacritique combinant) et
+// rappelle la mauvaise lecture du gras Unicode par les lecteurs d'écran ; l'auto-test Python du script
+// passe, et une copie du script SANS la décomposition NFD le fait échouer (le banc n'est pas aveugle).
+const SCRIPT_GRAS = path.join(SKILL_DIR, 'scripts', 'linkedin_unicode_formatting.py');
+const CLAUSES_GRAS = [
+  ['décompose le texte en NFD', "le preset ne dit plus que le script décompose en NFD et garde le diacritique combinant"],
+  ['lettres_restees_maigres', "le preset ne nomme plus l'avertissement sur les lettres qui restent maigres"],
+  ["lecteurs d'écran", "le preset ne rappelle plus la mauvaise lecture du gras Unicode par les lecteurs d'écran"],
+];
+
+function verifierGras(texte, etiquette) {
+  const norm = texte.replace(/\s+/g, ' ');
+  return CLAUSES_GRAS.filter(([clause]) => !norm.includes(clause)).map(([clause, sens]) => `${etiquette} — « ${clause} » absent : ${sens}`);
+}
+
+function jouerScriptGras(fichier) {
+  for (const exe of ['python', 'python3', 'py']) {
+    const r = spawnSync(exe, [fichier], { encoding: 'utf8', timeout: 30000, env: { ...process.env, PYTHONUTF8: '1' } });
+    if (!r.error) return { code: r.status, sortie: (r.stdout || '') + (r.stderr || '') };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------- C2 : noms interdits
@@ -449,6 +498,32 @@ if (!fs.existsSync(contratsPath) || !fs.existsSync(presetsPath)) {
   if (!(frProse.length === 1 && frProse[0].includes('« modele-de-prose-seule »'))) {
     findings.push('fixture-rouge — C4 est AVEUGLE : un identifiant déclaré en prose et absent du fichier n\'a pas été détecté');
   }
+
+  // C4 bis (TF-2641) — le modèle « republication avec avis » : présent, borné à 50-120 mots, trois hashtags au plus,
+  // la publication d'origine pour pièce ; sa longueur refuse 121 mots, accepte 120 et 50, refuse 49. Rouge : une
+  // borne haute portée à 121 au fichier seul est refusée pour sa raison (la prose dit 120).
+  const rep = reel.modeles['republication-avec-avis'];
+  if (!rep) {
+    findings.push('C4 bis — le modèle « republication-avec-avis » est absent du fichier de contrats (TF-2641)');
+  } else {
+    if (rep.mots[0] !== 50 || rep.mots[1] !== 120) findings.push(`C4 bis — « republication-avec-avis » : longueur ${JSON.stringify(rep.mots)}, attendu [50, 120]`);
+    if (rep.hashtags_max !== 3) findings.push(`C4 bis — « republication-avec-avis » : ${rep.hashtags_max} hashtags au plus, attendu 3`);
+    if (rep.piece_requise !== 'publication-origine') findings.push(`C4 bis — « republication-avec-avis » : pièce requise ${JSON.stringify(rep.piece_requise)}, attendu « publication-origine »`);
+    if (rep.cloture !== 'question_ou_appel') findings.push(`C4 bis — « republication-avec-avis » : clôture ${JSON.stringify(rep.cloture)}, attendu « question_ou_appel »`);
+    if (!rep.accroche_min_caracteres) findings.push('C4 bis — « republication-avec-avis » : aucune accroche exigée');
+    const sens = [[50, true], [120, true], [49, false], [121, false]];
+    for (const [n, attendu] of sens) {
+      if (longueurConforme(rep, texteDeMots(n, ' #un #deux #trois')) !== attendu) {
+        findings.push(`C4 bis — un avis de ${n} mots (hashtags exclus) doit être ${attendu ? 'accepté' : 'refusé'} par le contrat`);
+      }
+    }
+    const trop = JSON.parse(contratsReels);
+    trop.modeles['republication-avec-avis'].mots = [50, 121];
+    const frTrop = verifierContrats(proseReelle, JSON.stringify(trop), 'fixture-rouge-121');
+    if (!(frTrop.length === 1 && frTrop[0].includes('« republication-avec-avis »') && frTrop[0].includes('Longueur : 50 à 121 mots'))) {
+      findings.push('fixture-rouge — C4 bis est AVEUGLE : une borne haute portée à 121 mots au fichier seul n\'a pas été refusée pour sa raison');
+    }
+  }
 }
 
 // C5 — le preset formation : fixture VERTE (le preset réel), puis fixtures ROUGES (une clause retirée à la fois)
@@ -476,6 +551,44 @@ if (!fs.existsSync(presetsPath)) {
 
 // C6 — le fichier de cadrage de l'étape 1
 findings.push(...verifierCadrageC6());
+
+// C7 — le gras Unicode : le preset (vert, puis une clause retirée à la fois), puis le script (vert, puis muté)
+let c7Jouee = false;
+if (!fs.existsSync(presetsPath) || !fs.existsSync(SCRIPT_GRAS)) {
+  nonJuge.push('C7 NON JOUÉE : references/presets-livrables.md ou scripts/linkedin_unicode_formatting.py introuvable.');
+} else {
+  c7Jouee = true;
+  const proseGras = fs.readFileSync(presetsPath, 'utf8');
+  findings.push(...verifierGras(proseGras, 'digit-ai-communication/references/presets-livrables.md'));
+  for (const [clause] of CLAUSES_GRAS) {
+    const mutant = proseGras.replace(/\s+/g, ' ').split(clause).join('XXX');
+    if (!verifierGras(mutant, 'fixture-rouge-gras').some((x) => x.includes(`« ${clause} »`))) {
+      findings.push(`fixture-rouge — C7 est AVEUGLE : la clause « ${clause} » retirée du preset n'a pas été détectée`);
+    }
+  }
+  const vertGras = jouerScriptGras(SCRIPT_GRAS);
+  if (vertGras === null) {
+    c7Jouee = false;
+    nonJuge.push("C7 : l'auto-test du script de gras n'est pas joué, aucun interpréteur Python (python, python3, py) trouvé.");
+  } else {
+    if (vertGras.code !== 0) findings.push(`C7 sens vert : l'auto-test de linkedin_unicode_formatting.py rend le code ${vertGras.code} — ${vertGras.sortie.split(/\r?\n/).filter(Boolean).slice(-2).join(' · ')}`);
+    const dossierGras = fs.mkdtempSync(path.join(os.tmpdir(), 'gras-'));
+    try {
+      const source = fs.readFileSync(SCRIPT_GRAS, 'utf8');
+      const mutantSrc = source.replace("unicodedata.normalize('NFD', text)", 'text');
+      if (mutantSrc === source) {
+        findings.push("C7 : la mutation « sans décomposition NFD » n'a rien changé au script — la fixture est cassée");
+      } else {
+        const f = path.join(dossierGras, 'linkedin_unicode_formatting.py');
+        fs.writeFileSync(f, mutantSrc, 'utf8');
+        const rouge = jouerScriptGras(f);
+        if (rouge !== null && rouge.code === 0) findings.push("fixture-rouge — C7 est AVEUGLE : le script sans décomposition NFD passe encore son auto-test (une lettre accentuée maigre n'est pas vue)");
+      }
+    } finally {
+      try { fs.rmSync(dossierGras, { recursive: true, force: true }); } catch { /* rien */ }
+    }
+  }
+}
 
 // C2 — noms interdits
 const table = chargerTable();
@@ -510,7 +623,7 @@ if (!table) {
 }
 
 if (findings.length) verdict = 'FAIL';
-else if (!c2Jouee || !c3Jouee || !c4Jouee || !c5Jouee) verdict = 'SKIP';
+else if (!c2Jouee || !c3Jouee || !c4Jouee || !c5Jouee || !c7Jouee) verdict = 'SKIP';
 
 const code = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2;
 process.stdout.write(JSON.stringify({
@@ -524,6 +637,7 @@ process.stdout.write(JSON.stringify({
     C4_contrats_publication: c4Jouee ? 'jouée' : 'NON jouée (contrats-publication.json ou presets-livrables.md absent)',
     C5_preset_formation: c5Jouee ? 'jouée' : 'NON jouée (presets-livrables.md absent)',
     C6_cadrage_etape_1: 'jouée',
+    C7_gras_unicode: c7Jouee ? 'jouée' : 'NON jouée (preset, script ou interpréteur Python absent)',
   },
   verdict,
   findings,

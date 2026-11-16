@@ -18,6 +18,7 @@ Oracle mesuré de la checklist canonique references/zero-defaut-visuel.md :
   - V25 colonne large et vide face à une colonne étranglée (avertissement, TF-1966)
   - V26 panneau déplié au fond transparent ou recouvert (bloquant, TF-1963)
   - V27 filtres de colonne masqués par le repli en cartes (bloquant, TF-1965)
+  - V28 encre déséquilibrée : plus du quart du cadre vide à droite, par tranches de 40 px (bloquant, TF-2679)
   - V1 : la bande de sommaire défilante de L25 n'est pas un débordement (TF-1992)
 
 V5 (croisements de flèches) et V6 (images déformées) restent à l'inspection
@@ -307,7 +308,7 @@ MEASURE_JS = r"""
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
                    decor_sur_ancetre: [], entete_desaligne: [], largeurs_melangees: [],
-                   contenu_etroit: [], prose_verticale: [], colonnes_desequilibrees: [],
+                   contenu_etroit: [], prose_verticale: [], colonnes_desequilibrees: [], equilibre_droite: [],
                    panneau_deplie: [], filtres_masques_repli: [], unmeasured: [] };
   const doc = document.documentElement;
 
@@ -333,6 +334,25 @@ MEASURE_JS = r"""
     else if (el.classList.length) t += '.' + el.classList[0];
     const txt = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40);
     return txt ? `${t} « ${txt}${txt.length >= 40 ? '…' : ''} »` : t;
+  };
+  // TF-2677 (factory-digit-ai-fr, 15/11/2026) — UNE DISPENSE data-colonne-ok NE VAUT QUE SUR LE CONTENEUR
+  // BRIDEUR. Posee sur <main>, <body>, <html> ou [role=main] qui occupent la largeur de leur parent, elle
+  // n'est la bride de rien : elle dispensait la page entiere (v2 de factory-digit-ai-fr : la moitie de la page
+  // vide a droite, vue par l'humain sur une capture). Elle ne vaut sur ces elements que s'ils sont EUX-MEMES
+  // plus etroits que leur parent (la carte de 420 px d'un ecran de connexion est sa propre bride).
+  const dispenseValide = (el) => {
+    if (!el.matches('main, body, html, [role=main]')) return true;
+    const p = el.parentElement;
+    if (!p) return false;
+    const rn = el.getBoundingClientRect(), rp = p.getBoundingClientRect();
+    return rp.width > 0 && rn.width / rp.width < __L2C_MIN_RATIO__;
+  };
+  // Le plus proche ancetre-ou-soi qui porte une dispense VALIDE (null sinon) : remplace `closest('[data-colonne-ok]')`.
+  const dispenseDe = (el) => {
+    for (let a = el; a; a = a.parentElement) {
+      if (a.hasAttribute && a.hasAttribute('data-colonne-ok') && dispenseValide(a)) return a;
+    }
+    return null;
   };
 
   // ---- V1 : débordement horizontal --------------------------------------
@@ -1275,7 +1295,10 @@ MEASURE_JS = r"""
         if (rp.width > 0 && rn.width / rp.width < __L2C_MIN_RATIO__) { boite = { n, rn, rp }; break; }
       }
       if (!boite) continue;
-      if (boite.n.closest('[data-colonne-ok]')) continue;
+      // TF-2677 : la dispense ne vaut QUE sur le conteneur brideur lui-même. `closest` la laissait remonter
+      // d'un ancêtre : posée sur <main>, elle éteignait la règle pour toute la page (refus humain du 21/08 :
+      // la moitié de la page vide à droite). Une dispense sur un ancêtre ne dispense rien ; elle se dit au non_juge.
+      if (boite.n.hasAttribute('data-colonne-ok')) continue;
       const gauche = boite.rn.left - boite.rp.left;
       const droite = boite.rp.right - boite.rn.right;
       if (droite <= gauche * 2) continue;          // centré, ou décalé vers la droite : légitime
@@ -1768,10 +1791,10 @@ MEASURE_JS = r"""
   //   colonne etroite voulue, DECLAREE par data-colonne-ok sur son conteneur.
   if (window.innerWidth >= __L2_MIN_VIEWPORT__) {
     const HORS = 'nav, header, footer, aside, [role=navigation], [role=banner], [role=contentinfo], '
-      + '[role=complementary], .tf-panel, dialog, [data-colonne-ok]';
+      + '[role=complementary], .tf-panel, dialog';
     const blocs = [...document.body.querySelectorAll(
       'p, li, dd, dt, blockquote, pre, table, figure, img, svg, canvas')]
-      .filter((el) => !el.closest(HORS) && !el.parentElement.closest('svg') && visible(el))
+      .filter((el) => !el.closest(HORS) && !dispenseDe(el) && !el.parentElement.closest('svg') && visible(el))
       .filter((el) => {
         if (!/^(img|svg|canvas)$/i.test(el.tagName)) return true;
         const r = el.getBoundingClientRect();
@@ -1843,7 +1866,7 @@ MEASURE_JS = r"""
     const MIN_CPL = __V24_MIN_CPL__, MIN_LIGNES = __V24_MIN_LIGNES__;
     const SELECTEUR = 'p, li, dd, blockquote, .prose, .chapo, .va';
     const EXCLUS = 'table, nav, pre, code, figcaption, small, .legende, .note-bas, .tf-panel, '
-      + '[role=tooltip], .kpi, .tuile, button, summary, [data-colonne-ok], [data-mesure-lecture]';
+      + '[role=tooltip], .kpi, .tuile, button, summary, [data-mesure-lecture]';
     const lignesPleines = (el) => {
       // Les caracteres peints par ligne : un Range par caractere visible, regroupes par `top`.
       const marche = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -1870,7 +1893,7 @@ MEASURE_JS = r"""
     };
     const verticales = [];
     for (const el of document.body.querySelectorAll(SELECTEUR)) {
-      if (el.closest(EXCLUS) || el.querySelector(SELECTEUR)) continue;
+      if (el.closest(EXCLUS) || dispenseDe(el) || el.querySelector(SELECTEUR)) continue;
       if (!visible(el) || dansDetailsFerme(el)) continue;   // TF-2220
       if (getComputedStyle(el).display === 'inline') continue;
       const longueur = (el.textContent || '').replace(/\s+/g, ' ').trim().length;
@@ -2576,6 +2599,27 @@ MEASURE_JS = r"""
 #     username / e-mail) a cote d'un seul mot de passe ;
 #   · sinon : aucun indice d'ouverture de session, l'ecran se juge comme un ecran connecte.
 # Sans attribut `action`, le formulaire part vers l'adresse de la page : c'est elle qui se lit.
+# TF-2677 (factory-digit-ai-fr, 15/11/2026) — LES DISPENSES `data-colonne-ok` SE LISENT, ET SE DISENT. Une
+# dispense posee sur <main> eteignait la regle L2 « conteneur de lecture cale a gauche » pour toute la page
+# (`closest`), avec un motif ecrit par l'agent et aucune decision humaine : l'humain a vu le defaut sur une
+# capture. La dispense ne vaut plus que sur le conteneur brideur lui-meme ; posee sur <main>, <body>, <html> ou
+# [role=main] aussi large que son parent (ou sur tout ancetre du conteneur brideur, pour L2), elle ne dispense rien. Chaque dispense
+# rencontree est publiee au non_juge avec son motif — un verdict qui s'appuie sur une dispense la nomme.
+DISPENSES_JS = r"""() => [...document.querySelectorAll('[data-colonne-ok]')].map((el) => {
+  const id = el.id ? '#' + el.id : '';
+  const cl = typeof el.className === 'string' && el.className.trim()
+    ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
+  let ignoree = false;
+  if (el.matches('main, body, html, [role=main]')) {
+    const p = el.parentElement;
+    const rn = el.getBoundingClientRect(), rp = p ? p.getBoundingClientRect() : null;
+    ignoree = !(rp && rp.width > 0 && rn.width / rp.width < __L2C_MIN_RATIO__);
+  }
+  return { what: el.tagName.toLowerCase() + id + cl,
+           motif: (el.getAttribute('data-colonne-ok') || '').trim(),
+           sur_ancetre_de_page: ignoree };
+})"""
+
 MIRE_JS = r"""() => {
   const vu = (el) => {
     const s = getComputedStyle(el), r = el.getBoundingClientRect();
@@ -3461,6 +3505,11 @@ FAMILLES = [
     # declencheurs de filtre de colonne (5 boutons en 0 x 0 a 390 px) : une affordance qui n'existe plus
     # sans que rien ne le dise (loi n 1). Bloquant ; ecart voulu : data-filtres-remplaces="<raison>".
     ("filtres_masques_repli", "V27 filtres de colonne masques par le repli en cartes", "bloquant"),
+    # TF-2679 (factory-digit-ai-fr, 15/11/2026) : une piste de grille reservee sans contenu, une marge animee
+    # vide, un bandeau a une seule figure — aucune famille ne jugeait ce que le lecteur voit : la moitie de la
+    # page vide a droite. Bloquant, comme la decision du 16/11/2026 le pose (9 pages sur 10 rouges au controle
+    # du produit, 84 mesures vertes) ; le bruit sur le parc n'est pas mesure ici (mesurer_bruit.py).
+    ("equilibre_droite", "V28 encre desequilibree : plus du quart du cadre vide a droite", "bloquant"),
     # TF-1146 (16/09, lot Produit-64 20260916a) : l exemption V4 posee EN BLOC. Avertissement et
     # non bloquant — 1 716 occurrences mesurees dans le parc le 16/09, les rendre bloquantes
     # d un coup rougirait tout ce qui existe. Mais le silence, lui, s arrete : un libelle de
@@ -3568,7 +3617,7 @@ class _SautDeCapture(Exception):
     """Sortie propre du bloc de capture quand la page est au-delà du seuil (TF-1139)."""
 
 FAMILLES_SANS_IMAGE = "V1 debordement, V2 contraste, V4 chevauchement, V3, V7, L2"
-FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
+FAMILLES_AVEC_IMAGE = "V5 croisements, V6 images et V28 equilibre horizontal (aux largeurs de bureau)"
 
 
 # ---- V9 · la mesure des ACTIFS VISUELS, au pixel et dans leur contexte (TF-0633) -------------
@@ -3735,6 +3784,117 @@ _V9_JS_NOMMER_COLLES = """() => {
     return el.tagName.toLowerCase() + id + cls;
   });
 }"""
+
+
+# TF-2679 (factory-digit-ai-fr, run forge-digit-ai-fr-20261114a, 15/11/2026) — L'ÉQUILIBRE HORIZONTAL DE L'ENCRE.
+# LE FAIT. Une marge animee restee vide sur 60 % de la hauteur d'une page, un bandeau a deux colonnes dont la
+# seconde piste, reservee, ne porte qu'une figure : aucune famille ne le jugeait. L2 compare un conteneur a son
+# parent ; debordement, contraste et chevauchement jugent des elements PRESENTS ; une piste de grille reservee
+# sans contenu n'est aucun element. Le controle ecrit au produit (colonnes_vides.py) rendait 9 pages sur 10
+# rouges avant correction et 84 mesures vertes apres.
+# LA MESURE. Sur la capture pleine page, par TRANCHES de 40 px CSS : l'encre visible (les pixels qui s'ecartent
+# du fond dominant de la tranche) donne le bord gauche et le bord droit de ce que le lecteur voit. Une tranche est
+# DESEQUILIBREE quand plus de 25 % du cadre est vide a droite ET que ce vide depasse de plus de 15 points celui
+# de gauche. Un defaut est une suite de tranches desequilibrees de plus de 600 px de haut. Une tranche sans encre
+# ne compte pas et interrompt la suite. Un element COLLANT compte sur la hauteur de son PARENT (la capture le
+# peint une fois, en haut ; le lecteur le voit alors que le parent defile). Une colonne etroite DECLAREE
+# (data-colonne-ok valide) n'est pas jugee ici : son rectangle est retire de l'encre.
+# Seuils poses par la decision du 16/11/2026 (TF-2679), non calibres ici sur le parc : mesurer_bruit.py les
+# mesurera sur les pages livrees.
+EQ_BANDE_PX = 40
+EQ_VIDE_DROITE_MAX = 0.25
+EQ_ECART_MIN = 0.15
+EQ_HAUTEUR_MIN = 600
+EQ_ENCRE_SEUIL = 24            # ecart de canal (0-255) au fond dominant de la tranche : sous lui, ce n'est pas de l'encre
+EQ_MIN_VIEWPORT = L2_MIN_VIEWPORT
+
+EQ_JS = r"""() => {
+  const y0 = window.scrollY;
+  const page = (el) => { const r = el.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top + y0, bottom: r.bottom + y0 }; };
+  const collants = [], dispenses = [];
+  for (const el of document.body.querySelectorAll('*')) {
+    const cs = getComputedStyle(el);
+    if (cs.position === 'sticky' && el.parentElement) {
+      const r = page(el), p = page(el.parentElement);
+      if (r.right > r.left) collants.push({ left: r.left, right: r.right, top: p.top, bottom: p.bottom });
+    }
+    if (el.hasAttribute('data-colonne-ok')) {
+      const r = page(el);
+      if (r.right > r.left) dispenses.push(r);
+    }
+  }
+  return { collants, dispenses };
+}"""
+
+
+def mesurer_equilibre(page, png: Path, largeur: int, hauteur_css: float, issues: dict) -> str | None:
+    """TF-2679 — l'equilibre horizontal de l'encre par tranches de 40 px, sur la capture pleine page.
+    Alimente `issues["equilibre_droite"]` ; rend un motif de non-jugement (ou None quand la mesure est jouee)."""
+    try:
+        from PIL import Image
+        import numpy as np
+    except ImportError:
+        return "Pillow ou numpy absent : l'equilibre horizontal de l'encre n'est pas mesure"
+    try:
+        sonde = page.evaluate(EQ_JS)
+        im = Image.open(png).convert("RGB")
+    except Exception as erreur:  # noqa: BLE001 — une sonde ou une image illisible se declare, jamais un vert
+        return f"mesure d'equilibre impossible ({type(erreur).__name__})"
+    sx = im.width / largeur
+    sy = im.height / hauteur_css
+    nb = int(hauteur_css // EQ_BANDE_PX) + (1 if hauteur_css % EQ_BANDE_PX else 0)
+    gauche: list[float | None] = []
+    droite: list[float | None] = []
+    for b in range(nb):
+        h0, h1 = b * EQ_BANDE_PX, min((b + 1) * EQ_BANDE_PX, hauteur_css)
+        r0, r1 = int(h0 * sy), max(int(h1 * sy), int(h0 * sy) + 1)
+        bande = np.asarray(im.crop((0, r0, im.width, r1)), dtype=np.int32)
+        empaquete = (bande[:, :, 0] << 16) | (bande[:, :, 1] << 8) | bande[:, :, 2]
+        valeurs, comptes = np.unique(empaquete, return_counts=True)
+        fond = int(valeurs[int(np.argmax(comptes))])
+        fr, fg, fb = (fond >> 16) & 255, (fond >> 8) & 255, fond & 255
+        ecart = np.maximum(np.maximum(np.abs(bande[:, :, 0] - fr), np.abs(bande[:, :, 1] - fg)),
+                           np.abs(bande[:, :, 2] - fb))
+        encre = (ecart > EQ_ENCRE_SEUIL).any(axis=0)
+        for r in sonde["dispenses"]:
+            if r["bottom"] > h0 and r["top"] < h1:
+                encre[max(int(r["left"] * sx), 0):max(int(r["right"] * sx) + 1, 0)] = False
+        colonnes = np.flatnonzero(encre)
+        if colonnes.size == 0:
+            gauche.append(None)
+            droite.append(None)
+            continue
+        g, d = colonnes[0] / sx, (colonnes[-1] + 1) / sx
+        for c in sonde["collants"]:
+            if c["bottom"] > h0 and c["top"] < h1:
+                g, d = min(g, c["left"]), max(d, c["right"])
+        gauche.append(max(g, 0.0) / largeur)
+        droite.append(max(largeur - d, 0.0) / largeur)
+    suite: list[int] = []
+
+    def clore():
+        if len(suite) * EQ_BANDE_PX > EQ_HAUTEUR_MIN:
+            vd = max(droite[i] for i in suite)
+            vg = min(gauche[i] for i in suite)
+            issues["equilibre_droite"].append({
+                "what": f"page, de {suite[0] * EQ_BANDE_PX} a {(suite[-1] + 1) * EQ_BANDE_PX} px",
+                "detail": f"{len(suite) * EQ_BANDE_PX} px de haut dont l'encre laisse jusqu'a {round(vd * 100)} % du cadre "
+                          f"vide a droite contre {round(vg * 100)} % a gauche (plus de {round(EQ_VIDE_DROITE_MAX * 100)} % a "
+                          f"droite et plus de {round(EQ_ECART_MIN * 100)} points d'ecart, par tranches de {EQ_BANDE_PX} px, sur "
+                          f"plus de {EQ_HAUTEUR_MIN} px) — une piste de grille reservee sans contenu, une marge animee ou un "
+                          "bandeau a une seule figure laissent le lecteur devant une moitie de page vide. Sorties qui PASSENT : "
+                          "centrer la colonne (le blanc se repartit), porter un contenu utile dans la piste de droite, "
+                          "retirer la piste reservee, ou declarer une colonne etroite voulue par data-colonne-ok sur son "
+                          "conteneur (TF-2679)"})
+        suite.clear()
+    for i, (g, d) in enumerate(zip(gauche, droite)):
+        if g is not None and d is not None and d > EQ_VIDE_DROITE_MAX and d - g > EQ_ECART_MIN:
+            suite.append(i)
+        else:
+            clore()
+    clore()
+    return None
 
 
 def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float = 1.0) -> None:
@@ -4189,6 +4349,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
     theme_non_rendu: list[str] = []      # TF-1718 : largeurs ou la page a reecrit le theme demande
     theme_tenu: list[str] = []           # TF-1775 : largeurs ou la page a reecrit data-theme, contree
     mires_vues: list[int] = []           # TF-1788 : largeurs ou une mire de connexion est rendue
+    dispenses_vues: dict[tuple, int] = {}  # TF-2677 : dispenses data-colonne-ok rencontrees, par (cible, motif, ancetre)
     canvas_par_largeur: dict[int, dict] = {}   # TF-1859 : bilan de la mesure des canvas, par largeur
     scenes_par_largeur: dict[int, dict] = {}   # TF-2299 : scenes declarees jouees, par largeur
 
@@ -4259,6 +4420,14 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                 page.wait_for_timeout(250)
 
             issues = page.evaluate(js)
+            # TF-2677 — les dispenses data-colonne-ok de la page se relevent a chaque largeur (une page
+            # peut en poser selon la largeur) et se disent au non_juge ; une panne n'arrete rien.
+            try:
+                for d in page.evaluate(DISPENSES_JS.replace("__L2C_MIN_RATIO__", str(L2C_MIN_RATIO))):
+                    cle = (d["what"], d["motif"], bool(d["sur_ancetre_de_page"]))
+                    dispenses_vues[cle] = dispenses_vues.get(cle, 0) + 1
+            except Exception:  # noqa: BLE001 — une sonde qui leve ne decide de rien
+                pass
             # TF-1788 (lot Produit-83 20261015b, RA-4) — UNE MIRE DE CONNEXION SE RECONNAIT. Sans
             # --etat-session, une application derriere connexion se rend en mire, et le verdict
             # portait sur la mire sans le dire : la consigne de l'etape ne nommait pas l'option.
@@ -4381,6 +4550,15 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                               "Augmenter --timeout, reduire --scale, ou assumer l ecart declare"),
                 }
                 captures_manquees.append(width)
+
+            # TF-2679 — V28 : l'equilibre horizontal de l'encre se mesure sur la capture pleine page, aux
+            # largeurs de bureau ; sans image (capture manquee, element cible), la famille est NON JUGEE et
+            # le dit (FAMILLES_AVEC_IMAGE), jamais verte en silence.
+            if width >= EQ_MIN_VIEWPORT and not target and capture.get("faite"):
+                motif_eq = mesurer_equilibre(page, png, width, capture["hauteur_css"], issues)
+                if motif_eq:
+                    issues["unmeasured"].append({"what": "V28 equilibre horizontal de l'encre",
+                                                 "detail": f"{motif_eq} : ne pas lire ce silence comme un vert"})
 
             # TF-0422 / TF-1282 : une capture PAR SECTION — un panneau masque est rendu VRAIMENT
             # visible (l'element et ses ancetres masques) le temps de sa capture, puis remis dans
@@ -4589,6 +4767,22 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             "pas ici et disparaissent sans bruit, et tout comportement garde par "
             "`location.protocol` ne s'execute pas. Ne pas lire ce PASS comme un verdict sur le "
             "livrable SERVI : le rejouer sur une instance servie (TF-1093)")
+
+    # TF-2677 — LES DISPENSES SE DISENT, avec leur motif. Une dispense posee sur <main>, <body>, <html> ou
+    # [role=main] ne dispense rien : elle est nommee comme telle, jamais lue comme une decision.
+    if dispenses_vues:
+        lignes = []
+        for (cible_d, motif, ancetre), _n in sorted(dispenses_vues.items()):
+            lignes.append(
+                f"{cible_d} (motif : « {motif} »)" if motif else f"{cible_d} (SANS MOTIF)")
+            if ancetre:
+                lignes[-1] += (" — posee sur <main>, <body> ou <html> aussi large que son parent : "
+                               "IGNOREE, elle ne dispense rien")
+        report["non_juge"].append(
+            f"DISPENSES data-colonne-ok ({len(lignes)}) : {' ; '.join(lignes)}. Une dispense ne vaut que "
+            "sur le conteneur brideur lui-meme (TF-2677) ; le motif est celui que la page ecrit, aucune "
+            "decision humaine ne l'a validee : chez un produit, une dispense de mise en page se consigne "
+            "comme decision humaine")
 
     # TF-1788 — LA MIRE SE DIT, avec le geste qui juge l'application connectee.
     if mires_vues:

@@ -8,6 +8,8 @@
    panneaux, bascules Tous/Aucun, recherche, combinaison ET) exige un rendu navigateur et est
    declare en non_juge — le passer a render_page.py (V1-V7).
 
+   TF-2618 (16/11/2026) : G2 (composant present) lit aussi les assets declares, comme G3 et G6 (voir `controler`).
+
    RS-1 (TF-0837, 05/09) : G3 (initialisation) et G6 (regle print) admettent desormais un
    asset DECLARE — <script src> / <link rel="stylesheet" href> resolu depuis le fichier
    audite — en plus du contenu inline. Une application dont la CSP est script-src 'self'
@@ -268,7 +270,12 @@ function controler(html, chemin) {
   const { texte: externe, lues, manquantes } = corpusExterne(html, chemin);
   const corpus = html + externe;
 
-  const assetPresent = /<script[^>]+src\s*=\s*["'][^"']*table-filters\.js/i.test(html) || /DigitAITableFilters\s*=/.test(html);
+  /* TF-2618 (16/11/2026) : G2 lit le composant comme G3 et G6 lisent l'init et la regle print — dans le
+     document ET dans les assets declares. Un portail qui assemble le composant dans actifs/portail.js
+     (script src, hors commentaires) le porte : 6 pages de portail rendaient FAIL G2 alors que leurs tables
+     portaient les filtres. Rien n'est assoupli : sans actif, ou avec un actif qui ne porte ni la definition
+     (`DigitAITableFilters =`) ni une reference a table-filters.js, G2 reste bloquant. */
+  const assetPresent = /<script[^>]+src\s*=\s*["'][^"']*table-filters\.js/i.test(html) || /DigitAITableFilters\s*=/.test(corpus) || /table-filters\.js/i.test(externe);
   const initAll = /DigitAITableFilters\s*\.\s*initAll\s*\(/.test(corpus);
   const printOk = /@media\s+print[\s\S]{0,600}?tr\s*\[\s*data-tf-hidden\s*\]/i.test(corpus);
 
@@ -368,8 +375,8 @@ function controler(html, chemin) {
   OUT.non_juge.push(`G11 (TF-2158) : seuils de ${SEUIL_VALEURS_UNIQUES} valeurs distinctes et de ${Math.round(PART_VALEURS_UNIQUES * 100)} % de lignes distinctes — poses par l'agent de TF-2158, non fondes sur une mesure du parc ; seules les lignes du premier <tbody> sont comptees.`);
   OUT.non_juge.push(`G12/G13 (TF-2196) : G12 refuse une colonne dont la moitie au moins des cellules sont composites (seuil pose par l'agent) ; une cellule est composite quand elle porte au moins deux fragments de texte separes par du marquage — un script qui remplit les cellules apres le chargement n'est pas vu ; G13 s'arrete a ${SEUIL_VALEURS_UNIQUES} lignes (au-dela, G11 refuse) et signale une valeur par ligne, pas la pertinence d'un regroupement.`);
   if (exemptees) OUT.non_juge.push(`${exemptees} tableau(x) exempte(s) par data-filterable="off" — non juge(s).`);
-  if (lues.length) OUT.non_juge.push(`Assets externes lus pour G3/G6 (RS-1) : ${lues.join(', ')}.`);
-  if (manquantes.length) OUT.non_juge.push(`Assets externes references mais illisibles depuis le dossier de la page — G3/G6 juges sans leur contenu : ${manquantes.join(', ')}.`);
+  if (lues.length) OUT.non_juge.push(`Assets externes lus pour G2/G3/G6 (RS-1, TF-2618) : ${lues.join(', ')}.`);
+  if (manquantes.length) OUT.non_juge.push(`Assets externes references mais illisibles depuis le dossier de la page — G2/G3/G6 juges sans leur contenu : ${manquantes.join(', ')}.`);
 
   /* TF-2296 : une page scellee ne se modifie pas — ses exceptions se lisent par chemin, avant le verdict. */
   appliquerExceptions(chemin);
