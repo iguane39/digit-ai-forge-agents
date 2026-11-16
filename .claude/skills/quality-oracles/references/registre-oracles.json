@@ -1903,7 +1903,7 @@
     "{skilldir}/scripts/oracle-transparence.mjs",
     "{file}"
    ],
-   "checklist": "TR1 MENTION — le contenu porte dans son texte LISIBLE PAR UN HUMAIN une formule admise d'assistance par IA ; bloquant sans échéance (information du lecteur due depuis le 2026-08-02). Les formules sont FOURNIES par `--mentions <fichier.json>` (tableau de chaînes, ou objet `mentions`/`expressions`) ; à défaut, jeu générique français et anglais. AUCUNE formule d'émetteur n'est codée dans l'oracle · TR2 MARQUAGE MACHINE (.html seulement) — `<meta name=\"ai-generated\" content=\"…\">` non vide (CONVENTION INTERNE, pas une norme), ou `<meta name=\"generator\">` dont le contenu porte un marqueur d'IA (forme nommée par les règles de marque du parc) ; sévérité pilotée par l'échéance en donnée `references/echeances.json` clé `marquage_machine_absent` — AVERTISSEMENT avant la date avec les jours restants, BLOQUANT après, BLOQUANT aussi si aucune échéance n'est déclarée · TR3 NON GÉNÉRÉ — `--non-genere` ou frontmatter `genere: false` rend SKIP MOTIVÉ, jamais PASS",
+   "checklist": "TR1 MENTION — le contenu porte dans son texte LISIBLE PAR UN HUMAIN une formule admise d'assistance par IA ; bloquant sans échéance (information du lecteur due depuis le 2026-08-02). Les formules sont FOURNIES par `--mentions <fichier.json>` (tableau de chaînes, ou objet `mentions`/`expressions`) ; à défaut, jeu générique français et anglais. AUCUNE formule d'émetteur n'est codée dans l'oracle · TR2 MARQUAGE MACHINE (.html seulement) — `<meta name=\"ai-generated\" content=\"…\">` non vide (CONVENTION INTERNE, pas une norme), ou `<meta name=\"generator\">` dont le contenu porte un marqueur d'IA (forme nommée par les règles de marque du parc) ; sévérité pilotée par l'échéance en donnée `references/echeances.json` clé `marquage_machine_absent` — AVERTISSEMENT avant la date avec les jours restants, BLOQUANT après, BLOQUANT aussi si aucune échéance n'est déclarée · TR3 NON GÉNÉRÉ — `--non-genere` ou frontmatter `genere: false` rend SKIP MOTIVÉ, jamais PASS · TR4 RESPONSABLE ÉDITORIAL (TF-2645) — sans mention TR1, le frontmatter déclare `responsable_editorial: <nom ou rôle>` ET `decision_editoriale: D-<nombre>` : PASS MOTIVÉ par ces deux champs ; le premier sans le second, ou une valeur de remplissage, est BLOQUANT ; aucun des deux, TR1 reste bloquant",
    "statut": "ok",
    "non_juge": [
     "la SINCÉRITÉ de la déclaration (un contenu déclaré non généré est cru sur parole)",
@@ -1912,7 +1912,9 @@
     "le caractère PUBLIC du contenu (c'est l'invocation qui le décide)",
     "la VISIBILITÉ RÉELLE de la mention à l'écran (→ render_page.py du socle digit-ai-page-html)",
     "les formats BUREAUTIQUES (.docx, .pptx, .pdf), dont le marquage par propriété de document",
-    "la JUSTESSE de la date d'échéance (donnée datée et sourcée, lue sans être discutée)"
+    "la JUSTESSE de la date d'échéance (donnée datée et sourcée, lue sans être discutée)",
+    "TR4 — l'EXISTENCE de la décision citée et la RÉALITÉ de la relecture (le format `D-<nombre>` est lu, le registre des décisions ne l'est pas)",
+    "TR4 — la SUFFISANCE JURIDIQUE de la responsabilité éditoriale comme voie de dispense de la mention"
    ],
    "commande": "scripts/oracle-transparence.mjs <fichier.md|.html|.txt> [--mentions <mentions.json>] [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]",
    "provenance": "TF-1030 (11/09/2026, décisions humaines D-3 (a) puis D-4) — l'article 50 du règlement européen sur l'IA s'applique depuis le 2026-08-02 ; la règle de transparence est écrite dans la règle de marque de l'émetteur, mais le contrôle exécutable qu'elle CITE était appelé 17 fois dans 9 fichiers d'un produit sans exister nulle part (mesure du 14/09/2026).",

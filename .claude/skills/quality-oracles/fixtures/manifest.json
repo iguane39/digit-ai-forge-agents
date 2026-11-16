@@ -2369,6 +2369,66 @@
    "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
   },
   {
+   "nom": "transparence-responsable-editorial",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--date",
+    "2026-11-16"
+   ],
+   "red": "transparence-red.md",
+   "green": "transparence-editorial-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR1",
+    "AUCUNE MENTION",
+    "responsable_editorial"
+   ],
+   "attendu_messages_green": [
+    "TR4 — publié sous la responsabilité éditoriale",
+    "décision D-187"
+   ],
+   "commentaire": "TF-2645 — MÊME publication, sans aucune mention d'assistance par IA dans le corps : la verte porte en plus, au frontmatter, `responsable_editorial` ET `decision_editoriale: D-187 (c)`, et passe en PASS MOTIVÉ par le champ (le message TR4 cite le responsable et la décision). La rouge est la même publication sans les deux champs : FAIL TR1, dont le message propose la voie TR4 — le remède proposé est exécuté par la verte (TF-1013).",
+   "provenance": "TF-2645 (RA-231, lot du produit marketing du 12/11/2026, seq 782) — après D-187 (c) du 12/11/2026, les 30 textes de la version 20261112d échouaient faute de pouvoir déclarer qui relit et publie ; à livrer avant TF-2644."
+  },
+  {
+   "nom": "transparence-responsable-sans-decision",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--date",
+    "2026-11-16"
+   ],
+   "red": "transparence-editorial-sans-decision-red.md",
+   "green": "transparence-editorial-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR4",
+    "n'est pas APPUYÉ sur une décision consignée"
+   ],
+   "attendu_messages_green": [
+    "TR4"
+   ],
+   "commentaire": "TF-2645 — le champ `responsable_editorial` seul n'est pas une déclaration : la rouge le porte sans `decision_editoriale` et échoue ; la verte ajoute la ligne `decision_editoriale: D-187 (c)` et passe. Un nom sans décision consignée ne dispense pas de la mention.",
+   "provenance": "TF-2645 (RA-231, lot du produit marketing du 12/11/2026, seq 782)."
+  },
+  {
    "nom": "transparence-expression-normalisee",
    "cmd": [
     "node",

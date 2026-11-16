@@ -502,7 +502,7 @@ dépôt). Mêmes conséquences assumées que pour les forges design et conceptio
 
 | Domaine | Oracle (invocation) | Type | Statut |
 |---|---|---|---|
-| Transparence des contenus publics générés par IA (article 50 du règlement européen sur l'IA) | `scripts/oracle-transparence.mjs <fichier.md .html .txt> [--mentions <mentions.json>] [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]` — **TR1** mention d'assistance par IA dans le texte **lisible par un humain**, formules **fournies** par `--mentions` (aucune formule d'émetteur codée dans l'oracle), bloquant **sans échéance** · **TR2** marquage **lisible par machine** sur une page HTML, sévérité pilotée par une échéance en donnée · **TR3** contenu déclaré non généré (`--non-genere`, ou frontmatter `genere: false`) → **SKIP motivé, jamais PASS** | cli | ✅ |
+| Transparence des contenus publics générés par IA (article 50 du règlement européen sur l'IA) | `scripts/oracle-transparence.mjs <fichier.md .html .txt> [--mentions <mentions.json>] [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]` — **TR1** mention d'assistance par IA dans le texte **lisible par un humain**, formules **fournies** par `--mentions` (aucune formule d'émetteur codée dans l'oracle), bloquant **sans échéance** · **TR2** marquage **lisible par machine** sur une page HTML, sévérité pilotée par une échéance en donnée · **TR3** contenu déclaré non généré (`--non-genere`, ou frontmatter `genere: false`) → **SKIP motivé, jamais PASS** · **TR4** (TF-2645) sans mention TR1, frontmatter `responsable_editorial: <nom ou rôle>` **et** `decision_editoriale: D-<nombre>` → **PASS motivé** par ces deux champs ; le premier sans le second, ou une valeur de remplissage → bloquant | cli | ✅ |
 
 - **L'obligation existait, le contrôle n'existait pas.** L'article 50 s'applique depuis le
   2026-08-02. La règle de transparence a été écrite le 11/09/2026 dans la règle de marque d'un
@@ -526,6 +526,13 @@ dépôt). Mêmes conséquences assumées que pour les forges design et conceptio
 - **`ext` vide à dessein.** Le contrôle porte sur les contenus **destinés au public**, et rien
   dans une extension ne dit qu'un fichier est public : router tout `.md` du parc ferait rougir
   chaque note interne. Invocation explicite, comme `oracle-exigences-ao` ou `oracle-post-linkedin`.
+- **TR4, le responsable éditorial déclaré (TF-2645, 16/11/2026).** Après D-187 (c) du 12/11/2026, les 30 textes d'une
+  version échouaient sur TR1 faute d'un champ pour dire qui relit et publie. Le frontmatter porte désormais
+  `responsable_editorial: <nom ou rôle>` et `decision_editoriale: D-<nombre>` : les deux, non vides, rendent PASS motivé
+  (le message cite le responsable et la décision) ; le premier sans la seconde, ou une valeur de remplissage, rend
+  bloquant ; aucun des deux, TR1 reste bloquant et son message propose cette voie. L'oracle lit le format de
+  l'identifiant, pas le registre des décisions : l'existence de la décision et la réalité de la relecture restent non jugées.
+  Preuve : entrées `transparence-responsable-editorial` et `transparence-responsable-sans-decision` du manifeste.
 - **Appel historique côté produit.** Un produit qui appelle encore son
   `scripts/controler-transparence.mjs` invoque désormais celui-ci, sans rien créer chez lui :
   `node <racine>/digit-ai-forge-agents/.claude/skills/quality-oracles/scripts/oracle-transparence.mjs <fichier> --mentions <formules de la marque>.json`
