@@ -90,6 +90,27 @@ recopie pas.
 automatisation hors de son interface agréée (`PLATEFORME-LINKEDIN.md` §1). La programmation gratuite de la plateforme reste ouverte à l'humain. Ce preset prépare
 un texte ; il ne publie ni ne répond.
 
+### Republication avec avis (TF-2641)
+
+Identifiant du contrat : `republication-avec-avis`. Réseau visé : LinkedIn. Une republication avec
+avis affiche le texte de l'auteur au-dessus de la publication d'origine : ce modèle écrit l'avis, il
+ne réécrit pas l'original et ne le résume pas. Le dirigeant a fixé la cible à 50 à 120 mots le
+12/11/2026 ; le plafond de la plateforme vit, daté et sourcé, dans `PLATEFORME-LINKEDIN.md` du
+pilot, jamais ici.
+
+**Contrat de sortie, binaire.** Un avis qui manque un seul critère n'est pas livré.
+- Longueur : 50 à 120 mots.
+- Une accroche de 20 caractères au moins en première ligne, qui dit ce que l'auteur ajoute à la
+  publication d'origine.
+- La publication d'origine est jointe au dossier de la semaine, telle que republiée, avec son
+  auteur et sa date : l'avis se juge contre elle.
+- L'avis ajoute un point de vue, un fait ou une conséquence que l'original ne porte pas ; il ne
+  répète pas l'original.
+- Aucun nom de client ni de personne tierce sans accord, celui de l'auteur de l'original excepté.
+- Mention de transparence présente quand le texte est généré — formule de `MARQUE.md` de l'émetteur.
+- Une question ou un appel à l'action en clôture.
+- 3 hashtags au plus, en fin d'avis.
+
 ## Contrats lisibles par machine (TF-1277)
 
 Chaque modèle de publication porte un identifiant de contrat. La part mécanisable de son contrat

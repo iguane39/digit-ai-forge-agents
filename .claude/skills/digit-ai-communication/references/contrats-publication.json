@@ -21,6 +21,15 @@
       "hashtags_max": 5,
       "piece_requise": null
     },
+    "republication-avec-avis": {
+      "libelle": "Republication avec avis",
+      "reseaux": ["linkedin"],
+      "mots": [50, 120],
+      "accroche_min_caracteres": 20,
+      "cloture": "question_ou_appel",
+      "hashtags_max": 3,
+      "piece_requise": "publication-origine"
+    },
     "legende-image": {
       "libelle": "Légende d'image",
       "reseaux": ["instagram", "facebook"],

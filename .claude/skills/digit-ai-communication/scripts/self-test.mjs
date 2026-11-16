@@ -35,6 +35,9 @@
 //        silence : C4 exige, dans les DEUX sens, que chaque modèle du fichier ait son
 //        identifiant et ses bornes de longueur dans la prose, que chaque identifiant déclaré
 //        en prose existe au fichier, et que le plafond de hashtags soit le même.
+//        C4 bis (TF-2641, 16/11/2026) : le modèle « republication avec avis » existe, borné à 50-120 mots, trois
+//        hashtags au plus, la publication d'origine pour pièce ; sa longueur refuse 121 mots et accepte 120 ; une
+//        borne haute portée à 121 au fichier seul est refusée pour sa raison (la prose dit 120).
 //
 //   C5 — le preset « Formation / atelier » porte ses deux exigences (TF-2315, TF-2317, 10/11/2026) : le cadrage
 //        par module (public réel, se suit-il seul, programme confronté à l'usage avant la lettre de la propale)
@@ -206,6 +209,17 @@ function verifierContrats(prose, contratsTexte, etiquette) {
   }
   return findings;
 }
+
+// Longueur d'un texte contre le contrat d'un modèle (TF-2641) : les mots comptés sont ceux du texte hashtags
+// exclus, comme l'écrit le champ « mots » du fichier. Miroir de la règle RR2 du pilot, qui n'est pas rejouée ici.
+function motsDuTexte(texte) {
+  return texte.split(/\s+/).filter((m) => m && !/^#\S+$/.test(m)).length;
+}
+function longueurConforme(contrat, texte) {
+  const n = motsDuTexte(texte);
+  return n >= contrat.mots[0] && n <= contrat.mots[1];
+}
+const texteDeMots = (n, hashtags = '') => Array.from({ length: n }, (_, i) => `mot${i}`).join(' ') + hashtags;
 
 // ---------------------------------------------------------------- C5 : le preset formation (TF-2315, TF-2317)
 // Extrait la section « Formation / atelier — détail » et exige, clause par clause, ce que le contrat
@@ -478,6 +492,32 @@ if (!fs.existsSync(contratsPath) || !fs.existsSync(presetsPath)) {
   const frProse = verifierContrats(proseReelle + '\n\nIdentifiant du contrat : `modele-de-prose-seule`.\n', contratsReels, 'fixture-rouge-prose');
   if (!(frProse.length === 1 && frProse[0].includes('« modele-de-prose-seule »'))) {
     findings.push('fixture-rouge — C4 est AVEUGLE : un identifiant déclaré en prose et absent du fichier n\'a pas été détecté');
+  }
+
+  // C4 bis (TF-2641) — le modèle « republication avec avis » : présent, borné à 50-120 mots, trois hashtags au plus,
+  // la publication d'origine pour pièce ; sa longueur refuse 121 mots, accepte 120 et 50, refuse 49. Rouge : une
+  // borne haute portée à 121 au fichier seul est refusée pour sa raison (la prose dit 120).
+  const rep = reel.modeles['republication-avec-avis'];
+  if (!rep) {
+    findings.push('C4 bis — le modèle « republication-avec-avis » est absent du fichier de contrats (TF-2641)');
+  } else {
+    if (rep.mots[0] !== 50 || rep.mots[1] !== 120) findings.push(`C4 bis — « republication-avec-avis » : longueur ${JSON.stringify(rep.mots)}, attendu [50, 120]`);
+    if (rep.hashtags_max !== 3) findings.push(`C4 bis — « republication-avec-avis » : ${rep.hashtags_max} hashtags au plus, attendu 3`);
+    if (rep.piece_requise !== 'publication-origine') findings.push(`C4 bis — « republication-avec-avis » : pièce requise ${JSON.stringify(rep.piece_requise)}, attendu « publication-origine »`);
+    if (rep.cloture !== 'question_ou_appel') findings.push(`C4 bis — « republication-avec-avis » : clôture ${JSON.stringify(rep.cloture)}, attendu « question_ou_appel »`);
+    if (!rep.accroche_min_caracteres) findings.push('C4 bis — « republication-avec-avis » : aucune accroche exigée');
+    const sens = [[50, true], [120, true], [49, false], [121, false]];
+    for (const [n, attendu] of sens) {
+      if (longueurConforme(rep, texteDeMots(n, ' #un #deux #trois')) !== attendu) {
+        findings.push(`C4 bis — un avis de ${n} mots (hashtags exclus) doit être ${attendu ? 'accepté' : 'refusé'} par le contrat`);
+      }
+    }
+    const trop = JSON.parse(contratsReels);
+    trop.modeles['republication-avec-avis'].mots = [50, 121];
+    const frTrop = verifierContrats(proseReelle, JSON.stringify(trop), 'fixture-rouge-121');
+    if (!(frTrop.length === 1 && frTrop[0].includes('« republication-avec-avis »') && frTrop[0].includes('Longueur : 50 à 121 mots'))) {
+      findings.push('fixture-rouge — C4 bis est AVEUGLE : une borne haute portée à 121 mots au fichier seul n\'a pas été refusée pour sa raison');
+    }
   }
 }
 
