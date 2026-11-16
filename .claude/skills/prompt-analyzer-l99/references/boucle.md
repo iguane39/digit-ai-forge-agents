@@ -41,7 +41,8 @@ cas et sans signal, L99 garde son mode simple, et le score du Ch8 s'écrit « pr
 - `retenue` : `union_recomptee` ;
 - `verification_cloture` : `true` ;
 - `rejet_regression` : `true` ;
-- `bruit_tolere` : entier optionnel, borné à [0,2] (défaut 0). Le bruit des relecteurs rotatifs qu'une
+- `bruit_tolere` : entier optionnel, borné à [0,2] (défaut 0), ou `"mesure"` (TF-2237, section « Les
+  règles de la revue du 16/11/2026 »). Le bruit des relecteurs rotatifs qu'une
   baisse de score doit dépasser pour valoir régression (B8) ; à 0, toute baisse est une régression
   (règle d'origine), donc un journal qui ne le déclare pas est jugé à l'identique (TF-2063, 02/11/2026).
 
@@ -79,6 +80,25 @@ extension au-delà de 5, sans motif, ou décidée après une passe qui ne gagne 
 
 Le seuil de score ne suffit jamais à arrêter : un prompt mesuré 84 avec 3 majeurs ouverts
 n'est pas fini (P5 de l'étude).
+
+## Les règles de la revue du 16/11/2026 (étude 20261106b)
+
+Décidées le 16/11/2026 sous R-58 (TF-2236 à TF-2242), d'après l'étude du pilot
+`output/03-etudes/Digit-AI - Étude - Cout et qualite de la boucle L99 - 20261106b.md`, qui a
+décompté 20 journaux distincts et 59 passes. Chaque règle est une clé de l'arbitre : un journal qui
+ne la déclare pas est jugé par les règles d'avant ; un journal neuf déclare celles que cette section
+nomme « défaut ». Les clés se déclarent avant la passe 1, comme le reste de l'arbitre.
+
+- **Passe notée par la moyenne de ses relecteurs, bruit mesuré** (TF-2237, défaut) :
+  `score_de_passe` : `"moyenne"` et `bruit_tolere` : `"mesure"`. L'écart entre les 2 relecteurs d'une
+  même passe a une médiane de 3 points et monte à 24 (21 passes) : le plafond de 2 du bruit toléré
+  est sous ce bruit, et le minimum de 2 notes bruitées l'est plus que leur moyenne. Chaque passe
+  porte `scores` (un nombre par relecteur) ; son `score_mesure` en est la moyenne, et B13 le contrôle.
+  B8 tolère une baisse jusqu'à l'écart des relecteurs de la passe gardée (le plus haut de ses
+  `scores` moins le plus bas), sans plafond fixe ; avec un seul relecteur, cet écart est nul et la
+  baisse stricte s'applique. Une baisse accompagnée d'un bloquant retenu, donc d'un plafond de 40,
+  reste une régression. Le fait : le 06/11/2026, la passe 3 de la boucle d'indice a, qui fermait 4
+  majeurs vérifiés, a été rejetée à 80 contre 82, bruit toléré déclaré à 0.
 
 ## Une passe
 
@@ -127,7 +147,8 @@ n'est pas fini (P5 de l'étude).
 
 ## Ce que le Ch8 affiche dans ce mode
 
-- **Score mesuré**, celui du relecteur sur la dernière passe retenue, jamais « projeté ».
+- **Score mesuré**, celui des relecteurs sur la dernière passe retenue (leur moyenne sous
+  `score_de_passe` : `"moyenne"`), jamais « projeté ».
 - La table des passes : score mesuré, bloquants et majeurs retenus, défauts écartés au recompte,
   mots, décision.
 - La raison de l'arrêt, en clair. À la borne, avec des majeurs encore ouverts, les nommer : le
@@ -166,7 +187,8 @@ boucle sans journal PASS n'est pas un mode boucle.
 `decision` vaut `continuer`, `arreter` ou `rejeter`. `arret.raison` vaut `zero_majeur`,
 `gain_insuffisant`, `borne` ou `regression`. Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
-`recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12.
+`recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
+`"moyenne"` (TF-2237), B13.
 
 ## Annexe — sortie demandée au relecteur
 

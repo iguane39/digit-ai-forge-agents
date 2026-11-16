@@ -5,8 +5,8 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.11.0"
-  updated: "2026-11-14"
+  version: "2.12.0"
+  updated: "2026-11-16"
 ---
 
 # Prompt Analyzer L99
@@ -87,6 +87,9 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    Une note de relecteur se recompte à la source avant d'entrer dans une correction, et une
    régression due à un défaut que la correction a créé ouvre une passe de reprise unique au lieu de
    livrer la passe précédente avec ses majeurs connus (TF-2202, B11 et B12 de l'oracle).
+   Revue du 16/11/2026 (étude 20261106b, TF-2236 à TF-2242, section « Les règles de la revue du
+   16/11/2026 » de `references/boucle.md`) : la passe se note par la moyenne de ses relecteurs et le
+   bruit toléré se mesure sur leur écart (TF-2237, B13 de l'oracle).
 11. **Contrat de sortie : l'oracle de forme de chaque format produit** (TF-2194) : le contrat du
    Ch8 nomme `check_html.py` pour une page HTML et `check_markdown.py` pour un Markdown, **y
    compris pour la voie de repli** (générateur en échec, format de secours). Le 05/11/2026, un

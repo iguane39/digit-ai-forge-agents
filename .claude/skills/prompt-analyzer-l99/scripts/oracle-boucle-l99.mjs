@@ -37,6 +37,12 @@
 //       correction (`cause_regression.nature = "defaut_cree"`, recomptée) ouvre UNE passe de reprise
 //       (`reprise: true`, `reprise_de: <n>`) qui ne corrige que ce défaut ; pas de seconde reprise,
 //       pas de reprise sans cause ; la reprise ne compte pas dans la borne.
+// Règles de la revue du 16/11/2026 (étude 20261106b, TF-2236 à TF-2242), jouées seulement si l'arbitre
+// les déclare :
+//   B13 `score_de_passe: "moyenne"` (TF-2237) : chaque passe porte `scores` (un nombre par relecteur) et son
+//       `score_mesure` est la moyenne de ces notes (0,5 près) ; avec `bruit_tolere: "mesure"`, B8 tolère une
+//       baisse jusqu'à l'écart des relecteurs de la passe gardée, sans plafond fixe à 2 ; une baisse avec un
+//       bloquant retenu (plafond de 40) reste une régression.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -61,6 +67,9 @@ const estRejetee = (p) => p.rejetee === true || p.decision === 'rejeter';
 const propre = (x) => typeof x === 'string' && x.trim() !== '';
 const nb = (x) => typeof x === 'number' && Number.isFinite(x);
 const retenus = (p) => (p.defauts || []).filter((d) => GRAVES.has(d.severite) && d.statut === 'retenu');
+// TF-2237 : les notes des relecteurs d'une passe (`scores` : objet {A:76,B:69} ou tableau) et leur écart.
+const notesRelecteurs = (p) => { const s = p && p.scores; return (Array.isArray(s) ? s : s && typeof s === 'object' ? Object.values(s) : []).filter(nb); };
+const ecartRelecteurs = (p) => { const v = notesRelecteurs(p); return v.length >= 2 ? Math.max(...v) - Math.min(...v) : 0; };
 
 export function juger(j) {
   const f = [];
@@ -180,13 +189,35 @@ export function juger(j) {
   // Deux relecteurs rotatifs par passe font varier le score conservateur de ±1 à ±2 ; une baisse DANS ce
   // bruit n'est pas une régression de fond. `bruit_tolere` (entier, borné à [0,2], défaut 0) l'absorbe :
   // à 0, la règle est la baisse stricte d'origine, et tout journal qui ne déclare rien est jugé à l'identique.
+  // TF-2237 (16/11/2026) : `bruit_tolere: "mesure"` remplace le plafond fixe de 2 par l'écart des relecteurs de la
+  // passe gardée (étude 20261106b : écart médian de 3 points entre 2 relecteurs d'une même passe, jusqu'à 24) ; une
+  // baisse avec un bloquant retenu, donc au plafond de 40, reste une régression quel que soit ce bruit.
   if (a && a.rejet_regression === true) {
-    const bruit = nb(a.bruit_tolere) ? Math.min(Math.max(a.bruit_tolere, 0), 2) : 0;
+    const mesure = a.bruit_tolere === 'mesure';
+    const bruitFixe = nb(a.bruit_tolere) ? Math.min(Math.max(a.bruit_tolere, 0), 2) : 0;
     let precGardee = null;
     passes.forEach((p, i) => {
-      if (precGardee && nb(p.score_mesure) && nb(precGardee.score_mesure) && (precGardee.score_mesure - p.score_mesure) > bruit && !estRejetee(p))
-        ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure}${bruit ? ` (au-delà du bruit toléré de ${bruit})` : ''} : passe à rejeter, on garde la précédente`);
+      if (precGardee && nb(p.score_mesure) && nb(precGardee.score_mesure) && !estRejetee(p)) {
+        const baisse = precGardee.score_mesure - p.score_mesure;
+        const bruit = mesure ? ecartRelecteurs(precGardee) : bruitFixe;
+        const bloquant = mesure && (p.defauts || []).some((d) => d.severite === 'bloquant' && d.statut === 'retenu');
+        if (baisse > bruit || (bloquant && baisse > 0))
+          ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure}${bloquant ? ' avec un bloquant retenu (plafond de 40)' : bruit ? ` (au-delà du bruit ${mesure ? 'mesuré' : 'toléré'} de ${bruit})` : ''} : passe à rejeter, on garde la précédente`);
+      }
       if (!estRejetee(p)) precGardee = p;
+    });
+  }
+
+  // B13 — la passe est notée par la moyenne de ses relecteurs (TF-2237)
+  if (a && a.score_de_passe === 'moyenne') {
+    passes.forEach((p, i) => {
+      const v = notesRelecteurs(p);
+      if (v.length === 0) ko('B13', `passes[${i}].scores`, 'notes des relecteurs absentes : la moyenne ne se vérifie pas sans une note par relecteur');
+      else {
+        const moy = v.reduce((x, y) => x + y, 0) / v.length;
+        if (!nb(p.score_mesure) || Math.abs(p.score_mesure - moy) > 0.5)
+          ko('B13', `passes[${i}].score_mesure`, `score de passe ${p.score_mesure}, moyenne des relecteurs ${moy} : sous « moyenne », le score de passe est la moyenne, jamais le minimum`);
+      }
     });
   }
 
@@ -360,6 +391,41 @@ function selfTest() {
     j.passes[2].cause_regression = { nature: 'defaut_cree', citation: 'x', recompte: { commande: 'git grep x', resultat: '0' } };
     j.passes.push({ ...j.passes[2], n: 4, reprise_de: 3, cause_regression: undefined });
   });
+  // TF-2237 (16/11/2026) : la passe est notée par la moyenne de ses relecteurs, et le bruit toléré est l'écart
+  // des relecteurs de la passe gardée. Cas d'origine (06/11/2026, indice a) : la passe rejetée à 80 contre 82 par le
+  // minimum, alors que ses relecteurs se tenaient à 4 points d'écart et qu'elle fermait des majeurs.
+  const moyenne = () => {
+    const j = essai();
+    Object.assign(j.arbitre, { score_de_passe: 'moyenne', bruit_tolere: 'mesure' });
+    j.passes[0].scores = { A: 84, B: 82 }; j.passes[0].score_mesure = 83;
+    j.passes[1].scores = { A: 86, B: 80 }; j.passes[1].score_mesure = 83;
+    j.score_affiche = { valeur: 83, nature: 'mesure' };
+    return j;
+  };
+  // La même boucle notée par le minimum (82 puis 80), bruit toléré à 0 : la règle d'avant rejetait la passe 2.
+  const parLeMinimum = () => {
+    const j = moyenne();
+    delete j.arbitre.score_de_passe; j.arbitre.bruit_tolere = 0;
+    j.passes[0].score_mesure = 82; j.passes[1].score_mesure = 80; j.score_affiche = { valeur: 80, nature: 'mesure' };
+    return j;
+  };
+  // Passe 2 qui baisse de 3 points, passe 1 gardée à 4 points d'écart entre ses relecteurs ; arrêt sur le gain.
+  const baisse = (scores2, moy2) => () => {
+    const j = moyenne();
+    j.passes[0].scores = { A: 84, B: 80 }; j.passes[0].score_mesure = 82;
+    j.passes[1].scores = scores2; j.passes[1].score_mesure = moy2; j.score_affiche = { valeur: moy2, nature: 'mesure' };
+    return j;
+  };
+  cas.push({ nom: 'TF-2237 vert — la moyenne garde la passe que le minimum rejetait (83 contre 83, au lieu de 82 contre 80)', j: moyenne(), attendu: [] });
+  cas.push({ nom: 'TF-2237 rouge — la même boucle notée par le minimum, bruit à 0 : la règle d avant rejette la passe (B8)', j: parLeMinimum(), attendu: ['B8'] });
+  cas.push({ nom: 'TF-2237 vert — une baisse de 3 points dans l écart de 4 des relecteurs de la passe gardée reste gardée', j: baisse({ A: 80, B: 78 }, 79)(), attendu: [] });
+  rougeB('B8 baisse de 6 points, au-delà de l écart de 4 des relecteurs de la passe gardée', 'B8', baisse({ A: 77, B: 75 }, 76), () => {});
+  rougeB('B8 baisse dans le bruit, mais avec un bloquant retenu (plafond de 40)', 'B8', baisse({ A: 80, B: 78 }, 79), (j) => {
+    j.passes[1].defauts.push({ severite: 'bloquant', citation: 'renvoi à une section absente', recompte: { commande: 'git grep -n "section 7" prompt-p2.md', resultat: '0 occurrence' }, statut: 'retenu' });
+    j.arret = { passe: 2, raison: 'gain_insuffisant' };
+  });
+  rougeB('B13 score de passe qui n est pas la moyenne (86 pour 86 et 80)', 'B13', moyenne, (j) => { j.passes[1].score_mesure = 86; j.score_affiche.valeur = 86; });
+  rougeB('B13 notes des relecteurs absentes', 'B13', moyenne, (j) => { delete j.passes[1].scores; });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {
