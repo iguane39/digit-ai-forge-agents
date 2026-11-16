@@ -4661,6 +4661,47 @@ else {
     : ok('TF-2196 G12 : la moitié de la colonne est le seuil — 2 cellules composites sur 8 sans valeur déclarée passent, 6 sur 8 sont refusées (FAIL)');
 }
 
+// TF-2618 (16/11/2026) — G2 LIT LES ACTIFS DÉCLARÉS PAR LA PAGE, comme G3 et G6. Le fait (Produit-82, lot 20261112e RT-31) :
+// le portail assemble le composant de filtres dans actifs/portail.js ; G2 le cherchait dans le document seul, et
+// 6 pages dont les tables portaient les filtres rendaient FAIL. Quatre cas sur une page jetable tirée de la verte :
+// (1) VERT : le composant est défini dans l'actif déclaré (<script src>) → PASS, aucun G2 ; (2) VERT : l'actif
+// référence table-filters.js (import) → PASS ; (3) ROUGE CONSERVÉE : l'actif est déclaré mais ne porte pas le
+// composant → G2 (rien n'est assoupli) ; (4) ROUGE : aucun actif, aucun composant (la rouge d'origine) → G2.
+{
+  const FILTRES = path.join(SKILLDIR, 'scripts', 'oracle-filtres-tableau.mjs');
+  const verte = fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'filtres-verte.html'), 'utf8');
+  const poser = (actif) => {
+    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2618-'));
+    try {
+      fs.mkdirSync(path.join(t, 'actifs'));
+      let html = verte.replace(/<script src="\.\.\/assets\/table-filters\.js"><\/script>\s*<script>[^<]*<\/script>/, actif === null ? '' : '<script src="actifs/portail.js"></script>');
+      if (html === verte && actif !== null) return { erreur: 'la fixture verte ne porte plus ses deux balises script : le cas ne se pose pas' };
+      if (actif !== null) fs.writeFileSync(path.join(t, 'actifs', 'portail.js'), actif);
+      const f = path.join(t, 'index.html');
+      fs.writeFileSync(f, html);
+      const r = spawnSync(process.execPath, [FILTRES, f], { encoding: 'utf8', timeout: 60000 });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    } finally { fs.rmSync(t, { recursive: true, force: true }); }
+  };
+  const g2 = (j) => (j && j.findings ? j.findings.filter(f => f.regle === 'G2') : null);
+  const defini = poser("/* portail */\nwindow.DigitAITableFilters = { init() {}, initAll() {} };\nDigitAITableFilters.initAll();\n");
+  !defini || defini.erreur || defini.verdict !== 'PASS' || g2(defini).length
+    ? ko('TF-2618 vert : le composant défini dans l\'actif déclaré doit rendre PASS sans G2 — obtenu ' + JSON.stringify(defini && (defini.erreur || [defini.verdict, g2(defini)])))
+    : ok('TF-2618 vert : le composant assemblé dans actifs/portail.js (script src) est lu comme G3 et G6 le lisent → PASS, aucun G2');
+  const importe = poser("import './table-filters.js';\nDigitAITableFilters.initAll();\n");
+  !importe || importe.erreur || importe.verdict !== 'PASS' || g2(importe).length
+    ? ko('TF-2618 vert : un actif qui référence table-filters.js doit rendre PASS sans G2 — obtenu ' + JSON.stringify(importe && (importe.erreur || [importe.verdict, g2(importe)])))
+    : ok('TF-2618 vert : un actif qui importe table-filters.js porte le composant → PASS, aucun G2');
+  const vide = poser("console.log('portail');\nDigitAITableFilters.initAll();\n");
+  !vide || vide.erreur || vide.verdict !== 'FAIL' || g2(vide).length !== 1
+    ? ko('TF-2618 rouge conservée : un actif déclaré qui ne porte pas le composant doit garder G2 (FAIL) — obtenu ' + JSON.stringify(vide && (vide.erreur || [vide.verdict, g2(vide)])))
+    : ok('TF-2618 rouge conservée : un actif déclaré qui ne porte ni la définition ni table-filters.js garde G2 bloquant (rien n\'est assoupli)');
+  const sansActif = poser(null);
+  !sansActif || sansActif.verdict !== 'FAIL' || g2(sansActif).length !== 1
+    ? ko('TF-2618 rouge : aucune référence au composant, ni dans la page ni en actif, doit rendre G2 — obtenu ' + JSON.stringify(sansActif && [sansActif.verdict, g2(sansActif)]))
+    : ok('TF-2618 rouge : sans actif ni composant, G2 reste bloquant (la rouge d\'origine)');
+}
+
 // TF-2296 (14/11/2026) — oracle-filtres-tableau lit une liste d'exceptions PAR CHEMIN pour une page SCELLÉE.
 // Le fait (09/11) : la maquette remise le 15/08 garde G12 en FAIL sur « Gain /5 » (7 cellules composites sur 10), et sa
 // seule sortie, data-filterable="off", modifie la page donc rompt son sceau. Les deux sens, sur la fixture rouge de

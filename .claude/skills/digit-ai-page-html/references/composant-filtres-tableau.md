@@ -339,7 +339,7 @@ CSS : adapter aux tokens du livrable (voir `charte-et-tokens.md`), aucun hex en 
 | # | Contrôle | Sévérité |
 |---|---|---|
 | **G1** | Tout tableau en périmètre porte `data-filterable`, ou une exemption `data-filterable="off"` **avec motif** | bloquant |
-| **G2** | L'asset `table-filters.js` est référencé (balise `<script src>` ou code inline exposant `DigitAITableFilters`) | bloquant |
+| **G2** | L'asset `table-filters.js` est référencé (balise `<script src>` ou code inline exposant `DigitAITableFilters`), ou porté par un actif déclaré par la page (`<script src>` qui définit `DigitAITableFilters` ou référence `table-filters.js`, hors commentaires), comme G3 et G6 lisent l'init et la règle print (TF-2618) | bloquant |
 | **G3** | Chaque tableau `data-filterable` est initialisé (appel `init()` le désignant, ou `initAll()`) | bloquant |
 | **G4** | Chaque tableau `data-filterable` a un `id` et un `<thead>` porteur de `<th>` — prérequis du composant | bloquant |
 | **G5** | Un compteur `data-tf-count-for` avec `aria-live` existe pour chaque tableau `data-filterable` | bloquant |
