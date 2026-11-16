@@ -6449,6 +6449,60 @@ def run_v24_prose_verticale():
     return out
 
 
+# TF-2677 (factory-digit-ai-fr, run forge-digit-ai-fr-20261114a, 15/11/2026) — UNE DISPENSE data-colonne-ok NE VAUT QUE
+# SUR LE CONTENEUR BRIDEUR. La v2 de la page avait posé data-colonne-ok sur <main>, avec un motif ecrit par l'agent :
+# `closest` dispensait la page entiere, et l'humain a vu sur une capture la moitie de la page vide a droite que L2
+# existe pour refuser. Trois cas : (rouge) la meme page que l2c-conteneur-cale-a-gauche avec la dispense sur <main>
+# aussi large que son parent → FAIL l2_conteneur, la dispense nommee IGNOREE au non_juge ; (verte) la dispense sur la
+# colonne elle-meme → PASS, son motif au non_juge ; (verte) <main> qui est lui-meme la carte etroite → PASS, dispense
+# valide listee sans motif.
+def run_dispenses_colonne():
+    """TF-2677 — la dispense data-colonne-ok n'est valide que sur le conteneur brideur lui-meme, et chaque dispense
+    figure au non_juge avec son motif. Silencieux si playwright est absent (voir run_rendu_large)."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-dispenses-")
+    out = []
+
+    def cas(nom, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": nom, "verdict": "OK" if ok else "ECHEC", "attendu": attendu, "obtenu": obtenu,
+                    "regle": "TF-2677 dispense data-colonne-ok", "detail": "" if ok else detail})
+    try:
+        def lire(nom):
+            d = _rendre_json(nom, [1440], captures)
+            if d is None:
+                return None, [], 0
+            lignes = [x for x in d.get("non_juge", []) if x.startswith("DISPENSES data-colonne-ok")]
+            return d, lignes, len(d["breakpoints"]["1440"]["issues"]["l2_conteneur"])
+        d, lignes, n = lire("l2c-dispense-sur-main.html")
+        cas("l2c-dispense-sur-main.html · dispense sur <main> = FAIL",
+            d is not None and d.get("verdict") == "FAIL" and n >= 1
+            and any("IGNOREE" in x and "mise en page voulue par la page" in x for x in lignes),
+            "FAIL, l2_conteneur >= 1, dispense IGNOREE nommee avec son motif",
+            "illisible" if d is None else f"{d.get('verdict')}, l2_conteneur {n}, {len(lignes)} ligne(s) DISPENSES",
+            "la dispense posee sur <main> eteint L2 pour toute la page, ou n'est pas nommee")
+        d, lignes, n = lire("l2-remede-colonne-declaree.html")
+        cas("l2-remede-colonne-declaree.html · dispense sur la colonne = PASS, motif dit",
+            d is not None and d.get("verdict") == "PASS" and n == 0
+            and any("note de cadrage lue en colonne, a dessein" in x and "IGNOREE" not in x for x in lignes),
+            "PASS, 0 l2_conteneur, motif au non_juge",
+            "illisible" if d is None else f"{d.get('verdict')}, l2_conteneur {n}, {len(lignes)} ligne(s) DISPENSES",
+            "la dispense posee sur le conteneur brideur ne passe plus, ou son motif n'est pas dit")
+        d, lignes, n = lire("session-changement-mdp.html")
+        cas("session-changement-mdp.html · <main> brideur lui-meme = dispense valide",
+            d is not None and d.get("verdict") == "PASS" and len(lignes) == 1 and "IGNOREE" not in lignes[0],
+            "PASS, une dispense listee, non ignoree",
+            "illisible" if d is None else f"{d.get('verdict')}, {len(lignes)} ligne(s) DISPENSES",
+            "<main> plus etroit que son parent est sa propre bride : sa dispense reste valide")
+    finally:
+        shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_lot_a_check_html():
     """Quatre règles de `check_html.py` du lot du 29/10/2026 — chacune jouée dans les deux sens.
 
@@ -7246,6 +7300,10 @@ def main():
     prose_verticale = run_v24_prose_verticale()
     if prose_verticale:
         res += prose_verticale
+    # TF-2677 — la dispense data-colonne-ok ne vaut que sur le conteneur brideur, et chaque dispense se dit.
+    dispenses = run_dispenses_colonne()
+    if dispenses:
+        res += dispenses
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()
