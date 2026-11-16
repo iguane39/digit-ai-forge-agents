@@ -37,6 +37,32 @@
 //       correction (`cause_regression.nature = "defaut_cree"`, recomptée) ouvre UNE passe de reprise
 //       (`reprise: true`, `reprise_de: <n>`) qui ne corrige que ce défaut ; pas de seconde reprise,
 //       pas de reprise sans cause ; la reprise ne compte pas dans la borne.
+// Règles de la revue du 16/11/2026 (étude 20261106b, TF-2236 à TF-2242), jouées seulement si l'arbitre
+// les déclare :
+//   B13 `score_de_passe: "moyenne"` (TF-2237) : chaque passe porte `scores_relecteurs` (un nombre par relecteur) et son
+//       `score_mesure` est la moyenne de ces notes (0,5 près) ; avec `bruit_tolere: "mesure"`, B8 tolère une
+//       baisse jusqu'à l'écart des relecteurs de la passe gardée, sans plafond fixe à 2 ; une baisse avec un
+//       bloquant retenu (plafond de 40) reste une régression.
+//   B14 `arret_atteignable: true` (TF-2238) : l'arrêt `zero_majeur_texte_corrige` (passe 2 au moins) est
+//       valable quand aucun défaut grave retenu ne cite le texte écrit par la dernière correction
+//       (`origine: "correction"`) ; les majeurs restants (`origine: "anterieur"`) sont recomptés
+//       (`arret.majeurs_restants`) et listés au Ch8 (`arret.liste_au_ch8`) ; chaque défaut grave retenu d'une
+//       passe 2 ou suivante porte son origine ; une passe qui remplissait déjà cet arrêt devait l'arrêter.
+//       L'arrêt strict « 0 bloquant et 0 majeur » reste valable : c'est le cas idéal.
+//   B15 `garde_cumulee` (TF-2239, ex. 0.30) : une passe gardée dont le prompt dépasse la garde cumulée depuis
+//       la passe 1 porte un `motif_depassement` (4 mots au moins) : alerte motivée, la passe n'est pas rejetée.
+//   B16 `jugement_apparie: true` (TF-2240) : dès la passe 2, `jugement_apparie` porte, pour chaque relecteur neuf,
+//       sa préférence (`gardee` ou `corrigee`), ses deux notes et l'ordre de lecture (alterné) ; le verdict suit la
+//       majorité des voix (à égalité, l'écart moyen des notes) et une passe dont le verdict est `gardee` est
+//       rejetée. B8 ne joue plus : la décision de garder suit ce jugement, la note absolue reste affichée.
+//   B17 `fiche_premisses: true` (TF-2236) : le journal porte `fiche_premisses`, liste des prémisses
+//       d'environnement vérifiées une fois par boucle (`commande`, `sortie`, `heure`), et chaque relecteur la
+//       reçoit (`relecteur.fiche_remise: true`) avec le droit de vérifier tout ce qu'elle ne couvre pas.
+//   B18 `type_relecteur: "relecteur"` (TF-2241) : chaque passe lance son relecteur avec le type d'agent dédié
+//       (`relecteur.type: "relecteur"`), ou se replie sur `general-purpose` avec son motif (`relecteur.repli`).
+//   B19 `verification_diff: true` (TF-2242) : dès la passe 2, `verification_cloture.ajouts` classe chaque phrase
+//       ajoutée ou modifiée : `verifiee` (prémisse, commande, résultat), `sans_premisse` (motif : la phrase
+//       prescrit ou définit) ou `non_verifiable` (retirée ou reformulée, jamais gardée comme un fait).
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -50,17 +76,29 @@ const NJ = [
   "l'aveuglement réel du relecteur : l'oracle lit la déclaration, il ne lit pas le transcript de l'agent",
   "la justesse des sévérités et des scores attribués par le relecteur",
   "la qualité du prompt réécrit lui-même (→ relecteur, puis humain)",
+  "l'origine d'un défaut grave (correction ou antérieur) : l'oracle lit la déclaration, il ne rejoue pas le test de citation contre le texte de la passe précédente",
+  "la présentation réelle sans étiquette et l'alternance de l'ordre de lecture du jugement apparié : l'oracle lit la déclaration",
+  "l'exhaustivité de la fiche des prémisses : l'oracle ne sait pas quelles prémisses d'environnement le prompt pose",
+  "le type réel de l'agent lancé et son contexte de départ : l'oracle lit la déclaration, il ne lit pas le transcript",
+  "l'exhaustivité de la liste des phrases ajoutées ou modifiées et la justesse de leur classement par le vérificateur : l'oracle ne calcule pas le diff entre les deux versions",
 ];
 const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
 const BORNE_BASE_MAX = 3;
 const BORNE_EXTENSION_MAX = 5;
-const RAISONS = new Set(['zero_majeur', 'gain_insuffisant', 'borne', 'regression']);
+// TF-2238 (16/11/2026) : `zero_majeur_texte_corrige`, l'arrêt atteignable (0 bloquant, 0 majeur dans le texte
+// écrit par la dernière correction), valable seulement si l'arbitre déclare `arret_atteignable`.
+const RAISON_ATTEIGNABLE = 'zero_majeur_texte_corrige';
+const RAISONS = new Set(['zero_majeur', 'gain_insuffisant', 'borne', 'regression', RAISON_ATTEIGNABLE]);
+const ORIGINES = new Set(['correction', 'anterieur']);
 const estRejetee = (p) => p.rejetee === true || p.decision === 'rejeter';
 
 const propre = (x) => typeof x === 'string' && x.trim() !== '';
 const nb = (x) => typeof x === 'number' && Number.isFinite(x);
 const retenus = (p) => (p.defauts || []).filter((d) => GRAVES.has(d.severite) && d.statut === 'retenu');
+// TF-2237 : les notes des relecteurs d'une passe (`scores_relecteurs`, ou `scores` : tableau ou objet {A:76,B:69}) et leur écart.
+const notesRelecteurs = (p) => { const s = p && (p.scores_relecteurs ?? p.scores); return (Array.isArray(s) ? s : s && typeof s === 'object' ? Object.values(s) : []).filter(nb); };
+const ecartRelecteurs = (p) => { const v = notesRelecteurs(p); return v.length >= 2 ? Math.max(...v) - Math.min(...v) : 0; };
 
 export function juger(j) {
   const f = [];
@@ -120,7 +158,11 @@ export function juger(j) {
       if (apres.some((p) => !estRejetee(p))) ko('B5', 'arret.passe', 'des passes gardées suivent la passe d arrêt');
       if (ar.raison === 'regression') {
         const r = apres[apres.length - 1];
-        if (!r || !estRejetee(r) || !(nb(r.score_mesure) && r.score_mesure < pa.score_mesure))
+        // TF-2240 : sous le jugement apparié, la décision de rejeter suit les voix, non la note absolue d'un autre jury.
+        if (a && a.jugement_apparie === true) {
+          if (!r || !estRejetee(r) || !(r.jugement_apparie && r.jugement_apparie.verdict === 'gardee'))
+            ko('B5', 'arret.raison', 'arrêt « regression » sans passe rejetée dont le jugement apparié préfère la version gardée');
+        } else if (!r || !estRejetee(r) || !(nb(r.score_mesure) && r.score_mesure < pa.score_mesure))
           ko('B5', 'arret.raison', 'arrêt « regression » sans passe rejetée dont le score baisse sous la passe d arrêt');
       }
       if (pa.rejetee === true || pa.decision === 'rejeter') ko('B5', 'arret.passe', 'la passe d arrêt est une passe rejetée');
@@ -142,6 +184,26 @@ export function juger(j) {
       gardees.slice(0, Math.max(pos, 0)).forEach(({ p, i }) => {
         if (retenus(p).length === 0) ko('B5', `passes[${i}]`, 'cette passe atteignait déjà « 0 bloquant et 0 majeur » : la boucle devait s arrêter');
       });
+      // B14 — l'arrêt atteignable (TF-2238) : 0 bloquant et 0 majeur DANS LE TEXTE ÉCRIT PAR LA DERNIÈRE CORRECTION, les
+      // majeurs restants (des défauts antérieurs que de nouveaux relecteurs ont vus) recomptés et listés au Ch8.
+      if (ar.raison === RAISON_ATTEIGNABLE) {
+        const reste = retenus(pa);
+        if (!(a && a.arret_atteignable === true)) ko('B14', 'arbitre.arret_atteignable', `arrêt « ${RAISON_ATTEIGNABLE} » sans que l arbitre l ait déclaré avant la passe 1 (arret_atteignable)`);
+        if (!(nb(pa.n) && pa.n >= 2)) ko('B14', 'arret.passe', 'l arrêt sur le texte de la dernière correction suppose une correction : passe 2 au moins');
+        const crees = reste.filter((d) => d.origine === 'correction').length;
+        if (crees > 0) ko('B14', 'arret.raison', `arrêt « ${RAISON_ATTEIGNABLE} » déclaré, ${crees} défaut(s) grave(s) retenu(s) dans le texte écrit par la dernière correction`);
+        if (ar.majeurs_restants !== reste.length) ko('B14', 'arret.majeurs_restants', `majeurs restants déclarés ${ar.majeurs_restants === undefined ? 'absents' : ar.majeurs_restants}, recomptés ${reste.length} aux défauts retenus de la passe d arrêt`);
+        if (ar.liste_au_ch8 !== true) ko('B14', 'arret.liste_au_ch8', 'les majeurs restants doivent être listés au Ch8 (liste_au_ch8: true) : le prompt est livré avec eux, jamais présenté comme fini');
+        if (seuil !== null && !(pa.score_mesure >= seuil)) ko('B14', 'arret.raison', `seuil ${seuil} non tenu (${pa.score_mesure})`);
+      }
+      if (a && a.arret_atteignable === true) {
+        // Une passe gardée avant l'arrêt qui n'avait plus de défaut grave dans le texte de sa correction devait déjà l'arrêter.
+        gardees.slice(0, Math.max(pos, 0)).forEach(({ p, i }) => {
+          const r = retenus(p);
+          if (nb(p.n) && p.n >= 2 && r.length > 0 && r.every((d) => d.origine === 'anterieur'))
+            ko('B14', `passes[${i}]`, 'cette passe n avait plus de défaut grave dans le texte de sa correction : la boucle devait s arrêter');
+        });
+      }
     }
   }
 
@@ -180,13 +242,135 @@ export function juger(j) {
   // Deux relecteurs rotatifs par passe font varier le score conservateur de ±1 à ±2 ; une baisse DANS ce
   // bruit n'est pas une régression de fond. `bruit_tolere` (entier, borné à [0,2], défaut 0) l'absorbe :
   // à 0, la règle est la baisse stricte d'origine, et tout journal qui ne déclare rien est jugé à l'identique.
-  if (a && a.rejet_regression === true) {
-    const bruit = nb(a.bruit_tolere) ? Math.min(Math.max(a.bruit_tolere, 0), 2) : 0;
+  // TF-2237 (16/11/2026) : `bruit_tolere: "mesure"` remplace le plafond fixe de 2 par l'écart des relecteurs de la
+  // passe gardée (étude 20261106b : écart médian de 3 points entre 2 relecteurs d'une même passe, jusqu'à 24) ; une
+  // baisse avec un bloquant retenu, donc au plafond de 40, reste une régression quel que soit ce bruit.
+  // TF-2240 : sous `jugement_apparie`, la décision de garder suit le jugement apparié (B16), non l'écart des notes
+  // absolues de deux jurys différents ; B8 ne joue alors pas.
+  if (a && a.rejet_regression === true && a.jugement_apparie !== true) {
+    const mesure = a.bruit_tolere === 'mesure';
+    const bruitFixe = nb(a.bruit_tolere) ? Math.min(Math.max(a.bruit_tolere, 0), 2) : 0;
     let precGardee = null;
     passes.forEach((p, i) => {
-      if (precGardee && nb(p.score_mesure) && nb(precGardee.score_mesure) && (precGardee.score_mesure - p.score_mesure) > bruit && !estRejetee(p))
-        ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure}${bruit ? ` (au-delà du bruit toléré de ${bruit})` : ''} : passe à rejeter, on garde la précédente`);
+      if (precGardee && nb(p.score_mesure) && nb(precGardee.score_mesure) && !estRejetee(p)) {
+        const baisse = precGardee.score_mesure - p.score_mesure;
+        const bruit = mesure ? ecartRelecteurs(precGardee) : bruitFixe;
+        const bloquant = mesure && (p.defauts || []).some((d) => d.severite === 'bloquant' && d.statut === 'retenu');
+        if (baisse > bruit || (bloquant && baisse > 0))
+          ko('B8', `passes[${i}]`, `le score baisse de ${precGardee.score_mesure} à ${p.score_mesure}${bloquant ? ' avec un bloquant retenu (plafond de 40)' : bruit ? ` (au-delà du bruit ${mesure ? 'mesuré' : 'toléré'} de ${bruit})` : ''} : passe à rejeter, on garde la précédente`);
+      }
       if (!estRejetee(p)) precGardee = p;
+    });
+  }
+
+  // B14 (suite) — sous `arret_atteignable`, chaque défaut grave retenu d'une passe 2 ou suivante dit d'où il vient :
+  // `correction` (sa citation figure dans le texte que la dernière correction a écrit) ou `anterieur`.
+  if (a && a.arret_atteignable === true) {
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      retenus(p).forEach((d) => {
+        if (!ORIGINES.has(d.origine)) ko('B14', `passes[${i}]`, `défaut ${d.severite} retenu sans origine (« correction » ou « anterieur ») : l arrêt sur le texte de la dernière correction ne se juge pas sans elle`);
+      });
+    });
+  }
+
+  // B15 — garde de longueur cumulée depuis la passe 1 : une alerte motivée, jamais un refus (TF-2239). Une passe gardée
+  // qui dépasse la garde cumulée dit pourquoi elle ajoute au lieu de remplacer ; elle n'est pas rejetée pour autant
+  // (le test du 15/11/2026 a vu une garde de 30 % imposée sans motif perdre 9 points, 66 et 70 contre 79 et 77).
+  if (a && nb(a.garde_cumulee)) {
+    const p1 = passes.find((p) => p.n === 1);
+    if (p1 && nb(p1.mots)) passes.forEach((p, i) => {
+      if (p === p1 || estRejetee(p) || !nb(p.mots) || !(p.mots > p1.mots * (1 + a.garde_cumulee))) return;
+      if (!propre(p.motif_depassement) || p.motif_depassement.trim().split(/\s+/).length < 4)
+        ko('B15', `passes[${i}]`, `le prompt passe de ${p1.mots} mots (passe 1) à ${p.mots}, au-delà de +${Math.round(a.garde_cumulee * 100)} % : la correction remplace du texte ou dit pourquoi elle ajoute (motif_depassement, 4 mots au moins)`);
+    });
+  }
+
+  // B16 — jugement apparié (TF-2240) : dès la passe 2, chaque relecteur neuf note les deux versions, gardée et corrigée,
+  // présentées sans étiquette, et dit laquelle est meilleure ; la décision de garder suit ce jugement, la note absolue
+  // reste affichée. Voix à la majorité ; à égalité, la différence moyenne des notes (corrigée moins gardée) tranche.
+  if (a && a.jugement_apparie === true) {
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      const lieu = `passes[${i}].jugement_apparie`;
+      const jg = p.jugement_apparie;
+      const rel = jg && Array.isArray(jg.relecteurs) ? jg.relecteurs : [];
+      if (!jg || rel.length === 0) { ko('B16', lieu, 'jugement apparié absent : dès la passe 2, chaque relecteur neuf note les versions gardée et corrigée et dit laquelle est meilleure'); return; }
+      if (jg.presentation !== 'sans_etiquette') ko('B16', lieu, 'les deux versions doivent être présentées sans étiquette (presentation: "sans_etiquette")');
+      const valide = (r) => propre(r.agent) && (r.prefere === 'gardee' || r.prefere === 'corrigee') && nb(r.note_gardee) && nb(r.note_corrigee)
+        && (r.ordre === 'gardee_en_premier' || r.ordre === 'corrigee_en_premier');
+      if (!rel.every(valide)) { ko('B16', lieu, 'relecteur sans agent, préférence (gardee ou corrigee), ordre de présentation ou notes des deux versions'); return; }
+      if (rel.length >= 2 && new Set(rel.map((r) => r.ordre)).size < 2) ko('B16', lieu, 'tous les relecteurs ont lu les versions dans le même ordre : l ordre doit alterner');
+      const pourCorrigee = rel.filter((r) => r.prefere === 'corrigee').length;
+      const pourGardee = rel.length - pourCorrigee;
+      const ecart = rel.reduce((s, r) => s + (r.note_corrigee - r.note_gardee), 0) / rel.length;
+      const verdict = pourCorrigee > pourGardee ? 'corrigee' : pourGardee > pourCorrigee ? 'gardee' : ecart > 0 ? 'corrigee' : 'gardee';
+      if (jg.verdict !== verdict) ko('B16', lieu, `verdict « ${jg.verdict} », les voix (${pourCorrigee} pour la corrigée, ${pourGardee} pour la gardée, écart moyen ${ecart}) donnent « ${verdict} »`);
+      if (verdict === 'gardee' && !estRejetee(p)) ko('B16', `passes[${i}]`, 'le jugement apparié préfère la version gardée : la passe est à rejeter');
+    });
+  }
+
+  // B17 — fiche des prémisses d'environnement (TF-2236) : l'orchestrateur vérifie une fois par boucle, par commande,
+  // les prémisses que les relecteurs revérifiaient chacun (112 de leurs 165 appels d'outil le 06/11/2026), et remet la
+  // fiche à chaque relecteur, qui garde le droit de vérifier tout ce qu'elle ne couvre pas. Une prémisse sans commande,
+  // sortie et heure n'y entre pas : une prémisse fausse de la fiche aveuglerait tous les relecteurs à la fois.
+  if (a && a.fiche_premisses === true) {
+    const fiche = j.fiche_premisses;
+    if (!Array.isArray(fiche)) ko('B17', 'fiche_premisses', 'fiche des prémisses absente : l orchestrateur l écrit une fois par boucle, avant la passe 1 (liste vide si le prompt ne pose aucune prémisse d environnement)');
+    else fiche.forEach((e, k) => {
+      if (!e || !propre(e.commande) || !propre(e.sortie) || !propre(e.heure) || Number.isNaN(Date.parse(e.heure)))
+        ko('B17', `fiche_premisses[${k}]`, 'prémisse sans commande, sortie ou heure (ISO 8601) : une prémisse non mesurée n entre pas dans la fiche');
+    });
+    passes.forEach((p, i) => {
+      if (!(p.relecteur && p.relecteur.fiche_remise === true)) ko('B17', `passes[${i}].relecteur`, 'fiche des prémisses non remise au relecteur (fiche_remise: true, même si la fiche est vide)');
+    });
+  }
+
+  // B18 — type d'agent du relecteur (TF-2241) : les relecteurs aveugles partaient d'un agent général à 46 000 jetons de
+  // contexte, contre 17 000 pour le vérificateur dédié. Le type `relecteur` (lecture seule, contexte réduit, même modèle)
+  // est lancé d'office ; le repli sur l'agent général, hors du pilot ou si le type est absent, se motive au journal.
+  if (a && a.type_relecteur === 'relecteur') {
+    passes.forEach((p, i) => {
+      const r = p.relecteur || {};
+      if (r.type === 'relecteur' || (r.type === 'general-purpose' && propre(r.repli))) return;
+      ko('B18', `passes[${i}].relecteur`, `relecteur lancé avec le type « ${r.type === undefined ? 'non déclaré' : r.type} » : le type « relecteur », ou un repli sur « general-purpose » avec son motif (relecteur.repli)`);
+    });
+  }
+
+  // B19 — le vérificateur de clôture juge chaque phrase ajoutée ou modifiée par la correction (TF-2242) : les relecteurs
+  // aveugles trouvaient leurs défauts graves dans le texte écrit par la correction précédente (11 sur 22 le 06/11/2026,
+  // que le vérificateur venait de lire). Il reçoit le diff et classe chaque phrase ; l'orchestrateur ne garde pas
+  // comme un fait une phrase qu'aucune commande n'établit.
+  if (a && a.verification_diff === true) {
+    const motif = (m) => propre(m) && m.trim().split(/\s+/).length >= 4;
+    passes.forEach((p, i) => {
+      if (!(nb(p.n) && p.n >= 2)) return;
+      const aj = p.verification_cloture && p.verification_cloture.ajouts;
+      if (!Array.isArray(aj)) { ko('B19', `passes[${i}].verification_cloture.ajouts`, 'liste des phrases ajoutées ou modifiées absente : le vérificateur reçoit le diff de la correction et juge chaque phrase (liste vide si la correction n ajoute rien)'); return; }
+      aj.forEach((x, k) => {
+        const lieu = `passes[${i}].verification_cloture.ajouts[${k}]`;
+        if (!x || !propre(x.phrase)) ko('B19', lieu, 'phrase ajoutée ou modifiée non citée');
+        else if (x.etat === 'verifiee') {
+          if (!propre(x.premisse) || !propre(x.commande) || !propre(x.resultat)) ko('B19', lieu, 'phrase « verifiee » sans sa prémisse, la commande qui l établit et son résultat');
+        } else if (x.etat === 'sans_premisse') {
+          if (!motif(x.motif)) ko('B19', lieu, 'phrase « sans_premisse » sans motif (4 mots au moins) : dire pourquoi elle prescrit ou définit sans affirmer de fait');
+        } else if (x.etat === 'non_verifiable') {
+          if (x.sort !== 'retire' && x.sort !== 'reformule') ko('B19', lieu, 'phrase « non_verifiable » gardée : elle se retire, ou se reformule en instruction de mesurer à l exécution (sort: retire | reformule)');
+        } else ko('B19', lieu, 'état hors de verifiee, sans_premisse, non_verifiable');
+      });
+    });
+  }
+
+  // B13 — la passe est notée par la moyenne de ses relecteurs (TF-2237)
+  if (a && a.score_de_passe === 'moyenne') {
+    passes.forEach((p, i) => {
+      const v = notesRelecteurs(p);
+      if (v.length === 0) ko('B13', `passes[${i}].scores_relecteurs`, 'notes des relecteurs absentes : la moyenne ne se vérifie pas sans une note par relecteur');
+      else {
+        const moy = v.reduce((x, y) => x + y, 0) / v.length;
+        if (!nb(p.score_mesure) || Math.abs(p.score_mesure - moy) > 0.5)
+          ko('B13', `passes[${i}].score_mesure`, `score de passe ${p.score_mesure}, moyenne des relecteurs ${moy} : sous « moyenne », le score de passe est la moyenne, jamais le minimum`);
+      }
     });
   }
 
@@ -360,6 +544,182 @@ function selfTest() {
     j.passes[2].cause_regression = { nature: 'defaut_cree', citation: 'x', recompte: { commande: 'git grep x', resultat: '0' } };
     j.passes.push({ ...j.passes[2], n: 4, reprise_de: 3, cause_regression: undefined });
   });
+  // TF-2237 (16/11/2026) : la passe est notée par la moyenne de ses relecteurs, et le bruit toléré est l'écart
+  // des relecteurs de la passe gardée. Cas d'origine (06/11/2026, indice a) : la passe rejetée à 80 contre 82 par le
+  // minimum, alors que ses relecteurs se tenaient à 4 points d'écart et qu'elle fermait des majeurs.
+  const moyenne = () => {
+    const j = essai();
+    Object.assign(j.arbitre, { score_de_passe: 'moyenne', bruit_tolere: 'mesure' });
+    j.passes[0].scores_relecteurs = [84, 82]; j.passes[0].score_mesure = 83;
+    j.passes[1].scores_relecteurs = [86, 80]; j.passes[1].score_mesure = 83;
+    j.score_affiche = { valeur: 83, nature: 'mesure' };
+    return j;
+  };
+  // La même boucle notée par le minimum (82 puis 80), bruit toléré à 0 : la règle d'avant rejetait la passe 2.
+  const parLeMinimum = () => {
+    const j = moyenne();
+    delete j.arbitre.score_de_passe; j.arbitre.bruit_tolere = 0;
+    j.passes[0].score_mesure = 82; j.passes[1].score_mesure = 80; j.score_affiche = { valeur: 80, nature: 'mesure' };
+    return j;
+  };
+  // Passe 2 qui baisse de 3 points, passe 1 gardée à 4 points d'écart entre ses relecteurs ; arrêt sur le gain.
+  const baisse = (scores2, moy2) => () => {
+    const j = moyenne();
+    j.passes[0].scores_relecteurs = [84, 80]; j.passes[0].score_mesure = 82;
+    j.passes[1].scores_relecteurs = scores2; j.passes[1].score_mesure = moy2; j.score_affiche = { valeur: moy2, nature: 'mesure' };
+    return j;
+  };
+  cas.push({ nom: 'TF-2237 vert — la moyenne garde la passe que le minimum rejetait (83 contre 83, au lieu de 82 contre 80)', j: moyenne(), attendu: [] });
+  cas.push({ nom: 'TF-2237 vert — la clé « scores » (un objet par relecteur) est lue comme « scores_relecteurs »', j: (() => { const j = moyenne(); j.passes[0].scores = { A: 84, B: 82 }; delete j.passes[0].scores_relecteurs; j.passes[1].scores = { A: 86, B: 80 }; delete j.passes[1].scores_relecteurs; return j; })(), attendu: [] });
+  cas.push({ nom: 'TF-2237 rouge — la même boucle notée par le minimum, bruit à 0 : la règle d avant rejette la passe (B8)', j: parLeMinimum(), attendu: ['B8'] });
+  cas.push({ nom: 'TF-2237 vert — une baisse de 3 points dans l écart de 4 des relecteurs de la passe gardée reste gardée', j: baisse([80, 78], 79)(), attendu: [] });
+  rougeB('B8 baisse de 6 points, au-delà de l écart de 4 des relecteurs de la passe gardée', 'B8', baisse([77, 75], 76), () => {});
+  rougeB('B8 baisse dans le bruit, mais avec un bloquant retenu (plafond de 40)', 'B8', baisse([80, 78], 79), (j) => {
+    j.passes[1].defauts.push({ severite: 'bloquant', citation: 'renvoi à une section absente', recompte: { commande: 'git grep -n "section 7" prompt-p2.md', resultat: '0 occurrence' }, statut: 'retenu' });
+    j.arret = { passe: 2, raison: 'gain_insuffisant' };
+  });
+  rougeB('B13 score de passe qui n est pas la moyenne (86 pour 86 et 80)', 'B13', moyenne, (j) => { j.passes[1].score_mesure = 86; j.score_affiche.valeur = 86; });
+  rougeB('B13 notes des relecteurs absentes', 'B13', moyenne, (j) => { delete j.passes[1].scores_relecteurs; });
+  // TF-2238 (16/11/2026) : l'arrêt atteignable. Sur 59 passes relevées au 06/11/2026, aucune n'atteignait « 0 bloquant
+  // et 0 majeur » (médiane 6 par passe) : les boucles s'arrêtaient sur le gain, la régression ou la borne. Ici la
+  // passe 2 n'a plus de défaut grave dans le texte de sa correction ; il lui en reste un, antérieur, recompté et listé.
+  const atteignable = () => {
+    const j = essai();
+    j.arbitre.arret_atteignable = true;
+    j.arbitre.arret = '0 bloquant et 0 majeur dans le texte écrit par la dernière correction ; majeurs restants recomptés et listés au Ch8 (cible : 0 bloquant et 0 majeur)';
+    j.passes[1].defauts = [
+      { severite: 'majeur', origine: 'anterieur', citation: 'l. 41 : « 14 dépôts »', recompte: { commande: 'git grep -c "14 dépôts" prompt-p1.md', resultat: '1 occurrence, déjà présente en passe 1' }, statut: 'retenu' },
+      { severite: 'mineur', citation: 'l. 118', statut: 'retenu' },
+    ];
+    j.arret = { passe: 2, raison: 'zero_majeur_texte_corrige', majeurs_restants: 1, liste_au_ch8: true };
+    return j;
+  };
+  cas.push({ nom: 'TF-2238 vert — arrêt atteignable : 0 majeur dans le texte de la dernière correction, 1 majeur antérieur listé', j: atteignable(), attendu: [] });
+  cas.push({ nom: 'TF-2238 vert — l arrêt strict « zéro majeur » reste valable sous la même déclaration (le cas idéal)', j: (() => { const j = essai(); j.arbitre.arret_atteignable = true; return j; })(), attendu: [] });
+  rougeB('B14 majeur retenu dans le texte de la dernière correction', 'B14', atteignable, (j) => { j.passes[1].defauts[0].origine = 'correction'; });
+  rougeB('B14 majeurs restants mal recomptés', 'B14', atteignable, (j) => { j.arret.majeurs_restants = 0; });
+  rougeB('B14 majeurs restants non listés au Ch8', 'B14', atteignable, (j) => { j.arret.liste_au_ch8 = false; });
+  rougeB('B14 arrêt atteignable non déclaré à l arbitre', 'B14', atteignable, (j) => { delete j.arbitre.arret_atteignable; });
+  rougeB('B14 défaut grave retenu sans origine', 'B14', atteignable, (j) => { delete j.passes[1].defauts[0].origine; });
+  rougeB('B14 arrêt atteignable posé sur la passe 1, sans correction', 'B14', atteignable, (j) => {
+    j.passes.length = 1; j.passes[0].decision = 'arreter';
+    j.arret = { passe: 1, raison: 'zero_majeur_texte_corrige', majeurs_restants: 2, liste_au_ch8: true }; j.score_affiche = { valeur: 84, nature: 'mesure' };
+  });
+  rougeB('B14 la passe 2 remplissait déjà l arrêt : la boucle devait s arrêter', 'B14', atteignable, (j) => {
+    j.passes[1].decision = 'continuer';
+    j.passes.push({ n: 3, fichier: 'prompt-p3.md', mots: 1300, relecteur: { agent: 'relecteur-3', aveugle: true, interdits: ['analyse', 'passes précédentes'] },
+      score_mesure: 93, defauts: [{ severite: 'mineur', citation: 'l. 120', statut: 'retenu' }], majeurs_clos: 1, rejetee: false, decision: 'arreter',
+      verification_cloture: { agent: 'verificateur-1', note: false, clotures: 1, defauts_crees: 0 } });
+    j.arret = { passe: 3, raison: 'zero_majeur' }; j.score_affiche = { valeur: 93, nature: 'mesure' };
+  });
+  // TF-2239 (16/11/2026) : la garde de longueur se juge aussi depuis la passe 1, en alerte motivée. Sur 20 journaux,
+  // 16 boucles dépassent +15 % entre la passe 1 et l'arrêt (médiane +47 %), et la garde passe à passe ne joue jamais.
+  const cumulee = () => { const j = essai(); j.arbitre.garde_cumulee = 0.3; return j; };
+  const gonflee = (motif) => () => {
+    const j = cumulee();
+    j.passes[1].mots = 1700; // +40 % depuis la passe 1, la passe ferme 2 majeurs : B4 ne la rejette pas
+    if (motif !== undefined) j.passes[1].motif_depassement = motif;
+    return j;
+  };
+  cas.push({ nom: 'TF-2239 vert — +6 % depuis la passe 1, sous la garde cumulée de 30 %', j: cumulee(), attendu: [] });
+  cas.push({ nom: 'TF-2239 vert — +40 % avec un motif : alerte motivée, la passe reste gardée', j: gonflee('ferme 2 majeurs de spécification sans texte à remplacer')(), attendu: [] });
+  cas.push({ nom: 'TF-2239 vert — la passe rejetée au-delà de la garde n est pas jugée : son texte est écarté', j: (() => { const j = gonflee()(); Object.assign(j.passes[1], { rejetee: true, decision: 'rejeter', score_mesure: 80 }); j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' }; return j; })(), attendu: [] });
+  rougeB('B15 +40 % depuis la passe 1 sans motif', 'B15', gonflee(), () => {});
+  rougeB('B15 motif de trois mots, qui ne dit rien', 'B15', gonflee('pour être complet'), () => {});
+  // TF-2240 (16/11/2026) : le jugement apparié. Garder ou rejeter une passe comparait deux notes de jurys différents
+  // (biais de configuration de 4 à 7 points, étude du 29/10/2026) ; chaque relecteur de la passe 2 note maintenant
+  // les deux versions, présentées sans étiquette, et dit laquelle est meilleure.
+  const voix = (agent, ordre, prefere, gardee, corrigee) => ({ agent, ordre, prefere, note_gardee: gardee, note_corrigee: corrigee });
+  const apparie = () => {
+    const j = essai();
+    j.arbitre.jugement_apparie = true;
+    j.passes[1].jugement_apparie = { presentation: 'sans_etiquette', verdict: 'corrigee',
+      relecteurs: [voix('relecteur-2a', 'gardee_en_premier', 'corrigee', 83, 91), voix('relecteur-2b', 'corrigee_en_premier', 'corrigee', 84, 90)] };
+    return j;
+  };
+  // La passe 2 est rejetée parce que ses deux relecteurs préfèrent la version gardée ; la boucle s'arrête sur la passe 1.
+  const apparieGardee = () => {
+    const j = apparie();
+    Object.assign(j.passes[1], { rejetee: true, decision: 'rejeter' });
+    j.passes[1].jugement_apparie = { presentation: 'sans_etiquette', verdict: 'gardee',
+      relecteurs: [voix('relecteur-2a', 'gardee_en_premier', 'gardee', 86, 80), voix('relecteur-2b', 'corrigee_en_premier', 'gardee', 85, 82)] };
+    j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' };
+    return j;
+  };
+  cas.push({ nom: 'TF-2240 vert — jugement apparié accepté : 2 relecteurs préfèrent la version corrigée, ordres alternés', j: apparie(), attendu: [] });
+  cas.push({ nom: 'TF-2240 vert — la note absolue plus basse d un autre jury ne rejette plus une passe que le jugement apparié préfère', j: (() => { const j = apparie(); j.passes[1].score_mesure = 80; j.score_affiche.valeur = 80; return j; })(), attendu: [] });
+  cas.push({ nom: 'TF-2240 vert — le jugement apparié préfère la version gardée : passe rejetée, arrêt sur la passe 1', j: apparieGardee(), attendu: [] });
+  rougeB('B16 passe 2 sans jugement apparié (le champ manque)', 'B16', apparie, (j) => { delete j.passes[1].jugement_apparie; });
+  rougeB('B16 versions présentées avec étiquette', 'B16', apparie, (j) => { j.passes[1].jugement_apparie.presentation = 'etiquetee'; });
+  rougeB('B16 tous les relecteurs lisent dans le même ordre', 'B16', apparie, (j) => { j.passes[1].jugement_apparie.relecteurs[1].ordre = 'gardee_en_premier'; });
+  rougeB('B16 verdict qui contredit les voix', 'B16', apparie, (j) => { j.passes[1].jugement_apparie.verdict = 'gardee'; j.passes[1].rejetee = true; j.passes[1].decision = 'rejeter'; j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' }; });
+  rougeB('B16 préférence des relecteurs pour la gardée, passe gardée quand même', 'B16', apparieGardee, (j) => { j.passes[1].rejetee = false; j.passes[1].decision = 'arreter'; j.arret = { passe: 2, raison: 'zero_majeur' }; j.score_affiche = { valeur: 91, nature: 'mesure' }; });
+  rougeB('B5 arrêt « regression » sans jugement apparié qui préfère la gardée', 'B5', apparieGardee, (j) => { j.passes[1].jugement_apparie.verdict = 'corrigee'; j.passes[1].jugement_apparie.relecteurs.forEach((r) => { r.prefere = 'corrigee'; }); });
+  // TF-2236 (16/11/2026) : la fiche des prémisses d'environnement. Le 06/11/2026, les 10 relecteurs ont revérifié chacun
+  // `bootstrap.mjs --pull` et `allouer-indice.mjs` (10 sur 10) et les règles R-4 et R-25 : 112 de leurs 165 appels d'outil.
+  const fiche = () => {
+    const j = essai();
+    j.arbitre.fiche_premisses = true;
+    j.fiche_premisses = [
+      { commande: 'node bootstrap.mjs --pull', sortie: 'exit 0, 14 dépôts à jour', heure: '2026-11-16T10:02:11+01:00' },
+      { commande: 'node scripts/allouer-indice.mjs --dossier output/03-etudes --jour 20261116', sortie: 'b', heure: '2026-11-16T10:02:40+01:00' },
+    ];
+    j.passes.forEach((p) => { p.relecteur.fiche_remise = true; });
+    return j;
+  };
+  cas.push({ nom: 'TF-2236 vert — fiche de 2 prémisses mesurées, remise aux relecteurs des 2 passes', j: fiche(), attendu: [] });
+  cas.push({ nom: 'TF-2236 vert — fiche vide mais déclarée et remise : le prompt ne pose aucune prémisse d environnement', j: (() => { const j = fiche(); j.fiche_premisses = []; return j; })(), attendu: [] });
+  rougeB('B17 fiche absente du journal', 'B17', fiche, (j) => { delete j.fiche_premisses; });
+  rougeB('B17 prémisse sans sortie', 'B17', fiche, (j) => { delete j.fiche_premisses[0].sortie; });
+  rougeB('B17 prémisse sans heure lisible', 'B17', fiche, (j) => { j.fiche_premisses[1].heure = 'ce matin'; });
+  rougeB('B17 fiche non remise au relecteur de la passe 2', 'B17', fiche, (j) => { delete j.passes[1].relecteur.fiche_remise; });
+  // TF-2241 (16/11/2026) : le type d'agent du relecteur. Le 06/11/2026, les 10 relecteurs, agents généraux sur Opus,
+  // ouvraient avec 46 190 à 46 279 jetons de contexte ; les 5 vérificateurs, agent dédié, avec 17 362 à 17 435.
+  const typee = () => {
+    const j = essai();
+    j.arbitre.type_relecteur = 'relecteur';
+    j.passes.forEach((p) => { p.relecteur.type = 'relecteur'; p.relecteur.contexte_depart = 16800; });
+    return j;
+  };
+  cas.push({ nom: 'TF-2241 vert — les relecteurs des 2 passes sont lancés avec le type dédié « relecteur »', j: typee(), attendu: [] });
+  cas.push({ nom: 'TF-2241 vert — repli motivé sur « general-purpose » (type absent hors du pilot)', j: (() => { const j = typee(); Object.assign(j.passes[1].relecteur, { type: 'general-purpose', repli: 'type relecteur absent de ce projet : dossier .claude/agents sans relecteur.md' }); return j; })(), attendu: [] });
+  rougeB('B18 relecteur général sans motif de repli', 'B18', typee, (j) => { j.passes[1].relecteur.type = 'general-purpose'; });
+  rougeB('B18 type du relecteur non déclaré', 'B18', typee, (j) => { delete j.passes[0].relecteur.type; });
+  // TF-2242 (16/11/2026) : le vérificateur de clôture sur le diff. Les 11 défauts créés qui ont échappé aux
+  // vérificateurs du 14/11/2026 étaient des affirmations sans preuve : « la commande tourne sous Bash », « la seule
+  // durée disponible », « repris du tableau de Q1 ». Chaque phrase ajoutée reçoit ici son état.
+  const diff = () => {
+    const j = essai();
+    j.arbitre.verification_diff = true;
+    j.passes[1].verification_cloture.ajouts = [
+      { phrase: '« (sous Bash) : node scripts\\allouer-indice.mjs »', etat: 'verifiee', premisse: 'la commande tourne sous Bash', commande: 'bash -c "node scripts/allouer-indice.mjs --aide"', resultat: 'exit 0, usage affiché' },
+      { phrase: '« le taux se définit par le nombre de relecteurs »', etat: 'sans_premisse', motif: 'la phrase définit un choix de conception, elle n affirme aucun fait' },
+      { phrase: '« la seule durée disponible »', etat: 'non_verifiable', sort: 'retire' },
+    ];
+    return j;
+  };
+  cas.push({ nom: 'TF-2242 vert — 3 phrases ajoutées classées : 1 vérifiée par commande, 1 qui définit, 1 non vérifiable retirée', j: diff(), attendu: [] });
+  cas.push({ nom: 'TF-2242 vert — la correction n ajoute aucune phrase : liste vide mais déclarée', j: (() => { const j = diff(); j.passes[1].verification_cloture.ajouts = []; return j; })(), attendu: [] });
+  rougeB('B19 liste des phrases ajoutées absente', 'B19', diff, (j) => { delete j.passes[1].verification_cloture.ajouts; });
+  rougeB('B19 phrase « verifiee » sans commande', 'B19', diff, (j) => { delete j.passes[1].verification_cloture.ajouts[0].commande; });
+  rougeB('B19 phrase non vérifiable gardée', 'B19', diff, (j) => { j.passes[1].verification_cloture.ajouts[2].sort = 'garde'; });
+  rougeB('B19 phrase « sans_premisse » sans motif', 'B19', diff, (j) => { delete j.passes[1].verification_cloture.ajouts[1].motif; });
+  rougeB('B19 état hors des trois états', 'B19', diff, (j) => { j.passes[1].verification_cloture.ajouts[1].etat = 'probable'; });
+  // Les sept règles du 16/11/2026 ensemble : une boucle neuve qui les déclare toutes se juge sans que l'une contredise l'autre.
+  const toutes = () => {
+    const j = essai();
+    Object.assign(j.arbitre, { score_de_passe: 'moyenne', bruit_tolere: 'mesure', arret_atteignable: true, garde_cumulee: 0.3,
+      jugement_apparie: true, fiche_premisses: true, type_relecteur: 'relecteur', verification_diff: true });
+    j.fiche_premisses = [{ commande: 'node bootstrap.mjs --pull', sortie: 'exit 0, 14 dépôts à jour', heure: '2026-11-16T10:02:11+01:00' }];
+    j.passes.forEach((p) => Object.assign(p.relecteur, { type: 'relecteur', fiche_remise: true }));
+    j.passes[0].scores_relecteurs = [86, 82]; j.passes[0].score_mesure = 84;
+    j.passes[1].scores_relecteurs = [92, 90]; j.passes[1].score_mesure = 91;
+    j.passes[1].jugement_apparie = { presentation: 'sans_etiquette', verdict: 'corrigee',
+      relecteurs: [voix('relecteur-2a', 'gardee_en_premier', 'corrigee', 83, 92), voix('relecteur-2b', 'corrigee_en_premier', 'corrigee', 84, 90)] };
+    j.passes[1].verification_cloture.ajouts = [{ phrase: '« 14 dépôts »', etat: 'verifiee', premisse: 'le parc compte 14 dépôts', commande: 'node bootstrap.mjs --pull', resultat: '14 dépôts à jour' }];
+    return j;
+  };
+  cas.push({ nom: 'TF-2236 à TF-2242 vert — une boucle neuve qui déclare les sept règles du 16/11/2026 à la fois', j: toutes(), attendu: [] });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

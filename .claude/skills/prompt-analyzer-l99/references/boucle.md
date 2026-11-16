@@ -41,7 +41,8 @@ cas et sans signal, L99 garde son mode simple, et le score du Ch8 s'écrit « pr
 - `retenue` : `union_recomptee` ;
 - `verification_cloture` : `true` ;
 - `rejet_regression` : `true` ;
-- `bruit_tolere` : entier optionnel, borné à [0,2] (défaut 0). Le bruit des relecteurs rotatifs qu'une
+- `bruit_tolere` : entier optionnel, borné à [0,2] (défaut 0), ou `"mesure"` (TF-2237, section « Les
+  règles de la revue du 16/11/2026 »). Le bruit des relecteurs rotatifs qu'une
   baisse de score doit dépasser pour valoir régression (B8) ; à 0, toute baisse est une régression
   (règle d'origine), donc un journal qui ne le déclare pas est jugé à l'identique (TF-2063, 02/11/2026).
 
@@ -80,6 +81,116 @@ extension au-delà de 5, sans motif, ou décidée après une passe qui ne gagne 
 Le seuil de score ne suffit jamais à arrêter : un prompt mesuré 84 avec 3 majeurs ouverts
 n'est pas fini (P5 de l'étude).
 
+## Les règles de la revue du 16/11/2026 (étude 20261106b)
+
+Décidées le 16/11/2026 sous R-58 (TF-2236 à TF-2242), d'après l'étude du pilot
+`output/03-etudes/Digit-AI - Étude - Cout et qualite de la boucle L99 - 20261106b.md`, qui a
+décompté 20 journaux distincts et 59 passes. Chaque règle est une clé de l'arbitre : un journal qui
+ne la déclare pas est jugé par les règles d'avant ; un journal neuf déclare celles que cette section
+nomme « défaut ». Une règle « en essai » se déclare quand la session la joue : son critère de mesure,
+écrit avec elle, décide de la garder ou de la retirer. Les clés se déclarent avant la passe 1, comme
+le reste de l'arbitre.
+
+- **Passe notée par la moyenne de ses relecteurs, bruit mesuré** (TF-2237, défaut) :
+  `score_de_passe` : `"moyenne"` et `bruit_tolere` : `"mesure"`. L'écart entre les 2 relecteurs d'une
+  même passe a une médiane de 3 points et monte à 24 (21 passes) : le plafond de 2 du bruit toléré
+  est sous ce bruit, et le minimum de 2 notes bruitées l'est plus que leur moyenne. Chaque passe
+  porte `scores_relecteurs` (un nombre par relecteur, clé que portent déjà 85 des 143 passes des journaux
+  relevés le 16/11/2026 ; `scores`, en tableau ou en objet, est lu de même) ; son `score_mesure` en est la
+  moyenne, et B13 le contrôle.
+  B8 tolère une baisse jusqu'à l'écart des relecteurs de la passe gardée (le plus haut de ses
+  `scores_relecteurs` moins le plus bas), sans plafond fixe ; avec un seul relecteur, cet écart est nul et la
+  baisse stricte s'applique. Une baisse accompagnée d'un bloquant retenu, donc d'un plafond de 40,
+  reste une régression. Le fait : le 06/11/2026, la passe 3 de la boucle d'indice a, qui fermait 4
+  majeurs vérifiés, a été rejetée à 80 contre 82, bruit toléré déclaré à 0.
+- **Arrêt atteignable et mesurable** (TF-2238, défaut) : `arret_atteignable` : `true`. L'arrêt
+  « 0 bloquant et 0 majeur » n'a été atteint par aucune des 59 passes relevées (minimum 2 défauts
+  graves, médiane 6) : chaque défaut fermé en crée environ 0,54, et 2 relecteurs ne voient qu'environ
+  73 % du stock. Les boucles s'arrêtaient donc sur le gain, la régression ou la borne, et livraient
+  leurs majeurs sans que l'arrêt le dise. La boucle peut désormais s'arrêter, à partir de la passe 2,
+  sur la raison `zero_majeur_texte_corrige` : aucun défaut grave retenu ne cite le texte écrit par la
+  dernière correction. Chaque défaut grave retenu d'une passe 2 ou suivante porte son `origine` :
+  `correction` quand sa citation figure dans le texte que la dernière correction a écrit (absente de
+  la passe gardée précédente), `anterieur` sinon. Les majeurs restants, tous antérieurs, se recomptent
+  à la source, se portent à `arret.majeurs_restants` (leur nombre) avec `arret.liste_au_ch8` : `true`, et
+  le Ch8 les nomme : le prompt est livré avec eux, jamais présenté comme fini. L'arrêt strict « 0
+  bloquant et 0 majeur » reste la cible affichée et le cas idéal ; il garde sa raison `zero_majeur`.
+  B14 le contrôle, et refuse une passe gardée qui remplissait déjà l'arrêt sans l'avoir posé.
+- **Garde de longueur cumulée, en alerte motivée** (TF-2239, défaut) : `garde_cumulee` : `0.30`. La
+  garde `garde_longueur` de B4 ne se juge que d'une passe à la suivante et ne joue jamais, puisque
+  chaque passe ferme au moins un majeur : sur 20 journaux, les 39 passes comparables grossissent
+  toutes (médiane +27 % par passe), 16 boucles sur 20 dépassent +15 % entre la passe 1 et l'arrêt
+  (médiane +47 %), et 15 des 22 défauts graves relevés après la passe 1 le 06/11/2026 citent du texte
+  écrit par une correction. Une passe gardée dont le prompt dépasse de plus de 30 % la longueur de
+  la passe 1 porte un `motif_depassement` : la correction remplace du texte, ou dit pourquoi elle
+  ajoute (4 mots au moins, la phrase nomme ce que l'ajout apporte). C'est une alerte, jamais un
+  refus : la passe n'est pas rejetée pour ce dépassement cumulé (la garde de passe à passe de B4 reste
+  en vigueur). Le test du 15/11/2026, noté sur TF-2565 au registre du pilot, a vu une garde de
+  30 % imposée sans motif faire perdre des points : 66 et 70 contre 79 et 77 au témoin, 7 défauts
+  graves distincts contre 4, presque tous des spécifications retranchées pour tenir la garde.
+  B15 refuse le journal d'une passe au-delà de la garde sans motif.
+- **Jugement apparié** (TF-2240, défaut) : `jugement_apparie` : `true`. Garder ou rejeter une passe
+  comparait la note de ses relecteurs à celle d'autres relecteurs : deux jurys, dont l'étude du
+  29/10/2026 mesure le biais de configuration à 4 à 7 points, et le 06/11/2026, 7 des 22 défauts
+  graves relevés après la passe 1 citaient du texte déjà présent en passe 1 que ses relecteurs
+  n'avaient pas vu. Dès la passe 2, chaque relecteur neuf lit les deux versions, gardée et corrigée,
+  présentées sans étiquette, dans un ordre qui alterne d'un relecteur à l'autre. Il note chacune,
+  dit laquelle est meilleure et rend sa grille habituelle pour la corrigée. Le journal porte, à la
+  passe, `jugement_apparie` : `presentation` (`"sans_etiquette"`), `relecteurs` (pour chacun
+  `agent`, `ordre` `gardee_en_premier` ou `corrigee_en_premier`, `prefere` `gardee` ou `corrigee`,
+  `note_gardee`, `note_corrigee`) et `verdict`. Le verdict suit la majorité des voix ; à égalité, la
+  différence moyenne des notes (corrigée moins gardée) tranche, et un écart nul va à la gardée. Une
+  passe dont le verdict est `gardee` est rejetée, et la boucle s'arrête sur la passe gardée avec la
+  raison `regression`. La note absolue reste affichée (`score_mesure`) mais ne décide plus : B8 ne
+  joue pas sous cette clé. Les relecteurs restent neufs et aveugles ; le coût estimé est de 10 000 à
+  20 000 jetons de plus par relecteur. B16 contrôle le journal.
+- **Fiche des prémisses d'environnement** (TF-2236, en essai) : `fiche_premisses` : `true`. Mesuré
+  le 06/11/2026 sur les 10 relecteurs des 2 boucles de Produit-84 : 112 de leurs 165 appels d'outil
+  (68 %) touchent une prémisse que d'autres relecteurs avaient déjà vérifiée (R-4 et R-25, `bootstrap.mjs
+  --pull`, `allouer-indice.mjs` : 10 relecteurs sur 10 chacune), pour 34 366 jetons d'exploration par
+  relecteur en moyenne. Avant la passe 1, l'orchestrateur exécute une fois par boucle les commandes qui
+  établissent les prémisses d'environnement que le prompt pose, et écrit au journal la
+  `fiche_premisses` : pour chacune, `commande`, `sortie` (reprise telle quelle) et `heure`. Chaque
+  relecteur reçoit la fiche (`relecteur.fiche_remise` : `true`, même vide) avec le droit de vérifier
+  tout ce qu'elle ne couvre pas. La fiche porte des faits mesurés, jamais un jugement sur le prompt :
+  le relecteur décide seul si une phrase du prompt s'accorde avec la sortie. Un défaut tiré d'une
+  sortie de la fiche se recompte comme tout autre (étape 3) ; une prémisse de la fiche qu'un relecteur
+  démentit se rejoue, et la fiche se corrige avant la passe suivante. Le risque est qu'une prémisse
+  fausse ou absente de la fiche aveugle tous les relecteurs à la fois : 5 des 8 majeurs de la passe 1
+  du 06/11/2026 venaient de vérifications de prémisses. D'où l'essai : une boucle jouée avec fiche
+  doit réduire d'au moins 40 % les appels d'outil des relecteurs (16,5 par relecteur au relevé du
+  06/11/2026, à relire au rapport de chaque agent et à porter à `relecteur.appels_outil`) sans perdre
+  un majeur que le témoin trouvait ; sinon la fiche se retire. B17 contrôle le journal, pas la mesure.
+- **Type d'agent dédié pour le relecteur** (TF-2241, en essai) : `type_relecteur` : `"relecteur"`.
+  Mesuré le 06/11/2026 : les 10 relecteurs, agents `general-purpose` sur Opus, ouvrent avec 46 190 à
+  46 279 jetons de contexte avant leur première lecture, soit 55 % de leurs 835 459 jetons ; les 5
+  vérificateurs, agent dédié, avec 17 362 à 17 435. Le pilot définit le type `relecteur`
+  (`.claude/agents/relecteur.md`, TF-2554) : même modèle (Opus), lecture seule (Read, Grep, Glob),
+  aucune commande, contexte réduit. La boucle lance les relecteurs aveugles avec ce type
+  (`subagent_type` : `relecteur`), et non avec `general-purpose`. Hors du pilot, ou quand le type
+  n'existe pas dans l'environnement, elle se replie sur `general-purpose` et en écrit le motif à
+  `relecteur.repli`. Le type n'a aucun outil de commande : la fiche des prémisses (TF-2236) remplace
+  les commandes que le relecteur lançait, et tout besoin de rejeu se rend à l'orchestrateur, qui
+  recompte (étape 3). Le modèle ne change pas ; sa substitution se teste à part (étude 20261106b,
+  section 5). Le contexte de départ de chaque relecteur se lit au transcript de l'agent et se porte
+  à `relecteur.contexte_depart` (jetons) ; critère de l'essai : moins de 25 000 jetons, sinon le type
+  se retire de l'arbitre. B18 contrôle le type déclaré, pas la mesure.
+- **Vérification de clôture sur le diff** (TF-2242, en essai) : `verification_diff` : `true`. Le
+  06/11/2026, les vérificateurs ont relevé 10 défauts créés (dont 3 graves) dans les 2 boucles de
+  Produit-84, puis les relecteurs aveugles ont trouvé 11 défauts graves dans du texte écrit par la
+  correction immédiatement précédente et 4 dans celui d'une correction plus ancienne ; sur 20
+  journaux, 123 défauts créés ont été relevés pour 227 clôtures. L'étape 1 bis change : le
+  vérificateur reçoit aussi le diff de la correction, et rend pour chaque phrase ajoutée ou modifiée
+  un état. `verifiee` : sa prémisse (`premisse`), établie par une commande qu'il a exécutée
+  (`commande`, `resultat`). `sans_premisse` : la phrase prescrit ou définit sans affirmer de fait
+  (`motif`). `non_verifiable` : elle affirme un fait qu'aucune commande n'établit. L'orchestrateur ne
+  garde que les ajouts vérifiés : une phrase `non_verifiable` se retire ou se reformule en
+  instruction de mesurer à l'exécution (`sort` : `retire` ou `reformule`), jamais gardée comme un
+  fait. Le journal porte la liste à `verification_cloture.ajouts`, vide si la correction n'ajoute
+  rien. Coût estimé : 10 000 à 15 000 jetons par vérificateur. Critère de l'essai : le banc du
+  15/11/2026 rejoué porte au moins 2 défauts graves de moins que le témoin ; sinon la règle se
+  retire. B19 contrôle le journal, pas la mesure.
+
 ## Une passe
 
 1. **Réécrire.** À la passe 1, c'est l'analyse L99 complète et son prompt réécrit. Aux passes
@@ -97,7 +208,8 @@ n'est pas fini (P5 de l'étude).
    défaut). Il reçoit uniquement :
    - le chemin du prompt réécrit, extrait seul dans un fichier ;
    - la rubrique du Ch1 et les définitions de sévérité du Ch3 (`references/couches.md`) ;
-   - l'autorisation de vérifier les prémisses en lecture seule ;
+   - l'autorisation de vérifier les prémisses en lecture seule, et la fiche des prémisses déjà
+     vérifiées par commande quand la boucle la joue (TF-2236) ;
    - l'INTERDIT d'ouvrir l'analyse, les passes précédentes et leur journal.
    Consigne à charge : un point n'est accordé qu'avec une citation du prompt. Sortie attendue :
    le JSON de l'annexe ci-dessous. Pour un prompt de run, lancer 2 relecteurs. Retenue à
@@ -116,18 +228,22 @@ n'est pas fini (P5 de l'étude).
 4. **Mesurer la longueur** du prompt en mots.
 5. **Décider la suite.** Une passe dont le prompt grossit de plus de 15 % sans clore un majeur
    est REJETÉE : on repart de la version précédente. Une passe dont le score mesuré baisse sous
-   la passe gardée précédente est REJETÉE aussi (D-111 (a)) : la boucle s'arrête sur la passe
-   gardée, raison `regression`, et c'est elle qui est livrée, sauf si la régression tient à un
+   la passe gardée précédente est REJETÉE aussi (D-111 (a)) ; sous `jugement_apparie` (TF-2240),
+   elle l'est quand le jugement apparié préfère la version gardée, non sur la note absolue : la
+   boucle s'arrête sur la passe gardée, raison `regression`, et c'est elle qui est livrée, sauf si la régression tient à un
    défaut que la correction a créé : une passe de reprise unique s'ouvre alors (TF-2202, voir
    `reprise_unique`). Sinon, on s'arrête au premier cas
    atteint :
-   - 0 bloquant et 0 majeur retenus, et seuil de score tenu s'il y en a un ;
+   - 0 bloquant et 0 majeur retenus, et seuil de score tenu s'il y en a un ; ou, sous
+     `arret_atteignable` (TF-2238), 0 bloquant et 0 majeur dans le texte écrit par la dernière
+     correction, majeurs restants listés ;
    - gain de score mesuré inférieur à 3 points par rapport à la passe retenue précédente ;
    - borne de 3 passes, ou de l'extension déclarée (5 au plus).
 
 ## Ce que le Ch8 affiche dans ce mode
 
-- **Score mesuré**, celui du relecteur sur la dernière passe retenue, jamais « projeté ».
+- **Score mesuré**, celui des relecteurs sur la dernière passe retenue (leur moyenne sous
+  `score_de_passe` : `"moyenne"`), jamais « projeté ».
 - La table des passes : score mesuré, bloquants et majeurs retenus, défauts écartés au recompte,
   mots, décision.
 - La raison de l'arrêt, en clair. À la borne, avec des majeurs encore ouverts, les nommer : le
@@ -164,9 +280,11 @@ boucle sans journal PASS n'est pas un mode boucle.
 ```
 
 `decision` vaut `continuer`, `arreter` ou `rejeter`. `arret.raison` vaut `zero_majeur`,
-`gain_insuffisant`, `borne` ou `regression`. Sous l'essai D-111 (a), l'arbitre porte en plus
+`gain_insuffisant`, `borne`, `regression` ou, sous `arret_atteignable` (TF-2238), `zero_majeur_texte_corrige`.
+Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
-`recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12.
+`recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
+`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16 ; avec `fiche_premisses` (TF-2236), B17 ; avec `type_relecteur` (TF-2241), B18 ; avec `verification_diff` (TF-2242), B19.
 
 ## Annexe — sortie demandée au relecteur
 

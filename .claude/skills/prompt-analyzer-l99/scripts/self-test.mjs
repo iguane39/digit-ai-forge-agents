@@ -97,6 +97,27 @@ cas.push(
   ['TF-2551 vert — SKILL.md rappelle d ecrire la restitution dans un fichier et de la préjuger avant affichage', rappelRestitution(skill)],
   ['TF-2551 rouge — le point retiré de SKILL.md est vu', !rappelRestitution(skill.replace(/12\. \*\*Restitution dans un projet de la Factory[\s\S]*?(?=\n## Les 8 couches)/, ''))],
 );
+// TF-2236 à TF-2242 (16/11/2026, étude 20261106b) : chaque règle de la revue porte sa clé d'arbitre à boucle.md (une puce), son
+// rappel au SKILL.md et son contrôle à l'oracle ; la puce retirée de boucle.md se voit. Une entrée : [TF, clé d'arbitre, règle].
+const REGLES_REVUE = [
+  ['TF-2237', 'score_de_passe', 'B13'],
+  ['TF-2238', 'arret_atteignable', 'B14'],
+  ['TF-2239', 'garde_cumulee', 'B15'],
+  ['TF-2240', 'jugement_apparie', 'B16'],
+  ['TF-2236', 'fiche_premisses', 'B17'],
+  ['TF-2241', 'type_relecteur', 'B18'],
+  ['TF-2242', 'verification_diff', 'B19'],
+];
+for (const [tf, cle, regle] of REGLES_REVUE) {
+  const puce = new RegExp(`- \\*\\*[^\\n]*\\(${tf}[\\s\\S]*?\`${cle}\``);
+  const sansPuce = (texte) => texte.replace(new RegExp(`- \\*\\*[^\\n]*\\(${tf}[\\s\\S]*?(?=\\n- \\*\\*|\\n## )`), '');
+  cas.push(
+    [`${tf} vert — boucle.md porte la puce de la règle et sa clé d arbitre \`${cle}\``, puce.test(boucle)],
+    [`${tf} vert — SKILL.md rappelle la règle (${regle})`, skill.includes(tf) && skill.includes(regle)],
+    [`${tf} vert — l oracle joue ${regle}`, new RegExp(`\\b${regle}\\b`).test(oracleNotes)],
+    [`${tf} rouge — la puce retirée de boucle.md est vue`, !puce.test(sansPuce(boucle))],
+  );
+}
 for (const [libelle, tenu] of cas) console.log(`${tenu ? 'ok  ' : 'FAIL'} ${libelle}`);
 const echecs = cas.filter(([, tenu]) => !tenu).length;
 process.exit(r.status === 0 && echecs === 0 ? 0 : 1);

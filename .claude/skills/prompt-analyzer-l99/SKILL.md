@@ -5,8 +5,8 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.11.0"
-  updated: "2026-11-14"
+  version: "2.12.0"
+  updated: "2026-11-16"
 ---
 
 # Prompt Analyzer L99
@@ -87,6 +87,17 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    Une note de relecteur se recompte à la source avant d'entrer dans une correction, et une
    régression due à un défaut que la correction a créé ouvre une passe de reprise unique au lieu de
    livrer la passe précédente avec ses majeurs connus (TF-2202, B11 et B12 de l'oracle).
+   Revue du 16/11/2026 (étude 20261106b, TF-2236 à TF-2242, section « Les règles de la revue du
+   16/11/2026 » de `references/boucle.md`) : la passe se note par la moyenne de ses relecteurs et le
+   bruit toléré se mesure sur leur écart (TF-2237, B13 de l'oracle) ; l'arrêt se pose atteignablement
+   sur l'absence de défaut grave dans le texte écrit par la dernière correction, majeurs restants
+   listés (TF-2238, B14) ; une passe qui dépasse de 30 % la longueur de la passe 1 dit pourquoi elle
+   ajoute, en alerte motivée et non en refus (TF-2239, B15) ; chaque relecteur neuf de la passe 2 juge
+   à l'aveugle les deux versions et la décision de garder suit ce jugement apparié (TF-2240, B16).
+   En essai, avec leur critère de mesure : une fiche des prémisses d'environnement vérifiées une fois
+   et remise aux relecteurs (TF-2236, B17) ; le type d'agent dédié `relecteur` pour les relecteurs
+   aveugles (TF-2241, B18) ; un vérificateur de clôture qui classe chaque phrase ajoutée par la
+   correction (TF-2242, B19).
 11. **Contrat de sortie : l'oracle de forme de chaque format produit** (TF-2194) : le contrat du
    Ch8 nomme `check_html.py` pour une page HTML et `check_markdown.py` pour un Markdown, **y
    compris pour la voie de repli** (générateur en échec, format de secours). Le 05/11/2026, un
