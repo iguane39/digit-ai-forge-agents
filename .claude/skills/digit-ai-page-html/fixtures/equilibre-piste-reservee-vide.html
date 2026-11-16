@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Équilibre horizontal — piste de droite réservée et vide (TF-2679)</title>
+<style>
+:root{--ink:#0F172A;--line:#E6EAF2;--soft:#F1F5F9;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:clamp(75vw,1680px,92vw)}
+body{margin:0;font-family:var(--sans);color:var(--ink);line-height:1.5}
+h1,h2{font-family:var(--head)}
+.wrap{max-width:var(--w);margin:0 auto;padding:24px}
+.grille{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.marge{width:100%;height:1400px;display:block}
+.cadre{border:0}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2679, V28, sens ROUGE. Deux pistes de grille de largeur egale : le texte a gauche, et a droite une
+  piste RESERVEE qui ne porte qu'un canevas vierge (la marge animee n'a rien peint). L2 voit un voisin a sa droite
+  (le canevas), V23 compte l'empan de ses blocs, rien ne deborde ni ne se recouvre : aucune famille de
+  « l'element present » ne dit la moitie de page vide. La famille equilibre_droite mesure l'ENCRE visible par
+  tranches de 40 px : plus de 25 % du cadre vide a droite, plus de 15 points d'ecart avec la gauche, sur plus de
+  600 px de haut.
+
+  Attendu : au moins 1 constat equilibre_droite a 1280 px et plus ; 0 constat l2_conteneur et 0 contenu_etroit.
+-->
+<body><main class="wrap"><div class="grille"><div class="col">
+<h1>Rapport d'activité du trimestre</h1>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+<p>Le trimestre a été consacré à la consolidation du socle commun : les pages livrées reprennent les mêmes jetons, les mêmes composants et les mêmes contrôles de rendu, ce qui réduit le temps de relecture côté client et aligne les équipes sur une seule façon de vérifier un livrable avant sa remise.</p>
+</div><div class="cadre-marge"><canvas class="marge" width="600" height="1400" aria-hidden="true"></canvas></div></div></main></body></html>

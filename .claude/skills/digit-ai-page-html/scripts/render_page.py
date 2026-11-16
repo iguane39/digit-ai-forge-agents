@@ -18,6 +18,7 @@ Oracle mesuré de la checklist canonique references/zero-defaut-visuel.md :
   - V25 colonne large et vide face à une colonne étranglée (avertissement, TF-1966)
   - V26 panneau déplié au fond transparent ou recouvert (bloquant, TF-1963)
   - V27 filtres de colonne masqués par le repli en cartes (bloquant, TF-1965)
+  - V28 encre déséquilibrée : plus du quart du cadre vide à droite, par tranches de 40 px (bloquant, TF-2679)
   - V1 : la bande de sommaire défilante de L25 n'est pas un débordement (TF-1992)
 
 V5 (croisements de flèches) et V6 (images déformées) restent à l'inspection
@@ -307,7 +308,7 @@ MEASURE_JS = r"""
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
                    decor_sur_ancetre: [], entete_desaligne: [], largeurs_melangees: [],
-                   contenu_etroit: [], prose_verticale: [], colonnes_desequilibrees: [],
+                   contenu_etroit: [], prose_verticale: [], colonnes_desequilibrees: [], equilibre_droite: [],
                    panneau_deplie: [], filtres_masques_repli: [], unmeasured: [] };
   const doc = document.documentElement;
 
@@ -3504,6 +3505,11 @@ FAMILLES = [
     # declencheurs de filtre de colonne (5 boutons en 0 x 0 a 390 px) : une affordance qui n'existe plus
     # sans que rien ne le dise (loi n 1). Bloquant ; ecart voulu : data-filtres-remplaces="<raison>".
     ("filtres_masques_repli", "V27 filtres de colonne masques par le repli en cartes", "bloquant"),
+    # TF-2679 (factory-digit-ai-fr, 15/11/2026) : une piste de grille reservee sans contenu, une marge animee
+    # vide, un bandeau a une seule figure — aucune famille ne jugeait ce que le lecteur voit : la moitie de la
+    # page vide a droite. Bloquant, comme la decision du 16/11/2026 le pose (9 pages sur 10 rouges au controle
+    # du produit, 84 mesures vertes) ; le bruit sur le parc n'est pas mesure ici (mesurer_bruit.py).
+    ("equilibre_droite", "V28 encre desequilibree : plus du quart du cadre vide a droite", "bloquant"),
     # TF-1146 (16/09, lot Produit-64 20260916a) : l exemption V4 posee EN BLOC. Avertissement et
     # non bloquant — 1 716 occurrences mesurees dans le parc le 16/09, les rendre bloquantes
     # d un coup rougirait tout ce qui existe. Mais le silence, lui, s arrete : un libelle de
@@ -3611,7 +3617,7 @@ class _SautDeCapture(Exception):
     """Sortie propre du bloc de capture quand la page est au-delà du seuil (TF-1139)."""
 
 FAMILLES_SANS_IMAGE = "V1 debordement, V2 contraste, V4 chevauchement, V3, V7, L2"
-FAMILLES_AVEC_IMAGE = "V5 croisements et V6 images"
+FAMILLES_AVEC_IMAGE = "V5 croisements, V6 images et V28 equilibre horizontal (aux largeurs de bureau)"
 
 
 # ---- V9 · la mesure des ACTIFS VISUELS, au pixel et dans leur contexte (TF-0633) -------------
@@ -3778,6 +3784,117 @@ _V9_JS_NOMMER_COLLES = """() => {
     return el.tagName.toLowerCase() + id + cls;
   });
 }"""
+
+
+# TF-2679 (factory-digit-ai-fr, run forge-digit-ai-fr-20261114a, 15/11/2026) — L'ÉQUILIBRE HORIZONTAL DE L'ENCRE.
+# LE FAIT. Une marge animee restee vide sur 60 % de la hauteur d'une page, un bandeau a deux colonnes dont la
+# seconde piste, reservee, ne porte qu'une figure : aucune famille ne le jugeait. L2 compare un conteneur a son
+# parent ; debordement, contraste et chevauchement jugent des elements PRESENTS ; une piste de grille reservee
+# sans contenu n'est aucun element. Le controle ecrit au produit (colonnes_vides.py) rendait 9 pages sur 10
+# rouges avant correction et 84 mesures vertes apres.
+# LA MESURE. Sur la capture pleine page, par TRANCHES de 40 px CSS : l'encre visible (les pixels qui s'ecartent
+# du fond dominant de la tranche) donne le bord gauche et le bord droit de ce que le lecteur voit. Une tranche est
+# DESEQUILIBREE quand plus de 25 % du cadre est vide a droite ET que ce vide depasse de plus de 15 points celui
+# de gauche. Un defaut est une suite de tranches desequilibrees de plus de 600 px de haut. Une tranche sans encre
+# ne compte pas et interrompt la suite. Un element COLLANT compte sur la hauteur de son PARENT (la capture le
+# peint une fois, en haut ; le lecteur le voit alors que le parent defile). Une colonne etroite DECLAREE
+# (data-colonne-ok valide) n'est pas jugee ici : son rectangle est retire de l'encre.
+# Seuils poses par la decision du 16/11/2026 (TF-2679), non calibres ici sur le parc : mesurer_bruit.py les
+# mesurera sur les pages livrees.
+EQ_BANDE_PX = 40
+EQ_VIDE_DROITE_MAX = 0.25
+EQ_ECART_MIN = 0.15
+EQ_HAUTEUR_MIN = 600
+EQ_ENCRE_SEUIL = 24            # ecart de canal (0-255) au fond dominant de la tranche : sous lui, ce n'est pas de l'encre
+EQ_MIN_VIEWPORT = L2_MIN_VIEWPORT
+
+EQ_JS = r"""() => {
+  const y0 = window.scrollY;
+  const page = (el) => { const r = el.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top + y0, bottom: r.bottom + y0 }; };
+  const collants = [], dispenses = [];
+  for (const el of document.body.querySelectorAll('*')) {
+    const cs = getComputedStyle(el);
+    if (cs.position === 'sticky' && el.parentElement) {
+      const r = page(el), p = page(el.parentElement);
+      if (r.right > r.left) collants.push({ left: r.left, right: r.right, top: p.top, bottom: p.bottom });
+    }
+    if (el.hasAttribute('data-colonne-ok')) {
+      const r = page(el);
+      if (r.right > r.left) dispenses.push(r);
+    }
+  }
+  return { collants, dispenses };
+}"""
+
+
+def mesurer_equilibre(page, png: Path, largeur: int, hauteur_css: float, issues: dict) -> str | None:
+    """TF-2679 — l'equilibre horizontal de l'encre par tranches de 40 px, sur la capture pleine page.
+    Alimente `issues["equilibre_droite"]` ; rend un motif de non-jugement (ou None quand la mesure est jouee)."""
+    try:
+        from PIL import Image
+        import numpy as np
+    except ImportError:
+        return "Pillow ou numpy absent : l'equilibre horizontal de l'encre n'est pas mesure"
+    try:
+        sonde = page.evaluate(EQ_JS)
+        im = Image.open(png).convert("RGB")
+    except Exception as erreur:  # noqa: BLE001 — une sonde ou une image illisible se declare, jamais un vert
+        return f"mesure d'equilibre impossible ({type(erreur).__name__})"
+    sx = im.width / largeur
+    sy = im.height / hauteur_css
+    nb = int(hauteur_css // EQ_BANDE_PX) + (1 if hauteur_css % EQ_BANDE_PX else 0)
+    gauche: list[float | None] = []
+    droite: list[float | None] = []
+    for b in range(nb):
+        h0, h1 = b * EQ_BANDE_PX, min((b + 1) * EQ_BANDE_PX, hauteur_css)
+        r0, r1 = int(h0 * sy), max(int(h1 * sy), int(h0 * sy) + 1)
+        bande = np.asarray(im.crop((0, r0, im.width, r1)), dtype=np.int32)
+        empaquete = (bande[:, :, 0] << 16) | (bande[:, :, 1] << 8) | bande[:, :, 2]
+        valeurs, comptes = np.unique(empaquete, return_counts=True)
+        fond = int(valeurs[int(np.argmax(comptes))])
+        fr, fg, fb = (fond >> 16) & 255, (fond >> 8) & 255, fond & 255
+        ecart = np.maximum(np.maximum(np.abs(bande[:, :, 0] - fr), np.abs(bande[:, :, 1] - fg)),
+                           np.abs(bande[:, :, 2] - fb))
+        encre = (ecart > EQ_ENCRE_SEUIL).any(axis=0)
+        for r in sonde["dispenses"]:
+            if r["bottom"] > h0 and r["top"] < h1:
+                encre[max(int(r["left"] * sx), 0):max(int(r["right"] * sx) + 1, 0)] = False
+        colonnes = np.flatnonzero(encre)
+        if colonnes.size == 0:
+            gauche.append(None)
+            droite.append(None)
+            continue
+        g, d = colonnes[0] / sx, (colonnes[-1] + 1) / sx
+        for c in sonde["collants"]:
+            if c["bottom"] > h0 and c["top"] < h1:
+                g, d = min(g, c["left"]), max(d, c["right"])
+        gauche.append(max(g, 0.0) / largeur)
+        droite.append(max(largeur - d, 0.0) / largeur)
+    suite: list[int] = []
+
+    def clore():
+        if len(suite) * EQ_BANDE_PX > EQ_HAUTEUR_MIN:
+            vd = max(droite[i] for i in suite)
+            vg = min(gauche[i] for i in suite)
+            issues["equilibre_droite"].append({
+                "what": f"page, de {suite[0] * EQ_BANDE_PX} a {(suite[-1] + 1) * EQ_BANDE_PX} px",
+                "detail": f"{len(suite) * EQ_BANDE_PX} px de haut dont l'encre laisse jusqu'a {round(vd * 100)} % du cadre "
+                          f"vide a droite contre {round(vg * 100)} % a gauche (plus de {round(EQ_VIDE_DROITE_MAX * 100)} % a "
+                          f"droite et plus de {round(EQ_ECART_MIN * 100)} points d'ecart, par tranches de {EQ_BANDE_PX} px, sur "
+                          f"plus de {EQ_HAUTEUR_MIN} px) — une piste de grille reservee sans contenu, une marge animee ou un "
+                          "bandeau a une seule figure laissent le lecteur devant une moitie de page vide. Sorties qui PASSENT : "
+                          "centrer la colonne (le blanc se repartit), porter un contenu utile dans la piste de droite, "
+                          "retirer la piste reservee, ou declarer une colonne etroite voulue par data-colonne-ok sur son "
+                          "conteneur (TF-2679)"})
+        suite.clear()
+    for i, (g, d) in enumerate(zip(gauche, droite)):
+        if g is not None and d is not None and d > EQ_VIDE_DROITE_MAX and d - g > EQ_ECART_MIN:
+            suite.append(i)
+        else:
+            clore()
+    clore()
+    return None
 
 
 def mesurer_actifs_visuels(page, issues: dict, timeout_ms: int, echelle: float = 1.0) -> None:
@@ -4433,6 +4550,15 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                               "Augmenter --timeout, reduire --scale, ou assumer l ecart declare"),
                 }
                 captures_manquees.append(width)
+
+            # TF-2679 — V28 : l'equilibre horizontal de l'encre se mesure sur la capture pleine page, aux
+            # largeurs de bureau ; sans image (capture manquee, element cible), la famille est NON JUGEE et
+            # le dit (FAMILLES_AVEC_IMAGE), jamais verte en silence.
+            if width >= EQ_MIN_VIEWPORT and not target and capture.get("faite"):
+                motif_eq = mesurer_equilibre(page, png, width, capture["hauteur_css"], issues)
+                if motif_eq:
+                    issues["unmeasured"].append({"what": "V28 equilibre horizontal de l'encre",
+                                                 "detail": f"{motif_eq} : ne pas lire ce silence comme un vert"})
 
             # TF-0422 / TF-1282 : une capture PAR SECTION — un panneau masque est rendu VRAIMENT
             # visible (l'element et ses ancetres masques) le temps de sa capture, puis remis dans
