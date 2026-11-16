@@ -86,6 +86,10 @@
 //        les deux formes admises, toutes les parties ont leur intercalaire ou aucune (gabarit B de digit-ai-propale),
 //        et refusent le deck mixte ; l'oracle S1 laisse passer le deck du gabarit B et refuse le deck mixte ; la
 //        phrase d'avant le lot, rejouée, est refusée aux deux endroits.
+//   C22 — un masque de couverture ou d'intercalaire ne porte pas d'espace réservé de titre (TF-2599) : SKILL.md
+//        l'écrit (masque, titre en zone libre, ce que l'invite fait voir, règle PH1), et PH1 d'oracle-pptx refuse le
+//        deck de jeu à espaces réservés de titre vides et laisse passer le même deck rempli ; le SKILL.md amputé de la
+//        règle est refusé.
 //   C8 — sur demande (--essai-powerpoint) : l'essai réel par PowerPoint, joué seulement si AUCUN
 //        processus PowerPoint ne tourne, et avec --instance-neuve. L'instance lancée doit être
 //        quittée, le PPTX et le PDF écrits. Sans l'option, ou si PowerPoint tourne : non joué, dit.
@@ -149,6 +153,7 @@ const NON_JUGE = [
   "C19 prouve le rendu du SVG de jeu à deux teintes ; un SVG réel plus riche (filtres, texte vivant dont la police manque au poste) n'est pas rejoué, et fetch_drive_assets.py ne télécharge toujours que des rasters",
   "C20 prouve que la commande prescrite distingue un cadrage complet d'un gabarit vide ; que l'agent le remplisse avec les faits du cas, et qu'ils soient justes, n'est jugé par aucun contrôle",
   "C21 juge la phrase des deux fichiers et le comportement de S1 sur deux decks de jeu ; que le gabarit B de digit-ai-propale prescrive bien un sommaire sans intercalaire se lit chez ce skill, pas ici",
+  "C22 juge la phrase de SKILL.md et PH1 sur une paire de decks de jeu ; qu'un script de construction réel définisse le masque sans espace réservé de titre se lit chez le produit, pas ici",
   "C8 n'est joué que sur demande, et jamais quand PowerPoint tourne : sans lui, le chemin COM réel n'est prouvé par aucun contrôle de ce self-test",
   "ne juge ni la qualité rédactionnelle, ni le déclenchement, ni la conformité à la charte du parc",
 ];
@@ -1343,6 +1348,48 @@ function verifierIntercalaires() {
   return { joue: true, findings };
 }
 
+// ------------- C22 : un masque de couverture ou d'intercalaire ne porte pas d'espace réservé de titre (TF-2599)
+// Le fait (12/11/2026) : cinq supports de formation livrés avec 25 espaces réservés de titre vides, sur la couverture et
+// chaque intercalaire ; PowerPoint y affiche « Cliquez pour ajouter un titre » par-dessus le titre posé en zone libre.
+// Le skill ne disait pas qu'un masque de ces diapositives ne porte pas d'espace réservé de titre, et aucun oracle ne le
+// voyait. Le contrôle exige la règle dans SKILL.md (le masque, le titre en zone libre, la règle PH1), puis joue PH1 d'oracle-pptx
+// sur la paire de decks de jeu de quality-oracles. Sens rouge : un SKILL.md sans la règle est refusé (un extracteur qui ne
+// trouve rien ne juge rien), et le deck à espace réservé vide est refusé par PH1.
+const REGLE_MASQUE_PH = /^ {3}\*\*Un masque de couverture ou d'intercalaire[^\n]*\n(?: {3}[^\n]*\n?)*/m;
+function ecartsMasquePh(bloc) {
+  if (!bloc) return ['C22 SKILL.md — la règle « un masque de couverture ou d\'intercalaire ne porte pas d\'espace réservé de titre » est introuvable'];
+  const plat = bloc.replace(/\s+/g, ' ');
+  const f = [];
+  if (!/ne porte pas d'espace réservé de titre/.test(plat)) f.push('C22 SKILL.md — la règle ne dit pas que le masque ne porte pas d\'espace réservé de titre');
+  if (!/zone libre/.test(plat)) f.push('C22 SKILL.md — la règle ne dit pas dans quel cas (titre posé en zone libre)');
+  if (!/Cliquez pour ajouter un titre/.test(plat)) f.push('C22 SKILL.md — la règle ne dit pas ce que l\'espace réservé vide fait voir');
+  if (!/PH1/.test(plat)) f.push('C22 SKILL.md — la règle ne nomme pas PH1, la règle d\'oracle-pptx qui la juge');
+  return f;
+}
+function verifierMasquePh() {
+  const findings = [];
+  const skillMd = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  const bloc = (skillMd.match(REGLE_MASQUE_PH) || [null])[0];
+  findings.push(...ecartsMasquePh(bloc));
+  if (ecartsMasquePh((skillMd.replace(REGLE_MASQUE_PH, '').match(REGLE_MASQUE_PH) || [null])[0]).length !== 1) findings.push('fixture-rouge — C22 est AVEUGLE : un SKILL.md sans la règle du masque n\'est pas refusé comme « introuvable »');
+  const oracle = path.join(SKILL_DIR, '..', 'quality-oracles', 'scripts', 'oracle-pptx.mjs');
+  const fx = path.join(SKILL_DIR, '..', 'quality-oracles', 'fixtures');
+  const rouge = path.join(fx, 'pptx-placeholder-vide-red.pptx');
+  const vert = path.join(fx, 'pptx-placeholder-vide-green.pptx');
+  if (![oracle, rouge, vert].every((f) => fs.existsSync(f))) {
+    return { joue: false, findings, motif: 'C22 jouée sur le texte seul, PH1 non rejouée : oracle-pptx ou ses decks de jeu (quality-oracles) introuvables' };
+  }
+  const juger = (f) => {
+    const r = spawnSync(process.execPath, [oracle, f], { encoding: 'utf8', timeout: 120000 });
+    try { return JSON.parse(r.stdout); } catch { return { verdict: '?', findings: [] }; }
+  };
+  const ph1 = (j) => (j.findings || []).filter((x) => x.regle === 'PH1');
+  const jv = juger(vert), jr = juger(rouge);
+  if (jv.verdict !== 'PASS' || ph1(jv).length) findings.push(`C22 sens vert : le deck aux espaces réservés remplis rend ${jv.verdict}, ${ph1(jv).length} constat(s) PH1`);
+  if (jr.verdict !== 'FAIL' || ph1(jr).length !== 2) findings.push(`C22 sens rouge : le deck à espaces réservés de titre vides rend ${jr.verdict} avec ${ph1(jr).length} constat(s) PH1 au lieu de 2 (couverture et diapositive 2)`);
+  return { joue: true, findings };
+}
+
 // ---------------------------------------------------------------- exécution
 const findings = [];
 const nonJuge = [...NON_JUGE];
@@ -1466,6 +1513,9 @@ if (!c20.joue) nonJuge.push(c20.motif);
 const c21 = verifierIntercalaires();
 findings.push(...c21.findings);
 if (!c21.joue) nonJuge.push(c21.motif);
+const c22 = verifierMasquePh();
+findings.push(...c22.findings);
+if (!c22.joue) nonJuge.push(c22.motif);
 // C8 — l'essai réel, sur demande seulement, et jamais quand PowerPoint tourne
 let c8 = { joue: false, motif: "C8 NON JOUÉE : l'essai réel par PowerPoint ne se joue que sur demande (--essai-powerpoint)" };
 if (args.includes('--essai-powerpoint')) c8 = await essaiPowerPoint();
@@ -1501,6 +1551,7 @@ process.stdout.write(JSON.stringify({
     C19_svg_rendu_ou_refuse: c19.joue ? 'jouée' : 'refus joués, rendu du SVG NON joué (navigateur absent)',
     C20_cadrage_exige_avant_de_generer: c20.joue ? 'jouée' : 'texte seul (skill voisin introuvable)',
     C21_regle_des_intercalaires_egale_s1: c21.joue ? 'jouée' : 'texte seul (oracle ou decks de jeu introuvables)',
+    C22_masque_sans_espace_reserve_de_titre: c22.joue ? 'jouée' : 'texte seul (oracle ou decks de jeu introuvables)',
     C8_essai_reel_powerpoint: c8.joue ? 'jouée' : 'NON jouée',
   },
   ...(c8.bilan ? { essai_powerpoint: c8.bilan } : {}),

@@ -182,6 +182,13 @@ jetons** et l'**usage** qu'il en fait sur une diapositive.
    **Nommer le pied de page et la pagination** avec l'option `objectName` de pptxgenjs, exactement
    « Pied de page » et « Pagination » : pptxgenjs ne sait pas écrire les espaces réservés `ftr` et
    `sldNum` que la règle S4 de l'étape 8 exige, et l'étape 6 bis les pose à partir de ces noms.
+   **Un masque de couverture ou d'intercalaire ne porte pas d'espace réservé de titre** quand le titre se pose
+   en zone libre (TF-2599). Une diapositive créée sur un masque qui en porte un, et qui ne le remplit pas, le
+   garde vide : PowerPoint y affiche « Cliquez pour ajouter un titre » par-dessus le titre posé à côté (25
+   espaces réservés vides sur cinq supports, vus à l'ouverture le 12/11/2026). Avec pptxgenjs, ces diapositives
+   prennent un masque sans objet `placeholder` (`defineSlideMaster({ title: 'I', objects: [] })`), ou le titre
+   remplit l'espace réservé (`addText(…, { placeholder: 'titre' })`). La règle PH1 d'`oracle-pptx` refuse tout
+   espace réservé vide sur une diapositive, hors pied de page, numéro et date.
 6 bis. **Poser les espaces réservés de pied de page** (TF-1382), sur tout deck construit par pptxgenjs :
 
    ```bash

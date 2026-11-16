@@ -190,7 +190,7 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "intégrité zip (l'ordre des entrées n'est pas jugé : faux positif retiré, TF-2400), zéro <p:transition>, zéro média JPEG, X1 XML bien formé de chaque partie du paquet (TF-2064, sans LibreOffice), smoke-test conversion LibreOffice",
+   "checklist": "intégrité zip (l'ordre des entrées n'est pas jugé : faux positif retiré, TF-2400), zéro <p:transition>, zéro média JPEG, X1 XML bien formé de chaque partie du paquet (TF-2064, sans LibreOffice), PH1 aucun espace réservé VIDE sur une diapositive, hors ftr, sldNum et dt (TF-2599), smoke-test conversion LibreOffice",
    "statut": "partiel",
    "non_juge": [
     "charte sémantique (kicker, logos, bijection sommaire↔intercalaires) → gate digit-ai-pptx",

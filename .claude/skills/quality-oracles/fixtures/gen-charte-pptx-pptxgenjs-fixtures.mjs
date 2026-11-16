@@ -35,7 +35,12 @@ function deck(rouge) {
       { placeholder: { options: { name: 'titre', type: 'title', x: 0.6, y: 0.5, w: 12, h: 0.8 }, text: '' } },
     ],
   });
+  // TF-2599 (16/11/2026) : l'intercalaire pose son titre en zone libre, il ne passe donc PAS par le masque « M » : un
+  // espace réservé de titre que la diapositive ne remplit pas reste vide, et PowerPoint y affiche « Cliquez pour
+  // ajouter un titre » par-dessus. Le masque « I » n'en porte aucun (règle PH1 d'oracle-pptx).
+  p.defineSlideMaster({ title: 'I', objects: [] });
   const diapo = () => p.addSlide({ masterName: 'M' });
+  const intercalaire = () => p.addSlide({ masterName: 'I' });
   const pieds = (s, n) => {
     s.addText('Digit-AI — support fictif', { x: 0.6, y: 7.0, w: 8, h: 0.3, objectName: 'Pied de page' });
     s.addText(String(n), { x: 12.0, y: 7.0, w: 0.7, h: 0.3, objectName: 'Pagination' });
@@ -57,12 +62,12 @@ function deck(rouge) {
     // 4 — un intercalaire « 02 Proposition » que le sommaire ne porte pas (TF-2325, 10/11/2026) : sans lui, le rouge
     // serait un sommaire SANS AUCUN intercalaire, forme du gabarit B que S1 accepte désormais ; avec lui, le deck
     // mêle les deux formes et S1 juge la bijection entière (« soit toutes, soit aucune »).
-    const s4 = diapo();
+    const s4 = intercalaire();
     s4.addText('02', { x: 0.6, y: 2.4, w: 2, h: 0.8, objectName: 'Numéro d intercalaire' });
     s4.addText('Proposition', { x: 0.6, y: 3.2, w: 8, h: 0.8, objectName: 'Intitulé d intercalaire' });
   } else {
     // 3 — intercalaire 01, 4 — contenu
-    const s3 = diapo();
+    const s3 = intercalaire();
     s3.addText('01', { x: 0.6, y: 2.4, w: 2, h: 0.8, objectName: 'Numéro d intercalaire' });
     s3.addText('Contexte', { x: 0.6, y: 3.2, w: 8, h: 0.8, objectName: 'Intitulé d intercalaire' });
     pieds(s3, 3);

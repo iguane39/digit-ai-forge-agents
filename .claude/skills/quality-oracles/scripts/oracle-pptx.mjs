@@ -78,7 +78,7 @@ const script = `
 import sys, zipfile, json, re
 import xml.parsers.expat as ex
 p = sys.argv[1]
-r = {"ok": True, "bad": None, "transitions": [], "jpegs": [], "sldsz": None, "polices": {}, "couleurs": {}, "xml": []}
+r = {"ok": True, "bad": None, "transitions": [], "jpegs": [], "sldsz": None, "polices": {}, "couleurs": {}, "xml": [], "ph_vides": []}
 try:
     z = zipfile.ZipFile(p)
     r["bad"] = z.testzip()
@@ -99,6 +99,17 @@ try:
                     ex.ParserCreate().Parse(brut, True)
                 except ex.ExpatError as e:
                     r["xml"].append({"part": n, "ligne": e.lineno, "col": e.offset, "msg": ex.ErrorString(e.code)})
+        # TF-2599 : un espace réservé VIDE sur une diapositive (hors pied de page, numéro, date) : PowerPoint y affiche
+        # son texte d invite (« Cliquez pour ajouter un titre ») par-dessus ce qui est posé en zone libre
+        if low.startswith("ppt/slides/slide") and low.endswith(".xml"):
+            for sp in re.findall(rb"<p:sp\\b.*?</p:sp>", z.read(n), re.S):
+                ph = re.search(rb"<p:ph\\b([^>]*)>", sp)
+                if not ph: continue
+                typ = re.search(rb'type="([^"]*)"', ph.group(1))
+                typ = typ.group(1).decode("utf-8", "replace") if typ else "body"
+                if typ in ("ftr", "sldNum", "dt"): continue
+                texte = b"".join(re.findall(rb"<a:t(?:\\s[^>]*)?>(.*?)</a:t>", sp, re.S))
+                if not texte.strip(): r["ph_vides"].append({"part": n, "type": typ})
         # TF-1130 : de quoi juger le FORMAT d'un support (taille, polices, couleurs de texte)
         if low == "ppt/presentation.xml":
             m = re.search(rb'<p:sldSz\\b[^>]*?cx="(\\d+)"[^>]*?cy="(\\d+)"', z.read(n))
@@ -130,6 +141,9 @@ else {
   for (const j of z.jpegs) findings.push({ sev: POL.jpeg_interdit ? 'bloquant' : 'warn', msg: 'média JPEG présent' + (POL.jpeg_interdit ? ' (interdit par le profil — PNG attendu)' : ' (toléré par le profil)'), where: base + ':' + j });
   // TF-2064 : bloquant sous TOUT profil — un XML mal formé n'est pas une affaire de charte, PowerPoint propose la réparation ou refuse d'ouvrir.
   for (const x of z.xml) findings.push({ sev: 'bloquant', regle: 'X1', msg: `XML mal formé : ${x.msg} (ligne ${x.ligne}, colonne ${x.col})`, where: `${base}:${x.part}:${x.ligne}:${x.col}` });
+  // TF-2599 : bloquant sous TOUT profil — l'invite « Cliquez pour ajouter un titre » s'affiche à l'ouverture, quelle que soit la charte.
+  for (const p of z.ph_vides) findings.push({ sev: 'bloquant', regle: 'PH1', msg: `espace réservé « ${p.type} » VIDE sur la diapositive : PowerPoint y affiche son texte d'invite (« Cliquez pour ajouter un titre ») par-dessus le contenu posé en zone libre. Correction : y écrire le texte, ou retirer cet espace réservé de la diapositive (et du masque qui le crée)`, where: `${base}:${p.part}` });
+  non_juge.push('espaces réservés des MASQUES et des MISES EN PAGE (ppt/slideLayouts, ppt/slideMasters) : non jugés, seul l\'espace réservé posé sur une diapositive l\'est (PH1) ; pied de page (ftr), numéro (sldNum) et date (dt) sont exemptés, un espace réservé image ou graphique non rempli n\'est vu que s\'il reste un `p:sp` sans texte');
   non_juge.push('validité des parties XML contre les schémas OOXML (XSD) : non jugée — seule la BONNE FORMATION de chaque partie .xml/.rels est contrôlée (balises équilibrées, une racine), par un analyseur XML de la bibliothèque standard');
 }
 
