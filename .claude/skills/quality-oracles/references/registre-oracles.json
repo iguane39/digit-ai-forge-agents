@@ -1,6 +1,39 @@
 {
- "version": "2.64.0",
+ "version": "2.65.0",
  "note": "Registre machine des oracles (consommé par scripts/run-oracles.mjs). Vue humaine : registre-oracles.md. Placeholders : {skilldir}=racine du skill quality-oracles, {skillsroot}=~/.claude/skills, {pilot}=dépôt du pilot digit-ai-factory (FORGE_ROOT/digit-ai-factory, sinon le dépôt frère ../../../../digit-ai-factory du skill ; introuvable → SKIP motivé, jamais un PASS — scripts/lib/pilot.mjs, TF-1064), {forges}=racine des forges soeurs (TF-1334, 26/09/2026 : FORGE_ROOT, sinon le parent du depot digit-ai-forge-agents, sinon — copie installee — le parent du pilot resolu ; racine introuvable ou script absent de ce poste → SKIP motive, jamais un FAIL muet — scripts/lib/forges.mjs ; plus aucun chemin absolu dans une commande, controle a double sens dans scripts/self-test.mjs), {file}=artefact. type ∈ cli|skill|manual|kit. Statuts étendus (M3, 23/07/2026) : dormant (6 mois sans usage journalisé — routage/exécution désactivés, entrée conservée) · broken (fixture verte en échec ou dépendance non résolue — réparer ou retirer, jamais exécuter). Champs optionnels par entrée : dernier_usage (ISO, dérivé des journaux _oracles-journal*, calculé par la passe d hygiène etat-forge — jamais tenu à la main). Manifest des fixtures : champ provenance (chantier + date du défaut réel dont la fixture rouge est issue) — obligatoire pour tout oracle créé à partir du 23/07/2026, une fixture rouge sans provenance réelle laisse l oracle en partiel. | PRECEDENCE (TF-0732, D-41 (b), 02/09/2026) : une CHARTE POSEE prime sur la liste des fontes reflexes. Regle portee par le profil digit-ai (section `polices`), cablee dans le gate d ecriture C7 (~/.claude/hooks/qo-gate-write.mjs, source versionnee dans ce depot), fixture a double sens au banc du gate (21/21, dont 6 cas de precedence). Detail : references/registre-oracles.md, section « Regle de PRECEDENCE ». | 2.17.0 (TF-0820, 05/09/2026) : la porte de publication gagne une regle C5 — les NOMS DE PRODUITS de la table des pseudonymes (hors depot, passee par --produits=<chemin> ou FORGE_PRODUITS_PSEUDO) sont juges dans les contenus et les noms des fichiers suivis et dans les messages de commit, avec les memes variantes de graphie que todo/anonymiser-entrant.mjs du pilot. Table absente = C5 non jouee et DECLAREE au non_juge, jamais un angle muet ; fixtures a double sens sur depot jetable, a la recette (scripts/self-test.mjs). | 2.18.0 (TF-0880, 07/09/2026) : la graphie LITTERALE d une cle de la table est BORNEE aux deux bouts par un non-alphanumerique, comme ses variantes l etaient deja. Une cle purement alphanumerique se borne ; une cle qui porte un separateur se cherche telle quelle, bornee des deux cotes. Mesure du defaut : trois des huit constats C5 d une forge tombaient sur la meme sous-chaine d un blob base64, soit 37,5 % de bruit. Le comportement des VARIANTES et le contrat de sortie findings[] ne bougent pas ; trois cas neufs a la recette (blob -> PASS, mot entier -> FAIL, cle collee a des lettres -> PASS). | 2.19.0 (TF-0887, 08/09/2026) : la porte de publication cherche les deux tables dans le CANAL CONFIDENTIEL par defaut. Depuis le 07/09 les tables vivent en <racine>/_confidentiel/tables/ (noms-interdits.json, produits-pseudonymes.json) et les anciens fichiers libres <racine>/_*.json n existent plus : appelee sans --referentiel ni --produits, c est-a-dire comme le pre-push l appelle, la porte rendait SKIP et le hamecon traite un SKIP en refus — tout depot porteur du hamecon refusait chaque push. Les pistes par defaut gagnent le canal APRES les variables d environnement et AVANT les anciens fichiers libres, qui restent en dernier recours ; la racine est FORGE_ROOT quand elle est posee, sinon le parent du depot juge puis le parent de la forge. La table RETENUE est nommee au non_juge (« table lue : … ») et le motif d un SKIP est repete en clair par le pre-push (« porte SKIP : … ») avant le refus, le pre-push laissant la porte resoudre les chemins a CHAQUE appel plutot que de les graver a l installation. C1-C5 et le contrat findings[] inchanges. Fixtures a double sens : recette quality-oracles (racine jetable avec canal, aucun argument ni variable -> C1-C5 joue et tables lues nommees ; aucune table nulle part -> SKIP motive listant la piste du canal) et self-test-hamecon-publication (pre-push fabrique sur racine jetable portant le canal, sans variable : depot propre passe, depot porteur refuse ; et le cas du referentiel absent exige desormais le motif en clair). Les deux bundles du manifest designent leurs tables de jeu d essai explicitement — sans quoi ils etaient juges contre les tables du poste. | 2.36.0 (TF-1539, 12/10/2026) : content_patterns RESTREINT une entree qui declare aussi ext (intersection, plus union) — run-oracles.mjs. Sept entrees portaient les deux cles : cinq (slop, tokens, mobile, visuels, mouvement) ne jugent plus que les pages portant « Donnees de demonstration », une (filtres de colonne) que les pages portant <table, comme leur doc l'ecrit ; la septieme, Calculs / chiffres (plancher non desactivable), perd sa cle content_patterns, sans effet jusque-la puisque l'extension couvrait deja tout md/html, pour que son routage ne bouge pas. Un fichier dont le contenu n'a pas pu etre lu reste route. Fixture a double sens a la recette (self-test.mjs, TF-1539). | 2.37.0 (TF-1234, 12/10/2026) : injection du skill plan-d-amelioration (forge-agents) — son verbe juger, oracle-plan-d-amelioration.mjs (PA1-PA14), est inscrit au statut partiel : aucune mission reelle ne l'a encore exerce, fixtures fictives. Paire rouge/verte au manifeste. | 2.38.0 (TF-1392, TF-1394, 13/10/2026) : oracle-judge gagne la rubrique lecteur vise (--lecteur-vise) — 2 relecteurs jouent le lecteur de la fiche, constat retenu s ils s accordent, desaccord trace, question repetee remontee a l humain, motif changerait un fait sans fait cite signale ; SIGNALEMENT, exit 0 (decisions D-2 (a) et D-3 (a)). Paire judge-lecteur-vise au manifeste, lectures enregistrees, aucun appel de modele. | 2.39.0 (TF-1687, 14/10/2026) : deux oracles livres le 14/10 entrent au registre, en invocation explicite (ext vide, aucun declencheur) — oracle-exploitabilite de forge-design (X0-X5, ecran d application au volume reel, --etat-connexion) et la regle O18 d oracle-ops de forge-ops (--revisions-actives, revisions actives d une application Container Apps). La recette (self-test.mjs, TF-1687) joue la COMMANDE du registre, placeholders resolus, sur la paire rouge/verte de chaque forge (forge absente : SKIP motive) et verifie qu aucune page ni capture n est routee d office. | 2.43.0 (TF-1831, 16/10/2026) : oracle-boucle-l99 du skill prompt-analyzer-l99 (B1-B7) entre au registre en invocation explicite (ext vide) : il juge le journal du mode L99 boucle — arbitre fige, relecteur aveugle, defauts recomptes, garde de longueur, arret conforme, borne, score affiche mesure. Paire rouge/verte au manifeste ; la rouge est la forme d avant la regle, l auteur qui se renote et affiche un score projete.",
+ "roles": {
+  "oracle-langue": {
+   "demande_par": "consigne du 12/11/2026 d'un produit : `quality-oracles/scripts/oracle-langue.py --client` ; le fichier n'a jamais existé (0 fichier oracle-langue* sous ~/.claude/skills, digit-ai-forge-agents et digit-ai-factory, 0 mention au registre au 12/11/2026)",
+   "decide_par": "TF-2607 (décision R-58 du 16/11/2026) : le registre dit quel oracle tient le rôle, aucun oracle neuf",
+   "role": "vocabulaire du destinataire (lexique du client, tableau « On dit / On ne dit pas » de la marque) et tournures bannies d'un texte livré",
+   "tenu_par": [
+    {
+     "support": "texte Markdown",
+     "oracle": "{pilot}/oracles/oracle-ecriture.mjs",
+     "regles": "EC-7 lexique du destinataire, EC-1 densité des tournures creuses par famille, EC-5 attaques répétées, EC-8 tournure d'annonce en titre, EC-15 langue attendue",
+     "commande": "node {pilot}/oracles/oracle-ecriture.mjs <texte.md> --json"
+    },
+    {
+     "support": "diapositives .pptx",
+     "oracle": "scripts/oracle-charte-pptx-semantique.mjs",
+     "regles": "S5 lexique du destinataire, S5 (marque) tableau « On dit / On ne dit pas » de la marque ; le constat « référentiels de vocabulaire résolus » dit ce qui a été lu (TF-2608)",
+     "commande": "node scripts/oracle-charte-pptx-semantique.mjs <deck.pptx>"
+    },
+    {
+     "support": "restitution du pilot",
+     "oracle": "{pilot}/oracles/oracle-synthese.mjs",
+     "regles": "S46 lexique du destinataire",
+     "commande": "node {pilot}/oracles/oracle-synthese.mjs <restitution.md>"
+    }
+   ],
+   "client_se_designe_par": "la position du fichier jugé puis le dossier de travail : le lexique du client se lit dans le socle du produit (forge/LEXIQUE.json, docs/projet/LEXIQUE.json ou references/LEXIQUE.json), la marque dans donnees/marque/MARQUE.md. Il n'existe pas d'option `--client` : pour juger avec le lexique d'un client, jouer la commande depuis son dossier de produit ou y poser le fichier",
+   "ne_couvre_pas": [
+    "tout autre support (.docx, .html, .pdf) : le rôle n'y est pas désigné ici, faute d'un juge de vocabulaire vérifié pour lui",
+    "la justesse d'un terme proscrit : le lexique est une donnée du produit, l'oracle la lit sans la discuter",
+    "un texte enfermé dans une image"
+   ]
+  }
+ },
  "oracles": [
   {
    "domaine": "Rendu HTML / visuel",
@@ -190,7 +223,7 @@
     "--profil",
     "{profil}"
    ],
-   "checklist": "intégrité zip (l'ordre des entrées n'est pas jugé : faux positif retiré, TF-2400), zéro <p:transition>, zéro média JPEG, X1 XML bien formé de chaque partie du paquet (TF-2064, sans LibreOffice), smoke-test conversion LibreOffice",
+   "checklist": "intégrité zip (l'ordre des entrées n'est pas jugé : faux positif retiré, TF-2400), zéro <p:transition>, zéro média JPEG, X1 XML bien formé de chaque partie du paquet (TF-2064, sans LibreOffice), PH1 aucun espace réservé VIDE sur une diapositive, hors ftr, sldNum et dt (TF-2599), smoke-test conversion LibreOffice",
    "statut": "partiel",
    "non_juge": [
     "charte sémantique (kicker, logos, bijection sommaire↔intercalaires) → gate digit-ai-pptx",
@@ -301,7 +334,8 @@
    "non_juge": [
     "SCA (voir oracle-sca)",
     "historique git",
-    "sous --versionne (run-oracles ou oracle-secrets, TF-1702) : les fichiers ignorés par git — nommés au non_juge, jamais jugés"
+    "sous --versionne (run-oracles ou oracle-secrets, TF-1702) : les fichiers ignorés par git — nommés au non_juge, jamais jugés",
+    "gitleaks (TF-2628) : une valeur sur la ligne suivante d'une affectation vide `NOM=` n'est pas lue comme sa valeur, et `curl -uadmin:mdp` (collé) est rétrogradé avec les phrases où `-u` est collé au mot suivant"
    ],
    "note": "TF-1702 : par défaut le DISQUE est jugé ; `--versionne` borne le jugement au contenu que git suit ou suivrait (git ls-files -co --exclude-standard), run-oracles le transmet par QO_PERIMETRE=versionne et écrit le périmètre au journal ; hors dépôt git, le disque entier est jugé et dit. `docker compose config` recopie EN CLAIR les variables des env_file : sa sortie rangée en preuve porte les secrets, la masquer avant de la ranger. TF-1701 : une empreinte hexadécimale (16 ou 64 caractères) lue par gitleaks dans un journal de run-oracles est rétrogradée en avertissement, tout autre constat gitleaks reste bloquant et localisé."
   },
@@ -690,7 +724,7 @@
     "S3 et S4 sous un profil qui ne les déclare pas (le profil générique) : NON jouées, et dites au non_juge (TF-1490)",
     "S4 en zone de texte : le bandeau bas de la diapositive est lu, pas le sens de son texte ; une pagination est un texte de ce bandeau qui finit par un numéro",
     "S1 sur un deck sans AUCUN intercalaire (forme du gabarit B de digit-ai-propale) : la numérotation continue des entrées est jugée, la bijection sommaire↔intercalaires ne l'est pas, et c'est dit (TF-2325)",
-    "S5 (marque) : sans donnees/marque/MARQUE.md au-dessus du deck (ni --marque), ou sans tableau « On dit / On ne dit pas » : NON jouée, et dite ; le contexte d'un terme réservé par une parenthèse n'est pas jugé (avertissement, TF-2373)"
+    "S5 (marque) : sans donnees/marque/MARQUE.md au-dessus du deck (ni --marque), ou sans tableau « On dit / On ne dit pas » : NON jouée, et dite ; le contexte d'un terme réservé par une parenthèse n'est pas jugé (avertissement, TF-2373) ; la marque se cherche depuis le dossier du deck PUIS depuis le dossier de travail, comme le lexique du destinataire (TF-2608), et les référentiels résolus sont annoncés au constat « référentiels de vocabulaire résolus »"
    ],
    "note": "TF-1490 (lot Produit-64 - RETOURS - 20260928c, RA-5, 01/10/2026) : sous --profil generique, le support d'un client au format de ce client rendait 69 constats (21 S3 sur des icônes de contenu, 48 S4 faute d'espace réservé), et seule une exemption par fichier ramenait le vert. La commande passe désormais --profil {profil} ; le profil digit-ai déclare logos couverture-interlocuteurs et pied_de_page espace-reserve (la charte d'avant, à l'identique, messages compris), le profil generique ne déclare rien (S3 et S4 non jouées, et dites), un profil client déclare sa forme. Appelé sans --profil, l'oracle juge à la charte Digit-AI, comme avant."
   },
@@ -1903,7 +1937,7 @@
     "{skilldir}/scripts/oracle-transparence.mjs",
     "{file}"
    ],
-   "checklist": "TR1 MENTION — le contenu porte dans son texte LISIBLE PAR UN HUMAIN une formule admise d'assistance par IA ; bloquant sans échéance (information du lecteur due depuis le 2026-08-02). Les formules sont FOURNIES par `--mentions <fichier.json>` (tableau de chaînes, ou objet `mentions`/`expressions`) ; à défaut, jeu générique français et anglais. AUCUNE formule d'émetteur n'est codée dans l'oracle · TR2 MARQUAGE MACHINE (.html seulement) — `<meta name=\"ai-generated\" content=\"…\">` non vide (CONVENTION INTERNE, pas une norme), ou `<meta name=\"generator\">` dont le contenu porte un marqueur d'IA (forme nommée par les règles de marque du parc) ; sévérité pilotée par l'échéance en donnée `references/echeances.json` clé `marquage_machine_absent` — AVERTISSEMENT avant la date avec les jours restants, BLOQUANT après, BLOQUANT aussi si aucune échéance n'est déclarée · TR3 NON GÉNÉRÉ — `--non-genere` ou frontmatter `genere: false` rend SKIP MOTIVÉ, jamais PASS",
+   "checklist": "TR1 MENTION — le contenu porte dans son texte LISIBLE PAR UN HUMAIN une formule admise d'assistance par IA ; bloquant sans échéance (information du lecteur due depuis le 2026-08-02). Les formules sont FOURNIES par `--mentions <fichier.json>` (tableau de chaînes, ou objet `mentions`/`expressions`) ; à défaut, jeu générique français et anglais. AUCUNE formule d'émetteur n'est codée dans l'oracle · TR2 MARQUAGE MACHINE (.html seulement) — `<meta name=\"ai-generated\" content=\"…\">` non vide (CONVENTION INTERNE, pas une norme), ou `<meta name=\"generator\">` dont le contenu porte un marqueur d'IA (forme nommée par les règles de marque du parc) ; sévérité pilotée par l'échéance en donnée `references/echeances.json` clé `marquage_machine_absent` — AVERTISSEMENT avant la date avec les jours restants, BLOQUANT après, BLOQUANT aussi si aucune échéance n'est déclarée · TR3 NON GÉNÉRÉ — `--non-genere` ou frontmatter `genere: false` rend SKIP MOTIVÉ, jamais PASS · TR4 RESPONSABLE ÉDITORIAL (TF-2645) — sans mention TR1, le frontmatter déclare `responsable_editorial: <nom ou rôle>` ET `decision_editoriale: D-<nombre>` : PASS MOTIVÉ par ces deux champs ; le premier sans le second, ou une valeur de remplissage, est BLOQUANT ; aucun des deux, TR1 reste bloquant",
    "statut": "ok",
    "non_juge": [
     "la SINCÉRITÉ de la déclaration (un contenu déclaré non généré est cru sur parole)",
@@ -1912,7 +1946,9 @@
     "le caractère PUBLIC du contenu (c'est l'invocation qui le décide)",
     "la VISIBILITÉ RÉELLE de la mention à l'écran (→ render_page.py du socle digit-ai-page-html)",
     "les formats BUREAUTIQUES (.docx, .pptx, .pdf), dont le marquage par propriété de document",
-    "la JUSTESSE de la date d'échéance (donnée datée et sourcée, lue sans être discutée)"
+    "la JUSTESSE de la date d'échéance (donnée datée et sourcée, lue sans être discutée)",
+    "TR4 — l'EXISTENCE de la décision citée et la RÉALITÉ de la relecture (le format `D-<nombre>` est lu, le registre des décisions ne l'est pas)",
+    "TR4 — la SUFFISANCE JURIDIQUE de la responsabilité éditoriale comme voie de dispense de la mention"
    ],
    "commande": "scripts/oracle-transparence.mjs <fichier.md|.html|.txt> [--mentions <mentions.json>] [--echeances <echeances.json>] [--date AAAA-MM-JJ] [--non-genere]",
    "provenance": "TF-1030 (11/09/2026, décisions humaines D-3 (a) puis D-4) — l'article 50 du règlement européen sur l'IA s'applique depuis le 2026-08-02 ; la règle de transparence est écrite dans la règle de marque de l'émetteur, mais le contrôle exécutable qu'elle CITE était appelé 17 fois dans 9 fichiers d'un produit sans exister nulle part (mesure du 14/09/2026).",

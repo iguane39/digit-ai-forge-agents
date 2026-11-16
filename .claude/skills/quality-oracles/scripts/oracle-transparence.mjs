@@ -22,6 +22,13 @@
 //        épingle sa donnée d'essai, elle ne la résout pas par voisinage).
 //   TR3  NON GÉNÉRÉ — un contenu déclaré non généré (`--non-genere`, ou frontmatter
 //        `genere: false`) rend SKIP MOTIVÉ, jamais PASS : l'oracle n'a rien mesuré, il le dit.
+//   TR4  RESPONSABLE ÉDITORIAL (TF-2645) — sans mention TR1, un contenu publié sous la responsabilité
+//        éditoriale d'une personne le déclare dans son frontmatter : `responsable_editorial: <nom ou
+//        rôle>` ET `decision_editoriale: D-<nombre>` (la décision consignée qui l'établit). Les deux
+//        champs, non vides : PASS MOTIVÉ (le verdict cite le champ et la décision). Le premier sans le
+//        second, ou une valeur de remplissage : BLOQUANT. Aucun des deux : TR1 reste bloquant. La mention
+//        TR1, quand elle est écrite, suffit seule ; TR2 (marquage machine d'une page HTML) ne dépend pas
+//        de TR4. Le frontmatter se lit sur un .md ou .txt qui l'ouvre, comme pour TR3.
 //
 // Usage :
 //   node scripts/oracle-transparence.mjs <fichier.md|.html|.txt> [--mentions <mentions.json>]
@@ -70,7 +77,9 @@ const non_juge = [
   "le caractère PUBLIC du contenu : c'est l'invocation qui le décide (entrée de registre à `ext` vide, aucune extension routée d'office) ; un livrable adressé à un destinataire identifié n'entre pas ici",
   "la VISIBILITÉ RÉELLE de la mention à l'écran (taille, contraste, repli responsive, position sous un pli) → render_page.py du socle digit-ai-page-html",
   "les formats BUREAUTIQUES (.docx, .pptx, .pdf) : le marquage par propriété de document n'est pas lu ici",
-  "la JUSTESSE de la date d'échéance : elle vit en donnée, datée et sourcée, l'oracle la lit sans la discuter"
+  "la JUSTESSE de la date d'échéance : elle vit en donnée, datée et sourcée, l'oracle la lit sans la discuter",
+  "TR4 — l'EXISTENCE de la décision citée par `decision_editoriale` et la RÉALITÉ de la relecture : le format de l'identifiant (`D-<nombre>`) est lu, le registre des décisions ne l'est pas, et un responsable déclaré est cru sur parole",
+  "TR4 — la SUFFISANCE JURIDIQUE de la responsabilité éditoriale comme voie de dispense de la mention : l'oracle applique la règle de la marque (décision consignée), il ne juge pas le droit"
 ];
 
 const out = (verdict, code, extra = {}) => {
@@ -180,17 +189,44 @@ if (EXT === '.html' || EXT === '.htm') {
 }
 const visibleNorm = normaliser(decoder(visible));
 
+// ---- TR4 : responsabilité éditoriale déclarée (TF-2645) ----------------------------------------
+// Un contenu publié sous la responsabilité éditoriale d'une personne qui le relit et le publie peut ne pas
+// porter la mention TR1. Le frontmatter le déclare par DEUX champs : `responsable_editorial` (qui répond du
+// texte) et `decision_editoriale` (la décision consignée qui l'établit, identifiant `D-<nombre>`). Un champ
+// sans décision, ou une valeur de remplissage, n'est pas une déclaration : l'oracle le refuse.
+const champFrontmatter = nom => {
+  const m = frontmatter.match(new RegExp('^[ \\t]*' + nom + '[ \\t]*:[ \\t]*(.*)$', 'mi'));
+  if (!m) return null;
+  return m[1].trim().replace(/^(["'])(.*)\1$/, '$2').trim();
+};
+const REMPLISSAGE = /^(|null|~|none|aucun|aucune|n\/a|na|tbd|todo|a definir|a renseigner|\?+|\.{2,}|<[^>]*>)$/;
+const sansAccents = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const responsable = champFrontmatter('responsable_editorial');
+const decisionEditoriale = champFrontmatter('decision_editoriale');
+const ligneChamp = nom => brut.split('\n').findIndex(l => new RegExp('^\\s*' + nom + '\\s*:', 'i').test(l)) + 1;
+
 // ---- TR1 : mention lisible par un humain --------------------------------------------------------
 const trouveeLitterale = litterales.find(m => visibleNorm.includes(m));
 const trouveeExpr = trouveeLitterale ? null : regs.find(r => r.test(visibleNorm));
 if (trouveeLitterale || trouveeExpr) {
   findings.push({ sev: 'info', msg: `TR1 — mention d'assistance par IA présente dans le texte lisible (formules admises : ${mentionsSource})`, where: base });
+} else if (responsable !== null) {
+  const idDecision = decisionEditoriale === null ? null : (decisionEditoriale.match(/\bD-\d+\b/) || [null])[0];
+  const respVide = REMPLISSAGE.test(sansAccents(responsable));
+  const ligne = ligneChamp('responsable_editorial');
+  if (respVide) {
+    findings.push({ sev: 'bloquant', where: `${base}:${ligne}`, msg: `TR4 — \`responsable_editorial\` est déclaré mais vide ou de remplissage (« ${responsable} ») : une personne nommée, ou son rôle, est due. Sans elle, TR1 s'applique : écrire la mention dans le corps visible, ou nommer le responsable et la décision qui l'établit (\`decision_editoriale: D-<nombre>\`)` });
+  } else if (!idDecision) {
+    findings.push({ sev: 'bloquant', where: `${base}:${ligne}`, msg: `TR4 — \`responsable_editorial\` (« ${responsable} ») n'est pas APPUYÉ sur une décision consignée : le champ \`decision_editoriale\` est ${decisionEditoriale === null ? 'absent' : `sans identifiant de décision (« ${decisionEditoriale} »)`}. Correction : ajouter \`decision_editoriale: D-<nombre>\` (la décision qui fait de cette personne le responsable éditorial), ou écrire la mention TR1 dans le corps visible` });
+  } else {
+    findings.push({ sev: 'info', where: `${base}:${ligne}`, msg: `TR4 — publié sous la responsabilité éditoriale de « ${responsable} », appuyée sur la décision ${idDecision} : la mention TR1 n'est pas exigée (PASS MOTIVÉ par ce champ, pas par une mention). L'existence de la décision et la réalité de la relecture ne sont pas vérifiées ici` });
+  }
 } else {
   const exemple = litteralesBrutes.length ? `« ${litteralesBrutes[0]} »` : 'par exemple « Contenu rédigé avec l\'aide d\'une IA et relu par <rôle> »';
   findings.push({
     sev: 'bloquant',
     where: base + ':1',
-    msg: `TR1 — AUCUNE MENTION d'assistance par IA dans le texte lisible par un humain. L'information du lecteur est due depuis le 2026-08-02 et ne bénéficie d'aucun report. Correction : écrire dans le CORPS VISIBLE (ni frontmatter, ni commentaire, ni métadonnée) une des formules admises — ${exemple}. Formules admises lues dans : ${mentionsSource}`
+    msg: `TR1 — AUCUNE MENTION d'assistance par IA dans le texte lisible par un humain. L'information du lecteur est due depuis le 2026-08-02 et ne bénéficie d'aucun report. Correction : écrire dans le CORPS VISIBLE (ni frontmatter, ni commentaire, ni métadonnée) une des formules admises — ${exemple}. Formules admises lues dans : ${mentionsSource}. Autre voie (TR4) : un contenu publié sous la responsabilité éditoriale d'une personne le déclare dans son frontmatter, \`responsable_editorial: <nom ou rôle>\` et \`decision_editoriale: D-<nombre>\``
   });
 }
 

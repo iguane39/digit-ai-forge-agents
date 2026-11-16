@@ -13,7 +13,7 @@ description: >
   or shipping any deliverable. Ne pas déclencher pour créer un oracle (→ write-an-oracle) ni
   auditer un skill (→ ameliore-un-skill).
 metadata:
-  version: "2.39.0"
+  version: "2.40.0"
 ---
 
 # SKILL — Oracles de qualité (loi transversale)
@@ -99,6 +99,15 @@ Passer en revue, pour chaque livrable, **toutes** les classes ci-dessous :
    page, PyMuPDF lisait « D A T A B R I C K S » quand pypdf et pdftotext lisaient « DATABRICKS », et un
    faux défaut a failli partir chez la personne sur la foi du seul PyMuPDF. Premier oracle à l'appliquer :
    `oracle-pdf.mjs`, P4.
+9. **Un contrôle se déclenche sur ce que le contenu fait, jamais sur la catégorie que son auteur déclare**
+   (TF-2635, 16/11/2026 ; R11 de `references/regles-oracles.md`). Une règle conditionnée à un pilier, un type,
+   une étiquette ou un dossier que l'auteur choisit laisse passer le contenu qui porte le défaut mais qu'il a rangé
+   ailleurs : elle ne s'est pas désactivée, elle n'a jamais été armée. *Le fait* : chez un produit, un contrôle de
+   publications refusait une présentation d'hébergement sans photo de la piscine pour 2 piliers éditoriaux ; 8 campagnes
+   rangées dans 2 autres piliers ont passé 66 contrôles à 0 échec avec 0 photo du domaine sur 40 images. Le déclencheur
+   se lit dans le contenu, et le jeu d'essais rouge porte un cas « même contenu, autre catégorie » qui rend le verdict de la
+   rouge : `write-an-oracle` le crée d'office (`<nom>-autre-categorie`, clé `autre_categorie` du manifest), la recette le
+   rejoue, et le self-test de `write-an-oracle` refuse un oracle scaffoldé sans lui.
 
 ## 4. Règle de remontée (la liste grandit)
 Domaine sans oracle au registre → **définir** (scaffold en une commande : skill compagnon **`write-an-oracle`** —

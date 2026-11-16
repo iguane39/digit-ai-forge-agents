@@ -223,6 +223,55 @@
    "provenance": "TF-2064 (mesuré le 02/11/2026) : une diapositive dont </a:t> devient </a:x> rendait exit 0 et PASS sous le profil générique quand LibreOffice est absent ; l'oracle parse désormais chaque partie XML du paquet (règle X1)"
   },
   {
+   "nom": "pptx-placeholder-vide",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/generique.json"
+   ],
+   "red": "pptx-placeholder-vide-red.pptx",
+   "green": "pptx-placeholder-vide-green.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "PH1",
+    "espace réservé « ctrTitle » VIDE",
+    "espace réservé « title » VIDE",
+    "Cliquez pour ajouter un titre"
+   ],
+   "commentaire": "La rouge porte un espace réservé de titre VIDE sur la couverture (le titre est posé en zone libre à côté) et sur la diapositive 2 ; la verte est la même paire de diapositives, espaces réservés REMPLIS (premier remède que le message propose, joué ici). Les deux portent aussi un pied de page, un numéro et une date vides (ftr, sldNum, dt) : exemptés, la rouge ne peut donc échouer que par les espaces réservés de titre. La seconde verte, ci-dessous, joue l'autre remède.",
+   "provenance": "TF-2599 (RA-20, lot du produit marketing du 12/11/2026, seq 709) : cinq supports de formation livrés avec 25 espaces réservés de titre vides, vus par l'humain à l'ouverture dans PowerPoint ; oracle-pptx et oracle-polices-embarquees rendaient PASS, oracle-charte-pptx-semantique ne relevait que S5. Decks FICTIFS (fixtures/gen-pptx-placeholder-fixtures.py)."
+  },
+  {
+   "nom": "pptx-placeholder-retire",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-pptx.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/generique.json"
+   ],
+   "red": "pptx-placeholder-vide-red.pptx",
+   "green": "pptx-placeholder-vide-retire.pptx",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "PH1"
+   ],
+   "commentaire": "Second remède du message PH1, joué : l'espace réservé vide est RETIRÉ de la diapositive, le titre reste en zone libre. Le PASS montre que la règle refuse le vide, pas le titre posé en zone libre.",
+   "provenance": "TF-2599 (RA-20, lot du produit marketing du 12/11/2026, seq 709)."
+  },
+  {
    "nom": "llm",
    "cmd": [
     "node",
@@ -2227,6 +2276,14 @@
    "attendu_green": [
     "PASS"
    ],
+   "autre_categorie": "transparence-autre-support-red.md",
+   "attendu_autre_categorie": [
+    "FAIL"
+   ],
+   "attendu_messages_autre_categorie": [
+    "TR1",
+    "AUCUNE MENTION"
+   ],
    "attendu_messages_red": [
     "TR1",
     "AUCUNE MENTION"
@@ -2367,6 +2424,66 @@
    ],
    "dependant_outil": "aucun — TR3 par le FRONTMATTER (`genere: false`), sans drapeau en ligne de commande : le fichier n'a aucune mention et sortirait en FAIL sans sa déclaration.",
    "provenance": "TF-1030 (17/09/2026) — obligation en vigueur depuis le 2026-08-02, règle de marque écrite le 11/09, contrôle exécutable inexistant et pourtant cité 17 fois chez un produit (mesure du 14/09)."
+  },
+  {
+   "nom": "transparence-responsable-editorial",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--date",
+    "2026-11-16"
+   ],
+   "red": "transparence-red.md",
+   "green": "transparence-editorial-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR1",
+    "AUCUNE MENTION",
+    "responsable_editorial"
+   ],
+   "attendu_messages_green": [
+    "TR4 — publié sous la responsabilité éditoriale",
+    "décision D-187"
+   ],
+   "commentaire": "TF-2645 — MÊME publication, sans aucune mention d'assistance par IA dans le corps : la verte porte en plus, au frontmatter, `responsable_editorial` ET `decision_editoriale: D-187 (c)`, et passe en PASS MOTIVÉ par le champ (le message TR4 cite le responsable et la décision). La rouge est la même publication sans les deux champs : FAIL TR1, dont le message propose la voie TR4 — le remède proposé est exécuté par la verte (TF-1013).",
+   "provenance": "TF-2645 (RA-231, lot du produit marketing du 12/11/2026, seq 782) — après D-187 (c) du 12/11/2026, les 30 textes de la version 20261112d échouaient faute de pouvoir déclarer qui relit et publie ; à livrer avant TF-2644."
+  },
+  {
+   "nom": "transparence-responsable-sans-decision",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-transparence.mjs",
+    "{fixture}",
+    "--mentions",
+    "{skilldir}/fixtures/transparence-mentions.json",
+    "--date",
+    "2026-11-16"
+   ],
+   "red": "transparence-editorial-sans-decision-red.md",
+   "green": "transparence-editorial-green.md",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "TR4",
+    "n'est pas APPUYÉ sur une décision consignée"
+   ],
+   "attendu_messages_green": [
+    "TR4"
+   ],
+   "commentaire": "TF-2645 — le champ `responsable_editorial` seul n'est pas une déclaration : la rouge le porte sans `decision_editoriale` et échoue ; la verte ajoute la ligne `decision_editoriale: D-187 (c)` et passe. Un nom sans décision consignée ne dispense pas de la mention.",
+   "provenance": "TF-2645 (RA-231, lot du produit marketing du 12/11/2026, seq 782)."
   },
   {
    "nom": "transparence-expression-normalisee",

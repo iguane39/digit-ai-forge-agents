@@ -17,7 +17,7 @@ const contratJSON = ecrivainDeContrat({ info: true });
 
 const target = process.argv[2];
 const DOM = 'Sécurité / secrets';
-const NJ = ['vulnérabilités de dépendances (SCA : pip-audit / npm audit / OSV)', 'secrets dans l\'historique git (scanner le dépôt, pas seulement le fichier)'];
+const NJ = ['vulnérabilités de dépendances (SCA : pip-audit / npm audit / OSV)', 'secrets dans l\'historique git (scanner le dépôt, pas seulement le fichier)', 'gitleaks (TF-2628) : une valeur placée sur la ligne SUIVANTE d\'une affectation vide `NOM=` n\'est pas lue comme sa valeur (dotenv et shell ne la lisent pas), et la forme `curl -uadmin:mdp`, collée, que curl accepte, est rétrogradée avec les phrases où `-u` est collé au mot suivant : rien dans le texte ne la distingue de `-utilisateur:`'];
 function emit(verdict, findings = [], non_juge = NJ) {
   process.stdout.write(contratJSON({ oracle: 'oracle-secrets', domaine: DOM, artefact: target || null, verdict, findings, non_juge }));
   process.exit(verdict === 'FAIL' ? 1 : verdict === 'SKIP' ? 2 : 0);
@@ -101,6 +101,17 @@ for (const f of listFiles(target).filter(dansPerimetre)) {
 // un journal, reste bloquant et se localise (fichier:ligne, règle). Rapport illisible : bloquant.
 const JOURNAL_ORACLES = /^(?:_oracles-journal(?:-historique)?\.jsonl?|.+\.oracles(?:-historique)?\.jsonl?|(?:.+)?\.oracles-cache\.json)$/i;
 const EMPREINTE = /^(?:[0-9a-f]{16}|[0-9a-f]{64})$/;
+// TF-2628 (lot Produit-82 20261112g, RT-36) — DEUX AUTRES FAUX BLOQUANTS DE GITLEAKS, rétrogradés de la même
+// façon (avertissement nommé, jamais retirés). 1) `generic-api-key` : sa classe `[\s...]{0,3}` franchit la fin de
+// ligne, donc `API_KEY=` VIDE suivi d'une ligne `AUTRE_VARIABLE=` capture le NOM de la variable suivante comme valeur
+// (CRLF ou LF). Un constat dont la première ligne se termine par `=` seul (ni `:`, ni `=>`, ni `:=`) est une affectation
+// vide : en syntaxe dotenv ou shell, la ligne d'après n'est jamais sa valeur. Une valeur ouvrant sur la ligne suivante
+// après `:` (YAML) reste bloquante. 2) `curl-auth-user` : `-u` y est admis COLLÉ au mot suivant, donc « curl … -user:xyz »
+// ou « -utilisateur:xyz » dans une phrase passe pour des identifiants. Une option réelle est isolée : `-u` ou `--user`
+// précédé d'un blanc, suivi d'un blanc ou de `=`. La forme collée `-uadmin:mdp`, que curl accepte, est rétrogradée avec
+// le reste : dit au non_juge, car rien dans le texte ne la distingue de `-utilisateur:`.
+const AFFECTATION_VIDE = /^[^\r\n:>|?,=]*=[ \t]*\r?\n/;
+const OPTION_CURL = /[ \t\r\n](?:-u|--user)(?:=|[ \t]+)/;
 if (spawnSync(process.platform === 'win32' ? 'where' : 'which', ['gitleaks'], { encoding: 'utf8' }).status === 0) {
   const rapport = path.join(os.tmpdir(), `qo-gitleaks-${process.pid}-${Date.now()}.json`);
   const g = spawnSync('gitleaks', ['detect', '--no-git', '--no-banner', '-s', target, '--report-format', 'json', '--report-path', rapport], { encoding: 'utf8' });
@@ -112,6 +123,8 @@ if (spawnSync(process.platform === 'win32' ? 'where' : 'which', ['gitleaks'], { 
       if (x.File && !dansPerimetre(String(x.File))) continue;     // TF-1702 : hors du contenu versionné
       const ou = String(x.File || '?') + ':' + (x.StartLine ?? '?');
       if (JOURNAL_ORACLES.test(path.basename(String(x.File || ''))) && EMPREINTE.test(String(x.Secret || ''))) findings.push({ sev: 'warn', msg: 'gitleaks ' + (x.RuleID || '?') + ' sur une EMPREINTE SHA-256 d\'un journal d\'oracles, pas un secret — rétrogradée (TF-1701)', where: ou });
+      else if (x.RuleID === 'generic-api-key' && AFFECTATION_VIDE.test(String(x.Match || ''))) findings.push({ sev: 'warn', msg: 'gitleaks generic-api-key sur une AFFECTATION VIDE (« ' + String(x.Match).split(/\r?\n/)[0].trim() + ' ») : la valeur capturée est le nom de la variable de la ligne suivante, pas une valeur — rétrogradée (TF-2628)', where: ou });
+      else if (x.RuleID === 'curl-auth-user' && !OPTION_CURL.test(String(x.Match || ''))) findings.push({ sev: 'warn', msg: 'gitleaks curl-auth-user sur une PHRASE où `-u` / `--user` n\'est pas une option isolée (collé au mot qui suit) — rétrogradée (TF-2628)', where: ou });
       else findings.push({ sev: 'bloquant', msg: 'gitleaks ' + (x.RuleID || '?') + ' : secret probable', where: ou + ' · ' + String(x.Secret || '').slice(0, 4) + '…' });
     }
   }

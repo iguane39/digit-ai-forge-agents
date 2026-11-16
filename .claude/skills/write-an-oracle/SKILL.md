@@ -2,7 +2,7 @@
 name: write-an-oracle
 description: Génère (generate/scaffold) en une commande un oracle de qualité conforme au standard §3 de quality-oracles — squelette CLI au contrat JSON commun (verdict PASS/FAIL/SKIP, findings localisants, non_juge obligatoire, exit 0/1/2), paire de fixtures rouge/verte probante d'office, entrée de registre et entrée de manifest — puis guide son durcissement jusqu'au statut « ok ». Rend la règle §4 (« domaine sans oracle → définir + remonter un oracle ») mécanique : couvrir un domaine nouveau prend moins de 15 minutes au lieu d'une réécriture de zéro. Use when l'utilisateur veut créer, scaffolder ou ajouter un oracle de qualité, couvrir un nouveau domaine de défaut au registre de quality-oracles, outiller un contrôle signalé « oracle à outiller / règle §4 » par run-oracles, ou industrialiser un contrôle manuel récurrent. Ne pas déclencher pour exécuter les oracles existants ni auditer un livrable (→ quality-oracles), ni pour créer un skill complet (→ write-a-skill).
 metadata:
-  version: "1.0.2"
+  version: "1.1.0"
 ---
 
 # write-an-oracle — générateur d'oracles de qualité
@@ -33,8 +33,11 @@ Produit, en une commande, dans le skill `quality-oracles` visé :
 1. `scripts/oracle-<nom>.mjs` — squelette CLI : contrat JSON commun pré-câblé, exit 0/1/2,
    `non_juge` obligatoire, sortie localisante `fichier:ligne`, et un **contrôle-marqueur**
    (le mot `DEFAUT` = échec) à remplacer par les vrais contrôles du domaine.
-2. `fixtures/<nom>-red.*` (contient `DEFAUT` → FAIL d'office) et `fixtures/<nom>-green.*`
-   (PASS d'office) — la porte fixtures du self-test reste verte de bout en bout.
+2. `fixtures/<nom>-red.*` (contient `DEFAUT` → FAIL d'office), `fixtures/<nom>-green.*`
+   (PASS d'office) et `fixtures/<nom>-autre-categorie.*` : le **même contenu défectueux rangé sous une autre
+   catégorie** (autre pilier, autre type, autre dossier), qui doit rendre le verdict de la rouge (R11, TF-2635). Le
+   manifest le déclare (`autre_categorie`, `attendu_autre_categorie`) et la recette de `quality-oracles` le rejoue.
+   La porte fixtures du self-test reste verte de bout en bout.
 3. L'entrée de **registre** (`quality-oracles/references/registre-oracles.json`, statut `partiel`)
    et l'entrée de **manifest** (`quality-oracles/fixtures/manifest.json`) — sauvegardes `.bak`
    le temps des écritures, pour restaurer en cas d'échec, puis retirées (TF-1537). **La forme de ces deux fichiers est relue, pas imposée** :
@@ -54,6 +57,9 @@ commande de rattrapage que le refus propose, et vérifie qu'elle passe.
    réimplémentation maison, règle R3), findings localisants, tolérances explicites.
 2. Remplacer les fixtures placeholder par un **vrai cas rouge** (défaut réaliste du domaine) et
    un **vrai cas vert** — c'est la preuve que l'oracle juge, pas qu'il compile.
+   Le cas `-autre-categorie` se remplace aussi : le contenu de la vraie rouge, rangé sous une catégorie
+   différente de la sienne. Si l'oracle ne se déclenche que pour certaines catégories déclarées par l'auteur,
+   ce cas le fait échouer : le déclencheur se lit dans ce que le contenu fait (R11), pas dans son étiquette.
 3. Déclarer honnêtement `non_juge` : ce que l'oracle ne couvre pas reste dit, jamais tu.
 4. Relancer `node quality-oracles/scripts/self-test.mjs` : doit rester **PASS**
    (compilation + fixtures rejouées). Un échec ici est une information, pas un obstacle.

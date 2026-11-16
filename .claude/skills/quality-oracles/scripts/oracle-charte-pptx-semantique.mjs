@@ -334,7 +334,7 @@ if (CHARTE.pied_de_page === 'espace-reserve' || CHARTE.pied_de_page === 'zone-te
 // pilot — le terme fondateur d'un retour client est souvent un mot juste ailleurs, et un contrôle
 // qui crie sur l'usage légitime se fait désactiver dans la semaine. Absent, la règle le DIT au
 // non_juge : un deck n'est jamais déclaré conforme au vocabulaire par le silence du lexique.
-let s5Etat = null;
+let s5Etat = null, s5LexiqueChemin = null;
 const dejaProscrits = new Set(); // TF-2373 : les mots déjà relevés par le lexique du destinataire
 {
   const pilot = resolvePilot(SKILLDIR);
@@ -351,6 +351,7 @@ const dejaProscrits = new Set(); // TF-2373 : les mots déjà relevés par le le
   }
   if (lexmod) {
     const lex = lexmod.chargerLexique({ cheminJuge: file });
+    if (lex.trouve) s5LexiqueChemin = lex.chemin;
     if (!lex.trouve) non_juge.push('S5 — aucun lexique du destinataire dans le socle du projet de ce deck (forge\\LEXIQUE.json, docs\\projet\\LEXIQUE.json ou references\\LEXIQUE.json) : vocabulaire non jugé');
     else if (lex.illisible) non_juge.push(`S5 — lexique ILLISIBLE (${lex.chemin}) : ${lex.illisible} — ce n'est pas un constat sur le deck`);
     else if (!lex.termes.length) non_juge.push(`S5 — lexique présent et VIDE (${lex.chemin}) : aucun terme n'a encore coûté d'aller-retour`);
@@ -386,7 +387,7 @@ const dejaProscrits = new Set(); // TF-2373 : les mots déjà relevés par le le
 // interne) ») dépend d'un contexte que l'oracle ne juge pas : avertissement, réserve citée. Un terme sans réserve,
 // ou réservé au livrable (« propale (dans un livrable) », un deck en est un), est bloquant. Un mot déjà relevé par
 // le lexique du destinataire n'est pas relevé deux fois.
-let s5MarqueEtat = null;
+let s5MarqueEtat = null, s5MarqueChemin = null;
 {
   const decoupeHorsParentheses = (t) => { const morceaux = []; let prof = 0, cur = ''; for (const c of t) { if (c === '(') prof++; if (c === ')') prof = Math.max(0, prof - 1); if (c === ',' && prof === 0) { morceaux.push(cur); cur = ''; } else cur += c; } morceaux.push(cur); return morceaux.map(m => m.trim()).filter(Boolean); };
   const lireTableau = (texte) => {
@@ -408,18 +409,26 @@ let s5MarqueEtat = null;
   let chemin = null;
   if (marqueChemin) chemin = fs.existsSync(marqueChemin) ? marqueChemin : null;
   else {
-    let d = path.dirname(path.resolve(file));
-    for (let i = 0; i < 12 && !chemin; i++) {
-      const c = path.join(d, 'donnees', 'marque', 'MARQUE.md');
-      if (fs.existsSync(c)) chemin = c;
-      const parent = path.dirname(d);
-      if (parent === d) break;
-      d = parent;
+    // TF-2608 : les MÊMES points de départ que le lexique du destinataire (`chargerLexique` : le dossier du deck, puis
+    // le dossier de travail). Avant, la marque ne se cherchait qu'en remontant depuis le deck : le même deck rendait
+    // PASS depuis un dossier de travail hors du produit (le lexique y était lu par le cwd, la marque jamais trouvée,
+    // S5 marque « NON jouée » au non_juge) et FAIL une fois posé sous output/ du produit.
+    for (const depart of [path.dirname(path.resolve(file)), path.resolve(process.cwd())]) {
+      let d = depart;
+      for (let i = 0; i < 12 && !chemin; i++) {
+        const c = path.join(d, 'donnees', 'marque', 'MARQUE.md');
+        if (fs.existsSync(c)) chemin = c;
+        const parent = path.dirname(d);
+        if (parent === d) break;
+        d = parent;
+      }
+      if (chemin) break;
     }
   }
+  s5MarqueChemin = chemin;
   if (!chemin) non_juge.push(marqueChemin
     ? `S5 (marque) NON jouée : --marque ${marqueChemin} introuvable — vocabulaire de la marque non jugé`
-    : 'S5 (marque) NON jouée : aucun donnees/marque/MARQUE.md en remontant depuis le deck (ni --marque) — vocabulaire de la marque non jugé');
+    : 'S5 (marque) NON jouée : aucun donnees/marque/MARQUE.md en remontant depuis le deck ni depuis le dossier de travail (ni --marque) — vocabulaire de la marque non jugé');
   else {
     let termes = null;
     try { termes = lireTableau(fs.readFileSync(chemin, 'utf8')); } catch (e) { non_juge.push(`S5 (marque) NON jouée : ${chemin} illisible (${String(e.message).slice(0, 80)})`); }
@@ -495,6 +504,10 @@ for (const s of slides) {
 }
 non_juge.push('S8 : le placement RÉEL des coupures de ligne (mesure de rendu PowerPoint) — S8 juge les espaces ordinaires qui les permettent, pas les lignes peintes');
 
+// TF-2608 : les référentiels de vocabulaire RÉSOLUS sont annoncés, quel que soit le verdict. Un PASS qui ne dit pas
+// quel lexique ni quelle marque il a lus se lit comme « vocabulaire conforme », et deux dossiers de travail différents
+// rendaient deux verdicts sans qu'aucune sortie dise pourquoi (12/11/2026, même deck : PASS puis FAIL).
+findings.push({ sev: 'info', msg: `S5 — référentiels de vocabulaire résolus : lexique du destinataire = ${s5LexiqueChemin || 'aucun'} ; marque = ${s5MarqueChemin || 'aucune'} (recherche depuis le dossier du deck ${path.dirname(path.resolve(file))}, puis depuis le dossier de travail ${path.resolve(process.cwd())})`, where: path.basename(file) });
 if (findings.some(f => f.sev === 'bloquant')) out('FAIL', 1);
 // TF-1490 : un PASS dit quelles règles il a jouées — sous un profil qui ne déclare pas S3 ou S4, elles ne l'ont pas été.
 const regles34 = (CHARTE.logos === 'couverture-interlocuteurs' && CHARTE.pied_de_page === 'espace-reserve') ? 'S1-S4 vérifiés'
