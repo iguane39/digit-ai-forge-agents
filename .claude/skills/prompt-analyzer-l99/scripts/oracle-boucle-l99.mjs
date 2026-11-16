@@ -49,6 +49,8 @@
 //       (`arret.majeurs_restants`) et listés au Ch8 (`arret.liste_au_ch8`) ; chaque défaut grave retenu d'une
 //       passe 2 ou suivante porte son origine ; une passe qui remplissait déjà cet arrêt devait l'arrêter.
 //       L'arrêt strict « 0 bloquant et 0 majeur » reste valable : c'est le cas idéal.
+//   B15 `garde_cumulee` (TF-2239, ex. 0.30) : une passe gardée dont le prompt dépasse la garde cumulée depuis
+//       la passe 1 porte un `motif_depassement` (4 mots au moins) : alerte motivée, la passe n'est pas rejetée.
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -247,6 +249,18 @@ export function juger(j) {
       retenus(p).forEach((d) => {
         if (!ORIGINES.has(d.origine)) ko('B14', `passes[${i}]`, `défaut ${d.severite} retenu sans origine (« correction » ou « anterieur ») : l arrêt sur le texte de la dernière correction ne se juge pas sans elle`);
       });
+    });
+  }
+
+  // B15 — garde de longueur cumulée depuis la passe 1 : une alerte motivée, jamais un refus (TF-2239). Une passe gardée
+  // qui dépasse la garde cumulée dit pourquoi elle ajoute au lieu de remplacer ; elle n'est pas rejetée pour autant
+  // (le test du 15/11/2026 a vu une garde de 30 % imposée sans motif perdre 9 points, 66 et 70 contre 79 et 77).
+  if (a && nb(a.garde_cumulee)) {
+    const p1 = passes.find((p) => p.n === 1);
+    if (p1 && nb(p1.mots)) passes.forEach((p, i) => {
+      if (p === p1 || estRejetee(p) || !nb(p.mots) || !(p.mots > p1.mots * (1 + a.garde_cumulee))) return;
+      if (!propre(p.motif_depassement) || p.motif_depassement.trim().split(/\s+/).length < 4)
+        ko('B15', `passes[${i}]`, `le prompt passe de ${p1.mots} mots (passe 1) à ${p.mots}, au-delà de +${Math.round(a.garde_cumulee * 100)} % : la correction remplace du texte ou dit pourquoi elle ajoute (motif_depassement, 4 mots au moins)`);
     });
   }
 
@@ -501,6 +515,20 @@ function selfTest() {
       verification_cloture: { agent: 'verificateur-1', note: false, clotures: 1, defauts_crees: 0 } });
     j.arret = { passe: 3, raison: 'zero_majeur' }; j.score_affiche = { valeur: 93, nature: 'mesure' };
   });
+  // TF-2239 (16/11/2026) : la garde de longueur se juge aussi depuis la passe 1, en alerte motivée. Sur 20 journaux,
+  // 16 boucles dépassent +15 % entre la passe 1 et l'arrêt (médiane +47 %), et la garde passe à passe ne joue jamais.
+  const cumulee = () => { const j = essai(); j.arbitre.garde_cumulee = 0.3; return j; };
+  const gonflee = (motif) => () => {
+    const j = cumulee();
+    j.passes[1].mots = 1700; // +40 % depuis la passe 1, la passe ferme 2 majeurs : B4 ne la rejette pas
+    if (motif !== undefined) j.passes[1].motif_depassement = motif;
+    return j;
+  };
+  cas.push({ nom: 'TF-2239 vert — +6 % depuis la passe 1, sous la garde cumulée de 30 %', j: cumulee(), attendu: [] });
+  cas.push({ nom: 'TF-2239 vert — +40 % avec un motif : alerte motivée, la passe reste gardée', j: gonflee('ferme 2 majeurs de spécification sans texte à remplacer')(), attendu: [] });
+  cas.push({ nom: 'TF-2239 vert — la passe rejetée au-delà de la garde n est pas jugée : son texte est écarté', j: (() => { const j = gonflee()(); Object.assign(j.passes[1], { rejetee: true, decision: 'rejeter', score_mesure: 80 }); j.arret = { passe: 1, raison: 'regression' }; j.score_affiche = { valeur: 84, nature: 'mesure' }; return j; })(), attendu: [] });
+  rougeB('B15 +40 % depuis la passe 1 sans motif', 'B15', gonflee(), () => {});
+  rougeB('B15 motif de trois mots, qui ne dit rien', 'B15', gonflee('pour être complet'), () => {});
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

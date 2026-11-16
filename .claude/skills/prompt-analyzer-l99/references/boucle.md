@@ -114,6 +114,19 @@ nomme « défaut ». Les clés se déclarent avant la passe 1, comme le reste de
   le Ch8 les nomme : le prompt est livré avec eux, jamais présenté comme fini. L'arrêt strict « 0
   bloquant et 0 majeur » reste la cible affichée et le cas idéal ; il garde sa raison `zero_majeur`.
   B14 le contrôle, et refuse une passe gardée qui remplissait déjà l'arrêt sans l'avoir posé.
+- **Garde de longueur cumulée, en alerte motivée** (TF-2239, défaut) : `garde_cumulee` : `0.30`. La
+  garde `garde_longueur` de B4 ne se juge que d'une passe à la suivante et ne joue jamais, puisque
+  chaque passe ferme au moins un majeur : sur 20 journaux, les 39 passes comparables grossissent
+  toutes (médiane +27 % par passe), 16 boucles sur 20 dépassent +15 % entre la passe 1 et l'arrêt
+  (médiane +47 %), et 15 des 22 défauts graves relevés après la passe 1 le 06/11/2026 citent du texte
+  écrit par une correction. Une passe gardée dont le prompt dépasse de plus de 30 % la longueur de
+  la passe 1 porte un `motif_depassement` : la correction remplace du texte, ou dit pourquoi elle
+  ajoute (4 mots au moins, la phrase nomme ce que l'ajout apporte). C'est une alerte, jamais un
+  refus : la passe n'est pas rejetée pour ce dépassement cumulé (la garde de passe à passe de B4 reste
+  en vigueur). Le test du 15/11/2026, noté sur TF-2565 au registre du pilot, a vu une garde de
+  30 % imposée sans motif faire perdre des points : 66 et 70 contre 79 et 77 au témoin, 7 défauts
+  graves distincts contre 4, presque tous des spécifications retranchées pour tenir la garde.
+  B15 refuse le journal d'une passe au-delà de la garde sans motif.
 
 ## Une passe
 
@@ -206,7 +219,7 @@ boucle sans journal PASS n'est pas un mode boucle.
 Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
 `recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
-`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14.
+`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15.
 
 ## Annexe — sortie demandée au relecteur
 
