@@ -14,7 +14,7 @@ description: >
   proposition commerciale (→ digit-ai-propale), pour l'auditer avant envoi
   (→ digit-ai-propale-review), ni pour un livrable hors charte Digit-AI (→ systeme-de-marque).
 metadata:
-  version: "2.9.0"
+  version: "2.10.0"
 ---
 
 # Digit-AI PowerPoint Skill
@@ -22,6 +22,11 @@ metadata:
 Encode les **règles de composition** des livrables PPTX Digit-AI (charte v2) et **consomme** les
 **valeurs** de marque là où elles vivent : chez l'émetteur.
 
+> **Journal du 2026-11-16 — v2.10.0 (TF-2599, décision R-58 du 16/11/2026).** Un masque de couverture ou d'intercalaire
+> ne porte pas d'espace réservé de titre quand le titre se pose en zone libre : l'espace réservé laissé vide fait afficher
+> « Cliquez pour ajouter un titre » à l'ouverture (25 cas sur cinq supports, 12/11/2026). La règle est écrite à l'étape 6, et
+> la règle PH1 d'`oracle-pptx` refuse tout espace réservé vide sur une diapositive. Self-test : contrôle C22.
+>
 > **Journal du 2026-11-12 — v2.9.0 (TF-2401, décision R-58 du 12/11/2026).** La règle des intercalaires
 > dit ce que S1 juge : deux formes admises, toutes les parties ont leur intercalaire, ou aucune (sommaire du
 > gabarit B de `digit-ai-propale`) ; le deck mixte reste refusé. La phrase « un intercalaire par partie, sans

@@ -2,7 +2,7 @@
 name: write-an-oracle
 description: Génère (generate/scaffold) en une commande un oracle de qualité conforme au standard §3 de quality-oracles — squelette CLI au contrat JSON commun (verdict PASS/FAIL/SKIP, findings localisants, non_juge obligatoire, exit 0/1/2), paire de fixtures rouge/verte probante d'office, entrée de registre et entrée de manifest — puis guide son durcissement jusqu'au statut « ok ». Rend la règle §4 (« domaine sans oracle → définir + remonter un oracle ») mécanique : couvrir un domaine nouveau prend moins de 15 minutes au lieu d'une réécriture de zéro. Use when l'utilisateur veut créer, scaffolder ou ajouter un oracle de qualité, couvrir un nouveau domaine de défaut au registre de quality-oracles, outiller un contrôle signalé « oracle à outiller / règle §4 » par run-oracles, ou industrialiser un contrôle manuel récurrent. Ne pas déclencher pour exécuter les oracles existants ni auditer un livrable (→ quality-oracles), ni pour créer un skill complet (→ write-a-skill).
 metadata:
-  version: "1.0.2"
+  version: "1.1.0"
 ---
 
 # write-an-oracle — générateur d'oracles de qualité
