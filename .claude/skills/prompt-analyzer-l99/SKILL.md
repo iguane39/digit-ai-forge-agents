@@ -105,7 +105,14 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    <fichier>`), se corrige jusqu'à l'exit 0, et ne s'**affiche qu'après**, telle quelle. Le fait : le
    14/11/2026, chez un produit, une revue L99 en 8 chapitres affichée sans fichier ni préjugement a été
    refusée par le hook de fin de tour (S1, S4) faute de blocs de restitution, et ce SKILL.md ne le
-   rappelait pas. Hors de la Factory, aucune restitution n'est prescrite ici.
+   rappelait pas. **Le tour qui attend les relecteurs aveugles** (TF-2669) : après leur lancement en
+   arrière-plan, le tour ne se clôt jamais sur un message d'attente, que le hook refuse (S1, S4) ; il
+   rend un point d'étape préjugé (`gabarits/RESTITUTION.md`, section « Point d'étape »), dont le
+   bloc 1 porte la mention « point d'étape » et dont le bloc 2, « Ce qui reste à mesurer, et par
+   quoi », nomme la note attendue de chaque relecteur et l'outil qui la rendra,
+   `scripts/oracle-boucle-l99.mjs`. Le tour qui reçoit les notes rend la restitution complète. Le
+   fait : le 16/11/2026, chez un produit, le tour qui attendait deux relecteurs s'est clos sur une
+   attente, refusée par S1 et S4. Hors de la Factory, aucune restitution n'est prescrite ici.
 
 ## Les 8 couches (vue d'ensemble)
 

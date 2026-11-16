@@ -4,7 +4,7 @@
 // TF-1975 (29/10/2026) : le type du rapport d'analyse est « Revue », au registre des types ; le
 // SKILL.md et couches.md le prescrivent tous deux, et un type « Analyse » prescrit serait vu.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -113,6 +113,29 @@ cas.push(
   ['TF-2632 rouge — le paragraphe retiré de couches.md est vu', !regleChemin(couches.replace(/\*\*Le chemin du journal borne l'objet\*\*[\s\S]*?(?=\*\*Borne\*\* : hors factory)/, ''))],
   ['TF-2632 rouge — la phrase retirée de SKILL.md est vue', !regleChemin(skill.replace(/\*\*Le chemin du journal borne l'objet\*\*[\s\S]*?(?=\n\s+Détail : `references\/couches\.md`, section « Nom du livrable »)/, ''))],
 );
+// TF-2669 (16/11/2026) : le tour qui attend les relecteurs aveugles rend un point d'étape préjugé au lieu de se clore sur une
+// attente (refusée par S1 et S4). Le point 12 de SKILL.md le prescrit, nomme la mesure attendue et l'outil ; le retrait de la
+// phrase se voit. Deux fixtures, un point d'étape et un message d'attente, sont jugées par `oracle-synthese` du pilot quand il
+// est joignable (FORGE_ROOT, ou le dossier parent du dépôt) : le premier ne doit pas être refusé par S1 et S4, le second doit
+// l'être. Pilot absent : les deux cas se disent SKIP, sans échec ni faux vert.
+const regleAttente = (texte) => /TF-2669/.test(texte) && /point d'étape/.test(texte) && /Ce qui reste à mesurer, et par\s+quoi/.test(texte)
+  && /scripts\/oracle-boucle-l99\.mjs/.test(texte) && /S1, S4/.test(texte);
+const ORACLE_SYNTHESE = path.join(process.env.FORGE_ROOT || path.resolve(ICI, '..', '..', '..', '..', '..'), 'digit-ai-factory', 'oracles', 'oracle-synthese.mjs');
+const reglesVues = (fixture) => {
+  const rs = spawnSync(process.execPath, [ORACLE_SYNTHESE, path.join(ICI, '..', 'fixtures', fixture)], { encoding: 'utf8', timeout: 120000 });
+  try { return Object.fromEntries(JSON.parse(rs.stdout).findings.filter((x) => ['S1', 'S4'].includes(x.regle)).map((x) => [x.regle, x.statut])); } catch { return null; }
+};
+cas.push(
+  ['TF-2669 vert — SKILL.md prescrit le point d\'étape préjugé après le lancement des relecteurs, avec la mesure et l outil', regleAttente(skill)],
+  ['TF-2669 rouge — la phrase retirée du point 12 est vue', !regleAttente(skill.replace(/\*\*Le tour qui attend les relecteurs aveugles\*\*[\s\S]*?(?=Hors de la Factory, aucune restitution)/, ''))],
+);
+if (existsSync(ORACLE_SYNTHESE)) {
+  const vert = reglesVues('point-etape-vert.md'), rouge = reglesVues('attente-rouge.md');
+  cas.push(
+    ['TF-2669 vert — un point d\'étape (bloc 2 « ce qui reste à mesurer », outil nommé) n est refusé ni par S1 ni par S4', !!vert && vert.S1 === 'PASS' && vert.S4 === 'PASS'],
+    ['TF-2669 rouge — un message d\'attente est refusé par S1 et par S4', !!rouge && rouge.S1 === 'FAIL' && rouge.S4 === 'FAIL'],
+  );
+} else console.log('SKIP TF-2669 — oracle-synthese du pilot introuvable (FORGE_ROOT) : le point d\'étape et l attente ne sont pas jugés ici');
 for (const [libelle, tenu] of cas) console.log(`${tenu ? 'ok  ' : 'FAIL'} ${libelle}`);
 const echecs = cas.filter(([, tenu]) => !tenu).length;
 process.exit(r.status === 0 && echecs === 0 ? 0 : 1);
