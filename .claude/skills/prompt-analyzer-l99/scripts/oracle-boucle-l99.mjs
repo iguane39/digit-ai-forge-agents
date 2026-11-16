@@ -58,6 +58,8 @@
 //   B17 `fiche_premisses: true` (TF-2236) : le journal porte `fiche_premisses`, liste des prémisses
 //       d'environnement vérifiées une fois par boucle (`commande`, `sortie`, `heure`), et chaque relecteur la
 //       reçoit (`relecteur.fiche_remise: true`) avec le droit de vérifier tout ce qu'elle ne couvre pas.
+//   B18 `type_relecteur: "relecteur"` (TF-2241) : chaque passe lance son relecteur avec le type d'agent dédié
+//       (`relecteur.type: "relecteur"`), ou se replie sur `general-purpose` avec son motif (`relecteur.repli`).
 //
 // Contrat : JSON {oracle,domaine,artefact,verdict,findings[],non_juge[],motif?} · exit 0/1/2.
 // Usage : node oracle-boucle-l99.mjs <journal.json> | --self-test
@@ -74,6 +76,7 @@ const NJ = [
   "l'origine d'un défaut grave (correction ou antérieur) : l'oracle lit la déclaration, il ne rejoue pas le test de citation contre le texte de la passe précédente",
   "la présentation réelle sans étiquette et l'alternance de l'ordre de lecture du jugement apparié : l'oracle lit la déclaration",
   "l'exhaustivité de la fiche des prémisses : l'oracle ne sait pas quelles prémisses d'environnement le prompt pose",
+  "le type réel de l'agent lancé et son contexte de départ : l'oracle lit la déclaration, il ne lit pas le transcript",
 ];
 const GRAVES = new Set(['bloquant', 'majeur']);
 // TF-2024 (29/10/2026) : la borne de base reste 3 ; une extension décidée en cours de boucle va jusqu'à 5.
@@ -316,6 +319,17 @@ export function juger(j) {
     });
     passes.forEach((p, i) => {
       if (!(p.relecteur && p.relecteur.fiche_remise === true)) ko('B17', `passes[${i}].relecteur`, 'fiche des prémisses non remise au relecteur (fiche_remise: true, même si la fiche est vide)');
+    });
+  }
+
+  // B18 — type d'agent du relecteur (TF-2241) : les relecteurs aveugles partaient d'un agent général à 46 000 jetons de
+  // contexte, contre 17 000 pour le vérificateur dédié. Le type `relecteur` (lecture seule, contexte réduit, même modèle)
+  // est lancé d'office ; le repli sur l'agent général, hors du pilot ou si le type est absent, se motive au journal.
+  if (a && a.type_relecteur === 'relecteur') {
+    passes.forEach((p, i) => {
+      const r = p.relecteur || {};
+      if (r.type === 'relecteur' || (r.type === 'general-purpose' && propre(r.repli))) return;
+      ko('B18', `passes[${i}].relecteur`, `relecteur lancé avec le type « ${r.type === undefined ? 'non déclaré' : r.type} » : le type « relecteur », ou un repli sur « general-purpose » avec son motif (relecteur.repli)`);
     });
   }
 
@@ -631,6 +645,18 @@ function selfTest() {
   rougeB('B17 prémisse sans sortie', 'B17', fiche, (j) => { delete j.fiche_premisses[0].sortie; });
   rougeB('B17 prémisse sans heure lisible', 'B17', fiche, (j) => { j.fiche_premisses[1].heure = 'ce matin'; });
   rougeB('B17 fiche non remise au relecteur de la passe 2', 'B17', fiche, (j) => { delete j.passes[1].relecteur.fiche_remise; });
+  // TF-2241 (16/11/2026) : le type d'agent du relecteur. Le 06/11/2026, les 10 relecteurs, agents généraux sur Opus,
+  // ouvraient avec 46 190 à 46 279 jetons de contexte ; les 5 vérificateurs, agent dédié, avec 17 362 à 17 435.
+  const typee = () => {
+    const j = essai();
+    j.arbitre.type_relecteur = 'relecteur';
+    j.passes.forEach((p) => { p.relecteur.type = 'relecteur'; p.relecteur.contexte_depart = 16800; });
+    return j;
+  };
+  cas.push({ nom: 'TF-2241 vert — les relecteurs des 2 passes sont lancés avec le type dédié « relecteur »', j: typee(), attendu: [] });
+  cas.push({ nom: 'TF-2241 vert — repli motivé sur « general-purpose » (type absent hors du pilot)', j: (() => { const j = typee(); Object.assign(j.passes[1].relecteur, { type: 'general-purpose', repli: 'type relecteur absent de ce projet : dossier .claude/agents sans relecteur.md' }); return j; })(), attendu: [] });
+  rougeB('B18 relecteur général sans motif de repli', 'B18', typee, (j) => { j.passes[1].relecteur.type = 'general-purpose'; });
+  rougeB('B18 type du relecteur non déclaré', 'B18', typee, (j) => { delete j.passes[0].relecteur.type; });
   let ok = 0;
   const lignes = [];
   for (const c of cas) {

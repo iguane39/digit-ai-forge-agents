@@ -161,6 +161,20 @@ le reste de l'arbitre.
   doit réduire d'au moins 40 % les appels d'outil des relecteurs (16,5 par relecteur au relevé du
   06/11/2026, à relire au rapport de chaque agent et à porter à `relecteur.appels_outil`) sans perdre
   un majeur que le témoin trouvait ; sinon la fiche se retire. B17 contrôle le journal, pas la mesure.
+- **Type d'agent dédié pour le relecteur** (TF-2241, en essai) : `type_relecteur` : `"relecteur"`.
+  Mesuré le 06/11/2026 : les 10 relecteurs, agents `general-purpose` sur Opus, ouvrent avec 46 190 à
+  46 279 jetons de contexte avant leur première lecture, soit 55 % de leurs 835 459 jetons ; les 5
+  vérificateurs, agent dédié, avec 17 362 à 17 435. Le pilot définit le type `relecteur`
+  (`.claude/agents/relecteur.md`, TF-2554) : même modèle (Opus), lecture seule (Read, Grep, Glob),
+  aucune commande, contexte réduit. La boucle lance les relecteurs aveugles avec ce type
+  (`subagent_type` : `relecteur`), et non avec `general-purpose`. Hors du pilot, ou quand le type
+  n'existe pas dans l'environnement, elle se replie sur `general-purpose` et en écrit le motif à
+  `relecteur.repli`. Le type n'a aucun outil de commande : la fiche des prémisses (TF-2236) remplace
+  les commandes que le relecteur lançait, et tout besoin de rejeu se rend à l'orchestrateur, qui
+  recompte (étape 3). Le modèle ne change pas ; sa substitution se teste à part (étude 20261106b,
+  section 5). Le contexte de départ de chaque relecteur se lit au transcript de l'agent et se porte
+  à `relecteur.contexte_depart` (jetons) ; critère de l'essai : moins de 25 000 jetons, sinon le type
+  se retire de l'arbitre. B18 contrôle le type déclaré, pas la mesure.
 
 ## Une passe
 
@@ -255,7 +269,7 @@ boucle sans journal PASS n'est pas un mode boucle.
 Sous l'essai D-111 (a), l'arbitre porte en plus
 `retenue`, `verification_cloture` et `rejet_regression`, et l'oracle joue B8 à B10 ; avec
 `recompte_notes` et `reprise_unique` (TF-2202), il joue aussi B11 et B12 ; avec `score_de_passe` :
-`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16 ; avec `fiche_premisses` (TF-2236), B17.
+`"moyenne"` (TF-2237), B13 ; avec `arret_atteignable` (TF-2238), B14 ; avec `garde_cumulee` (TF-2239), B15 ; avec `jugement_apparie` (TF-2240), B16 ; avec `fiche_premisses` (TF-2236), B17 ; avec `type_relecteur` (TF-2241), B18.
 
 ## Annexe — sortie demandée au relecteur
 
