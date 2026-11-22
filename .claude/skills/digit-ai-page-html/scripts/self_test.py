@@ -908,6 +908,59 @@ def run_exemptions():
             for nom, tenu, detail in cas]
 
 
+# TF-2791 (factory-digit-ai-fr, 16/11/2026) — UN <h1> QUI N'EST PAS AFFICHE NE COMPTE PAS. Une maquette a deux ecrans dans un seul
+# fichier porte un <h1> par ecran, un seul est affiche : A3 refusait « 2 balises <h1> » sur une page conforme au rendu (deux refus
+# residuels, le 16/11/2026). Le compte baisse de ce que la lecture du fichier etablit comme masque (`hidden`, `display: none` en ligne
+# ou par une regle a selecteur simple, <template>, <dialog> ferme), et de rien d'autre : les cas rouges gardent le refus.
+BASE_H1 = "\n".join([
+    '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    "<title>Digit-AI — Maquette à deux écrans · essai — 20261122a</title>",
+    '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg/%3E">',
+    "<style>:root { --ink: #0f172a; } @@CSS@@ @media print { body { background: #fff; } }</style>",
+    "</head><body>@@CORPS@@</body></html>",
+])
+CSS_ECRANS = ".ecran{display:none}.ecran.actif{display:block}"
+# (nom, css, corps, nombre de refus « <h1> » attendus)
+CAS_H1_ECRANS = [
+    ("VERTE  le second ecran porte `hidden`", "", "<section><h1>Un</h1></section><section hidden><h1>Deux</h1></section>", 0),
+    ("VERTE  le second ecran est masque en ligne (display:none)", "", '<section><h1>Un</h1></section><section style="display:none"><h1>Deux</h1></section>', 0),
+    ("VERTE  la feuille masque .ecran et affiche .ecran.actif", CSS_ECRANS,
+     '<section class="ecran actif"><h1>Un</h1></section><section class="ecran"><h1>Deux</h1></section>', 0),
+    ("VERTE  le <h1> d'un <template> n'est pas affiche", "", "<section><h1>Un</h1></section><template><h1>Deux</h1></template>", 0),
+    ("VERTE  deux ecrans masques au chargement (un script en montre un)", "",
+     "<section hidden><h1>Un</h1></section><section hidden><h1>Deux</h1></section>", 0),
+    ("ROUGE  deux <h1> affiches : le refus reste", "", "<section><h1>Un</h1></section><section><h1>Deux</h1></section>", 1),
+    ("ROUGE  deux ecrans « actifs » : la regle d'affichage l'emporte, le refus reste", CSS_ECRANS,
+     '<section class="ecran actif"><h1>Un</h1></section><section class="ecran actif"><h1>Deux</h1></section>', 1),
+    ("ROUGE  la regle ne masque rien (display:block) : le refus reste", ".ecran{display:block}",
+     '<section class="ecran"><h1>Un</h1></section><section class="ecran"><h1>Deux</h1></section>', 1),
+    ("ROUGE  un selecteur a combinateur n'est pas evalue : le refus reste", "main .ecran2{display:none}",
+     '<main><section class="ecran1"><h1>Un</h1></section><section class="ecran2"><h1>Deux</h1></section></main>', 1),
+    ("ROUGE  trois <h1>, un seul masque : le refus reste, il en compte deux", "",
+     "<h1>Un</h1><h1>Deux</h1><section hidden><h1>Trois</h1></section>", 1),
+    ("ROUGE  aucun <h1> : le refus « Aucun » reste", "", "<p>Contenu.</p>", 1),
+]
+
+
+def run_h1_ecrans():
+    """TF-2791 — le compte des <h1> de A3 ne retient que ceux qu'aucun masquage lisible dans le fichier ne retire."""
+    cas = []
+    for nom, css, corps, attendu in CAS_H1_ECRANS:
+        fails, _ = check(BASE_H1.replace("@@CSS@@", css).replace("@@CORPS@@", corps), regles="charte")
+        h1 = [f for f in fails if "<h1>" in f]
+        cas.append((nom, len(h1) == attendu, h1))
+    # Le remede que le refus propose est JOUE : la page a deux <h1> affiches, rejouee avec `hidden` sur le second ecran, passe.
+    rouge = BASE_H1.replace("@@CSS@@", "").replace("@@CORPS@@", "<section><h1>Un</h1></section><section><h1>Deux</h1></section>")
+    refus = [f for f in check(rouge, regles="charte")[0] if "<h1>" in f]
+    cas.append(("REMEDE le refus propose `hidden` ; la page rejouee avec `hidden` passe",
+                bool(refus) and "`hidden`" in refus[0]
+                and not [f for f in check(rouge.replace("<section><h1>Deux", "<section hidden><h1>Deux"), regles="charte")[0] if "<h1>" in f],
+                refus))
+    return [{"fixture": nom, "verdict": "OK" if tenu else "ECHEC", "attendu": ["h1"], "obtenu": ["h1"] if tenu else [],
+             "detail": "" if tenu else " | ".join(detail)[:300]} for nom, tenu, detail in cas]
+
+
 def codes(messages, motif=RE_CODE):
     out = set()
     for m in messages:
@@ -7353,7 +7406,7 @@ def main():
     ap.add_argument("--output", choices=["text", "json"], default="text")
     args = ap.parse_args()
 
-    res = (run() + run_exemptions() + run_structure() + run_couverture() + run_l29_ter()
+    res = (run() + run_exemptions() + run_h1_ecrans() + run_structure() + run_couverture() + run_l29_ter()
            + run_glyphes_du_socle() + run_completude() + run_structure_completude()
            + run_markdown() + run_syne()
            + run_assets_inlinables() + run_assets_echelle_4pt() + run_fins_de_ligne_declarees()

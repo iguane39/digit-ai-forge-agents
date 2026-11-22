@@ -668,6 +668,92 @@ def _sans_commentaires(html: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# TF-2791 (factory-digit-ai-fr, 16/11/2026) — UN <h1> QUI N'EST PAS AFFICHÉ NE COMPTE PAS.
+#
+# LE FAIT. Une maquette à deux écrans dans un seul fichier porte un <h1> par écran, et un seul écran est affiché à la fois : l'autre
+# est masqué (`hidden`, `display: none`). A3 comptait les balises du fichier et refusait « 2 balises <h1> » sur une page dont le
+# rendu en montre une : deux refus résiduels sur une maquette conforme au rendu, le 16/11/2026. Le contrôle jugeait la forme du
+# fichier, pas ce que le lecteur voit — le défaut que TF-0174 avait déjà corrigé pour les <h1> des gabarits JS.
+#
+# CE QUI SE LIT SANS NAVIGATEUR, et rien de plus : un <h1> est écarté quand lui ou un ancêtre porte `hidden`, un `style` en
+# ligne `display: none`, ou qu'il est dans un <template> ou un <dialog> sans `open` ; ou quand une règle de la feuille (hors at-rule)
+# à sélecteur SIMPLE (balise, classes, identifiant, attributs, sans combinateur ni pseudo-classe) le met en `display: none`, sans
+# qu'une règle d'affichage de spécificité au moins égale le rende. Un sélecteur qu'on ne sait pas évaluer ne masque rien : la
+# page garde alors le compte d'avant. Le compte ne baisse jamais en dessous de ce que le fichier contient quand rien n'est masqué.
+RE_SEL_SIMPLE = re.compile(r"^(?:[a-z][\w-]*)?(?:\.[\w-]+|#[\w-]+|\[[^\]]+\])*$", re.I)
+RE_SEL_ATTR = re.compile(r"\[\s*([\w-]+)\s*(?:([~|^$*]?=)\s*(\"[^\"]*\"|'[^']*'|[^\]\s]+))?\s*\]")
+
+
+def _selecteur_simple_matche(n, sel):
+    """Vrai/Faux si le noeud `n` correspond au sélecteur SIMPLE `sel` ; None si `sel` n'est pas évaluable ici."""
+    sel = sel.strip()
+    if not sel or not RE_SEL_SIMPLE.match(sel):
+        return None
+    sans_attr = RE_SEL_ATTR.sub("", sel)
+    mt = re.match(r"^([a-zA-Z][\w-]*)", sans_attr)
+    if mt and n.tag != mt.group(1).lower():
+        return False
+    if any(c not in n.classes() for c in re.findall(r"\.([\w-]+)", sans_attr)):
+        return False
+    if any(n.attrs.get("id") != i for i in re.findall(r"#([\w-]+)", sans_attr)):
+        return False
+    for m in RE_SEL_ATTR.finditer(sel):
+        brut = n.attrs.get(m.group(1).lower())
+        if brut is None:
+            return False
+        op, val = m.group(2), (m.group(3) or "").strip("\"'")
+        if op is None:
+            continue
+        ok = {"=": brut == val, "~=": val in brut.split(), "|=": brut == val or brut.startswith(val + "-"),
+              "^=": bool(val) and brut.startswith(val), "$=": bool(val) and brut.endswith(val),
+              "*=": bool(val) and val in brut}.get(op, False)
+        if not ok:
+            return False
+    return True
+
+
+def _specificite_simple(sel):
+    sans_attr = RE_SEL_ATTR.sub("", sel)
+    return (len(re.findall(r"#[\w-]+", sans_attr)),
+            len(re.findall(r"\.[\w-]+", sans_attr)) + len(RE_SEL_ATTR.findall(sel)),
+            1 if re.match(r"^[a-zA-Z]", sel.strip()) else 0)
+
+
+def _masque_a_la_lecture(n, regles):
+    """Le noeud `n` est-il masqué, lui ou un ancêtre, de façon que la lecture du fichier établit ? `regles` : (sélecteur, déclarations)
+    hors at-rule, issues de `regles_css`."""
+    for x in [n, *n.ancetres()]:
+        if x.tag in ("template",) or (x.tag == "dialog" and "open" not in x.attrs):
+            return True
+        if "hidden" in x.attrs:
+            return True
+        inline = (x.attrs.get("style") or "").lower()
+        m = re.search(r"display\s*:\s*([\w-]+)", inline)
+        if m:
+            if m.group(1) == "none":
+                return True
+            continue                      # un `display` en ligne l'emporte sur toute règle de la feuille
+        masquants, affichants = [], []
+        for sel, decl in regles:
+            for morceau in sel.split(","):
+                d = decl.get("display")
+                if d is None or _selecteur_simple_matche(x, morceau) is not True:
+                    continue
+                (masquants if d.split()[0] == "none" else affichants).append(_specificite_simple(morceau.strip()))
+        if masquants and not any(a >= min(masquants) for a in affichants):
+            return True
+    return False
+
+
+def h1_affiches(html: str):
+    """(total, affichés) : les <h1> du balisage hors scripts, et ceux qu'aucun masquage lisible dans le fichier ne retire (TF-2791)."""
+    arbre = construire(html)
+    regles = [(s, d) for s, d, ctx in regles_css(arbre.styles, avec_contexte=True) if not ctx]
+    h1 = [x for x in arbre.racine.descendants() if x.tag == "h1" and not any(a.tag == "script" for a in x.ancetres())]
+    return len(h1), sum(1 for x in h1 if not _masque_a_la_lecture(x, regles))
+
+
+# ---------------------------------------------------------------------------
 # CHARTE — contrôles historiques, inchangés dans leur sévérité.
 # ---------------------------------------------------------------------------
 def check_charte(html: str):
@@ -753,10 +839,22 @@ def check_charte(html: str):
     # positif constaté : 7 h1 comptés sur une maquette SPA qui n'en affiche qu'un.
     hors_scripts = re.sub(r"<script\b[^>]*>.*?</script", "", low, flags=re.S)
     h1_count = len(re.findall(r"<h1[ >]", hors_scripts))
+    # TF-2791 : un <h1> d'un écran masqué (`hidden`, `display: none`, <template>…) ne compte pas, comme celui d'un gabarit JS (TF-0174).
+    # Le compte du fichier ne baisse que de ce que la lecture établit comme masqué ; sans masquage lisible, il reste celui d'avant.
+    h1_masques = 0
+    if h1_count > 1:
+        h1_total_arbre, h1_affiches_arbre = h1_affiches(html)
+        h1_masques = h1_total_arbre - h1_affiches_arbre
+    h1_visibles = h1_count - h1_masques
     if h1_count == 0:
         fails.append("Aucun <h1> (un titre principal unique est requis).")
-    elif h1_count > 1:
-        fails.append(f"{h1_count} balises <h1> — il en faut exactement une.")
+    elif h1_visibles > 1:
+        if h1_masques:
+            fails.append(f"{h1_visibles} balises <h1> affichées ({h1_masques} autre(s) masquée(s) ne comptent pas) — il en faut exactement une."
+                         " Une maquette à plusieurs écrans masque les écrans inactifs par l'attribut `hidden`.")
+        else:
+            fails.append(f"{h1_count} balises <h1> — il en faut exactement une. Une maquette à plusieurs écrans dans un seul fichier "
+                         "masque les écrans inactifs par l'attribut `hidden` : le <h1> d'un écran masqué ne compte pas (TF-2791).")
 
     if ":root" not in low:
         fails.append(":root absent (tokens CSS centralisés requis).")

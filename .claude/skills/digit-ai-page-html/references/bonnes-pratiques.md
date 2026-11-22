@@ -19,7 +19,7 @@ Cibles : **Viewer** (navigateur) et **PDF** (WeasyPrint) ; les divergences sont 
 ## 2 — Sémantique
 
 - 🔴 Structurer avec `<header> <main> <section> <footer>` (et `<nav>`/`<article>` si pertinent), pas un empilement de `<div>`.
-- 🔴 **Un seul `<h1>`**, puis `<h2>…<h6>` **sans saut de niveau**.
+- 🔴 **Un seul `<h1>`**, puis `<h2>…<h6>` **sans saut de niveau**. Une maquette à plusieurs écrans dans un seul fichier masque les écrans inactifs par l'attribut `hidden` : le `<h1>` d'un écran masqué ne compte pas (`check_html.py` A3, TF-2791).
 - 🔴 Ne jamais simuler un titre avec du gras : si ça ressemble à un titre, c'est un `<hN>`.
 - 🟡 Vraies listes (`<ul>`/`<ol>`/`<dl>`) ; `<table>` réservé aux **données** (avec `<th>`, `<caption>`).
 - 🟡 Bouton = `<button>`, lien = `<a>` ; pas de `<div>` cliquable.
