@@ -7,13 +7,29 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.51.0"
+  version: "1.52.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.52.0 (22/11/2026)** — **Lot fag de la campagne du 22/11/2026 : la page se mesure reposée (TF-2707, TF-2700, TF-2706), `check_html` ne compte pas le `<h1>` d'un écran masqué (TF-2791), le lecteur d'animation à scènes entre au socle (TF-2300), et V28 est mesurée sur les pages livrées (TF-2691) ; décisions R-58 : exécutées.**
+*(TF-2707, TF-2700, TF-2706 d'abord :* `render_page.py` chargeait la page et mesurait 250 ms plus tard, à l'instant où elle se trouvait : une encre sombre à 1,01:1
+sur un papier clair (libellé en fondu d'entrée), « agent » à 1,76:1 (animation CSS infinie), 34 à 35 chevauchements V4 bloquants par largeur entre les scènes
+empilées d'une animation SVG. Une animation **finie** est désormais menée à son terme avant toute mesure ; ce qu'une animation **infinie** fait varier
+(`opacity`, couleurs, `fill`, `filter`…) n'a pas d'état de repos : le ratio V2 sous seuil d'un tel texte, et le contraste V9 d'un tel actif, sont rangés au
+`non_juge` avec la propriété animée, jamais en bloquant ; V4 ne compare pas deux éléments dont les racines animées en boucle par opacité diffèrent (des scènes
+empilées, montrées une à une) et dit le compte des paires non jugées. Ce qu'aucune animation ne fait varier reste jugé. Six fixtures `animation-*` : chaque
+verte (PASS) a sa rouge conservée (encre pâle au repos, paragraphe statique pâle, deux libellés superposés dans une scène : FAIL), rouges sur HEAD intact.
+*TF-2791 ensuite :* A3 refusait « 2 balises `<h1>` » sur une maquette à deux écrans dont l'un est masqué ; le compte ne retient plus un `<h1>` que la lecture du
+fichier établit comme masqué (`hidden`, `display: none` en ligne ou par une règle à sélecteur simple sans règle d'affichage plus spécifique, `<template>`,
+`<dialog>` fermé) — un sélecteur non évaluable ne masque rien ; le refus propose `hidden`, et le remède est joué au banc. *TF-2300 :* `assets/scene-player.js` et
+`scene-player.css`, composant n° 17 de `composants.md` : manifeste JSON de scènes, lecture et pause, clavier, segments, mouvement réduit, impression, jugé dans un
+navigateur puis scène par scène par `render_page.py`. *TF-2691 :* la mesure de bruit de V28 sur 117 pages livrées donne 23 pages accusées (19,7 %), dont 10 gabarits
+Jinja non rendus ; 13 sur 107 pages rendues, et la capture lue ne montre pas le défaut annoncé : les seuils ne sont pas tenus pour établis, la décision de les
+recalibrer ou de déclasser V28 revient au porteur ; `zero-defaut-visuel.md` porte la mesure.)*
 
 **1.51.0 (16/11/2026)** — **La dispense `data-colonne-ok` ne vaut que sur le conteneur brideur (TF-2677), et `render_page` gagne V28, l'équilibre
 horizontal de l'encre (TF-2679) ; `oracle-filtres-tableau` lit les actifs déclarés pour G2 (TF-2618, quality-oracles) ; décisions R-58 : exécutées.**
@@ -1221,7 +1237,7 @@ contrôles que le producteur lance de toute façon.
 
 **Optionnel** —
 
-- Bibliothèque de composants chartés prêts à coller (KPI, badges de statut, barres de progression, légende, barre d'outils + compteur, tableau repliable en cartes, **onglets accessibles** `assets/tabs.js` — L16, **ligne de tableau dépliable** `assets/table-detail.js` — L17, gabarits de chapitre `.chap.lire`/`.chap.duo` — L2), validés par les oracles : [references/composants.md](references/composants.md).
+- Bibliothèque de composants chartés prêts à coller (KPI, badges de statut, barres de progression, légende, barre d'outils + compteur, tableau repliable en cartes, **onglets accessibles** `assets/tabs.js` — L16, **ligne de tableau dépliable** `assets/table-detail.js` — L17, gabarits de chapitre `.chap.lire`/`.chap.duo` — L2, **lecteur d'animation à scènes** `assets/scene-player.js` — composants.md § 17), validés par les oracles : [references/composants.md](references/composants.md).
 - **Entonnoir de conversion** (composant 16, TF-1875) : une suite d'étapes décroissantes, l'effectif écrit une fois et la conversion d'une étape à la suivante : [references/composants.md](references/composants.md) § 16 (assets : [assets/entonnoir.css](assets/entonnoir.css), [assets/entonnoir.js](assets/entonnoir.js)).
 - Recherche dans le document + compteur d'occurrences (pour catalogues/référentiels parcourus,
   insensible aux accents, viewer-only) : [references/composant-recherche.md](references/composant-recherche.md)
