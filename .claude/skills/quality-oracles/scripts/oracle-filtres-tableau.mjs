@@ -28,7 +28,10 @@
    chaque constat non retenu est DIT en non_juge (regle, date, motif, lieux), jamais tu, et une entree qui ne
    retient plus rien le dit aussi (elle est perimee). Le chemin d'une entree s'ecrit depuis la racine du depot qui
    garde la page (« output/... ») : il vaut pour tout chemin d'artefact qui se TERMINE par lui, a une frontiere de
-   dossier. `--exceptions <fichier>` lit une autre liste (la recette). */
+   dossier. `--exceptions <fichier>` lit une autre liste (la recette).
+
+   TF-2783 (22/11/2026) : les lignes `tr[data-detail]` et `tr[data-tf-empty]` du <tbody> ne sont ni comptees ni jugees, comme le
+   composant les ecarte (`corps()` de table-filters.js) : G1 et G11 a G13 ne lisent que les lignes de donnees. */
 
 import { readFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
@@ -111,8 +114,13 @@ function tables(html) {
       .map(r => [...r[1].matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)].map(c => ({ attrs: attrs(c[1]), brut: c[2], texte: texte(c[2]) }))) : [];
     /* TF-2196 : la VALEUR DE FACETTE d'une cellule est `data-tf-valeur` quand elle existe (comme le composant,
        TF-2195), sinon son texte. `cellules` garde le marquage brut de chaque cellule du corps. */
-    const rangees = tbody ? [...tbody[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
-      .map(r => [...r[1].matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)].map(c => ({ attrs: attrs(c[1]), brut: c[2] }))) : [];
+    /* TF-2783 (22/11/2026) : le composant ne compte ni ne filtre une ligne `tr[data-detail]` (le depliant pleine
+       largeur de la ligne qui la precede, TF-0175) ni la ligne d'etat vide `tr[data-tf-empty]` (TF-0430) : `corps()` de
+       table-filters.js les ecarte. L'oracle les ecarte de meme, pour G1 et G11 a G13 : une page a 21 fiches depliables
+       rendait G12 sur sa premiere colonne (21 cellules composites sur 42, toutes des `td colspan` de detail). */
+    const rangees = tbody ? [...tbody[1].matchAll(/<tr\b([^>]*)>([\s\S]*?)<\/tr>/gi)]
+      .filter(r => { const a = attrs(r[1]); return a['data-detail'] === undefined && a['data-tf-empty'] === undefined; })
+      .map(r => [...r[2].matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)].map(c => ({ attrs: attrs(c[1]), brut: c[2] }))) : [];
     const lignes = rangees.map(r => r.map(c => (c.attrs['data-tf-valeur'] !== undefined ? c.attrs['data-tf-valeur'].trim() : texte(c.brut))));
     out.push({ attrs: a, ths, rangeesEntete, lignes, cellules: rangees, ligne: html.slice(0, m.index).split('\n').length });
   }

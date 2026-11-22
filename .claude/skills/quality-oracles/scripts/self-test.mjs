@@ -4786,6 +4786,43 @@ else {
     : ok('TF-2618 rouge : sans actif ni composant, G2 reste bloquant (la rouge d\'origine)');
 }
 
+// TF-2783 (22/11/2026) — G11, G12 ET G13 NE COMPTENT NI LES LIGNES DE DÉTAIL NI LA LIGNE D'ÉTAT VIDE. Le fait (retour digit-ai-marketing
+// 20261122a) : une page à 21 fiches dépliables a rendu G12 sur la colonne « Fait » (21 cellules composites sur 42, toutes des `td colspan`
+// de `tr[data-detail]`), alors que `corps()` de table-filters.js écarte ces lignes ; le produit a contourné par un attribut sans fonction.
+// Sens joués sur la fixture filtres-detail-verte.html (8 fiches dépliables, 8 détails composites, 1 ligne d'état vide composite) :
+// (1) VERT : la page rend PASS, aucun constat ; (2) ROUGE CONSERVÉE : les huit cellules de DONNÉES de « Agent » rendues composites, détails
+// en place, restent refusées (G12) — rien n'est assoupli ; (3) ROUGE : si les lignes ne se déclarent plus détail (`data-detail` retiré), elles
+// redeviennent des lignes de données et G12 refuse — l'exclusion tient à l'attribut, pas à la forme de la cellule.
+{
+  const FILTRES = path.join(SKILLDIR, 'scripts', 'oracle-filtres-tableau.mjs');
+  const verte = fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'filtres-detail-verte.html'), 'utf8');
+  const jouer = (html) => {
+    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2783-'));
+    try {
+      const f = path.join(t, 'page.html');
+      fs.writeFileSync(f, html);
+      const r = spawnSync(process.execPath, [FILTRES, f], { encoding: 'utf8', timeout: 60000 });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    } finally { fs.rmSync(t, { recursive: true, force: true }); }
+  };
+  const regles = (j) => (j ? j.findings.map(f => f.regle).join(',') : 'illisible');
+  const v = jouer(verte);
+  !v || v.verdict !== 'PASS' || v.findings.length
+    ? ko('TF-2783 vert : 8 fiches dépliables dont les détails et la ligne vide sont composites doivent rendre PASS sans constat — obtenu ' + (v && v.verdict) + ' [' + regles(v) + ']')
+    : ok('TF-2783 vert : 8 fiches dépliables (8 tr[data-detail] et 1 tr[data-tf-empty] composites) → PASS, aucun constat G11, G12 ni G13');
+  const donneesComposites = verte.replace(/<tr><td>(Agent [ABC])<\/td>/g, '<tr><td><span>●</span> <strong>$1</strong> <small>réf.</small></td>');
+  const rc = jouer(donneesComposites);
+  const g12 = rc && rc.findings.filter(f => f.regle === 'G12');
+  donneesComposites === verte || !rc || rc.verdict !== 'FAIL' || g12.length !== 1 || !/8 cellule\(s\) composite\(s\) sur 8/.test(g12[0].message)
+    ? ko('TF-2783 rouge conservée : les 8 cellules de DONNÉES de « Agent » composites, détails en place, doivent rendre G12 sur 8 cellules de 8 — obtenu ' + (rc && rc.verdict) + ' ' + JSON.stringify(g12 && g12.map(f => f.message.slice(0, 90))))
+    : ok('TF-2783 rouge conservée : 8 cellules de données composites sur 8, détails en place → G12 (FAIL) : seules les lignes de données se comptent, et rien n\'est assoupli');
+  const sansDetail = jouer(verte.replace(/<tr data-detail hidden>/g, '<tr hidden>'));
+  const gsd = sansDetail && sansDetail.findings.filter(f => f.regle === 'G12');
+  !sansDetail || sansDetail.verdict !== 'FAIL' || gsd.length !== 1
+    ? ko('TF-2783 rouge : sans l\'attribut data-detail, les huit lignes redeviennent des lignes de données et G12 doit refuser — obtenu ' + (sansDetail && sansDetail.verdict) + ' [' + regles(sansDetail) + ']')
+    : ok('TF-2783 rouge : les mêmes lignes sans data-detail sont des lignes de données et G12 les refuse (l\'exclusion tient à l\'attribut, pas à la forme de la cellule)');
+}
+
 // TF-2296 (14/11/2026) — oracle-filtres-tableau lit une liste d'exceptions PAR CHEMIN pour une page SCELLÉE.
 // Le fait (09/11) : la maquette remise le 15/08 garde G12 en FAIL sur « Gain /5 » (7 cellules composites sur 10), et sa
 // seule sortie, data-filterable="off", modifie la page donc rompt son sceau. Les deux sens, sur la fixture rouge de
