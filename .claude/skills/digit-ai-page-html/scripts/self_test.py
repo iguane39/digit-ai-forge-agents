@@ -6669,6 +6669,111 @@ def run_animations_au_repos():
     return out
 
 
+# TF-2300 (digit-ai-marketing, 09/11/2026, D-181) — LE LECTEUR D'ANIMATION A SCENES EST UN COMPOSANT DU SOCLE. Ecrit une fois pour la serie
+# d'animations du 09/11 (deux passes de juges pour atteindre PASS, 31 espacements hors echelle), il vit dans assets/scene-player.js et
+# scene-player.css. Le banc le joue dans un navigateur : etat initial, lecture et pause, clavier, boutons, sommaire, mouvement reduit,
+# impression, manifeste faux (le composant ne s'arme pas et la page reste statique), et la page est jouee scene par scene par render_page.
+def run_scene_player():
+    """TF-2300 — comportement du composant scene-player. Silencieux si playwright est absent (voir run_rendu_large)."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return None
+    import tempfile
+    out = []
+
+    def cas(nom, ok, detail=""):
+        out.append({"fixture": f"scene-player-verte.html · {nom}", "verdict": "OK" if ok else "ECHEC",
+                    "attendu": "conforme", "obtenu": "conforme" if ok else detail[:200], "regle": "TF-2300 scene-player",
+                    "detail": "" if ok else detail[:300]})
+    url = (FIXTURES / "scene-player-verte.html").resolve().as_uri()
+    with sync_playwright() as p:
+        nav = p.chromium.launch()
+        try:
+            page = nav.new_page(viewport={"width": 1280, "height": 900})
+            page.goto(url)
+            page.wait_for_load_state("networkidle")
+            visibles = lambda: page.evaluate("[...document.querySelectorAll('[data-scene]')].map(s => !s.hidden)")
+            etat = lambda: page.evaluate("document.querySelector('[data-scene-player]').getAttribute('data-etat')")
+            courante = lambda: page.evaluate("document.querySelector('[data-scene-player]').getAttribute('data-scene-courante')")
+            cas("etat initial : scene 0 seule visible, etat pret, 3 segments, compteur, annonce",
+                visibles() == [True, False, False] and etat() == "pret" and courante() == "0"
+                and page.evaluate("document.querySelectorAll('.sp-seg').length") == 3
+                and page.evaluate("document.querySelector('.sp-compteur').textContent") == "scène 1 sur 3"
+                and "Scène 1 sur 3" in page.evaluate("document.querySelector('.sp-annonce').textContent"),
+                f"{visibles()} {etat()} {courante()}")
+            cas("le lecteur ne porte pas data-scene (render_page TF-2299 le jouerait comme une scene)",
+                page.evaluate("document.querySelector('[data-scene-player]').hasAttribute('data-scene')") is False)
+            cas("fleche droite puis suivante : scenes 1 puis 2, suivante desactivee a la derniere",
+                (page.keyboard.press("ArrowRight") or True) and courante() == "1" and visibles() == [False, True, False]
+                and (page.click("[data-commande=suivante]") or True) and courante() == "2"
+                and page.evaluate("document.querySelector('[data-commande=suivante]').disabled") is True)
+            cas("fleche gauche et precedente : retour a la scene 0, precedente desactivee",
+                (page.keyboard.press("ArrowLeft") or True) and courante() == "1"
+                and (page.click("[data-commande=precedente]") or True) and courante() == "0"
+                and page.evaluate("document.querySelector('[data-commande=precedente]').disabled") is True)
+            cas("sommaire data-aller : la scene 2 s'affiche et le sommaire la marque aria-current",
+                (page.click("[data-aller='2']") or True) and courante() == "2"
+                and page.evaluate("document.querySelector(\"[data-aller='2']\").getAttribute('aria-current')") == "step")
+            page.click("[data-aller='0']")
+            page.click("[data-commande=lecture]")
+            cas("lecture : etat lecture, bouton « Pause » ; espace : pause, bouton « Reprendre »",
+                etat() == "lecture" and page.evaluate("document.querySelector('.sp-libelle').textContent") == "Pause"
+                and (page.keyboard.press("Space") or True) and etat() == "pause"
+                and page.evaluate("document.querySelector('.sp-libelle').textContent") == "Reprendre",
+                etat())
+            page.click("[data-aller='2']")
+            page.click("[data-commande=lecture]")
+            page.evaluate("document.querySelector('[data-scene-player]').setAttribute('data-test', '1')")
+            cas("impression : TOUTES les scenes s'impriment et les commandes disparaissent",
+                (page.emulate_media(media="print") or True)
+                and page.evaluate("[...document.querySelectorAll('[data-scene]')].every(s => getComputedStyle(s).display !== 'none')")
+                and page.evaluate("getComputedStyle(document.querySelector('.sp-commandes')).display") == "none")
+            page.emulate_media(media="screen")
+            page.close()
+            # Mouvement reduit : aucune lecture automatique ; les scenes se parcourent a la main.
+            ctx = nav.new_context(reduced_motion="reduce", viewport={"width": 1280, "height": 900})
+            reduit = ctx.new_page()
+            reduit.goto(url)
+            reduit.wait_for_load_state("networkidle")
+            reduit.click("[data-commande=lecture]")
+            cas("mouvement reduit : lecture sans effet (etat pret) et navigation a la main possible",
+                reduit.evaluate("document.querySelector('[data-scene-player]').getAttribute('data-etat')") == "pret"
+                and (reduit.click("[data-commande=suivante]") or True)
+                and reduit.evaluate("document.querySelector('[data-scene-player]').getAttribute('data-scene-courante')") == "1")
+            ctx.close()
+            # ROUGE : un manifeste qui ne compte pas les scenes (2 entrees pour 3) n'arme pas le composant, la page reste statique.
+            rouge = nav.new_page()
+            rouge.goto(url)
+            rouge.wait_for_load_state("networkidle")
+            retour = rouge.evaluate("""() => {
+              const el = document.querySelector('[data-scene-player]');
+              const c = el.cloneNode(true);
+              c.removeAttribute('data-scene-player-ready'); c.removeAttribute('data-etat');
+              c.querySelector('.sp-segments').innerHTML = '';
+              c.querySelector('script[data-scenes]').textContent = JSON.stringify([{titre: 'a', duree_ms: 1000}, {titre: 'b', duree_ms: 1000}]);
+              el.replaceWith(c);
+              return {arme: window.DigitAIScenePlayer.init(c) !== null, pret: c.hasAttribute('data-scene-player-ready'), etat: c.hasAttribute('data-etat')};
+            }""")
+            cas("ROUGE manifeste faux (2 entrees, 3 scenes) : composant non arme, page statique",
+                retour == {"arme": False, "pret": False, "etat": False}, str(retour))
+            rouge.close()
+        finally:
+            nav.close()
+    # La page est jouee scene par scene par render_page (TF-2299) : trois scenes, aucune ne bloque.
+    captures = tempfile.mkdtemp(prefix="self-test-scene-player-")
+    try:
+        d = _rendre_json("scene-player-verte.html", [390, 1280], captures)
+        scenes = {w: ((d["breakpoints"][w].get("scenes") or {}).get("scenes") or {}) for w in ("390", "1280")} if d else {}
+        cas("render_page joue les 3 scenes a 390 et 1280 px et aucune ne bloque",
+            d is not None and all(len(s) == 3 and all(v.get("applique") for v in s.values()) for s in scenes.values())
+            and d["verdict"] == "PASS",
+            "illisible" if d is None else f"{d['verdict']} {({w: len(s) for w, s in scenes.items()})}")
+    finally:
+        shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_lot_a_check_html():
     """Quatre règles de `check_html.py` du lot du 29/10/2026 — chacune jouée dans les deux sens.
 
@@ -7478,6 +7583,10 @@ def main():
     animations = run_animations_au_repos()
     if animations:
         res += animations
+    # TF-2300 — le lecteur d'animation a scenes du socle (scene-player) : comportement, mouvement reduit, impression, manifeste faux.
+    lecteur_scenes = run_scene_player()
+    if lecteur_scenes:
+        res += lecteur_scenes
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

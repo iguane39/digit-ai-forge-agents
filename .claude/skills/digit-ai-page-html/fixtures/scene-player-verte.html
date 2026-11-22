@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixture lecteur à scènes — verte : trois scènes, le composant scene-player — 20261122a</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563EB'/%3E%3C/svg%3E">
+<!-- TF-2300 (D-181), sens VERT. Le composant `assets/scene-player.js` + `scene-player.css` : un manifeste JSON de trois scènes,
+     des sections `[data-scene]` dont une seule est visible, trois commandes (précédente, lecture, suivante), des segments de
+     progression, le clavier (Espace, flèches) et un sommaire `data-aller`. La page est jouée par render_page scène par scène
+     (TF-2299). Mouvement réduit : aucune lecture automatique. Impression : toutes les scènes. -->
+<link rel="stylesheet" href="../assets/scene-player.css">
+<style>
+:root {
+  --head: "Montserrat", system-ui, sans-serif;
+  --sans: "Inter", system-ui, sans-serif;
+  --ink: #0F172A;
+  --muted: #475569;
+  --line: #E6EAF2;
+  --surface: #FFFFFF;
+  --bg: #FAFBFF;
+  --blue: #1d4ed8;
+  --r: 12px;
+}
+body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--bg); line-height: 1.5; }
+.wrap { padding: 24px 20px 48px; }
+h1 { font-family: var(--head); font-weight: 800; font-size: 1.8rem; line-height: 1.2; margin: 0 0 8px; }
+.chapeau { color: var(--muted); margin: 0 0 24px; }
+.sp-scene h3 { font-family: var(--head); font-weight: 800; font-size: 1.5rem; line-height: 1.25; margin: 0 0 12px; }
+.sp-scene p { font-size: 1.05rem; margin: 0 0 12px; }
+.sommaire { margin: 20px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.sommaire button { font: inherit; min-height: 44px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Trois scènes, une seule visible à la fois</h1>
+      <p class="chapeau">Fixture de TF-2300 : le lecteur du socle, avec son manifeste, ses commandes et son sommaire.</p>
+    </header>
+    <main>
+      <div class="sp" data-scene-player role="region" aria-label="Animation en 3 scènes">
+        <div class="sp-scenes">
+          <section class="sp-scene" data-scene="0" aria-labelledby="titre-scene-0">
+            <h3 id="titre-scene-0">Scène 1, lire le besoin</h3>
+            <p>Un texte court qui tient à toutes les largeurs.</p>
+          </section>
+          <section class="sp-scene" data-scene="1" aria-labelledby="titre-scene-1" hidden>
+            <h3 id="titre-scene-1">Scène 2, juger le livrable</h3>
+            <p>Un texte court qui tient à toutes les largeurs.</p>
+          </section>
+          <section class="sp-scene" data-scene="2" aria-labelledby="titre-scene-2" hidden>
+            <h3 id="titre-scene-2">Scène 3, remettre le résultat</h3>
+            <p>Un texte court qui tient à toutes les largeurs.</p>
+          </section>
+        </div>
+        <div class="sp-commandes">
+          <button type="button" class="sp-commande" data-commande="precedente" aria-label="Scène précédente">← Précédente</button>
+          <button type="button" class="sp-commande sp-lecture" data-commande="lecture" aria-label="Lancer la lecture"><span class="sp-icone" aria-hidden="true"></span><span class="sp-libelle">Lecture</span></button>
+          <button type="button" class="sp-commande" data-commande="suivante" aria-label="Scène suivante">Suivante →</button>
+          <div class="sp-segments" aria-hidden="true"></div>
+          <span class="sp-compteur" aria-hidden="true">scène 1 sur 3</span>
+        </div>
+        <p class="sp-annonce sr-only" aria-live="polite"></p>
+        <script type="application/json" data-scenes>[{"titre":"Lire le besoin","duree_ms":6000},{"titre":"Juger le livrable","duree_ms":6000},{"titre":"Remettre le résultat","duree_ms":6000}]</script>
+      </div>
+      <nav aria-label="Scènes de l'animation">
+        <ul class="sommaire">
+          <li><button type="button" data-aller="0">Scène 1</button></li>
+          <li><button type="button" data-aller="1">Scène 2</button></li>
+          <li><button type="button" data-aller="2">Scène 3</button></li>
+        </ul>
+      </nav>
+    </main>
+  </div>
+  <script src="../assets/scene-player.js"></script>
+  <script>DigitAIScenePlayer.initAll();</script>
+</body>
+</html>

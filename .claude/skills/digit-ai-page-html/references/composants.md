@@ -635,3 +635,46 @@ Deux étapes égales sont admises (aucune perte).
 **Tokens et limites.** Une seule teinte (`--entonnoir-barre`, sinon `--blue`) : la largeur dit le reste. Échelle 4 pt,
 aucune couleur en dur. Pas de valeurs négatives, pas de sous-entonnoir ni de branches (deux entonnoirs se posent côte
 à côte). Banc : `fixtures/entonnoir.html`, jugé par `render_page.py` à 390 et 1440 px (`run_graphiques_tf1875`).
+
+## 17 — Lecteur d'animation à scènes 🔴 (dès qu'une animation se lit scène par scène, TF-2300, D-181)
+
+**Assets** : `assets/scene-player.js` + `assets/scene-player.css`. Le lecteur écrit une fois pour la série d'animations du
+09/11/2026 (deux passes de juges pour atteindre PASS, 31 espacements hors échelle corrigés) est un composant du socle : un
+manifeste de scènes, la lecture et la pause, le clavier, des segments de progression, le mouvement réduit, l'impression.
+
+```html
+<div class="sp" data-scene-player role="region" aria-label="Animation en 3 scènes">
+  <div class="sp-scenes">
+    <section class="sp-scene" data-scene="0">…</section>
+    <section class="sp-scene" data-scene="1" hidden>…</section>
+    <section class="sp-scene" data-scene="2" hidden>…</section>
+  </div>
+  <div class="sp-commandes">
+    <button type="button" class="sp-commande" data-commande="precedente">← Précédente</button>
+    <button type="button" class="sp-commande sp-lecture" data-commande="lecture"><span class="sp-icone" aria-hidden="true"></span><span class="sp-libelle">Lecture</span></button>
+    <button type="button" class="sp-commande" data-commande="suivante">Suivante →</button>
+    <div class="sp-segments" aria-hidden="true"></div><span class="sp-compteur" aria-hidden="true"></span>
+  </div>
+  <p class="sp-annonce sr-only" aria-live="polite"></p>
+  <script type="application/json" data-scenes>[{"titre":"Lire","duree_ms":6000}, …]</script>
+</div>
+<script src="assets/scene-player.js"></script><script>DigitAIScenePlayer.initAll();</script>
+```
+
+**Le contrat.** Le manifeste compte exactement autant d'entrées que de `[data-scene]` (`titre`, `duree_ms`) : sinon le composant
+ne s'arme pas et la page reste statique (première scène visible, les autres `hidden`). Un sommaire facultatif pose
+`data-aller="<index>"` sur ses boutons. Espace lance ou met en pause, les flèches changent de scène ; la fin de la dernière
+scène arrête la lecture (« Rejouer »). L'état se lit sur le lecteur (`data-etat` : pret, lecture, pause, fin ;
+`data-scene-courante`) — **jamais `data-scene` sur le lecteur ni sur `<body>`** : `render_page.py` (TF-2299) joue chaque
+`[data-scene]` comme une scène, au clavier puis par `[data-aller]`.
+
+**Mouvement réduit et impression.** Sous `prefers-reduced-motion`, aucune lecture automatique : les scènes se parcourent à
+la main et aucun segment ne se remplit. À l'impression, toutes les scènes s'impriment et les commandes disparaissent
+(`@media print` de `scene-player.css`, jugée par L16). Jetons du socle seulement (`--surface`, `--line`, `--ink`,
+`--muted`, `--blue`, `--bg`, `--r`), échelle 4 pt.
+
+**Limites.** Un seul jeu de scènes par lecteur ; pas de transitions entre scènes (la page peut animer les contenus de la
+scène courante, ces animations se jouent à l'état reposé, TF-2707) ; les écouteurs du clavier sont posés sur le document,
+donc une page ne porte qu'un lecteur actif au clavier. Banc : `fixtures/scene-player-verte.html`, joué dans un navigateur
+(`run_scene_player` : état initial, flèches, boutons, sommaire, lecture et pause, impression, mouvement réduit, manifeste
+faux) puis scène par scène par `render_page.py` à 390 et 1 280 px.

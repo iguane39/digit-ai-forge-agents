@@ -1,0 +1,44 @@
+/* scene-player.css — lecteur d'animation a scenes (TF-2300, D-181). Compagnon de scene-player.js.
+   Jetons du socle uniquement (:root du boilerplate : --surface, --line, --ink, --muted, --blue, --bg, --r), echelle 4 pt,
+   clair et sombre par les jetons. Une scene = un bloc ; seule la courante est visible. */
+
+.sp { margin: 24px 0; }
+.sp-scenes { min-height: 0; }
+.sp-scene { padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.sp-scene[hidden] { display: none; }
+
+.sp-commandes { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+.sp-commande {
+  appearance: none; font: inherit; font-size: .92rem; min-height: 44px; padding: 8px 16px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--r-sm, 6px);
+}
+.sp-commande:disabled { opacity: .5; cursor: default; }
+.sp-lecture { background: var(--blue); color: var(--surface); border-color: var(--blue); min-width: 9.5em; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.sp-icone { display: inline-flex; }
+.sp-commande:focus-visible, [data-aller]:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+@media (hover: hover) { .sp-commande:hover:not(:disabled), [data-aller]:hover { border-color: var(--blue); } }
+
+.sp-segments { flex: 1 1 260px; display: flex; gap: 8px; }
+.sp-seg { flex: 1; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.sp-seg-plein { display: block; height: 100%; background: var(--blue); transform: scaleX(0); transform-origin: left center; }
+.sp-seg.passe .sp-seg-plein { transform: scaleX(1); }
+@keyframes sp-remplir { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.sp-seg.courant .sp-seg-plein { animation: sp-remplir var(--sp-seg-duree, 10s) linear both; }
+.sp[data-etat]:not([data-etat="lecture"]) .sp-seg.courant .sp-seg-plein { animation-play-state: paused; }
+.sp[data-etat="fin"] .sp-seg .sp-seg-plein { animation: none; transform: scaleX(1); }
+.sp-compteur { font-size: .85rem; color: var(--muted); }
+
+[data-aller][aria-current="step"] { border-color: var(--blue); background: var(--bg); }
+
+/* Mouvement reduit : aucun remplissage anime, tout est lisible d'emblee. */
+@media (prefers-reduced-motion: reduce) {
+  .sp *, .sp *::before, .sp *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .sp-seg.courant .sp-seg-plein { animation: none !important; transform: scaleX(.5); }
+}
+
+/* Impression : TOUTES les scenes s'impriment (L16/L17 jugent la regle), les commandes disparaissent. */
+@media print {
+  .sp-commandes { display: none !important; }
+  .sp-scene[hidden] { display: block !important; }
+  .sp-scene { break-inside: avoid; page-break-inside: avoid; }
+}
