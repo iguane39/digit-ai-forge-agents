@@ -15,7 +15,8 @@
 // un hook, jamais une étape de build.
 //
 //   node maj-versions-livrees.mjs --constat   ce qui a dérivé, sans rien écrire (exit 1 si dérive)
-//   node maj-versions-livrees.mjs --livrer    déclare le contenu actuel du dépôt comme LIVRÉ
+//   node maj-versions-livrees.mjs --livrer    déclare le contenu actuel du dépôt comme LIVRÉ, et ajoute l'entrée du jour en tête
+//                                             du journal `mis_a_jour_le` sans effacer les entrées précédentes (TF-2687)
 //
 // Exit : 0 = aligné (ou manifeste écrit) · 1 = dérive constatée · 2 = usage.
 
@@ -112,7 +113,13 @@ if (constat) {
 
 const horodatage = new Date().toISOString().slice(0, 10);
 manifeste.skills = reel;
-manifeste.mis_a_jour_le = `${horodatage} (maj-versions-livrees --livrer : ${ecarts.length} écart(s) soldé(s))`;
+// TF-2687 (22/11/2026). `mis_a_jour_le` est le JOURNAL des lots livrés : une entrée par livraison, la plus récente en tête, chacune
+// reliée à la précédente par « ; précédent : ». Ce script le REMPLAÇAIT par une phrase générique : à la fusion de 4 branches
+// (16/11/2026, lot fint), il a fallu réinjecter le journal à la main après chaque régénération, et le commit c5f57b3 de la forge
+// en a perdu toute la chaîne. `--livrer` garde donc le journal existant et n'ajoute que l'entrée du jour, en tête.
+const entreeDuJour = `${horodatage} (maj-versions-livrees --livrer : ${ecarts.length} écart(s) soldé(s)`;
+const journalExistant = typeof manifeste.mis_a_jour_le === 'string' ? manifeste.mis_a_jour_le.trim() : '';
+manifeste.mis_a_jour_le = journalExistant ? `${entreeDuJour} ; précédent : ${journalExistant})` : `${entreeDuJour})`;
 fs.writeFileSync(MANIFESTE, `${JSON.stringify(manifeste, null, 2)}\n`, 'utf8');
 console.log(`versions-livrees.json écrit — ${Object.keys(reel).length} skills, ${ecarts.length} écart(s) soldé(s).`);
 for (const e of ecarts) console.log(`  · ${e}`);

@@ -117,6 +117,27 @@ for (const d of fs.readdirSync(SKILLSROOT, { withFileTypes: true })) {
       if (!sensOk) ko(`TF-2493 sens rouge/vert : le constat de livraison ne se joue pas dans les deux sens (aligné exit ${aligne.status}, en retard exit ${enRetard.status} : ${(enRetard.stdout || enRetard.stderr || '').trim().slice(0, 160)})`);
       else if (reel.status !== 0) ko(`TF-2493 : versions-livrees.json diverge des skills montés — ${(reel.stdout || reel.stderr || '').trim().split(/\r?\n/).filter((l) => l.startsWith('  ·')).join(' ') || 'sortie illisible'} ; node maj-versions-livrees.mjs --livrer, dans le commit qui livre le skill`);
       else ok('TF-2493 : versions-livrees.json aligné sur les skills montés (constat exit 0) ; le constat échoue sur un manifeste en retard (jouet 1.0.0 contre 1.1.0) et passe sur un manifeste aligné');
+      // TF-2687 (22/11/2026) — `--livrer` GARDE LE JOURNAL `mis_a_jour_le` : il y ajoute l'entrée du jour en tête, il ne le remplace pas.
+      // Le 16/11/2026, à la fusion de 4 branches, le journal des lots a dû être réinjecté à la main après chaque régénération. Sens rouge :
+      // le manifeste en retard (jouet 1.0.0 contre 1.1.0) porte un journal de deux lots ; après `--livrer`, la version est livrée ET
+      // les deux entrées sont encore là, l'entrée du jour devant. Sens vert : un manifeste sans journal reçoit la seule entrée du jour.
+      {
+        const journal = '2026-11-16 (lot fint : jouet 1.0.0 (TF-2000) ; précédent : 2026-11-15 (lot ag : jouet 0.9.0 (TF-1999)))';
+        fs.writeFileSync(path.join(jetable, 'versions-livrees.json'), JSON.stringify({ mis_a_jour_le: journal, skills: { jouet: { version: '1.0.0', source: 'frontmatter SKILL.md' } } }));
+        const livre = spawnSync(process.execPath, [path.join(jetable, 'maj-versions-livrees.mjs'), '--livrer'], { cwd: jetable, encoding: 'utf8' });
+        const apres = JSON.parse(fs.readFileSync(path.join(jetable, 'versions-livrees.json'), 'utf8'));
+        const jour = new Date().toISOString().slice(0, 10);
+        const garde = livre.status === 0 && apres.skills.jouet.version === '1.1.0' && typeof apres.mis_a_jour_le === 'string'
+          && apres.mis_a_jour_le.startsWith(`${jour} (maj-versions-livrees --livrer : 1 écart(s) soldé(s)`) && apres.mis_a_jour_le.includes(journal);
+        // Sans journal : l'entrée du jour seule, et le `)` ferme l'entrée.
+        fs.writeFileSync(path.join(jetable, 'versions-livrees.json'), JSON.stringify({ skills: { jouet: { version: '1.0.0', source: 'frontmatter SKILL.md' } } }));
+        spawnSync(process.execPath, [path.join(jetable, 'maj-versions-livrees.mjs'), '--livrer'], { cwd: jetable, encoding: 'utf8' });
+        const neuf = JSON.parse(fs.readFileSync(path.join(jetable, 'versions-livrees.json'), 'utf8'));
+        const seul = neuf.mis_a_jour_le === `${jour} (maj-versions-livrees --livrer : 1 écart(s) soldé(s))`;
+        !garde ? ko(`TF-2687 : --livrer doit livrer la version ET garder le journal existant sous l'entrée du jour — obtenu ${JSON.stringify(apres.mis_a_jour_le)} (exit ${livre.status})`)
+          : !seul ? ko(`TF-2687 : sans journal, --livrer écrit l'entrée du jour seule — obtenu ${JSON.stringify(neuf.mis_a_jour_le)}`)
+          : ok('TF-2687 : --livrer garde le journal mis_a_jour_le (les deux lots précédents restent, l\'entrée du jour devant) ; sans journal, l\'entrée du jour seule');
+      }
     } finally { fs.rmSync(jetable, { recursive: true, force: true }); }
   }
 }
