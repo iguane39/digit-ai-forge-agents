@@ -15,6 +15,14 @@ et nommage R-24, renommage d'un domaine existant par la seule mutation GraphQL
 `serviceDomainUpdate` à 5 champs requis, origine publique posée en variable d'environnement).
 Mise à jour du corpus source uniquement — structure admise inchangée, admission non rejugée.
 
+**Corpus relu et complété le 22/11/2026 (TF-2744, L-02)** : les adresses de documentation des points 1 à 7 relues et datées
+(toutes redirigées vers la documentation réorganisée), l'identifiant de région corrigé (`europe-west4-drams3a`), la
+contradiction sur l'adresse d'écoute expliquée par deux chemins (edge en `0.0.0.0`, réseau privé legacy en IPv6), le retour arrière
+par l'API levé (`deploymentRollback`), et les points 16 à 24 (port cible, CNAME et TXT, jetons et API, « Wait for CI », lier avant
+déployer, volumes et variables, Railpack, en-têtes) avec, pour chaque constat C-066 à C-088, ce que la documentation établit et ce
+qui reste **non vérifié** (`references/corpus-ops-railway.md`). Mise à jour du corpus source uniquement — rubrique, frontière et
+verdict d'admission du 11/08/2026 non rejugés.
+
 ## 0. Mérite un expert (3 conditions, renseignées à la création)
 1. Récurrence : le cas réel prouvé de TF-0040 : ASD déployé sur Railway artisanalement (preuve du coût de D-P1) ; toute cible `plan railway` de forge-ops consommera cette fiche
 2. Corpus disponible : checklist propre constituée (`references/corpus-ops-railway.md`, sources officielles)
