@@ -205,10 +205,13 @@ check("ledger TF-0385 : `oracles_verdict` sans `oracle` → FAIL qui NOMME le ch
 // DÉCLARE, sur le modèle exact de R-32 bis du pilot.
 check("ledger TF-0385 : un ledger SANS `schema_ledger` est DÉCLARÉ non vérifié, jamais mis en échec", () => {
   const lf = join(out, "ledger-anterieur.jsonl");
-  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "avant le schema" })]);
-  run(ledger, ["append", lf, JSON.stringify({
-    type: "oracles_verdict", etape: "tests", oracles: { forge_tests: "PARTIEL" },
-  })]);
+  // TF-2686 (22/11/2026) : `append` refuse désormais l'entrée amputée même sans schéma ; le ledger ANTÉRIEUR, lui, existe déjà
+  // sur le disque avec ses entrées amputées (1 444 entrées hors vocabulaire sur 7 243 au parc, TF-2245). On le pose donc tel qu'il
+  // a été écrit, brut : l'assertion de `verify` ci-dessous ne bouge pas.
+  ecrireBrut(lf, [
+    { seq: 1, ts: "2026-01-01T10:00:00Z", type: "run_open", substrat: "avant le schema" },
+    { seq: 2, ts: "2026-01-01T10:01:00Z", type: "oracles_verdict", etape: "tests", oracles: { forge_tests: "PARTIEL" } },
+  ]);
   const v = run(ledger, ["verify", lf]);
   if (!v.includes("[PASS]")) throw new Error("un ledger antérieur au schéma ne doit PAS échouer");
   if (!v.includes("[NON VÉRIFIÉ]")) throw new Error("l antériorité doit être DITE, pas tue : " + v);
@@ -1535,7 +1538,7 @@ const TYPES_ATTENDUS = ["run_open", "etape_open", "invocation", "oracles_verdict
   "reponse_humain", "etape_close", "retour", "relais_arme", "run_close", "rectification_versions_forges",
   "rectification_run_open", "rectification_horodatage", "rectification_forges_mobilisees", "go_publication",
   "conflit_regles", "demande_emise", "demande_recue", "deplacement_effectue", "deplacement_en_attente",
-  "demande_humain", "qualification_enclenchement", "anteriorite_ledger", "rectification_doublon", "decision_retiree", "secret_range"];
+  "demande_humain", "qualification_enclenchement", "anteriorite_ledger", "rectification_doublon", "decision_retiree", "lot_remis", "secret_range"];
 check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'écriture, le message nomme le vocabulaire, rien n'est écrit", () => {
   const lf = join(out, "t2245-vocabulaire.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
@@ -1548,7 +1551,7 @@ check("ledger TF-2245 (rouge/vert) : un type hors vocabulaire est refusé à l'�
   const annonce = (err.match(/attendus ([a-z_, ]+) \(/) || [])[1];
   if (!annonce || annonce !== [...TYPES_ATTENDUS].sort().join(", ")) throw new Error("le vocabulaire annoncé diverge de la liste attendue : " + annonce);
 });
-check("ledger TF-2245 : les 27 types du vocabulaire sont acceptés à l'écriture (sauf `rectification_doublon`, qui exige un doublon réel : test dédié, TF-2424)", () => {
+check("ledger TF-2245 : les 28 types du vocabulaire sont acceptés à l'écriture (sauf `rectification_doublon`, qui exige un doublon réel : test dédié, TF-2424)", () => {
   const lf = join(out, "t2245-24-types.jsonl");
   run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2245" })]);
   const payload = {
@@ -1576,6 +1579,66 @@ check("ledger TF-2245 : les 27 types du vocabulaire sont acceptés à l'écritur
     if (mots(/^TYPES = \{([^}]*)\}/m) !== attendu(TYPES_ATTENDUS)) throw new Error("le vocabulaire des types diverge de ledger.py : " + mots(/^TYPES = \{([^}]*)\}/m));
     if (mots(/^HORS_RUN = \{([^}]*)\}/m) !== attendu(["retour", "question_humain", "reponse_humain", "demande_humain"])) throw new Error("les types hors run divergent de ledger.py");
     if (mots(/^SORTS = \(([^)]*)\)/m) !== attendu(["retire", "conserve", "a_decider"])) throw new Error("les sorts de remplacement divergent de ledger.py");
+  });
+}
+// --- TF-2686 (22/11/2026) : l'entrée amputée et le type `lot_remis`, que `gabarits/ledger.py` du pilot refuse / admet depuis le
+// 16/11 (TF-2630) et le 13/11 (TF-2652) et que ce script ignorait. Sans `schema_ledger` au `run_open`, rien n'exigeait `oracle` ni
+// `verdict` à l'écriture : l'entrée amputée s'écrivait, code 0, et `verify` la déclarait antérieure.
+check("ledger TF-2686 (vert) : `lot_remis` est écrit (lot, sas, verdict) et le ledger reste intègre", () => {
+  const lf = join(out, "t2686-lot-remis.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2686" })]);
+  run(ledger, ["append", lf, JSON.stringify({ type: "lot_remis", lot: "digit-ai-exemple - RETOURS - 20261122a", sas: "input/00-retours/_arrivee", verdict: "PASS" })]);
+  const e = lignesDe(lf);
+  if (e.length !== 2 || e[1].type !== "lot_remis" || e[1].lot !== "digit-ai-exemple - RETOURS - 20261122a") throw new Error("`lot_remis` aurait dû être écrit tel quel : " + JSON.stringify(e[1]));
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre");
+  // Le journal hors run ne l'admet pas : la remise d'un lot s'écrit au ledger du run, comme le fait ledger.py (HORS_RUN).
+  const horsRun = join(out, "t2686-hors-run", "hors-run.jsonl");
+  mkdirSync(dirname(horsRun), { recursive: true });
+  run(ledger, ["append", horsRun, JSON.stringify({ type: "retour", source: "produit", detail: "t2686" })]);
+  const err = refuse(horsRun, { type: "lot_remis", lot: "x" });
+  if (!err.includes("hors run")) throw new Error("le journal hors run doit refuser `lot_remis` en le disant : " + err.slice(0, 200));
+});
+check("ledger TF-2686 (rouge) : une clé « champ », ou un `oracles_verdict` sans `oracle` ou sans `verdict` (absent, vide, blanc, non texte), est refusé sans schéma comme sous schéma, rien n'est écrit", () => {
+  for (const [nom, ouverture] of [["sans-schema", { type: "run_open", substrat: "t2686" }], ["schema-1.1", { type: "run_open", substrat: "t2686", schema_ledger: "1.1", forges_mobilisees: ["agents"] }]]) {
+    const lf = join(out, `t2686-amputee-${nom}.jsonl`);
+    run(ledger, ["append", lf, JSON.stringify(ouverture)]);
+    const champ = refuse(lf, { type: "oracles_verdict", champ: "oracle=oracle-x" });
+    if (!champ.includes("TF-2686") || !champ.includes("`champ` n'est pas un nom de champ") || !champ.includes("oracle-conformite-projet")) throw new Error(`${nom} : le refus d'une clé « champ » doit nommer TF-2686, dire que ce n'est pas un nom de champ et donner l'exemple : ` + champ.slice(0, 300));
+    refuse(lf, { type: "retour", champ: "x=y" });
+    const sansOracle = refuse(lf, { type: "oracles_verdict", verdict: "PASS" });
+    if (!sansOracle.includes("`oracle`") || sansOracle.includes("`verdict` ")) throw new Error(`${nom} : sans \`oracle\`, le refus nomme \`oracle\` seul : ` + sansOracle.slice(0, 300));
+    const sansVerdict = refuse(lf, { type: "oracles_verdict", oracle: "oracle-x" });
+    if (!sansVerdict.includes("`verdict`")) throw new Error(`${nom} : sans \`verdict\`, le refus nomme \`verdict\` : ` + sansVerdict.slice(0, 300));
+    const aucun = refuse(lf, { type: "oracles_verdict", cible: "forge" });
+    if (!aucun.includes("`oracle` ni `verdict`")) throw new Error(`${nom} : sans les deux, le refus les nomme tous deux : ` + aucun.slice(0, 300));
+    refuse(lf, { type: "oracles_verdict", oracle: "  ", verdict: "PASS" });
+    refuse(lf, { type: "oracles_verdict", oracle: "oracle-x", verdict: "" });
+    refuse(lf, { type: "oracles_verdict", oracle: "oracle-x", verdict: 1 });
+    refuse(lf, { type: "oracles_verdict", oracle: ["oracle-x"], verdict: "PASS" });
+    if (lignesDe(lf).length !== 1) throw new Error(`${nom} : aucune entrée amputée ne doit être écrite (1 entrée attendue, le run_open) : ` + lignesDe(lf).length);
+  }
+});
+check("ledger TF-2686 (remède joué) : l'exemple que le refus donne est écrit tel quel, et un `oracles_verdict` complet passe sans schéma", () => {
+  const lf = join(out, "t2686-remede.jsonl");
+  run(ledger, ["append", lf, JSON.stringify({ type: "run_open", substrat: "t2686" })]);
+  const err = refuse(lf, { type: "oracles_verdict", verdict: "PASS" });
+  const m = err.match(/append <ledger\.jsonl> '(\{[^']*\})'/);
+  if (!m) throw new Error("le refus doit porter un exemple `append <ledger.jsonl> '{…}'` : " + err.slice(0, 300));
+  run(ledger, ["append", lf, m[1]]);
+  const e = lignesDe(lf);
+  if (e.length !== 2 || e[1].type !== "oracles_verdict" || e[1].oracle !== "oracle-conformite-projet" || e[1].verdict !== "PASS") throw new Error("l'exemple du refus doit s'écrire tel quel : " + JSON.stringify(e[1]));
+  if (!run(ledger, ["verify", lf]).includes("[PASS]")) throw new Error("le ledger doit rester intègre");
+});
+{
+  const gabarit = join(process.env.FORGE_ROOT || join(here, "..", "..", "..", "..", ".."), "digit-ai-factory", "gabarits", "ledger.py");
+  if (!existsSync(gabarit)) console.log(`  [NON JOUÉ] ledger TF-2686 : parité de la forme avec gabarits/ledger.py — gabarit du pilot introuvable (${gabarit})`);
+  else check("ledger TF-2686 : parité de la forme avec gabarits/ledger.py du pilot — mêmes champs dus d'un verdict, même refus d'une clé « champ »", () => {
+    const py = readFileSync(gabarit, "utf8");
+    const m = py.match(/^CHAMPS_VERDICT = \(([^)]*)\)/m);
+    if (!m) throw new Error("CHAMPS_VERDICT introuvable dans ledger.py");
+    const champs = [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]).join(",");
+    if (champs !== "oracle,verdict") throw new Error("les champs dus d'un verdict divergent de ledger.py : " + champs);
+    if (!/if "champ" in champs:/.test(py)) throw new Error("ledger.py ne refuse plus une clé « champ » : les deux écrivains divergent");
   });
 }
 check("ledger TF-2245 (rouge/vert) : `remplace` vide, `artefacts_remplaces` sans `remplace` ou de forme fausse → refus ; forme juste → écrite", () => {

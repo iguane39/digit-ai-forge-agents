@@ -589,7 +589,10 @@ const TYPES_VOCABULAIRE = ["run_open", "etape_open", "invocation", "oracles_verd
   "rectification_versions_forges", "rectification_run_open", "rectification_horodatage",
   "rectification_forges_mobilisees", "go_publication", "conflit_regles", "demande_emise", "demande_recue",
   "deplacement_effectue", "deplacement_en_attente", "demande_humain", "qualification_enclenchement",
-  "anteriorite_ledger", "rectification_doublon", "decision_retiree", "secret_range"];
+  "anteriorite_ledger", "rectification_doublon", "decision_retiree", "lot_remis", "secret_range"];
+//: TF-2686 (22/11/2026) — `lot_remis` (TF-2652 du pilot, 13/11/2026) consigne la REMISE d'un lot de retours au sas du pilot : sans lui
+//: la remise s'écrivait en `retour`, et le hook de fin de tour du pilot la lisait comme un retour orphelin. `ledger.py` l'admet depuis
+//: le 13/11 et ce script le refusait comme type inconnu. Champs conseillés, non exigés : `lot`, `sas`, `verdict`.
 //: TF-2223 du pilot — sans ledger de run, ces types s'écrivent au journal `forge/hors-run.jsonl` (même discipline de
 //: `seq` et de `ts`, champ `hors_run: true`), pas au ledger du run, dont R-42 exige qu'il s'ouvre par `run_open`.
 //: Le journal hors run se reconnaît à son NOM : c'est le chemin de doctrine, et il ne s'ouvre pas par `run_open`.
@@ -640,6 +643,25 @@ function problemeDecisionRetiree(obj) {
     return `\`${TYPE_DECISION_RETIREE}\` doit dire pourquoi : \`cause\` d'au moins ${CAUSE_RETRAIT_MIN} caractères (reçu ${JSON.stringify(obj.cause)}) — une décision retirée sans motif ne se relit pas`;
   }
   return null;
+}
+
+//: TF-2686 (22/11/2026) — L'ENTRÉE AMPUTÉE, refusée AVANT d'écrire, quel que soit le schéma, comme `controler_forme` de
+//: `gabarits/ledger.py` du pilot (TF-2630, 16/11/2026). Le fait : le 12/11/2026, un appel `--champ clé=valeur` répété a écrit chez un
+//: produit une entrée `oracles_verdict` au seul champ « champ », sans `oracle` ni `verdict`, code 0 (seq 976) ; un ledger ne se
+//: réécrit pas. Ici l'entrée vient d'un JSON, mais la même forme y entre : une clé nommée « champ » n'est jamais un nom de champ du
+//: contrat, et un verdict d'oracle sans `oracle` ou sans `verdict` (absent, vide, fait d'espaces, non texte) ne dit pas ce qui a tourné
+//: (CONTRAT-INTERFACE.md §3). Le schéma 1.x les exige déjà à l'écriture (CHAMPS_DUS_1_0) ; ce contrôle vaut AUSSI pour un ledger sans
+//: `schema_ledger`, que `verify` ne juge pas (antériorité déclarée) : seul l'écrivain peut y refuser l'entrée amputée.
+const EXEMPLE_VERDICT = `append <ledger.jsonl> '{"type":"oracles_verdict","oracle":"oracle-conformite-projet","verdict":"PASS","cible":"forge"}'`;
+const CHAMPS_VERDICT = ["oracle", "verdict"];
+function problemeForme(obj) {
+  if (Object.prototype.hasOwnProperty.call(obj, "champ")) {
+    return `\`champ\` n'est pas un nom de champ : le nom du champ est la clé même du JSON (\`"oracle": "oracle-x"\`, une clé par champ), jamais \`{"champ": "clé=valeur"}\` ; exemple : \`${EXEMPLE_VERDICT}\``;
+  }
+  if (obj.type !== "oracles_verdict") return null;
+  const manquants = CHAMPS_VERDICT.filter((c) => typeof obj[c] !== "string" || !obj[c].trim());
+  if (!manquants.length) return null;
+  return `\`oracles_verdict\` sans ${manquants.map((c) => `\`${c}\``).join(" ni ")} : une entrée sans oracle ou sans verdict ne dit pas ce qui a tourné (CONTRAT-INTERFACE.md §3) ; exemple : \`${EXEMPLE_VERDICT}\``;
 }
 
 //: TF-1422 (28/09/2026) : l'INSTANT que désigne un `ts`, en millisecondes, ou NaN s'il n'en
@@ -754,6 +776,8 @@ function ecrireSousVerrou(file, objs, essai = false) {
       } else if (!TYPES_VOCABULAIRE.includes(obj.type)) {
         throw new Error(`type inconnu : ${obj.type} — attendus ${[...TYPES_VOCABULAIRE].sort().join(", ")} (CONTRAT-INTERFACE.md §3 du pilot ; \`reponse_humain\` pour un arbitrage humain)`);
       }
+      const defautForme = problemeForme(obj);
+      if (defautForme) throw new Error(`entrée refusée (type \`${obj.type}\`, quel que soit le schéma, TF-2686) — ${defautForme} — rien n'est écrit`);
       const defautRemplacement = problemeRemplacement(obj);
       if (defautRemplacement) throw new Error(`${defautRemplacement} (TF-2206, TF-2245) — rien n'est écrit`);
       const defautRetrait = problemeDecisionRetiree(obj);
