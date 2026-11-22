@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Animation — boucle infinie et texte statique pâle (TF-2700)</title>
+<style>
+:root{--ink:#0F172A;--paper:#F8FAFC;--line:#E6EAF2;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.5}
+h1{font-family:var(--head)}
+.wrap{padding:24px}
+svg{display:block;width:100%;max-width:640px;height:auto}
+.lib{fill:var(--ink);font:600 18px var(--sans);animation:pulse 1000s linear -2s infinite}
+@keyframes pulse{0%,100%{opacity:.03}50%{opacity:1}}
+.pale{color:#C8D0DC}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2700, sens ROUGE CONSERVÉ. La page de animation-boucle-texte-verte.html (un libellé en boucle infinie) porte en plus un
+  paragraphe STATIQUE d'encre #C8D0DC sur #F8FAFC (1,4:1) : aucune animation ne le fait varier. Ranger en non jugé le texte
+  animé n'éteint pas V2 pour la page : ce paragraphe reste refusé.
+  Attendu : 1 constat v2_contrast (le paragraphe pâle), le libellé animé en non_juge.
+-->
+<body><main class="wrap">
+<h1>Une boucle qui respire</h1>
+<svg role="img" aria-label="Un libellé qui pulse en boucle" viewBox="0 0 640 80">
+<text class="lib" x="10" y="44">agent qualité</text>
+</svg>
+<p class="pale">Ce paragraphe n'est animé par rien et son encre est trop claire pour le papier.</p>
+</main></body></html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Animation — fondu d'entrée d'un libellé trop pâle (TF-2707)</title>
+<style>
+:root{--ink:#0F172A;--paper:#F8FAFC;--line:#E6EAF2;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.5}
+h1{font-family:var(--head)}
+.wrap{padding:24px}
+svg{display:block;width:100%;max-width:640px;height:auto}
+.lib{fill:#C8D0DC;font:600 18px var(--sans);animation:fondu 600s linear 0s both}
+@keyframes fondu{from{opacity:0}to{opacity:1}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2707, sens ROUGE CONSERVÉ. La même page que animation-fondu-entree-verte.html, mais l'encre du libellé AU REPOS est
+  #C8D0DC sur #F8FAFC (1,4:1) : un vrai défaut de contraste. Mener l'animation à son terme ne le cache pas, il le montre :
+  le constat tombe sur l'état reposé, pas sur l'instant du fondu. Rien n'est assoupli.
+  Attendu : au moins 1 constat v2_contrast, aux trois largeurs.
+-->
+<body><main class="wrap">
+<h1>Le sceau et son libellé</h1>
+<svg role="img" aria-label="Un libellé trop pâle qui apparaît en fondu" viewBox="0 0 640 80">
+<text class="lib" x="10" y="44">Dossier validé par la revue</text>
+</svg>
+<p>Le libellé du dessin apparaît en fondu à l'ouverture de la page ; au repos, son encre est trop claire pour le papier.</p>
+</main></body></html>

@@ -6562,6 +6562,60 @@ def run_dispenses_colonne():
     return out
 
 
+# TF-2707, TF-2700 et TF-2706 (factory-digit-ai-fr, run forge-digit-ai-fr-20261114a, 15/11/2026) — UNE MESURE PRISE PENDANT UNE
+# ANIMATION N'EST PAS UNE MESURE DE LA PAGE. render_page chargeait la page et mesurait 250 ms plus tard, a l'instant ou elle se
+# trouvait : une encre sombre a 1,01:1 sur un papier clair (fondu d'entree), « agent » a 1,76:1 (animation CSS infinie), 34 a 35
+# chevauchements V4 par largeur entre les scenes empilees d'une animation SVG. Fixture -> (verdict attendu, constats attendus
+# par famille, marqueur de non juge attendu ou None), aux deux largeurs. Chaque verte a sa rouge CONSERVEE : la meme page avec un
+# vrai defaut (encre pale au repos ; paragraphe statique pale ; deux libelles superposes DANS une scene) reste refusee.
+CAS_ANIMATIONS = {
+    "animation-fondu-entree-verte.html": ("PASS", {"v2_contrast": 0, "v9_actif_invisible": 0}, None),
+    "animation-fondu-entree-rouge.html": ("FAIL", {"v2_contrast": 1}, None),
+    "animation-boucle-texte-verte.html": ("PASS", {"v2_contrast": 0, "v9_actif_invisible": 0}, "TF-2700"),
+    "animation-boucle-texte-rouge.html": ("FAIL", {"v2_contrast": 1}, "TF-2700"),
+    "animation-scenes-empilees-verte.html": ("PASS", {"v4_overlap": 0}, "TF-2706"),
+    "animation-scenes-empilees-rouge.html": ("FAIL", {"v4_overlap": 1}, "TF-2706"),
+}
+
+
+def run_animations_au_repos():
+    """TF-2707 / TF-2700 / TF-2706 — une animation FINIE est menee a son terme avant la mesure, ce qu'une animation INFINIE fait varier
+    est range en non juge (jamais bloquant), des scenes empilees ne se jugent pas entre elles, et ce qu'aucune animation ne fait varier
+    reste juge. Silencieux si playwright est absent (voir run_rendu_large)."""
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-animations-")
+    out = []
+    largeurs = (1280, 1920)
+    try:
+        for nom, (verdict, familles, marque) in CAS_ANIMATIONS.items():
+            d = _rendre_json(nom, list(largeurs), captures)
+            for largeur in largeurs:
+                etiquette = f"{nom} · {largeur} px"
+                if d is None:
+                    out.append({"fixture": etiquette, "verdict": "ECHEC", "attendu": verdict, "obtenu": "illisible",
+                                "regle": "TF-2707 / TF-2700 / TF-2706 animations", "detail": "render_page illisible"})
+                    continue
+                issues = d["breakpoints"][str(largeur)]["issues"]
+                obtenus = {f: len(issues.get(f, [])) for f in familles}
+                notes = [u.get("detail", "") for u in issues.get("unmeasured", [])]
+                ok = d["verdict"] == verdict and obtenus == familles \
+                    and (marque is None or any(marque in n for n in notes)) \
+                    and (marque is not None or not any("(TF-2700)" in n or "(TF-2706)" in n for n in notes))
+                out.append({"fixture": etiquette, "verdict": "OK" if ok else "ECHEC",
+                            "attendu": f"{verdict} {familles} non juge {marque}",
+                            "obtenu": f"{d['verdict']} {obtenus} non juge {'oui' if any(marque and marque in n for n in notes) else 'non'}",
+                            "regle": "TF-2707 / TF-2700 / TF-2706 animations",
+                            "detail": "" if ok else "la mesure doit se faire page reposee, ranger en non juge ce qu'une boucle infinie fait varier, et garder ce que rien n'anime"})
+    finally:
+        shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
 def run_lot_a_check_html():
     """Quatre règles de `check_html.py` du lot du 29/10/2026 — chacune jouée dans les deux sens.
 
@@ -7367,6 +7421,10 @@ def main():
     dispenses = run_dispenses_colonne()
     if dispenses:
         res += dispenses
+    # TF-2707, TF-2700, TF-2706 — la page se mesure reposee ; une boucle infinie se range en non juge ; des scenes empilees ne se jugent pas.
+    animations = run_animations_au_repos()
+    if animations:
+        res += animations
     # TF-1066 — les deux branches de V18 se mesurent a 2560 px : a 1440, les defauts du 4K
     # n'existent pas et quatre verts ne prouveraient rien.
     large = run_rendu_large()

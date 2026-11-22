@@ -335,6 +335,48 @@ MEASURE_JS = r"""
     const txt = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40);
     return txt ? `${t} « ${txt}${txt.length >= 40 ? '…' : ''} »` : t;
   };
+  // TF-2707 / TF-2700 / TF-2706 (factory-digit-ai-fr, 15/11/2026) — UNE MESURE PRISE PENDANT UNE ANIMATION N'EST PAS
+  // UNE MESURE DE LA PAGE. L'outil chargeait la page et mesurait 250 ms plus tard, a l'instant ou elle se trouvait :
+  // une encre sombre a 1,01:1 sur un papier clair (libelle en fondu d'entree), un sceau a 1,06:1 (couleur dominante =
+  // papier), « agent » a 1,76:1 sur un fond absent sous ce mot au repos (animation CSS infinie), et 34 a 35 chevauchements
+  // bloquants par largeur entre les scenes d'une animation SVG empilees et montrees une a une par opacite.
+  //   · une animation FINIE (entree, fondu, delai compris) est menee a son terme avant toute mesure : la page se mesure
+  //     reposee, comme TF-2299 le fait deja pour une scene ;
+  //   · une animation INFINIE ne se termine pas, et le texte qu'elle fait varier n'a pas d'etat de repos : un constat de
+  //     contraste pris sur un element qu'elle anime (ou qui descend d'un element qu'elle anime, ou qui se peint sur une
+  //     forme qu'elle anime) est range en NON JUGE avec son instant, jamais en bloquant ; V4 ne compare pas deux elements
+  //     dont les racines animees en boucle par opacite different (des scenes empilees, montrees une a une) ;
+  //   · ce qu'aucune animation n'anime reste juge comme avant : rien n'est assoupli, le non juge se DIT.
+  // L'instant de la mesure ne change aucun verdict d'une page sans animation.
+  for (const a of document.getAnimations()) {
+    try { if (a.effect && a.effect.getTiming().iterations !== Infinity) a.finish(); } catch (e) { /* une animation qui refuse reste */ }
+  }
+  const PEINT_ANIME = new Set(['opacity', 'visibility', 'color', 'fill', 'stroke', 'fillOpacity', 'strokeOpacity',
+    'stopColor', 'stopOpacity', 'backgroundColor', 'background', 'filter', 'mixBlendMode']);
+  const enBoucle = new Map();   // element -> proprietes de peinture qu'une animation INFINIE y fait varier
+  for (const a of document.getAnimations()) {
+    try {
+      const e = a.effect;
+      if (!e || !e.target || e.pseudoElement || e.getTiming().iterations !== Infinity) continue;
+      const props = new Set();
+      for (const k of e.getKeyframes()) for (const p of Object.keys(k)) if (PEINT_ANIME.has(p)) props.add(p);
+      if (!props.size) continue;
+      const deja = enBoucle.get(e.target) || new Set();
+      props.forEach((p) => deja.add(p));
+      enBoucle.set(e.target, deja);
+    } catch (e) { /* une animation illisible ne decide de rien */ }
+  }
+  // L'element le plus HAUT, soi compris, qu'une animation infinie fait varier (par opacite ou visibilite seules si demande).
+  const boucleDe = (el, parOpacite) => {
+    let trouve = null;
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+      const p = enBoucle.get(n);
+      if (p && (!parOpacite || p.has('opacity') || p.has('visibility'))) trouve = n;
+    }
+    return trouve;
+  };
+  const boucleDans = (el) => { for (const n of enBoucle.keys()) if (el !== n && el.contains(n)) return n; return null; };
+  const decritBoucle = (n) => `${[...enBoucle.get(n)].join(', ')} sur ${label(n)}`;
   // TF-2677 (factory-digit-ai-fr, 15/11/2026) — UNE DISPENSE data-colonne-ok NE VAUT QUE SUR LE CONTENEUR
   // BRIDEUR. Posee sur <main>, <body>, <html> ou [role=main] qui occupent la largeur de leur parent, elle
   // n'est la bride de rien : elle dispensait la page entiere (v2 de factory-digit-ai-fr : la moitie de la page
@@ -570,6 +612,7 @@ MEASURE_JS = r"""
     const svgTexte = el.namespaceURI === 'http://www.w3.org/2000/svg' && el.closest('text');
     let fg = parseColor(s.color);
     let bgSvg = null;
+    let formeFond = null;   // TF-2700 : la forme SVG sur laquelle le texte se peint, si une animation en boucle la fait varier
     if (svgTexte) {
       const opa = (st) => (parseFloat(st.opacity) || (st.opacity === '0' ? 0 : 1));
       // `fill` calcule se rend dans l'espace ou il est ecrit (oklch(), color-mix()…) : une
@@ -615,6 +658,7 @@ MEASURE_JS = r"""
       }
       const svgRacine = el.closest('svg');
       const sousSvg = effectiveBg(svgRacine.parentElement || document.body);
+      formeFond = forme;
       if (forme) {
         const fs_ = getComputedStyle(forme);
         const fillForme = versRgb(fs_.fill);
@@ -680,6 +724,16 @@ MEASURE_JS = r"""
     const large = size >= 24 || (size >= 18.66 && bold);
     const threshold = large ? 3.0 : 4.5;
     if (r < threshold) {
+      // TF-2700 : un texte qu'une animation en boucle fait varier (lui, un ancetre, ou la forme sous lui) n'a pas d'etat de
+      // repos : le ratio pris a cet instant est range en NON JUGE, avec la propriete animee, jamais en bloquant.
+      const anime = boucleDe(el, false) || (formeFond ? boucleDe(formeFond, false) : null);
+      if (anime) {
+        issues.unmeasured.push({ what: label(el), detail:
+          `contraste ${r.toFixed(2)}:1 mesure A UN INSTANT d'une animation en boucle (${decritBoucle(anime)}) — NON JUGE, `
+          + `jamais bloquant (TF-2700) : ce texte n'a pas d'etat de repos a mesurer. Declarer les etats de l'animation `
+          + `par scenes ([data-scene], TF-2299) pour les juger un par un` });
+        continue;
+      }
       issues.v2_contrast.push({ what: label(el), detail:
         `ratio ${r.toFixed(2)}:1 < ${threshold}:1 (${Math.round(size)}px${bold ? ' gras' : ''}, ` +
         `texte ${svgTexte ? 'SVG fill ' + s.fill : s.color} sur fond rgb(${Math.round(bg.color.r)},${Math.round(bg.color.g)},${Math.round(bg.color.b)}))` });
@@ -712,6 +766,8 @@ MEASURE_JS = r"""
   for (const el of document.body.querySelectorAll('*')) {
     if (el.children.length >= 2) parents.add(el);
   }
+  const scenesEmpilees = new Set();   // TF-2706 : racines animees en boucle par opacite dont des paires n'ont pas ete jugees
+  let pairesEmpilees = 0;
   for (const parent of parents) {
     const kids = [...parent.children].filter(visible)
       .map((k) => ({ el: k, r: k.getBoundingClientRect() }));
@@ -752,6 +808,13 @@ MEASURE_JS = r"""
       for (let j = i + 1; j < kids.length; j++) {
         const a = kids[i], b = kids[j];
         if (svgIcone || groupeTitre || svgFigure) continue;
+        // TF-2706 : des scenes EMPILEES, montrees une a une par une animation en boucle sur l'opacite, se superposent par
+        // construction : deux elements dont les racines animees different ne sont pas deux blocs de mise en page. Le compte
+        // se dit en fin de passe (non juge) ; deux elements d'une MEME scene (meme racine) restent juges.
+        {
+          const racA = boucleDe(a.el, true), racB = boucleDe(b.el, true);
+          if (racA && racB && racA !== racB) { scenesEmpilees.add(racA); scenesEmpilees.add(racB); pairesEmpilees += 1; continue; }
+        }
         // TF-1369 — un connecteur se juge par son TRACE (passe dediee plus bas), plus par sa boite.
         if (estConnecteurV4(a.el) || estConnecteurV4(b.el)) continue;
         // TF-1146 (16/09, lot Produit-64 20260916a, retour RD-6) — L EXEMPTION S APPLIQUAIT A L
@@ -1048,6 +1111,9 @@ MEASURE_JS = r"""
     return v === null ? null : v.trim().split(/\s+/).filter(Boolean);
   };
   const exempte = (c, autre) => {
+    // TF-2706 : deux elements de scenes EMPILEES (racines animees en boucle par opacite differentes) ne se jugent pas entre eux.
+    const racC = boucleDe(c, true), racA = boucleDe(autre, true);
+    if (racC && racA && racC !== racA) { scenesEmpilees.add(racC); scenesEmpilees.add(racA); pairesEmpilees += 1; return true; }
     const pc = declarations(c), po = declarations(autre);
     if (pc !== null && pc.length === 0) return true;
     if (po !== null && po.length === 0 && estConnecteurV4(autre)) return true;
@@ -2421,7 +2487,9 @@ MEASURE_JS = r"""
         // se DIT, avec sa raison, au lieu de passer pour un vert.
         nonMesurable: bg.image
           ? "fond peint par une background-image — contraste de l'actif non mesurable par styles calcules"
-          : (horsFond ? `fond peint hors background-color (${horsFond})` : null),
+          : (horsFond ? `fond peint hors background-color (${horsFond})`
+            // TF-2707 : un actif qu'une animation en boucle fait varier a un contraste qui change avec l'instant de la capture.
+            : (boucleDe(el, false) || boucleDans(el) ? `actif sous une animation en boucle (${decritBoucle(boucleDe(el, false) || boucleDans(el))}) : son contraste change avec l'instant de la capture (TF-2707)` : null)),
       });
     }
   }
@@ -2556,6 +2624,13 @@ MEASURE_JS = r"""
     }
   }
 
+  if (pairesEmpilees) {
+    // Dit une fois par passe, jamais tu : sans ce non juge, le silence de V4 sur une animation se lirait comme un vert.
+    issues.unmeasured.push({ what: 'V4 scenes empilees par une animation en boucle', detail:
+      `${pairesEmpilees} paire(s) d'elements de ${scenesEmpilees.size} racine(s) animee(s) en boucle par opacite (${[...scenesEmpilees].slice(0, 3).map(label).join(' ; ')}`
+      + `${scenesEmpilees.size > 3 ? ' ; …' : ''}) NON JUGEE(S) en V4 (TF-2706) : des scenes empilees et montrees une a une se superposent par construction. `
+      + `Deux elements d'une MEME scene restent juges ; declarer les scenes ([data-scene], TF-2299) pour les juger une a une` });
+  }
   return issues;
 }
 """

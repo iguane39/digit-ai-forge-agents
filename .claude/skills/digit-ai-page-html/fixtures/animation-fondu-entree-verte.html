@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Animation — fondu d'entrée d'un libellé (TF-2707)</title>
+<style>
+:root{--ink:#0F172A;--paper:#F8FAFC;--line:#E6EAF2;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.5}
+h1{font-family:var(--head)}
+.wrap{padding:24px}
+svg{display:block;width:100%;max-width:640px;height:auto}
+.lib{fill:var(--ink);font:600 18px var(--sans);animation:fondu 600s linear 0s both}
+@keyframes fondu{from{opacity:0}to{opacity:1}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2707 (factory-digit-ai-fr, 15/11/2026), sens VERT. Le libellé du dessin entre en fondu (opacité de 0 à 1 sur la durée de
+  l'animation, FINIE) : 250 ms après le chargement son opacité vaut ~0,0004, et le contraste qu'un oracle prend à cet instant est
+  de 1,00:1 d'une encre sombre sur un papier clair. L'encre au repos est #0F172A sur #F8FAFC (17:1). L'outil mène une animation
+  finie à son terme avant de mesurer : la page se mesure reposée.
+  Attendu : 0 constat v2_contrast, aux trois largeurs.
+-->
+<body><main class="wrap">
+<h1>Le sceau et son libellé</h1>
+<svg role="img" aria-label="Un libellé qui apparaît en fondu" viewBox="0 0 640 80">
+<text class="lib" x="10" y="44">Dossier validé par la revue</text>
+</svg>
+<p>Le libellé du dessin apparaît en fondu à l'ouverture de la page ; au repos, son encre est celle du texte courant.</p>
+</main></body></html>

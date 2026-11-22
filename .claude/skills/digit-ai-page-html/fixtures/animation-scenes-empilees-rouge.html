@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Animation — scènes empilées et recouvrement dans une scène (TF-2706)</title>
+<style>
+:root{--ink:#0F172A;--paper:#F8FAFC;--line:#E6EAF2;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.5}
+h1{font-family:var(--head)}
+.wrap{padding:24px}
+svg{display:block;width:100%;max-width:640px;height:auto}
+.sc{animation:scene 1000s linear infinite;opacity:.5}
+.sc2{animation-delay:-300s}
+.sc3{animation-delay:-600s}
+@keyframes scene{0%,100%{opacity:.5}50%{opacity:.6}}
+.cadre{fill:#E0E7F1;stroke:#64748B;stroke-width:1}
+.mot{fill:var(--ink);font:600 16px var(--sans)}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2706, sens ROUGE CONSERVÉ. Les trois scènes empilées de animation-scenes-empilees-verte.html, mais la scène 1 porte DEUX
+  libellés posés l'un sur l'autre (« Scène une : lire » et « lecture seule » aux mêmes coordonnées) : un vrai recouvrement, À
+  L'INTÉRIEUR d'une scène (même racine animée). L'exemption ne vaut qu'entre scènes différentes : ce constat reste bloquant.
+  Attendu : au moins 1 constat v4_overlap, aux trois largeurs.
+-->
+<body><main class="wrap">
+<h1>Trois scènes, une à la fois</h1>
+<svg role="img" aria-label="Trois scènes empilées d'une animation" viewBox="0 0 640 120">
+<g class="sc sc1"><rect class="cadre" x="10" y="20" width="200" height="70" rx="6"/><text class="mot" x="240" y="60">Scène une : lire</text><text class="mot" x="240" y="62">lecture seule</text></g>
+<g class="sc sc2"><rect class="cadre" x="10" y="20" width="200" height="70" rx="6"/><text class="mot" x="240" y="60">Scène deux : juger</text></g>
+<g class="sc sc3"><rect class="cadre" x="10" y="20" width="200" height="70" rx="6"/><text class="mot" x="240" y="60">Scène trois : livrer</text></g>
+</svg>
+<p>Le dessin montre une scène à la fois ; la première porte deux libellés l'un sur l'autre.</p>
+</main></body></html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — Animation — libellé d'une boucle infinie (TF-2700)</title>
+<style>
+:root{--ink:#0F172A;--paper:#F8FAFC;--line:#E6EAF2;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.5}
+h1{font-family:var(--head)}
+.wrap{padding:24px}
+svg{display:block;width:100%;max-width:640px;height:auto}
+.lib{fill:var(--ink);font:600 18px var(--sans);animation:pulse 1000s linear -2s infinite}
+@keyframes pulse{0%,100%{opacity:.03}50%{opacity:1}}
+.mot{font-size:1.25rem;font-weight:600;animation:teinte 1000s linear -2s infinite}
+@keyframes teinte{0%,100%{color:rgba(15,23,42,.03)}50%{color:rgb(15,23,42)}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2700 (factory-digit-ai-fr, 15/11/2026), sens VERT. Deux libellés dont une animation CSS INFINIE fait varier l'opacité (le
+  texte du dessin) et la couleur (le mot de la ligne), avec une phase posée (délai négatif, 2 s dans un cycle de 1 000 s) : à
+  l'instant de la mesure, leur encre vaut 3 à 5 % de l'opacité pleine, soit 1,0x:1 contre le papier. Une animation infinie ne se
+  termine pas : ces textes n'ont pas d'état de repos à mesurer. Le constat est rangé en NON JUGÉ avec la propriété animée, il
+  ne bloque pas. L'encre au repos est #0F172A sur #F8FAFC (17:1).
+  Attendu : 0 constat v2_contrast, aux trois largeurs, et un non_juge « TF-2700 » par libellé.
+-->
+<body><main class="wrap">
+<h1>Une boucle qui respire</h1>
+<svg role="img" aria-label="Un libellé qui pulse en boucle" viewBox="0 0 640 80">
+<text class="lib" x="10" y="44">agent qualité</text>
+</svg>
+<p>La ligne suivante porte un <span class="mot">mot qui change de teinte</span> en boucle.</p>
+</main></body></html>
