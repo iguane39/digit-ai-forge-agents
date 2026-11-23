@@ -1268,6 +1268,8 @@ dire laquelle s'applique ni où. Chaque auteur tranchait, et retranchait au livr
    *lisible*, et sur un grand écran il n'a pas d'excuse : la place existe. Écart voulu →
    `data-rognage-assume`, **déclaré**, jamais classé « acceptable » en revue.
 
+**Écran d'application à navigation latérale (TF-2776, Produit-12, D-235 (a) du porteur, 23/11/2026).** Sur un écran dont la navigation prend une piste à côté du contenu, brider la prose échouait à L2, la libérer échouait à V18 au-delà de 2 560 px, et la page de données comptait la navigation comme une bride du conteneur. La navigation **se déclare** — un `nav`, un `aside` ou un attribut `data-navigation` — et **sort de la mesure** de V17 (le conteneur se compare à la fenêtre moins la navigation placée à côté de lui) et de L2 (le texte d'une navigation déclarée n'est pas jugé ; sa piste n'est pas une colonne d'étiquettes ; le cadre d'un conteneur de lecture ne compte pas la navigation à côté). **Les règles et les seuils ne changent pas** : la sortie d'un tel écran reste `data-page="donnees"` (prose pleine largeur, V18 publie sa mesure sans bloquer). Une navigation en bandeau ne retire rien, et une colonne latérale qu'aucun nom ni attribut ne déclare est jugée comme avant.
+
 **Contrôles mécaniques.** `L26` (`check_html.py`, bride autour d'un tableau) ·
 `prose_etroite` et `rognage_donnees` (`render_page.py`, bloquants).
 

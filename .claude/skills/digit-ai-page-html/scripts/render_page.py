@@ -396,6 +396,35 @@ MEASURE_JS = r"""
     }
     return null;
   };
+  // TF-2776 (Produit-12, RS-47 ; D-235 (a) du porteur, 23/11/2026) — UNE NAVIGATION LATERALE DECLAREE SORT DE LA MESURE
+  // DE V17 ET DE L2. Sur un ecran d'application, la navigation prend une piste a cote du contenu : V17 comptait
+  // le contenu contre la fenetre ENTIERE (un `main` de 1 180 px dans 1 440 : 82 %, sous le plancher de 96 %), et la
+  // gouttiere d'etiquettes de L2 prenait la piste de la navigation pour une colonne d'etiquettes (une navigation de 320 px
+  // dans 1 440 : 22 %, au-dessus du seuil de 20 %). Les deux accusaient la navigation, jamais le contenu. Seule la
+  // MESURE change : les seuils et les regles restent ceux d'avant, et une page sans navigation declaree est mesuree comme avant.
+  //   · declaree = un `nav`, un `aside` ou un element portant `data-navigation` (le contenu d'une navigation declaree
+  //     n'est pas de la prose de lecture : L2 ne le juge pas non plus) ;
+  //   · laterale = a COTE du bloc mesure (elle en partage la hauteur de plus de 8 px, et se tient entierement a sa gauche ou
+  //     a sa droite) ; une navigation en bandeau, au-dessus ou au-dessous, ne retire rien ; une navigation qui CONTIENT le
+  //     bloc, ou que le bloc contient, ne retire rien non plus ;
+  //   · retiree = le cadre de comparaison (la fenetre pour V17, le parent pour L2) perd la largeur de la navigation.
+  const NAV_DECLAREE = 'nav, aside, [data-navigation]';
+  const navsDeclarees = [...document.querySelectorAll(NAV_DECLAREE)]
+    .filter((el) => visible(el) && !(el.parentElement && el.parentElement.closest(NAV_DECLAREE)));
+  const cadreSansNav = (el, cadre) => {
+    const rn = el.getBoundingClientRect();
+    let g = cadre.left, d = cadre.right, retire = 0;
+    for (const nv of navsDeclarees) {
+      if (nv === el || nv.contains(el) || el.contains(nv)) continue;
+      const rv = nv.getBoundingClientRect();
+      if (Math.min(rv.bottom, rn.bottom) - Math.max(rv.top, rn.top) <= 8) continue;
+      if (rv.right <= rn.left + 4 && rv.left >= cadre.left - 4) g = Math.max(g, rv.right);
+      else if (rv.left >= rn.right - 4 && rv.right <= cadre.right + 4) d = Math.min(d, rv.left);
+      else continue;
+      retire += rv.width;
+    }
+    return { left: g, right: d, width: Math.max(d - g, 0), retire };
+  };
 
   // ---- V1 : débordement horizontal --------------------------------------
   const docDeborde = doc.scrollWidth > doc.clientWidth + 1;
@@ -1262,7 +1291,7 @@ MEASURE_JS = r"""
       const txt = (el.textContent || '').trim();
       const mots = txt.split(/\s+/).filter(Boolean).length;
       if (mots < 6) continue;                       // trop court pour distinguer un filet d'un titre
-      if (el.closest('nav')) continue;
+      if (el.closest(NAV_DECLAREE)) continue;       // TF-2776 : une navigation declaree sort de la mesure
       // `caption` est volontairement admise : l'exclusion `closest('table')` de L2-largeur vise
       // les CELLULES, pas la legende, et c'est elle qui portait le defaut mesure.
       if (el.closest('table') && el.tagName !== 'CAPTION') continue;
@@ -1289,7 +1318,7 @@ MEASURE_JS = r"""
       if (!visible(el)) continue;
       const txt = (el.textContent || '').trim();
       if (txt.length < __L2_MIN_CHARS__) continue;
-      if (el.closest('table') || el.closest('nav')) continue;
+      if (el.closest('table') || el.closest(NAV_DECLAREE)) continue;   // TF-2776 : nav, aside ou data-navigation
       if (dansDetailsFerme(el)) continue;           // TF-2220
       const cs = getComputedStyle(el);
       if (cs.display === 'inline') continue;
@@ -1351,21 +1380,24 @@ MEASURE_JS = r"""
     for (const el of document.body.querySelectorAll('p, li, blockquote, .va, .prose')) {
       if (!visible(el)) continue;
       if ((el.textContent || '').trim().length < __L2_MIN_CHARS__) continue;
-      if (el.closest('table') || el.closest('nav')) continue;
+      if (el.closest('table') || el.closest(NAV_DECLAREE)) continue;   // TF-2776 : nav, aside ou data-navigation
       // Le conteneur BRIDEUR : le premier ancêtre notablement plus étroit que son propre parent.
       let boite = null;
       for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
         const p = n.parentElement;
         if (!p) break;
         const rn = n.getBoundingClientRect(), rp = p.getBoundingClientRect();
-        if (rp.width > 0 && rn.width / rp.width < __L2C_MIN_RATIO__) { boite = { n, rn, rp }; break; }
+        // TF-2776 : la navigation laterale declaree a cote du bloc n'est pas offerte au bloc : le cadre est le parent
+        // moins elle (sans navigation declaree, `cadre` est le parent lui-meme : mesure inchangee).
+        const cadre = cadreSansNav(n, rp);
+        if (cadre.width > 0 && rn.width / cadre.width < __L2C_MIN_RATIO__) { boite = { n, rn, rp: cadre }; break; }
       }
       if (!boite) continue;
       // TF-2677 : la dispense ne vaut QUE sur le conteneur brideur lui-même. `closest` la laissait remonter
       // d'un ancêtre : posée sur <main>, elle éteignait la règle pour toute la page (refus humain du 21/08 :
       // la moitié de la page vide à droite). Une dispense sur un ancêtre ne dispense rien ; elle se dit au non_juge.
       if (boite.n.hasAttribute('data-colonne-ok')) continue;
-      const gauche = boite.rn.left - boite.rp.left;
+      const gauche = boite.rn.left - boite.rp.left;      // `rp` est le cadre sans navigation declaree (TF-2776)
       const droite = boite.rp.right - boite.rn.right;
       if (droite <= gauche * 2) continue;          // centré, ou décalé vers la droite : légitime
       if (droite < 40) continue;                   // vide négligeable
@@ -1415,6 +1447,8 @@ MEASURE_JS = r"""
       if (!w) continue;
       const enfants = Array.prototype.filter.call(el.children, visible);
       if (enfants.length < 2) continue;
+      // TF-2776 : la piste d'une navigation declaree n'est pas une colonne d'etiquettes (elle sort de la mesure).
+      if (enfants[0].closest(NAV_DECLAREE) || enfants[0].querySelector(NAV_DECLAREE) || enfants[1].closest(NAV_DECLAREE)) continue;
       const t1 = (enfants[0].textContent || '').trim().length;
       const t2 = (enfants[1].textContent || '').trim().length;
       if (t2 < __L2_MIN_CHARS__ || t1 > __L2_ETIQUETTE_MAX__) continue;
@@ -1818,15 +1852,19 @@ MEASURE_JS = r"""
     for (const el of candidats) {
       const w = el.getBoundingClientRect().width;
       if (w <= 0) continue;
-      const ratio = w / window.innerWidth;
+      // TF-2776 : une navigation laterale declaree a cote du conteneur sort de la fenetre qu'on lui oppose.
+      const cadre = cadreSansNav(el, { left: 0, right: window.innerWidth });
+      if (cadre.width <= 0) continue;
+      const ratio = w / cadre.width;
       if (ratio >= __DONNEES_CONTENEUR_MIN__) continue;
       const cle = label(el);
       if (vusC.has(cle)) continue;
       vusC.add(cle);
       const cs = getComputedStyle(el);
       issues.conteneur_bride_donnees.push({ what: cle, detail:
-        `page de donnees : conteneur a ${Math.round(w)}px pour ${window.innerWidth}px de ` +
-        `fenetre (${Math.round(ratio * 100)} %, plancher ` +
+        `page de donnees : conteneur a ${Math.round(w)}px pour ${Math.round(cadre.width)}px de ` +
+        `fenetre${cadre.retire ? ` (${window.innerWidth}px moins ${Math.round(cadre.retire)}px de navigation declaree)` : ''} ` +
+        `(${Math.round(ratio * 100)} %, plancher ` +
         `${Math.round(__DONNEES_CONTENEUR_MIN__ * 100)} %) — max-width calcule ` +
         `${cs.maxWidth}. Une page qui se DECLARE page de donnees est PLEINE LARGEUR ` +
         `adaptative : la place existe, la page doit la prendre. Retirer le plafond sur ce ` +

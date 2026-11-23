@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — ecran d'application, navigation fixe declaree par attribut — 20261123d</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--surface)}
+.rail{position:fixed;left:0;top:0;bottom:0;width:320px;box-sizing:border-box;padding:20px;border-right:1px solid var(--line)}
+.rail a{display:block;padding:6px 0;color:var(--ink)}
+main{margin-left:320px;padding:24px}
+.chapo{color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+@media (max-width:900px){.rail{position:static;width:auto;border-right:0;border-bottom:1px solid var(--line)}main{margin-left:0}}
+@media (max-width:600px){main{padding:12px}th,td{padding:6px 4px;font-size:.8rem}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2776 (D-235 (a)), la TROISIEME forme declaree : un attribut, `data-navigation`, sur un element qui n'est ni
+  `nav` ni `aside` — ici un rail `div` FIXE (hors flux) a gauche, le contenu decale de sa largeur par une marge.
+
+  Attendu a 1 440 px : 0 conteneur_bride_donnees (avant : 1, le `main` de 1 120 px a 78 % de la fenetre), 0 l2_conteneur.
+  Verdict PASS aux sept largeurs de la grille (3 840 a 390 px) : V28 n'y avertit qu'a 2 560 et 3 840 px.
+-->
+<body data-page="donnees">
+<div class="rail" data-navigation><a href="#etablissements">Etablissements</a><a href="#collectes">Collectes</a><a href="#exports">Exports</a></div>
+<main>
+<h1>Etablissements a qualifier</h1>
+<p class="chapo">Cet ecran liste les etablissements remontes par la collecte du jour et pas encore
+qualifies. Chaque ligne porte la commune, le secteur et la date de collecte ; la qualification se
+fait ligne par ligne, et un etablissement qualifie quitte la liste au rechargement suivant.</p>
+<table><thead><tr><th>Etablissement</th><th>Commune</th><th>Secteur</th><th>Collecte</th></tr></thead>
+<tbody>
+<tr><td>Boulangerie du centre</td><td>Commune A</td><td>Alimentaire</td><td>15/10/2026</td></tr>
+<tr><td>Garage de la gare</td><td>Commune B</td><td>Automobile</td><td>15/10/2026</td></tr>
+<tr><td>Librairie des quais</td><td>Commune C</td><td>Culture</td><td>15/10/2026</td></tr>
+</tbody></table>
+</main></body></html>

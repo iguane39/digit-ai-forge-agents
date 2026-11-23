@@ -698,6 +698,18 @@ CAS_RENDU = {
     "donnees-conteneur-bride.html": [("conteneur_bride_donnees", 1),
                                      ("rognage_donnees", 0), ("prose_etroite", 0)],
     "donnees-conteneur-plein.html": ("conteneur_bride_donnees", 0),
+    # TF-2776 (Produit-12, RS-47 ; D-235 (a) du porteur, 23/11/2026) — une navigation laterale DECLAREE (`nav`, `aside` ou
+    # `data-navigation`) sort de la mesure de V17 et de L2 ; les regles et les seuils sont ceux d'avant. Les trois verts sont
+    # ROUGES sur l'outil d'avant (V17 : le `main` a 78 % de la fenetre ; L2 : la piste de la navigation prise pour une colonne
+    # d'etiquettes, 22 % pour un seuil de 20 %). Les trois contre-epreuves restent rouges : la MEME page sans declaration,
+    # une navigation en bandeau (elle ne retire aucune largeur), et une colonne de lecture calee a gauche a cote d'une navigation
+    # (la navigation sort du cadre, elle n'excuse pas la colonne : l'outil d'avant l'accusait a 1 920 px et pas a 1 440).
+    "nav-laterale-nav-accusee-a-tort.html": [("conteneur_bride_donnees", 0), ("l2_gouttiere", 0)],
+    "nav-laterale-aside-a-droite.html": [("conteneur_bride_donnees", 0), ("l2_gouttiere", 0), ("l2_conteneur", 0)],
+    "nav-laterale-attribut-fixe.html": [("conteneur_bride_donnees", 0), ("l2_conteneur", 0)],
+    "nav-laterale-non-declaree.html": [("conteneur_bride_donnees", 1), ("l2_gouttiere", 1)],
+    "nav-bandeau-conteneur-bride.html": ("conteneur_bride_donnees", 1),
+    "nav-laterale-colonne-calee-a-gauche.html": ("l2_conteneur", 1),
     "sommaire-perdu-au-defilement.html": ("sommaire_perdu", 1),
     "sommaire-colle.html": ("sommaire_perdu", 0),
     # TF-0910 (lot Produit-10 20260908a) — V16 : deux etats qui se ressemblent ne sont pas deux

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — navigation laterale, colonne de lecture calee a gauche — 20261123f</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--surface)}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+nav{padding:20px;border-right:1px solid var(--line)}
+nav a{display:block;padding:6px 0;color:var(--ink)}
+main{padding:24px;max-width:800px;box-sizing:border-box}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2776 (D-235 (a)), CONTRE-EPREUVE : la navigation sort de la mesure, elle ne dispense pas la colonne.
+
+  Un `nav` de 260 px a gauche, et un `main` plafonne a 800 px, CALE A GAUCHE de sa piste, non declare : 380 px de vide a
+  droite du texte dans une fenetre de 1 440. C'est le defaut que « conteneur de lecture cale a gauche » existe pour
+  refuser. L'outil d'avant ne le voyait pas a 1 440 px : la largeur de la navigation comptait comme une marge de
+  gauche (260 px, donc 380 <= 2 x 260 : « centre »). Maintenant que la navigation sort du cadre, le cadre du `main`
+  commence a la fin de la navigation : le vide est a droite seulement, et la colonne reste accusee.
+  CONSEQUENCE DITE : c'est un durcissement de la mesure a 1 280 et 1 440 px (a 1 920 et au-dela, l'outil d'avant l'accusait
+  deja) ; il n'accuse que la colonne calee a gauche, jamais la navigation.
+
+  Attendu a 1 440 px : 1 l2_conteneur (avant : 0).
+-->
+<body><div class="app">
+<nav aria-label="Navigation de l'application"><a href="#etablissements">Etablissements</a><a href="#collectes">Collectes</a><a href="#exports">Exports</a></nav>
+<main>
+<h1>Etablissements a qualifier</h1>
+<p>Cet ecran liste les etablissements remontes par la collecte du jour et pas encore qualifies. Chaque ligne porte la
+commune, le secteur et la date de collecte ; la qualification se fait ligne par ligne, et un etablissement qualifie
+quitte la liste au rechargement suivant. La colonne de lecture n'est ni centree, ni declaree, et rien ne se trouve a sa droite.</p>
+</main></div></body></html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — meme ecran, colonne laterale non declaree — 20261123b</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;
+ --head:"Montserrat",system-ui,sans-serif;--sans:"Inter",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--surface)}
+.app{display:grid;grid-template-columns:320px 1fr;min-height:100vh}
+.colonne{padding:20px;border-right:1px solid var(--line)}
+.colonne a{display:block;padding:6px 0;color:var(--ink)}
+main{padding:24px}
+.chapo{color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+@media (max-width:900px){.app{grid-template-columns:1fr}.colonne{border-right:0;border-bottom:1px solid var(--line)}}
+@media (max-width:600px){main{padding:12px}th,td{padding:6px 4px;font-size:.8rem}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  TF-2776 (D-235 (a)), CONTRE-EPREUVE : une page SANS navigation declaree est jugee comme avant.
+
+  La MEME page que `nav-laterale-nav-accusee-a-tort.html`, la meme grille de 320 px, les memes liens — mais la colonne
+  est un `div`, ni `nav`, ni `aside`, ni `data-navigation` : rien ne la declare navigation, donc rien ne sort de la
+  mesure. Les deux accuses d'avant restent, pour les memes raisons (le conteneur a 78 % de la fenetre, la piste de 320 px
+  prise pour une colonne d'etiquettes). Une regle qui cesserait d'accuser ici aurait ete assouplie, pas recentree.
+
+  Attendu a 1 440 px : 1 conteneur_bride_donnees, 1 l2_gouttiere (avant : 1 et 1).
+-->
+<body><div class="app" data-page="donnees">
+<div class="colonne"><a href="#etablissements">Etablissements</a><a href="#collectes">Collectes</a><a href="#exports">Exports</a></div>
+<main>
+<h1>Etablissements a qualifier</h1>
+<p class="chapo">Cet ecran liste les etablissements remontes par la collecte du jour et pas encore
+qualifies. Chaque ligne porte la commune, le secteur et la date de collecte ; la qualification se
+fait ligne par ligne, et un etablissement qualifie quitte la liste au rechargement suivant.</p>
+<table><thead><tr><th>Etablissement</th><th>Commune</th><th>Secteur</th><th>Collecte</th></tr></thead>
+<tbody>
+<tr><td>Boulangerie du centre</td><td>Commune A</td><td>Alimentaire</td><td>15/10/2026</td></tr>
+<tr><td>Garage de la gare</td><td>Commune B</td><td>Automobile</td><td>15/10/2026</td></tr>
+<tr><td>Librairie des quais</td><td>Commune C</td><td>Culture</td><td>15/10/2026</td></tr>
+</tbody></table>
+</main></div></body></html>
