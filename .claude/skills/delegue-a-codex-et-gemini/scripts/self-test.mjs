@@ -8,8 +8,11 @@
  *   ROUGE : un dossier sous un dépôt git est refusé (exit 2) ; un agent inconnu, un geste inconnu,
  *           une image sans --nom ou avec un chemin dans --nom sont refusés ;
  *   BORNES : aucune commande construite ne porte un drapeau de levée du bac à sable.
+ *   CONFIGURÉ OU RIEN : sans agent, `etat` rend CLAUDE_SEUL en code 0 et l'annonce une seule fois ;
+ *           un geste vers un agent absent rend ABSENT en code 0 ; un agent installé mais non
+ *           connecté n'est pas disponible ; avec les 2 agents, aucune annonce.
  */
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -66,6 +69,60 @@ check("BORNES : aucun drapeau de levée du bac à sable, dans aucune commande", 
     const r = jouer(g, "--agent", ag, "--dossier", J, "--consigne", C);
     ok(!/dangerously|danger-full-access|bypass/i.test(r.argv), `${ag} ${g} : ${r.argv}`);
   }
+});
+
+// Configuré ou rien (consigne du porteur du 23/11/2026) : un poste factice par cas, dont les
+// variables d'environnement pointent vers des dossiers jetables ; aucun agent réel n'est lancé.
+const poste = (nom, { codex = false, agy = false } = {}) => {
+  const H = join(T, nom); const env = { ...process.env, USERPROFILE: H, HOME: H, APPDATA: join(H, "Roaming"), LOCALAPPDATA: join(H, "Local"), CODEX_HOME: join(H, ".codex"), FORGE_UTILISATEUR_DIR: join(H, ".digit-ai") };
+  mkdirSync(H, { recursive: true });
+  if (codex) {
+    mkdirSync(join(env.APPDATA, "npm", "node_modules", "@openai", "codex", "bin"), { recursive: true });
+    writeFileSync(join(env.APPDATA, "npm", "node_modules", "@openai", "codex", "bin", "codex.js"), "");
+    mkdirSync(env.CODEX_HOME, { recursive: true }); writeFileSync(join(env.CODEX_HOME, "auth.json"), "{}");
+  }
+  if (agy) {
+    mkdirSync(join(env.LOCALAPPDATA, "agy", "bin"), { recursive: true }); writeFileSync(join(env.LOCALAPPDATA, "agy", "bin", "agy.exe"), "");
+    mkdirSync(join(H, ".gemini", "antigravity-cli"), { recursive: true }); writeFileSync(join(H, ".gemini", "antigravity-cli", "settings.json"), "{}");
+  }
+  return (...a) => { const r = spawnSync(process.execPath, [SCRIPT, ...a], { encoding: "utf8", env }); let j = {}; try { j = JSON.parse(r.stdout); } catch { /* jugé par le code */ } return { code: r.status, j, H }; };
+};
+
+check("VIDE : aucun agent, etat rend CLAUDE_SEUL en code 0, puis l'annonce une seule fois", () => {
+  const p = poste("vide");
+  const r1 = p("etat");
+  ok(r1.code === 0 && r1.j.verdict === "CLAUDE_SEUL" && r1.j.disponibles.length === 0, `exit ${r1.code} ${r1.j.verdict}`);
+  ok(/abonnement payant/.test(r1.j.annonce || "") && /procédure Codex et Gemini/.test(r1.j.annonce || ""), `annonce : ${r1.j.annonce}`);
+  ok(existsSync(r1.j.procedure || ""), `procédure absente : ${r1.j.procedure}`);
+  const r2 = p("etat");
+  ok(r2.code === 0 && r2.j.annonce === null, `2e annonce : ${r2.j.annonce}`);
+});
+check("VIDE : un geste vers un agent absent rend ABSENT en code 0, sans refus", () => {
+  const p = poste("vide-geste");
+  const r = p("relire", "--agent", "codex", "--dossier", J, "--consigne", C);
+  ok(r.code === 0 && r.j.verdict === "ABSENT", `exit ${r.code} ${r.j.verdict} ${r.j.message || ""}`);
+  ok(/pas une erreur/.test(r.j.message || "") && r.j.annonce, "message ou annonce manquants");
+});
+check("VIDE : etat --a-blanc ne pose pas la marque de l'annonce", () => {
+  const p = poste("a-blanc");
+  ok(p("etat", "--a-blanc").j.annonce, "pas d'annonce");
+  ok(p("etat").j.annonce, "la marque a été posée par --a-blanc");
+});
+check("UN SEUL : Codex prêt, Gemini absent ; l'annonce nomme celui qui manque", () => {
+  const r = poste("codex", { codex: true })("etat");
+  ok(r.j.verdict === "PRET" && r.j.disponibles.join() === "codex", `${r.j.verdict} ${r.j.disponibles}`);
+  ok(/Codex travaille déjà/.test(r.j.annonce || "") && /Gemini/.test(r.j.annonce || ""), `annonce : ${r.j.annonce}`);
+});
+check("LES DEUX : PRET, aucune annonce", () => {
+  const r = poste("deux", { codex: true, agy: true })("etat");
+  ok(r.j.verdict === "PRET" && r.j.disponibles.length === 2 && r.j.annonce === null, `${r.j.verdict} ${r.j.annonce}`);
+});
+check("INSTALLÉ SANS CONNEXION : Antigravity installé, non connecté, n'est pas disponible", () => {
+  const p = poste("agy-sans-connexion");
+  mkdirSync(join(p("etat", "--a-blanc").H, "Local", "agy", "bin"), { recursive: true });
+  writeFileSync(join(T, "agy-sans-connexion", "Local", "agy", "bin", "agy.exe"), "");
+  const r = p("etat", "--a-blanc");
+  ok(r.j.agents.antigravity.installe && !r.j.agents.antigravity.disponible, JSON.stringify(r.j.agents));
 });
 
 rmSync(T, { recursive: true, force: true });

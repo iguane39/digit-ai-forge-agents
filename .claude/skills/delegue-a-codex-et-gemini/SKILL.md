@@ -8,17 +8,46 @@ description: >
   lecture seule pour relire, aucun drapeau qui lève une protection. Use when / déclencher dès qu'une
   relecture aveugle d'un autre modèle est voulue (boucle L99, contre-expertise, note ou étude à relire),
   qu'un design, une maquette ou une direction artistique est demandé à Claude, ou qu'une image, une
-  illustration ou un visuel doit être produit. Ne pas déclencher pour du code ou des commits dans un
+  illustration ou un visuel doit être produit, et quand l'utilisateur demande la procédure pour
+  installer ou connecter Codex ou Gemini. Agent non configuré sur le poste : Claude travaille seul,
+  sans erreur, et l'annonce de la possibilité sort une seule fois. Ne pas déclencher pour du code ou des commits dans un
   dépôt (Codex ne peut pas commiter), pour juger un livrable par oracle (→ quality-oracles), ni pour
   une API d'OpenAI ou de Gemini dans un produit (→ integre-openai-gemini).
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # delegue-a-codex-et-gemini — un second modèle pour relire, concevoir et dessiner
 
 Claude reste le pilote. Codex et Gemini exécutent un geste borné et rendent un résultat que Claude juge
 avant tout usage. Décisions du porteur : D-240 (b) et sa réponse à D-231, le 23/11/2026.
+
+## Avant tout geste : seulement les agents configurés
+
+Consigne du porteur du 23/11/2026 : « Ne faire travailler les autres LLMs que s'ils sont configurés
+sur le poste. Si aucun autre LLM n'est configuré, ne pas remonter d'erreurs, travailler uniquement
+avec Claude. »
+
+```
+node {skilldir}/scripts/agent-tiers.mjs etat
+```
+
+- **`PRET`** : la liste `disponibles` nomme les agents installés et connectés. Seuls ceux-là reçoivent
+  un geste ; Claude fait la part d'un agent absent.
+- **`CLAUDE_SEUL`** : aucun agent n'est prêt. Claude fait tout le geste seul, avec ses propres moyens.
+  Ce n'est pas une erreur : rien ne se signale comme un défaut, un risque ou un reste, ni dans la
+  restitution ni dans un retour au pilot.
+- **`annonce`** non nulle : la recopier une fois à l'utilisateur, telle quelle, dans la réponse du
+  tour. Elle sort une seule fois par poste, la première fois qu'un agent manque, et dit que Codex et
+  Gemini peuvent travailler avec Claude sur abonnement payant. Sa marque vit dans
+  `~/.digit-ai/agents-tiers.json`.
+- **« procédure Codex et Gemini »**, ou toute demande d'installer ou de connecter l'un d'eux : rendre
+  la procédure pas à pas de [references/installer-codex-et-gemini.md](references/installer-codex-et-gemini.md).
+
+Un geste lancé vers un agent absent rend `ABSENT` en code 0, jamais un refus : l'appelant le traite
+comme `CLAUDE_SEUL` pour cet agent. Installé veut dire que le binaire est là ; connecté, que le
+fichier posé par la connexion existe. Une connexion expirée ne se voit qu'au premier geste réel, qui
+rend alors `FAIL` : Claude fait le geste seul et le dit en une ligne.
 
 ## Les 3 gestes
 
@@ -41,7 +70,7 @@ node {skilldir}/scripts/agent-tiers.mjs image     --agent codex|antigravity --do
 
 1. Crée un dossier jetable par agent et par geste, hors de tout dépôt git ; le lanceur refuse un dossier
    sous `.git`. Copies-y l'entrée : le document à relire, le brief.
-2. Lance les 2 agents en parallèle, en arrière-plan (de 1 à 7 minutes chacun) ; l'entrée standard est fermée.
+2. Lance les agents de la liste `disponibles` d'`etat`, et eux seuls, en parallèle, en arrière-plan (de 1 à 7 minutes chacun) ; l'entrée standard est fermée.
 3. Lis la sortie JSON : `verdict` PASS ou FAIL, `reponse`, `json` (avec `--json`), `fichiers_ecrits`.
 4. Juge le résultat, puis ressors du dossier jetable ce qui sert, vers sa place chez le produit.
 
@@ -93,4 +122,4 @@ quand le skill appelant le prévoit (`studio-de-direction`, `systeme-de-marque`)
 - Antigravity, `--sandbox` : l'écriture hors du dossier est refusée par l'outil comme par le terminal,
   sauf sous `%TEMP%` ; le réseau des commandes est coupé (essai A-6, 3 appels, témoin intact).
 - Le lanceur ne construit jamais `--dangerously-*`, `danger-full-access` ni de contournement :
-  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 8 cas).
+  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 14 cas, dont 6 sur des postes sans agent, avec un seul ou avec les deux).

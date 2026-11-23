@@ -185,7 +185,9 @@ le reste de l'arbitre.
   `relecteur.modele`, le modèle servi ; B18 refuse un relecteur tiers sans modèle. Ses défauts graves se
   recomptent à la source comme ceux d'un relecteur Claude (étape 3). Raison : 2 relecteurs Claude
   partagent les angles morts de leur modèle ; au 2e banc du 23/11/2026, sur la relecture à 5 défauts
-  plantés, Codex et Gemini ont trouvé les 5, notés 8 et 9.
+  plantés, Codex et Gemini ont trouvé les 5, notés 8 et 9. Le relecteur tiers ne s'emploie que si
+  `agent-tiers.mjs etat` le rend disponible sur le poste ; sinon, les 2 relecteurs sont des Claude, comme
+  avant, et rien ne le signale comme un défaut (consigne du porteur du 23/11/2026).
 - **Vérification de clôture sur le diff** (TF-2242, en essai) : `verification_diff` : `true`. Le
   06/11/2026, les vérificateurs ont relevé 10 défauts créés (dont 3 graves) dans les 2 boucles de
   Produit-84, puis les relecteurs aveugles ont trouvé 11 défauts graves dans du texte écrit par la

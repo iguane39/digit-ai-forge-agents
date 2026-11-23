@@ -6,7 +6,7 @@ description: Fournit une contre-expertise de fond d'un livrable fini — résult
 # message suivant). Plus fort qu'un rappel en prose, et sans effet sur son analyse.
 disallowed-tools: Write Edit NotebookEdit
 metadata:
-  version: 1.3.0
+  version: 1.3.1
 ---
 
 # contre-expertise — validation de fond d'un livrable fini
@@ -54,6 +54,9 @@ décision, sinon il est supprimé avant restitution.
   geste `relire` de `delegue-a-codex-et-gemini` sur une copie dans un dossier
   jetable. Ses objections entrent comme constats à recompter à la source, jamais
   comme verdict ; un modèle différent ne partage pas les angles morts de l'auteur.
+  Seulement si `agent-tiers.mjs etat` rend l'agent disponible : sur un poste sans
+  Codex ni Gemini configuré, A3 travaille avec Claude seul, et rien ne le signale
+  comme un défaut (consigne du porteur du 23/11/2026).
 
 `forge-agents` n'est **pas** invoqué par défaut : réservé au cas où l'utilisateur
 demande une contre-expertise multi-agents d'un objet lourd — le skill le propose
