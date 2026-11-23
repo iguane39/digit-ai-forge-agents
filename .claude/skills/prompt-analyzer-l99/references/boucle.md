@@ -177,6 +177,15 @@ le reste de l'arbitre.
   section 5). Le contexte de départ de chaque relecteur se lit au transcript de l'agent et se porte
   à `relecteur.contexte_depart` (jetons) ; critère de l'essai : moins de 25 000 jetons, sinon le type
   se retire de l'arbitre. B18 contrôle le type déclaré, pas la mesure.
+- **Relecteur tiers, Codex ou Gemini** (D-240 (b) et réponse du porteur à D-231, 23/11/2026) : l'un des
+  2 relecteurs d'une passe peut être un autre modèle, lancé par le skill `delegue-a-codex-et-gemini`
+  (`agent-tiers.mjs relire --json`), sur une copie du prompt dans un dossier jetable et avec la même
+  consigne que le relecteur Claude (annexe ci-dessous). Il est aveugle par construction : il ne voit ni
+  l'analyse, ni les passes, ni l'auteur. Le journal porte `relecteur.type` : `codex` ou `antigravity`, et
+  `relecteur.modele`, le modèle servi ; B18 refuse un relecteur tiers sans modèle. Ses défauts graves se
+  recomptent à la source comme ceux d'un relecteur Claude (étape 3). Raison : 2 relecteurs Claude
+  partagent les angles morts de leur modèle ; au 2e banc du 23/11/2026, sur la relecture à 5 défauts
+  plantés, Codex et Gemini ont trouvé les 5, notés 8 et 9.
 - **Vérification de clôture sur le diff** (TF-2242, en essai) : `verification_diff` : `true`. Le
   06/11/2026, les vérificateurs ont relevé 10 défauts créés (dont 3 graves) dans les 2 boucles de
   Produit-84, puis les relecteurs aveugles ont trouvé 11 défauts graves dans du texte écrit par la

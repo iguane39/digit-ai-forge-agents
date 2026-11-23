@@ -340,8 +340,11 @@ export function juger(j) {
   if (a && a.type_relecteur === 'relecteur') {
     passes.forEach((p, i) => {
       const r = p.relecteur || {};
+      // D-240 (b) et réponse du porteur à D-231 (23/11/2026) : un relecteur d'un AUTRE modèle, Codex ou Gemini lancé par
+      // le skill delegue-a-codex-et-gemini, est aveugle par construction ; son type se déclare avec le modèle servi.
       if (r.type === 'relecteur' || (r.type === 'general-purpose' && propre(r.repli))) return;
-      ko('B18', `passes[${i}].relecteur`, `relecteur lancé avec le type « ${r.type === undefined ? 'non déclaré' : r.type} » : le type « relecteur », ou un repli sur « general-purpose » avec son motif (relecteur.repli)`);
+      if ((r.type === 'codex' || r.type === 'antigravity') && propre(r.modele)) return;
+      ko('B18', `passes[${i}].relecteur`, `relecteur lancé avec le type « ${r.type === undefined ? 'non déclaré' : r.type} » : le type « relecteur », un relecteur tiers « codex » ou « antigravity » avec son modèle (relecteur.modele), ou un repli sur « general-purpose » avec son motif (relecteur.repli)`);
     });
   }
 
@@ -709,6 +712,9 @@ function selfTest() {
   cas.push({ nom: 'TF-2241 vert — repli motivé sur « general-purpose » (type absent hors du pilot)', j: (() => { const j = typee(); Object.assign(j.passes[1].relecteur, { type: 'general-purpose', repli: 'type relecteur absent de ce projet : dossier .claude/agents sans relecteur.md' }); return j; })(), attendu: [] });
   rougeB('B18 relecteur général sans motif de repli', 'B18', typee, (j) => { j.passes[1].relecteur.type = 'general-purpose'; });
   rougeB('B18 type du relecteur non déclaré', 'B18', typee, (j) => { delete j.passes[0].relecteur.type; });
+  // D-240 (b), 23/11/2026 : le relecteur tiers (Codex ou Gemini) se déclare avec son modèle servi.
+  cas.push({ nom: 'D-240 vert — relecteur tiers Codex déclaré avec son modèle', j: (() => { const j = typee(); Object.assign(j.passes[1].relecteur, { type: 'codex', modele: 'gpt-6.2-sol' }); return j; })(), attendu: [] });
+  rougeB('B18 relecteur tiers sans modèle déclaré', 'B18', typee, (j) => { j.passes[1].relecteur.type = 'antigravity'; });
   // TF-2242 (16/11/2026) : le vérificateur de clôture sur le diff. Les 11 défauts créés qui ont échappé aux
   // vérificateurs du 14/11/2026 étaient des affirmations sans preuve : « la commande tourne sous Bash », « la seule
   // durée disponible », « repris du tableau de Q1 ». Chaque phrase ajoutée reçoit ici son état.

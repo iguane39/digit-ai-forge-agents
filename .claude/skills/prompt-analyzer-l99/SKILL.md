@@ -5,7 +5,7 @@ description: >
 # TF-0997 : le mot-cle du lexique RV-6 est cable cote harnais par hook-lexique (UserPromptSubmit,
 # oracles/hook-lexique.mjs du pilot) ; la description ci-dessus reste le declencheur de secours.
 metadata:
-  version: "2.13.0"
+  version: "2.14.0"
   updated: "2026-11-16"
 ---
 
@@ -102,6 +102,8 @@ Toujours répondre en **français**, quelle que soit la langue du prompt analys�
    et remise aux relecteurs (TF-2236, B17) ; le type d'agent dédié `relecteur` pour les relecteurs
    aveugles (TF-2241, B18) ; un vérificateur de clôture qui classe chaque phrase ajoutée par la
    correction (TF-2242, B19).
+   Relecteur tiers (D-240 (b), 23/11/2026) : l'un des 2 relecteurs d'une passe peut être Codex ou Gemini,
+   lancé par `delegue-a-codex-et-gemini` ; le journal déclare son type et son modèle (B18).
 11. **Contrat de sortie : l'oracle de forme de chaque format produit** (TF-2194) : le contrat du
    Ch8 nomme `check_html.py` pour une page HTML et `check_markdown.py` pour un Markdown, **y
    compris pour la voie de repli** (générateur en échec, format de secours). Le 05/11/2026, un

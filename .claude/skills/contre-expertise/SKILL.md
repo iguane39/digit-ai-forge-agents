@@ -6,7 +6,7 @@ description: Fournit une contre-expertise de fond d'un livrable fini — résult
 # message suivant). Plus fort qu'un rappel en prose, et sans effet sur son analyse.
 disallowed-tools: Write Edit NotebookEdit
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # contre-expertise — validation de fond d'un livrable fini
@@ -49,6 +49,11 @@ décision, sinon il est supprimé avant restitution.
   alternative crédible comparée** (avantages / inconvénients / conditions de
   bascule), confrontation à l'état de l'art **sourcé**. Détail :
   [references/angle-contradiction.md](references/angle-contradiction.md).
+- **Contradicteur d'un autre modèle** (D-240 (b), 23/11/2026) : pour un livrable
+  généré par Claude, A3 reçoit en plus l'avis de Codex ou de Gemini, lancé par le
+  geste `relire` de `delegue-a-codex-et-gemini` sur une copie dans un dossier
+  jetable. Ses objections entrent comme constats à recompter à la source, jamais
+  comme verdict ; un modèle différent ne partage pas les angles morts de l'auteur.
 
 `forge-agents` n'est **pas** invoqué par défaut : réservé au cas où l'utilisateur
 demande une contre-expertise multi-agents d'un objet lourd — le skill le propose
