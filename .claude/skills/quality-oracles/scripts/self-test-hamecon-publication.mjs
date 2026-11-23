@@ -1368,6 +1368,49 @@ try {
       else kos.push('cas 18c (D-175, remède joué) — le remède du refus ne publie pas : exit ' + p18c.status + ', au distant : ' + aLeDistant(b.distant) + ' : ' + (p18c.stderr || '').trim().slice(0, 300));
     }
 
+    // --- cas 19 : UN DÉPÔT PRIVÉ GARDE SES NOMS (D-36 (a) du 01/10/2026, TF-2849) ---------------
+    // Le 23/11/2026, le hameçon posé le 12/09 refusait 47 enregistrements d'un dépôt PRIVÉ pour des noms
+    // que D-36 (a) y autorise. La visibilité se lit chez l'hébergeur à chaque envoi ; seul « PRIVATE »
+    // dispense la porte des noms. Un faux gh (PORTE_VISIBILITE_GH) rend la visibilité, sans réseau.
+    const fauxVisi = path.join(racine, 'faux-gh-visibilite.mjs');
+    fs.writeFileSync(fauxVisi, [
+      "import fs from 'node:fs';",
+      "if (process.env.FAUX_VISI_JOURNAL) fs.appendFileSync(process.env.FAUX_VISI_JOURNAL, process.argv.slice(2).join(' ') + '\\n');",
+      "const v = process.env.FAUX_VISI || '';",
+      "if (v === 'echec') { process.stderr.write('HTTP 404: Not Found\\n'); process.exit(1); }",
+      "process.stdout.write(v + '\\n');",
+    ].join('\n'));
+    const journalVisi = path.join(racine, 'faux-gh-visibilite.journal');
+    const viserPorteur = (dossier) => {
+      const d = depot(racine, dossier, true);
+      const distant = distantJetable(racine, dossier + '-distant');
+      const declaree = 'https://github.com/proprietaire-banc/' + dossier + '.git';
+      git(d, 'remote', 'add', 'origin', declaree);
+      git(d, 'config', '--local', 'url.' + distant.replace(/\\/g, '/') + '.insteadOf', declaree);
+      git(d, 'config', '--local', '--add', 'credential.https://github.com.helper', '');
+      git(d, 'config', '--local', '--add', 'credential.https://github.com.helper', ASSISTANT_GH);
+      sh(racine, 'node', [INSTALLEUR, d, '--seul=pre-push']);
+      return { d, distant, declaree };
+    };
+    const ENV19 = (visi) => ENV18({ PORTE_VISIBILITE_GH: fauxVisi, FAUX_VISI: visi, FAUX_VISI_JOURNAL: journalVisi });
+    // (19a) PRIVATE : le porteur de noms publie, le motif D-36 est dit, gh lit l'URL DÉCLARÉE
+    const v1 = viserPorteur('prive-porteur');
+    const p19a = sh(v1.d, 'git', ['push', 'origin', 'main'], ENV19('PRIVATE'));
+    const jv = fs.existsSync(journalVisi) ? fs.readFileSync(journalVisi, 'utf8') : '';
+    if (p19a.status === 0 && aLeDistant(v1.distant) && /D-36 \(a\)/.test(p19a.stderr || '') && jv.includes('repo view ' + v1.declaree + ' --json visibility'))
+      oks.push('cas 19a (D-36 (a)) — dépôt PRIVÉ porteur de noms : PUBLIÉ, motif D-36 dit, visibilité lue sur l\'URL déclarée');
+    else kos.push('cas 19a (D-36 (a)) — dépôt privé : exit ' + p19a.status + ', au distant : ' + aLeDistant(v1.distant) + ', gh : « ' + jv.trim().slice(0, 160) + ' » : ' + (p19a.stderr || '').trim().slice(0, 300));
+    // (19b) PUBLIC, (19c) gh en échec, (19d) gh muet : les noms sont jugés, l'envoi est refusé
+    const echecs19 = [];
+    for (const [cas, visi] of [['19b PUBLIC', 'PUBLIC'], ['19c gh en échec', 'echec'], ['19d gh muet', '']]) {
+      const v = viserPorteur('porteur-' + cas.split(' ')[0]);
+      const p = sh(v.d, 'git', ['push', 'origin', 'main'], ENV19(visi));
+      if (!(p.status !== 0 && !aLeDistant(v.distant) && /PUBLICATION REFUSEE — verdict FAIL/.test(p.stderr || '')))
+        echecs19.push(cas + ' : exit ' + p.status + ', au distant : ' + aLeDistant(v.distant) + ' : ' + (p.stderr || '').trim().slice(0, 200));
+    }
+    if (!echecs19.length) oks.push('cas 19b-d (D-36 (a)) — visibilité PUBLIC, gh en échec ou muet : les noms sont JUGÉS, envoi REFUSÉ, rien au distant');
+    else kos.push('cas 19b-d (D-36 (a)) — ' + echecs19.join(' | '));
+
     // (18d) compte ILLISIBLE → refusé (SKIP refuse), motif en clair : gh en échec, sortie vide, délai
     // dépassé (borne raccourcie à 1,5 s par PORTE_IDENTITE_DELAI_MS), exécutable introuvable
     const illisibles = [

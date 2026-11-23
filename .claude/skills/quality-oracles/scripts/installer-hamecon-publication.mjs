@@ -316,6 +316,31 @@ if [ "$VERDICT" = "PASS" ]; then
   exit 0
 fi
 
+# --- D-36 (a) du 01/10/2026 : un depot PRIVE garde ses noms (TF-2849, 23/11/2026) ---------------
+# Decision du porteur : « Les depots prives peuvent conserver des donnees de type nom. » La porte des
+# noms ne dit pas si le depot est public (son non_juge le renvoie a l'appelant) ; le hameçon, pose
+# avant la decision, refusait donc 47 enregistrements d'un depot prive depuis le 02/10. La visibilite
+# se lit chez l'hebergeur A CHAQUE ENVOI, jamais a la pose : un depot devenu public est rejuge des
+# l'envoi suivant. Elle ne se lit qu'apres un refus des noms : un envoi propre n'interroge jamais
+# l'hebergeur. Seul « PRIVATE » lu en clair leve le refus ; gh absent, en echec, muet, hors delai ou
+# toute autre valeur : le refus tient. Identite et secrets restent juges plus haut dans tous les cas.
+# L'URL lue est celle que le depot DECLARE (config brute, avant toute reecriture insteadOf).
+URL_DECLAREE="$(git config --get "remote.$1.url" 2>/dev/null)"
+[ -n "$URL_DECLAREE" ] || URL_DECLAREE="$2"
+DELAI_VISIBILITE=""
+command -v timeout >/dev/null 2>&1 && DELAI_VISIBILITE="timeout 30"
+if [ -n "$PORTE_VISIBILITE_GH" ]; then
+  VISIBILITE="$(GH_PROMPT_DISABLED=1 $DELAI_VISIBILITE node "$PORTE_VISIBILITE_GH" repo view "$URL_DECLAREE" --json visibility -q .visibility 2>/dev/null | tr -d '\\r\\n ')"
+elif command -v gh >/dev/null 2>&1; then
+  VISIBILITE="$(GH_PROMPT_DISABLED=1 $DELAI_VISIBILITE gh repo view "$URL_DECLAREE" --json visibility -q .visibility 2>/dev/null | tr -d '\\r\\n ')"
+else
+  VISIBILITE=""
+fi
+if [ "$VISIBILITE" = "PRIVATE" ]; then
+  echo "Refus de la porte des noms leve (verdict \${VERDICT:-ILLISIBLE}) : le depot distant est PRIVE chez l'hebergeur, lu a cet envoi (D-36 (a) du 01/10/2026) ; identite et secrets juges." >&2
+  exit 0
+fi
+
 echo "" >&2
 echo "PUBLICATION REFUSEE — verdict \${VERDICT:-ILLISIBLE} de ${MARQUE}." >&2
 if [ "$VERDICT" = "SKIP" ]; then
