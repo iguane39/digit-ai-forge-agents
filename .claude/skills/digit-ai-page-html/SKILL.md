@@ -7,13 +7,25 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.52.0"
+  version: "1.53.0"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.53.0 (23/11/2026)** — **Lot fag2 de la campagne du 23/11/2026 : V28 avertit au lieu de bloquer (TF-2691, D-234 (a)), et une navigation latérale déclarée sort de la mesure de V17 et L2 (TF-2776, D-235 (a)) ; décisions du porteur : exécutées.**
+*(TF-2691 d'abord :* le porteur a répondu « 234a » : `equilibre_droite` (V28, piste de droite vide) passe de bloquante à **avertissement**, sur le modèle exact de V25 : une ligne de la
+table `FAMILLES` de `render_page.py`, sévérité `avertissement`. Le constat se rend toujours, avec son détail ; la page ne fait plus échouer le verdict. Les seuils ne bougent pas, une échéance
+de `echeances.json` pourra encore la durcir, et la mesure publiée (22 pages accusées sur 117, 13 sur 107 pages rendues) reste dans `zero-defaut-visuel.md`. Au banc, la rouge
+`equilibre-piste-reservee-vide.html` garde son compte de constats et les sept familles muettes, et rend maintenant PASS sans cause bloquante au lieu de FAIL.
+*TF-2776 ensuite :* le porteur a répondu « 235a » : un `nav`, un `aside` ou un élément porteur de `data-navigation`, **à côté** d'un bloc (même hauteur sur plus de 8 px, entièrement à
+sa gauche ou à sa droite), sort de la mesure ; les règles et les seuils ne changent pas. V17 compare le conteneur à la fenêtre moins la navigation (et le dit dans le message) ; L2 ne juge
+pas le texte d'une navigation déclarée, ne prend pas sa piste pour une colonne d'étiquettes (`l2_gouttiere`) et ne la compte pas dans le cadre d'un conteneur de lecture (`l2_conteneur`).
+Trois verts, rouges sur l'outil d'avant (`nav-laterale-nav-accusee-a-tort.html`, `-aside-a-droite.html`, `-attribut-fixe.html`), et trois contre-épreuves qui restent accusées : la même
+page sans déclaration (`nav-laterale-non-declaree.html`), une navigation en bandeau (`nav-bandeau-conteneur-bride.html`) et une colonne de lecture calée à gauche à côté d'une
+navigation (`nav-laterale-colonne-calee-a-gauche.html`, que l'outil d'avant n'accusait pas à 1 280 et 1 440 px : la largeur de la navigation y comptait comme une marge de gauche).)*
 
 **1.52.0 (22/11/2026)** — **Lot fag de la campagne du 22/11/2026 : la page se mesure reposée (TF-2707, TF-2700, TF-2706), `check_html` ne compte pas le `<h1>` d'un écran masqué (TF-2791), le lecteur d'animation à scènes entre au socle (TF-2300), et V28 est mesurée sur les pages livrées (TF-2691) ; décisions R-58 : exécutées.**
 *(TF-2707, TF-2700, TF-2706 d'abord :* `render_page.py` chargeait la page et mesurait 250 ms plus tard, à l'instant où elle se trouvait : une encre sombre à 1,01:1
