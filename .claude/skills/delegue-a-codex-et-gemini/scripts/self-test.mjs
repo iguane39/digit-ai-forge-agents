@@ -93,6 +93,7 @@ check("VIDE : aucun agent, etat rend CLAUDE_SEUL en code 0, puis l'annonce une s
   const r1 = p("etat");
   ok(r1.code === 0 && r1.j.verdict === "CLAUDE_SEUL" && r1.j.disponibles.length === 0, `exit ${r1.code} ${r1.j.verdict}`);
   ok(/abonnement payant/.test(r1.j.annonce || "") && /procédure Codex et Gemini/.test(r1.j.annonce || ""), `annonce : ${r1.j.annonce}`);
+  ok(/installés et connectés/.test(r1.j.annonce || ""), `accord au pluriel absent : ${r1.j.annonce}`);
   ok(existsSync(r1.j.procedure || ""), `procédure absente : ${r1.j.procedure}`);
   const r2 = p("etat");
   ok(r2.code === 0 && r2.j.annonce === null, `2e annonce : ${r2.j.annonce}`);

@@ -80,7 +80,8 @@ function annonceUnique(agents) {
   const debut = prets.length
     ? `${prets.map((k) => NOMS[k]).join(" et ")} travaille déjà avec Claude sur ce poste. ${manquants.map((k) => NOMS[k]).join(" et ")} peut le rejoindre`
     : "Claude travaille seul sur ce poste. Codex et Gemini (par Antigravity) peuvent travailler avec lui";
-  const texte = `${debut}, sur votre abonnement payant (ChatGPT pour Codex, compte Google pour Gemini), une fois installé et connecté. Ils relisent un document, proposent une variante de design et génèrent des images. Je peux vous fournir la procédure pas à pas : dites « procédure Codex et Gemini ».`;
+  const accord = manquants.length > 1 ? "installés et connectés" : "installé et connecté";
+  const texte = `${debut}, sur votre abonnement payant (ChatGPT pour Codex, compte Google pour Gemini), une fois ${accord}. Ils relisent un document, proposent une variante de design et génèrent des images. Je peux vous fournir la procédure pas à pas : dites « procédure Codex et Gemini ».`;
   if (!aBlanc) {
     try { mkdirSync(dossierUtil, { recursive: true }); writeFileSync(marque, JSON.stringify({ annonce_faite: new Date().toISOString(), manquants }, null, 1) + "\n"); }
     catch { /* marque non écrite : l'annonce reviendra, ce n'est pas une erreur */ }

@@ -14,7 +14,7 @@ description: >
   dépôt (Codex ne peut pas commiter), pour juger un livrable par oracle (→ quality-oracles), ni pour
   une API d'OpenAI ou de Gemini dans un produit (→ integre-openai-gemini).
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # delegue-a-codex-et-gemini — un second modèle pour relire, concevoir et dessiner
