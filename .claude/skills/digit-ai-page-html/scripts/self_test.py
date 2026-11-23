@@ -6553,10 +6553,19 @@ def run_v28_equilibre():
             n = len(issues["equilibre_droite"])
             muettes = {k: len(issues[k]) for k in FAMILLES_MUETTES_SUR_EQUILIBRE if issues.get(k)} \
                 if nom.startswith("equilibre-piste") else {}
-            ok = n == attendu and not muettes and (attendu == 0 or d["verdict"] == "FAIL")
+            # D-234 (a) du porteur (23/11/2026, TF-2691) : V28 AVERTIT au lieu de bloquer, comme V25. Le constat reste compte
+            # (`n == attendu`) ; ce qui change est son poids. Deux gardes, une par sens : la famille n'est plus dans les
+            # familles bloquantes de l'outil (la jumelle sans `sticky` garde un verdict FAIL, mais par V23, pas par V28), et la
+            # rouge, dont les sept autres familles sont muettes, rend PASS sans cause bloquante (avant : verdict FAIL).
+            # Un V28 redevenu bloquant echoue sur l'une ou l'autre, un V28 devenu muet echoue sur `n`.
+            import render_page as rp  # noqa: PLC0415
+            poids = ("equilibre_droite" not in rp.BLOQUANTES and rp.SEVERITE.get("equilibre_droite") == "avertissement"
+                     and (not nom.startswith("equilibre-piste")
+                          or (d["verdict"] == "PASS" and d["breakpoints"][str(largeur)]["blocking"] == 0)))
+            ok = n == attendu and not muettes and poids
             out.append({"fixture": etiquette, "verdict": "OK" if ok else "ECHEC",
                         "attendu": attendu, "obtenu": n, "regle": "equilibre_droite (V28)",
-                        "detail": "" if ok else f"{n} constat(s) equilibre_droite a {largeur} px ; autres familles non muettes : {muettes}"})
+                        "detail": "" if ok else f"{n} constat(s) equilibre_droite a {largeur} px ; verdict {d['verdict']}, poids {'avertissement' if poids else 'BLOQUANT ou verdict inattendu'} ; autres familles non muettes : {muettes}"})
     shutil.rmtree(captures, ignore_errors=True)
     return out
 

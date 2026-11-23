@@ -18,7 +18,7 @@ Oracle mesuré de la checklist canonique references/zero-defaut-visuel.md :
   - V25 colonne large et vide face à une colonne étranglée (avertissement, TF-1966)
   - V26 panneau déplié au fond transparent ou recouvert (bloquant, TF-1963)
   - V27 filtres de colonne masqués par le repli en cartes (bloquant, TF-1965)
-  - V28 encre déséquilibrée : plus du quart du cadre vide à droite, par tranches de 40 px (bloquant, TF-2679)
+  - V28 encre déséquilibrée : plus du quart du cadre vide à droite, par tranches de 40 px (avertissement depuis D-234 (a), TF-2691 ; TF-2679)
   - V1 : la bande de sommaire défilante de L25 n'est pas un débordement (TF-1992)
 
 V5 (croisements de flèches) et V6 (images déformées) restent à l'inspection
@@ -3582,9 +3582,12 @@ FAMILLES = [
     ("filtres_masques_repli", "V27 filtres de colonne masques par le repli en cartes", "bloquant"),
     # TF-2679 (factory-digit-ai-fr, 15/11/2026) : une piste de grille reservee sans contenu, une marge animee
     # vide, un bandeau a une seule figure — aucune famille ne jugeait ce que le lecteur voit : la moitie de la
-    # page vide a droite. Bloquant, comme la decision du 16/11/2026 le pose (9 pages sur 10 rouges au controle
-    # du produit, 84 mesures vertes) ; le bruit sur le parc n'est pas mesure ici (mesurer_bruit.py).
-    ("equilibre_droite", "V28 encre desequilibree : plus du quart du cadre vide a droite", "bloquant"),
+    # page vide a droite. Bloquant du 16/11 au 23/11/2026 (decision du 16/11 : 9 pages sur 10 rouges au controle
+    # du produit, 84 mesures vertes), AVERTISSEMENT depuis la decision D-234 (a) du porteur du 23/11/2026
+    # (TF-2691) : la mesure sur les pages livrees accuse 22 pages sur 117 (references/zero-defaut-visuel.md),
+    # la seule capture lue ne montre aucun defaut, et V25 a pris ce chemin. Seule la severite change : les seuils
+    # et le detail du constat sont ceux d'avant, et une echeance (echeances.json) peut encore la durcir.
+    ("equilibre_droite", "V28 encre desequilibree : plus du quart du cadre vide a droite", "avertissement"),
     # TF-1146 (16/09, lot Produit-64 20260916a) : l exemption V4 posee EN BLOC. Avertissement et
     # non bloquant — 1 716 occurrences mesurees dans le parc le 16/09, les rendre bloquantes
     # d un coup rougirait tout ce qui existe. Mais le silence, lui, s arrete : un libelle de
