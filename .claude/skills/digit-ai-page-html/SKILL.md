@@ -7,13 +7,16 @@ description: >
 # n'empeche jamais l'appel direct par `/digit-ai-page-html`.
 paths: "**/*.html, **/*.md"
 metadata:
-  version: "1.54.0"
+  version: "1.54.1"
 ---
 
 # Page HTML — Socle commun Digit-AI
 
 Couche de base pour toute page HTML autonome chartée. Les skills `digit-ai-fiches-html`
 et `digit-ai-schemas` n'ajoutent que leurs gabarits par-dessus ce socle.
+
+**1.54.1 (25/11/2026)** — **Le skill prescrit le lanceur complet de `quality-oracles` avant tout sceau et toute publication (TF-2870, RT-42 du lot Produit-81 20261124a).** Version CORRECTIVE : une section neuve de prescription, aucune règle ni verdict ne change.
+*Le fait* : un dossier d'architecture HTML a passé `check_html.py`, `render_page.py` et `run-oracles-design`, a été scellé, enregistré et poussé ; le verrou « livré » du produit a exigé ensuite le compagnon `.oracles.json` du lanceur complet, qui a relevé 10 oracles en échec (chapitres sans chapeau, tableaux sans exemple de lecture, en-têtes sans glose, chiffres sans source, page sans phrase d'intention, mesure de lecture et largeur du contenu fausses à 2 560 et 3 840 px). Coût : 2 indices de plus, 6 déplacements, 3 commits et 3 envois. La section « Avant de sceller ou de publier » nomme la commande, le verdict exigé et le compagnon daté après la dernière écriture. **Ce que cette forge ne porte pas** : le poseur de sceau (`verifier-jugement --sceller`) est un script du pilot ; le refus du sceau sans compagnon PASS relève de lui, pas de ce skill. Recette : `run_prescription_lanceur_complet` de `scripts/self_test.py` (verte, et deux rouges jouets).
 
 **1.54.0 (25/11/2026)** — **Lot de la campagne du 25/11/2026 : la taille du texte courant est bornée vers le haut (V29, TF-2882, TF-2874), et le message de V18 met la déclaration en tête.** Version MINEURE : une famille neuve, un message réécrit, aucun verdict existant ne change (0 page accusée sur 346 pages versionnées de 11 dépôts, mesuré à 2 560 px).
 *Le fait* : deux produits (lots Produit-87 20261124b et Produit-81 20261124c) ont fait passer V18 (135 caractères par ligne à 2 560 et 3 840 px) en asservissant la police à la fenêtre, `html{font-size:clamp(16px, calc(1.25vw - 8px), 48px)}`, soit un texte courant à 24 px à 2 560 px et à 41 px à 3 840 px. V18 compte des caractères par ligne : agrandir la police en retire sans toucher à la largeur de la ligne, et aucun oracle ne bornait la taille du texte vers le haut.
@@ -898,7 +901,8 @@ repli système, `@media print` + `@page`, responsive, structure sémantique, un 
    hiérarchie de titres sans saut de niveau.
 4. Décliner via les **tokens `:root`** uniquement ; ne pas écrire de couleur en dur.
 5. Vérifier la cible PDF si concernée (cf. règles print de la référence).
-6. Auditer (workflow ci-dessous) avant livraison.
+6. Auditer (workflow ci-dessous) avant livraison, puis jouer le lanceur complet de `quality-oracles` avant tout sceau
+   et toute publication (section « Avant de sceller ou de publier »).
 
 ## Workflow — auditer / corriger une page
 
@@ -1219,6 +1223,18 @@ node <racine digit-ai-forge-design>/oracles/oracle-images.mjs page.html
 `check_html.py` et `render_page.py` **le rappellent à chaque exécution**, PASS ou FAIL, dans leur
 bloc « Périmètre de NON-MESURE » : le renvoi n'est pas seulement écrit ici, il est prononcé par les
 contrôles que le producteur lance de toute façon.
+
+## Avant de sceller ou de publier : le lanceur complet de `quality-oracles` (TF-2870)
+
+**Le fait, le 24/11/2026 (lot Produit-81 20261124a, RT-42).** Un dossier d'architecture HTML a passé `check_html.py`, `render_page.py` à 1280, 768 et 390 px et `run-oracles-design`, puis a été scellé, enregistré et poussé. Le verrou « livré » du produit exige un compagnon `.oracles.json` du lanceur complet de `quality-oracles` : il a relevé 10 oracles en échec (chapitres sans chapeau ni annonce au sommaire, tableaux sans exemple de lecture, en-têtes sans glose, chiffres sans source, page sans phrase d'intention, mesure de lecture et largeur du contenu fausses à 2 560 et 3 840 px). Il a fallu 2 indices de plus, 6 déplacements, 3 commits et 3 envois. Les scripts de ce socle et les oracles de `digit-ai-forge-design` jugent une partie de ce qui juge une page ; le lanceur complet les joue tous, avec ceux du texte et des données.
+
+Avant de sceller ou de publier, jouer le lanceur complet sur la page, après sa DERNIÈRE écriture :
+
+```bash
+node <racine digit-ai-forge-agents>/.claude/skills/quality-oracles/scripts/run-oracles.mjs page.html
+```
+
+Le verdict exigé est **PASS** (exit 0) ; un FAIL se corrige, il ne se contourne pas. Le lanceur écrit le compagnon `<page>.oracles.json`, à côté de la page, ou sous `.oracles/` quand la page est sous `output/`, `old/`, `dist/` ou `build/` : il vaut pour la page telle qu'elle était à sa date, et une page modifiée ensuite se rejoue. Ce skill ne pose aucun sceau et n'en refuse aucun : le poseur de sceau (`verifier-jugement --sceller`) est un script du pilot, pas de cette forge, et refuser un sceau sans compagnon PASS relève de lui.
 
 ## Référentiel détaillé
 

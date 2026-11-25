@@ -7598,6 +7598,44 @@ def run_lot_fa4():
     return run_fa4_tf2353() + run_fa4_tf2391() + run_fa4_impression() + run_fa4_tf2362() + run_fa4_tf2352()
 
 
+RE_SECTION_SCELLE = re.compile(r"^## Avant de sceller ou de publier\b.*?(?=^## )", re.M | re.S)
+
+
+def prescrit_le_lanceur_complet(texte):
+    """Vrai si la section « Avant de sceller ou de publier » nomme la commande du lanceur complet de
+    quality-oracles, le compagnon `.oracles.json` et le verdict PASS exigé."""
+    m = RE_SECTION_SCELLE.search(texte)
+    corps = m.group(0) if m else ""
+    return bool(re.search(r"quality-oracles/scripts/run-oracles\.mjs", corps)) \
+        and ".oracles.json" in corps and "PASS" in corps
+
+
+def run_prescription_lanceur_complet():
+    """TF-2870 (RT-42 du lot Produit-81 20261124a) — le skill prescrit le lanceur complet de quality-oracles
+    AVANT tout sceau et toute publication.
+
+    Le fait : un dossier d'architecture HTML a passe `check_html`, `render_page` et `run-oracles-design`,
+    puis a ete scelle et pousse ; le lanceur complet, exige ensuite par le verrou « livre » du produit, a
+    releve 10 oracles en echec (2 indices, 6 deplacements, 3 commits et 3 envois de plus). Les scripts du
+    socle ne sont qu'une partie des oracles qui jugent une page.
+
+    DOUBLE SENS : le SKILL.md du socle prescrit (verte) ; la meme section amputee de sa commande, ou
+    renommee, ne prescrit plus rien (rouges jouets). Un texte qui cite le lanceur ailleurs que dans la
+    section ne compte pas : la prescription se lit a l'endroit ou l'auteur la cherche, avant de sceller.
+    """
+    skill = (FIXTURES.parent / "SKILL.md").read_text(encoding="utf-8")
+    verte = prescrit_le_lanceur_complet(skill)
+    sans_commande = prescrit_le_lanceur_complet(skill.replace("quality-oracles/scripts/run-oracles.mjs", "x"))
+    renommee = prescrit_le_lanceur_complet(skill.replace("## Avant de sceller ou de publier", "## Autre section"))
+    ok = verte and not sans_commande and not renommee
+    return [{"fixture": "SKILL.md · section « Avant de sceller ou de publier »",
+             "verdict": "OK" if ok else "ECHEC",
+             "attendu": "TF-2870 : prescrit (verte), muette sans la commande, muette sans la section",
+             "obtenu": f"verte {verte}, sans commande {sans_commande}, renommee {renommee}",
+             "regle": "TF-2870 lanceur complet avant sceau",
+             "detail": "" if ok else "le SKILL.md ne prescrit pas le lanceur complet avant sceau et publication"}]
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auto-test des règles de lisibilité L1-L10.")
     ap.add_argument("--output", choices=["text", "json"], default="text")
@@ -7616,7 +7654,8 @@ def main():
            + run_sections_lisibilite_publiees()
            + run_l39_graphique_maison() + run_dates_jjmm()
            + run_kpi_hors_page_conteneur() + run_lot_a_check_html()
-           + run_lot_fa4() + run_scenes_adresse_independante_de_la_police() + run_page_servie())
+           + run_lot_fa4() + run_scenes_adresse_independante_de_la_police() + run_page_servie()
+           + run_prescription_lanceur_complet())
     # TF-1964 — le composant embarque lit des jetons que l'hote ne declare pas : repli et alerte.
     composants_jetons = run_lot_a_composants()
     if composants_jetons:
