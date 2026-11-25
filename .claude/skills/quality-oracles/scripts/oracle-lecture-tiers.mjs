@@ -152,15 +152,24 @@ const HORS_MOT = '(?<![\\p{L}\\p{N}_])', FIN_MOT = '(?![\\p{L}\\p{N}_])';
       + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '["\'][^>]*>([\\s\\S]*?)</\\1\\s*>', 'i'));
     return m ? m[2].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
   };
+  // TF-2872 (24/11/2026) — LA VALEUR D'UN ATTRIBUT SE LIT SELON SON DÉLIMITEUR RÉEL. Le fait, mesuré
+  // chez un produit : 3 en-têtes sur 34 portaient `data-definition` ET `title` (« L'effet d'une
+  // indisponibilité… », « D'abord… »), et T2 les déclarait non glosés. L'expression `["'][^"']{3,}`
+  // comptait 3 caractères sans aucune apostrophe dès l'ouverture : l'apostrophe droite en 2e position
+  // d'une valeur entre guillemets doubles coupait la glose, et le seul geste qui levait le constat,
+  // reformuler sans élision, était un contournement. Une valeur entre guillemets doubles peut porter
+  // des apostrophes, une valeur entre apostrophes peut porter des guillemets doubles.
+  const valeursAttr = (attrs, nom) => [...attrs.matchAll(new RegExp(nom + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')', 'gi'))].map((m) => m[1] ?? m[2]);
+  const aGlose = (attrs, nom) => valeursAttr(attrs, nom).some((v) => v.length >= 3);
   const gloseAtteignable = (e) => {
-    if (/data-definition\s*=\s*["'][^"']{3,}/i.test(e.attrs)) return 'data-definition';
-    if (/title\s*=\s*["'][^"']{3,}/i.test(e.attrs)) return 'title';
-    if (/aria-description\s*=\s*["'][^"']{3,}/i.test(e.attrs)) return 'aria-description';
+    if (aGlose(e.attrs, 'data-definition')) return 'data-definition';
+    if (aGlose(e.attrs, 'title')) return 'title';
+    if (aGlose(e.attrs, 'aria-description')) return 'aria-description';
     const decrit = (e.attrs.match(/aria-describedby\s*=\s*["']([^"']+)["']/i) || [])[1];
     if (decrit && decrit.split(/\s+/).some((id) => id && texteDeId(id).length >= 3)) return 'aria-describedby';
     const t = e.texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (!t) return null;
-    if (new RegExp('<abbr[^>]+title=["\'][^"\']{3,}["\'][^>]*>\\s*' + t, 'iu').test(snap.sansCode)) return 'abbr';
+    if ([...snap.sansCode.matchAll(new RegExp('<abbr\\b([^>]+)>\\s*' + t, 'giu'))].some((m) => aGlose(m[1], 'title'))) return 'abbr';
     if (new RegExp(HORS_MOT + t + '\\s*(?::|—|–|=)\\s*\\S', 'iu').test(glossaire)) return 'glossaire';
     if (new RegExp(HORS_MOT + '(?:on\\s+appelle|d[ée]finition)' + FIN_MOT + '[^.\\n]{0,60}' + HORS_MOT + t + FIN_MOT, 'iu').test(glossaire)) return 'prose';
     return null;

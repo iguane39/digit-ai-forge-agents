@@ -2763,6 +2763,31 @@
    "provenance": "TF-1445, lot Produit-78 - RETOURS - 20260928b (RQ-2) — T2 cherchait la glose d un en-tete par une expression ouverte sur \\b sans drapeau u : devant « É » elle ne tombait jamais, et « État au 2026-09-28 », defini en prose et relie a sa note par aria-describedby, etait declare non glose. La verte glose les trois en-tetes accentues (prose, aria-describedby vers une note non vide, glossaire) et echoue contre l oracle d avant (3 en-tetes sur 3 non gloses) ; la rouge laisse « État au 2026-09-28 » sans glose et relie « Délai » a une note VIDE : 2 sur 3, et « Écart », glose, n est plus accuse."
   },
   {
+   "nom": "lecture-tiers-elision",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-lecture-tiers.mjs",
+    "{fixture}",
+    "--profil",
+    "{skilldir}/profils/digit-ai.json"
+   ],
+   "red": "lecture-tiers-elision-red.html",
+   "green": "lecture-tiers-elision-green.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "attendu_messages_red": [
+    "T2",
+    "VOCABULAIRE NON GLOSÉ",
+    "1 en-tête(s) de colonne sur 3",
+    "« Effet »"
+   ],
+   "provenance": "TF-2872, lot Produit-81 - RETOURS - 20261124a (RT-44) — T2 lisait la valeur d un attribut par [^\"']{3,} : l apostrophe droite en 2e position (« L'effet d'une indisponibilite… ») coupait la glose, et 3 en-tetes sur 34 etaient declares non gloses. La verte glose les trois en-tetes par data-definition, title (apostrophe typographique) et abbr title, tous ouverts par une elision, et echoue contre l oracle d avant (2 en-tetes sur 3 non gloses) ; la rouge reduit data-definition a « L' » (2 caracteres, vraiment trop court) : 1 sur 3, et les deux gloses a elision valides ne sont plus accusees."
+  },
+  {
    "nom": "calculs-effort",
    "cmd": [
     "node",
