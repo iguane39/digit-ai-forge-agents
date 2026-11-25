@@ -24,15 +24,21 @@
  * Usage :
  *   node agent-tiers.mjs etat [--a-blanc]   (--a-blanc : ne pose pas la marque de l'annonce)
  *   node agent-tiers.mjs relire    --agent codex|antigravity --dossier <d> --consigne <f.md> [--json] [--sortie <f>]
- *   node agent-tiers.mjs concevoir --agent codex|antigravity --dossier <d> --consigne <f.md> [--sortie <f>]
+ *   node agent-tiers.mjs concevoir --agent codex|antigravity --dossier <d> --consigne <f.md> [--livrables <a,b>] [--sortie <f>]
  *   node agent-tiers.mjs image     --agent codex|antigravity --dossier <d> --prompt "<texte>" --nom <fichier.png> [--sortie <f>]
  *   options communes : --delai <s> (défaut 600 pour concevoir, 400 sinon) · --modele <id> · --effort <niveau> (défaut high) · --a-blanc
  *   --a-blanc rend la commande construite sans rien lancer (voie des recettes).
+ *   --livrables <a,b> (concevoir) : les fichiers que le brief demande, relatifs au dossier ; sans cette
+ *   option, les fichiers écrits pendant le geste tiennent lieu de livrables.
  * Sortie : JSON {verdict, geste, agent, modele, dossier, duree_s, code, reponse, json, fichiers_ecrits, sortie}
  *   etat : JSON {verdict PRET|CLAUDE_SEUL, agents:{codex, antigravity}, disponibles, annonce, procedure}
+ *   PARTIEL : ajoute {livrables, motif} ; FAIL avec --livrables : ajoute {livrables_manquants}
  * Exit : 0 l'agent a rendu, ou verdict ABSENT (agent non configuré, pas une erreur), ou `etat`
- *        · 1 l'agent a échoué, dépassé le délai ou rendu un JSON illisible avec --json
+ *        · 1 l'agent a échoué, dépassé le délai sans livrable, ou rendu un JSON illisible avec --json
  *        · 2 appel refusé (argument manquant, dossier sous un dépôt)
+ *        · 4 PARTIEL (TF-2856) : geste concevoir, délai atteint, livrables écrits ; l'agent n'a pas rendu
+ *          sa réponse finale, souvent parce que sa vérification a dépassé le délai : Claude juge les
+ *          fichiers nommés, il ne refait pas le geste. 3 reste libre : « prérequis absent » ailleurs.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
@@ -131,7 +137,14 @@ const prealable = agent === "codex"
   ? "Préambule d'outil (Codex) : ton dossier de travail est le dossier courant. N'utilise aucune commande git. PowerShell est en mode de langage restreint : pour lire et écrire un fichier, utilise Get-Content et Set-Content, jamais de type .NET ; tu peux lancer node et python. Les fichiers texte sont en UTF-8 sans marque d'ordre d'octets. Ne supprime aucun fichier existant. Aucune question : tu travailles seul, jusqu'au bout."
   : "Préambule d'outil (Antigravity) : ton dossier de travail est le dossier courant ; n'écris RIEN en dehors. Une seule commande par appel, sans opérateur de shell (pas de &&, |, ;). N'utilise aucune commande git. Ne supprime aucun fichier existant. Aucune question : tu travailles seul, jusqu'au bout.";
 const lecture = geste === "relire" ? "\n\nTu es en LECTURE SEULE : n'écris, ne modifie et ne supprime aucun fichier." : "";
-const texte = `${prealable}${lecture}\n\n${consigne}`;
+// TF-2856 (RT-50 du lot Produit-82 20261125b) : Antigravity a écrit ses 2 livrables complets, puis sa
+// propre vérification (Playwright) a dépassé le délai de 20 minutes. La consigne de `concevoir` borne
+// donc ce que l'agent se donne comme vérification, et l'ordre est dit : les livrables d'abord.
+const verifMax = Math.max(1, Math.round(delai / 4));
+const borne = geste === "concevoir"
+  ? `\n\nBorne de vérification (posée par le lanceur) : écris d'abord tes livrables complets dans le dossier courant. Ta propre vérification (rendu, capture, test) vient ensuite, tient en une seule passe et ne dépasse pas ${verifMax} secondes en tout ; une commande de vérification qui dépasse ${Math.min(60, verifMax)} secondes est abandonnée, jamais relancée. Ton délai total est de ${delai} secondes : au-delà, tu es arrêté et seuls tes fichiers écrits comptent.`
+  : "";
+const texte = `${prealable}${lecture}\n\n${consigne}${borne}`;
 
 // Construction de la commande. Aucun drapeau de levée du bac à sable n'existe dans ce fichier.
 const tmp = mkdtempSync(join(tmpdir(), "agent-tiers-"));
@@ -159,14 +172,20 @@ if (aBlanc) { rmSync(tmp, { recursive: true, force: true }); fin("A_BLANC", { ag
 // Lancement.
 const avant = new Set(lister(dossier));
 const t0 = Date.now();
-const r = spawnSync(exe, argv, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: (delai + 30) * 1000, maxBuffer: 64 * 1024 * 1024 });
+// La marge laissée à l'agent au-delà de son propre délai : 30 s ; AGENT_TIERS_MARGE_S la ramène dans les recettes.
+const marge = Number(process.env.AGENT_TIERS_MARGE_S ?? 30);
+const r = spawnSync(exe, argv, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: (delai + marge) * 1000, maxBuffer: 64 * 1024 * 1024 });
 const duree_s = Math.round((Date.now() - t0) / 1000);
-let reponse = "", statut = r.status === 0 ? "ok" : "echec";
+let reponse = "", statut = r.status === 0 ? "ok" : "echec", arret = "";
 if (agent === "codex") reponse = existsSync(derniere) ? readFileSync(derniere, "utf8") : "";
 else {
-  try { const j = JSON.parse(r.stdout); reponse = j.response || ""; if (j.status !== "SUCCESS") statut = `echec (${j.status})`; } catch { reponse = r.stdout || ""; }
+  try { const j = JSON.parse(r.stdout); reponse = j.response || ""; if (j.status !== "SUCCESS") { statut = `echec (${j.status})`; arret = String(j.status); } } catch { reponse = r.stdout || ""; }
 }
 if (r.error && r.error.code === "ETIMEDOUT") statut = "delai depasse";
+// Le délai est atteint quand le lanceur a coupé l'agent, ou quand l'agent l'a dit lui-même
+// (Antigravity : `print_timeout`, relevé au lot Produit-82 20261125b ; la forme exacte du JSON qu'il
+// rend alors n'est pas mesurée ici, d'où la lecture du statut, de la sortie d'erreur et de la fin de sortie).
+const delaiAtteint = statut !== "ok" && (statut === "delai depasse" || /time.?out/i.test(arret) || /print_timeout/i.test(`${(r.stderr || "").slice(-2000)}${(r.stdout || "").slice(-2000)}`));
 const fichiers_ecrits = lister(dossier).filter((f) => !avant.has(f));
 rmSync(tmp, { recursive: true, force: true });
 
@@ -178,7 +197,23 @@ if (reste.includes("--json")) {
   try { json = JSON.parse(brut.slice(a, b + 1)); } catch { statut = statut === "ok" ? "json illisible" : statut; }
 }
 const corps = { agent, modele, effort, dossier, duree_s, code: r.status, statut, reponse, json, fichiers_ecrits, erreur: (r.stderr || "").slice(-1500) };
-fin(statut === "ok" ? "PASS" : "FAIL", corps, statut === "ok" ? 0 : 1);
+if (statut === "ok") fin("PASS", corps, 0);
+// TF-2856 : un verdict de lanceur juge les livrables écrits avant l'état du processus. Délai atteint et
+// livrables présents (non vides) : PARTIEL, code 4, fichiers nommés ; un plantage sans délai reste FAIL,
+// car un fichier écrit avant un plantage peut être à moitié écrit.
+if (geste === "concevoir") {
+  const declares = (opt("--livrables") || "").split(",").map((f) => f.trim()).filter(Boolean);
+  const present = (f) => { const p = join(dossier, f); return existsSync(p) && statSync(p).isFile() && statSync(p).size > 0; };
+  if (declares.length) corps.livrables_manquants = declares.filter((f) => !present(f));
+  const livrables = declares.length ? declares.filter(present) : fichiers_ecrits;
+  const complets = declares.length ? !corps.livrables_manquants.length : fichiers_ecrits.length > 0;
+  if (delaiAtteint && complets) {
+    delete corps.livrables_manquants;
+    fin("PARTIEL", { ...corps, livrables, livrables_declares: declares.length > 0,
+      motif: `délai atteint (${statut}) avec ${declares.length ? "les livrables déclarés" : "des fichiers"} écrits : l'agent n'a pas rendu sa réponse finale, souvent parce que sa vérification a dépassé le délai. Claude juge les fichiers nommés dans livrables, il ne refait pas le geste.` }, 4);
+  }
+}
+fin("FAIL", corps, 1);
 
 function lister(d, pre = "") {
   const out = [];

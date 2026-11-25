@@ -3,18 +3,17 @@ name: delegue-a-codex-et-gemini
 description: >
   Confie à Codex (GPT) et à Gemini (par Antigravity) l'un des 3 gestes que la Factory leur ouvre, sur
   l'abonnement du porteur et sans API : relire à charge un prompt ou un document généré par Claude,
-  concevoir une variante de design pour en présenter 3 à challenger, générer une image dont Claude a
-  besoin. Un lanceur unique tient le bac à sable par construction : dossier jetable hors de tout dépôt,
-  lecture seule pour relire, aucun drapeau qui lève une protection. Use when / déclencher dès qu'une
-  relecture aveugle d'un autre modèle est voulue (boucle L99, contre-expertise, note ou étude à relire),
-  qu'un design, une maquette ou une direction artistique est demandé à Claude, ou qu'une image, une
-  illustration ou un visuel doit être produit, et quand l'utilisateur demande la procédure pour
-  installer ou connecter Codex ou Gemini. Agent non configuré sur le poste : Claude travaille seul,
-  sans erreur, et l'annonce de la possibilité sort une seule fois. Ne pas déclencher pour du code ou des commits dans un
-  dépôt (Codex ne peut pas commiter), pour juger un livrable par oracle (→ quality-oracles), ni pour
-  une API d'OpenAI ou de Gemini dans un produit (→ integre-openai-gemini).
+  concevoir une variante de design pour en présenter 3 à challenger, générer une image. Un lanceur
+  unique tient le bac à sable : dossier jetable hors dépôt, lecture seule pour relire. Use when /
+  déclencher dès qu'une relecture aveugle d'un autre modèle est voulue (boucle L99, contre-expertise,
+  note ou étude à relire), qu'un design, une maquette ou une direction artistique est demandé à Claude,
+  ou qu'une image, une illustration ou un visuel est à produire, et quand l'utilisateur demande la
+  procédure pour installer ou connecter Codex ou Gemini. Agent non configuré : Claude travaille seul,
+  sans erreur. Ne pas déclencher pour du code ou des commits (Codex ne peut pas commiter), pour juger
+  un livrable par oracle (→ quality-oracles), ni pour une API d'OpenAI ou de Gemini dans un produit
+  (→ integre-openai-gemini).
 metadata:
-  version: "1.1.1"
+  version: "1.2.0"
 ---
 
 # delegue-a-codex-et-gemini — un second modèle pour relire, concevoir et dessiner
@@ -64,15 +63,29 @@ aveugle a noté l'image de Claude 5, celles de Codex et de Gemini 9.
 
 ```
 node {skilldir}/scripts/agent-tiers.mjs relire    --agent codex|antigravity --dossier <jetable> --consigne <f.md> --json --sortie <res.json>
-node {skilldir}/scripts/agent-tiers.mjs concevoir --agent codex|antigravity --dossier <jetable> --consigne <brief.md> --sortie <res.json>
+node {skilldir}/scripts/agent-tiers.mjs concevoir --agent codex|antigravity --dossier <jetable> --consigne <brief.md> --livrables <a,b> --sortie <res.json>
 node {skilldir}/scripts/agent-tiers.mjs image     --agent codex|antigravity --dossier <jetable> --prompt "<demande>" --nom <x.png> --sortie <res.json>
 ```
 
 1. Crée un dossier jetable par agent et par geste, hors de tout dépôt git ; le lanceur refuse un dossier
    sous `.git`. Copies-y l'entrée : le document à relire, le brief.
 2. Lance les agents de la liste `disponibles` d'`etat`, et eux seuls, en parallèle, en arrière-plan (de 1 à 7 minutes chacun) ; l'entrée standard est fermée.
-3. Lis la sortie JSON : `verdict` PASS ou FAIL, `reponse`, `json` (avec `--json`), `fichiers_ecrits`.
+3. Lis la sortie JSON : `verdict` PASS, PARTIEL ou FAIL, `reponse`, `json` (avec `--json`), `fichiers_ecrits`.
 4. Juge le résultat, puis ressors du dossier jetable ce qui sert, vers sa place chez le produit.
+
+**`PARTIEL` (code 4), geste `concevoir` seulement.** L'agent a atteint son délai alors que ses livrables
+étaient écrits, le plus souvent parce que sa propre vérification (rendu, capture) a dépassé le délai :
+le 25/11/2026, Antigravity avait écrit `maquette.html` (168 796 octets) et `DIRECTION.md`, puis sa
+vérification Playwright a dépassé 20 minutes, et le lanceur rendait FAIL sur 2 livrables complets. Le
+verdict nomme les fichiers (`livrables`) et dit pourquoi (`motif`) : Claude les juge, il ne refait pas
+le geste de 20 minutes. Passe `--livrables maquette.html,DIRECTION.md` pour que le lanceur sache ce que
+le brief demande : un livrable déclaré absent ou vide laisse le verdict à FAIL et `livrables_manquants`
+le nomme. Sans `--livrables`, tout fichier écrit pendant le geste tient lieu de livrable. Un agent qui
+plante sans atteindre le délai reste FAIL : un fichier écrit avant un plantage peut être à moitié écrit.
+La consigne de `concevoir` porte aussi une borne de vérification posée par le lanceur : livrables
+d'abord, une seule passe de vérification, au plus le quart du délai, aucune commande de vérification
+au-delà de 60 secondes. Non mesuré : la forme exacte du JSON qu'Antigravity rend sur `print_timeout`
+(le lanceur lit le statut, la sortie d'erreur et la fin de sortie).
 
 Modèles par défaut : `gpt-6.2-sol` et `gemini-4-neon-high`, effort `high` ; `--modele` et `--effort`
 les changent. Délai : `--delai`, 600 s pour `concevoir`, 400 s sinon.
@@ -122,4 +135,4 @@ quand le skill appelant le prévoit (`studio-de-direction`, `systeme-de-marque`)
 - Antigravity, `--sandbox` : l'écriture hors du dossier est refusée par l'outil comme par le terminal,
   sauf sous `%TEMP%` ; le réseau des commandes est coupé (essai A-6, 3 appels, témoin intact).
 - Le lanceur ne construit jamais `--dangerously-*`, `danger-full-access` ni de contournement :
-  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 14 cas, dont 6 sur des postes sans agent, avec un seul ou avec les deux).
+  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 21 cas, dont 6 sur des postes sans agent, avec un seul ou avec les deux, et 7 sur un faux Codex qui dépasse son délai, plante ou rend à temps).
