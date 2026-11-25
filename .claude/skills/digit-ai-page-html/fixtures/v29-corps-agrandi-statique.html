@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — corps courant agrandi en dur — 20261124b</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#E6EAF2;--surface:#FFFFFF;--bg:#FAFBFF;
+ --w:60vw;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);font-size:24px;line-height:1.6;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+.wrap{width:var(--w);margin:0 auto;padding:24px}
+.chap{margin:0 0 24px}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE (avertissement) de la famille `v29_texte_agrandi` (TF-2882 et TF-2874, 24/11/2026).
+
+  Le corps courant est a 24 px EN DUR, sans aucune unite de fenetre : le constat n'a pas de cause
+  declaree dans le CSS, il est donc un avertissement et non le bloquant `v29_police_asservie`.
+
+  Attendu a 2560 px : >= 1 constat `v29_texte_agrandi`, 0 constat `v29_police_asservie`.
+-->
+<body><main class="wrap"><h1>Note de cadrage du lot douze</h1>
+<section class="chap"><p>Le lot douze est entre en recette le deux septembre, sur trois environnements distincts : le poste local, la plateforme d integration et la preproduction. Les releves proviennent des trois, et aucun ecart n a ete constate entre la plateforme d integration et la preproduction sur les cent douze cas rejoues.</p></section>
+<section class="chap"><p>Les deux echecs releves en integration portent sur le meme composant. Le premier vient d un fuseau horaire code en dur, que le poste local ne montre pas puisqu il tourne en temps universel ; le second vient d une variable d environnement absente de la plateforme, corrigee le trois septembre.</p></section>
+</main></body></html>

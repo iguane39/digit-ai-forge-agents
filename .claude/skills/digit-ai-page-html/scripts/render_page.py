@@ -3012,12 +3012,23 @@ V18_TABLE_MIN_RATIO = 0.85     # L26 — un tableau principal sous ce ratio lais
 V18_TABLE_MIN_LIGNES = 8       # un tableau principal, pas un encart de trois valeurs
 V18_TABLE_MIN_COLONNES = 4
 
+# V29 (TF-2882, TF-2874, 24/11/2026) — LA TAILLE DU TEXTE COURANT, BORNEE VERS LE HAUT.
+# Le fait : deux produits ont fait « tenir » V18 (135 caracteres par ligne a 2560 et 3840 px) en
+# asservissant la police a la fenetre, `html{font-size:clamp(16px, calc(1.25vw - 8px), 48px)}`, soit un
+# texte courant a 24 px a 2560 px et 41 px a 3840 px. Aucun controle ne bornait la taille du texte
+# vers le haut : V18 mesure des caracteres par ligne, et agrandir la police reduit ce nombre sans
+# toucher a la largeur de la ligne. Le plafond est un seuil PROPOSE : le socle fixe le corps a 16 px,
+# 20 px (125 %) laisse la place d'un texte confortable, 24 px est deja la signature du contournement.
+V29_PLAFOND_TEXTE_PX = 20
+V29_MIN_CHARS_TEXTE = 40       # une prose, pas une etiquette : sous ce compte, un bloc ne pese pas
+
 MESURE_LARGE_JS = r"""
 () => {
   const MAX_CPL = __V18_MAX_CPL__, MIN_CHARS = __V18_MIN_CHARS__;
   const TABLE_MIN = __V18_TABLE_MIN__, TABLE_LIGNES = __V18_TABLE_LIGNES__,
         TABLE_COLONNES = __V18_TABLE_COLONNES__;
-  const proses = [], tableaux = [], notes = [];
+  const PLAFOND_TEXTE = __V29_PLAFOND_PX__, MIN_CHARS_TEXTE = __V29_MIN_CHARS__;
+  const proses = [], tableaux = [], notes = [], asservies = [], agrandis = [];
   // Reperage LOCAL : ce bloc s'evalue seul, il n'herite d'aucune aide de la passe principale.
   const nomDe = (el) => el.tagName.toLowerCase()
     + (el.id ? '#' + el.id : '')
@@ -3077,10 +3088,17 @@ MESURE_LARGE_JS = r"""
         + `largeur par defaut (TF-1622), non comptee en defaut ; une colonne de lecture se `
         + `DECLARE (.chap.lire, data-mesure-lecture) si l'auteur la veut` });
     } else {
+      // TF-2882 / TF-2874 (24/11/2026) : la CORRECTION vient en tete, et elle exclut la police. Deux
+      // produits ont fait passer V18 en asservissant la taille du texte a la fenetre
+      // (`html{font-size:clamp(16px, calc(1.25vw - 8px), 48px)}` : 24 px a 2 560, 41 px a 3 840) :
+      // le defaut n'est pas corrige, le lecteur le lit en plus gros. V29 le denonce desormais.
       proses.push({ what: nomDe(el), detail: `${socle} — au-dela de ${MAX_CPL} caracteres, l'oeil `
-        + `perd le debut de la ligne suivante. La mesure de lecture se pose sur le CONTENEUR `
-        + `(.chap.lire, regle E4), jamais sur le paragraphe : envelopper ce passage dans un `
-        + `chapitre de lecture, ou le declarer par data-mesure-lecture s'il est assume` });
+        + `perd le debut de la ligne suivante. CORRECTION : DECLARER la mesure de lecture, qui se `
+        + `pose sur le CONTENEUR et jamais sur le paragraphe — envelopper ce passage dans un `
+        + `chapitre de lecture (.chap.lire, regle E4), ou poser data-mesure-lecture sur son `
+        + `conteneur s'il est assume. N'AGRANDIS PAS la police pour faire tenir la ligne : un texte `
+        + `courant de plus de ${PLAFOND_TEXTE}px deplace le defaut sans le corriger, et V29 le `
+        + `denonce` });
     }
   }
 
@@ -3113,7 +3131,80 @@ MESURE_LARGE_JS = r"""
     }
   }
 
-  return { proses, tableaux, notes };
+  // ---- c. LE TEXTE COURANT : sa TAILLE contre la fenetre (V29, TF-2882, TF-2874) ------------
+  // Le corps courant est la taille qui porte le plus de caracteres parmi les proses (p, li, dd)
+  // hors tableau, navigation et code. Au-dela du plafond a cette largeur, deux cas : une taille de
+  // base de `html`, `:root` ou `body` DECLAREE en unite de fenetre (vw, vh, vi, vb, vmin, vmax) —
+  // la signature de V18 « tenue » par la police —, ou une taille simplement grande (avertissement).
+  {
+    const poids = new Map();
+    for (const el of document.querySelectorAll('p, li, dd')) {
+      if (el.closest('table, nav, pre, code, figcaption, .tf-panel')) continue;
+      if (!visibleBoite(el)) continue;
+      const n = (el.textContent || '').replace(/\s+/g, ' ').trim().length;
+      if (n < MIN_CHARS_TEXTE) continue;
+      const px = Math.round(parseFloat(getComputedStyle(el).fontSize) * 10) / 10;
+      poids.set(px, (poids.get(px) || 0) + n);
+    }
+    let courant = 0, caracteres = 0;
+    for (const [px, n] of poids) if (n > caracteres) { courant = px; caracteres = n; }
+    // Un corps courant se juge sur de la PROSE : sous le compte de V18 (160 caracteres au total), la page
+    // n'a pas de texte courant, elle a un titre ou une etiquette (mesure du 25/11/2026 : 2 pages sur 326).
+    if (courant > PLAFOND_TEXTE && caracteres >= MIN_CHARS) {
+      const FENETRE = /\d\s*(?:[dsl]?v(?:w|h|i|b|min|max))\b/i;
+      const racine = document.documentElement;
+      const resoudre = (v) => v.replace(/var\(\s*(--[\w-]+)\s*(?:,[^)]*)?\)/g,
+        (m, nom) => getComputedStyle(racine).getPropertyValue(nom) || m);
+      const declarations = [];
+      const parcourir = (regles) => {
+        for (const r of regles) {
+          if (r.media && !matchMedia(r.media.mediaText).matches) continue;
+          if (!r.selectorText) { if (r.cssRules) parcourir(r.cssRules); continue; }
+          const v = r.style && r.style.getPropertyValue('font-size');
+          if (!v) continue;
+          const vises = r.selectorText.split(',').map((s) => s.trim().toLowerCase())
+            .filter((s) => s === 'html' || s === ':root' || s === 'body');
+          if (vises.length && FENETRE.test(resoudre(v))) {
+            declarations.push(`${vises[0]} { font-size: ${v.trim()} }`);
+          }
+        }
+      };
+      for (const feuille of document.styleSheets) {
+        let regles = null;
+        try { regles = feuille.cssRules; } catch (e) { regles = null; }
+        if (regles) parcourir(regles);
+      }
+      for (const el of [racine, document.body]) {
+        const v = el && el.style && el.style.getPropertyValue('font-size');
+        if (v && FENETRE.test(resoudre(v))) {
+          declarations.push(`<${el.tagName.toLowerCase()} style="font-size: ${v.trim()}">`);
+        }
+      }
+      const motif = (racine.getAttribute('data-taille-texte-ok')
+        || (document.body && document.body.getAttribute('data-taille-texte-ok')) || '').trim();
+      const mesure = `corps courant a ${courant}px (${caracteres} caracteres) dans une fenetre de `
+        + `${window.innerWidth}px ; plafond ${PLAFOND_TEXTE}px`;
+      if (motif) {
+        notes.push({ what: 'texte courant', detail: `V29 — ${mesure}. Taille ASSUMEE par `
+          + `data-taille-texte-ok : « ${motif} ». Mesure publiee, non comptee en defaut` });
+      } else if (declarations.length) {
+        asservies.push({ what: 'taille de base (html, :root, body)', detail: `${mesure}. La taille de base est ASSERVIE a la `
+          + `fenetre : ${declarations.join(' ; ')}. Agrandir la police avec la fenetre ne corrige pas `
+          + `V18, il deplace le defaut : le lecteur lit la meme page en plus gros (24px a 2560px et `
+          + `41px a 3840px pour clamp(16px, calc(1.25vw - 8px), 48px)). Rendre a la taille de base du `
+          + `socle (16px, jamais fonction de la fenetre) et DECLARER la mesure de lecture (.chap.lire, `
+          + `data-mesure-lecture). Un affichage de supervision lu de loin se DECLARE : `
+          + `data-taille-texte-ok="<raison>" sur <html>` });
+      } else {
+        agrandis.push({ what: 'texte courant', detail: `${mesure}. Le socle fixe le corps courant `
+          + `a 16px ; au-dela de ${PLAFOND_TEXTE}px a ${window.innerWidth}px, la page est lue en gros `
+          + `caracteres sans l'avoir decide. Si c'est voulu (affichage lu de loin), le DECLARER : `
+          + `data-taille-texte-ok="<raison>" sur <html> ou <body>` });
+      }
+    }
+  }
+
+  return { proses, tableaux, notes, asservies, agrandis };
 }
 """
 
@@ -3365,7 +3456,9 @@ def mesure_large_js() -> str:
             .replace("__V18_MIN_CHARS__", str(V18_MIN_CHARS))
             .replace("__V18_TABLE_MIN__", str(V18_TABLE_MIN_RATIO))
             .replace("__V18_TABLE_LIGNES__", str(V18_TABLE_MIN_LIGNES))
-            .replace("__V18_TABLE_COLONNES__", str(V18_TABLE_MIN_COLONNES)))
+            .replace("__V18_TABLE_COLONNES__", str(V18_TABLE_MIN_COLONNES))
+            .replace("__V29_PLAFOND_PX__", str(V29_PLAFOND_TEXTE_PX))
+            .replace("__V29_MIN_CHARS__", str(V29_MIN_CHARS_TEXTE)))
 
 
 PAIRES_MAX_DEFAUT = 24
@@ -3662,6 +3755,14 @@ FAMILLES = [
     # page de données reste à sa largeur de contenu pendant que l'écran en offre le double.
     ("v18_prose_etiree", "V18 mesure de lecture au-dela de 135 caracteres par ligne", "bloquant"),
     ("v18_tableau_etrique", "V18 tableau principal sous 85 % de la largeur offerte", "bloquant"),
+    # TF-2882 / TF-2874 (24/11/2026) — V29, la taille du texte courant bornee vers le haut. DEUX familles,
+    # parce que deux certitudes. BLOQUANT : la taille de base de html, :root ou body est DECLAREE en unite
+    # de fenetre ET le corps courant depasse 20 px a cette largeur — c'est mot pour mot le contournement de
+    # V18 releve chez deux produits, lisible dans le CSS, sans seuil flou. AVERTISSEMENT : le corps courant
+    # depasse 20 px sans cette cause — regle neuve, une page lue de loin est parfois voulue, d'ou
+    # data-taille-texte-ok ; bruit mesure dans references/zero-defaut-visuel.md, § V29.
+    ("v29_police_asservie", "V29 taille de base du texte asservie a la fenetre (corps courant au-dela de 20 px)", "bloquant"),
+    ("v29_texte_agrandi", "V29 corps courant au-dela de 20 px au 4K", "avertissement"),
     ("l2_freres", "L2 alignement entre frères empilés", "avertissement"),
     ("v3_align", "V3 alignement d'une série", "avertissement"),
     ("v7_spacing", "V7 rythme d'espacement", "avertissement"),
@@ -4394,11 +4495,15 @@ def jouer_scenes(page, url: str, js: str, js_large: str, width: int, png_dir: Pa
         issues = page.evaluate(js)
         issues["v18_prose_etiree"] = []
         issues["v18_tableau_etrique"] = []
+        issues["v29_police_asservie"] = []
+        issues["v29_texte_agrandi"] = []
         if width >= V18_MIN_VIEWPORT:
             try:
                 v18 = page.evaluate(js_large)
                 issues["v18_prose_etiree"] = v18.get("proses") or []
                 issues["v18_tableau_etrique"] = v18.get("tableaux") or []
+                issues["v29_police_asservie"] = v18.get("asservies") or []
+                issues["v29_texte_agrandi"] = v18.get("agrandis") or []
                 issues["unmeasured"].extend(v18.get("notes") or [])
             except Exception as erreur:  # noqa: BLE001
                 issues["unmeasured"].append({
@@ -4601,11 +4706,15 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
             # distingue jamais « pas de defaut » de « cle absente ».
             issues["v18_prose_etiree"] = []
             issues["v18_tableau_etrique"] = []
+            issues["v29_police_asservie"] = []
+            issues["v29_texte_agrandi"] = []
             if width >= V18_MIN_VIEWPORT:
                 try:
                     v18 = page.evaluate(js_large)
                     issues["v18_prose_etiree"] = v18.get("proses") or []
                     issues["v18_tableau_etrique"] = v18.get("tableaux") or []
+                    issues["v29_police_asservie"] = v18.get("asservies") or []
+                    issues["v29_texte_agrandi"] = v18.get("agrandis") or []
                     issues["unmeasured"].extend(v18.get("notes") or [])
                 except Exception as erreur:  # noqa: BLE001 — toute panne se declare, aucune n'arrete
                     issues["unmeasured"].append({

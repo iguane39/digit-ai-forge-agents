@@ -833,14 +833,26 @@ CAS_RENDU = {
 #     135 — le plafond releve de 100 a 135 bloque encore une forme reelle.
 CAS_RENDU_LARGE = {
     "v18-prose-etiree.html": [("v18_prose_etiree", 1), ("v18_tableau_etrique", 0)],
-    "v18-prose-mesuree.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
+    "v18-prose-mesuree.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0),
+                               ("v29_police_asservie", 0), ("v29_texte_agrandi", 0)],
     "v18-donnees-tableau-etrique.html": [("v18_tableau_etrique", 1), ("v18_prose_etiree", 0)],
     "v18-donnees-tableau-plein.html": [("v18_tableau_etrique", 0), ("v18_prose_etiree", 0)],
-    "v18-chap-lire-socle.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
+    "v18-chap-lire-socle.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0),
+                                 ("v29_police_asservie", 0), ("v29_texte_agrandi", 0)],
     "v18-cpl-au-dela-135.html": [("v18_prose_etiree", 1), ("v18_tableau_etrique", 0)],
     # TF-1622 (RA-3) : sur une page de DONNEES, la prose pleine largeur est le defaut ; V18 (a)
     # la comptait en defaut et poussait vers .chap.lire (1 avant, 0 apres). Rouge : v18-prose-etiree.
     "v18-donnees-prose-pleine.html": [("v18_prose_etiree", 0), ("v18_tableau_etrique", 0)],
+    # TF-2882 et TF-2874 (24/11/2026) — V29, la taille du texte courant bornee vers le haut. Rouge : V18 est
+    # TENU par la police (0 constat V18) et la taille de base est asservie a la fenetre (1 bloquant).
+    "v29-police-asservie-fenetre.html": [("v29_police_asservie", 1), ("v29_texte_agrandi", 0),
+                                         ("v18_prose_etiree", 0)],
+    # Rouge, avertissement : corps courant a 24 px EN DUR, aucune unite de fenetre dans le CSS.
+    "v29-corps-agrandi-statique.html": [("v29_texte_agrandi", 1), ("v29_police_asservie", 0)],
+    # Vert : typographie fluide PLAFONNEE a 20 px, qui n'est pas AU-DELA du plafond.
+    "v29-police-fluide-plafonnee.html": [("v29_police_asservie", 0), ("v29_texte_agrandi", 0)],
+    # Vert : la meme page que la rouge, avec data-taille-texte-ok="<raison>" — la taille est assumee.
+    "v29-taille-assumee-declaree.html": [("v29_police_asservie", 0), ("v29_texte_agrandi", 0)],
 }
 
 
@@ -1234,6 +1246,65 @@ def run_rendu_large():
             out.append({"fixture": etiquette(cle), "verdict": "OK" if ok else "ECHEC",
                         "attendu": attendu, "obtenu": n, "regle": cle + " (2560 px)",
                         "detail": "" if ok else f"{n} constat(s) {cle} a 2560 px"})
+    shutil.rmtree(captures, ignore_errors=True)
+    return out
+
+
+def run_v29_complements():
+    """TF-2882, TF-2874 — ce que le tableau des cas a 2560 px ne dit pas : la largeur 3840, la note de la
+    taille assumee, et le message de V18 (la declaration en tete, la police exclue).
+
+    Silencieux si playwright est absent, comme `run_rendu_large` : un `None` ne vaut jamais un vert.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+    except ImportError:
+        return None
+    import json as _json
+    import subprocess
+    import tempfile
+    captures = tempfile.mkdtemp(prefix="self-test-v29-")
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    out = []
+
+    def jouer(nom, largeur):
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(FIXTURES / nom), "--widths", str(largeur),
+                            "--output", "json", "--out", captures],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            return _json.loads(r.stdout)["breakpoints"][str(largeur)]["issues"]
+        except Exception:  # noqa: BLE001
+            return None
+
+    def cas(fixture, regle, ok, attendu, obtenu, detail=""):
+        out.append({"fixture": fixture, "verdict": "OK" if ok else "ECHEC", "attendu": attendu,
+                    "obtenu": obtenu, "regle": regle, "detail": "" if ok else detail})
+
+    # a. A 3840 px la taille asservie vaut 40 px : la rouge est jugee a la seconde largeur de V18.
+    iss = jouer("v29-police-asservie-fenetre.html", 3840)
+    liste = (iss or {}).get("v29_police_asservie") or []
+    n = len(liste) if iss else -1
+    detail = liste[0]["detail"] if liste else ""
+    cas("v29-police-asservie-fenetre.html · 3840 px", "v29_police_asservie (3840 px)",
+        n >= 1 and "40px" in detail, ">= 1 constat, corps courant a 40px", f"{n} constat(s) ; {detail[:80]}",
+        "la taille asservie n'est pas jugee a 3840 px")
+
+    # b. La taille assumee se PUBLIE (note non mesurable), elle ne se tait pas.
+    iss = jouer("v29-taille-assumee-declaree.html", 2560)
+    notes = [u["detail"] for u in (iss or {}).get("unmeasured", []) if "V29" in u.get("detail", "")]
+    cas("v29-taille-assumee-declaree.html · note", "V29 taille assumee publiee",
+        len(notes) == 1 and "affichage de supervision" in notes[0], "1 note qui cite la raison",
+        f"{len(notes)} note(s)", "la mesure d'une taille assumee n'est pas publiee")
+
+    # c. Le message de V18 met la declaration en tete et exclut l'agrandissement de la police.
+    iss = jouer("v18-prose-etiree.html", 2560)
+    msg = iss["v18_prose_etiree"][0]["detail"] if iss and iss.get("v18_prose_etiree") else ""
+    i, j, k = msg.find("CORRECTION"), msg.find("data-mesure-lecture"), msg.find("N'AGRANDIS PAS")
+    cas("v18-prose-etiree.html · message", "V18 correction = declaration, police exclue",
+        0 <= i < j < k and ".chap.lire" in msg and "V29" in msg,
+        "CORRECTION, puis data-mesure-lecture, puis N'AGRANDIS PAS la police", f"positions {i}, {j}, {k}",
+        "le message de V18 ne met pas la declaration en tete ou n'exclut pas la police")
     shutil.rmtree(captures, ignore_errors=True)
     return out
 
@@ -7613,6 +7684,10 @@ def main():
     large = run_rendu_large()
     if large:
         res += large
+    # TF-2882, TF-2874 — V29 : la largeur 3840, la note de la taille assumee, le message de V18.
+    complements_v29 = run_v29_complements()
+    if complements_v29:
+        res += complements_v29
     # TF-0442 — le repli en cartes se mesure a 390 px, la seule largeur ou il se declenche.
     repli = run_repli_cartes()
     if repli:
