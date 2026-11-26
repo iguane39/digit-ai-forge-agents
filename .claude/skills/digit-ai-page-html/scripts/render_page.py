@@ -1674,6 +1674,93 @@ MEASURE_JS = r"""
     }
   }
 
+  // ---- LA VALEUR D'UN CHAMP DE SAISIE DEBORDE DE SA ZONE (TF-2886, RT-55 du lot Produit-82
+  // 20261125g) : ce que le bloc ci-dessus, qui ECARTE input et select, ne pouvait pas voir.
+  //
+  // LE FAIT. Un champ numerique large de `9ch` affichait « 10000( » au lieu de « 100000 » sous une
+  // police plus large que celle qui avait servi au calcul du `ch` (la largeur en `ch` se resout dans
+  // la police de l'element qui la porte, pas dans celle du champ qu'elle borne). render_page rendait
+  // PASS aux 7 largeurs, contenu_rogne vide ; run-oracles-design 16/16. Seule la capture l'a montre.
+  //
+  // LA CAUSE. TF-0847 a retire input et select de la mesure parce qu'un champ de TEXTE LIBRE defile
+  // nativement : le lecteur place son curseur et lit la suite. Ce raisonnement ne vaut pas pour une
+  // valeur qui doit se lire d'un coup (un nombre, un montant, une option choisie) ni pour un
+  // placeholder (un champ vide ne defile pas). Il n'y avait donc plus de mesure du tout.
+  //
+  // LA MESURE. La largeur du texte affiche est prise dans la police CALCULEE du champ, sur une copie
+  // hors ecran stylee pareil (famille, corps, graisse, chasse, crenage, interlettrage, variantes) ;
+  // elle est comparee a la largeur utile : clientWidth moins les marges interieures. Un champ de texte
+  // libre a valeur longue reste exempt (rogne-champ-saisie.html, TF-0847) : sa valeur n'est jugee que
+  // si elle est NUMERIQUE par nature (type number ou tel, inputmode numeric/decimal/tel, ou nombre
+  // ecrit en texte) ; une option de select l'est toujours ; un placeholder l'est toujours.
+  // NE SOUSTRAIT PAS la fleche d'un select ni le bouton d'un champ number : la mesure peut se taire
+  // sur une valeur qui touche la fleche, jamais accuser un champ qui montre sa valeur en entier.
+  {
+    const MARGE_CHAMP = 1;                 // 1px : l'arrondi du rendu, pas une perte
+    const TYPES_SANS_TEXTE = new Set(['hidden', 'checkbox', 'radio', 'file', 'button', 'submit',
+      'reset', 'image', 'color', 'range', 'date', 'time', 'datetime-local', 'month', 'week']);
+    const NOMBRE_ECRIT = /^[+\-−]?\d[\d\s  .,]*\s*[%€$£]?$/;
+    const PROPRIETES_TEXTE = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch',
+      'fontVariant', 'fontFeatureSettings', 'fontVariationSettings', 'fontKerning', 'letterSpacing',
+      'wordSpacing', 'textTransform', 'textRendering', 'fontOpticalSizing', 'fontSizeAdjust'];
+    const largeurTexte = (cs, texte) => {
+      const sp = document.createElement('span');
+      const st = sp.style;
+      st.position = 'absolute'; st.left = '-99999px'; st.top = '0'; st.visibility = 'hidden';
+      st.whiteSpace = 'pre'; st.margin = '0'; st.padding = '0'; st.border = '0';
+      for (const p of PROPRIETES_TEXTE) { if (cs[p]) st[p] = cs[p]; }
+      sp.textContent = texte;
+      document.body.appendChild(sp);
+      const w = sp.getBoundingClientRect().width;
+      sp.remove();
+      return w;
+    };
+    const decrit = (cs) => `${(cs.fontFamily || '').split(',')[0].replace(/["']/g, '').trim()} ` +
+      `${cs.fontSize} / ${cs.fontWeight}`;
+    for (const el of document.body.querySelectorAll('input, select')) {
+      if (!visible(el)) continue;
+      if (el.hasAttribute('data-rognage-assume')) continue;
+      const tag = el.tagName.toLowerCase();
+      const type = tag === 'input' ? (el.getAttribute('type') || 'text').toLowerCase() : 'select';
+      if (TYPES_SANS_TEXTE.has(type)) continue;
+      if (tag === 'select' && (el.multiple || el.size > 1)) continue;
+      let texte = '', nature = '', cs = getComputedStyle(el);
+      if (tag === 'select') {
+        const opt = el.selectedOptions && el.selectedOptions[0];
+        texte = opt ? opt.textContent.trim() : '';
+        nature = 'option choisie';
+      } else if (el.value !== '') {
+        if (type === 'password') continue;                   // des pastilles, pas la valeur
+        const mode = (el.getAttribute('inputmode') || '').toLowerCase();
+        const chiffre = type === 'number' || type === 'tel' ||
+          ['numeric', 'decimal', 'tel'].includes(mode) || NOMBRE_ECRIT.test(el.value.trim());
+        if (!chiffre) continue;                             // texte libre : defile nativement (TF-0847)
+        texte = el.value;
+        nature = 'valeur';
+      } else if (el.getAttribute('placeholder')) {
+        texte = el.getAttribute('placeholder');
+        nature = 'placeholder';
+        const ph = getComputedStyle(el, '::placeholder');
+        if (ph && ph.fontFamily) cs = ph;
+      }
+      if (!texte) continue;
+      const cb = getComputedStyle(el);
+      const pad = (parseFloat(cb.paddingLeft) || 0) + (parseFloat(cb.paddingRight) || 0);
+      const utile = el.clientWidth - pad - Math.max(0, parseFloat(cb.textIndent) || 0);
+      const affiche = cs.textTransform === 'uppercase' ? texte.toUpperCase()
+        : cs.textTransform === 'lowercase' ? texte.toLowerCase() : texte;
+      const mesure = largeurTexte(cs, affiche);
+      if (mesure <= utile + MARGE_CHAMP) continue;
+      issues.contenu_rogne.push({ what: label(el), detail:
+        `${nature} « ${texte.slice(0, 40)} » large de ${mesure.toFixed(1)}px dans sa police calculee ` +
+        `(${decrit(cs)}) pour ${utile.toFixed(1)}px utiles (clientWidth ${el.clientWidth}px moins ` +
+        `${pad}px de marges interieures) : ${(mesure - utile).toFixed(1)}px de trop, les derniers ` +
+        `caracteres sont coupes sans signal. Une largeur en ch se resout dans la police de l'element ` +
+        `qui la porte : elargir le champ (ou la calculer sur sa propre police), ou declarer ` +
+        `data-rognage-assume si la coupe est voulue` });
+    }
+  }
+
   // ---- CONTROLES D'UNE MEME RANGEE, alignes a 2 px pres (TF-0773, 02/09) ---------------
   //
   // LE FAIT : sur une capture d'un livrable servi, quatre champs d'hypotheses d'une meme rangee

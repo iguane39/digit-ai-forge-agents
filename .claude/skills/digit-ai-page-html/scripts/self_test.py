@@ -621,6 +621,14 @@ CAS_RENDU = {
     # TF-0847 (05/09) — un champ de saisie defile nativement : sa valeur longue n'est pas du
     # contenu perdu. rogne-contenu-perdu.html, ci-dessus, garde son constat.
     "rogne-champ-saisie.html": ("contenu_rogne", 0),
+    # TF-2886 (26/11, lot Produit-82 20261125g, RT-55) — la valeur d'un champ qui NE defile PAS
+    # (nombre, option choisie, placeholder) deborde de sa zone : « 10000( » au lieu de « 100000 »,
+    # PASS aux 7 largeurs. Les deux fixtures ne different QUE par la largeur des conteneurs
+    # (9ch contre 24ch). La rouge rendait 0 constat sur l'ancien code (input et select etaient
+    # ecartes de la mesure) et en rend 5 ; la verte reste a 0. rogne-champ-saisie.html, ci-dessus,
+    # garde 0 : un champ de texte libre a valeur longue defile nativement.
+    "rogne-champ-valeur-rognee.html": ("contenu_rogne", 5),
+    "rogne-champ-valeur-entiere.html": ("contenu_rogne", 0),
     "l2f-caption-ecrasee-en-filet.html": ("l2_filet", 1),
     "l2f-caption-pleine-largeur.html": ("l2_filet", 0),
     # TF-0582 (lot Produit-02 20260824) : ce qui PEINT sans etre un `background-color`.

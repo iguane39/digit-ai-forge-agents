@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — contenu rogne · la valeur d'un champ deborde de sa zone de saisie — 20261126a</title>
+<!--
+  Fixture ROUGE de contenu_rogne, TF-2886 (lot Produit-82 20261125g, RT-55).
+
+  Le fait : un champ numerique large de 9ch affichait « 10000( » au lieu de « 100000 » sous une
+  police plus large que celle qui avait servi au calcul du ch. La mesure du ch se fait dans la
+  police de l'ELEMENT QUI PORTE LA LARGEUR : ici le conteneur (14px, Arial), alors que le champ
+  qu'il contient est compose en Verdana gras 18px. render_page rendait PASS, contenu_rogne vide.
+
+  Cinq champs, chacun cote d'un defaut different, tous plus etroits que ce qu'ils affichent :
+    1. type=number, valeur 100000 ;
+    2. type=text inputmode=decimal, valeur « 1 250 000,50 » ;
+    3. type=text sans inputmode, valeur 100000 (un nombre ecrit dans un champ de texte) ;
+    4. select dont l'option choisie est « Trimestre » ;
+    5. type=text vide dont le placeholder « Montant HT » est montre.
+
+  Attendu : 5 constats contenu_rogne. La verte voisine, rogne-champ-valeur-entiere.html, ne
+  differe QUE par la largeur donnee aux conteneurs (--largeur) et rend 0 constat. Le champ de
+  texte libre a valeur longue, lui, defile nativement : rogne-champ-saisie.html (TF-0847) reste a 0.
+-->
+<style>
+:root{--ink:#0F172A;--line:#94A3B8;--surface:#FFFFFF;--sans:Arial,sans-serif;--largeur:9ch}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+main{max-width:70ch;margin:0 auto;padding:24px}
+.champ{width:var(--largeur);font:14px/1.4 var(--sans);margin:0 0 16px}
+.champ input,.champ select{width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--line);font:700 18px/1.3 Verdana,sans-serif;color:var(--ink);background:var(--surface)}
+label{display:block;margin:0 0 4px;font:14px/1.4 var(--sans);width:auto}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<main>
+<h1>Hypotheses de conversion</h1>
+<div class="champ"><label for="a">Part de conversation</label>
+<input id="a" type="number" value="100000"></div>
+<div class="champ"><label for="b">Budget annuel</label>
+<input id="b" type="text" inputmode="decimal" value="1 250 000,50"></div>
+<div class="champ"><label for="c">Volume</label>
+<input id="c" type="text" value="100000"></div>
+<div class="champ"><label for="d">Periode</label>
+<select id="d"><option>Mois</option><option selected>Trimestre</option></select></div>
+<div class="champ"><label for="e">Montant</label>
+<input id="e" type="text" value="" placeholder="Montant HT"></div>
+</main>
+</body></html>

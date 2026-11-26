@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — contenu rogne · la valeur d'un champ tient dans sa zone de saisie — 20261126b</title>
+<!--
+  Fixture VERTE de contenu_rogne, TF-2886 (lot Produit-82 20261125g, RT-55).
+
+  Les cinq champs de rogne-champ-valeur-rognee.html, avec les memes valeurs, la meme police et les
+  memes marges, dans des conteneurs plus larges (--largeur: 24ch au lieu de 9ch). C'est la seule
+  difference. Chaque valeur et le placeholder tiennent dans la zone de saisie, avec de la marge.
+
+  Attendu : 0 constat contenu_rogne. Elle prouve que la mesure ne condamne pas un champ qui montre
+  sa valeur en entier, quelle que soit la police.
+-->
+<style>
+:root{--ink:#0F172A;--line:#94A3B8;--surface:#FFFFFF;--sans:Arial,sans-serif;--largeur:24ch}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--surface)}
+main{max-width:70ch;margin:0 auto;padding:24px}
+.champ{width:var(--largeur);font:14px/1.4 var(--sans);margin:0 0 16px}
+.champ input,.champ select{width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--line);font:700 18px/1.3 Verdana,sans-serif;color:var(--ink);background:var(--surface)}
+label{display:block;margin:0 0 4px;font:14px/1.4 var(--sans);width:auto}
+@media print{body{background:#fff}}
+</style></head>
+<body>
+<main>
+<h1>Hypotheses de conversion</h1>
+<div class="champ"><label for="a">Part de conversation</label>
+<input id="a" type="number" value="100000"></div>
+<div class="champ"><label for="b">Budget annuel</label>
+<input id="b" type="text" inputmode="decimal" value="1 250 000,50"></div>
+<div class="champ"><label for="c">Volume</label>
+<input id="c" type="text" value="100000"></div>
+<div class="champ"><label for="d">Periode</label>
+<select id="d"><option>Mois</option><option selected>Trimestre</option></select></div>
+<div class="champ"><label for="e">Montant</label>
+<input id="e" type="text" value="" placeholder="Montant HT"></div>
+</main>
+</body></html>
