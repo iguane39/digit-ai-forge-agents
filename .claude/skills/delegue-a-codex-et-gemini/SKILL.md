@@ -13,7 +13,7 @@ description: >
   un livrable par oracle (→ quality-oracles), ni pour une API d'OpenAI ou de Gemini dans un produit
   (→ integre-openai-gemini).
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # delegue-a-codex-et-gemini — un second modèle pour relire, concevoir et dessiner
@@ -120,6 +120,17 @@ nomme sa direction en une phrase. Claude produit la sienne, puis présente les 3
 375 et 1280 px) avec une rubrique figée avant de voir les variantes. Le choix revient à l'humain
 quand le skill appelant le prévoit (`studio-de-direction`, `systeme-de-marque`), sinon à la rubrique.
 
+**Les règles jugées voyagent avec la consigne (TF-2908, 27/11/2026).** Le lanceur ajoute à la consigne de
+`concevoir`, et à elle seule, l'extrait de [references/regles-jugees-concevoir.md](references/regles-jugees-concevoir.md) :
+jetons en `:root` et thème sombre complet, échelle de 4 px, contraste AA, `data-overlap-ok` pour une
+superposition voulue, et les commandes à rejouer (`render_page.py`, `run-oracles-design.mjs`). Le fait, lot
+Produit-82 20261127e, RT-69 : sur 12 maquettes de Codex et de Gemini, `render_page.py` comptait de 11 à 911
+constats bloquants par page, contre 0 à 3 chez Claude, parce que leur consigne ne transmettait pas ces règles ;
+la comparaison mesurait en partie la connaissance des oracles. Le texte se corrige dans le fichier de référence,
+jamais dans le lanceur ; un fichier absent est un refus (code 2). Non mesuré : si le bac à sable de chaque agent
+laisse tourner `render_page.py` (Playwright) et `run-oracles-design.mjs` ; la consigne dit alors d'appliquer les
+règles sans elles, et Claude rejoue les deux commandes sur chaque livrable reçu avant de le présenter.
+
 ## Hors du champ de ce skill
 
 - Pas de code ni de commit dans un dépôt : le bac à sable de Codex interdit `.git` ; pour ce travail,
@@ -135,4 +146,4 @@ quand le skill appelant le prévoit (`studio-de-direction`, `systeme-de-marque`)
 - Antigravity, `--sandbox` : l'écriture hors du dossier est refusée par l'outil comme par le terminal,
   sauf sous `%TEMP%` ; le réseau des commandes est coupé (essai A-6, 3 appels, témoin intact).
 - Le lanceur ne construit jamais `--dangerously-*`, `danger-full-access` ni de contournement :
-  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 21 cas, dont 6 sur des postes sans agent, avec un seul ou avec les deux, et 7 sur un faux Codex qui dépasse son délai, plante ou rend à temps).
+  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 24 cas, dont 6 sur des postes sans agent, avec un seul ou avec les deux, 7 sur un faux Codex qui dépasse son délai, plante ou rend à temps, et 3 sur l'extrait des règles jugées joint à `concevoir`).

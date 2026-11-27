@@ -30,6 +30,8 @@
  *   --a-blanc rend la commande construite sans rien lancer (voie des recettes).
  *   --livrables <a,b> (concevoir) : les fichiers que le brief demande, relatifs au dossier ; sans cette
  *   option, les fichiers écrits pendant le geste tiennent lieu de livrables.
+ *   concevoir joint aussi à la consigne l'extrait de references/regles-jugees-concevoir.md (TF-2908) :
+ *   les règles que les oracles du socle jugent sur une page HTML, et les commandes à rejouer.
  * Sortie : JSON {verdict, geste, agent, modele, dossier, duree_s, code, reponse, json, fichiers_ecrits, sortie}
  *   etat : JSON {verdict PRET|CLAUDE_SEUL, agents:{codex, antigravity}, disponibles, annonce, procedure}
  *   PARTIEL : ajoute {livrables, motif} ; FAIL avec --livrables : ajoute {livrables_manquants}
@@ -49,6 +51,8 @@ import { fileURLToPath } from "node:url";
 const MODELES = { codex: "gpt-6.2-sol", antigravity: "gemini-4-neon-high" };
 const NOMS = { codex: "Codex", antigravity: "Gemini (par Antigravity)" };
 const PROCEDURE = join(dirname(dirname(fileURLToPath(import.meta.url))), "references", "installer-codex-et-gemini.md");
+// TF-2908 : l'extrait des règles que les oracles de la Factory jugent vit dans un fichier de référence du skill, jamais ici.
+const REGLES_JUGEES = join(dirname(dirname(fileURLToPath(import.meta.url))), "references", "regles-jugees-concevoir.md");
 const [geste, ...reste] = process.argv.slice(2);
 const opt = (n) => { const i = reste.indexOf(n); return i >= 0 ? reste[i + 1] : null; };
 const aBlanc = reste.includes("--a-blanc");
@@ -136,6 +140,16 @@ const delai = Number(opt("--delai") || (geste === "concevoir" ? 600 : 400));
 const prealable = agent === "codex"
   ? "Préambule d'outil (Codex) : ton dossier de travail est le dossier courant. N'utilise aucune commande git. PowerShell est en mode de langage restreint : pour lire et écrire un fichier, utilise Get-Content et Set-Content, jamais de type .NET ; tu peux lancer node et python. Les fichiers texte sont en UTF-8 sans marque d'ordre d'octets. Ne supprime aucun fichier existant. Aucune question : tu travailles seul, jusqu'au bout."
   : "Préambule d'outil (Antigravity) : ton dossier de travail est le dossier courant ; n'écris RIEN en dehors. Une seule commande par appel, sans opérateur de shell (pas de &&, |, ;). N'utilise aucune commande git. Ne supprime aucun fichier existant. Aucune question : tu travailles seul, jusqu'au bout.";
+// TF-2908 (RT-69 du lot Produit-82 20261127e) : sur 12 maquettes confiées à Codex et à Gemini, render_page.py comptait de 11 à
+// 911 constats bloquants par page contre 0 à 3 chez Claude, parce que la consigne de concevoir ne transmettait pas les règles
+// jugées. Le geste concevoir joint donc l'extrait du fichier de référence, avec les commandes à rejouer ; {FORGE_ROOT} y est
+// remplacé par la racine du parc quand FORGE_ROOT la donne. Un fichier de référence absent est un refus, jamais un oubli muet.
+let regles = "";
+if (geste === "concevoir") {
+  if (!existsSync(REGLES_JUGEES)) refus(`fichier de référence absent : ${REGLES_JUGEES} (les règles jugées s'ajoutent à la consigne de concevoir)`);
+  const racine = (process.env.FORGE_ROOT || "").replace(/\\/g, "/").replace(/\/+$/, "");
+  regles = "\n\n" + readFileSync(REGLES_JUGEES, "utf8").replaceAll("{FORGE_ROOT}", racine || "<racine du parc>").trimEnd();
+}
 const lecture = geste === "relire" ? "\n\nTu es en LECTURE SEULE : n'écris, ne modifie et ne supprime aucun fichier." : "";
 // TF-2856 (RT-50 du lot Produit-82 20261125b) : Antigravity a écrit ses 2 livrables complets, puis sa
 // propre vérification (Playwright) a dépassé le délai de 20 minutes. La consigne de `concevoir` borne
@@ -144,7 +158,7 @@ const verifMax = Math.max(1, Math.round(delai / 4));
 const borne = geste === "concevoir"
   ? `\n\nBorne de vérification (posée par le lanceur) : écris d'abord tes livrables complets dans le dossier courant. Ta propre vérification (rendu, capture, test) vient ensuite, tient en une seule passe et ne dépasse pas ${verifMax} secondes en tout ; une commande de vérification qui dépasse ${Math.min(60, verifMax)} secondes est abandonnée, jamais relancée. Ton délai total est de ${delai} secondes : au-delà, tu es arrêté et seuls tes fichiers écrits comptent.`
   : "";
-const texte = `${prealable}${lecture}\n\n${consigne}${borne}`;
+const texte = `${prealable}${lecture}\n\n${consigne}${regles}${borne}`;
 
 // Construction de la commande. Aucun drapeau de levée du bac à sable n'existe dans ce fichier.
 const tmp = mkdtempSync(join(tmpdir(), "agent-tiers-"));

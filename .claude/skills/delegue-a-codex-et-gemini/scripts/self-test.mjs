@@ -11,6 +11,9 @@
  *   PARTIEL (TF-2856) : délai atteint avec les livrables écrits → PARTIEL, code 4, fichiers nommés ;
  *           délai atteint sans livrable, ou livrable déclaré manquant, ou plantage sans délai → FAIL ;
  *           la consigne du geste concevoir borne la vérification que l'agent tiers se donne.
+ *   RÈGLES JUGÉES (TF-2908) : concevoir joint l'extrait de references/regles-jugees-concevoir.md, lu dans
+ *           le fichier (marqueur jetable), entre la consigne et la borne ; relire n'en porte pas ; un
+ *           fichier de référence absent est un refus (code 2).
  *   CONFIGURÉ OU RIEN : sans agent, `etat` rend CLAUDE_SEUL en code 0 et l'annonce une seule fois ;
  *           un geste vers un agent absent rend ABSENT en code 0 ; un agent installé mais non
  *           connecté n'est pas disponible ; avec les 2 agents, aucune annonce.
@@ -88,7 +91,10 @@ const poste = (nom, { codex = false, agy = false, codexJs = "", env: extra = {} 
     mkdirSync(join(env.LOCALAPPDATA, "agy", "bin"), { recursive: true }); writeFileSync(join(env.LOCALAPPDATA, "agy", "bin", "agy.exe"), "");
     mkdirSync(join(H, ".gemini", "antigravity-cli"), { recursive: true }); writeFileSync(join(H, ".gemini", "antigravity-cli", "settings.json"), "{}");
   }
-  return (...a) => { const r = spawnSync(process.execPath, [SCRIPT, ...a], { encoding: "utf8", env }); let j = {}; try { j = JSON.parse(r.stdout); } catch { /* jugé par le code */ } return { code: r.status, j, H }; };
+  const lancer = (script, a) => { const r = spawnSync(process.execPath, [script, ...a], { encoding: "utf8", env }); let j = {}; try { j = JSON.parse(r.stdout); } catch { /* jugé par le code */ } return { code: r.status, j, H }; };
+  const run = (...a) => lancer(SCRIPT, a);
+  run.avec = (script, ...a) => lancer(script, a);   // TF-2908 : le même poste factice, un autre exemplaire du lanceur
+  return run;
 };
 
 check("VIDE : aucun agent, etat rend CLAUDE_SEUL en code 0, puis l'annonce une seule fois", () => {
@@ -192,6 +198,39 @@ check("BORNE : la consigne de concevoir borne la vérification de l'agent ; cell
   const d2 = join(T, "dossier-borne-relire"); mkdirSync(d2);
   p("relire", "--agent", "codex", "--dossier", d2, "--consigne", C, "--delai", "40");
   ok(!/Borne de vérification/.test(readFileSync(join(d2, "consigne-recue.txt"), "utf8")), "borne présente dans relire");
+});
+
+// TF-2908 (RT-69 du lot Produit-82 20261127e) : le geste concevoir joint l'extrait des règles jugées par les oracles du socle.
+// Un faux Codex écrit la consigne qu'il reçoit ; l'extrait se lit dans references/regles-jugees-concevoir.md, jamais dans le code.
+check("TF-2908 VERT : concevoir joint l'extrait des règles jugées et les commandes à rejouer, entre la consigne et la borne", () => {
+  const p = poste("regles", { codex: true, codexJs: FAUX_BREF, env: { AGENT_TIERS_MARGE_S: "5", FORGE_ROOT: "C:\\racine-test" } });
+  const d = join(T, "dossier-regles"); mkdirSync(d);
+  p("concevoir", "--agent", "codex", "--dossier", d, "--consigne", C, "--delai", "40");
+  const recue = readFileSync(join(d, "consigne-recue.txt"), "utf8");
+  for (const motif of [/data-overlap-ok/, /multiple de 4/, /4,5:1/, /\[data-theme="dark"\]/, /`:root`/, /render_page\.py/, /run-oracles-design\.mjs/])
+    ok(motif.test(recue), `l'extrait ne porte pas ${motif} : ${recue.slice(-600)}`);
+  ok(/C:\/racine-test\/digit-ai-forge-design\/oracles\/run-oracles-design\.mjs/.test(recue) && !recue.includes("{FORGE_ROOT}"), "{FORGE_ROOT} doit être remplacé par la racine du parc");
+  ok(recue.indexOf("Relis le fichier") < recue.indexOf("Règles que la Factory juge") && recue.indexOf("Règles que la Factory juge") < recue.indexOf("Borne de vérification"), "ordre : consigne, règles, borne");
+});
+check("TF-2908 ROUGE : relire n'en porte pas ; concevoir sans racine de parc le dit", () => {
+  const p = poste("regles-relire", { codex: true, codexJs: FAUX_BREF, env: { AGENT_TIERS_MARGE_S: "5", FORGE_ROOT: "" } });
+  const d = join(T, "dossier-regles-relire"); mkdirSync(d);
+  p("relire", "--agent", "codex", "--dossier", d, "--consigne", C, "--delai", "40");
+  ok(!/Règles que la Factory juge|data-overlap-ok/.test(readFileSync(join(d, "consigne-recue.txt"), "utf8")), "relire porte l'extrait");
+  const d2 = join(T, "dossier-regles-sans-racine"); mkdirSync(d2);
+  p("concevoir", "--agent", "codex", "--dossier", d2, "--consigne", C, "--delai", "40");
+  ok(/<racine du parc>/.test(readFileSync(join(d2, "consigne-recue.txt"), "utf8")), "sans FORGE_ROOT, la racine doit rester nommée « <racine du parc> »");
+});
+check("TF-2908 ROUGE : l'extrait se lit dans le fichier de référence (marqueur jetable), et son absence est un refus", () => {
+  const copie = join(T, "copie-skill"); mkdirSync(join(copie, "scripts"), { recursive: true }); mkdirSync(join(copie, "references"));
+  writeFileSync(join(copie, "scripts", "agent-tiers.mjs"), readFileSync(SCRIPT, "utf8"));
+  const p = poste("regles-copie", { codex: true, codexJs: FAUX_BREF, env: { AGENT_TIERS_MARGE_S: "5" } });
+  const sans = p.avec(join(copie, "scripts", "agent-tiers.mjs"), "concevoir", "--agent", "codex", "--dossier", J, "--consigne", C, "--delai", "40");
+  ok(sans.code === 2 && /référence absent/.test(sans.j.message || ""), `fichier absent : exit ${sans.code} ${sans.j.message}`);
+  writeFileSync(join(copie, "references", "regles-jugees-concevoir.md"), "## Règles que la Factory juge\nMARQUEUR-JETABLE-2908 {FORGE_ROOT}\n");
+  const d = join(T, "dossier-regles-copie"); mkdirSync(d);
+  const avec = p.avec(join(copie, "scripts", "agent-tiers.mjs"), "concevoir", "--agent", "codex", "--dossier", d, "--consigne", C, "--delai", "40");
+  ok(avec.code === 0 && /MARQUEUR-JETABLE-2908/.test(readFileSync(join(d, "consigne-recue.txt"), "utf8")), `marqueur absent : exit ${avec.code}`);
 });
 
 rmSync(T, { recursive: true, force: true });
