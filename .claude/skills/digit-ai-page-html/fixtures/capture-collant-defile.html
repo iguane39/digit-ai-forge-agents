@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — capture pleine page : en-tete collant, page defilee</title>
+<style>
+:root{--ink:#0F172A;--bg:#FAFBFF;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:16px;color:var(--ink);background:var(--bg)}
+/* L'en-tete est rouge sombre a dessein : la recette cherche cette bande dans les pixels de la capture. */
+header.bandeau{position:sticky;top:0;z-index:10;height:64px;background:#B91C1C;color:#fff;display:flex;align-items:center;padding:0 24px;font-family:var(--head);font-size:1.2rem}
+main{padding:24px}
+section{margin:0 0 40px}
+p{margin:0 0 12px}
+.vide{height:900px}
+@media print{body{background:#fff}header.bandeau{position:static}}
+</style></head>
+<!--
+  Fixture de la capture pleine page (TF-2904, 27/11/2026). Page longue (environ 3 300 px) dont l'en-tete est
+  `position: sticky`, et qui se DEFILE d'elle-meme a 880 px au chargement (ce que font un lien d'ancre ou un
+  composant de recherche). Avant : la capture pleine page peignait l'en-tete a 880 px CSS, avec une bande vide au-dessus.
+  Apres : l'en-tete est en tete de capture (0 a 64 px CSS) et nulle part ailleurs. self_test.py lit les pixels du PNG.
+-->
+<body><header class="bandeau">Bandeau collant</header>
+<main><h1>Page longue</h1>
+<section><h2>Un</h2><p>Texte un. Texte un. Texte un. Texte un. Texte un. Texte un. Texte un.</p><div class="vide"></div></section>
+<section><h2>Deux</h2><p>Texte deux. Texte deux. Texte deux. Texte deux. Texte deux.</p><div class="vide"></div></section>
+<section><h2>Trois</h2><p>Texte trois. Texte trois. Texte trois. Texte trois.</p><div class="vide"></div></section>
+</main>
+<script>addEventListener('load', function () { scrollTo(0, 880); });</script>
+</body></html>

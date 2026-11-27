@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L9 — depliant qui ne porte qu'une case</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de L9 (TF-2903, 27/11/2026), contre-epreuve de l9-depliant-filtre-cases.html : une
+  SEULE case ne fait pas un groupe de controles, le depliant reste jugé comme un depliant d'explication
+  (« L9 depliant qui cache trop peu »). L'exemption ne couvre pas un depliant quelconque qui contient
+  un input.
+-->
+<body><main class="wrap">
+<h1>L9 — un depliant qui cache une case</h1>
+<details><summary>Pourquoi cette case existe</summary>
+<label><input type="checkbox"> Recevoir un rappel</label>
+</details></main></body></html>

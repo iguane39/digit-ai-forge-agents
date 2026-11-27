@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L2 gouttiere : deux pistes de CONTENU</title>
+<style>
+:root{--ink:#0F172A;--faint:#64748B;--mark:#FEF08A;--line:#E6EAF2;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans);font-size:15px}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+/* Deux grilles a deux pistes dont la premiere depasse 20 % de la largeur et ne porte que peu de texte. Aucune n'est
+   une colonne d'etiquettes : la premiere porte deux SECTIONS titrees, la seconde un bloc de plusieurs enfants. */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin:0 0 24px}
+.duo2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:24px}
+.duo h2,.duo2 h2{font-family:var(--head);font-size:1.1rem;margin:0 0 6px}
+.duo p,.duo2 p{margin:0 0 6px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}.duo,.duo2{grid-template-columns:1fr}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de la gouttiere d'etiquettes (L2, TF-2898, 27/11/2026). Avant : `l2_gouttiere` rendait
+  2 constats bloquants a 1440 px (une « colonne d'etiquettes » de 50 % puis de 33 %) sur deux grilles qui portent
+  du CONTENU. Apres : 0. La contre-epreuve rouge est l2g-etiquette-un-seul-enfant.html, et les rouges d'origine
+  (l2g-gouttiere-etiquettes.html) gardent leur constat.
+-->
+<body><main class="wrap">
+<h1>L2 — deux pistes de contenu</h1>
+<div class="duo">
+<section><h2>Perimetre</h2><p>Trois lots.</p></section>
+<section><h2>Methode</h2><p>Les pages cibles repondent-elles au format d'intention dominant de leur requete ? Le critere de la grille demande une page par requete commerciale, a deux clics au plus de l'accueil, et il n'est rempli sur aucune des deux dimensions mesurees.</p></section>
+</div>
+<div class="duo2">
+<div><p><b>Lot 1</b></p><p>Cadrage.</p></div>
+<div><p>Les pages cibles repondent-elles au format d'intention dominant de leur requete ? Le critere de la grille demande une page par requete commerciale, a deux clics au plus de l'accueil, et il n'est rempli sur aucune des deux dimensions mesurees.</p></div>
+</div>
+</main></body></html>

@@ -617,6 +617,8 @@
   .toolbar input[type="search"] {
     font: inherit; padding: 8px 12px; border: 1px solid var(--line);
     border-radius: 6px; background: var(--bg-soft); color: var(--ink); min-width: 16rem;
+    /* V30 (TF-2902) : meme hauteur que .btn-reset (min-height 44px), sinon 42,8 px face a 44 px sur une meme rangee. */
+    box-sizing: border-box; min-height: 44px;
   }
   .toolbar input:focus-visible, .btn-reset:focus-visible { outline: var(--focus-anneau); outline-offset: var(--focus-decalage); }
   .btn-reset {

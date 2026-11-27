@@ -123,6 +123,21 @@ Doctrine : **une étiquette de champ s'écrit en tête de ligne**, pas dans une 
 « **Question d'audit** — … ». Si une colonne d'étiquettes est vraiment voulue, elle ne
 dépasse jamais **15 à 20 %** de la largeur utile.
 
+**Une piste de contenu n'est pas une colonne d'étiquettes, et la dispense se lit (TF-2898,
+27/11/2026).** Une grille à deux pistes qui porte deux **sections** de contenu, la première avec
+peu de texte, rendait « colonne d'étiquettes » bloquant, et `data-colonne-ok` n'en dispensait
+pas. La mesure de la grille ne juge plus une piste dont l'enfant **contient un titre** (h2 à h6)
+ou **porte au moins deux blocs de contenu** visibles (`p`, `ul`, `ol`, `dl`, `table`, `figure`, `section`,
+`article`, `div`, `form`, `pre`, `blockquote`, `details`) : c'est un bloc de contenu. Des liens ou du texte
+en ligne n'en font pas : une colonne de liens non déclarée comme navigation reste accusée
+(`nav-laterale-non-declaree.html`). Elle lit aussi
+`data-colonne-ok` sur la grille ou un de ses ancêtres, comme les autres mesures de `L2`
+(TF-2677 : jamais sur `<main>` ou `<body>` aussi larges que leur parent). Une étiquette seule,
+même enveloppée dans un seul élément (`<dt><b>…</b></dt>`), reste une étiquette : la rouge
+d'origine garde son constat. Fixtures : `l2g-pistes-de-contenu.html` et
+`l2g-etiquettes-dispensees.html` (vertes, 2 et 1 constats avant), `l2g-etiquette-un-seul-enfant.html`
+(rouge).
+
 **Contrôle mécanique — trois niveaux.**
 - `L2` **statique** (`check_html.py`) : aucun `max-width` en pixels durs inférieur à 1 100 px
   sur `body`, `main`, `.wrap`, `.container` ou `.page`.
@@ -545,6 +560,15 @@ dont **aucun ne désigne** (mots-outils ignorés, liste de mots creux dans le sc
 plus » échoue, « Afficher la dette » passe — « dette » désigne. Ce qui n'est pas mécanisable,
 c'est qu'un libellé qui désigne dise aussi un **usage** : cela reste à la revue de lecture.
 Le complément de L9 (« le niveau 2 contient le texte intégral ») est couvert par L1.
+
+**Un dépliant de filtre n'est pas une explication (TF-2903, 27/11/2026).** Un `<details>` dont
+le contenu est un **groupe de contrôles de formulaire** — au moins deux `input` de type
+`checkbox` ou `radio`, ou un `fieldset` — cache un formulaire, pas un texte : ses libellés sont
+courts par nature, et une case peut ne porter que son `aria-label`. `L9` le jugeait « détail
+vide » ou « cache trop peu » comme un dépliant d'explication ; il en sort tout entier (les
+trois contrôles ci-dessus, y compris celui du `<summary>`). Une seule case ne fait pas un
+groupe : le dépliant qui n'en porte qu'une reste jugé (`l9-depliant-une-case.html`, rouge ;
+`l9-depliant-filtre-cases.html`, verte).
 
 **Revue de lecture.** Que la ligne de niveau 1 soit une phrase autonome et non un fragment
 grammatical.
@@ -1879,6 +1903,6 @@ texte coupé, largeur bridée, tooltip vide, barème absent, colonne calculée s
 valeur opaque, table non filtrable, surlignage à padding, collision de nom de classe,
 ancre morte, entrée de sommaire muette, chapitre sans chapeau, lien muet, détail vide,
 table sans mode d'emploi, littéral `null`, promesse de commentaire non tenue — plus une fixture verte qui les passe toutes.
-Une règle sans fixture rouge n'est pas un contrôle. **130 cas de lisibilité, 75 rouges** (comptés le 13/11/2026 dans les tables `CAS` et `CAS_AVERT` de `self_test.py`, que le banc compare à ce chiffre : un cas ajouté sans mettre le compte à jour rend le self-test rouge), auxquels s'ajoutent
+Une règle sans fixture rouge n'est pas un contrôle. **132 cas de lisibilité, 76 rouges** (comptés le 27/11/2026 dans les tables `CAS` et `CAS_AVERT` de `self_test.py`, que le banc compare à ce chiffre : un cas ajouté sans mettre le compte à jour rend le self-test rouge), auxquels s'ajoutent
 neuf fixtures mesurées au rendu (quatre `l2r-*`, cinq `l2g-*`), rejouées par `self_test.py` quand
 playwright est disponible.

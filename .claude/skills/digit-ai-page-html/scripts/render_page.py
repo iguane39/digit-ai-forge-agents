@@ -188,6 +188,7 @@ L2_FRERES_MIN_LARGEUR = 500
 L2_COL_MAX = 0.20
 L2_ETIQUETTE_MAX = 60
 ALIGN_TOLERANCE_PX = 2.0
+CHAMP_BOUTON_TOLERANCE_PX = 1.0   # TF-2902 (V30) : champ et bouton d'une meme rangee, haut et hauteur
 OVERLAP_MIN_RATIO = 0.10  # intersection > 10 % du plus petit élément = significative
 # TF-0778 (02/09) — sur une PAGE DE DONNÉES, un bloc de texte qui n'occupe pas au moins ce
 # ratio de son conteneur est un défaut. Seuil à 70 % et non 85 % (celui de L2) : L2 mesure une
@@ -304,7 +305,7 @@ MEASURE_JS = r"""
 () => {
   const issues = { v1_overflow: [], v2_contrast: [], v3_align: [], v4_overlap: [], v7_spacing: [],
                    l2_width: [], l2_gouttiere: [], l2_conteneur: [], l2_filet: [], l2_freres: [],
-                   contenu_rogne: [], controles_desalignes: [], rognage_donnees: [],
+                   contenu_rogne: [], controles_desalignes: [], champ_bouton_desaligne: [], rognage_donnees: [],
                    prose_etroite: [], sommaire_perdu: [], etats_indiscernables: [],
                    conteneur_bride_donnees: [], overlap_en_bloc: [], mot_coupe: [],
                    decor_sur_ancetre: [], entete_desaligne: [], largeurs_melangees: [],
@@ -1449,6 +1450,22 @@ MEASURE_JS = r"""
       if (enfants.length < 2) continue;
       // TF-2776 : la piste d'une navigation declaree n'est pas une colonne d'etiquettes (elle sort de la mesure).
       if (enfants[0].closest(NAV_DECLAREE) || enfants[0].querySelector(NAV_DECLAREE) || enfants[1].closest(NAV_DECLAREE)) continue;
+      // TF-2898 (lots Produit-82 des 26 et 27/11/2026) — UNE PISTE DE CONTENU N'EST PAS UNE COLONNE D'ETIQUETTES, ET
+      // LA DISPENSE DECLAREE VAUT ICI COMME AILLEURS. Une grille a deux pistes qui porte deux SECTIONS de contenu, la
+      // premiere avec peu de texte, rendait « colonne d'etiquettes » bloquant, et `data-colonne-ok` n'en dispensait
+      // pas (la mesure de la grille ne la lisait pas). Deux gardes, aucune ne touche une vraie colonne d'etiquettes
+      // (une cellule de texte, ou une cellule et un seul enfant) :
+      //   · la premiere piste porte un TITRE (h2-h6 dans l'enfant) ou PLUSIEURS BLOCS de contenu (au moins deux enfants
+      //     visibles parmi p, ul, ol, dl, table, figure, section, article, div, form, pre, blockquote, details) : c'est
+      //     un bloc de contenu, pas une etiquette ; un titre qui est lui-meme l'enfant reste une etiquette ;
+      //     des LIENS ou du texte en ligne (a, b, span, small…) n'en font pas : une colonne de liens non declaree
+      //     comme navigation reste accusee (nav-laterale-non-declaree.html, TF-2776, que cette garde avait rendue
+      //     muette a la premiere ecriture : « plusieurs enfants » exemptait ses trois liens) ;
+      //   · `data-colonne-ok` valide sur la grille ou un de ses ancetres : colonne etroite declaree (TF-2677).
+      if (dispenseDe(el)) continue;
+      const BLOCS_DE_CONTENU = 'p, ul, ol, dl, table, figure, section, article, div, form, pre, blockquote, details';
+      if (enfants[0].querySelector('h2, h3, h4, h5, h6')
+          || Array.prototype.filter.call(enfants[0].children, (c) => visible(c) && c.matches(BLOCS_DE_CONTENU)).length >= 2) continue;
       const t1 = (enfants[0].textContent || '').trim().length;
       const t2 = (enfants[1].textContent || '').trim().length;
       if (t2 < __L2_MIN_CHARS__ || t1 > __L2_ETIQUETTE_MAX__) continue;
@@ -1840,6 +1857,73 @@ MEASURE_JS = r"""
           `lignes parce qu'elle porte son statut dans son libelle — l'etiquette de statut se ` +
           `pose SOUS le champ. Ecart voulu : data-alignement-ok` });
       }
+    }
+  }
+
+  // ---- V30 : UN CHAMP ET SON BOUTON, SUR UNE MEME RANGEE, A LA MEME HAUTEUR ET AU MEME HAUT (TF-2902) ------------
+  //
+  // LE FAIT (lots Produit-82 des 26 et 27/11/2026) : 14 ecarts a 1920 px sur des pages jugees PASS, dont un champ de
+  // 52 px face a un bouton de 40 px. POURQUOI V11 (`controles_desalignes`, ci-dessus) NE LES VOYAIT PAS, mesure sur
+  // v30-champ-bouton-flex-start.html et v30-champ-bouton-en-ligne.html (0 constat chacune, verdict PASS) :
+  //   · V11 ne compare que le BORD HAUT. Un champ de 52 px et un bouton de 40 px qui partent du meme haut
+  //     (`align-items:flex-start`) ont le meme haut : 0 constat, alors que le lecteur voit deux hauteurs ;
+  //   · V11 ne juge que les ENFANTS d'une grille ou d'une boite flexible. Un champ et un bouton EN LIGNE dans un
+  //     conteneur de bloc (un `<form>`, un `<div>`) ne sont les enfants de rien : V11 ne les regarde pas ;
+  //   · V11 tolere 2 px, et saute les tableaux, les navigations et les panneaux `.tf-panel`.
+  // LA MESURE. Pour chaque champ de saisie visible (input textuel, select, textarea) et chaque `button` visible d'un
+  // MEME formulaire ou d'un meme conteneur de rangee (le champ, son parent, son grand-parent ou son arriere-grand-parent ;
+  // jamais `body`, `html`, `main`), quand leurs boites se recouvrent VERTICALEMENT de plus de 4 px et se tiennent
+  // COTE A COTE (recouvrement horizontal d'au plus 2 px), un ecart de HAUT ou de HAUTEUR superieur a __CB_TOL__ px est
+  // un constat bloquant, un par conteneur (le pire couple est nomme). Ce qui n'est PAS une rangee n'est pas juge :
+  // un bouton incruste dans le champ (recouvrement horizontal : l'effacement d'une recherche), un bouton empile sous le
+  // champ (aucun recouvrement vertical), une case ou un bouton radio (ce n'est pas un champ de saisie), un `select`
+  // a liste ouverte (`multiple`, `size`), un controle en `position: absolute|fixed`.
+  // L'ecart voulu se DECLARE par `data-alignement-ok` sur le champ, le bouton ou un de leurs ancetres (la meme
+  // dispense que V11, avec sa raison). Tolerance de 1 px : la demande du 27/11/2026 ; V11 reste a 2 px.
+  {
+    const SANS_SAISIE = ['hidden', 'checkbox', 'radio', 'submit', 'button', 'reset', 'image', 'file', 'range', 'color'];
+    const estChamp = (el) => {
+      if (el.matches('select')) return !el.multiple && !(parseInt(el.getAttribute('size') || '0', 10) > 1);
+      if (el.matches('textarea')) return true;
+      return el.matches('input') && !SANS_SAISIE.includes((el.getAttribute('type') || 'text').toLowerCase());
+    };
+    const horsFlux = (el) => { const p = getComputedStyle(el).position; return p === 'absolute' || p === 'fixed'; };
+    const EXCLU = 'table, nav, .tf-panel';
+    const champs = [...document.body.querySelectorAll('input, select, textarea')]
+      .filter((el) => estChamp(el) && visible(el) && !horsFlux(el) && !el.closest(EXCLU));
+    const boutons = [...document.body.querySelectorAll('button')]
+      .filter((el) => visible(el) && !horsFlux(el) && !el.closest(EXCLU));
+    const parConteneur = new Map();
+    for (const ch of champs) {
+      const candidats = [];
+      let anc = ch.parentElement;
+      for (let k = 0; k < 3 && anc && !anc.matches('body, html, main'); k += 1, anc = anc.parentElement) candidats.push(anc);
+      const forme = ch.closest('form');
+      if (forme && !candidats.includes(forme)) candidats.push(forme);
+      const rc = ch.getBoundingClientRect();
+      for (const bt of boutons) {
+        if (ch.contains(bt) || bt.contains(ch)) continue;
+        const conteneur = candidats.find((c) => c.contains(bt));
+        if (!conteneur) continue;
+        if (ch.closest('[data-alignement-ok]') || bt.closest('[data-alignement-ok]')) continue;
+        const rb = bt.getBoundingClientRect();
+        const recouvreV = Math.min(rc.bottom, rb.bottom) - Math.max(rc.top, rb.top);
+        const recouvreH = Math.min(rc.right, rb.right) - Math.max(rc.left, rb.left);
+        if (recouvreV <= 4 || recouvreH > 2) continue;
+        const ecartHaut = Math.abs(rc.top - rb.top), ecartHauteur = Math.abs(rc.height - rb.height);
+        if (ecartHaut <= __CB_TOL__ && ecartHauteur <= __CB_TOL__) continue;
+        const pire = Math.max(ecartHaut, ecartHauteur);
+        const vu = parConteneur.get(conteneur);
+        if (!vu || pire > vu.pire) parConteneur.set(conteneur, { pire, ch, bt, rc, rb, ecartHaut, ecartHauteur });
+      }
+    }
+    for (const [conteneur, c] of parConteneur) {
+      issues.champ_bouton_desaligne.push({ what: label(conteneur), detail:
+        `champ ${label(c.ch)} (${Math.round(c.rc.height * 10) / 10}px de haut) et bouton ${label(c.bt)} ` +
+        `(${Math.round(c.rb.height * 10) / 10}px de haut) sur une meme rangee : ecart de haut ` +
+        `${Math.round(c.ecartHaut * 10) / 10}px, ecart de hauteur ${Math.round(c.ecartHauteur * 10) / 10}px ` +
+        `(tolerance __CB_TOL__px). Donner au champ et au bouton la meme hauteur (une variable de hauteur de controle, ou ` +
+        `align-items:stretch sur la rangee) et le meme haut. Ecart voulu : data-alignement-ok avec sa raison` });
     }
   }
 
@@ -3515,6 +3599,7 @@ def mesure_js() -> str:
             .replace("__ECHEANCE_OVERLAP__", _phrase_echeance("overlap_en_bloc"))
             .replace("__OVERLAP_MIN_RATIO__", str(OVERLAP_MIN_RATIO))
             .replace("__ALIGN_TOL__", str(ALIGN_TOLERANCE_PX))
+            .replace("__CB_TOL__", str(CHAMP_BOUTON_TOLERANCE_PX))
             .replace("__V7_MAX__", str(V7_MAX_DETAILS))
             .replace("__L2_MIN_RATIO__", str(L2_MIN_RATIO))
             .replace("__L2C_MIN_RATIO__", str(L2C_MIN_RATIO))
@@ -3710,7 +3795,7 @@ def jouer_paires(page, url: str, js: str, plafond: int, capture_timeout: int,
         png = png_dir / f"{stem}-w{width}-paire{rang:02d}.png"
         cap = {"faite": True, "motif": ""}
         try:
-            page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+            capturer_pleine_page(page, png, capture_timeout)
         except Exception as erreur:  # noqa: BLE001
             cap = {"faite": False,
                    "motif": f"capture impossible : {type(erreur).__name__} — les familles du "
@@ -3766,6 +3851,9 @@ FAMILLES = [
     #   · TF-0778 prose bridee — L2 ne regarde que six selecteurs, un `.chapo` n'en est aucun ;
     #   · TF-0772 sommaire — la moitie mesurable de L25.
     ("controles_desalignes", "Controles d'une meme rangee desalignes", "bloquant"),
+    # TF-2902 (lots Produit-82 des 26 et 27/11/2026) : V11 ne compare que le bord haut des enfants d'une grille ou
+    # d'une boite flexible ; V30 juge le haut ET la hauteur d'un champ et de son bouton, a 1 px.
+    ("champ_bouton_desaligne", "V30 champ et bouton d'une meme rangee : haut ou hauteur differents", "bloquant"),
     ("rognage_donnees", "Tableau ROGNE dans un conteneur defilant (page de donnees)", "bloquant"),
     ("prose_etroite", "Bloc de texte etrique sur une page de donnees", "bloquant"),
     # TF-0930 (lot Produit-10 20260908b) : le CONTENEUR, la ou `prose_etroite` juge le bloc et
@@ -4088,6 +4176,54 @@ _V9_JS_NOMMER_COLLES = """() => {
     return el.tagName.toLowerCase() + id + cls;
   });
 }"""
+
+
+# TF-2904 (lots Produit-82 des 26 et 27/11/2026) — LA CAPTURE PLEINE PAGE FIGEAIT UN EN-TETE COLLANT AU MILIEU DE LA PAGE.
+# LE FAIT. Une bande vide en tete de capture et l'en-tete peint vers 880 px a 1920 px de large : la page etait
+# DEFILEE au moment de la capture (un lien d'ancre, un `scrollIntoView` du composant de recherche, la restauration du
+# defilement), et un element `position: sticky` ou `fixed` se peint a l'endroit ou la fenetre se trouvait, pas en tete
+# de la page. Mesure ici (fixtures capture-collant-defile.html et capture-fixe-defile.html, 1920 px) : la bande de
+# l'en-tete tombe a 880 px CSS, le haut de la capture est vide. Le lecteur humain, lui, voit l'en-tete en haut.
+# CE QUI CHANGE. Le temps de la SEULE capture pleine page, les elements collants passent a une position qui ne depend
+# plus du defilement, puis l'etat est RETABLI a l'identique (valeur et priorite en ligne), de sorte que les mesures
+# faites avant et apres ne bougent pas :
+#   · `sticky` -> `static` : la boite reste dans le flux, a sa place de flux, la mise en page ne change pas ;
+#   · `fixed`  -> `absolute` : une boite fixe est hors flux, `static` la ferait ENTRER dans le flux et allongerait la
+#     page (la hauteur mesuree, les tuiles et l'equilibre de l'encre en dependent) ; `absolute` la garde hors flux et la
+#     pose, avec ses memes distances, par rapport a la page et non a la fenetre.
+# La capture d'UN element (V9, par section) n'est pas concernee : elle a son propre traitement (_V9_JS_MASQUER_COLLES).
+_JS_COLLES_A_PLAT = """() => {
+  window.__capCollants = [];
+  for (const el of document.querySelectorAll('*')) {
+    const p = getComputedStyle(el).position;
+    if (p !== 'sticky' && p !== 'fixed') continue;
+    window.__capCollants.push([el, el.style.getPropertyValue('position'), el.style.getPropertyPriority('position')]);
+    el.style.setProperty('position', p === 'sticky' ? 'static' : 'absolute', 'important');
+  }
+  return window.__capCollants.length;
+}"""
+
+_JS_COLLES_RETABLIR = """() => {
+  for (const [el, valeur, priorite] of (window.__capCollants || [])) {
+    if (valeur) el.style.setProperty('position', valeur, priorite);
+    else el.style.removeProperty('position');
+  }
+  const n = (window.__capCollants || []).length;
+  window.__capCollants = [];
+  return n;
+}"""
+
+
+def capturer_pleine_page(page, chemin, timeout, **options) -> int:
+    """TF-2904 — capture pleine page d'une page dont les elements collants sont mis a plat le temps de la capture,
+    puis retablis (meme en cas d'echec de la capture). Rend le nombre d'elements collants neutralises ;
+    `options` (par exemple `clip`) passe tel quel a `page.screenshot`."""
+    neutralises = page.evaluate(_JS_COLLES_A_PLAT)
+    try:
+        page.screenshot(path=str(chemin), full_page=True, timeout=timeout, **options)
+    finally:
+        page.evaluate(_JS_COLLES_RETABLIR)
+    return neutralises
 
 
 # TF-2679 (factory-digit-ai-fr, run forge-digit-ai-fr-20261114a, 15/11/2026) — L'ÉQUILIBRE HORIZONTAL DE L'ENCRE.
@@ -4607,7 +4743,7 @@ def jouer_scenes(page, url: str, js: str, js_large: str, width: int, png_dir: Pa
                                 f"{hauteur_max} px (--hauteur-max)"}
         else:
             try:
-                page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+                capturer_pleine_page(page, png, capture_timeout)
             except Exception as erreur:  # noqa: BLE001
                 capture = {"faite": False, "hauteur_css": hauteur,
                            "motif": f"capture impossible : {type(erreur).__name__} — les "
@@ -4844,7 +4980,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                 if target:
                     target.screenshot(path=str(png), timeout=capture_timeout)
                 else:
-                    page.screenshot(path=str(png), full_page=True, timeout=capture_timeout)
+                    capturer_pleine_page(page, png, capture_timeout)
                     # TF-1131 : au-delà de 4:1, des tuiles d'un écran, produites d'office.
                     capture.update(produire_tuiles(page, png_dir, cible.stem, width,
                                                    capture_timeout))
@@ -4988,7 +5124,7 @@ def run(html_path, widths: list[int], selector: str, scale: float, as_json: bool
                     png_e = png_dir / f"{cible.stem}-w{width}-etat-{nom}.png"
                     cap_e = {"faite": True, "motif": ""}
                     try:
-                        page.screenshot(path=str(png_e), full_page=True, timeout=capture_timeout)
+                        capturer_pleine_page(page, png_e, capture_timeout)
                     except Exception as erreur:  # noqa: BLE001
                         cap_e = {"faite": False,
                                  "motif": f"capture impossible : {type(erreur).__name__} — "
@@ -5463,9 +5599,9 @@ def produire_tuiles(page, png_dir: Path, stem: str, width: int, timeout_ms: int)
     for i in range(min(n, TUILES_MAX)):
         y = i * TUILES_HAUTEUR_CSS
         nom = png_dir / f"{stem}-w{width}-ecran{i + 1:02d}.png"
-        page.screenshot(path=str(nom), full_page=True, timeout=timeout_ms,
-                        clip={"x": 0, "y": y, "width": width,
-                              "height": min(TUILES_HAUTEUR_CSS, hauteur - y)})
+        capturer_pleine_page(page, nom, timeout_ms,
+                             clip={"x": 0, "y": y, "width": width,
+                                   "height": min(TUILES_HAUTEUR_CSS, hauteur - y)})
         tuiles.append(nom.name)
     info["tuiles"] = tuiles
     if n > TUILES_MAX:

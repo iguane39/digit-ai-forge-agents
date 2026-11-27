@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — L9 — depliant qui porte un groupe de cases (filtre)</title>
+<style>
+:root{--ink:#0F172A;--mark:#FEF08A;--head:"Roboto",system-ui,sans-serif;
+ --sans:"DM Sans",system-ui,sans-serif;--w:min(92vw,1680px)}
+body{margin:0;font-family:var(--sans)}
+.wrap{max-width:var(--w);margin:0 auto;padding:20px}
+mark.find{background:var(--mark);color:inherit;padding:0;margin:0;display:inline}
+@media (max-width:640px){.wrap{padding:10px}}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de L9 (TF-2903, 27/11/2026). Un `details` qui porte un GROUPE DE CONTROLES de formulaire
+  (au moins deux cases ou boutons radio, ou un fieldset) est un filtre, pas un depliant d'explication :
+  ses libelles sont courts et une case peut ne porter que son aria-label. Avant : « L9 detail vide »
+  sur le premier, « L9 depliant qui cache trop peu » sur le second. Attendu : aucun constat L9.
+  Contre-epreuve rouge : l9-depliant-une-case.html (une seule case ne fait pas un groupe).
+-->
+<body><main class="wrap">
+<h1>L9 — un filtre replie</h1>
+<details><summary>Filtrer par statut de la demande</summary>
+<input type="checkbox" aria-label="Ouvert"><input type="checkbox" aria-label="Clos"><input type="checkbox" aria-label="En attente">
+</details>
+<details><summary>Filtrer par periode d'echeance</summary>
+<fieldset><legend>Periode</legend><label><input type="radio" name="p" value="m"> Mois</label> <label><input type="radio" name="p" value="t"> Trimestre</label></fieldset>
+</details></main></body></html>

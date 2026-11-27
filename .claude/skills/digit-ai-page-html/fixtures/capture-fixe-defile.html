@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — capture pleine page : en-tete fixe, page defilee</title>
+<style>
+:root{--ink:#0F172A;--bg:#FAFBFF;--head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:16px;color:var(--ink);background:var(--bg)}
+/* L'en-tete est rouge sombre a dessein : la recette cherche cette bande dans les pixels de la capture. */
+header.bandeau{position:fixed;top:0;left:0;right:0;z-index:10;height:64px;background:#B91C1C;color:#fff;display:flex;align-items:center;padding:0 24px;font-family:var(--head);font-size:1.2rem}
+main{padding:88px 24px 24px}
+section{margin:0 0 40px}
+p{margin:0 0 12px}
+.vide{height:900px}
+@media print{body{background:#fff}header.bandeau{position:static}main{padding-top:24px}}
+</style></head>
+<!--
+  Fixture de la capture pleine page (TF-2904, 27/11/2026), variante `position: fixed` de
+  capture-collant-defile.html : meme page, meme defilement a 880 px. Un en-tete fixe est hors flux : le mettre a
+  `static` pour la capture ajouterait 64 px a la page, d'ou `absolute` (la hauteur de la page, et donc les
+  mesures et les tuiles, ne changent pas). Avant : en-tete peint a 880 px ; apres : en tete, hauteur inchangee.
+-->
+<body><header class="bandeau">Bandeau fixe</header>
+<main><h1>Page longue</h1>
+<section><h2>Un</h2><p>Texte un. Texte un. Texte un. Texte un. Texte un. Texte un. Texte un.</p><div class="vide"></div></section>
+<section><h2>Deux</h2><p>Texte deux. Texte deux. Texte deux. Texte deux. Texte deux.</p><div class="vide"></div></section>
+<section><h2>Trois</h2><p>Texte trois. Texte trois. Texte trois. Texte trois.</p><div class="vide"></div></section>
+</main>
+<script>addEventListener('load', function () { scrollTo(0, 880); });</script>
+</body></html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V30 champ et bouton : controles en ligne, hors grille</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#CBD5E1;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#1D4ED8;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+.wrap{padding:24px}
+.ligne input{box-sizing:border-box;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit;width:300px}
+.ligne button{box-sizing:border-box;height:32px;padding:0 14px;border:0;border-radius:8px;background:var(--blue);
+ color:#fff;font:inherit}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture ROUGE de V30 (TF-2902, 27/11/2026) : le champ (44 px) et le bouton (32 px) sont deux controles EN LIGNE
+  d'un conteneur de bloc, sans grille ni boite flexible. V11 ne juge que les enfants d'une grille ou d'une boite
+  flexible : 0 constat, alors que les deux boites se recouvrent et different de 12 px en hauteur. V30 : 1 constat.
+-->
+<body><main class="wrap"><h1>Inscription a la liste</h1>
+<div class="ligne"><input type="email" aria-label="Adresse de messagerie" value="equipe@exemple.fr"> <button type="button">S'inscrire</button></div>
+</main></body></html>

@@ -182,6 +182,11 @@ CAS = {
     "l9-detail-vide.html": {"L9"},
     "l9-depliant-muet.html": {"L9"},
     "l9-depliant-inutile.html": {"L9"},
+    # TF-2903 (27/11) — un details qui porte un GROUPE de controles (2 cases ou radios, ou un fieldset) est un
+    # filtre : avant, « detail vide » et « cache trop peu » sur la verte. Une seule case ne fait pas un groupe :
+    # la rouge garde son L9.
+    "l9-depliant-filtre-cases.html": set(),
+    "l9-depliant-une-case.html": {"L9"},
     "l12-enumeration-en-prose.html": {"L12 (données)"},
     # 22/08 — la MÊME page, sa zone de contenu déclarée citée (data-cite) : L12 se tait.
     # Doctrine TF-0436 étendue : un oracle de forme ne juge pas un texte que la page n'a pas
@@ -591,6 +596,13 @@ CAS_RENDU = {
     "l2fr-freres-declares.html": ("l2_freres", 0),         # le meme, mais data-mesure-lecture
     "l2g-gouttiere-etiquettes.html": ("l2_gouttiere", 1),   # colonne d'étiquettes
     "l2g-etiquettes-en-tete.html": ("l2_gouttiere", 0),     # étiquette en tête
+    # TF-2898 (27/11, lots Produit-82 des 26 et 27/11) — une grille a 2 pistes qui porte du CONTENU (deux sections
+    # titrees, un bloc a plusieurs enfants) n'est pas une colonne d'etiquettes, et `data-colonne-ok` en dispense.
+    # Avant : pistes-de-contenu 2 constats, etiquettes-dispensees 1 ; apres : 0 et 0. La contre-epreuve (une
+    # etiquette a UN seul enfant, sans titre) et la rouge d'origine gardent leur constat.
+    "l2g-pistes-de-contenu.html": ("l2_gouttiere", 0),
+    "l2g-etiquettes-dispensees.html": ("l2_gouttiere", 0),
+    "l2g-etiquette-un-seul-enfant.html": ("l2_gouttiere", 1),
     # TF-0694 (27/08) — LA REGLE DECRIVAIT EXACTEMENT CE DEFAUT, AU SEUIL EXACT, ET RENDAIT PASS
     # DESSUS : son implementation commencait par `if (cs.display !== 'grid') continue`, et une
     # mise en page « intitule | contenu » en <table> n'y entrait jamais. Elle n'a pas echoue,
@@ -681,6 +693,14 @@ CAS_RENDU = {
     "ctrl-menu-cases-deplie.html": ("controles_desalignes", 0),
     "ctrl-menu-cases-hors-panneau.html": ("controles_desalignes", 1),
     "ctrl-champs-dans-panneau-deplie.html": ("controles_desalignes", 1),
+    # TF-2902 (27/11, lots Produit-82 des 26 et 27/11) — V30, un champ et son bouton d'une meme rangee : meme haut ET
+    # meme hauteur, a 1 px. 14 ecarts a 1920 px passaient en PASS (dont 52 px face a 40 px) : V11 ne compare que le
+    # bord haut des enfants d'une grille ou d'une boite flexible. Les deux rouges rendent 0 constat V11 (c'est
+    # POURQUOI elles passaient) et 1 constat V30 ; les deux vertes : 0. La seconde verte est la rouge, l'ecart declare.
+    "v30-champ-bouton-flex-start.html": [("champ_bouton_desaligne", 1), ("controles_desalignes", 0)],
+    "v30-champ-bouton-en-ligne.html": [("champ_bouton_desaligne", 1), ("controles_desalignes", 0)],
+    "v30-champ-bouton-alignes.html": [("champ_bouton_desaligne", 0), ("controles_desalignes", 0)],
+    "v30-champ-bouton-dispense.html": [("champ_bouton_desaligne", 0)],
     "donnees-tableau-rogne.html": ("rognage_donnees", 1),
     "donnees-tableau-entier.html": ("rognage_donnees", 0),
     "donnees-prose-etroite.html": ("prose_etroite", 1),
@@ -5408,6 +5428,111 @@ def run_bandeau_collant_section():
              "detail": "" if ok else (r.stderr or r.stdout)[-300:]}]
 
 
+def run_capture_collants_a_plat():
+    """TF-2904 — LA CAPTURE PLEINE PAGE NE FIGE PLUS UN EN-TETE COLLANT AU MILIEU DE LA PAGE.
+
+    Mesure du 27/11/2026 : sur une page longue qui se defile d'elle-meme a 880 px au chargement, l'en-tete
+    `position: sticky` (ou `fixed`) etait peint a 880 px CSS dans la capture pleine page, avec une bande vide en
+    tete (cas du produit : 880 px a 1920 px de large). Le code d'avant rend cette bande a 880 px sur les deux
+    fixtures ; le code d'apres la rend en tete (0 a 64 px). Trois preuves : (1) la position de la bande dans les
+    PIXELS du PNG, (2) la hauteur du PNG egale a celle de la page (un `fixed` mis a `static` l'allongerait de la
+    hauteur de l'en-tete), (3) l'etat retabli apres la capture, y compris quand la capture ECHOUE.
+    """
+    try:
+        import importlib
+        importlib.import_module("playwright.sync_api")
+        importlib.import_module("PIL.Image")
+    except ImportError:
+        return None
+    import tempfile
+    from PIL import Image
+    from playwright.sync_api import sync_playwright
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from render_page import capturer_pleine_page, ensure_browser_path  # noqa: PLC0415
+    try:
+        ensure_browser_path()
+    except Exception:  # noqa: BLE001 — confort d'auto-detection, pas un du
+        pass
+    rendu = str(Path(__file__).resolve().parent / "render_page.py")
+    out = []
+    largeur = 1920
+
+    def cas(nom, etiquette, ok, attendu, obtenu):
+        out.append({"fixture": f"{nom} · {etiquette}", "verdict": "OK" if ok else "ECHEC",
+                    "attendu": str(attendu)[:120], "obtenu": str(obtenu)[:120], "regle": "TF-2904",
+                    "detail": "" if ok else f"attendu {attendu!r}, obtenu {obtenu!r}"[:300]})
+
+    def bandes_rouges(chemin_png):
+        im = Image.open(chemin_png).convert("RGB")
+        echelle = im.width / largeur
+        x = int(100 * echelle)
+        bandes, debut = [], None
+        for y in range(im.height):
+            r, g, _ = im.getpixel((x, y))
+            rouge = r > 150 and g < 80
+            if rouge and debut is None:
+                debut = y
+            if not rouge and debut is not None:
+                bandes.append((round(debut / echelle), round(y / echelle)))
+                debut = None
+        return bandes, round(im.height / echelle)
+
+    for nom in ("capture-collant-defile.html", "capture-fixe-defile.html"):
+        page = FIXTURES / nom
+        if not page.exists():
+            out.append({"fixture": nom, "verdict": "ABSENTE", "attendu": "fixture présente",
+                        "obtenu": "absente", "regle": "TF-2904", "detail": ""})
+            continue
+        dossier = tempfile.mkdtemp(prefix="self-test-collant-")
+        r = subprocess.run([sys.executable, "-X", "utf8", rendu, str(page), "--widths", str(largeur),
+                            "--out", dossier, "--output", "json"],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            rapport = json.loads(r.stdout)["breakpoints"][str(largeur)]
+            png = next(Path(dossier).glob("*.png"))
+            bandes, haut_png = bandes_rouges(png)
+        except Exception as erreur:  # noqa: BLE001 — une sortie illisible se compte comme un échec
+            cas(nom, "capture lisible", False, "PNG et rapport", f"{type(erreur).__name__}: {(r.stderr or r.stdout)[-120:]}")
+            shutil.rmtree(dossier, ignore_errors=True)
+            continue
+        premiere = bandes[0] if bandes else None
+        cas(nom, "l'en-tête est en tête de capture, pas à 880 px",
+            bool(bandes) and premiere[0] <= 2 and all(b[1] <= 70 for b in bandes),
+            "bande rouge de 0 à 64 px CSS", bandes)
+        hauteur_page = rapport["capture"].get("hauteur_css") or rapport["capture"].get("hauteur_px")
+        cas(nom, "la hauteur de la capture est celle de la page",
+            hauteur_page is not None and abs(haut_png - hauteur_page) <= 1,
+            f"{hauteur_page} px CSS", f"{haut_png} px CSS")
+        shutil.rmtree(dossier, ignore_errors=True)
+
+    # L'état est rétabli après la capture, et AUSSI quand la capture échoue (un type d'image inconnu la fait lever).
+    with tempfile.TemporaryDirectory(prefix="self-test-collant-") as tmp, sync_playwright() as pw:
+        navigateur = pw.chromium.launch()
+        for nom, attendu in (("capture-collant-defile.html", "sticky"), ("capture-fixe-defile.html", "fixed")):
+            page = navigateur.new_page(viewport={"width": largeur, "height": 1080})
+            page.goto((FIXTURES / nom).as_uri())
+            page.wait_for_load_state("load")
+            page.evaluate("() => window.scrollTo(0, 880)")
+            etat = "() => { const h = document.querySelector('header.bandeau'); return [getComputedStyle(h).position, h.style.position]; }"
+            avant = page.evaluate(etat)
+            n = capturer_pleine_page(page, Path(tmp) / f"{nom}.png", 30000)
+            apres = page.evaluate(etat)
+            cas(nom, "état rétabli après la capture (position calculée et style en ligne)",
+                n == 1 and avant == [attendu, ""] and apres == avant, f"1 neutralisé, {[attendu, '']} avant et après",
+                f"{n} neutralisé, avant {avant}, après {apres}")
+            try:
+                capturer_pleine_page(page, Path(tmp) / f"{nom}-echec.png", 30000, type="inconnu")
+                leve = False
+            except Exception:  # noqa: BLE001 — l'échec est l'objet du cas
+                leve = True
+            apres_echec = page.evaluate(etat)
+            cas(nom, "état rétabli même quand la capture échoue",
+                leve and apres_echec == avant, f"capture refusée, {avant}", f"levée {leve}, {apres_echec}")
+            page.close()
+        navigateur.close()
+    return out
+
+
 def run_etat_initial_non_juge():
     """TF-1370 — SEUL L'ETAT INITIAL EST JUGE, ET LE RAPPORT LE DIT DESORMAIS.
 
@@ -7800,6 +7925,11 @@ def main():
     bandeau_section = run_bandeau_collant_section()
     if bandeau_section:
         res += bandeau_section
+    # TF-2904 — la capture pleine page met les elements collants a plat (puis les retablit) :
+    # l'en-tete d'une page defilee n'est plus peint a 880 px.
+    collants_a_plat = run_capture_collants_a_plat()
+    if collants_a_plat:
+        res += collants_a_plat
     # TF-1370 — seul l'etat initial est juge par defaut, et le rapport le dit desormais, nuance
     # quand --etats-ouverts ou une matrice rejoue en plus des etats declares.
     etat_initial = run_etat_initial_non_juge()

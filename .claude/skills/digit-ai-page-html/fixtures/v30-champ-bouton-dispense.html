@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V30 champ et bouton : ecart declare</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#CBD5E1;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#1D4ED8;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+.wrap{padding:24px}
+form.recherche{display:flex;align-items:flex-start;gap:12px}
+form.recherche input{box-sizing:border-box;height:52px;padding:0 12px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit;width:320px}
+form.recherche button{box-sizing:border-box;height:40px;padding:0 18px;border:0;border-radius:8px;background:var(--blue);
+ color:#fff;font:inherit}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de V30 (TF-2902, 27/11/2026) : la MEME page que v30-champ-bouton-flex-start.html (rouge, 1 constat),
+  mais l'ecart est voulu et DECLARE par `data-alignement-ok` sur le formulaire, avec sa raison (la dispense de V11).
+  Attendu : 0 constat `champ_bouton_desaligne`.
+-->
+<body><main class="wrap"><h1>Recherche d'un dossier</h1>
+<form class="recherche" role="search" data-alignement-ok="bouton secondaire volontairement plus bas que le champ de saisie"><input type="search" aria-label="Numero de dossier" value="2026-0412"><button type="submit">Rechercher</button></form>
+</main></body></html>

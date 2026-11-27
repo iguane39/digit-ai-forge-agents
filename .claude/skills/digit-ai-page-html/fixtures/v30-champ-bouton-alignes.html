@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit-AI — V30 champ et bouton alignes</title>
+<style>
+:root{--ink:#0F172A;--muted:#475569;--line:#CBD5E1;--surface:#FFFFFF;--bg:#FAFBFF;--blue:#1D4ED8;
+ --head:"Roboto",system-ui,sans-serif;--sans:"DM Sans",system-ui,sans-serif}
+body{margin:0;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--bg)}
+h1{font-family:var(--head);font-size:1.6rem;margin:0 0 12px}
+h2{font-family:var(--head);font-size:1.1rem;margin:20px 0 8px}
+.wrap{padding:24px}
+.rangee{display:flex;align-items:center;gap:12px}
+.rangee input,.rangee select,.rangee button{box-sizing:border-box;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;
+ background:var(--surface);color:var(--ink);font:inherit}
+.rangee input{width:260px}
+.rangee button{background:var(--blue);border-color:var(--blue);color:#fff}
+.pile{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.pile input{box-sizing:border-box;height:52px;width:260px;padding:0 12px;border:1px solid var(--line);border-radius:8px;font:inherit}
+.pile button{box-sizing:border-box;height:36px;padding:0 14px;border:0;border-radius:8px;background:var(--blue);color:#fff;font:inherit}
+.avec-effacement{position:relative;display:inline-block}
+.avec-effacement input{box-sizing:border-box;height:44px;width:260px;padding:0 40px 0 12px;border:1px solid var(--line);border-radius:8px;font:inherit}
+.avec-effacement button{position:absolute;right:6px;top:8px;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--ink);font:inherit}
+.coche{display:block}
+.coche button{box-sizing:border-box;height:40px;padding:0 14px;border:0;border-radius:8px;background:var(--blue);color:#fff;font:inherit}
+@media print{body{background:#fff}}
+</style></head>
+<!--
+  Fixture VERTE de V30 (TF-2902, 27/11/2026), jumelle des deux rouges. Quatre rangees que la regle ne doit PAS
+  accuser : (1) un champ, une liste et un bouton de MEME hauteur et de meme haut ; (2) un champ de 52 px et un
+  bouton de 36 px EMPILES (aucun recouvrement vertical : ce n'est pas une rangee) ; (3) un bouton d'effacement pose
+  DANS le champ (recouvrement horizontal : une incrustation, pas un voisin) ; (4) une case a cocher a cote d'un
+  bouton (une case n'est pas un champ de saisie). Attendu : 0 constat `champ_bouton_desaligne`.
+-->
+<body><main class="wrap"><h1>Controles</h1>
+<h2>Meme hauteur</h2>
+<form class="rangee"><input type="search" aria-label="Recherche" value="dossier"><select aria-label="Statut"><option>Ouvert</option><option>Clos</option></select><button type="submit">Filtrer</button></form>
+<h2>Empiles</h2>
+<form class="pile"><input type="text" aria-label="Nom" value="Dupont"><button type="submit">Enregistrer</button></form>
+<h2>Bouton d'effacement dans le champ</h2>
+<div class="avec-effacement"><input type="search" aria-label="Terme" value="facture"><button type="button" aria-label="Effacer">x</button></div>
+<h2>Case et bouton</h2>
+<div class="coche"><label><input type="checkbox"> Recevoir un rappel</label><button type="button">Valider</button></div>
+</main></body></html>

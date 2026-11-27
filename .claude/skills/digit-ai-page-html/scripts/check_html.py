@@ -389,6 +389,18 @@ def _enumeration_virgules(phrase: str) -> int:
 SEUIL_DEPLIANT = 200
 
 
+def _depliant_de_controles(det):
+    """TF-2903 — vrai quand le `details` porte un groupe de contrôles de formulaire : un `fieldset`, ou au
+    moins deux `input` de type checkbox ou radio. Un seul contrôle isolé ne fait pas un groupe."""
+    cases = 0
+    for n in det.descendants():
+        if n.tag == "fieldset":
+            return True
+        if n.tag == "input" and (n.att("type") or "").strip().lower() in ("checkbox", "radio"):
+            cases += 1
+    return cases >= 2
+
+
 # ---------------------------------------------------------------------------
 # Arbre léger. La conformité de lisibilité se décide sur la structure, pas sur
 # des expressions régulières appliquées au texte brut : une ancre morte ou un
@@ -3644,6 +3656,13 @@ def check_lisibilite(html: str, a: Arbre):
 
     # --- L9 : détails dépliables -----------------------------------------
     for det in [n for n in a.racine.descendants() if n.tag == "details"]:
+        # TF-2903 (lots Produit-82 des 26 et 27/11/2026) — UN DEPLIANT DE FILTRE N'EST PAS UNE EXPLICATION.
+        # Un `details` qui porte un groupe de controles (au moins 2 cases ou boutons radio, ou un
+        # `fieldset`) cache un FORMULAIRE : ses libelles sont courts par nature, une case peut ne porter
+        # que son `aria-label`, et L9 le jugeait « detail vide » ou « cache trop peu » comme un depliant
+        # d'explication. Il sort de L9.
+        if _depliant_de_controles(det):
+            continue
         sums = [e for e in det.enfants if isinstance(e, Noeud) and e.tag == "summary"]
         corps = "".join(
             e if isinstance(e, str) else ("" if e.tag == "summary" else e.texte())
