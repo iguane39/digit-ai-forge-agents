@@ -4823,6 +4823,55 @@ else {
     : ok('TF-2783 rouge : les mêmes lignes sans data-detail sont des lignes de données et G12 les refuse (l\'exclusion tient à l\'attribut, pas à la forme de la cellule)');
 }
 
+// TF-2905 (27/11/2026) — G3 SUIT UNE VARIABLE LOCALE JUSQU'À L'ID DU TABLEAU. Le fait (Produit-82, lot 20261127c) :
+// `var t = document.getElementById('t-detail'); DigitAITableFilters.init(t)` était rendu « jamais initialisé » alors que les
+// facettes se construisaient. Sens joués sur des pages jetables tirées de filtres-alias-verte.html (le manifest tient la paire
+// rouge/verte de base) : (1-2) VERTS : getElementById, querySelector('#id'), let, const, init(t, options) → PASS, aucun G3 ;
+// (3-6) ROUGES CONSERVÉES, rien n'est assoupli : la variable désigne un AUTRE id, l'affectation est en commentaire, l'init
+// porte une AUTRE variable que celle affectée, aucun init du tout → G3 ; (7) la variable sans affectation visible reste G3
+// ET se dit en non_juge (hors portée déclarée, jamais devinée).
+{
+  const FILTRES = path.join(SKILLDIR, 'scripts', 'oracle-filtres-tableau.mjs');
+  const verte = fs.readFileSync(path.join(SKILLDIR, 'fixtures', 'filtres-alias-verte.html'), 'utf8');
+  const script = "<script>var t = document.getElementById('t-detail'); DigitAITableFilters.init(t);</script>";
+  const jouer = (corps) => {
+    if (!verte.includes(script)) return { erreur: 'la fixture alias-verte ne porte plus son script : le cas ne se pose pas' };
+    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'qo-2905-'));
+    try {
+      const f = path.join(t, 'page.html');
+      fs.writeFileSync(f, verte.replace(script, corps === null ? '' : '<script>' + corps + '</script>'));
+      const r = spawnSync(process.execPath, [FILTRES, f], { encoding: 'utf8', timeout: 60000 });
+      try { return JSON.parse(r.stdout); } catch { return null; }
+    } finally { fs.rmSync(t, { recursive: true, force: true }); }
+  };
+  const g3 = (j) => (j && j.findings ? j.findings.filter(f => f.regle === 'G3') : null);
+  const sens = (j) => JSON.stringify(j && (j.erreur || [j.verdict, g3(j).length]));
+  const vertes = [
+    ["getElementById", "var t = document.getElementById('t-detail'); DigitAITableFilters.init(t);"],
+    ["querySelector('#id'), const", "const tab = document.querySelector('#t-detail');\nDigitAITableFilters.init( tab );"],
+    ["let, init(t, options)", "let $t = document.getElementById(\"t-detail\");\nDigitAITableFilters.init($t, { recherche: true });"],
+  ];
+  const vert = vertes.map(([nom, code]) => [nom, jouer(code)]);
+  const malVert = vert.filter(([, j]) => !j || j.erreur || j.verdict !== 'PASS' || g3(j).length);
+  malVert.length
+    ? ko('TF-2905 vert : une variable affectée à l\'id du tableau puis passée à init() doit rendre PASS sans G3 — refusés : ' + malVert.map(([n, j]) => n + ' ' + sens(j)).join(' ; '))
+    : ok('TF-2905 vert : var / let / const x = getElementById(\'id\') ou querySelector(\'#id\'), puis init(x) ou init(x, options) → PASS, aucun G3 (3 formes)');
+  const rouges = [
+    ['la variable désigne un autre id', "var t = document.getElementById('autre-tableau'); DigitAITableFilters.init(t);"],
+    ['l\'affectation est en commentaire', "/* var t = document.getElementById('t-detail'); */ DigitAITableFilters.init(t);"],
+    ['init porte une autre variable', "var a = document.getElementById('t-detail'); var b = document.getElementById('ailleurs'); DigitAITableFilters.init(b);"],
+    ['aucun init', "var t = document.getElementById('t-detail');"],
+  ].map(([nom, code]) => [nom, jouer(code)]);
+  const malRouge = rouges.filter(([, j]) => !j || j.erreur || j.verdict !== 'FAIL' || g3(j).length !== 1);
+  malRouge.length
+    ? ko('TF-2905 rouge conservée : une variable rattachée à un autre id, une affectation en commentaire, une autre variable ou aucun init doivent garder G3 (FAIL) — non refusés : ' + malRouge.map(([n, j]) => n + ' ' + sens(j)).join(' ; '))
+    : ok('TF-2905 rouge conservée : autre id, affectation en commentaire, autre variable, aucun init → G3 reste bloquant (rien n\'est assoupli)');
+  const nue = jouer("DigitAITableFilters.init(t);");
+  !nue || nue.erreur || nue.verdict !== 'FAIL' || g3(nue).length !== 1 || !nue.non_juge.some(x => /^G3 \(TF-2905\) : init\(t\)/.test(x))
+    ? ko('TF-2905 hors portée : init(t) sans affectation visible doit garder G3 ET nommer t en non_juge — obtenu ' + sens(nue) + ' ' + JSON.stringify(nue && nue.non_juge && nue.non_juge.filter(x => /^G3/.test(x)).map(x => x.slice(0, 70))))
+    : ok('TF-2905 hors portée : init(t) sans affectation visible reste G3 et nomme la variable t en non_juge (dite, jamais devinée)');
+}
+
 // TF-2296 (14/11/2026) — oracle-filtres-tableau lit une liste d'exceptions PAR CHEMIN pour une page SCELLÉE.
 // Le fait (09/11) : la maquette remise le 15/08 garde G12 en FAIL sur « Gain /5 » (7 cellules composites sur 10), et sa
 // seule sortie, data-filterable="off", modifie la page donc rompt son sceau. Les deux sens, sur la fixture rouge de

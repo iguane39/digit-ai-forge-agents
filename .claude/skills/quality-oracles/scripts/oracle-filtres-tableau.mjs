@@ -8,6 +8,8 @@
    panneaux, bascules Tous/Aucun, recherche, combinaison ET) exige un rendu navigateur et est
    declare en non_juge — le passer a render_page.py (V1-V7).
 
+   TF-2905 (27/11/2026) : G3 suit `var|let|const x = document.getElementById('id')` ou `querySelector('#id')` jusqu'a init(x) ; le reste se dit en non_juge.
+
    TF-2618 (16/11/2026) : G2 (composant present) lit aussi les assets declares, comme G3 et G6 (voir `controler`).
 
    RS-1 (TF-0837, 05/09) : G3 (initialisation) et G6 (regle print) admettent desormais un
@@ -270,6 +272,31 @@ function corpusExterne(html, cheminPage) {
   return { texte, lues, manquantes };
 }
 
+/* TF-2905 (27/11/2026, retour Produit-82 20261127c) — G3 SUIT UNE VARIABLE LOCALE JUSQU'A L'ID DU TABLEAU. Le fait :
+   `var t = document.getElementById('t-detail'); DigitAITableFilters.init(t);` etait rendu « jamais initialise » alors que
+   les facettes se construisaient : l'oracle ne lisait que l'id ecrit DANS l'appel init(). Il lit desormais l'affectation
+   directe `var|let|const x = document.getElementById('id')` ou `document.querySelector('#id')`, puis l'appel
+   `init(x)` / `init(x, options)`. RIEN N'EST ASSOUPLI : une variable qui designe un autre id, ou qu'aucune affectation
+   ne rattache, ne vaut pas init() ; elle reste G3 et se DIT en non_juge. Hors portee (dit en non_juge, jamais devine) :
+   une variable recue en parametre, tiree d'une liste (querySelectorAll, forEach), reaffectee, ou construite a partir
+   d'une autre chaine que l'id litteral. */
+const echapper = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function variablesDuTableau(code, id) {
+  const i = echapper(id);
+  const motif = new RegExp(`\\b(?:var|let|const)\\s+([\\w$]+)\\s*=\\s*document\\s*\\.\\s*(?:getElementById\\s*\\(\\s*(["'])${i}\\2\\s*\\)|querySelector\\s*\\(\\s*(["'])#${i}\\3\\s*\\))`, 'g');
+  return [...code.matchAll(motif)].map(m => m[1]);
+}
+
+function initParVariable(code, id) {
+  return variablesDuTableau(code, id).some(v => new RegExp(`DigitAITableFilters\\s*\\.\\s*init\\s*\\(\\s*${echapper(v)}\\s*[,)]`).test(code));
+}
+
+/* Les arguments d'init() qui sont un identifiant nu : ce que l'oracle n'a pas su suivre quand G3 reste ouvert. */
+function argumentsInitHorsPortee(code) {
+  return [...new Set([...code.matchAll(/DigitAITableFilters\s*\.\s*init\s*\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)].map(m => m[1]))];
+}
+
 /* ---------- controles ---------- */
 
 function controler(html, chemin) {
@@ -343,8 +370,13 @@ function controler(html, chemin) {
     }
 
     if (!initAll && id) {
-      const initCible = new RegExp(`DigitAITableFilters\\s*\\.\\s*init\\s*\\([^)]*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(corpus);
-      if (!initCible) add('G3', 'bloquant', `Tableau "${id}" jamais initialise : ni initAll(), ni init() le designant (document ou asset externe declare).`, oue);
+      const initCible = new RegExp(`DigitAITableFilters\\s*\\.\\s*init\\s*\\([^)]*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(corpus)
+        || initParVariable(sansCommentaires(corpus), id);
+      if (!initCible) {
+        add('G3', 'bloquant', `Tableau "${id}" jamais initialise : ni initAll(), ni init() le designant (document ou asset externe declare).`, oue);
+        const horsPortee = argumentsInitHorsPortee(sansCommentaires(corpus));
+        if (horsPortee.length) OUT.non_juge.push(`G3 (TF-2905) : init(${horsPortee.join('), init(')}) — l'argument est une variable que l'oracle n'a pas pu rattacher a l'id "${id}" par une affectation directe (var|let|const x = document.getElementById('${id}') ou document.querySelector('#${id}')) ; une variable passee par parametre, tiree d'une liste ou reaffectee n'est pas suivie.`);
+      }
     }
 
     if (id) {
@@ -378,6 +410,7 @@ function controler(html, chemin) {
   if (filtrables > 0 && !printOk) add('G6', 'bloquant', 'Aucune regle @media print reaffichant tr[data-tf-hidden] (document ou asset externe declare) : un PDF exporte apres filtrage sortirait tronque.', 'document');
 
   OUT.non_juge.push('Comportement d\'execution : construction des panneaux, bascules Tous/Aucun, recherche accent-insensible, combinaison ET entre colonnes — exige un rendu navigateur (render_page.py).');
+  OUT.non_juge.push("G3 (TF-2905) : l'initialisation se lit dans l'appel init() qui nomme l'id, ou dans init(x) quand une affectation directe (var|let|const x = document.getElementById('id') ou document.querySelector('#id')) rattache x a l'id — une variable recue en parametre, tiree d'une liste ou reaffectee n'est pas suivie.");
   OUT.non_juge.push('Pertinence des colonnes retenues comme categorielles : heuristique de cardinalite, non validee metier.');
   OUT.non_juge.push(`G10 (TF-2158) : seuls les controles ECRITS dans le HTML source sont vus (liste ou champ dans l'en-tete, ou controle hors tableau qui porte aria-controls / data-table = id du tableau ET nomme la colonne) — un filtre pose par un script, une tuile KPI (data-kpi-table) ou un controle qui ne designe pas le tableau ne sont pas comptes.`);
   OUT.non_juge.push(`G11 (TF-2158) : seuils de ${SEUIL_VALEURS_UNIQUES} valeurs distinctes et de ${Math.round(PART_VALEURS_UNIQUES * 100)} % de lignes distinctes — poses par l'agent de TF-2158, non fondes sur une mesure du parc ; seules les lignes du premier <tbody> sont comptees.`);

@@ -1693,6 +1693,27 @@
    "note": "TF-2158 — G10 : deux contrôles pour une même colonne (facette du composant + liste dans l'en-tête, ou + liste hors tableau qui désigne le tableau) sont refusés ; la verte joue le geste du message (colonne déclarée hors facette, le contrôle manuel en est le seul)."
   },
   {
+   "nom": "filtres-tableau-init-par-variable",
+   "cmd": [
+    "node",
+    "{skilldir}/scripts/oracle-filtres-tableau.mjs",
+    "{fixture}"
+   ],
+   "red": "filtres-alias-rouge.html",
+   "green": "filtres-alias-verte.html",
+   "attendu_red": [
+    "FAIL"
+   ],
+   "attendu_messages_red": [
+    "\"regle\":\"G3\""
+   ],
+   "attendu_green": [
+    "PASS"
+   ],
+   "provenance": "TF-2905 (Produit-82, lot 20261127c, 27/11/2026) : var t = document.getElementById('t-detail'); DigitAITableFilters.init(t) était rendu « jamais initialisé » alors que les facettes se construisaient ; l'oracle ne lisait que l'id écrit dans l'appel init(). Avant correction, la verte rendait FAIL sur G3 ; la rouge (la variable désigne un autre id) reste FAIL.",
+   "note": "TF-2905 — G3 suit l'affectation directe var|let|const x = document.getElementById('id') ou querySelector('#id') jusqu'à init(x) ; une variable rattachée à un autre id, ou qu'aucune affectation ne rattache, reste G3 et se dit en non_juge."
+  },
+  {
    "nom": "cadence-de-mission",
    "cmd": [
     "node",
