@@ -233,6 +233,24 @@ check("TF-2908 ROUGE : l'extrait se lit dans le fichier de référence (marqueur
   ok(avec.code === 0 && /MARQUEUR-JETABLE-2908/.test(readFileSync(join(d, "consigne-recue.txt"), "utf8")), `marqueur absent : exit ${avec.code}`);
 });
 
+// TF-2907 (RT-68 du lot Produit-82 20261127d) : « pour chaque LLM, Claude, Codex et Gemini » a été lu comme un tableau de bord par modèle
+// suivi, sans charger ce skill. La description nomme le cas et le corps prescrit le compte des livrables avant le premier fichier.
+check("TF-2907 : la description nomme le concepteur tiers d'un livrable (≤ 1024 car.) et le corps prescrit le compte avant le premier fichier", () => {
+  const skill = readFileSync(join(dirname(SCRIPT), "..", "SKILL.md"), "utf8").replace(/\r\n/g, "\n");
+  const fm = /^---\n([\s\S]*?)\n---\n/.exec(skill);
+  ok(fm, "frontmatter introuvable");
+  const m = /^description:\s*>\s*\n((?:  .*\n?)+)/m.exec(fm[1] + "\n");
+  ok(m, "description introuvable");
+  const description = m[1].split("\n").map((l) => l.trim()).filter(Boolean).join(" ");
+  ok(description.length <= 1024, `description de ${description.length} caractères`);
+  ok(/une demande nomme Codex, Gemini ou un autre modèle comme concepteur d'un livrable/.test(description), "le cas n'est pas nommé dans la description");
+  const corps = skill.slice(fm[0].length);
+  const i = corps.indexOf("## Avant le premier fichier : compter les livrables"), j = corps.indexOf("## Les 3 gestes");
+  ok(i >= 0 && j > i, "section « Avant le premier fichier » absente ou après les 3 gestes");
+  const section = corps.slice(i, j);
+  ok(/types de livrable × concepteurs ×\s+variantes par concepteur = total/.test(section) && /2 tableaux de bord × 3 concepteurs × 3 maquettes chacun = 18/.test(section), "le compte des livrables n'est pas prescrit avec son exemple");
+});
+
 rmSync(T, { recursive: true, force: true });
 console.log(`agent-tiers : ${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

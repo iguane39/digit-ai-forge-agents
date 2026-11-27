@@ -3,17 +3,17 @@ name: delegue-a-codex-et-gemini
 description: >
   Confie à Codex (GPT) et à Gemini (par Antigravity) l'un des 3 gestes que la Factory leur ouvre, sur
   l'abonnement du porteur et sans API : relire à charge un prompt ou un document généré par Claude,
-  concevoir une variante de design pour en présenter 3 à challenger, générer une image. Un lanceur
-  unique tient le bac à sable : dossier jetable hors dépôt, lecture seule pour relire. Use when /
+  concevoir une variante de design pour en présenter 3 à challenger, générer une image. Use when /
   déclencher dès qu'une relecture aveugle d'un autre modèle est voulue (boucle L99, contre-expertise,
   note ou étude à relire), qu'un design, une maquette ou une direction artistique est demandé à Claude,
-  ou qu'une image, une illustration ou un visuel est à produire, et quand l'utilisateur demande la
-  procédure pour installer ou connecter Codex ou Gemini. Agent non configuré : Claude travaille seul,
-  sans erreur. Ne pas déclencher pour du code ou des commits (Codex ne peut pas commiter), pour juger
-  un livrable par oracle (→ quality-oracles), ni pour une API d'OpenAI ou de Gemini dans un produit
+  qu'une demande nomme Codex, Gemini ou un autre modèle comme concepteur d'un livrable (« pour chaque
+  LLM, Claude, Codex et Gemini »), ou qu'une image ou un visuel est à produire, et quand l'utilisateur
+  demande la procédure pour installer ou connecter Codex ou Gemini. Agent non configuré : Claude
+  travaille seul, sans erreur. Ne pas déclencher pour du code ou des commits, pour juger un livrable
+  par oracle (→ quality-oracles), ni pour une API d'OpenAI ou de Gemini dans un produit
   (→ integre-openai-gemini).
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # delegue-a-codex-et-gemini — un second modèle pour relire, concevoir et dessiner
@@ -47,6 +47,22 @@ Un geste lancé vers un agent absent rend `ABSENT` en code 0, jamais un refus : 
 comme `CLAUDE_SEUL` pour cet agent. Installé veut dire que le binaire est là ; connecté, que le
 fichier posé par la connexion existe. Une connexion expirée ne se voit qu'au premier geste réel, qui
 rend alors `FAIL` : Claude fait le geste seul et le dit en une ligne.
+
+## Avant le premier fichier : compter les livrables
+
+Une demande qui nomme Codex, Gemini ou « chaque LLM » comme concepteur d'un livrable charge ce skill avant
+toute construction. Le fait, lot Produit-82 20261127d, RT-68 : « 3 maquettes de Dashboard, pour chaque LLM,
+Claude, Codex & Gemini », pour 2 tableaux de bord, a été lue comme « un tableau de bord par modèle suivi ».
+La session a livré 3 pages en 32 minutes sans charger ce skill, et le porteur a répondu : « J'attends au final
+9 maquettes pour le premier Dashboard et 9 maquettes pour le deuxième dashboard. Recommence. »
+
+Avant d'écrire le premier fichier, écris en une ligne le compte attendu : types de livrable × concepteurs ×
+variantes par concepteur = total. Pour ce cas : 2 tableaux de bord × 3 concepteurs × 3 maquettes chacun = 18
+maquettes, soit 9 par tableau de bord. Chaque facteur se cite de la demande. Un facteur ambigu (« pour chaque
+LLM » : les modèles que le produit suit, ou ceux qui conçoivent ?) se lit au plus large ou se pose à
+l'utilisateur avant de construire ; il ne se resserre pas de lui-même. Le compte porte sur ce que la demande
+nomme, pas sur ce qui est installé : un agent absent selon `etat` laisse Claude faire sa part, et le dit. À la
+livraison, le compte se rejoue : autant de fichiers que de livrables comptés, ou l'écart est dit.
 
 ## Les 3 gestes
 
@@ -146,4 +162,4 @@ règles sans elles, et Claude rejoue les deux commandes sur chaque livrable reç
 - Antigravity, `--sandbox` : l'écriture hors du dossier est refusée par l'outil comme par le terminal,
   sauf sous `%TEMP%` ; le réseau des commandes est coupé (essai A-6, 3 appels, témoin intact).
 - Le lanceur ne construit jamais `--dangerously-*`, `danger-full-access` ni de contournement :
-  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 24 cas, dont 6 sur des postes sans agent, avec un seul ou avec les deux, 7 sur un faux Codex qui dépasse son délai, plante ou rend à temps, et 3 sur l'extrait des règles jugées joint à `concevoir`).
+  sa recette le vérifie (`node {skilldir}/scripts/self-test.mjs`, 25 cas, dont 6 sur des postes sans agent, avec un seul ou avec les deux, 7 sur un faux Codex qui dépasse son délai, plante ou rend à temps, 3 sur l'extrait des règles jugées joint à `concevoir`, et 1 sur la description et le compte des livrables).
